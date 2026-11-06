@@ -22,6 +22,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 - **Manual save / load:** three slots, and nothing is saved unless you choose to.
 - **Prologue:** a hypothermic collapse on the Antarctic ice and a rescue by James Brown, with his lines voiced.
 - **Chapter I · Antarctica:** explore the research station. The objective is to speak to James Brown, whose lines here are voiced.
+- **Lip sync:** James's jaw and mouth move with his recorded voice in the prologue and in the station.
 
 ## Controls
 
