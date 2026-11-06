@@ -21,7 +21,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 - **Multiple wanderers:** create several characters, switch between them at any time, and each one tracks its own chapter progress.
 - **Manual save / load:** three slots, and nothing is saved unless you choose to.
 - **Prologue:** a hypothermic collapse on the Antarctic ice and a rescue by James Brown, with his lines voiced.
-- **Chapter I · Antarctica:** explore the research station. The objective is to speak to James Brown.
+- **Chapter I · Antarctica:** explore the research station. The objective is to speak to James Brown, whose lines here are voiced.
 
 ## Controls
 
@@ -37,7 +37,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 ```
 index.html                  the complete game, with all assets embedded
 assets/models/              source 3D models (.glb)
-assets/audio/               main menu theme, opening narration, James Brown's lines
+assets/audio/               main menu theme, opening narration, James Brown's lines (prologue + Chapter I)
 assets/logo_reference.png   logo / font style reference
 ```
 
