@@ -270,6 +270,9 @@ body.touch .touch-ui{display:block}
 #loading .bar{width:180px;height:1px;background:var(--faint);position:relative;overflow:hidden}
 #loading .bar i{position:absolute;inset:0;background:var(--ink);transform-origin:left;transform:scaleX(0);transition:transform .2s}
 
+#blackout{position:fixed;inset:0;z-index:24;pointer-events:none;background:#000;opacity:0;transition:opacity 2.4s ease;display:grid;place-items:center}
+#blackout span{font-size:10px;letter-spacing:.42em;color:var(--mute);text-transform:uppercase;opacity:0;transition:opacity 1.6s}
+#blackout.on span{opacity:1}
 #fade{position:fixed;inset:0;z-index:30;pointer-events:none;background:#dfe8ff;opacity:0;transition:opacity .6s}
 </style>
 <script type="importmap">
@@ -289,13 +292,14 @@ body.touch .touch-ui{display:block}
 </svg>
 
 <div id="fade"></div>
+<div id="blackout"><span>You drift into a dreamless sleep</span></div>
 
 <!-- Exploration HUD -->
 <div id="xhud" class="hidden">
   <div class="x-obj"><small id="xChap">CHAPTER I · ANTARCTICA</small><div id="xTasks"></div></div>
   <button class="x-menu" id="xMenuBtn" aria-label="Pause"><svg width="16" height="12" viewBox="0 0 16 12"><rect y="0" width="16" height="1.6" fill="#e6e9f0"/><rect y="5.2" width="16" height="1.6" fill="#e6e9f0"/><rect y="10.4" width="16" height="1.6" fill="#e6e9f0"/></svg></button>
   <div class="x-hint" id="xHint"></div>
-  <div class="x-card" id="xCard"><small>Chapter I</small><b>ANTARCTICA</b></div>
+  <div class="x-card" id="xCard"><small id="xCardS">Chapter I</small><b id="xCardB">ANTARCTICA</b></div>
   <div class="x-prompt" id="xPrompt"><kbd>E</kbd><span id="xPromptT"></span></div>
   <div class="x-dlg" id="xDlg"><div class="who" id="xWho"></div><div class="line" id="xLine"></div><div class="tap">Tap to continue</div></div>
   <div class="touch-ui">
@@ -431,7 +435,7 @@ body.touch .touch-ui{display:block}
 <!-- End of current content -->
 <section class="screen dim hidden" id="tbc">
   <div class="panel">
-    <div class="eyebrow">Objective complete</div>
+    <div class="eyebrow">You slept through the storm</div>
     <h2 class="h1">CHAPTER I<br>ANTARCTICA</h2>
     <p class="brief" style="text-align:center">To be continued</p>
     <div class="row">
@@ -2316,9 +2320,27 @@ const JAMES_TALK = [
 const ex = { yaw: 0, pitch: .34, dist: 3, keys: new Set(), joyX: 0, joyY: 0, jid: null, jox: 0, joy: 0, drags: new Map(), near: null, dlg: null, snap: false };
 const xUI = { prompt: $('#xPrompt'), promptT: $('#xPromptT'), act: $('#xAct'), dlg: $('#xDlg'), who: $('#xWho'), line: $('#xLine'), tasks: $('#xTasks'), hint: $('#xHint'), card: $('#xCard'), joy: $('#joy'), knob: $('#knob'), joyHint: $('#joyHint') };
 const curChar = () => roster.find(c => c.id === activeId);
+const ch1 = () => wanderer.ch1 || {};
+const seenCount = () => XSPOTS.filter(sp => (ch1().seen || []).includes(sp.id)).length;
+const allSeen = () => seenCount() >= XSPOTS.length;
+const sleepReady = () => !!ch1().talked && allSeen() && !ch1().slept;
+function setCh1(patch) {
+  wanderer.ch1 = Object.assign({}, ch1(), patch);
+  const c = curChar(); if (c) c.ch1 = wanderer.ch1;
+  saveRoster();
+}
 function renderTasks() {
-  const talked = !!(wanderer.ch1 && wanderer.ch1.talked);
-  xUI.tasks.innerHTML = `<div class="x-task${talked ? ' done' : ''}"><i></i><span>Speak to James Brown</span></div>` + (talked ? '<div class="x-task"><i></i><span>Explore the station</span></div>' : '');
+  const p = ch1(), task = (done, text) => `<div class="x-task${done ? ' done' : ''}"><i></i><span>${text}</span></div>`;
+  let h = task(!!p.talked, 'Speak to James Brown');
+  if (p.talked) h += task(allSeen(), `Inspect the station · ${seenCount()}/${XSPOTS.length}`);
+  if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
+  xUI.tasks.innerHTML = h;
+}
+let noticeT;
+function notice(small, big, ms = 2800) {
+  $('#xCardS').textContent = small; $('#xCardB').textContent = big;
+  xUI.card.classList.add('on'); clearTimeout(noticeT);
+  noticeT = setTimeout(() => xUI.card.classList.remove('on'), ms);
 }
 async function startChapter1(fromCutscene, place) {
   state = 'loadingCh';
@@ -2353,10 +2375,11 @@ async function startChapter1(fromCutscene, place) {
   resize();
   xUI.hint.innerHTML = document.body.classList.contains('touch') ? 'Left stick to move · drag to look' : 'WASD move · drag to look · E interact · Esc pause';
   xUI.hint.style.opacity = 1; setTimeout(() => { xUI.hint.style.opacity = 0; }, 7000);
-  xUI.card.classList.add('on'); setTimeout(() => xUI.card.classList.remove('on'), fromCutscene ? 3600 : 2600);
+  notice('Chapter I', 'ANTARCTICA', fromCutscene ? 3600 : 2600);
 }
 function leaveExplore(goTitle = true) {
   closeDialog(); show(ui.xhud, false); show(ui.xpause, false); show(ui.tbc, false);
+  const bo = $('#blackout'); bo.style.opacity = 0; bo.classList.remove('on');
   if (james.ready) james.root.visible = false;
   scene.add(player); scene.add(particles); resetRig(); vel.set(0, 0, 0);
   sfx.wind(0); resize();
@@ -2404,13 +2427,36 @@ async function interact() {
     const clips = await sfx.loadClips('ch1Voices');
     if (state !== 'explore' || ex.dlg) return;
     openDialog('JAMES BROWN', JAMES_TALK, false, () => {
-      const first = !(wanderer.ch1 && wanderer.ch1.talked);
-      wanderer.ch1 = Object.assign({}, wanderer.ch1, { talked: true });
-      const c = curChar(); if (c) { c.ch1 = wanderer.ch1; saveRoster(); }
-      renderTasks();
-      if (first) { sfx.chime(); setTimeout(() => { if (state === 'explore') { state = 'xdone'; show(ui.tbc, true); } }, 900); }
+      const first = !ch1().talked;
+      setCh1({ talked: true }); renderTasks();
+      if (first) { sfx.chime(); setTimeout(() => notice('New objective', sleepReady() ? 'SLEEP' : 'INSPECT THE STATION'), 400); }
     }, clips);
-  } else openDialog(n.label.toUpperCase(), [n.text], true);
+  } else if (n.id === 'bunk' && sleepReady()) {
+    doSleep();
+  } else {
+    openDialog(n.label.toUpperCase(), [n.text], true, () => {
+      const seen = ch1().seen || [];
+      if (seen.includes(n.id)) return;
+      setCh1({ seen: [...seen, n.id] }); renderTasks();
+      if (sleepReady()) { sfx.chime(); setTimeout(() => notice('New objective', 'SLEEP'), 300); }
+    });
+  }
+}
+function doSleep() {
+  state = 'sleeping'; vel.set(0, 0, 0); ex.keys.clear();
+  ui.xhud.classList.add('talking'); xUI.prompt.classList.remove('on'); xUI.act.classList.remove('on');
+  const b = $('#blackout'); b.style.opacity = 1;
+  sfx.wind(.03);
+  setTimeout(() => b.classList.add('on'), 1600);
+  setTimeout(() => {
+    setCh1({ slept: true }); renderTasks();
+    player.position.set(ROOM.x - 5.15, 0, ROOM.z + 1.5); player.rotation.y = -Math.PI / 2; ex.yaw = player.rotation.y + Math.PI; ex.snap = true;
+    b.classList.remove('on');
+    setTimeout(() => {
+      b.style.opacity = 0; ui.xhud.classList.remove('talking'); sfx.wind(.07);
+      state = 'xdone'; show(ui.tbc, true);
+    }, 1400);
+  }, 5200);
 }
 function updateExplore(dt) {
   const R = ROOM, p = player.position;
@@ -2449,9 +2495,10 @@ function updateExplore(dt) {
   ex.near = best;
   const showP = !!best && !d;
   xUI.prompt.classList.toggle('on', showP);
-  if (best) xUI.promptT.textContent = best.id === 'james' ? 'Talk to James Brown' : `Inspect · ${best.label}`;
+  const sleepy = best && best.id === 'bunk' && sleepReady();
+  if (best) xUI.promptT.textContent = best.id === 'james' ? 'Talk to James Brown' : sleepy ? 'Sleep' : `Inspect · ${best.label}`;
   xUI.act.classList.toggle('on', showP);
-  if (best) xUI.act.textContent = best.id === 'james' ? 'TALK' : 'LOOK';
+  if (best) xUI.act.textContent = best.id === 'james' ? 'TALK' : sleepy ? 'SLEEP' : 'LOOK';
   // James turns to face you when you're close
   if (james.ready && james.root.visible) {
     const jr = james.root, dx = p.x - jr.position.x, dz = p.z - jr.position.z, near = Math.hypot(dx, dz) < 3.2;
@@ -2631,7 +2678,7 @@ function loop() {
     updateIntro(dt); sfx.music(0); if (intro.scene === 'earth') renderer.render(eScene, eCam); else renderer.render(gScene, gCam); return;
   }
   if (state === 'cutscene') { updateCutscene(dt); sfx.music(0); renderer.render(aScene, camera); return; }
-  if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh') {
+  if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh' || state === 'sleeping') {
     if (state === 'explore') updateExplore(dt);
     if (state !== 'loadingCh') { updateAnim(dt); jamesTick(dt); updateParticles(dt); exploreCamera(dt); }
     sfx.music(0); renderer.render(aScene, camera); return;
