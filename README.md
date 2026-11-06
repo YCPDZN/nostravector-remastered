@@ -50,5 +50,6 @@ The game never autosaves. It writes progress only when you choose **Save game**,
 
 - There are three save slots. Each holds all your wanderers, the active one, their chapter progress, and where you were standing if you saved in the station.
 - Changes since your last save are kept only in memory and are marked **UNSAVED**. Loading or overwriting a slot asks you to confirm.
+- **Delete save** (in Save / Load or the pause menu) clears a slot after a second tap to confirm.
 - When the game starts, it reads your most recent save so Continue picks up where you left off. That only reads; it never writes.
 - Saves live in the browser's local storage, so each browser and device keeps its own slots.

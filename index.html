@@ -336,6 +336,7 @@ body.touch .touch-ui{display:block}
       <div class="sub-head">Save / Load · saves only when you choose</div>
       <button class="mi" id="mSave"><i>01</i><span>Save game</span><em class="val" id="mSaveVal"></em></button>
       <button class="mi" id="mLoad"><i>02</i><span>Load game</span><em class="arr">›</em></button>
+      <button class="mi danger" id="mDelete"><i>03</i><span>Delete save</span><em class="arr">›</em></button>
       <button class="mi back" data-go="mMain"><i>‹</i><span>Back</span></button>
     </div>
     <div class="menu off" id="mSettings">
@@ -409,7 +410,10 @@ body.touch .touch-ui{display:block}
       <button class="btn" id="xSave"><span>Save game</span></button>
       <button class="btn" id="xLoad"><span>Load game</span></button>
     </div>
-    <button class="btn small" id="xQuit"><span>Return to base</span></button>
+    <div class="row">
+      <button class="btn small" id="xDelete"><span>Delete save</span></button>
+      <button class="btn small" id="xQuit"><span>Return to base</span></button>
+    </div>
   </div>
 </section>
 
@@ -745,7 +749,7 @@ if (!Array.isArray(slots)) {
   }
 }
 while (slots.length < SLOT_COUNT) slots.push(null);
-let roster = [], activeId = null, resumePlace = null, dirty = false;
+let roster = [], activeId = null, resumePlace = null, dirty = false, lastSlot = -1;
 function loadSlotData(sl) {
   roster = (sl && Array.isArray(sl.roster) ? sl.roster : []).filter(c => c && c.id).map(c => Object.assign({}, DEFAULT_W, JSON.parse(JSON.stringify(c))));
   activeId = sl && roster.some(c => c.id === sl.activeId) ? sl.activeId : (roster[0] ? roster[0].id : null);
@@ -754,7 +758,7 @@ function loadSlotData(sl) {
 {
   let li = -1;
   slots.forEach((sl, i) => { if (sl && (li < 0 || sl.savedAt > slots[li].savedAt)) li = i; });
-  if (li >= 0) loadSlotData(slots[li]);
+  if (li >= 0) { loadSlotData(slots[li]); lastSlot = li; }
 }
 let wanderer = Object.assign({}, roster.find(c => c.id === activeId) || DEFAULT_W);
 
@@ -2545,10 +2549,10 @@ function refreshDirty() {
 function slotMsg(t, warn) { slotUI.msg.textContent = t; slotUI.msg.classList.toggle('warn', !!warn); }
 function fmtWhen(ts) { try { return new Date(ts).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } }
 function renderSlots() {
-  slotUI.title.textContent = slotMode === 'save' ? 'SAVE' : 'LOAD';
-  slotUI.eyebrow.textContent = slotMode === 'save' ? 'Save game · choose a slot' : 'Load game · choose a slot';
+  slotUI.title.textContent = { save: 'SAVE', load: 'LOAD', delete: 'DELETE' }[slotMode];
+  slotUI.eyebrow.textContent = { save: 'Save game · choose a slot', load: 'Load game · choose a slot', delete: 'Delete save · choose a slot' }[slotMode];
   slotUI.list.innerHTML = slots.map((sl, i) => {
-    if (!sl) return `<button class="slot empty" data-i="${i}"${slotMode === 'load' ? ' disabled' : ''}><b>SLOT ${i + 1}</b><span>Empty</span><small>${slotMode === 'save' ? 'Tap to save here' : 'No save'}</small></button>`;
+    if (!sl) return `<button class="slot empty" data-i="${i}"${slotMode !== 'save' ? ' disabled' : ''}><b>SLOT ${i + 1}</b><span>Empty</span><small>${slotMode === 'save' ? 'Tap to save here' : 'No save'}</small></button>`;
     const r = Array.isArray(sl.roster) ? sl.roster : [], a = r.find(c => c.id === sl.activeId) || r[0] || {};
     const sp = SPECIES[spOf(a)].label, ch = chapterOf(a).short, where = sl.place && sl.place.mode === 'explore' ? 'Station' : 'Base';
     const name = String(a.name || 'WANDERER').replace(/[<>&"]/g, '');
@@ -2557,7 +2561,7 @@ function renderSlots() {
 }
 function openSlots(mode, from) {
   slotMode = mode; slotFrom = from; slotArm = -1;
-  slotMsg(mode === 'save' && !roster.length ? 'Create a wanderer first — there is nothing to save yet' : (mode === 'save' && dirty ? 'You have unsaved progress' : ''), mode === 'save' && !roster.length);
+  slotMsg(mode === 'save' && !roster.length ? 'Create a wanderer first — there is nothing to save yet' : (mode === 'save' && dirty ? 'You have unsaved progress' : (mode === 'delete' && !slots.some(Boolean) ? 'There are no saves to delete' : '')), mode === 'save' && !roster.length);
   renderSlots(); show(slotUI.root, true);
 }
 function closeSlots() { show(slotUI.root, false); refreshMenu(); refreshDirty(); }
@@ -2568,13 +2572,13 @@ function doSave(i) {
     : { mode: 'menu' };
   slots[i] = { savedAt: Date.now(), roster: JSON.parse(JSON.stringify(roster)), activeId, place };
   store.set('nv_slots', slots);
-  dirty = false; slotArm = -1;
+  dirty = false; slotArm = -1; lastSlot = i;
   sfx.chime(); renderSlots(); refreshMenu(); refreshDirty();
   slotMsg(`Saved to slot ${i + 1}`);
 }
 function doLoad(i) {
   const sl = slots[i]; if (!sl) return;
-  loadSlotData(sl);
+  loadSlotData(sl); lastSlot = i;
   wanderer = Object.assign({}, roster.find(c => c.id === activeId) || DEFAULT_W);
   dirty = false; sfx.chime();
   show(slotUI.root, false);
@@ -2593,17 +2597,30 @@ slotUI.list.addEventListener('click', e => {
     if (!roster.length) return;
     if (slots[i] && slotArm !== i) { slotArm = i; renderSlots(); slotMsg(`Slot ${i + 1} already has a save — tap it again to overwrite`, true); return; }
     doSave(i);
+  } else if (slotMode === 'delete') {
+    if (!slots[i]) return;
+    if (slotArm !== i) { slotArm = i; renderSlots(); slotMsg(`Tap slot ${i + 1} again to delete it permanently`, true); return; }
+    doDelete(i);
   } else {
     if (!slots[i]) return;
     if (dirty && slotArm !== i) { slotArm = i; renderSlots(); slotMsg('Unsaved progress will be lost — tap again to load anyway', true); return; }
     doLoad(i);
   }
 });
+function doDelete(i) {
+  slots[i] = null;
+  store.set('nv_slots', slots);
+  if (lastSlot === i) { lastSlot = -1; if (roster.length) dirty = true; }
+  slotArm = -1; renderSlots(); refreshMenu(); refreshDirty();
+  slotMsg(`Slot ${i + 1} deleted`);
+}
 $('#slotBack').addEventListener('click', () => { sfx.click(); closeSlots(); });
 $('#mSave').addEventListener('click', () => { sfx.init(); sfx.click(); openSlots('save', 'title'); });
 $('#mLoad').addEventListener('click', () => { sfx.init(); sfx.click(); openSlots('load', 'title'); });
 $('#xSave').addEventListener('click', () => { sfx.click(); openSlots('save', 'explore'); });
 $('#xLoad').addEventListener('click', () => { sfx.click(); openSlots('load', 'explore'); });
+$('#mDelete').addEventListener('click', () => { sfx.init(); sfx.click(); openSlots('delete', 'title'); });
+$('#xDelete').addEventListener('click', () => { sfx.click(); openSlots('delete', 'explore'); });
 
 /* ============ loop ============ */
 const clock = new THREE.Clock();
