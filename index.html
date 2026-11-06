@@ -249,6 +249,22 @@ body.touch .touch-ui{display:block}
 #xAct.on{display:grid}
 #xhud.talking .touch-ui,#xhud.talking .x-prompt{opacity:0;pointer-events:none}
 
+/* ---------- save / load ---------- */
+#slots{z-index:27}
+.slot-list{width:100%;max-width:440px;display:flex;flex-direction:column;gap:10px;margin:6px 0}
+.slot{display:grid;grid-template-columns:72px 1fr;gap:6px 14px;text-align:left;padding:15px 18px;background:rgba(7,10,17,.55);border:1px solid var(--faint);
+  color:var(--ink);cursor:pointer;transform:skewX(-10deg);font-family:var(--text);touch-action:manipulation;transition:border-color .15s,background .15s}
+.slot>*{transform:skewX(10deg)}
+.slot b{grid-row:span 2;font-family:var(--display);font-size:11px;letter-spacing:.18em;align-self:center;font-weight:500}
+.slot span{font-size:10px;letter-spacing:.2em;text-transform:uppercase}
+.slot small{font-size:8.5px;letter-spacing:.22em;color:var(--mute);text-transform:uppercase}
+.slot.empty span{color:var(--mute)}
+.slot:hover{border-color:var(--line);background:rgba(230,233,240,.06)}
+.slot.armed{border-color:var(--warn)}
+.slot[disabled]{opacity:.38;pointer-events:none}
+.slot-msg{min-height:1.5em;font-size:9.5px;letter-spacing:.24em;color:var(--ice);text-transform:uppercase;text-align:center;line-height:1.7}
+.slot-msg.warn{color:var(--warn)}
+
 /* ---------- loading ---------- */
 #loading{z-index:40;background:var(--bg);gap:28px}
 #loading .bar{width:180px;height:1px;background:var(--faint);position:relative;overflow:hidden}
@@ -300,8 +316,9 @@ body.touch .touch-ui{display:block}
       <button class="mi primary" id="startBtn"><i>01</i><span>Continue</span><em class="val" id="contCh"></em></button>
       <button class="mi" id="newBtn"><i>02</i><span>New game</span><em class="arr">›</em></button>
       <button class="mi" id="rosterBtn"><i>03</i><span>Wanderers</span><em class="val" id="activeName"></em></button>
-      <button class="mi" data-go="mBrief"><i>04</i><span>Mission brief</span><em class="arr">›</em></button>
-      <button class="mi" data-go="mSettings"><i>05</i><span>Settings</span><em class="arr">›</em></button>
+      <button class="mi" data-go="mMemory"><i>04</i><span>Save / Load</span><em class="val" id="memVal"></em></button>
+      <button class="mi" data-go="mBrief"><i>05</i><span>Mission brief</span><em class="arr">›</em></button>
+      <button class="mi" data-go="mSettings"><i>06</i><span>Settings</span><em class="arr">›</em></button>
     </nav>
     <div class="menu off" id="mBrief">
       <p class="brief">The year is <b>2125 AD</b>. Beyond our small blue world, countless worlds wait in the dark. You are the Exploration Division’s lone <b>wanderer</b>, and your journey begins on the ice of <b>Antarctica</b>, where the cold will test you long before the stars do.</p>
@@ -313,6 +330,12 @@ body.touch .touch-ui{display:block}
       <button class="mi" id="rNew"><i>+</i><span>New wanderer</span><em class="arr">›</em></button>
       <button class="mi" id="rEdit"><i>—</i><span>Edit active</span><em class="arr">›</em></button>
       <button class="mi danger" id="rDel"><i>—</i><span>Delete active</span></button>
+      <button class="mi back" data-go="mMain"><i>‹</i><span>Back</span></button>
+    </div>
+    <div class="menu off" id="mMemory">
+      <div class="sub-head">Save / Load · saves only when you choose</div>
+      <button class="mi" id="mSave"><i>01</i><span>Save game</span><em class="val" id="mSaveVal"></em></button>
+      <button class="mi" id="mLoad"><i>02</i><span>Load game</span><em class="arr">›</em></button>
       <button class="mi back" data-go="mMain"><i>‹</i><span>Back</span></button>
     </div>
     <div class="menu off" id="mSettings">
@@ -380,10 +403,24 @@ body.touch .touch-ui{display:block}
   <div class="panel">
     <div class="eyebrow">Chapter I · Antarctica</div>
     <h2 class="h1">PAUSED</h2>
+    <div class="slot-msg" id="xDirty"></div>
     <div class="row">
       <button class="btn primary" id="xResume"><span>Resume</span></button>
-      <button class="btn" id="xQuit"><span>Return to base</span></button>
+      <button class="btn" id="xSave"><span>Save game</span></button>
+      <button class="btn" id="xLoad"><span>Load game</span></button>
     </div>
+    <button class="btn small" id="xQuit"><span>Return to base</span></button>
+  </div>
+</section>
+
+<!-- Save / load slots -->
+<section class="screen dim hidden" id="slots">
+  <div class="panel">
+    <div class="eyebrow" id="slotEyebrow">Save game</div>
+    <h2 class="h1" id="slotTitle">SAVE</h2>
+    <div class="slot-list" id="slotList"></div>
+    <div class="slot-msg" id="slotMsg"></div>
+    <button class="btn small" id="slotBack"><span>Back</span></button>
   </div>
 </section>
 
@@ -692,14 +729,32 @@ const DESIGN_REGIONS = { standard: [], pilot: ['fore', 'shin'], vanguard: ['tors
 const VISORS = { smoke: ['Smoke', '#1b2433', .5, .6], gold: ['Gold', '#c9a24a', .6, 1], ice: ['Ice', '#7cc0ee', .4, .4], clear: ['Clear', '#d6e8ff', .14, .2] };
 const DEFAULT_W = { species: 'human', beard: false, chapter: 0, name: 'WANDERER', identity: 'nb', skin: 2, hair: 'crop', hairColor: 1, suit: 0, accent: 1, design: 'standard', visor: 'smoke' };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-let roster = store.get('nv_roster', null);
-if (!Array.isArray(roster)) {
-  const legacy = store.get('nv_wanderer', null);
-  roster = legacy ? [Object.assign({}, DEFAULT_W, legacy, { id: uid() })] : [];
+/* ---- save slots: progress is written ONLY when the player chooses Save ---- */
+const SLOT_COUNT = 3;
+let slots = store.get('nv_slots', null);
+if (!Array.isArray(slots)) {
+  // one-time carry-over of wanderers made before manual saves existed
+  slots = Array(SLOT_COUNT).fill(null);
+  const oldRoster = store.get('nv_roster', null), oldOne = store.get('nv_wanderer', null);
+  const r = (Array.isArray(oldRoster) ? oldRoster : oldOne ? [Object.assign({}, oldOne, { id: uid() })] : []).filter(c => c && c.id);
+  if (r.length) {
+    const a = store.get('nv_active', r[0].id);
+    slots[0] = { savedAt: Date.now(), roster: r, activeId: r.some(c => c.id === a) ? a : r[0].id, place: { mode: 'menu' } };
+    store.set('nv_slots', slots);
+  }
 }
-roster = roster.filter(c => c && c.id).map(c => Object.assign({}, DEFAULT_W, c));
-let activeId = store.get('nv_active', roster[0] && roster[0].id);
-if (!roster.some(c => c.id === activeId)) activeId = roster[0] ? roster[0].id : null;
+while (slots.length < SLOT_COUNT) slots.push(null);
+let roster = [], activeId = null, resumePlace = null, dirty = false;
+function loadSlotData(sl) {
+  roster = (sl && Array.isArray(sl.roster) ? sl.roster : []).filter(c => c && c.id).map(c => Object.assign({}, DEFAULT_W, JSON.parse(JSON.stringify(c))));
+  activeId = sl && roster.some(c => c.id === sl.activeId) ? sl.activeId : (roster[0] ? roster[0].id : null);
+  resumePlace = sl && sl.place && sl.place.mode === 'explore' ? Object.assign({}, sl.place, { who: activeId }) : null;
+}
+{
+  let li = -1;
+  slots.forEach((sl, i) => { if (sl && (li < 0 || sl.savedAt > slots[li].savedAt)) li = i; });
+  if (li >= 0) loadSlotData(slots[li]);
+}
 let wanderer = Object.assign({}, roster.find(c => c.id === activeId) || DEFAULT_W);
 
 /* ---- species ---- */
@@ -869,7 +924,7 @@ const lieYFor = c => (speciesInfo[spOf(c)] || {}).lieY || .26;
 const MAX_WANDERERS = 12;
 const CHAPTERS = [{ short: 'Prologue', full: 'Prologue' }, { short: 'Ch. I · Antarctica', full: 'Chapter I · Antarctica' }];
 const chapterOf = c => CHAPTERS[clamp((c && c.chapter) | 0, 0, CHAPTERS.length - 1)];
-function saveRoster() { store.set('nv_roster', roster); store.set('nv_active', activeId); }
+function saveRoster() { dirty = true; } // marks unsaved changes; nothing is written until the player saves
 function setActive(id) {
   activeId = id;
   wanderer = Object.assign({}, roster.find(c => c.id === id) || DEFAULT_W);
@@ -1152,6 +1207,8 @@ function refreshMenu() {
   startBtn.style.display = has ? '' : 'none';
   rosterBtn.style.display = has ? '' : 'none';
   $('#activeName').textContent = has ? wanderer.name : '';
+  $('#memVal').textContent = dirty ? 'UNSAVED' : '';
+  $('#mSaveVal').textContent = dirty ? 'UNSAVED' : '';
   $('#contCh').textContent = has ? chapterOf(wanderer).short : '';
   startBtn.classList.toggle('primary', has); newBtn.classList.toggle('primary', !has);
   [...document.querySelectorAll('#mMain .mi')].filter(b => b.style.display !== 'none').forEach((b, i) => { b.querySelector('i').textContent = pad(i + 1); });
@@ -1742,7 +1799,7 @@ $('#rDel').addEventListener('click', () => {
   if (!delArmed) { delArmed = true; $('#rDel span').textContent = `Tap again to delete ${wanderer.name}`; return; }
   roster = roster.filter(c => c.id !== activeId);
   setActive(roster[0] ? roster[0].id : null);
-  if (!roster.length) { store.set('nv_roster', []); applyLook(DEFAULT_W); }
+  if (!roster.length) applyLook(DEFAULT_W);
   renderRoster(); refreshMenu();
   if (!roster.length) goMenu('mMain');
 });
@@ -2236,7 +2293,7 @@ function renderTasks() {
   const talked = !!(wanderer.ch1 && wanderer.ch1.talked);
   xUI.tasks.innerHTML = `<div class="x-task${talked ? ' done' : ''}"><i></i><span>Speak to James Brown</span></div>` + (talked ? '<div class="x-task"><i></i><span>Explore the station</span></div>' : '');
 }
-async function startChapter1(fromCutscene) {
+async function startChapter1(fromCutscene, place) {
   state = 'loadingCh';
   sfx.init();
   await Promise.all([ensureJames(), loadSpecies(spOf(wanderer)).catch(() => null)]);
@@ -2253,7 +2310,14 @@ async function startChapter1(fromCutscene) {
   }
   player.visible = true; inner.visible = true; resetRig(); vel.set(0, 0, 0);
   player.position.set(ROOM.x - 5, 0, ROOM.z + 1.1); player.rotation.y = Math.PI / 2;
-  ex.yaw = player.rotation.y + Math.PI; ex.pitch = .34; ex.keys.clear(); ex.joyX = ex.joyY = 0; ex.jid = null; ex.drags.clear(); ex.dlg = null; ex.snap = true;
+  ex.yaw = player.rotation.y + Math.PI;
+  const pl = place || (!fromCutscene && resumePlace && resumePlace.who === activeId ? resumePlace : null);
+  if (pl) {
+    player.position.set(ROOM.x + clamp(+pl.x || 0, -6.5, 6.5), 0, ROOM.z + clamp(+pl.z || 0, -2.5, 2.5));
+    player.rotation.y = +pl.rot || 0; ex.yaw = pl.yaw != null ? +pl.yaw : player.rotation.y + Math.PI;
+  }
+  resumePlace = null;
+  ex.pitch = .34; ex.keys.clear(); ex.joyX = ex.joyY = 0; ex.jid = null; ex.drags.clear(); ex.dlg = null; ex.snap = true;
   camera.up.set(0, 1, 0); canvas.style.filter = '';
   sfx.wind(.07);
   renderTasks(); closeDialog();
@@ -2264,11 +2328,12 @@ async function startChapter1(fromCutscene) {
   xUI.hint.style.opacity = 1; setTimeout(() => { xUI.hint.style.opacity = 0; }, 7000);
   xUI.card.classList.add('on'); setTimeout(() => xUI.card.classList.remove('on'), fromCutscene ? 3600 : 2600);
 }
-function leaveExplore() {
+function leaveExplore(goTitle = true) {
   closeDialog(); show(ui.xhud, false); show(ui.xpause, false); show(ui.tbc, false);
   if (james.ready) james.root.visible = false;
   scene.add(player); scene.add(particles); resetRig(); vel.set(0, 0, 0);
-  sfx.wind(0); resize(); toTitle();
+  sfx.wind(0); resize();
+  if (goTitle) toTitle();
 }
 function blocked(lx, lz) {
   const r = .3;
@@ -2380,6 +2445,7 @@ function exploreCamera(dt) {
 }
 // input (exploration only)
 addEventListener('keydown', e => {
+  if (e.code === 'Escape' && !slotUI.root.classList.contains('hidden')) { closeSlots(); return; }
   if (state !== 'explore') return;
   if (e.target && e.target.tagName === 'INPUT') return;
   if (e.code === 'Escape' || e.code === 'KeyP') { pauseExplore(true); return; }
@@ -2425,7 +2491,7 @@ canvas.addEventListener('wheel', e => { if (state === 'explore') ex.dist = clamp
 xUI.act.addEventListener('click', e => { e.stopPropagation(); interact(); });
 xUI.dlg.addEventListener('click', () => advanceDialog());
 function pauseExplore(on) {
-  if (on && state === 'explore') { state = 'xpaused'; ex.keys.clear(); show(ui.xpause, true); }
+  if (on && state === 'explore') { state = 'xpaused'; ex.keys.clear(); refreshDirty(); show(ui.xpause, true); }
   else if (!on && state === 'xpaused') { state = 'explore'; show(ui.xpause, false); clock.getDelta(); }
 }
 $('#xMenuBtn').addEventListener('click', () => { sfx.click(); pauseExplore(true); });
@@ -2434,6 +2500,78 @@ $('#xQuit').addEventListener('click', () => { sfx.click(); leaveExplore(); });
 $('#tbcKeep').addEventListener('click', () => { sfx.click(); show(ui.tbc, false); state = 'explore'; });
 $('#tbcBtn').addEventListener('click', () => { sfx.click(); leaveExplore(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseExplore(true); });
+
+
+/* ============ save / load ============ */
+const slotUI = { root: $('#slots'), list: $('#slotList'), msg: $('#slotMsg'), title: $('#slotTitle'), eyebrow: $('#slotEyebrow') };
+let slotMode = 'save', slotFrom = 'title', slotArm = -1;
+function refreshDirty() {
+  const el = $('#xDirty');
+  el.textContent = dirty ? 'You have unsaved progress' : 'All progress saved';
+  el.classList.toggle('warn', dirty);
+}
+function slotMsg(t, warn) { slotUI.msg.textContent = t; slotUI.msg.classList.toggle('warn', !!warn); }
+function fmtWhen(ts) { try { return new Date(ts).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } }
+function renderSlots() {
+  slotUI.title.textContent = slotMode === 'save' ? 'SAVE' : 'LOAD';
+  slotUI.eyebrow.textContent = slotMode === 'save' ? 'Save game · choose a slot' : 'Load game · choose a slot';
+  slotUI.list.innerHTML = slots.map((sl, i) => {
+    if (!sl) return `<button class="slot empty" data-i="${i}"${slotMode === 'load' ? ' disabled' : ''}><b>SLOT ${i + 1}</b><span>Empty</span><small>${slotMode === 'save' ? 'Tap to save here' : 'No save'}</small></button>`;
+    const r = Array.isArray(sl.roster) ? sl.roster : [], a = r.find(c => c.id === sl.activeId) || r[0] || {};
+    const sp = SPECIES[spOf(a)].label, ch = chapterOf(a).short, where = sl.place && sl.place.mode === 'explore' ? 'Station' : 'Base';
+    const name = String(a.name || 'WANDERER').replace(/[<>&"]/g, '');
+    return `<button class="slot${slotArm === i ? ' armed' : ''}" data-i="${i}"><b>SLOT ${i + 1}</b><span>${name} · ${sp} · ${ch}</span><small>${fmtWhen(sl.savedAt)} · ${r.length} wanderer${r.length === 1 ? '' : 's'} · ${where}</small></button>`;
+  }).join('');
+}
+function openSlots(mode, from) {
+  slotMode = mode; slotFrom = from; slotArm = -1;
+  slotMsg(mode === 'save' && !roster.length ? 'Create a wanderer first — there is nothing to save yet' : (mode === 'save' && dirty ? 'You have unsaved progress' : ''), mode === 'save' && !roster.length);
+  renderSlots(); show(slotUI.root, true);
+}
+function closeSlots() { show(slotUI.root, false); refreshMenu(); refreshDirty(); }
+function doSave(i) {
+  const inStation = slotFrom === 'explore';
+  const place = inStation
+    ? { mode: 'explore', x: player.position.x - ROOM.x, z: player.position.z - ROOM.z, rot: player.rotation.y, yaw: ex.yaw }
+    : { mode: 'menu' };
+  slots[i] = { savedAt: Date.now(), roster: JSON.parse(JSON.stringify(roster)), activeId, place };
+  store.set('nv_slots', slots);
+  dirty = false; slotArm = -1;
+  sfx.chime(); renderSlots(); refreshMenu(); refreshDirty();
+  slotMsg(`Saved to slot ${i + 1}`);
+}
+function doLoad(i) {
+  const sl = slots[i]; if (!sl) return;
+  loadSlotData(sl);
+  wanderer = Object.assign({}, roster.find(c => c.id === activeId) || DEFAULT_W);
+  dirty = false; sfx.chime();
+  show(slotUI.root, false);
+  if (slotFrom === 'explore') leaveExplore(false);
+  applyLook(wanderer);
+  if (resumePlace && (wanderer.chapter | 0) >= 1) {
+    show(ui.title, false);
+    const f = $('#fade'); f.style.opacity = 1;
+    setTimeout(() => { startChapter1(false); f.style.opacity = 0; }, 650);
+  } else { toTitle(); }
+}
+slotUI.list.addEventListener('click', e => {
+  const b = e.target.closest('.slot'); if (!b || b.disabled) return;
+  const i = +b.dataset.i; sfx.click();
+  if (slotMode === 'save') {
+    if (!roster.length) return;
+    if (slots[i] && slotArm !== i) { slotArm = i; renderSlots(); slotMsg(`Slot ${i + 1} already has a save — tap it again to overwrite`, true); return; }
+    doSave(i);
+  } else {
+    if (!slots[i]) return;
+    if (dirty && slotArm !== i) { slotArm = i; renderSlots(); slotMsg('Unsaved progress will be lost — tap again to load anyway', true); return; }
+    doLoad(i);
+  }
+});
+$('#slotBack').addEventListener('click', () => { sfx.click(); closeSlots(); });
+$('#mSave').addEventListener('click', () => { sfx.init(); sfx.click(); openSlots('save', 'title'); });
+$('#mLoad').addEventListener('click', () => { sfx.init(); sfx.click(); openSlots('load', 'title'); });
+$('#xSave').addEventListener('click', () => { sfx.click(); openSlots('save', 'explore'); });
+$('#xLoad').addEventListener('click', () => { sfx.click(); openSlots('load', 'explore'); });
 
 /* ============ loop ============ */
 const clock = new THREE.Clock();

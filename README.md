@@ -19,6 +19,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   - **Chompy:** from Janira Prime and Aridaxx. They're long-lived, and some remember Sevirrus's fracturing of their empire 300 years ago. Today they're loyal to Emperor Hak Chompjak V.
   - **Grek:** from the garden space station Archiostal, guided by their god Archamus.
 - **Multiple wanderers:** create several characters, switch between them at any time, and each one tracks its own chapter progress.
+- **Manual save / load:** three slots, and nothing is saved unless you choose to.
 - **Prologue:** a hypothermic collapse on the Antarctic ice and a rescue by James Brown, with his lines voiced.
 - **Chapter I · Antarctica:** explore the research station. The objective is to speak to James Brown.
 
@@ -44,4 +45,9 @@ The files in `assets/` are the source copies. The game doesn't load them, becaus
 
 ## Saves
 
-Wanderers and their progress are saved in the browser's local storage, so each browser and device keeps its own roster.
+The game never autosaves. It writes progress only when you choose **Save game**, either from the main menu (Save / Load) or from the pause menu in a chapter.
+
+- There are three save slots. Each holds all your wanderers, the active one, their chapter progress, and where you were standing if you saved in the station.
+- Changes since your last save are kept only in memory and are marked **UNSAVED**. Loading or overwriting a slot asks you to confirm.
+- When the game starts, it reads your most recent save so Continue picks up where you left off. That only reads; it never writes.
+- Saves live in the browser's local storage, so each browser and device keeps its own slots.
