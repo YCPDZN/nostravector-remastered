@@ -26,7 +26,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   2. Inspect the station: the bunk, heater, window, radio and outer hatch.
   3. Sleep in the bunk.
 - **The dream:** after you sleep, the leader of your species appears and speaks to you in a voiced, unnamed monologue.
-- **Lip sync:** James's jaw and mouth move with his recorded voice in the prologue and in the station.
+- **Lip sync:** James and all four species leaders move their jaws and mouths with their recorded voices.
 
 ## Controls
 

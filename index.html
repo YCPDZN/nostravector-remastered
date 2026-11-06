@@ -2681,6 +2681,18 @@ function loadLeader(sp) {
         m.position.set(-c.x, -b.min.y, -c.z);
         holder.scale.setScalar((LEADER_HEIGHT[sp] || 2) / Math.max(.01, b.max.y - b.min.y));
         m.traverse(o => { if (o.isMesh) o.frustumCulled = false; });
+        // lip sync rig: use the model's jaw joint, or hinge a jaw mesh like James's
+        let jaw = null, mouth = null;
+        m.traverse(o => { if (!jaw && !o.isMesh && /^jaw$/i.test(o.name || '')) jaw = o; });
+        if (!jaw) {
+          const jm = m.getObjectByName('Jaw'), mm = m.getObjectByName('Mouth_neutral') || m.getObjectByName('Mouth neutral');
+          if (jm && jm.parent) {
+            m.updateMatrixWorld(true);
+            jaw = new THREE.Group(); jaw.position.set(0, 1.565, -.03); jm.parent.add(jaw); jaw.updateMatrixWorld(true); jaw.attach(jm);
+            if (mm && mm.parent) { mouth = new THREE.Group(); mouth.position.set(0, 1.553, .18); mm.parent.add(mouth); mouth.updateMatrixWorld(true); mouth.attach(mm); }
+          }
+        }
+        holder.userData.lips = jaw ? { jaw, base: jaw.rotation.x, mouth, amp: sp === 'grek' ? .2 : .26, open: 0 } : null;
         dream.leaders[sp] = holder; res(holder);
       }, () => res(null));
     } catch { res(null); }
@@ -2710,7 +2722,16 @@ function updateDream(dt) {
   const t = dream.t, h = (LEADER_HEIGHT[spOf(wanderer)] || 2);
   camera.position.set(Math.sin(t * .12) * .35, 1.5 + Math.sin(t * .3) * .04, lerp(4.6, 3.2, smooth(0, 14, t)));
   camera.lookAt(0, h * .72, 0);
-  if (dream.cur) { dream.cur.position.y = Math.sin(t * 1.1) * .03; dream.cur.rotation.y = Math.sin(t * .35) * .08; }
+  if (dream.cur) {
+    dream.cur.position.y = Math.sin(t * 1.1) * .03; dream.cur.rotation.y = Math.sin(t * .35) * .08;
+    const L = dream.cur.userData.lips;
+    if (L) {
+      const target = clamp((sfx.voiceLevel() - .015) / .24, 0, 1);
+      L.open += (target - L.open) * Math.min(1, dt * (target > L.open ? 28 : 14));
+      L.jaw.rotation.x = L.base + L.open * L.amp;
+      if (L.mouth) L.mouth.scale.y = 1 + L.open * 3.4;
+    }
+  }
   dream.ring.rotation.z += dt * .3; dream.ring2.rotation.z -= dt * .18;
   const pa = dream.motes.geometry.attributes.position.array;
   for (let i = 1; i < pa.length; i += 3) { pa[i] += dt * .25; if (pa[i] > 8) pa[i] = 0; }
