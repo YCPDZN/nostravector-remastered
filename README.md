@@ -55,7 +55,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   - Rolling savanna with sand, dry grass, rocky kopjes and gullies under a warm, hazy sky.
   - Groves of flat-topped acacias (chop them for wood), HD rocks and supply crates. There's no ice and no obsidian, and Antarctica's wildlife doesn't live here.
   - The day/night cycle, building, crafting, teleporters and your inventory all carry over. Africa keeps its own builds, mined nodes and time of day, separate from Antarctica's.
-  - **Objectives:** Wake up at Orion's ✓ → **Speak to Orion** (he's on the porch, with a gold marker; his four lines are ready for recordings as `orionWake`, and he lip-syncs) → **Explore Africa**.
+  - **Objectives:** Wake up at Orion's ✓ → **Speak to Orion** (he's on the porch, with a gold marker; his four lines are voiced, CH2ORIONFREEROAM1–4, and he lip-syncs) → **Explore Africa**.
   - Saving remembers that you're in Africa. Deploying a Chapter II wanderer who has seen the opening takes you straight back there.
 - **Day and night:** outside, a full day lasts 20 minutes. The sun rises and sets with warm dusk light, nights turn dark blue with a sky full of stars, and the light and haze change with it. Each planet keeps its own time of day in your save.
 - **HD Antarctica:** the ice uses an HD snow texture (tiled every 4 m, seamless across the endless terrain) under an HD polar sky panorama. Rock outcrops use an HD rock model (with colour, normal and roughness maps), and groves of bare, wind-stripped trees built from an HD bark model stand on the flatter ground. The distance haze and sunlight are matched to the sky's horizon and sun.
