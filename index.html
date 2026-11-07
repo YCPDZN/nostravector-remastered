@@ -3101,7 +3101,10 @@ function campTasks(p, task) {
   if (!p.stormSafe) return h + task(false, 'Get inside the shelter');
   h += task(true, 'Get inside the shelter');
   if (!p.stormOver) { const t = Math.ceil(p.stormLeft > 0 ? p.stormLeft : STORM_LEN); return h + task(false, `Wait out the storm with James${p.stormHit || world.narrating ? ` · ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}` : ''}`); }
-  return h + task(true, 'Wait out the storm with James') + task(false, 'Explore Antarctica with James');
+  h += task(true, 'Wait out the storm with James');
+  if (!p.bed) return h;
+  if (!p.slept2) return h + task(false, 'Sleep');
+  return h + task(true, 'Sleep') + task(false, 'Explore Antarctica with James');
 }
 function campProgress(k) {
   const c = ch1(); if (!c.metOutside || c.campDone) return;
@@ -3206,7 +3209,7 @@ function stormClock(dt) {
     if ((world.tasksT = (world.tasksT || 0) - dt) <= 0) { world.tasksT = 1; if (c.stormSafe) renderTasks(); }
     if (c.stormLeft <= 0 && c.stormHit) {
       setCh1({ stormOver: true }); renderTasks(); gainXP(150); sfx.chime();
-      notice('The super blizzard has passed', 'EXPLORE ANTARCTICA WITH JAMES', 4000);
+      notice('The super blizzard has passed', 'JAMES WANTS A WORD', 4000); world.bedTalkAt = time + 5;
     }
   }
   if (ex.mode === 'station') { const inv = invState(); inv.heat = Math.min(100, (inv.heat == null ? 100 : inv.heat) + 14 * dt); } // the station keeps you warm
@@ -3239,6 +3242,7 @@ function stormTick(dt) {
   }
   if ((world.stormCheck = (world.stormCheck || 0) - dt) > 0) return;
   world.stormCheck = .4;
+  if (c.stormOver && !c.bed && companionOn() && time >= (world.bedTalkAt || 0) && !world.narrating) { if (jamesBedTalk()) world.bedTalkAt = time + 1e9; }
   if (c.stormTalk && !c.shelterBuilt && shelters().length) {
     setCh1({ shelterBuilt: true }); gainXP(150); sfx.chime(); renderTasks();
     notice('Shelter built', 'GET INSIDE', 3400);
@@ -3279,6 +3283,60 @@ function skyTick(dt) {
   wScene.fog.color.set(W_FOG).lerp(DUSK_C, duskA * .6).lerp(NIGHT_C, (1 - dl) * .9).lerp(stormC, sm);
   wScene.fog.density = .0105 + .045 * sm * sm + (1 - dl) * .006;
   world.snow.material.size = .08 + .07 * sm;
+}
+// ---- after the storm: James makes a bed, you sleep, and someone else is waiting in the dream ----
+const JAMES_BED = ['I’ll make a bed. Feel free to sleep.'];
+const GREK_DREAM = ['Do not trust James Brown.', 'Did you see who he was speaking to?', 'They are radical humans.'];
+function makeBedMesh() {
+  const g = new THREE.Group(), cloth = new THREE.MeshStandardMaterial({ color: 0x6a1f22, roughness: .9 }), pad = new THREE.MeshStandardMaterial({ color: 0x3b4048, roughness: .95 });
+  const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; g.add(o); return o; };
+  add(new THREE.BoxGeometry(.95, .14, 2.05), pad, 0, .07, 0);
+  add(new THREE.BoxGeometry(.9, .1, 1.35), cloth, 0, .18, .3);
+  add(new THREE.BoxGeometry(.6, .14, .35), new THREE.MeshStandardMaterial({ color: 0xd9d4c8, roughness: .9 }), 0, .2, -.75);
+  return g;
+}
+function placeBed() {
+  const c = ch1(); if (!c.bed || ex.mode !== 'world') { if (world.bedMesh) world.bedMesh.visible = false; return; }
+  if (!world.bedMesh) { world.bedMesh = makeBedMesh(); wScene.add(world.bedMesh); }
+  world.bedMesh.visible = true; world.bedMesh.position.set(c.bed.x, c.bed.y, c.bed.z); world.bedMesh.rotation.y = c.bed.r || 0;
+}
+function bedSpot() {
+  // in the shelter cell you're nearest to, or just beside you if there's no shelter left
+  const p = player.position; let best = null, bd = 1e9;
+  for (const sh of shelters()) for (const f of sh.cells) { const d = Math.hypot(f.x - p.x, f.z - p.z); if (d < bd) { bd = d; best = f; } }
+  if (best && bd < 30) return { x: best.x, z: best.z, y: best.y, r: 0 };
+  const a = player.rotation.y, x = p.x + Math.sin(a) * 1.6, z = p.z + Math.cos(a) * 1.6;
+  return { x: +x.toFixed(2), z: +z.toFixed(2), y: +groundAt(x, z, p.y + .3).toFixed(2), r: +a.toFixed(3) };
+}
+function jamesBedTalk() {
+  if (state !== 'explore' || ex.mode !== 'world' || ex.dlg) return false;
+  openDialog('JAMES BROWN', JAMES_BED, false, () => {
+    setCh1({ bed: bedSpot() }); placeBed(); renderTasks(); sfx.chime();
+    setTimeout(() => notice('James made a bed', 'SLEEP', 3000), 400);
+  });
+  return true;
+}
+function sleepOutside() {
+  const c = ch1(); if (!c.bed) return;
+  state = 'sleeping'; vel.set(0, 0, 0); ex.keys.clear(); stopBuild();
+  ui.xhud.classList.add('talking'); xUI.prompt.classList.remove('on'); xUI.act.classList.remove('on');
+  const b = $('#blackout'); b.style.opacity = 1; sfx.wind(.03);
+  setTimeout(() => b.classList.add('on'), 1600);
+  setTimeout(() => {
+    b.classList.remove('on');
+    startDream(() => {
+      setCh1({ slept2: true }); gainXP(100); renderTasks();
+      state = 'sleeping';
+      const st = wsState(); st.tod = .3; // you sleep through to the morning
+      const p = player.position; p.set(c.bed.x + .9, 0, c.bed.z); p.y = groundAt(p.x, p.z, c.bed.y + .3); ex.air = false; ex.snap = true;
+      setTimeout(() => {
+        b.style.opacity = 0; b.style.transition = 'opacity 3s ease'; ui.xhud.classList.remove('talking'); sfx.wind(.4);
+        state = 'explore';
+        setTimeout(() => { b.style.transition = ''; notice('A voice in your dream', 'DO NOT TRUST JAMES BROWN', 3600); }, 1600);
+        setTimeout(() => { notice('New objective', 'EXPLORE ANTARCTICA WITH JAMES', 3400); sfx.chime(); }, 5800);
+      }, 900);
+    }, { sp: 'grek', who: '????', lines: GREK_DREAM });
+  }, 4600);
 }
 function renderTasks() {
   // wanderers from before levels existed get XP for the story they've already played
@@ -3432,6 +3490,8 @@ async function interact() {
     openTp(n.ref);
   } else if (n.id === 'bench') {
     openInv(true);
+  } else if (n.id === 'bed') {
+    sleepOutside();
   } else if (n.id === 'door') {
     goInside();
   } else if (n.id === 'bunk' && sleepReady()) {
@@ -5533,7 +5593,7 @@ function enterWorld(place) {
   }
   setupMerchants();
   updateChunks(99);
-  rebuildPlaced(); rebuildBuild(); stopBuild();
+  rebuildPlaced(); rebuildBuild(); stopBuild(); placeBed();
   if (world.build.some(b => b.data.k === 'bench')) campProgress('bench');
   if (world.build.some(b => b.data.k === 'tele')) campProgress('tele');
   const STP = AREA_INFO[curArea()].stationTp; world.stationTp.position.set(STP.x, wHeight(STP.x, STP.z), STP.z);
@@ -5672,6 +5732,7 @@ function updateWorldMode(dt) {
     for (const t of net) if (Math.hypot(t.x - p.x, t.z - p.z) < 1.6 && (t.y == null || Math.abs(t.y - p.y) < 1.5)) ex.near = { id: 'tele', ref: t, label: t.name };
   }
   if (!ex.near) for (const b of world.build) if (b.data.k === 'bench' && Math.hypot(b.data.x - p.x, b.data.z - p.z) < 2 && Math.abs(b.data.y - p.y) < 1.5) ex.near = { id: 'bench', label: 'Crafting table' };
+  if (!ex.near && ch1().bed && !ch1().slept2) { const B = ch1().bed; if (Math.hypot(B.x - p.x, B.z - p.z) < 1.9 && Math.abs(B.y - p.y) < 1.5) ex.near = { id: 'bed', label: 'Bed' }; }
   if (!ex.near && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
   if (!ex.near) {
     let bd = 2;
@@ -5681,7 +5742,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
+    const PR = { bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
@@ -5822,10 +5883,10 @@ function loadLeader(sp) {
   });
   return dream.loads[sp];
 }
-async function startDream(onDone) {
-  const sp = spOf(wanderer);
-  buildDream();
-  const [leader, clips] = await Promise.all([loadLeader(sp), sfx.loadClips('lv_' + sp)]);
+async function startDream(onDone, opt = {}) {
+  const sp = opt.sp || spOf(wanderer);
+  buildDream(); dream.sp = sp;
+  const [leader, clips] = await Promise.all([loadLeader(sp), opt.lines ? Promise.resolve(opt.clips || []) : sfx.loadClips('lv_' + sp)]);
   if (dream.cur) dScene.remove(dream.cur);
   dream.cur = leader; if (leader) { leader.position.set(0, 0, 0); leader.rotation.y = 0; dScene.add(leader); }
   dream.t = 0; state = 'dream';
@@ -5834,7 +5895,7 @@ async function startDream(onDone) {
   sfx.wind(0);
   const b = $('#blackout'); b.classList.remove('on'); b.style.transition = 'opacity 2.6s ease'; b.style.opacity = 0;
   setTimeout(() => {
-    openDialog('???', LEADER_LINES[sp] || LEADER_LINES.human, false, () => {
+    openDialog(opt.who || '???', opt.lines || LEADER_LINES[sp] || LEADER_LINES.human, false, () => {
       b.style.opacity = 1;
       setTimeout(() => { ui.xhud.classList.remove('dreaming'); b.style.transition = ''; onDone(); }, 2600);
     }, clips);
@@ -5842,7 +5903,7 @@ async function startDream(onDone) {
 }
 function updateDream(dt) {
   dream.t += dt;
-  const t = dream.t, h = (LEADER_HEIGHT[spOf(wanderer)] || 2);
+  const t = dream.t, h = (LEADER_HEIGHT[dream.sp || spOf(wanderer)] || 2);
   camera.position.set(Math.sin(t * .12) * .35, 1.5 + Math.sin(t * .3) * .04, lerp(4.6, 3.2, smooth(0, 14, t)));
   camera.lookAt(0, h * .72, 0);
   if (dream.cur) {
