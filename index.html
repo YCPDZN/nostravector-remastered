@@ -3045,6 +3045,26 @@ function setCh1(patch) {
   for (const k in STORY_XP) if (patch[k] && !prev[k]) setTimeout(() => gainXP(STORY_XP[k][0], STORY_XP[k][1]), 300);
   if (patch.seen && patch.seen.length > (prev.seen || []).length) gainXP(15 * (patch.seen.length - (prev.seen || []).length), 'Inspected');
 }
+// after James joins: set up a camp with him, then the ice is yours to explore
+function campTasks(p, task) {
+  if (!p.campDone) {
+    let h = task(!!p.campBench, 'Make camp · build a crafting table');
+    if (p.campBench) h += task(!!p.campTele, 'Make camp · build a teleporter');
+    return h;
+  }
+  return task(true, 'Make camp with James') + task(false, 'Explore Antarctica with James');
+}
+function campProgress(k) {
+  const c = ch1(); if (!c.metOutside || c.campDone) return;
+  if (k === 'bench' && !c.campBench) {
+    setCh1({ campBench: true }); gainXP(60); sfx.chime(); renderTasks();
+    setTimeout(() => notice('Crafting table built', 'NOW BUILD A TELEPORTER', 3400), 600);
+  } else if (k === 'tele' && c.campBench && !c.campTele) {
+    setCh1({ campTele: true, campDone: true }); gainXP(120); sfx.chime(); renderTasks();
+    setTimeout(() => notice('Camp linked to the station', 'CAMP MADE', 3400), 900);
+    setTimeout(() => notice('New objective', 'EXPLORE ANTARCTICA WITH JAMES', 3400), 4600);
+  }
+}
 function renderTasks() {
   // wanderers from before levels existed get XP for the story they've already played
   if (wanderer && wanderer.xp == null) {
@@ -3057,7 +3077,7 @@ function renderTasks() {
   let h = task(!!p.talked, 'Speak to James Brown');
   if (p.talked) h += task(allSeen(), `Inspect the station · ${seenCount()}/${XSPOTS.length}`);
   if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
-  if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? task(false, 'Explore Antarctica with James') : '');
+  if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? campTasks(p, task) : '');
   xUI.tasks.innerHTML = h;
 }
 let noticeT;
@@ -3183,6 +3203,7 @@ async function interact() {
         sfx.chime(); startCompanion();
         setTimeout(() => notice('James Brown', 'JOINS YOU', 3600), 500);
         setTimeout(() => notice(document.body.classList.contains('touch') ? 'Tap JAMES under your objectives' : '1 Mine · 2 Explore · 3 Base · 4 Wander · 5 Follow', 'GIVE JAMES ORDERS', 5200), 4600);
+        setTimeout(() => { if (state === 'explore') notice(document.body.classList.contains('touch') ? 'BUILD → Structures' : 'Press B → Structures', 'NEW OBJECTIVE · MAKE CAMP', 4200); }, 10400);
       }
     }, clips);
   } else if (n.id === 'placed') {
@@ -3724,7 +3745,7 @@ function placeBuild() {
   if (!S) o.m = B.m;
   if (o.k === 'tele') o.name = `Base ${tpNetwork().filter(t => t.ref).length + 1}`;
   for (const [r, n] of Object.entries(cost)) takeItem(r, n);
-  wsState().build.push(o); addBuild(o); saveRoster();
+  wsState().build.push(o); addBuild(o); saveRoster(); campProgress(o.k);
   sfx.thud(); gainXP(S ? 15 : 4);
   if (o.k === 'tele') { sfx.chime(); lootMsg(`Teleporter “${o.name}” joined your network`, '#7fd8ff'); }
   if (ex.bOpenT) renderBuild();
@@ -5131,6 +5152,8 @@ function enterWorld(place) {
   setupMerchants();
   updateChunks(99);
   rebuildPlaced(); rebuildBuild(); stopBuild();
+  if (world.build.some(b => b.data.k === 'bench')) campProgress('bench');
+  if (world.build.some(b => b.data.k === 'tele')) campProgress('tele');
   const STP = AREA_INFO[curArea()].stationTp; world.stationTp.position.set(STP.x, wHeight(STP.x, STP.z), STP.z);
   player.position.y = groundAt(player.position.x, player.position.z, place && place.area === 'world' && place.y != null ? +place.y + .1 : -1e9);
   placeJamesOutside();
