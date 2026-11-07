@@ -516,7 +516,7 @@ body.touch .touch-ui{display:block}
 <!-- End of current content -->
 <section class="screen dim hidden" id="tbc">
   <div class="panel">
-    <div class="eyebrow">You slept through the storm</div>
+    <div class="eyebrow">You found James Brown</div>
     <h2 class="h1">CHAPTER I<br>ANTARCTICA</h2>
     <p class="brief" style="text-align:center">To be continued</p>
     <div class="row">
@@ -2430,7 +2430,7 @@ function renderTasks() {
   let h = task(!!p.talked, 'Speak to James Brown');
   if (p.talked) h += task(allSeen(), `Inspect the station · ${seenCount()}/${XSPOTS.length}`);
   if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
-  if (p.slept) h = task(true, 'Sleep') + task(false, 'Find James Brown');
+  if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown');
   xUI.tasks.innerHTML = h;
 }
 let noticeT;
@@ -2536,6 +2536,13 @@ async function interact() {
     }, clips);
   } else if (n.id === 'hatch' && ch1().slept) {
     goOutside();
+  } else if (n.id === 'james2') {
+    james.headTilt = .05;
+    openDialog('JAMES BROWN', JAMES_FOUND, false, () => {
+      const first = !ch1().metOutside;
+      setCh1({ found: true, metOutside: true }); renderTasks();
+      if (first) { sfx.chime(); setTimeout(() => { if (state === 'explore') { state = 'xdone'; show(ui.tbc, true); } }, 900); }
+    });
   } else if (n.id === 'placed') {
     pickUpPlaced(n.ref);
   } else if (n.id === 'door') {
@@ -2994,6 +3001,21 @@ const holdBtn = (id, fn) => { const b = $(id); b.addEventListener('pointerdown',
 holdBtn('#bAtk', doAttack); holdBtn('#bJump', doJump); holdBtn('#bDodge', doDodge);
 $('#bSprint').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); ex.sprintT = !ex.sprintT; $('#bSprint').classList.toggle('on', ex.sprintT); });
 
+
+const JAMES_FOUND = [
+  'You followed my tracks all the way out here? In this?',
+  'I heard something on the radio last night. A signal, coming from out here, under the ice.',
+  'I didn’t want to drag you into it. But you’re here now — so stay close, and keep your eyes open.'
+];
+function placeJamesOutside() {
+  if (!james.ready || !world.jamesAt) return;
+  const J = world.jamesAt;
+  wScene.add(james.root); james.root.visible = true;
+  james.root.position.set(J.x, wHeight(J.x, J.z), J.z); james.root.rotation.y = Math.atan2(Math.cos(J.a), Math.sin(J.a));
+  Object.assign(james, { walking: false, lean: .05, headTilt: .15, headYaw: 0, raise: .9 });
+  james.lantern.intensity = 14;
+}
+
 /* ============ procedural Antarctica (No Man's Sky style, endless) ============ */
 const wScene = new THREE.Scene();
 const W_FOG = 0xc3cfdb;
@@ -3042,11 +3064,12 @@ function buildChunk(cx, cz) {
   const grp = new THREE.Group(); grp.add(mesh);
   // gatherable rocks, ice spires and supply caches
   const mined = wsState().mined, nodes = [];
+  const nearJames = (x, z) => world.jamesAt && (x - world.jamesAt.x) ** 2 + (z - world.jamesAt.z) ** 2 < 36;
   const nRocks = Math.floor(wHash(cx, cz, 60) * 5);
   for (let i = 0; i < nRocks; i++) {
     const key = `r${cx}_${cz}_${i}`; if (mined[key]) continue;
     const x = ox + (wHash(cx, cz, 61 + i) - .5) * CH, z = oz + (wHash(cx, cz, 71 + i) - .5) * CH;
-    if (Math.hypot(x, z) < 30 || lakeAmt(x, z) > .3) continue;
+    if (Math.hypot(x, z) < 30 || lakeAmt(x, z) > .3 || nearJames(x, z)) continue;
     const s = 1 + wHash(cx, cz, 81 + i) * 3.5, y = wHeight(x, z);
     const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), wRockMat);
     rock.position.set(x, y - s * .25, z); rock.rotation.set(wHash(cx, cz, 91 + i) * 6, wHash(cx, cz, 95 + i) * 6, 0); rock.scale.y = .6 + wHash(cx, cz, 99 + i) * .6;
@@ -3059,6 +3082,7 @@ function buildChunk(cx, cz) {
     if (Math.hypot(x0, z0) > 30) for (let i = 0; i < 6; i++) {
       const key = `s${cx}_${cz}_${i}`; if (mined[key]) continue;
       const x = x0 + (wHash(cx, cz, 130 + i) - .5) * 5, z = z0 + (wHash(cx, cz, 140 + i) - .5) * 5, h = 2 + wHash(cx, cz, 150 + i) * 5;
+      if (nearJames(x, z)) continue;
       const sp = new THREE.Mesh(new THREE.ConeGeometry(.35 + h * .08, h, 5), wIceMat);
       sp.position.set(x, wHeight(x, z) + h * .45, z); sp.rotation.set((wHash(cx, cz, 160 + i) - .5) * .5, wHash(cx, cz, 170 + i) * 6, (wHash(cx, cz, 180 + i) - .5) * .5);
       sp.castShadow = true; grp.add(sp);
@@ -3069,7 +3093,7 @@ function buildChunk(cx, cz) {
   if (wHash(cx, cz, 200) > .8) crates.push([`c${cx}_${cz}`, ox + (wHash(cx, cz, 201) - .5) * CH * .8, oz + (wHash(cx, cz, 202) - .5) * CH * .8]);
   if (cx === 0 && cz === 0) [[14, 7], [-13, -10], [4, 17]].forEach(([x, z], i) => crates.push([`c0_${i}`, x, z]));
   for (const [key, x, z] of crates) {
-    if (mined[key] || worldBlocked(x, z, true) || lakeAmt(x, z) > .3) continue;
+    if (mined[key] || worldBlocked(x, z, true) || lakeAmt(x, z) > .3 || nearJames(x, z)) continue;
     const y = wHeight(x, z), c = new THREE.Group();
     const bx = new THREE.Mesh(new THREE.BoxGeometry(1.1, .75, .8), wCrateMat); bx.position.y = .36; c.add(bx);
     const lid = new THREE.Mesh(new THREE.BoxGeometry(1.15, .1, .85), wCapMat); lid.position.y = .78; c.add(lid);
@@ -3105,6 +3129,8 @@ function clearWorld() {
   for (const grp of world.chunks.values()) { wScene.remove(grp); grp.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
   world.chunks.clear();
   if (world.feet) { wScene.remove(world.feet); world.feet.geometry.dispose(); world.feet = null; }
+  if (world.clues) { wScene.remove(world.clues); world.clues = null; }
+  if (world.camp) { wScene.remove(world.camp); world.camp = null; }
 }
 function buildWorld(seed) {
   if (!world.built) {
@@ -3156,11 +3182,33 @@ function buildWorld(seed) {
     }
     feet.instanceMatrix.needsUpdate = true; if (feet.instanceColor) feet.instanceColor.needsUpdate = true;
     feet.receiveShadow = true; wScene.add(feet); world.feet = feet;
+    // the rest of his path: same curve, ~420 m out
+    world.path = [];
+    let px = 8.6, pz = 0, pa = world.footDir;
+    for (let i = 0; i < 600; i++) { pa += Math.sin(i * .07) * .025; px += Math.cos(pa) * .72; pz += Math.sin(pa) * .72; world.path.push([px, pz, pa]); }
+    // fresh patches of prints every ~70 m so the trail can still be followed
+    const clueIdx = [];
+    for (let i = 230; i < 575; i += 95) for (let k = 0; k < 12; k++) clueIdx.push(i + k);
+    const clues = new THREE.InstancedMesh(feet.geometry, feet.material, clueIdx.length);
+    clueIdx.forEach((i, n2) => {
+      const [x, z, a] = world.path[i], side = i % 2 ? .17 : -.17, fx = x - Math.sin(a) * side, fz = z + Math.cos(a) * side;
+      d.position.set(fx, wHeight(fx, fz) + .025, fz); d.rotation.set(-Math.PI / 2, 0, -a + Math.PI / 2); d.scale.set(1, 1.7, 1); d.updateMatrix();
+      clues.setMatrixAt(n2, d.matrix);
+      const k = (i - 230) % 95; clues.setColorAt(n2, c.set(0x8a9bb0).lerp(SNOW_C, Math.abs(k - 5.5) / 9));
+    });
+    clues.instanceMatrix.needsUpdate = true; if (clues.instanceColor) clues.instanceColor.needsUpdate = true;
+    wScene.add(clues); world.clues = clues;
+    const [jx, jz, ja] = world.path[585];
+    world.jamesAt = { x: jx, z: jz, a: ja };
+    const camp = new THREE.Group(); camp.position.set(jx, wHeight(jx, jz), jz); wScene.add(camp); world.camp = camp;
+    const flare = glowSprite(0xffb36b, 9, .55); flare.position.y = 2.2; camp.add(flare); world.flare = flare;
+    const pack = new THREE.Mesh(new THREE.BoxGeometry(.5, .35, .35), new THREE.MeshStandardMaterial({ color: 0x6a1f22, roughness: .9 })); pack.position.set(.9, .17, -.4); pack.rotation.y = .6; camp.add(pack);
   }
 }
 function worldBlocked(x, z, stationOnly) {
   if (Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true;
   if (stationOnly) return false;
+  if (world.jamesAt && ex.mode === 'world' && (x - world.jamesAt.x) ** 2 + (z - world.jamesAt.z) ** 2 < .5) return true;
   for (const n of nodesNear(x, z)) if (!n.dead && (x - n.x) ** 2 + (z - n.z) ** 2 < (n.r + .3) ** 2) return true;
   for (const o of world.placed) for (const c of o.cols) if ((x - c[0]) ** 2 + (z - c[1]) ** 2 < (c[2] + .3) ** 2) return true;
   return false;
@@ -3188,6 +3236,7 @@ function enterWorld(place) {
   player.position.y = wHeight(player.position.x, player.position.z);
   updateChunks(99);
   rebuildPlaced();
+  placeJamesOutside();
   ex.air = false; ex.act = null; ex.hp = null; ex.sta = null; ex.invOpen = false;
   ui.xhud.classList.add('world'); renderHotbar();
   ex.snap = true; ex.pitch = .3; ex.dist = 4.2;
@@ -3263,16 +3312,28 @@ function updateWorldMode(dt) {
   if (Math.hypot(vel.x, vel.z) > .2 && !(A && A.type === 'attack')) player.rotation.y = angLerp(player.rotation.y, Math.atan2(vel.x, vel.z), Math.min(1, dt * 10));
   // things to interact with: the station door and anything you've built
   ex.near = null;
-  if (Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
-  else {
+  if (world.jamesAt && james.ready && james.root.visible) {
+    const J = world.jamesAt, jd = Math.hypot(J.x - p.x, J.z - p.z), jr = james.root;
+    if (jd < 14 && !ch1().found) {
+      setCh1({ found: true }); renderTasks(); sfx.chime();
+      notice('Through the storm, a lantern', 'JAMES BROWN FOUND', 3200);
+    }
+    const near = jd < 4;
+    jr.rotation.y = angLerp(jr.rotation.y, near ? Math.atan2(p.x - J.x, p.z - J.z) : Math.atan2(Math.cos(J.a), Math.sin(J.a)), Math.min(1, dt * 2.5));
+    james.raise = near ? .3 : .9; james.headTilt = near ? .05 : .15;
+    if (jd < 2.3) ex.near = { id: 'james2', label: 'James Brown' };
+  }
+  if (world.flare) world.flare.material.opacity = .45 + Math.sin(time * 2.3) * .08 + Math.sin(time * 7.1) * .04;
+  if (!ex.near && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
+  if (!ex.near) {
     let bd = 2;
     for (const o of world.placed) { const dd = Math.hypot(o.data.x - p.x, o.data.z - p.z); if (dd < bd) { bd = dd; ex.near = { id: 'placed', ref: o, label: ITEMS[o.data.t].name }; } }
   }
   const showP = !!ex.near && !d && !ex.invOpen;
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
-    xUI.promptT.textContent = ex.near.id === 'door' ? 'Enter the station' : `Pick up · ${ex.near.label}`;
-    xUI.act.textContent = ex.near.id === 'door' ? 'ENTER' : 'TAKE';
+    xUI.promptT.textContent = ex.near.id === 'door' ? 'Enter the station' : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
+    xUI.act.textContent = ex.near.id === 'door' ? 'ENTER' : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
   // where's home, and your nearest beacon
   const dist = Math.hypot(p.x - 8, p.z), dirs = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
