@@ -583,7 +583,7 @@ button.bm-c.no{opacity:.45}
   <div class="x-hint" id="xHint"></div>
   <div class="hurt-fx" id="hurtFx"></div>
   <div class="x-card" id="xCard"><small id="xCardS">Chapter I</small><b id="xCardB">ANTARCTICA</b></div>
-  <div class="boss-bar" id="bossBar"><div class="bb-h"><b>CROXIAN</b><small>LV 30 · BOSS</small></div><div class="bb"><i></i></div><em>Don’t go near him. Run to the ferry.</em></div>
+  <div class="boss-bar" id="bossBar"><div class="bb-h"><b>CROXIAN MASCAR</b><small>LV 30 · BOSS</small></div><div class="bb"><i></i></div><em>Don’t go near him. Run to the ferry.</em></div>
   <div class="x-narr" id="xNarr"><small id="xNarrW">NARRATOR</small><span id="xNarrT"></span><i></i></div>
   <div class="x-prompt" id="xPrompt"><kbd>E</kbd><span id="xPromptT"></span></div>
   <div class="cbar t"></div><div class="cbar b"></div>
@@ -2048,6 +2048,7 @@ $('#setCombat').addEventListener('click', () => {
 const combat = { t: 0, on: false };
 function combatPulse() { combat.t = 7; if (!combat.on) { combat.on = true; sfx.combat(true); } }
 function combatTick(dt) {
+  if (world.boss && world.betrayal && world.betrayal.phase === 'chase') return; // the boss theme plays until the fight ends
   if (combat.on && (combat.t -= dt) <= 0) { combat.on = false; sfx.combat(false); }
   if (!combat.on && state !== 'title' && sfx.combatTrack >= 0) { sfx.combat(false); refreshSettings(); }
 }
@@ -3563,7 +3564,7 @@ const CROX_PRE = [
   'Well. That is one way to settle a debt.',
   'James Brown owed my people a great deal. He was meant to hand you over to us, not rob you and run for Africa.',
   'You have saved me the trouble of dealing with him. That does not mean I am grateful.',
-  'My name is Croxian. Remember it, wanderer. It is the last name you are going to learn.',
+  'My name is Croxian Mascar. Remember it, wanderer. It is the last name you are going to learn.',
   'The ferry will not wait for you. And I will not let you reach it.'
 ];
 const CROX_BARKS = [
@@ -3604,7 +3605,7 @@ const telMat = new THREE.MeshBasicMaterial({ color: 0xff3b2f, transparent: true,
 function telegraph(x, z, r) { const m = new THREE.Mesh(new THREE.RingGeometry(r * .82, r, 40), telMat.clone()); m.rotation.x = -Math.PI / 2; m.position.set(x, bossGround(x, z) + .06, z); wScene.add(m); return m; }
 function bossGround(x, z) { const t = pierTop(x, z); return t != null ? t : Math.max(wHeight(x, z), -1.6); }
 function bark(line, ms = 3200, clip) {
-  showNarr('CROXIAN', line); clearTimeout(world.barkT); world.barkT = setTimeout(hideNarr, clip ? Math.max(ms, clip.duration * 1000 + 300) : ms);
+  showNarr('CROXIAN MASCAR', line); clearTimeout(world.barkT); world.barkT = setTimeout(hideNarr, clip ? Math.max(ms, clip.duration * 1000 + 300) : ms);
   if (clip) sfx.playNarr(clip, 1.3);
 }
 const croxClips = () => sfx.loadClips('croxFight'); // FIGHT1–7, then KILLPLAYER, then ESCAPE
@@ -3666,13 +3667,13 @@ async function croxArrives() {
   wScene.add(R.root); R.root.visible = true; R.root.position.set(gx, 1.6, gz);
   world.boss = { R, x: gx, z: gz, y: 1.6, st: 'walkIn', t: 0, cd: 2, leapCd: 7, barkCd: 5 };
   B.phase = 'croxIntro'; B.t = 0;
-  sfx.alarm(); notice('Someone steps off the ferry', 'CROXIAN', 3000);
+  sfx.alarm(); notice('Someone steps off the ferry', 'CROXIAN MASCAR', 3000);
 }
 function startChase(boss) {
   const B = world.betrayal; B.phase = 'chase'; B.t = 0; renderTasks();
   $('#bossBar').classList.add('on');
   notice('Boss · level 30', 'RUN TO THE FERRY', 3400);
-  sfx.combat && sfx.combat(true, 0);
+  sfx.combat(true, COMBAT_TRACKS.indexOf('Predator IV')); // Croxian Mascar's theme
   if (boss) { boss.st = 'chase'; boss.cd = 1.6; }
 }
 function clearBoss() {
@@ -3700,7 +3701,7 @@ function bossTick(dt) {
         C.st = 'talk'; R.mode = 'idle';
         sfx.loadClips('croxPre').then(clips => {
           if (world.boss !== C) return;
-          openDialog('CROXIAN', CROX_PRE, false, () => startChase(C), clips);
+          openDialog('CROXIAN MASCAR', CROX_PRE, false, () => startChase(C), clips);
           if (ex.dlg) ex.dlg.auto = true;
         });
       }
@@ -3758,7 +3759,7 @@ function bossDeath() {
   const B = world.betrayal; if (B) B.phase = 'dead';
   state = 'loadingCh'; vel.set(0, 0, 0);
   const bo = $('#blackout'); bo.style.transition = 'opacity 1.2s'; bo.style.opacity = 1;
-  notice('Croxian cut you down', 'YOU DIED', 2600);
+  notice('Croxian Mascar cut you down', 'YOU DIED', 2600);
   setTimeout(() => {
     clearBoss(); world.betrayal = null; closeDialog();
     if (james.ready) { james.root.rotation.set(0, 0, 0); james.raise = .1; }
