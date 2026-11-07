@@ -545,7 +545,7 @@ body.touch .jopts kbd{display:none}
       <button class="mi" data-go="mSettings"><i>08</i><span>Settings</span><em class="arr">›</em></button>
     </nav>
     <div class="menu off" id="mBrief">
-      <p class="brief">The year is <b>2125 AD</b>. Beyond our small blue world, countless worlds wait in the dark. You are the Exploration Division’s lone <b>wanderer</b>, and your journey begins on the ice of <b>Antarctica</b>, where the cold will test you long before the stars do.</p>
+      <p class="brief" id="briefT">The year is <b>2125 AD</b>. Beyond our small blue world, countless worlds wait in the dark. You are the Exploration Division’s lone <b>wanderer</b>, and your journey begins on the ice of <b>Antarctica</b>, where the cold will test you long before the stars do.</p>
       <button class="mi back" data-go="mMain"><i>‹</i><span>Back</span></button>
     </div>
     <div class="menu off" id="mRoster">
@@ -565,6 +565,7 @@ body.touch .jopts kbd{display:none}
     </div>
     <div class="menu off" id="mSettings">
       <button class="mi" id="setSound"><i>—</i><span>Sound</span><em class="val">ON</em></button>
+      <button class="mi" id="setStyle" style="display:none"><i>—</i><span>Menu style</span><em class="val">NORMAL</em></button>
       <button class="mi" id="setMusic"><i>—</i><span>Music</span><em class="val">ON</em></button>
       <button class="mi" id="setCombat"><i>—</i><span>Combat themes</span><em class="val">PLAY</em></button>
       <button class="mi back" data-go="mMain"><i>‹</i><span>Back</span></button>
@@ -962,8 +963,12 @@ function placeDecor() {
 /* ============ chapter IV menu: a voice that mocks you ============ */
 const TAUNTS = ['Useless.....', 'The old world is dead, Hawthorne is gone. Give up.', 'You cannot stop the Catharsis.', 'Sevirrus tried hundreds of years ago, facing ME. What chance do you have?', 'My legions are eternal....'];
 const taunt = { on: false, i: 0, tok: 0 };
+const BRIEF_START = 'The year is <b>2125 AD</b>. Beyond our small blue world, countless worlds wait in the dark. You are the Exploration Division’s lone <b>wanderer</b>, and your journey begins on the ice of <b>Antarctica</b>, where the cold will test you long before the stars do.';
+const BRIEF_CH4 = 'The year is <b>2127 AD</b>. The old world is dead. <b>Hawthorne is gone</b>, and the Exploration Division is scattered across a galaxy that no longer feels safe. The <b>Catharsis</b> is spreading, world by world, and the voice in the dark grows louder each time you close your eyes. You are still the <b>wanderer</b>. You are still standing. Find who is left, and find out what is coming, before it finds you.';
 function applyMenuEra() {
   const on = isCh4Menu();
+  const bt = $('#briefT'); if (bt) bt.innerHTML = chNow() >= 4 ? BRIEF_CH4 : BRIEF_START;
+  const st = $('#setStyle'); if (st) { st.style.display = chNow() >= 5 ? '' : 'none'; st.querySelector('.val').textContent = menuStyle === 'red' ? 'BLOOD RED' : 'NORMAL'; }
   document.body.classList.toggle('ch4', on);
   sfx.menuTrack(on ? 'musicCh4' : 'music');
   if (menuLook && (state === 'title' || state === 'loading')) setMenuLook(menuLookFor());
@@ -1034,8 +1039,12 @@ function snowTick(dt) {
   }
   menuSnow.geometry.attributes.position.needsUpdate = true;
 }
-const forceCh4 = /[?&]menu=ch4\b/.test(window.location.search);
-const isCh4Menu = () => forceCh4 || (wanderer && (wanderer.chapter | 0) >= 4);
+// ?menu=ch4 / ?menu=ch5 preview those chapters' main menus
+const forceCh = +((window.location.search.match(/[?&]menu=ch(\d+)/) || [])[1] || 0);
+const chNow = () => forceCh || (wanderer ? wanderer.chapter | 0 : 0);
+let menuStyle = store.get('nv_menuStyle', 'normal');
+// Chapter IV is always blood red; from Chapter V you choose
+const isCh4Menu = () => { const c = chNow(); return c === 4 || (c >= 5 && menuStyle === 'red'); };
 function menuLookFor() { return isCh4Menu() ? 'abyss' : wanderer && wanderer.location === 'moon' ? 'moon' : 'antarctica'; }
 function setMenuLook(kind) {
   if (menuLook === kind) return;
@@ -1899,6 +1908,7 @@ function toggleMusic() { musicOn = !musicOn; store.set('nv_music', musicOn); sfx
 function toggleSound() { muted = !muted; store.set('nv_muted', muted); sfx.init(); sfx.setMuted(muted); refreshSettings(); sfx.click(); }
 function refreshOpts() { const m = $('#oMusic'), so = $('#oSound'); if (m) m.querySelector('b').textContent = musicOn ? 'ON' : 'OFF'; if (so) so.querySelector('b').textContent = muted ? 'OFF' : 'ON'; }
 $('#setMusic').addEventListener('click', toggleMusic);
+$('#setStyle').addEventListener('click', () => { menuStyle = menuStyle === 'red' ? 'normal' : 'red'; store.set('nv_menuStyle', menuStyle); sfx.init(); sfx.click(); applyMenuEra(); });
 $('#oMusic').addEventListener('click', toggleMusic);
 $('#oSound').addEventListener('click', toggleSound);
 $('#xOptions').addEventListener('click', () => { sfx.click(); refreshOpts(); ui.xpause.classList.add('opts'); });
