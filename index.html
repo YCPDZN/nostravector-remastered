@@ -535,6 +535,11 @@ button.bm-c.no{opacity:.45}
 @keyframes narrPulse{0%,100%{opacity:.25;transform:scaleX(.6)}50%{opacity:1;transform:scaleX(1)}}
 #xhud.suitwarn::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 120px rgba(255,70,60,.55);animation:suitWarn .55s ease-in-out 6 alternate}
 @keyframes suitWarn{from{opacity:.2}to{opacity:1}}
+
+.bar.heat{opacity:0;transition:opacity .3s}
+.bar.heat.on{opacity:1}
+.bar.heat i{background:linear-gradient(90deg,#ff5a3d,#ffb36b)}
+.bar.heat.low{animation:suitWarn .6s ease-in-out infinite alternate}
 </style>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
@@ -558,7 +563,7 @@ button.bm-c.no{opacity:.45}
 <!-- Exploration HUD -->
 <div id="xhud" class="hidden">
   <div class="mmap" id="mmap"><canvas id="mmapC"></canvas><div class="cap" id="mmapCap"></div></div>
-  <div class="x-obj"><div class="lvl" id="lvl"><b id="lvN">LV 1</b><div class="xpbar"><i id="xpI"></i></div><small id="xpT"></small></div><small id="xChap">CHAPTER I · ANTARCTICA</small><div id="xTasks"></div><div class="x-nav" id="xNav"></div><div class="bars"><div class="bar hp" id="hpBar"><i></i></div><div class="bar sta" id="staBar"><i></i></div><div class="bar jet" id="jetBar"><i></i></div></div>
+  <div class="x-obj"><div class="lvl" id="lvl"><b id="lvN">LV 1</b><div class="xpbar"><i id="xpI"></i></div><small id="xpT"></small></div><small id="xChap">CHAPTER I · ANTARCTICA</small><div id="xTasks"></div><div class="x-nav" id="xNav"></div><div class="bars"><div class="bar hp" id="hpBar"><i></i></div><div class="bar sta" id="staBar"><i></i></div><div class="bar jet" id="jetBar"><i></i></div><div class="bar heat" id="heatBar" title="Suit heat"><i></i></div></div>
     <div class="jcmd" id="jcmd"><button class="jbtn" id="jBtn"><span id="jWho">JAMES</span><b id="jMode">FOLLOWING</b><em>▾</em></button>
       <div class="jopts" id="jOpts"><div class="jwho" id="jWhoRow" style="display:none"></div><button data-m="mine"><kbd>1</kbd>Mine</button><button data-m="explore"><kbd>2</kbd>Explore</button><button data-m="base"><kbd>3</kbd>Meet me back at base</button><button data-m="wander"><kbd>4</kbd>Wander around</button><button data-m="follow"><kbd>5</kbd>Follow me</button></div>
     </div></div>
@@ -3094,7 +3099,9 @@ function campTasks(p, task) {
   if (!p.shelterBuilt) { const s = shelterStatus(); return h + task(false, `Build a shelter · floor ${s.floor ? '✓' : '✗'} · walls ${Math.min(3, s.walls)}/3 · roof ${s.roof ? '✓' : '✗'}`); }
   h += task(true, 'Build a shelter');
   if (!p.stormSafe) return h + task(false, 'Get inside the shelter');
-  return h + task(true, 'Get inside the shelter') + task(false, 'Explore Antarctica with James');
+  h += task(true, 'Get inside the shelter');
+  if (!p.stormOver) { const t = Math.ceil(p.stormLeft > 0 ? p.stormLeft : STORM_LEN); return h + task(false, `Wait out the storm with James${p.stormHit || world.narrating ? ` · ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}` : ''}`); }
+  return h + task(true, 'Wait out the storm with James') + task(false, 'Explore Antarctica with James');
 }
 function campProgress(k) {
   const c = ch1(); if (!c.metOutside || c.campDone) return;
@@ -3160,7 +3167,14 @@ function insideShelter() {
 function stormProgress() { const c = ch1(); if (c.stormTalk && !c.shelterBuilt) renderTasks(); }
 // ---- when the storm hits: the exosuit warning, then the narrator ----
 const SUIT_TEXT = ['WEATHER WARNING: SUPER BLIZZARD INCOMING'];
-const NARR_TEXT = ['', '', '', '', '']; // subtitles for NARRATOR1–5 go here
+const NARR_TEXT = [
+  'Your suit has detected a super blizzard. Visibility will fall, and staying outside will drain your suit’s heat.',
+  'Watch your suit heat gauge. The station and the rover protect you from the cold. At zero heat, your suit performs an emergency recovery at the station.',
+  'Sprinting drains stamina. Use it for short escapes, then walk to recover. Never exhaust yourself far from shelter.',
+  'When the whiteout hides your path, follow the station beacon or open your field map with M. Landmarks may disappear; the beacon keeps pointing home.',
+  'Get inside the station and let your heat recover. Stay with James while the storm passes. This super blizzard lasts five minutes of active game time.'
+];
+const STORM_LEN = 300; // the super blizzard lasts five minutes of active play once it hits
 const waitMs = ms => new Promise(r => setTimeout(r, ms));
 function showNarr(who, text) { const el = $('#xNarr'); $('#xNarrW').textContent = who; $('#xNarrT').textContent = text || ''; el.classList.toggle('notext', !text); el.classList.add('on'); }
 function hideNarr() { $('#xNarr').classList.remove('on'); }
@@ -3168,6 +3182,7 @@ function stopNarration() { world.narrTok = (world.narrTok || 0) + 1; world.narra
 async function stormHits() {
   const tok = (world.narrTok = (world.narrTok || 0) + 1);
   world.narrating = true; world.stormDarkT = time;
+  if (!(ch1().stormLeft > 0)) ch1().stormLeft = STORM_LEN;
   const [suit, narr] = await Promise.all([sfx.loadClips('suitVoices'), sfx.loadClips('narrVoices')]);
   const say = async (who, text, buf, ms) => {
     if (world.narrTok !== tok) return false;
@@ -3180,42 +3195,62 @@ async function stormHits() {
   let ok = await say('EXOSUIT', SUIT_TEXT[0], suit[0], 3700);
   if (ok) { hideNarr(); await waitMs(900); }
   for (let i = 0; ok && i < 5; i++) { ok = await say('NARRATOR', NARR_TEXT[i], narr[i], 8000); if (ok) await waitMs(350); }
-  if (world.narrTok === tok) { setCh1({ stormHit: true }); hideNarr(); world.narrating = false; world.stormHold = Math.max(world.stormHold || 0, time + 10); }
+  if (world.narrTok === tok) { setCh1({ stormHit: true }); hideNarr(); world.narrating = false; }
+}
+// the storm's clock and your suit heat run on active play time, inside the station or out
+function stormClock(dt) {
+  const c = ch1(); if (!c.stormTalk || c.stormOver) return;
+  if (c.stormHit && c.stormLeft == null) { setCh1({ stormOver: true }); return; } // saves from before the five-minute storm
+  if ((c.stormHit || world.narrating) && c.stormLeft > 0) {
+    c.stormLeft = Math.max(0, c.stormLeft - dt);
+    if ((world.tasksT = (world.tasksT || 0) - dt) <= 0) { world.tasksT = 1; if (c.stormSafe) renderTasks(); }
+    if (c.stormLeft <= 0 && c.stormHit) {
+      setCh1({ stormOver: true }); renderTasks(); gainXP(150); sfx.chime();
+      notice('The super blizzard has passed', 'EXPLORE ANTARCTICA WITH JAMES', 4000);
+    }
+  }
+  if (ex.mode === 'station') { const inv = invState(); inv.heat = Math.min(100, (inv.heat == null ? 100 : inv.heat) + 14 * dt); } // the station keeps you warm
+}
+const suitHeat = () => { const h = invState().heat; return h == null ? 100 : h; };
+function nearHeater() { for (const o of world.placed) if (o.data.t === 'heater' && Math.hypot(o.data.x - player.position.x, o.data.z - player.position.z) < 3.2) return true; return false; }
+function emergencyRecovery() {
+  const p = player.position; p.set(11.5, wHeight(11.5, 3), 3); vel.set(0, 0, 0); ex.snap = true; ex.air = false;
+  invState().heat = 60;
+  if (companionOn() && james.ready && james.root.parent === wScene && comp.mode === 'follow') jTeleportNear();
+  sfx.thud(); notice('Exosuit · emergency recovery', 'RETURNED TO THE STATION', 4200);
 }
 function stormTick(dt) {
-  const c = ch1(), out = !!(c.stormTalk && !c.stormSafe);
-  const active = !!(c.stormTalk && (!c.stormSafe || world.narrating || time < (world.stormHold || 0)));
+  const c = ch1(), active = !!(c.stormTalk && !c.stormOver);
   world.storm = clamp((world.storm || 0) + (active ? dt / 20 : -dt / 25), 0, 1);
   // the storm hits once it's at full strength (or as soon as you're inside, if you were quick)
   if (state === 'explore' && c.stormTalk && !c.stormHit && !world.narrating && (world.storm > .97 || c.stormSafe)) stormHits();
   if (state !== 'explore') return;
+  // suit heat: drains out in the blizzard, recovers in a shelter, by a heater, or once the storm is gone
+  const inv = invState(), sheltered = insideShelterCached(dt) || nearHeater();
+  let h = suitHeat();
+  if (active && world.storm > .6 && !sheltered) h -= 1.1 * dt; // about 90 seconds from full to empty
+  else h += (sheltered ? 9 : 3) * dt;
+  inv.heat = h = clamp(h, 0, 100);
+  if (h <= 0) { emergencyRecovery(); return; }
+  if (active && h < 30 && !sheltered && (!world.coldMsg || time - world.coldMsg > 30)) {
+    world.coldMsg = time; notice('Exosuit · heat critical', 'GET TO SHELTER', 2800);
+    // SUIT2: the exosuit's exposure warning, only when the blizzard is getting to you (no narration follows it)
+    sfx.loadClips('suitVoices').then(cl => { if (cl && cl[1] && state === 'explore') sfx.playOnce(cl[1], 1.3); });
+  }
   if ((world.stormCheck = (world.stormCheck || 0) - dt) > 0) return;
   world.stormCheck = .4;
   if (c.stormTalk && !c.shelterBuilt && shelters().length) {
     setCh1({ shelterBuilt: true }); gainXP(150); sfx.chime(); renderTasks();
     notice('Shelter built', 'GET INSIDE', 3400);
-  } else if (c.shelterBuilt && !c.stormSafe && insideShelter()) {
+  } else if (c.shelterBuilt && !c.stormSafe && world.inShelter) {
     setCh1({ stormSafe: true }); gainXP(100); sfx.chime(); renderTasks();
-    notice('You made it inside', 'SAFE FROM THE STORM', 3600);
+    notice('You made it inside', 'WAIT OUT THE STORM WITH JAMES', 3600);
     if (companionOn() && james.ready && james.root.parent === wScene) jTeleportNear();
-    world.stormHold = time + 26; world.stormOverPending = true;
   }
-  if (world.stormOverPending && !world.narrating && time > (world.stormHold || 0) && world.storm < .35) {
-    world.stormOverPending = false;
-    notice('The storm has passed', 'EXPLORE ANTARCTICA WITH JAMES', 3800);
-  }
-  // caught out in the whiteout: the cold bites, but never below a quarter of your health
-  if (out && world.storm > .6 && !insideShelter() && ex.hp > maxHP() * .25) {
-    let warm = false; for (const o of world.placed) if (o.data.t === 'heater' && Math.hypot(o.data.x - player.position.x, o.data.z - player.position.z) < 3.2) warm = true;
-    if (!warm) {
-      ex.hp = Math.max(maxHP() * .25, ex.hp - .25); invState().hp = Math.round(ex.hp);
-      if (!world.coldMsg || time - world.coldMsg > 30) {
-        world.coldMsg = time; notice('Exosuit · exposure warning', 'GET TO SHELTER', 2800);
-        // SUIT2: the exosuit's exposure warning, only when the blizzard is hurting you (no narration follows it)
-        sfx.loadClips('suitVoices').then(c => { if (c && c[1] && state === 'explore') sfx.playOnce(c[1], 1.3); });
-      }
-    }
-  }
+}
+function insideShelterCached(dt) {
+  if ((world.shT = (world.shT || 0) - dt) <= 0) { world.shT = .3; world.inShelter = insideShelter(); }
+  return world.inShelter;
 }
 // ---- day and night: one full day every 20 minutes, remembered per planet ----
 const DAY_LEN = 1200;
@@ -3447,6 +3482,7 @@ function tickDialog(dt) {
   }
 }
 function updateExplore(dt) {
+  stormClock(dt);
   if (ex.mode === 'world') { updateWorldMode(dt); return; }
   const R = ROOM, p = player.position;
   // typewriter
@@ -4201,6 +4237,7 @@ function updateSurvival(dt) {
   const hp = $('#hpBar'), st = $('#staBar');
   hp.firstChild.style.transform = `scaleX(${ex.hp / maxHP()})`; hp.classList.toggle('low', ex.hp < maxHP() * .25);
   st.firstChild.style.transform = `scaleX(${ex.sta / 100})`; st.classList.toggle('low', ex.sta < 20);
+  const hb = $('#heatBar'), hv = suitHeat(); hb.firstChild.style.transform = `scaleX(${hv / 100})`; hb.classList.toggle('on', hv < 99.5 || (ch1().stormTalk && !ch1().stormOver)); hb.classList.toggle('low', hv < 30);
   const jb = $('#jetBar'); jb.firstChild.style.transform = `scaleX(${(ex.jet == null ? 100 : ex.jet) / 100})`; jb.classList.toggle('on', ex.jet != null && ex.jet < 99.5); jb.classList.toggle('low', ex.jet < 15);
   // placement preview, teleporter rings, merchants
   updateBuildGhost(); tickMerchants(dt);
@@ -5531,6 +5568,7 @@ function goInside() {
     aScene.add(player); aScene.add(particles); resetRig(); vel.set(0, 0, 0);
     player.position.set(ROOM.x + 6.1, 0, ROOM.z); player.rotation.y = -Math.PI / 2; ex.yaw = player.rotation.y + Math.PI; ex.snap = true; ex.dist = 3;
     stationCompanion();
+    if (suitHeat() < 99) lootMsg('Suit heat recovering', '#ffb36b');
     sfx.wind(.22); resize();
     state = 'explore'; f.style.transition = 'opacity 1.2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 1300);
   }, 850);
