@@ -5642,9 +5642,18 @@ const PEDIA_VECTORS = [
     ] }
 ];
 const PRIME_TABS = { primes: () => PEDIA_PRIMES, vectors: () => PEDIA_VECTORS };
-// classified until Chapter IV: set true (or unlock from story progress) to reveal them
-const PEDIA_UNLOCK = { primes: false, vectors: false };
-const pdLocked = () => PRIME_TABS[pedia.tab] && !PEDIA_UNLOCK[pedia.tab];
+// classified files: leaders open in Chapter III (except the one you met in your dream), Primes and Vectors in Chapter IV
+const PEDIA_UNLOCK_AT = { leaders: 3, primes: 4, vectors: 4 };
+const CH_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+const pdUnlockText = tab => `Chapter ${CH_ROMAN[PEDIA_UNLOCK_AT[tab]] || PEDIA_UNLOCK_AT[tab]}`;
+function pdEntryLocked(L, tab = pedia.tab) {
+  const at = PEDIA_UNLOCK_AT[tab]; if (!at) return false;
+  if ((wanderer.chapter | 0) >= at) return false;
+  if (tab === 'leaders' && wanderer.ch1 && wanderer.ch1.slept && spOf(wanderer) === L.sp) return false;
+  return true;
+}
+const pdSet = () => pedia.tab === 'leaders' ? PEDIA_LEADERS : PRIME_TABS[pedia.tab] ? PRIME_TABS[pedia.tab]() : [];
+const pdLocked = () => { const set = pdSet(); return set.length > 0 && set.every(L => pdEntryLocked(L)); };
 const bar = n => `<span class="rd" style="width:${Math.round(n)}ch"></span>`;
 const barsFor = text => text.split(' ').map(w => bar(Math.max(2, w.length * .9))).join(' ');
 const primeCache = {};
@@ -5684,16 +5693,15 @@ function pediaTab(t) {
 function pediaList() {
   $('#pdBack span').textContent = 'Main menu';
   pUI.eyebrow.textContent = 'Nostrapedia'; pUI.body.classList.add('hidden'); pUI.list.classList.remove('hidden');
-  if (pedia.tab === 'leaders') {
-    pUI.title.textContent = 'THE FOUR LEADERS';
-    pUI.list.innerHTML = PEDIA_LEADERS.map((L, i) => `<button class="mi" data-i="${i}"><i>${pad(i + 1)}</i><span>${L.name}<small>${L.title} · ${L.facts.find(f => f[0] === 'Alignment')[1]}</small></span><em class="arr">›</em></button>`).join('');
-  } else if (pdLocked()) {
-    pUI.title.textContent = '[REDACTED]';
-    pUI.list.innerHTML = `<div class="sp-card cc-desc rd-card"><p><b>CLASSIFIED.</b> These files will be declassified in Chapter IV.</p></div>` +
-      PRIME_TABS[pedia.tab]().map((L, i) => `<button class="mi" data-i="${i}"><i>${pad(i + 1)}</i><span>${bar(L.name.length * 1.05)}<small>[Redacted] · Unlocks in Chapter IV</small></span><em class="arr">›</em></button>`).join('');
-  } else if (PRIME_TABS[pedia.tab]) {
-    pUI.title.textContent = pedia.tab === 'vectors' ? 'THE OILKOUMENE VECTORS' : 'THE PRIMES';
-    pUI.list.innerHTML = (pedia.tab === 'vectors' ? '<div class="sp-card cc-desc"><p>Five brothers born in the Big Bang in the Cyrannus Galaxy, five galaxies from the Milky Way. All are sons of Lord Zark.</p></div>' : '') + PRIME_TABS[pedia.tab]().map((L, i) => `<button class="mi" data-i="${i}"><i>${pad(i + 1)}</i><span>${L.name}<small>${L.title} · ${L.facts.find(f => f[0] === 'Alignment')[1]}</small></span><em class="arr">›</em></button>`).join('');
+  const set = pdSet();
+  if (set.length) {
+    const anyLocked = set.some(L => pdEntryLocked(L)), allLocked = pdLocked(), when = pdUnlockText(pedia.tab);
+    pUI.title.textContent = allLocked && pedia.tab !== 'leaders' ? '[REDACTED]' : pedia.tab === 'leaders' ? 'THE FOUR LEADERS' : pedia.tab === 'vectors' ? 'THE OILKOUMENE VECTORS' : 'THE PRIMES';
+    const note = !anyLocked ? (pedia.tab === 'vectors' ? '<div class="sp-card cc-desc"><p>Five brothers born in the Big Bang in the Cyrannus Galaxy, five galaxies from the Milky Way. All are sons of Lord Zark.</p></div>' : '')
+      : `<div class="sp-card cc-desc rd-card"><p><b>CLASSIFIED.</b> ${allLocked ? 'These files' : 'Files marked [Redacted]'} will be declassified in ${when}.${pedia.tab === 'leaders' && !allLocked ? ' The leader you met in your dream has been declassified.' : pedia.tab === 'leaders' ? ' Meet a leader in your dreams to open their file early.' : ''}</p></div>`;
+    pUI.list.innerHTML = note + set.map((L, i) => pdEntryLocked(L)
+      ? `<button class="mi" data-i="${i}"><i>${pad(i + 1)}</i><span>${bar(L.name.length * 1.05)}<small>[Redacted] · Unlocks in ${when}</small></span><em class="arr">›</em></button>`
+      : `<button class="mi" data-i="${i}"><i>${pad(i + 1)}</i><span>${L.name}<small>${L.title} · ${L.facts.find(f => f[0] === 'Alignment')[1]}</small></span><em class="arr">›</em></button>`).join('');
   } else {
     pUI.title.textContent = 'YOUR CREATIONS';
     const n = k => ccData[k].length, names = k => ccData[k].map(o => ccEsc(o.name)).join(' · ') || '—';
@@ -5703,30 +5711,31 @@ function pediaList() {
   pediaPreview();
 }
 function pediaEntry(i) {
-  if (pdLocked()) {
-    const L = PRIME_TABS[pedia.tab]()[i]; pedia.cur = L;
-    pUI.list.classList.add('hidden'); pUI.body.classList.remove('hidden');
+  const L = pdSet()[i]; if (!L) return; pedia.cur = L;
+  pUI.list.classList.add('hidden'); pUI.body.classList.remove('hidden');
+  if (pdEntryLocked(L)) {
     pUI.eyebrow.textContent = 'Nostrapedia · classified file'; pUI.title.textContent = '[REDACTED]';
     pUI.body.innerHTML = `<dl class="cc-meta pd-meta">${L.facts.map(([k, v]) => `<dt>${bar(k.length)}</dt><dd>${barsFor(v)}</dd>`).join('')}</dl>
-      <p class="pd-align rd-line">This file will be declassified in Chapter IV.</p>
+      <p class="pd-align rd-line">This file will be declassified in ${pdUnlockText(pedia.tab)}.</p>
       <div class="sp-card cc-desc">${L.paras.map(p => `<p class="rd-p">${barsFor(p)}</p>`).join('')}</div>`;
-    pUI.body.scrollTop = 0; $('#pdBack span').textContent = 'Back';
-    pediaPreview(); return;
+  } else {
+    pUI.eyebrow.textContent = `Nostrapedia · ${L.title}`; pUI.title.textContent = L.name;
+    pUI.body.innerHTML = `<dl class="cc-meta pd-meta">${L.facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
+      <p class="pd-align">${L.align}</p>
+      <div class="sp-card cc-desc">${L.paras.map(p => `<p>${p}</p>`).join('')}</div>`;
   }
-  const L = (PRIME_TABS[pedia.tab] ? PRIME_TABS[pedia.tab]() : PEDIA_LEADERS)[i]; pedia.cur = L;
-  pUI.list.classList.add('hidden'); pUI.body.classList.remove('hidden');
-  pUI.eyebrow.textContent = `Nostrapedia · ${L.title}`; pUI.title.textContent = L.name;
-  pUI.body.innerHTML = `<dl class="cc-meta pd-meta">${L.facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
-    <p class="pd-align">${L.align}</p>
-    <div class="sp-card cc-desc">${L.paras.map(p => `<p>${p}</p>`).join('')}</div>`;
   pUI.body.scrollTop = 0; $('#pdBack span').textContent = 'Back';
   pediaPreview();
 }
 function pediaPreview() {
-  ccClear(); cc.loadTok++; ccStage.visible = true; cc.rot = .3;
-  if (pdLocked()) { cc.prime = false; cc.lookY = 1; cc.dist = 6; return; }
+  ccClear(); cc.loadTok++; ccStage.visible = true; cc.rot = .3; cc.prime = false;
+  const set = pdSet();
+  if (!set.length) { cc.lookY = 1; cc.dist = 6; return; }
+  // only declassified figures appear on the stage
+  const list = (pedia.cur ? [pedia.cur] : set).filter(L => !pdEntryLocked(L));
+  if (!list.length) { cc.lookY = 1; cc.dist = 6; return; }
+  const tok = cc.loadTok;
   if (PRIME_TABS[pedia.tab]) {
-    const tok = cc.loadTok, list = pedia.cur ? [pedia.cur] : PRIME_TABS[pedia.tab]();
     list.forEach((p, i) => {
       const n = list.length, x = n > 1 ? (i - (n - 1) / 2) * (n > 3 ? 2.7 : 3.4) : 0;
       const halo = glowSprite(p.glow, p.h * 2.6, .85); halo.position.set(x, p.h * .55, -2.6); ccBg.add(halo);
@@ -5736,19 +5745,16 @@ function pediaPreview() {
         h.position.set(x, 0, 0); h.rotation.y = 0; ccRoot.add(h);
       }).catch(() => {});
     });
-    cc.rot = 0; cc.lookY = 1.7; cc.dist = pedia.cur ? 6.2 : list.length > 3 ? 15 : 11.5; cc.prime = true;
+    cc.rot = 0; cc.lookY = 1.7; cc.dist = list.length === 1 ? 6.2 : list.length > 3 ? 15 : 11.5; cc.prime = true;
     return;
   }
-  cc.prime = false;
-  if (pedia.tab !== 'leaders') { cc.lookY = 1; cc.dist = 6; return; }
-  const tok = cc.loadTok, list = pedia.cur ? [pedia.cur] : PEDIA_LEADERS;
   list.forEach((L, i) => loadLeader(L.sp).then(h => {
     if (!h || tok !== cc.loadTok || state !== 'pedia') return;
     const n = list.length, ang = (i - (n - 1) / 2) * .6;
     h.userData.keep = true; h.position.set(Math.sin(ang) * 2.3, 0, n > 1 ? Math.cos(ang) * 1.1 - .9 : 0); h.rotation.y = -ang * .5;
     ccRoot.add(h);
   }));
-  cc.lookY = 1.1; cc.dist = pedia.cur ? 4.6 : 7.8;
+  cc.lookY = 1.1; cc.dist = list.length === 1 ? 4.6 : 7.8;
 }
 document.querySelectorAll('#pdTabs .tab').forEach(b => b.addEventListener('click', () => { sfx.click(); pediaTab(b.dataset.t); }));
 pUI.list.addEventListener('click', e => { const b = e.target.closest('.mi'); if (!b || pedia.tab === 'mine') return; sfx.click(); pediaEntry(+b.dataset.i); });
