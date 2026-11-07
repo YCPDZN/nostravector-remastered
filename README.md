@@ -26,6 +26,8 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   2. Inspect the station: the bunk, heater, window, radio and outer hatch.
   3. Sleep in the bunk.
 - **The dream:** after you sleep, the leader of your species appears and speaks to you in a voiced, unnamed monologue.
+- **The wake-up:** you wake to find the outer hatch open and James Brown gone. The new objective is to find him.
+- **Procedural Antarctica:** step outside into endless, procedurally generated terrain in the style of No Man's Sky: snowfields, wind-cut ridges, rocky cliffs, frozen lakes, rock outcrops and ice spires, all under a blizzard. Each wanderer has their own world seed. James's footprints lead away from the station and fade into the snow. Hold Shift (or push the stick fully) to run.
 - **Lip sync:** James and all four species leaders move their jaws and mouths with their recorded voices.
 
 ## Controls

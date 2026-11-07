@@ -213,6 +213,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 .x-task.done{color:var(--mute);text-decoration:line-through}
 .x-task.done i{background:var(--ice)}
 .x-task + .x-task{margin-top:9px}
+.x-nav{margin-top:12px;font-size:8.5px;letter-spacing:.3em;color:var(--mute);text-transform:uppercase;text-shadow:0 0 8px #000}
 .x-menu{position:absolute;top:calc(var(--st) + 14px);right:calc(var(--sr) + 16px);pointer-events:auto;width:42px;height:42px;border:1px solid var(--line);
   background:rgba(7,10,17,.4);color:var(--ink);transform:skewX(-14deg);display:grid;place-items:center;cursor:pointer;padding:0;touch-action:manipulation}
 .x-menu svg{transform:skewX(14deg)}
@@ -299,7 +300,7 @@ body.touch .touch-ui{display:block}
 
 <!-- Exploration HUD -->
 <div id="xhud" class="hidden">
-  <div class="x-obj"><small id="xChap">CHAPTER I · ANTARCTICA</small><div id="xTasks"></div></div>
+  <div class="x-obj"><small id="xChap">CHAPTER I · ANTARCTICA</small><div id="xTasks"></div><div class="x-nav" id="xNav"></div></div>
   <button class="x-menu" id="xMenuBtn" aria-label="Pause"><svg width="16" height="12" viewBox="0 0 16 12"><rect y="0" width="16" height="1.6" fill="#e6e9f0"/><rect y="5.2" width="16" height="1.6" fill="#e6e9f0"/><rect y="10.4" width="16" height="1.6" fill="#e6e9f0"/></svg></button>
   <div class="x-hint" id="xHint"></div>
   <div class="x-card" id="xCard"><small id="xCardS">Chapter I</small><b id="xCardB">ANTARCTICA</b></div>
@@ -511,7 +512,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x05070c);
 scene.fog = new THREE.FogExp2(0x080b14, 0.0105);
-const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 1500);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 2000);
 
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
@@ -1779,7 +1780,7 @@ $('#crConfirm').addEventListener('click', () => {
     show(ui.create, false); toTitle(); goMenu('mRoster'); renderRoster();
     return;
   }
-  const c = Object.assign({}, draft, { name, id: uid() });
+  const c = Object.assign({}, draft, { name, id: uid(), worldSeed: (Math.random() * 1e9) | 0 });
   roster.push(c); setActive(c.id);
   state = 'deploying';
   const f = $('#fade'); f.style.opacity = 1;
@@ -2016,7 +2017,12 @@ function buildAntarctica() {
   box(1.4, .06, .9, M(0x4a4038, { roughness: .9 }), 4.2, .75, 1.4); box(.1, .72, .7, M(0x2b2f36), 4.2, .36, 1.4);
   box(.45, .5, .45, M(0x3a3f48), 3.35, .25, 1.4); box(.45, .5, .45, M(0x3a3f48), 5.05, .25, 1.4);
   box(.8, .8, .8, crateM, 6.3, .4, 2.3);
-  box(.08, 2.1, 1.2, M(0x23272e, { metalness: .6 }), 6.96, 1.05, 0);
+  ant.hatch = box(.08, 2.1, 1.2, M(0x23272e, { metalness: .6 }), 6.96, 1.05, 0);
+  ant.hatchOpen = new THREE.Group(); room.add(ant.hatchOpen);
+  const gap = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 2.05), new THREE.MeshBasicMaterial({ color: 0xe8f1fb })); gap.position.set(6.97, 1.03, 0); gap.rotation.y = -Math.PI / 2; ant.hatchOpen.add(gap);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.1, .08), M(0x23272e, { metalness: .6 })); door.position.set(6.4, 1.05, -1.2); door.rotation.y = .35; ant.hatchOpen.add(door);
+  const cold = new THREE.PointLight(0xcfe3ff, 6, 7, 1.4); cold.position.set(6.3, 1.4, 0); ant.hatchOpen.add(cold);
+  ant.hatchOpen.visible = false;
   const port = new THREE.Mesh(new THREE.CircleGeometry(.18, 24), new THREE.MeshBasicMaterial({ color: 0xaec2d8 })); port.position.set(6.91, 1.55, 0); port.rotation.y = -Math.PI / 2; room.add(port);
   ant.lamp2 = new THREE.PointLight(0xbfd0e6, 0, 8, 1.6); ant.lamp2.position.set(3.5, 2.7, 0); room.add(ant.lamp2);
   $('#frost').style.backgroundImage = `url(${makeFrost()})`;
@@ -2327,7 +2333,7 @@ const JAMES_TALK = [
   'The storm’s got us boxed in. Nothing’s flying in or out until it clears.',
   'Rest. Warm up. When you can stand properly, we’ll figure out what happened to you out there.'
 ];
-const ex = { yaw: 0, pitch: .34, dist: 3, keys: new Set(), joyX: 0, joyY: 0, jid: null, jox: 0, joy: 0, drags: new Map(), near: null, dlg: null, snap: false };
+const ex = { mode: 'station', yaw: 0, pitch: .34, dist: 3, keys: new Set(), joyX: 0, joyY: 0, jid: null, jox: 0, joy: 0, drags: new Map(), near: null, dlg: null, snap: false };
 const xUI = { prompt: $('#xPrompt'), promptT: $('#xPromptT'), act: $('#xAct'), dlg: $('#xDlg'), who: $('#xWho'), line: $('#xLine'), tasks: $('#xTasks'), hint: $('#xHint'), card: $('#xCard'), joy: $('#joy'), knob: $('#knob'), joyHint: $('#joyHint') };
 const curChar = () => roster.find(c => c.id === activeId);
 const ch1 = () => wanderer.ch1 || {};
@@ -2344,6 +2350,7 @@ function renderTasks() {
   let h = task(!!p.talked, 'Speak to James Brown');
   if (p.talked) h += task(allSeen(), `Inspect the station · ${seenCount()}/${XSPOTS.length}`);
   if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
+  if (p.slept) h = task(true, 'Sleep') + task(false, 'Find James Brown');
   xUI.tasks.innerHTML = h;
 }
 let noticeT;
@@ -2367,11 +2374,14 @@ async function startChapter1(fromCutscene, place) {
     Object.assign(james, { walking: false, lean: 0, headTilt: 0, headYaw: 0, raise: .1 });
     james.root.position.set(ROOM.x + 3.4, 0, ROOM.z - 1.6); james.root.rotation.y = Math.PI; james.lantern.intensity = 1.5;
   }
+  ex.mode = 'station'; ex.dist = 3;
+  setStationAfter(!!ch1().slept);
   player.visible = true; inner.visible = true; resetRig(); vel.set(0, 0, 0);
   player.position.set(ROOM.x - 5, 0, ROOM.z + 1.1); player.rotation.y = Math.PI / 2;
   ex.yaw = player.rotation.y + Math.PI;
   const pl = place || (!fromCutscene && resumePlace && resumePlace.who === activeId ? resumePlace : null);
-  if (pl) {
+  const worldPl = pl && pl.area === 'world' ? pl : null;
+  if (pl && !worldPl) {
     player.position.set(ROOM.x + clamp(+pl.x || 0, -6.5, 6.5), 0, ROOM.z + clamp(+pl.z || 0, -2.5, 2.5));
     player.rotation.y = +pl.rot || 0; ex.yaw = pl.yaw != null ? +pl.yaw : player.rotation.y + Math.PI;
   }
@@ -2386,8 +2396,10 @@ async function startChapter1(fromCutscene, place) {
   xUI.hint.innerHTML = document.body.classList.contains('touch') ? 'Left stick to move · drag to look' : 'WASD move · drag to look · E interact · Esc pause';
   xUI.hint.style.opacity = 1; setTimeout(() => { xUI.hint.style.opacity = 0; }, 7000);
   notice('Chapter I', 'ANTARCTICA', fromCutscene ? 3600 : 2600);
+  if (worldPl) enterWorld(worldPl);
 }
 function leaveExplore(goTitle = true) {
+  ex.mode = 'station'; $('#xNav').textContent = '';
   closeDialog(); ui.xhud.classList.remove('dreaming'); show(ui.xhud, false); show(ui.xpause, false); show(ui.tbc, false);
   const bo = $('#blackout'); bo.style.opacity = 0; bo.classList.remove('on');
   if (james.ready) james.root.visible = false;
@@ -2441,6 +2453,10 @@ async function interact() {
       setCh1({ talked: true }); renderTasks();
       if (first) { sfx.chime(); setTimeout(() => notice('New objective', sleepReady() ? 'SLEEP' : 'INSPECT THE STATION'), 400); }
     }, clips);
+  } else if (n.id === 'hatch' && ch1().slept) {
+    goOutside();
+  } else if (n.id === 'door') {
+    goInside();
   } else if (n.id === 'bunk' && sleepReady()) {
     doSleep();
   } else {
@@ -2463,10 +2479,13 @@ function doSleep() {
     startDream(() => {
       setCh1({ slept: true }); renderTasks();
       state = 'sleeping';
-      player.position.set(ROOM.x - 5.15, 0, ROOM.z + 1.5); player.rotation.y = -Math.PI / 2; ex.yaw = player.rotation.y + Math.PI; ex.snap = true;
+      setStationAfter(true);
+      player.position.set(ROOM.x - 5.15, 0, ROOM.z + 1.5); player.rotation.y = Math.PI / 2; ex.yaw = player.rotation.y + Math.PI; ex.snap = true;
       setTimeout(() => {
-        b.style.opacity = 0; ui.xhud.classList.remove('talking'); sfx.wind(.07);
-        state = 'xdone'; show(ui.tbc, true);
+        b.style.opacity = 0; b.style.transition = 'opacity 3s ease'; ui.xhud.classList.remove('talking'); sfx.wind(.22);
+        state = 'explore';
+        setTimeout(() => { b.style.transition = ''; notice('You wake to the cold', 'THE HATCH IS OPEN', 2800); sfx.alarm(); }, 1600);
+        setTimeout(() => { notice('James Brown is gone', 'FIND JAMES BROWN', 3400); sfx.chime(); renderTasks(); }, 5200);
       }, 900);
     });
   }, 4600);
@@ -2481,6 +2500,7 @@ function tickDialog(dt) {
   }
 }
 function updateExplore(dt) {
+  if (ex.mode === 'world') { updateWorldMode(dt); return; }
   const R = ROOM, p = player.position;
   // typewriter
   const d = ex.dlg;
@@ -2518,9 +2538,10 @@ function updateExplore(dt) {
   const showP = !!best && !d;
   xUI.prompt.classList.toggle('on', showP);
   const sleepy = best && best.id === 'bunk' && sleepReady();
-  if (best) xUI.promptT.textContent = best.id === 'james' ? 'Talk to James Brown' : sleepy ? 'Sleep' : `Inspect · ${best.label}`;
+  const exit = best && best.id === 'hatch' && ch1().slept;
+  if (best) xUI.promptT.textContent = best.id === 'james' ? 'Talk to James Brown' : sleepy ? 'Sleep' : exit ? 'Go outside' : `Inspect · ${best.label}`;
   xUI.act.classList.toggle('on', showP);
-  if (best) xUI.act.textContent = best.id === 'james' ? 'TALK' : sleepy ? 'SLEEP' : 'LOOK';
+  if (best) xUI.act.textContent = best.id === 'james' ? 'TALK' : sleepy ? 'SLEEP' : exit ? 'EXIT' : 'LOOK';
   // James turns to face you when you're close
   if (james.ready && james.root.visible) {
     const jr = james.root, dx = p.x - jr.position.x, dz = p.z - jr.position.z, near = Math.hypot(dx, dz) < 3.2;
@@ -2528,9 +2549,11 @@ function updateExplore(dt) {
     james.headTilt = near ? .08 : .25;
   }
   if (ant.radioLight) ant.radioLight.material.opacity = .5 + .5 * Math.sin(time * 5);
+  if (ant.hatchOpen && ant.hatchOpen.visible && Math.random() < .6) emit(R.x + 6.85, rand(.2, 2), R.z + rand(-.5, .5), -rand(1.5, 3.5), rand(-.2, .3), rand(-.6, .6), .9, .95, 1, rand(1, 1.8), .1);
   ant.heat.intensity = 15 + Math.sin(time * 9) * .8 + Math.sin(time * 23) * .5;
 }
 function exploreCamera(dt) {
+  if (ex.mode === 'world') { worldCamera(dt); return; }
   const R = ROOM, p = player.position, hy = headYFor(wanderer);
   const tgt = tmpV.set(p.x, p.y + hy * .85, p.z);
   const dd = ex.dist * (camera.aspect < .8 ? 1.25 : 1);
@@ -2593,7 +2616,7 @@ const xEnd = e => {
 };
 canvas.addEventListener('pointerup', xEnd);
 canvas.addEventListener('pointercancel', xEnd);
-canvas.addEventListener('wheel', e => { if (state === 'explore') ex.dist = clamp(ex.dist + e.deltaY * .003, 1.8, 4.2); }, { passive: true });
+canvas.addEventListener('wheel', e => { if (state === 'explore') ex.dist = clamp(ex.dist + e.deltaY * .003, 1.8, ex.mode === 'world' ? 9 : 4.2); }, { passive: true });
 xUI.act.addEventListener('click', e => { e.stopPropagation(); interact(); });
 xUI.dlg.addEventListener('click', () => advanceDialog());
 function pauseExplore(on) {
@@ -2608,6 +2631,256 @@ $('#tbcBtn').addEventListener('click', () => { sfx.click(); leaveExplore(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseExplore(true); });
 
 
+
+
+/* ============ procedural Antarctica (No Man's Sky style, endless) ============ */
+const wScene = new THREE.Scene();
+const W_FOG = 0xc3cfdb;
+wScene.background = new THREE.Color(W_FOG);
+wScene.fog = new THREE.FogExp2(W_FOG, .0125);
+const world = { built: false, seed: 1, chunks: new Map(), CH: 48, RES: 24, R: 4, queue: [], footDir: 0 };
+const worldSeedOf = c => (c && c.worldSeed) || [...String((c && c.id) || 'x')].reduce((h, ch) => (Math.imul(h, 31) + ch.charCodeAt(0)) | 0, 7);
+function wHash(ix, iy, k) {
+  let h = (Math.imul(ix, 374761393) + Math.imul(iy, 668265263) + Math.imul(world.seed + k * 7919, 1442695041)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296;
+}
+function wNoise(x, y, k = 0) {
+  const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy;
+  const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+  return lerp(lerp(wHash(ix, iy, k), wHash(ix + 1, iy, k), u), lerp(wHash(ix, iy + 1, k), wHash(ix + 1, iy + 1, k), u), v);
+}
+function wFbm(x, y, oct, k) { let s = 0, a = .5, f = 1, n = 0; for (let i = 0; i < oct; i++) { s += wNoise(x * f, y * f, k + i) * a; n += a; f *= 2.03; a *= .5; } return s / n; }
+const LAKE_Y = -7;
+function lakeAmt(x, z) { return smooth(.34, .27, wFbm(x * .0042 + 90, z * .0042 + 40, 2, 50)); }
+function wHeight(x, z) {
+  const n1 = wFbm(x * .0025, z * .0025, 4, 1);
+  const ridge = 1 - Math.abs(wFbm(x * .006 + 31, z * .006 - 17, 3, 10) * 2 - 1);
+  let h = (n1 - .45) * 75 + Math.pow(ridge, 3) * 48 * smooth(.42, .68, n1);
+  h += (wFbm(x * .06, z * .02, 2, 20) - .5) * 1.1;
+  h = lerp(h, LAKE_Y, lakeAmt(x, z));
+  const r = Math.hypot(x, z);
+  return lerp(0, h, smooth(26, 80, r));
+}
+const SNOW_C = new THREE.Color(0xeef3f9), SNOW_SHADE = new THREE.Color(0xc9d6e6), ROCK_C = new THREE.Color(0x3b3f47), ICE_C = new THREE.Color(0x9cc6de), wTmp = new THREE.Color();
+let wTerrainMat, wRockMat, wCapMat, wIceMat;
+function buildChunk(cx, cz) {
+  const { CH, RES } = world, g = new THREE.PlaneGeometry(CH, CH, RES, RES); g.rotateX(-Math.PI / 2);
+  const p = g.attributes.position, nrm = g.attributes.normal, col = new Float32Array(p.count * 3), e = 1.2;
+  const ox = cx * CH, oz = cz * CH;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i) + ox, z = p.getZ(i) + oz, y = wHeight(x, z);
+    p.setY(i, y);
+    const nx = wHeight(x - e, z) - wHeight(x + e, z), nz = wHeight(x, z - e) - wHeight(x, z + e), ny = 2 * e, l = Math.hypot(nx, ny, nz);
+    nrm.setXYZ(i, nx / l, ny / l, nz / l);
+    const steep = smooth(.8, .62, ny / l), lake = lakeAmt(x, z) * smooth(.9, .97, ny / l);
+    wTmp.copy(SNOW_C).lerp(SNOW_SHADE, clamp(wNoise(x * .05, z * .05, 30) * .7, 0, 1)).lerp(ICE_C, lake).lerp(ROCK_C, steep);
+    col[i * 3] = wTmp.r; col[i * 3 + 1] = wTmp.g; col[i * 3 + 2] = wTmp.b;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const mesh = new THREE.Mesh(g, wTerrainMat); mesh.position.set(ox, 0, oz); mesh.receiveShadow = true;
+  const grp = new THREE.Group(); grp.add(mesh);
+  // rock outcrops and ice spires
+  const nRocks = Math.floor(wHash(cx, cz, 60) * 5);
+  for (let i = 0; i < nRocks; i++) {
+    const x = ox + (wHash(cx, cz, 61 + i) - .5) * CH, z = oz + (wHash(cx, cz, 71 + i) - .5) * CH;
+    if (Math.hypot(x, z) < 30 || lakeAmt(x, z) > .3) continue;
+    const s = 1 + wHash(cx, cz, 81 + i) * 3.5, y = wHeight(x, z);
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), wRockMat);
+    rock.position.set(x, y - s * .25, z); rock.rotation.set(wHash(cx, cz, 91 + i) * 6, wHash(cx, cz, 95 + i) * 6, 0); rock.scale.y = .6 + wHash(cx, cz, 99 + i) * .6;
+    rock.castShadow = true; rock.receiveShadow = true; grp.add(rock);
+    const cap = new THREE.Mesh(new THREE.DodecahedronGeometry(s * .62, 0), wCapMat); cap.position.set(x, y + s * .3 * rock.scale.y, z); cap.scale.y = .35; grp.add(cap);
+  }
+  if (wHash(cx, cz, 120) > .72) {
+    const x0 = ox + (wHash(cx, cz, 121) - .5) * CH * .7, z0 = oz + (wHash(cx, cz, 122) - .5) * CH * .7;
+    if (Math.hypot(x0, z0) > 30) for (let i = 0; i < 6; i++) {
+      const x = x0 + (wHash(cx, cz, 130 + i) - .5) * 5, z = z0 + (wHash(cx, cz, 140 + i) - .5) * 5, h = 2 + wHash(cx, cz, 150 + i) * 5;
+      const sp = new THREE.Mesh(new THREE.ConeGeometry(.35 + h * .08, h, 5), wIceMat);
+      sp.position.set(x, wHeight(x, z) + h * .45, z); sp.rotation.set((wHash(cx, cz, 160 + i) - .5) * .5, wHash(cx, cz, 170 + i) * 6, (wHash(cx, cz, 180 + i) - .5) * .5);
+      sp.castShadow = true; grp.add(sp);
+    }
+  }
+  wScene.add(grp);
+  return grp;
+}
+function updateChunks(budget) {
+  const { CH, R } = world, p = player.position, pcx = Math.round(p.x / CH), pcz = Math.round(p.z / CH);
+  const want = [];
+  for (let dz = -R; dz <= R; dz++) for (let dx = -R; dx <= R; dx++) {
+    if (dx * dx + dz * dz > R * R + 1) continue;
+    const k = (pcx + dx) + ',' + (pcz + dz);
+    if (!world.chunks.has(k)) want.push([dx * dx + dz * dz, pcx + dx, pcz + dz, k]);
+  }
+  want.sort((a, b) => a[0] - b[0]);
+  for (let i = 0; i < Math.min(budget, want.length); i++) { const [, cx, cz, k] = want[i]; world.chunks.set(k, buildChunk(cx, cz)); }
+  for (const [k, grp] of world.chunks) {
+    const [cx, cz] = k.split(',').map(Number);
+    if ((cx - pcx) ** 2 + (cz - pcz) ** 2 > (R + 2) ** 2) {
+      wScene.remove(grp);
+      grp.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+      world.chunks.delete(k);
+    }
+  }
+}
+function clearWorld() {
+  for (const grp of world.chunks.values()) { wScene.remove(grp); grp.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  world.chunks.clear();
+  if (world.feet) { wScene.remove(world.feet); world.feet.geometry.dispose(); world.feet = null; }
+}
+function buildWorld(seed) {
+  if (!world.built) {
+    world.built = true;
+    wTerrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .86, metalness: 0, envMapIntensity: .15 });
+    wRockMat = new THREE.MeshStandardMaterial({ color: 0x34383f, roughness: .95, flatShading: true, envMapIntensity: 0 });
+    wCapMat = new THREE.MeshStandardMaterial({ color: 0xeaf0f7, roughness: .9, flatShading: true, envMapIntensity: 0 });
+    wIceMat = new THREE.MeshStandardMaterial({ color: 0xbfe3f5, roughness: .15, metalness: .1, transparent: true, opacity: .85, flatShading: true, envMapIntensity: .6 });
+    wScene.add(new THREE.HemisphereLight(0xdfe8f3, 0x7a8796, 1.05));
+    const sunL = new THREE.DirectionalLight(0xfff6ea, 1.7); sunL.castShadow = true;
+    sunL.shadow.mapSize.set(1024, 1024); Object.assign(sunL.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 1, far: 120 });
+    sunL.shadow.bias = -.0006; wScene.add(sunL, sunL.target); world.sun = sunL;
+    // station exterior at the origin
+    const st = new THREE.Group(); wScene.add(st); world.station = st;
+    const hull = new THREE.MeshStandardMaterial({ color: 0x4b525d, roughness: .7, metalness: .4, envMapIntensity: .3 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(14.4, 3.3, 6.4), hull); body.position.y = 1.65; body.castShadow = true; body.receiveShadow = true; st.add(body);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(14.6, .35, 6.6), wCapMat); roof.position.y = 3.45; st.add(roof);
+    for (let i = -2; i <= 2; i++) { const rib = new THREE.Mesh(new THREE.BoxGeometry(.2, 3.4, 6.6), new THREE.MeshStandardMaterial({ color: 0x2c3138, metalness: .5, roughness: .6 })); rib.position.set(i * 3, 1.7, 0); st.add(rib); }
+    const opening = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 2.05), new THREE.MeshBasicMaterial({ color: 0xffa860 })); opening.position.set(7.21, 1.03, 0); opening.rotation.y = Math.PI / 2; st.add(opening);
+    const glow = glowSprite(0xffa860, 4, .6); glow.position.set(7.6, 1.2, 0); st.add(glow);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(.1, 2.1, 1.2), hull); door.position.set(7.75, 1.05, -1.05); door.rotation.y = .9; st.add(door);
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(.06, .08, 6, 6), hull); mast.position.set(-5, 6.3, -2); st.add(mast);
+    const beacon = glowSprite(0xff4a3a, .9, .9); beacon.position.set(-5, 9.4, -2); st.add(beacon); world.beacon = beacon;
+    const winL = new THREE.Mesh(new THREE.PlaneGeometry(1.4, .7), new THREE.MeshBasicMaterial({ color: 0xffc88a })); winL.position.set(5.6, 1.8, -3.21); winL.rotation.y = Math.PI; st.add(winL);
+    // blizzard around the camera
+    const N = coarse ? 2200 : 4200, sp = new Float32Array(N * 3); world.sN = N; world.sSeed = new Float32Array(N);
+    for (let i = 0; i < N; i++) { sp[i * 3] = rand(-25, 25); sp[i * 3 + 1] = rand(-3, 14); sp[i * 3 + 2] = rand(-25, 25); world.sSeed[i] = rand(0, 100); }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+    world.snow = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: .08, map: glowTex, transparent: true, opacity: .9, depthWrite: false }));
+    world.snow.frustumCulled = false; wScene.add(world.snow);
+  }
+  if (world.seed !== seed || !world.chunks.size) {
+    clearWorld(); world.seed = seed;
+    world.footDir = wHash(3, 7, 900) * Math.PI * 1.2 - Math.PI * .6;
+    // James's footprints, fading into the snow
+    const n = 140, feet = new THREE.InstancedMesh(new THREE.CircleGeometry(.11, 10), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, envMapIntensity: 0 }), n);
+    const d = new THREE.Object3D(), c = new THREE.Color();
+    let x = 8.6, z = 0, a = world.footDir;
+    for (let i = 0; i < n; i++) {
+      a += Math.sin(i * .07) * .025;
+      x += Math.cos(a) * .72; z += Math.sin(a) * .72;
+      const side = i % 2 ? .17 : -.17, fx = x - Math.sin(a) * side, fz = z + Math.cos(a) * side;
+      d.position.set(fx, wHeight(fx, fz) + .025, fz); d.rotation.set(-Math.PI / 2, 0, -a + Math.PI / 2); d.scale.set(1, 1.7, 1); d.updateMatrix();
+      feet.setMatrixAt(i, d.matrix);
+      feet.setColorAt(i, c.set(0x8a9bb0).lerp(SNOW_C, smooth(20, n, i)));
+    }
+    feet.instanceMatrix.needsUpdate = true; if (feet.instanceColor) feet.instanceColor.needsUpdate = true;
+    feet.receiveShadow = true; wScene.add(feet); world.feet = feet;
+  }
+}
+function worldBlocked(x, z) { return Math.abs(x) < 7.5 && Math.abs(z) < 3.5; }
+function enterWorld(place) {
+  buildWorld(worldSeedOf(curChar() || wanderer));
+  ex.mode = 'world';
+  if (james.ready) james.root.visible = false;
+  wScene.add(player); wScene.add(particles);
+  resetRig(); vel.set(0, 0, 0); closeDialog();
+  if (place && place.area === 'world') {
+    player.position.set(+place.x || 9, 0, +place.z || 0); player.rotation.y = +place.rot || 0;
+    ex.yaw = place.yaw != null ? +place.yaw : player.rotation.y + Math.PI;
+  } else {
+    player.position.set(9, 0, 0); player.rotation.y = Math.PI / 2; ex.yaw = player.rotation.y + Math.PI;
+  }
+  player.position.y = wHeight(player.position.x, player.position.z);
+  updateChunks(99);
+  ex.snap = true; ex.pitch = .3; ex.dist = 4.2;
+  sfx.wind(.4);
+  renderTasks(); resize();
+  if (!ch1().outside) {
+    setCh1({ outside: true });
+    setTimeout(() => notice('Footprints in the snow', 'FOLLOW JAMES’S TRAIL', 3200), 1200);
+  }
+}
+function goOutside() {
+  state = 'loadingCh';
+  const f = $('#fade'); f.style.transition = 'opacity .8s'; f.style.opacity = 1;
+  setTimeout(() => { enterWorld(null); state = 'explore'; f.style.transition = 'opacity 1.6s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 1700); }, 850);
+}
+function goInside() {
+  state = 'loadingCh';
+  const f = $('#fade'); f.style.transition = 'opacity .8s'; f.style.opacity = 1;
+  setTimeout(() => {
+    ex.mode = 'station'; $('#xNav').textContent = '';
+    aScene.add(player); aScene.add(particles); resetRig(); vel.set(0, 0, 0);
+    player.position.set(ROOM.x + 6.1, 0, ROOM.z); player.rotation.y = -Math.PI / 2; ex.yaw = player.rotation.y + Math.PI; ex.snap = true; ex.dist = 3;
+    sfx.wind(.22); resize();
+    state = 'explore'; f.style.transition = 'opacity 1.2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 1300);
+  }, 850);
+}
+function setStationAfter(after) {
+  if (!ant.built) return;
+  if (ant.hatch) ant.hatch.visible = !after;
+  if (ant.hatchOpen) ant.hatchOpen.visible = after;
+  if (after && james.ready) james.root.visible = false;
+}
+function updateWorldMode(dt) {
+  const p = player.position, d = ex.dlg;
+  let ix = ex.joyX, iy = ex.joyY; const k = ex.keys;
+  if (k.has('KeyA') || k.has('ArrowLeft')) ix -= 1;
+  if (k.has('KeyD') || k.has('ArrowRight')) ix += 1;
+  if (k.has('KeyW') || k.has('ArrowUp')) iy += 1;
+  if (k.has('KeyS') || k.has('ArrowDown')) iy -= 1;
+  if (d) ix = iy = 0;
+  const mag = Math.hypot(ix, iy); if (mag > 1) { ix /= mag; iy /= mag; }
+  const run = k.has('ShiftLeft') || k.has('ShiftRight') || mag > .92 ? 5.4 : 3.6;
+  const fx_ = -Math.sin(ex.yaw), fz = -Math.cos(ex.yaw), rx = Math.cos(ex.yaw), rz = -Math.sin(ex.yaw);
+  const wx = (rx * ix + fx_ * iy) * run, wz = (rz * ix + fz * iy) * run;
+  vel.x += (wx - vel.x) * Math.min(1, dt * 8); vel.z += (wz - vel.z) * Math.min(1, dt * 8);
+  const nx = p.x + vel.x * dt, nz = p.z + vel.z * dt;
+  // too steep to climb? slide along instead
+  const slope = (x, z) => Math.abs(wHeight(x, z) - wHeight(p.x, p.z)) / Math.max(.001, Math.hypot(x - p.x, z - p.z));
+  if (!worldBlocked(nx, p.z) && slope(nx, p.z) < 1.4) p.x = nx; else vel.x = 0;
+  if (!worldBlocked(p.x, nz) && slope(p.x, nz) < 1.4) p.z = nz; else vel.z = 0;
+  p.y += (wHeight(p.x, p.z) - p.y) * Math.min(1, dt * 18);
+  if (Math.hypot(vel.x, vel.z) > .2) player.rotation.y = angLerp(player.rotation.y, Math.atan2(vel.x, vel.z), Math.min(1, dt * 10));
+  // the station door
+  const dd = Math.hypot(p.x - 7.9, p.z);
+  ex.near = dd < 2.2 ? { id: 'door', label: 'Station' } : null;
+  const showP = !!ex.near && !d;
+  xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
+  if (ex.near) { xUI.promptT.textContent = 'Enter the station'; xUI.act.textContent = 'ENTER'; }
+  // where's home?
+  const dist = Math.hypot(p.x - 8, p.z), dirs = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+  const bearing = dirs[((Math.round(Math.atan2(-p.z, 8 - p.x) / (Math.PI / 4)) % 8) + 8) % 8];
+  $('#xNav').textContent = dist < 6 ? 'At the station' : `Station · ${Math.round(dist)} m · ${bearing}`;
+}
+function updateWorldScene(dt) {
+  updateChunks(2);
+  const c = camera.position, pa = world.snow.geometry.attributes.position.array;
+  const gust = .7 + .4 * Math.sin(time * .5) + .2 * Math.sin(time * 1.9), wx = -9 * gust, wz = 3.5 * gust;
+  for (let i = 0; i < world.sN; i++) {
+    const j = i * 3, sd = world.sSeed[i];
+    pa[j] += (wx + Math.sin(time * 2 + sd) * 1.6) * dt; pa[j + 1] += (-2.2 + Math.cos(time * 1.6 + sd)) * dt; pa[j + 2] += (wz + Math.sin(time * 1.3 + sd * 2) * 1.6) * dt;
+    if (pa[j] < c.x - 25) pa[j] += 50; else if (pa[j] > c.x + 25) pa[j] -= 50;
+    if (pa[j + 2] < c.z - 25) pa[j + 2] += 50; else if (pa[j + 2] > c.z + 25) pa[j + 2] -= 50;
+    if (pa[j + 1] < c.y - 4) pa[j + 1] += 18; else if (pa[j + 1] > c.y + 14) pa[j + 1] -= 18;
+  }
+  world.snow.geometry.attributes.position.needsUpdate = true;
+  sfx.gust(300 + gust * 150);
+  const p = player.position;
+  world.sun.position.set(p.x + 30, p.y + 45, p.z + 20); world.sun.target.position.copy(p);
+  if (world.beacon) world.beacon.material.opacity = .45 + .55 * (Math.sin(time * 3) > 0 ? 1 : 0);
+}
+function worldCamera(dt) {
+  const p = player.position, hy = headYFor(wanderer);
+  const tgt = tmpV.set(p.x, p.y + hy * .85, p.z);
+  const dd = ex.dist * (camera.aspect < .8 ? 1.2 : 1);
+  const cx = tgt.x + Math.sin(ex.yaw) * Math.cos(ex.pitch) * dd, cz = tgt.z + Math.cos(ex.yaw) * Math.cos(ex.pitch) * dd;
+  let cy = tgt.y + Math.sin(ex.pitch) * dd;
+  cy = Math.max(cy, wHeight(cx, cz) + .5);
+  const k = ex.snap ? 1 : Math.min(1, dt * 8);
+  camera.position.lerp(tmpV2.set(cx, cy, cz), k);
+  lookTarget.lerp(tgt, ex.snap ? 1 : Math.min(1, dt * 12));
+  ex.snap = false;
+  camera.lookAt(lookTarget);
+}
 
 /* ============ the dream: your species' leader speaks ============ */
 const LEADER_LINES = {
@@ -2754,7 +3027,7 @@ function renderSlots() {
   slotUI.list.innerHTML = slots.map((sl, i) => {
     if (!sl) return `<button class="slot empty" data-i="${i}"${slotMode !== 'save' ? ' disabled' : ''}><b>SLOT ${i + 1}</b><span>Empty</span><small>${slotMode === 'save' ? 'Tap to save here' : 'No save'}</small></button>`;
     const r = Array.isArray(sl.roster) ? sl.roster : [], a = r.find(c => c.id === sl.activeId) || r[0] || {};
-    const sp = SPECIES[spOf(a)].label, ch = chapterOf(a).short, where = sl.place && sl.place.mode === 'explore' ? 'Station' : 'Base';
+    const sp = SPECIES[spOf(a)].label, ch = chapterOf(a).short, where = sl.place && sl.place.mode === 'explore' ? (sl.place.area === 'world' ? 'Antarctic wilds' : 'Station') : 'Base';
     const name = String(a.name || 'WANDERER').replace(/[<>&"]/g, '');
     return `<button class="slot${slotArm === i ? ' armed' : ''}" data-i="${i}"><b>SLOT ${i + 1}</b><span>${name} · ${sp} · ${ch}</span><small>${fmtWhen(sl.savedAt)} · ${r.length} wanderer${r.length === 1 ? '' : 's'} · ${where}</small></button>`;
   }).join('');
@@ -2768,7 +3041,9 @@ function closeSlots() { show(slotUI.root, false); refreshMenu(); refreshDirty();
 function doSave(i) {
   const inStation = slotFrom === 'explore';
   const place = inStation
-    ? { mode: 'explore', x: player.position.x - ROOM.x, z: player.position.z - ROOM.z, rot: player.rotation.y, yaw: ex.yaw }
+    ? (ex.mode === 'world'
+      ? { mode: 'explore', area: 'world', x: player.position.x, z: player.position.z, rot: player.rotation.y, yaw: ex.yaw }
+      : { mode: 'explore', area: 'station', x: player.position.x - ROOM.x, z: player.position.z - ROOM.z, rot: player.rotation.y, yaw: ex.yaw })
     : { mode: 'menu' };
   slots[i] = { savedAt: Date.now(), roster: JSON.parse(JSON.stringify(roster)), activeId, place };
   store.set('nv_slots', slots);
@@ -2835,8 +3110,8 @@ function loop() {
   if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh' || state === 'sleeping') {
     if (state === 'explore') updateExplore(dt);
     tickDialog(dt);
-    if (state !== 'loadingCh') { updateAnim(dt); jamesTick(dt); updateParticles(dt); exploreCamera(dt); }
-    sfx.music(0); renderer.render(aScene, camera); return;
+    if (state !== 'loadingCh') { updateAnim(dt); jamesTick(dt); updateParticles(dt); exploreCamera(dt); if (ex.mode === 'world') updateWorldScene(dt); }
+    sfx.music(0); renderer.render(ex.mode === 'world' ? wScene : aScene, camera); return;
   }
   if (state === 'title') updateWander(dt);
   updateAnim(dt); updateWorld(dt); updateCamera(dt);
