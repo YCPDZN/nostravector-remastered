@@ -39,6 +39,8 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 | Move | Left thumbstick (push fully to run, lightly to walk) | WASD / arrow keys (run by default; C toggles walking) |
 | Sprint | SPRINT button (toggle) | Hold Shift |
 | Jump | JUMP | Space |
+| Jetpack | Hold JUMP while in the air | Hold Space while in the air |
+| Block | Hold BLOCK | Hold R or the right mouse button |
 | Dodge roll | DODGE | Q |
 | Attack / mine / place / use | ATTACK | Click (without dragging) or F |
 | Look | Drag the right side | Drag the mouse; wheel to zoom |
@@ -54,6 +56,10 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 ## Survival
 
 - **Health and stamina:** sprinting, jumping, dodging and swinging cost stamina, which refills when you rest.
+- **Movement and combat animations:**
+  - **Sprint:** long strides, pumping arms and a hard forward lean, kicking up snow as you go.
+  - **Block:** arms crossed in front of you behind a hexagonal suit shield. Attacks from the front do a quarter of their damage and cost 14 stamina each, with a knock-back. You move slowly and can't sprint while blocking, and blocking stops when your stamina runs out.
+  - **Jetpack:** a twin-nozzle pack on your back. Hold jump in the air (or after stepping off a ledge) to thrust upwards with flame and smoke, leaning into the direction you're moving, and steer better than in a normal jump. Fuel (an orange bar under stamina) lasts about 3 seconds and refills on the ground.
 - **Gathering:** attack rocks (stone, sometimes scrap metal), ice spires (ice, sometimes frost crystal) and supply crates (scrap metal, cloth, sometimes frost crystal). Three crates sit near the station to get you started.
 - **Crafting** (Inventory → Craft):
   - Ice pick: doubles mining and melee damage.

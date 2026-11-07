@@ -519,6 +519,12 @@ button.bm-c.no{opacity:.45}
 .jwho button{min-width:0!important;padding:6px 10px!important;font-size:8px!important}
 #bBuild{right:168px;bottom:168px;width:52px;height:52px;font-size:8px}
 @media (max-width:720px){ .bm-wrap{grid-template-columns:1fr} .bm-grid{grid-template-columns:58px repeat(5,1fr)} .res-row.shop em{display:none} }
+
+.bar.jet{opacity:0;transition:opacity .3s}
+.bar.jet.on{opacity:1}
+.bar.jet i{background:#ffb347}
+.bar.jet.low i{background:#ff6b5e}
+#bBlock{right:192px;bottom:96px;width:52px;height:52px;font-size:8px}
 </style>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
@@ -542,7 +548,7 @@ button.bm-c.no{opacity:.45}
 <!-- Exploration HUD -->
 <div id="xhud" class="hidden">
   <div class="mmap" id="mmap"><canvas id="mmapC"></canvas><div class="cap" id="mmapCap"></div></div>
-  <div class="x-obj"><div class="lvl" id="lvl"><b id="lvN">LV 1</b><div class="xpbar"><i id="xpI"></i></div><small id="xpT"></small></div><small id="xChap">CHAPTER I · ANTARCTICA</small><div id="xTasks"></div><div class="x-nav" id="xNav"></div><div class="bars"><div class="bar hp" id="hpBar"><i></i></div><div class="bar sta" id="staBar"><i></i></div></div>
+  <div class="x-obj"><div class="lvl" id="lvl"><b id="lvN">LV 1</b><div class="xpbar"><i id="xpI"></i></div><small id="xpT"></small></div><small id="xChap">CHAPTER I · ANTARCTICA</small><div id="xTasks"></div><div class="x-nav" id="xNav"></div><div class="bars"><div class="bar hp" id="hpBar"><i></i></div><div class="bar sta" id="staBar"><i></i></div><div class="bar jet" id="jetBar"><i></i></div></div>
     <div class="jcmd" id="jcmd"><button class="jbtn" id="jBtn"><span id="jWho">JAMES</span><b id="jMode">FOLLOWING</b><em>▾</em></button>
       <div class="jopts" id="jOpts"><div class="jwho" id="jWhoRow" style="display:none"></div><button data-m="mine"><kbd>1</kbd>Mine</button><button data-m="explore"><kbd>2</kbd>Explore</button><button data-m="base"><kbd>3</kbd>Meet me back at base</button><button data-m="wander"><kbd>4</kbd>Wander around</button><button data-m="follow"><kbd>5</kbd>Follow me</button></div>
     </div></div>
@@ -562,7 +568,7 @@ button.bm-c.no{opacity:.45}
     <div id="joy"><div id="knob"></div></div>
     <button id="xAct">TALK</button>
     <div class="act-pad">
-      <button id="bAtk">ATTACK</button><button id="bJump">JUMP</button><button id="bDodge">DODGE</button><button id="bSprint">SPRINT</button><button id="bBuild">BUILD</button>
+      <button id="bAtk">ATTACK</button><button id="bJump">JUMP</button><button id="bDodge">DODGE</button><button id="bSprint">SPRINT</button><button id="bBuild">BUILD</button><button id="bBlock">BLOCK</button>
     </div>
   </div>
 </div>
@@ -3133,6 +3139,7 @@ function leaveExplore(goTitle = true) {
   if (soldier.ready) soldier.root.visible = false; meet.active = false; ui.xhud.classList.remove('cutting');
   ex.mode = 'station'; openMap(false); $('#xNav').textContent = ''; ui.xhud.classList.remove('world'); hideGhost(); stopBuild(); closeModals(); ex.act = null; ex.air = false;
   if (ex.held && ex.held.parent) ex.held.parent.remove(ex.held);
+  hideSuitGear(); ex.blocking = ex.jetting = false;
   closeDialog(); ui.xhud.classList.remove('dreaming'); show(ui.xhud, false); show(ui.xpause, false); show(ui.tbc, false);
   const bo = $('#blackout'); bo.style.opacity = 0; bo.classList.remove('on');
   if (james.ready) james.root.visible = false;
@@ -3347,7 +3354,7 @@ addEventListener('keydown', e => {
   if (e.target && e.target.tagName === 'INPUT') return;
   if (e.code === 'Escape' || e.code === 'KeyP') { pauseExplore(true); return; }
   if (ex.invOpen) return;
-  if (e.code === 'Space' && ex.mode === 'world' && !ex.dlg) { e.preventDefault(); doJump(); return; }
+  if (e.code === 'Space' && ex.mode === 'world' && !ex.dlg) { e.preventDefault(); ex.keys.add('Space'); doJump(); return; }
   if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); interact(); return; }
   if (e.code.startsWith('Arrow')) e.preventDefault();
   ex.keys.add(e.code);
@@ -3359,6 +3366,7 @@ canvas.addEventListener('pointerdown', e => {
   if (e.pointerType === 'touch') document.body.classList.add('touch');
   if (state !== 'explore') return;
   e.preventDefault();
+  if (e.pointerType === 'mouse' && e.button === 2) ex.blockM = true;
   if (e.pointerType !== 'mouse' && e.clientX < innerWidth * .5 && ex.jid === null) {
     ex.jid = e.pointerId; ex.jox = e.clientX; ex.joy = e.clientY;
     xUI.joy.style.left = e.clientX + 'px'; xUI.joy.style.top = e.clientY + 'px';
@@ -3383,7 +3391,8 @@ canvas.addEventListener('pointermove', e => {
 const xEnd = e => {
   if (e.pointerId === ex.jid) { ex.jid = null; ex.joyX = ex.joyY = 0; xUI.joy.classList.remove('on'); xUI.joyHint.style.opacity = 1; }
   const d = ex.drags.get(e.pointerId);
-  if (d && d.mouse && e.type === 'pointerup' && state === 'explore' && ex.mode === 'world' && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6 && performance.now() - d.t < 350) doAttack();
+  if (e.button === 2) ex.blockM = false;
+  if (d && d.mouse && e.button === 0 && e.type === 'pointerup' && state === 'explore' && ex.mode === 'world' && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6 && performance.now() - d.t < 350) doAttack();
   ex.drags.delete(e.pointerId);
 };
 canvas.addEventListener('pointerup', xEnd);
@@ -3935,7 +3944,7 @@ function spend(n) { if (ex.sta < n) return false; ex.sta -= n; ex.staT = time; r
 function doJump() {
   if (ex.mode !== 'world' || ex.air || ex.act || ex.invOpen || ex.dlg) return;
   if (!spend(STA.jump)) return;
-  ex.air = true; ex.vy = 6.4; sfx.blip();
+  ex.air = true; ex.vy = 6.4; ex.jumpT = time; sfx.blip();
 }
 function doDodge() {
   if (ex.mode !== 'world' || ex.act || ex.invOpen || ex.dlg) return;
@@ -4016,6 +4025,7 @@ function updateSurvival(dt) {
   const hp = $('#hpBar'), st = $('#staBar');
   hp.firstChild.style.transform = `scaleX(${ex.hp / maxHP()})`; hp.classList.toggle('low', ex.hp < maxHP() * .25);
   st.firstChild.style.transform = `scaleX(${ex.sta / 100})`; st.classList.toggle('low', ex.sta < 20);
+  const jb = $('#jetBar'); jb.firstChild.style.transform = `scaleX(${(ex.jet == null ? 100 : ex.jet) / 100})`; jb.classList.toggle('on', ex.jet != null && ex.jet < 99.5); jb.classList.toggle('low', ex.jet < 15);
   // placement preview, teleporter rings, merchants
   updateBuildGhost(); tickMerchants(dt);
   for (const b of world.build) if (b.mesh.userData.spin) b.mesh.userData.spin.rotation.z += dt * 1.5;
@@ -4027,9 +4037,67 @@ function updateSurvival(dt) {
     gh.traverse(o => { if (o.isMesh) o.material.color.set(g.ok ? 0x7fe0a0 : 0xff6b5e); });
   } else hideGhost();
 }
+// ---- block, jetpack and sprint ----
+const JET = { drain: 34, refill: 22, thrust: 27, maxUp: 5.5 };
+function blockHeld() { return ex.mode === 'world' && !ex.air && !ex.invOpen && !ex.dlg && !ex.build && !ex.act && ex.sta > 2 && (ex.keys.has('KeyR') || ex.blockM || ex.blockT); }
+function jetHeld() { return ex.mode === 'world' && ex.air && !ex.invOpen && !ex.dlg && ex.jet > 0 && time - (ex.jumpT || 0) > .22 && (ex.keys.has('Space') || $('#bJump').classList.contains('on')); }
+const suit = {};
+function suitGear() {
+  if (suit.pack) return suit;
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .5, metalness: .6 }, o));
+  const pack = new THREE.Group(), body = M(0x3a3f47), trim = M(0x9fe6ff, { emissive: 0x2a6a80, emissiveIntensity: .8 });
+  const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; pack.add(o); return o; };
+  add(new THREE.BoxGeometry(.34, .42, .14), body, 0, 0, 0);
+  for (const x of [-.1, .1]) { add(new THREE.CylinderGeometry(.055, .065, .38, 10), M(0x5a616c), x, -.04, -.08); add(new THREE.CylinderGeometry(.045, .065, .08, 10), M(0x202328), x, -.27, -.08); }
+  add(new THREE.BoxGeometry(.3, .03, .145), trim, 0, .12, 0);
+  const flameMat = new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: .85, blending: THREE.AdditiveBlending, depthWrite: false });
+  suit.flames = [-.1, .1].map(x => { const f = new THREE.Mesh(new THREE.ConeGeometry(.05, .4, 10), flameMat); f.rotation.x = Math.PI; f.position.set(x, -.5, -.08); pack.add(f); const g = glowSprite(0xff9a3a, .9, .8); g.position.set(x, -.42, -.08); pack.add(g); f.userData.glow = g; return f; });
+  suit.pack = pack;
+  suit.shield = new THREE.Mesh(new THREE.CircleGeometry(.62, 6), new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+  return suit;
+}
+function hideSuitGear() { if (suit.pack) { suit.pack.visible = false; suit.shield.visible = false; } }
+function suitTick(dt) {
+  const S = suitGear(), hy = headYFor(wanderer);
+  if (S.pack.parent !== inner) inner.add(S.pack);
+  if (S.shield.parent !== player) player.add(S.shield);
+  S.pack.visible = true; S.pack.position.set(0, hy - .52, -.24);
+  const jet = ex.jetting, fl = jet ? .8 + Math.random() * .4 : 0;
+  for (const f of S.flames) { f.visible = jet; f.scale.set(1, fl, 1); f.userData.glow.visible = jet; f.userData.glow.material.opacity = .5 + Math.random() * .4; }
+  if (jet) {
+    const p = player.position, a = player.rotation.y, bx = p.x - Math.sin(a) * .34, bz = p.z - Math.cos(a) * .34;
+    burst(bx, p.y + hy - 1.15, bz, 2, .7, 1, .62, .25, .35, 0, -4);
+    if (Math.random() < dt * 20) burst(bx, p.y + hy - 1.2, bz, 1, .4, .55, .55, .6, 1.1, -.3, -1);
+  }
+  ex.shieldHit = Math.max(0, (ex.shieldHit || 0) - dt * 3);
+  const want = ex.blocking ? .2 + ex.shieldHit * .6 : 0, m = S.shield.material;
+  m.opacity += (want - m.opacity) * Math.min(1, dt * 14);
+  S.shield.visible = m.opacity > .01; S.shield.position.set(0, hy - .5, .55); S.shield.rotation.z += dt * .6;
+}
 function worldActionPose(dt) {
   const A = ex.act;
-  if (ex.air && !A) {
+  suitTick(dt);
+  if (!rig.ra) { syncHeld(); return; }
+  const hv = Math.hypot(vel.x, vel.z);
+  if (ex.air && !A && ex.jetting) {
+    damp(rig.rl.rotation, 'x', .3, 10, dt); damp(rig.ll.rotation, 'x', .12, 10, dt);
+    damp(rig.ra.rotation, 'x', .35, 10, dt); damp(rig.la.rotation, 'x', .35, 10, dt);
+    damp(rig.ra.rotation, 'z', -.32, 10, dt); damp(rig.la.rotation, 'z', .32, 10, dt);
+    damp(inner.rotation, 'x', Math.min(.5, hv * .07), 6, dt);
+  } else if (!ex.air && !A && ex.blocking) {
+    damp(rig.ra.rotation, 'x', -1.45, 18, dt); damp(rig.la.rotation, 'x', -1.45, 18, dt);
+    damp(rig.ra.rotation, 'z', .55, 18, dt); damp(rig.la.rotation, 'z', -.55, 18, dt);
+    damp(inner.rotation, 'x', .14, 10, dt);
+  } else if (!ex.air && !A && ex.speedMode === 'sprint' && hv > 5) {
+    // sprint: long strides, pumping arms, a hard forward lean and kicked-up snow
+    const s = Math.sin(walkPhase);
+    rig.rl.rotation.x = s * 1.05; rig.ll.rotation.x = -s * 1.05;
+    rig.ra.rotation.x = -s * 1.2 - .25; rig.la.rotation.x = s * 1.2 - .25;
+    rig.ra.rotation.z = -.14; rig.la.rotation.z = .14;
+    damp(inner.rotation, 'x', .4, 8, dt);
+    if (Math.random() < dt * 12) burst(player.position.x, player.position.y + .05, player.position.z, 2, 1.3, .92, .95, 1, .5, .6, .6);
+  }
+  if (ex.air && !A && !ex.jetting) {
     damp(rig.rl.rotation, 'x', .55, 12, dt); damp(rig.ll.rotation, 'x', -.3, 12, dt);
     damp(rig.ra.rotation, 'z', -.5, 10, dt); damp(rig.la.rotation, 'z', .5, 10, dt);
   }
@@ -4129,6 +4197,11 @@ addEventListener('keydown', e => {
 }, true);
 const holdBtn = (id, fn) => { const b = $(id); b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); b.classList.add('on'); fn(); }); for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(ev, () => b.classList.remove('on')); };
 holdBtn('#bAtk', doAttack); holdBtn('#bJump', doJump); holdBtn('#bDodge', doDodge);
+{
+  const bb = $('#bBlock'), on = v => e => { e.preventDefault(); e.stopPropagation(); ex.blockT = v; bb.classList.toggle('on', v); };
+  bb.addEventListener('pointerdown', on(true)); for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) bb.addEventListener(ev, on(false));
+}
+addEventListener('blur', () => { ex.blockM = false; ex.blockT = false; ex.keys.delete('Space'); });
 holdBtn('#bBuild', () => { if (state === 'explore' && ex.mode === 'world' && !ex.invOpen && !ex.dlg) openBuild(true); });
 $('#bSprint').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); ex.sprintT = !ex.sprintT; $('#bSprint').classList.toggle('on', ex.sprintT); });
 
@@ -4599,6 +4672,16 @@ function faunaSpawner() {
 }
 function hurtPlayer(n, src) {
   if (ex.act && ex.act.type === 'dodge') { if (time - fauna.msgT > 1) { lootMsg('Dodged!', '#9fe6ff'); fauna.msgT = time; } return; }
+  if (ex.blocking) {
+    const p = player.position, a = player.rotation.y, dx = src ? src.x - p.x : 0, dz = src ? src.z - p.z : 0, d = Math.hypot(dx, dz) || 1;
+    const front = !src || (dx * Math.sin(a) + dz * Math.cos(a)) / d > .15;
+    if (front) {
+      n = Math.round(n * .25); ex.sta = Math.max(0, ex.sta - 14); ex.staT = time; ex.shieldHit = 1;
+      sfx.hit('ice'); if (time - fauna.msgT > 1) { lootMsg('Blocked!', '#9fe6ff'); fauna.msgT = time; }
+      if (src) { vel.x -= dx / d * 2; vel.z -= dz / d * 2; }
+      if (n <= 0) return;
+    }
+  }
   ex.hp = Math.max(0, ex.hp - n); invState().hp = Math.round(ex.hp);
   sfx.thud(); sfx.hit('crate'); combatPulse();
   const fx = $('#hurtFx'); fx.classList.remove('on'); void fx.offsetWidth; fx.classList.add('on');
@@ -5163,9 +5246,9 @@ function enterWorld(place) {
   sfx.wind(.4);
   renderTasks(); resize();
   xUI.hint.innerHTML = document.body.classList.contains('touch')
-    ? 'Stick move (push fully to run) · Attack hits rocks, ice & crates · bag = inventory'
-    : companionOn() ? 'Shift sprint · Space jump · Q dodge · Click/F attack · Wheel hotbar · 1–5 companions · B build · M map · I inventory'
-    : 'Shift sprint · C walk · Space jump · Q dodge · Click/F attack · 1–6 hotbar · B build · I inventory';
+    ? 'Stick move (push fully to run) · hold JUMP in the air for the jetpack · hold BLOCK to shield · BUILD to build'
+    : companionOn() ? 'Shift sprint · Space jump (hold for jetpack) · R / right-click block · Q dodge · Click/F attack · Wheel hotbar · 1–5 companions · B build · M map · I inventory'
+    : 'Shift sprint · C walk · Space jump (hold for jetpack) · R / right-click block · Q dodge · Click/F attack · 1–6 hotbar · B build · I inventory';
   xUI.hint.style.opacity = 1; setTimeout(() => { xUI.hint.style.opacity = 0; }, 9000);
   if (!ch1().outside) {
     setCh1({ outside: true });
@@ -5207,7 +5290,9 @@ function updateWorldMode(dt) {
   const mag = Math.hypot(ix, iy); if (mag > 1) { ix /= mag; iy /= mag; }
   const touchWalk = ex.jid !== null && mag < .55;
   let speed = ex.walk || touchWalk ? 2.1 : 4.6;
-  const wantSprint = (k.has('ShiftLeft') || k.has('ShiftRight') || ex.sprintT) && mag > .2 && !ex.walk;
+  ex.blocking = blockHeld();
+  if (ex.blocking) speed = Math.min(speed, 1.8);
+  const wantSprint = (k.has('ShiftLeft') || k.has('ShiftRight') || ex.sprintT) && mag > .2 && !ex.walk && !ex.blocking;
   if (wantSprint && ex.sta > 1) { speed = 7.6; ex.sta = Math.max(0, ex.sta - STA.sprint * dt); ex.staT = time; }
   ex.speedMode = speed > 7 ? 'sprint' : speed > 3 ? 'run' : 'walk';
   const fx_ = -Math.sin(ex.yaw), fz = -Math.cos(ex.yaw), rx = Math.cos(ex.yaw), rz = -Math.sin(ex.yaw);
@@ -5219,7 +5304,7 @@ function updateWorldMode(dt) {
     else if (A.type === 'attack') { wx *= .25; wz *= .25; if (!A.hit && A.t > A.dur * .55) { A.hit = true; strike(); } }
     if (A.t >= A.dur) { if (A.type === 'dodge') { inner.rotation.x = 0; inner.position.y = 0; } ex.act = null; }
   }
-  const grip = ex.air ? 2.5 : (A && A.type === 'dodge' ? 30 : 8);
+  const grip = ex.air ? (ex.jetting ? 5 : 2.5) : (A && A.type === 'dodge' ? 30 : 8);
   vel.x += (wx - vel.x) * Math.min(1, dt * grip); vel.z += (wz - vel.z) * Math.min(1, dt * grip);
   const nx = p.x + vel.x * dt, nz = p.z + vel.z * dt;
   const g0 = groundAt(p.x, p.z, p.y), onBuilt0 = g0 > wHeight(p.x, p.z) + .02;
@@ -5234,6 +5319,13 @@ function updateWorldMode(dt) {
   ex.walkAcc = (ex.walkAcc || 0) + Math.hypot(vel.x, vel.z) * dt;
   if (ex.walkAcc >= 40) { ex.walkAcc -= 40; gainXP(1); }
   const ground = groundAt(p.x, p.z, p.y);
+  // jetpack: hold jump in the air
+  if (ex.jet == null) ex.jet = 100;
+  ex.jetting = jetHeld();
+  if (ex.jetting) { ex.vy = Math.min(JET.maxUp, ex.vy + JET.thrust * dt); ex.jet = Math.max(0, ex.jet - JET.drain * dt); ex.jetT = time; if (!ex.jetOn) sfx.whoosh(); }
+  else if (!ex.air && time - (ex.jetT || 0) > .6) ex.jet = Math.min(100, ex.jet + JET.refill * dt);
+  ex.jetOn = ex.jetting;
+  if (!ex.air && p.y > ground + .35) { ex.air = true; ex.vy = 0; } // stepped off a ledge
   if (ex.air) {
     ex.vy -= 18 * dt; p.y += ex.vy * dt;
     if (p.y <= ground) { p.y = ground; ex.air = false; ex.vy = 0; burst(p.x, p.y + .05, p.z, 10, 2, .9, .95, 1, .6, .4, .5); }
@@ -6948,7 +7040,7 @@ function loop() {
   if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh' || state === 'sleeping' || state === 'wcut') {
     if (state === 'explore') updateExplore(dt);
     tickDialog(dt);
-    if (state !== 'loadingCh') { updateAnim(dt); if (ex.mode === 'world') worldActionPose(dt); else syncHeld(); jamesTick(dt); updateParticles(dt); exploreCamera(dt); if (ex.mode === 'world') updateWorldScene(dt); }
+    if (state !== 'loadingCh') { updateAnim(dt); if (ex.mode === 'world') worldActionPose(dt); else { syncHeld(); hideSuitGear(); } jamesTick(dt); updateParticles(dt); exploreCamera(dt); if (ex.mode === 'world') updateWorldScene(dt); }
     sfx.music(0); renderer.render(ex.mode === 'world' ? wScene : aScene, camera); return;
   }
   if (state === 'cc' || state === 'pedia') { ccTick(dt); sfx.music(.85); renderer.render(ccScene, ccCam); return; }
