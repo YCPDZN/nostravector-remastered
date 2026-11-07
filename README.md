@@ -57,7 +57,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   - The day/night cycle, building, crafting, teleporters and your inventory all carry over. Africa keeps its own builds, mined nodes and time of day, separate from Antarctica's.
   - **Objectives:** Wake up at Orion's ✓ → **Speak to Orion** (he's on the porch, with a gold marker; his four lines are voiced, CH2ORIONFREEROAM1–4, and he lip-syncs) → **Explore Africa**.
   - **Orion Mascar joins you:** after you speak to him, Orion becomes your companion at **level 14**, and he gains a level every time you do. He takes the same orders as James: **1 Mine · 2 Explore · 3 Base · 4 Wander · 5 Follow**, through the companion panel (shown as ORION · LV n) or by walking up to him (ORDER).
-    - He has his own replies (ready for recordings as `orionCmd`, in the same order as the commands).
+    - He has his own voiced replies (ORIONCOMMAND1–5), the same from Chapter II through Chapter V.
     - He follows you, and catches up if you get too far ahead. He mines rocks, trees and crates for you, and hits harder as he levels. He explores the savanna (digging as he goes), wanders nearby, or heads home to his porch.
     - He stands beside your wanderer on the main menu, just as James did.
   - Saving remembers that you're in Africa. Deploying a Chapter II wanderer who has seen the opening takes you straight back there.
