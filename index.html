@@ -540,6 +540,15 @@ button.bm-c.no{opacity:.45}
 .bar.heat.on{opacity:1}
 .bar.heat i{background:linear-gradient(90deg,#ff5a3d,#ffb36b)}
 .bar.heat.low{animation:suitWarn .6s ease-in-out infinite alternate}
+
+.boss-bar{position:absolute;top:calc(var(--st,0px) + 18px);left:50%;transform:translateX(-50%);width:min(460px,70vw);opacity:0;transition:opacity .5s;pointer-events:none;z-index:6;text-align:center}
+.boss-bar.on{opacity:1}
+.bb-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.bb-h b{font-family:var(--display);font-weight:500;font-size:13px;letter-spacing:.4em;color:#ff6b5e}
+.bb-h small{font-size:8px;letter-spacing:.35em;color:var(--mute)}
+.boss-bar .bb{height:6px;background:rgba(255,70,60,.15);border:1px solid rgba(255,70,60,.45);transform:skewX(-14deg)}
+.boss-bar .bb i{display:block;height:100%;background:linear-gradient(90deg,#8a1414,#ff3b2f)}
+.boss-bar em{display:block;font-style:normal;font-size:8px;letter-spacing:.3em;color:var(--mute);margin-top:6px;text-transform:uppercase}
 </style>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
@@ -574,6 +583,7 @@ button.bm-c.no{opacity:.45}
   <div class="x-hint" id="xHint"></div>
   <div class="hurt-fx" id="hurtFx"></div>
   <div class="x-card" id="xCard"><small id="xCardS">Chapter I</small><b id="xCardB">ANTARCTICA</b></div>
+  <div class="boss-bar" id="bossBar"><div class="bb-h"><b>CROXIAN</b><small>LV 30 · BOSS</small></div><div class="bb"><i></i></div><em>Don’t go near him. Run to the ferry.</em></div>
   <div class="x-narr" id="xNarr"><small id="xNarrW">NARRATOR</small><span id="xNarrT"></span><i></i></div>
   <div class="x-prompt" id="xPrompt"><kbd>E</kbd><span id="xPromptT"></span></div>
   <div class="cbar t"></div><div class="cbar b"></div>
@@ -3116,8 +3126,14 @@ function campTasks(p, task) {
   const fd = Math.round(Math.hypot(player.position.x - FERRY.x, player.position.z - FERRY.z));
   h += task(!!p.ferry, p.ferry ? 'Drive to the ferry' : `Drive to the ferry · ${fd > 999 ? (fd / 1000).toFixed(1) + ' km' : fd + ' m'}`);
   if (!p.ferry) return h;
-  if (!p.betrayed) return h + task(false, 'Board the ferry with James');
-  return h + task(true, 'Board the ferry with James') + task(false, 'To be continued…');
+  const ph = world.betrayal && world.betrayal.phase;
+  if (!p.betrayed) {
+    if (ph === 'push') return h + task(false, 'Push James Brown into the water');
+    if (ph === 'chase' || ph === 'won') return h + task(true, 'Push James Brown into the water') + task(ph === 'won', 'Run to the ferry');
+    if (ph === 'fall' || ph === 'crox' || ph === 'croxIntro') return h + task(true, 'Push James Brown into the water');
+    return h + task(false, 'Board the ferry with James');
+  }
+  return h + task(true, 'Push James Brown into the water') + task(true, 'Run to the ferry') + task(false, 'To be continued…');
 }
 function campProgress(k) {
   const c = ch1(); if (!c.metOutside || c.campDone) return;
@@ -3485,6 +3501,10 @@ function buildFerry() {
   const wood = M(0x5a4636, { roughness: .9, metalness: 0 });
   add(new THREE.BoxGeometry(7, .4, 46), wood, 0, 1.4, 28);
   for (let z = 6; z <= 50; z += 6) for (const x of [-3.2, 3.2]) add(new THREE.CylinderGeometry(.25, .25, 6, 8), wood, x, -1.4, z);
+  // a second berth along the shore, where the ferry can tie up
+  add(new THREE.BoxGeometry(7, .4, JETTY.z1 - JETTY.z0), wood, JETTY.x, 1.4, (JETTY.z0 + JETTY.z1) / 2);
+  for (let z = JETTY.z0 + 4; z <= JETTY.z1; z += 6) for (const x of [JETTY.x - 3.2, JETTY.x + 3.2]) add(new THREE.CylinderGeometry(.25, .25, 6, 8), wood, x, -1.4, z);
+  { const l = glowSprite(0xff9a3a, 3, .8); l.position.set(JETTY.x + 3.4, 4, JETTY.z1 - 2); g.add(l); }
   // the ferry (its own group, so it can sail away)
   const hull = M(0xe9ecef), red = M(0xb3202a), ship = new THREE.Group(); g.add(ship); world.ferryShip = ship;
   const addS = (geo, m, x, y, z) => { const o = add(geo, m, x, y, z); g.remove(o); ship.add(o); return o; };
@@ -3506,9 +3526,11 @@ function buildFerry() {
 const ferryAng = () => Math.atan2(FERRY.dx, FERRY.dz);
 function ferryWorld(lx, lz) { const c = Math.cos(ferryAng()), sn = Math.sin(ferryAng()); return [FERRY.x + lx * c + lz * sn, FERRY.z - lx * sn + lz * c]; }
 function pierTop(x, z) {
-  const dx = x - FERRY.x, dz = z - FERRY.z; if (dx * dx + dz * dz > 3600) return null;
+  const dx = x - FERRY.x, dz = z - FERRY.z; if (dx * dx + dz * dz > 22500) return null;
   const c = Math.cos(ferryAng()), sn = Math.sin(ferryAng()), lx = dx * c - dz * sn, lz = dx * sn + dz * c;
-  return Math.abs(lx) <= 3.5 && lz >= 5 && lz <= 51 ? 1.6 : null;
+  if (Math.abs(lx) <= 3.5 && lz >= 5 && lz <= 51) return 1.6;
+  if (Math.abs(lx - JETTY.x) <= 3.5 && lz >= JETTY.z0 && lz <= JETTY.z1) return 1.6;
+  return null;
 }
 function reachFerry() {
   if (world.betrayal) return;
@@ -3534,46 +3556,217 @@ const JB_BETRAYAL = [
   'Do you understand how foolish you have been? You gave me your trust because the alternative frightened you. That is what people do when the world gets cold and empty. They choose the nearest voice and hope it belongs to someone worth following.',
   'This is where we part company. I board the ferry with your supplies, and you stay here with the ice and all those promises you believed. Do not reach for me. Do not run. You should have learned to fear the man who kept telling you there was nothing to fear.'
 ];
+// ---- Croxian: the boss on the shore ----
+const CROX_PRE = [
+  'Well. That is one way to settle a debt.',
+  'James Brown owed my people a great deal. He was meant to hand you over to us, not rob you and run for Africa.',
+  'You have saved me the trouble of dealing with him. That does not mean I am grateful.',
+  'My name is Croxian. Remember it, wanderer. It is the last name you are going to learn.',
+  'The ferry will not wait for you. And I will not let you reach it.'
+];
+const CROX_BARKS = [
+  'Run, wanderer. Run while your legs still work.',
+  'Every step you take, I am one step closer.',
+  'The ice keeps whatever I give it.',
+  'Is that all your suit can do?',
+  'Turn around and face me. No? I thought not.',
+  'James ran too. Look where it got him.',
+  'You cannot outrun a storm, and you cannot outrun me.'
+];
+const CROX_TOO_CLOSE = 'Too close.';
+const CROX_LOSE = 'Go on, then. Sail away. We will find you again.';
+const JETTY = { x: 120, z0: 6, z1: 40 }; // second berth, along the shore (ferry-local coordinates)
+let croxLoad = null;
+function makeScythe() {
+  const g = new THREE.Group(), shaft = new THREE.MeshStandardMaterial({ color: 0x1b1a1f, roughness: .6 }), steel = new THREE.MeshStandardMaterial({ color: 0x0c0c10, metalness: .95, roughness: .2 }), edge = new THREE.MeshStandardMaterial({ color: 0x4a0f12, emissive: 0x9a1a1a, emissiveIntensity: 1.1 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(.03, .035, 2.1, 8), shaft); pole.position.y = -.6; pole.castShadow = true; g.add(pole);
+  const blade = new THREE.Mesh(new THREE.TorusGeometry(.55, .045, 6, 24, 1.9), steel); blade.position.set(.0, -1.62, .1); blade.rotation.set(Math.PI / 2, 0, .4); blade.scale.set(1, 1, .35); g.add(blade);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(.6, .012, 4, 24, 1.85), edge); rim.position.copy(blade.position); rim.rotation.copy(blade.rotation); g.add(rim);
+  return g;
+}
+function loadCroxian() {
+  if (croxLoad) return croxLoad;
+  croxLoad = (async () => {
+    const el = document.getElementById('cpCroxian'); if (!el) return null;
+    const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    const sc = await parseGlb(u8.buffer); const R = autoRig(sc, 1.95);
+    armRig(R, 'none'); R.weapon = 'sword';
+    const sock = R.rh ? boneSocket(R.rh) : R.ra ? handSocket(R.ra) : null; if (sock) { const sy = makeScythe(); sock.add(sy); R.gear.push(sy); }
+    R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    return R;
+  })().catch(() => null);
+  return croxLoad;
+}
+const telMat = new THREE.MeshBasicMaterial({ color: 0xff3b2f, transparent: true, opacity: .5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+function telegraph(x, z, r) { const m = new THREE.Mesh(new THREE.RingGeometry(r * .82, r, 40), telMat.clone()); m.rotation.x = -Math.PI / 2; m.position.set(x, bossGround(x, z) + .06, z); wScene.add(m); return m; }
+function bossGround(x, z) { const t = pierTop(x, z); return t != null ? t : Math.max(wHeight(x, z), -1.6); }
+function bark(line, ms = 3200) { showNarr('CROXIAN', line); clearTimeout(world.barkT); world.barkT = setTimeout(hideNarr, ms); }
+
 async function startBetrayal() {
   if (world.betrayal || !james.ready || state !== 'explore' || ex.mode !== 'world') return;
   if (ex.vehicle) exitRover();
-  closeModals(); stopBuild();
+  closeModals(); stopBuild(); clearBoss();
   world.betrayal = { phase: 'talk', t: 0 };
-  const J = james, r = J.root;
-  // James steps onto the pier, between you and the gangway
-  const [jx, jz] = ferryWorld(0, 12), [px, pz] = ferryWorld(0, 3);
-  wScene.add(r); r.visible = true; J.ground = (x, z) => { const t = pierTop(x, z); return t != null ? t : wHeight(x, z); };
+  loadCroxian();
+  const J = james, r = J.root, ship = world.ferryShip;
+  if (ship) { ship.visible = true; ship.position.set(0, 0, 0); }
+  // James stands at the gangway, between you and the ferry
+  const [jx, jz] = ferryWorld(0, 30), [px, pz] = ferryWorld(0, 21);
+  wScene.add(r); r.visible = true; r.rotation.set(0, 0, 0); J.ground = bossGround;
   r.position.set(jx, 1.6, jz); r.rotation.y = Math.atan2(px - jx, pz - jz);
   Object.assign(J, { walking: false, wdir: null, raise: .1, headTilt: .05, lean: 0, swing: false, quiet: false });
-  burst(jx, 2.4, jz, 18, 2, .9, .95, 1, .6, .4, .4);
-  const p = player.position; p.set(px, 0, pz); p.y = groundAt(px, pz, 2.2); player.rotation.y = Math.atan2(jx - px, jz - pz); ex.yaw = player.rotation.y + Math.PI; ex.snap = true; vel.set(0, 0, 0);
+  const p = player.position; p.set(px, 0, pz); p.y = 1.6; player.visible = true; player.rotation.y = Math.atan2(jx - px, jz - pz); ex.yaw = player.rotation.y + Math.PI; ex.snap = true; vel.set(0, 0, 0); ex.air = false;
+  ex.hp = maxHP(); invState().hp = ex.hp; invState().heat = 100;
+  renderTasks();
   const clips = await sfx.loadClips('betrayalVoices');
-  if (world.betrayal.phase !== 'talk') return;
-  openDialog('JAMES BROWN', JB_BETRAYAL, false, () => { world.betrayal.phase = 'leave'; world.betrayal.t = 0; james.raise = .35; }, clips);
+  if (!world.betrayal || world.betrayal.phase !== 'talk') return;
+  openDialog('JAMES BROWN', JB_BETRAYAL, false, () => {
+    world.betrayal.phase = 'push'; world.betrayal.t = 0; james.raise = 1.1; renderTasks();
+    notice(document.body.classList.contains('touch') ? 'Get close and tap PUSH' : 'Get close and press E', 'PUSH HIM INTO THE WATER', 3600);
+  }, clips);
   if (ex.dlg) ex.dlg.auto = true;
+}
+function pushJames() {
+  const B = world.betrayal; if (!B || B.phase !== 'push') return;
+  B.phase = 'fall'; B.t = 0; B.from = james.root.position.clone(); renderTasks();
+  sfx.whoosh(); sfx.thud();
+  player.rotation.y = Math.atan2(james.root.position.x - player.position.x, james.root.position.z - player.position.z);
 }
 function betrayalTick(dt) {
   const B = world.betrayal; if (!B) return;
   const J = james, r = J.root, p = player.position;
   B.t += dt;
-  if (B.phase === 'talk') {
+  if (B.phase === 'talk' || B.phase === 'push') {
     r.rotation.y = angLerp(r.rotation.y, Math.atan2(p.x - r.position.x, p.z - r.position.z), Math.min(1, dt * 3));
-    if (ex.dlg && ex.dlg.i >= 12) J.raise = 1.25; // his hand comes out of the coat
-  } else if (B.phase === 'leave') {
-    const [gx, gz] = ferryWorld(0, 30), [sx, sz] = ferryWorld(6, 30);
-    const tx = B.leg ? sx : gx, tz = B.leg ? sz : gz;
-    if (jWalk(tx, tz, 2.4, .4, dt)) { if (!B.leg) B.leg = 1; else { r.visible = false; B.phase = 'sail'; B.t = 0; notice('James Brown boards the ferry', 'BETRAYED', 3600); sfx.alarm(); } }
-  } else if (B.phase === 'sail') {
-    const ship = world.ferryShip; if (ship) ship.position.z = 40 * smooth(0, 1, B.t / 14) + Math.max(0, B.t - 14) * 8;
-    if (B.t > 6 && !B.horn) { B.horn = 1; sfx.thud(); }
-    if (B.t > 40) {
-      if (ship) ship.visible = false;
-      world.betrayal = null; J.ground = null;
-      setCh1({ betrayed: true, ferryGone: true }); ui.xhud.classList.remove('comp'); renderTasks();
-      notice('Chapter I · Antarctica', 'TO BE CONTINUED', 4200);
-      setTimeout(() => { $('#tbc .eyebrow').textContent = 'James Brown betrayed you'; show(ui.tbc, true); state = 'xdone'; }, 4600);
+    if (B.phase === 'talk' && ex.dlg && ex.dlg.i >= 12) J.raise = 1.25; // his hand comes out of the coat
+  } else if (B.phase === 'fall') {
+    // over the side of the pier and into the sea
+    const k = Math.min(1, B.t / 1.1), [sx, sz] = ferryWorld(-5.5, 30), f = B.from;
+    if (k < 1) { r.position.set(lerp(f.x, sx, k), 1.6 + Math.sin(k * Math.PI) * 1 - k * 3.2, lerp(f.z, sz, k)); r.rotation.z = k * 1.5; }
+    else {
+      if (!B.splash) { B.splash = 1; burst(r.position.x, -1.5, r.position.z, 60, 6, .75, .88, 1, 1.2, 1.4, 4); sfx.hit('ice'); sfx.thud(); notice('James Brown', 'IS GONE', 2800); }
+      r.position.y = -1.6 - (B.t - 1.1) * 1.3;
+      if (B.t > 3) { r.visible = false; r.rotation.z = 0; B.phase = 'crox'; B.t = 0; croxArrives(); }
     }
+  } else if (B.phase === 'croxIntro' || B.phase === 'chase' || B.phase === 'won') bossTick(dt);
+}
+async function croxArrives() {
+  const R = await loadCroxian(), B = world.betrayal; if (!B) return;
+  if (!R) { // no model available: skip straight to the escape
+    B.phase = 'chase'; B.t = 0; startChase(null); return;
   }
+  const [gx, gz] = ferryWorld(8, 30);
+  wScene.add(R.root); R.root.visible = true; R.root.position.set(gx, 1.6, gz);
+  world.boss = { R, x: gx, z: gz, y: 1.6, st: 'walkIn', t: 0, cd: 2, leapCd: 7, barkCd: 5 };
+  B.phase = 'croxIntro'; B.t = 0;
+  sfx.alarm(); notice('Someone steps off the ferry', 'CROXIAN', 3000);
+}
+function startChase(boss) {
+  const B = world.betrayal; B.phase = 'chase'; B.t = 0; renderTasks();
+  $('#bossBar').classList.add('on');
+  notice('Boss · level 30', 'RUN TO THE FERRY', 3400);
+  sfx.combat && sfx.combat(true, 0);
+  if (boss) { boss.st = 'chase'; boss.cd = 1.6; }
+}
+function clearBoss() {
+  const C = world.boss;
+  if (C) { if (C.R.root.parent) C.R.root.parent.remove(C.R.root); for (const m of C.tels || []) wScene.remove(m); }
+  world.boss = null; $('#bossBar').classList.remove('on'); hideNarr(); sfx.combat && sfx.combat(false);
+}
+function bossFace(C, x, z, dt, rate = 8) { C.R.root.rotation.y = angLerp(C.R.root.rotation.y, Math.atan2(x - C.x, z - C.z), Math.min(1, dt * rate)); }
+function bossMove(C, tx, tz, sp, dt) {
+  const dx = tx - C.x, dz = tz - C.z, d = Math.hypot(dx, dz); if (d < .05) return d;
+  const nx = C.x + dx / d * sp * dt, nz = C.z + dz / d * sp * dt;
+  const wet = (x, z) => pierTop(x, z) == null && wHeight(x, z) < -1.2;
+  if (!wet(nx, nz)) { C.x = nx; C.z = nz; } else if (!wet(nx, C.z)) C.x = nx; else if (!wet(C.x, nz)) C.z = nz;
+  return d;
+}
+function bossTick(dt) {
+  const B = world.betrayal, C = world.boss, p = player.position;
+  if (!C) return;
+  const R = C.R; C.t += dt;
+  if (B.phase === 'croxIntro') {
+    if (C.st === 'walkIn') {
+      const [tx, tz] = ferryWorld(0, 30);
+      R.mode = 'walk'; bossFace(C, tx, tz, dt);
+      if (bossMove(C, tx, tz, 2.2, dt) < .3) {
+        C.st = 'talk'; R.mode = 'idle';
+        openDialog('CROXIAN', CROX_PRE, false, () => startChase(C));
+        if (ex.dlg) ex.dlg.auto = true;
+      }
+    } else bossFace(C, p.x, p.z, dt, 3);
+  } else if (B.phase === 'chase') {
+    const dx = p.x - C.x, dz = p.z - C.z, d = Math.hypot(dx, dz), sp = Math.hypot(vel.x, vel.z);
+    // walk up to him and he simply kills you
+    if (d < 2.6 && sp > .6 && (vel.x * -dx + vel.z * -dz) / (d * sp) > .45 && !(ex.act && ex.act.type === 'dodge')) { bossKill(CROX_TOO_CLOSE); return; }
+    C.cd -= dt; C.leapCd -= dt; C.barkCd -= dt;
+    if (C.barkCd <= 0) { C.barkCd = 6 + Math.random() * 4; bark(CROX_BARKS[Math.floor(Math.random() * CROX_BARKS.length)]); }
+    if (C.st === 'chase') {
+      R.mode = 'walk'; bossFace(C, p.x, p.z, dt);
+      if (d < 4.4 && C.cd <= 0) { C.st = 'swing'; C.t = 0; R.mode = 'attack'; R.t = 0; C.hit = false; C.tels = [telegraph(C.x + dx / d * 2.4, C.z + dz / d * 2.4, 2.8)]; }
+      else if (d > 9 && C.leapCd <= 0) { C.st = 'leap'; C.t = 0; C.lx = p.x; C.lz = p.z; C.sx = C.x; C.sz = C.z; C.tels = [telegraph(p.x, p.z, 3.6)]; R.mode = 'idle'; sfx.whoosh(); }
+      else bossMove(C, p.x, p.z, 5.4, dt);
+    } else if (C.st === 'swing') {
+      bossFace(C, p.x, p.z, dt, 3);
+      if (!C.hit && C.t > .78) {
+        C.hit = true; sfx.swing(); sfx.thud();
+        if (d < 5.2) hurtPlayer(48, { x: C.x, z: C.z });
+        burst(C.x + dx / d * 2.4, C.y + .4, C.z + dz / d * 2.4, 22, 4, .7, .1, .1, .6, 1, 1);
+      }
+      if (C.t > 1.7) { C.st = 'chase'; C.cd = 1.6; R.mode = 'walk'; for (const m of C.tels) wScene.remove(m); C.tels = []; }
+    } else if (C.st === 'leap') {
+      const k = clamp((C.t - .9) / .6, 0, 1); // wind up, then jump onto where you were standing
+      bossFace(C, C.lx, C.lz, dt, 4);
+      if (k > 0) { C.x = lerp(C.sx, C.lx, k); C.z = lerp(C.sz, C.lz, k); C.jy = Math.sin(k * Math.PI) * 5; }
+      if (k >= 1 && !C.landed) {
+        C.landed = true; C.jy = 0; sfx.thud(); ex.shake = .5; burst(C.x, C.y + .2, C.z, 50, 7, .9, .95, 1, .9, 1.2, 1.5);
+        if (Math.hypot(p.x - C.x, p.z - C.z) < 3.6) hurtPlayer(60, { x: C.x, z: C.z });
+      }
+      if (C.t > 2.1) { C.st = 'chase'; C.landed = false; C.leapCd = 8 + Math.random() * 4; C.cd = .8; for (const m of C.tels) wScene.remove(m); C.tels = []; }
+    }
+    for (const m of C.tels || []) m.material.opacity = .35 + .35 * Math.sin(time * 18);
+    // reach the far end of the jetty once the ferry has moved round to it
+    const [ex_, ez_] = ferryWorld(JETTY.x, JETTY.z1 - 2), ship = world.ferryShip;
+    if (ship) { const k = smooth(0, 1, B.t / 22); ship.position.set(116 * k, 0, 6 * k); }
+    if (B.t > 22 && Math.hypot(p.x - ex_, p.z - ez_) < 4.5) { bossWin(); return; }
+  } else if (B.phase === 'won') { R.mode = 'idle'; bossFace(C, p.x, p.z, dt, 2); }
+  C.y = bossGround(C.x, C.z);
+  R.root.position.set(C.x, C.y + (C.jy || 0), C.z);
+  animRig(R, dt);
+}
+function bossKill(line) {
+  const B = world.betrayal; if (!B || B.phase === 'dead') return;
+  B.phase = 'dead'; bark(line, 2400); sfx.swing(); sfx.thud(); ex.hp = 0;
+  const fx = $('#hurtFx'); fx.classList.remove('on'); void fx.offsetWidth; fx.classList.add('on');
+  bossDeath();
+}
+function bossDeath() {
+  const B = world.betrayal; if (B) B.phase = 'dead';
+  state = 'loadingCh'; vel.set(0, 0, 0);
+  const bo = $('#blackout'); bo.style.transition = 'opacity 1.2s'; bo.style.opacity = 1;
+  notice('Croxian cut you down', 'YOU DIED', 2600);
+  setTimeout(() => {
+    clearBoss(); world.betrayal = null; closeDialog();
+    if (james.ready) { james.root.rotation.set(0, 0, 0); james.raise = .1; }
+    state = 'explore'; bo.style.opacity = 0; setTimeout(() => { bo.style.transition = ''; }, 1300);
+    startBetrayal(); // back to just before James turns on you
+  }, 2800);
+}
+function bossWin() {
+  const B = world.betrayal; B.phase = 'won';
+  bark(CROX_LOSE, 4000); $('#bossBar').classList.remove('on'); sfx.combat && sfx.combat(false);
+  notice('You leap aboard as the ferry pulls away', 'YOU ESCAPED', 3600); sfx.chime(); gainXP(400);
+  setTimeout(() => {
+    const bo = $('#blackout'); bo.style.transition = 'opacity 2s'; bo.style.opacity = 1;
+    setTimeout(() => {
+      clearBoss(); world.betrayal = null; if (world.ferryShip) world.ferryShip.visible = false;
+      setCh1({ betrayed: true, jamesDead: true, escaped: true, ferryGone: true }); ui.xhud.classList.remove('comp'); renderTasks();
+      bo.style.opacity = 0; setTimeout(() => { bo.style.transition = ''; }, 2100);
+      notice('Chapter I · Antarctica', 'TO BE CONTINUED', 4200);
+      setTimeout(() => { $('#tbc .eyebrow').textContent = 'You escaped Antarctica'; show(ui.tbc, true); state = 'xdone'; }, 4600);
+    }, 2100);
+  }, 3800);
 }
 function renderTasks() {
   // wanderers from before levels existed get XP for the story they've already played
@@ -3645,6 +3838,7 @@ function leaveExplore(goTitle = true) {
   if (ex.held && ex.held.parent) ex.held.parent.remove(ex.held);
   hideSuitGear(); ex.blocking = ex.jetting = false; stopNarration();
   if (ex.vehicle) { ex.vehicle = null; player.visible = true; }
+  if (world.betrayal) { clearBoss(); world.betrayal = null; if (james.ready) james.root.rotation.set(0, 0, 0); }
   closeDialog(); ui.xhud.classList.remove('dreaming'); show(ui.xhud, false); show(ui.xpause, false); show(ui.tbc, false);
   const bo = $('#blackout'); bo.style.opacity = 0; bo.classList.remove('on');
   if (james.ready) james.root.visible = false;
@@ -3730,6 +3924,8 @@ async function interact() {
     openInv(true);
   } else if (n.id === 'bed') {
     sleepOutside();
+  } else if (n.id === 'push') {
+    pushJames();
   } else if (n.id === 'rover') {
     enterRover();
   } else if (n.id === 'roverOut') {
@@ -4778,6 +4974,7 @@ function mapTiles(x0, z0, x1, z1, budget) {
 function questTarget() {
   const c = ch1();
   if (wanderer.chapter === 1 && c.slept && !c.metOutside && world.jamesAt) return { x: world.jamesAt.x, z: world.jamesAt.z, label: c.found ? 'Speak to James Brown' : 'Find James Brown' };
+  if (world.betrayal && world.betrayal.phase === 'chase') { const [x, z] = ferryWorld(JETTY.x, JETTY.z1 - 2); return { x, z, label: 'The ferry' }; }
   if (c.roverTalk && !c.roverFound && world.rover) return { x: world.rover.position.x, z: world.rover.position.z, label: 'James’s rover' };
   if (c.roverFound && !c.ferry) return { x: FERRY.x, z: FERRY.z, label: 'Ferry terminal' };
   if (c.campDone && !c.stormTalk && companionOn() && james.ready && james.root.parent === wScene) return { x: james.root.position.x, z: james.root.position.z, label: 'Speak to James Brown' };
@@ -5216,7 +5413,7 @@ function hurtPlayer(n, src) {
   const fx = $('#hurtFx'); fx.classList.remove('on'); void fx.offsetWidth; fx.classList.add('on');
   ex.shake = .35;
   if (src) { const dx = player.position.x - src.x, dz = player.position.z - src.z, d = Math.hypot(dx, dz) || 1; vel.x += dx / d * 5; vel.z += dz / d * 5; }
-  if (ex.hp <= 0) blackout();
+  if (ex.hp <= 0) { if (world.betrayal) bossDeath(); else blackout(); }
 }
 function blackout() {
   for (const c of fauna.list) { c.state = 'idle'; c.tgt = null; }
@@ -5991,6 +6188,7 @@ function updateWorldMode(dt) {
   if (!ex.near && world.rover && !ex.vehicle && world.rover.visible && Math.hypot(world.rover.position.x - p.x, world.rover.position.z - p.z) < 3.4) ex.near = { id: 'rover', label: 'Rover' };
   if (!ex.near && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
   if (ex.vehicle) ex.near = { id: 'roverOut', label: 'Rover' };
+  if (world.betrayal) ex.near = world.betrayal.phase === 'push' && james.root.visible && Math.hypot(james.root.position.x - p.x, james.root.position.z - p.z) < 2.6 ? { id: 'push', label: 'James Brown' } : null;
   if (!ex.near) {
     let bd = 2;
     for (const o of world.placed) { const dd = Math.hypot(o.data.x - p.x, o.data.z - p.z); if (dd < bd) { bd = dd; ex.near = { id: 'placed', ref: o, label: ITEMS[o.data.t].name }; } }
@@ -5999,7 +6197,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
+    const PR = { push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
