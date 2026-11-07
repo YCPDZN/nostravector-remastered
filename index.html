@@ -302,6 +302,13 @@ body.touch .touch-ui{display:block}
 .jopts kbd{font:inherit;font-size:8px;color:var(--mute);border:1px solid var(--line);border-radius:2px;padding:1px 5px}
 body.touch .jopts kbd{display:none}
 @media (max-width:720px),(pointer:coarse){ .jopts button{padding:11px 14px;min-width:170px} }
+#xpause .opt-panel{display:none}
+#xpause.opts .panel:not(.opt-panel){display:none}
+#xpause.opts .opt-panel{display:block}
+.opt-list{display:flex;flex-direction:column;gap:8px;margin:18px auto 20px;max-width:340px}
+.opt{display:flex;justify-content:space-between;align-items:center;background:rgba(8,12,20,.6);border:1px solid var(--line);color:#e6e9f0;font:inherit;font-size:10px;letter-spacing:.3em;text-transform:uppercase;padding:14px 16px;border-radius:3px;cursor:pointer}
+.opt:hover{border-color:rgba(159,230,255,.6)}
+.opt b{font-weight:400;color:#9fe6ff}
 .hotbar{position:absolute;left:50%;bottom:calc(var(--sb) + 16px);transform:translateX(-50%);display:none;gap:6px;pointer-events:auto}
 #xhud.world .hotbar{display:flex}
 .hotbar button{position:relative;width:48px;height:48px;border:1px solid var(--faint);background:rgba(7,10,17,.55);color:var(--ink);font-family:var(--display);
@@ -459,6 +466,7 @@ body.touch .jopts kbd{display:none}
     </div>
     <div class="menu off" id="mSettings">
       <button class="mi" id="setSound"><i>—</i><span>Sound</span><em class="val">ON</em></button>
+      <button class="mi" id="setMusic"><i>—</i><span>Music</span><em class="val">ON</em></button>
       <button class="mi" id="setCombat"><i>—</i><span>Combat themes</span><em class="val">PLAY</em></button>
       <button class="mi back" data-go="mMain"><i>‹</i><span>Back</span></button>
     </div>
@@ -531,8 +539,18 @@ body.touch .jopts kbd{display:none}
     </div>
     <div class="row">
       <button class="btn small" id="xDelete"><span>Delete save</span></button>
+      <button class="btn small" id="xOptions"><span>Options</span></button>
       <button class="btn small" id="xQuit"><span>Return to base</span></button>
     </div>
+  </div>
+  <div class="panel opt-panel">
+    <div class="eyebrow">Paused</div>
+    <h2 class="h1">OPTIONS</h2>
+    <div class="opt-list">
+      <button class="opt" id="oMusic"><span>Music</span><b>ON</b></button>
+      <button class="opt" id="oSound"><span>All sound</span><b>ON</b></button>
+    </div>
+    <div class="row"><button class="btn primary" id="oBack"><span>Back</span></button></div>
   </div>
 </section>
 
@@ -638,6 +656,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 };
 let muted = store.get('nv_muted', false);
+let musicOn = store.get('nv_music', true);
 
 /* ============ renderer / scene ============ */
 const canvas = $('#c');
@@ -1360,6 +1379,7 @@ const sfx = (() => {
       if (tok === areaTok && areaOn) areaTimer = setTimeout(areaNext, 9000 + Math.random() * 16000);
     };
   }
+  let musicBus = null;
   let ctx = null, master, noiseBuf, musicGain, musicLevel = .85, voiceBufs = null, voiceSrc = null, windGain = null, windBP = null, clipCache = {}, vAn = null, vData = null;
   function init() {
     if (ctx) { ctx.resume && ctx.resume(); return; }
@@ -1368,7 +1388,8 @@ const sfx = (() => {
       master = ctx.createGain(); master.gain.value = muted ? 0 : .5; master.connect(ctx.destination);
       noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
       const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-      musicGain = ctx.createGain(); musicGain.gain.value = 0; musicGain.connect(master);
+      musicBus = ctx.createGain(); musicBus.gain.value = musicOn ? 1 : 0; musicBus.connect(master);
+      musicGain = ctx.createGain(); musicGain.gain.value = 0; musicGain.connect(musicBus);
       const bin = atob(document.getElementById('music').textContent.trim());
       const mb = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) mb[i] = bin.charCodeAt(i);
       const onDecoded = ab => {
@@ -1396,6 +1417,7 @@ const sfx = (() => {
   return {
     init,
     setMuted(m) { if (master) master.gain.value = m ? 0 : .5; },
+    setMusic(on) { if (musicBus) musicBus.gain.setTargetAtTime(on ? 1 : 0, ctx.currentTime, .15); },
     chime() { tone(330, 330, .6, 'sine', .12); tone(495, 495, .6, 'sine', .1, .15); tone(660, 660, .9, 'sine', .1, .3); },
     warp() { tone(120, 1800, 1.2, 'sawtooth', .06); noise(1.2, 400, 6000, .15); },
     click() { tone(1200, 900, .05, 'square', .04); },
@@ -1424,14 +1446,14 @@ const sfx = (() => {
       const buf = await combatCache[idx];
       if (tok !== combatTok || !buf) return;
       const t = ctx.currentTime, s = ctx.createBufferSource(), g = ctx.createGain();
-      s.buffer = buf; s.loop = true; g.gain.value = 0; s.connect(g); g.connect(master); s.start();
+      s.buffer = buf; s.loop = true; g.gain.value = 0; s.connect(g); g.connect(musicBus); s.start();
       g.gain.setTargetAtTime(.8, t, .5);
       fadeOut(combatSrc, 1.4); combatSrc = { s, g };
     },
     get combatTrack() { return combatOn ? combatIdx : -1; },
     area(level) {
       if (!ctx) return;
-      if (!areaGain) { areaGain = ctx.createGain(); areaGain.gain.value = 0; areaGain.connect(master); }
+      if (!areaGain) { areaGain = ctx.createGain(); areaGain.gain.value = 0; areaGain.connect(musicBus); }
       if (level !== areaLvl) { areaLvl = level; applyAreaGain(); }
       const on = level > 0;
       if (on && !areaOn) { areaOn = true; areaTok++; clearTimeout(areaTimer); if (!areaSrc) areaTimer = setTimeout(areaNext, 1800); }
@@ -1664,7 +1686,7 @@ function goMenu(id) {
 }
 for (const b of document.querySelectorAll('#title [data-go]')) b.addEventListener('click', () => { sfx.init(); sfx.click(); goMenu(b.dataset.go); });
 newBtn.addEventListener('click', () => { sfx.init(); sfx.click(); startIntro(); });
-const refreshSettings = () => { $('#setSound .val').textContent = muted ? 'OFF' : 'ON'; const ct = sfx.combatTrack; $('#setCombat .val').textContent = ct < 0 ? 'PLAY' : COMBAT_TRACKS[ct].toUpperCase(); };
+const refreshSettings = () => { $('#setSound .val').textContent = muted ? 'OFF' : 'ON'; $('#setMusic .val').textContent = musicOn ? 'ON' : 'OFF'; refreshOpts(); const ct = sfx.combatTrack; $('#setCombat .val').textContent = ct < 0 ? 'PLAY' : COMBAT_TRACKS[ct].toUpperCase(); };
 // preview the combat themes from Settings: each tap plays the next one, then back to the menu theme
 $('#setCombat').addEventListener('click', () => {
   sfx.init(); sfx.click();
@@ -1680,6 +1702,14 @@ function combatTick(dt) {
   if (!combat.on && state !== 'title' && sfx.combatTrack >= 0) { sfx.combat(false); refreshSettings(); }
 }
 window.nvCombat = combatPulse;
+function toggleMusic() { musicOn = !musicOn; store.set('nv_music', musicOn); sfx.init(); sfx.setMusic(musicOn); refreshSettings(); sfx.click(); }
+function toggleSound() { muted = !muted; store.set('nv_muted', muted); sfx.init(); sfx.setMuted(muted); refreshSettings(); sfx.click(); }
+function refreshOpts() { const m = $('#oMusic'), so = $('#oSound'); if (m) m.querySelector('b').textContent = musicOn ? 'ON' : 'OFF'; if (so) so.querySelector('b').textContent = muted ? 'OFF' : 'ON'; }
+$('#setMusic').addEventListener('click', toggleMusic);
+$('#oMusic').addEventListener('click', toggleMusic);
+$('#oSound').addEventListener('click', toggleSound);
+$('#xOptions').addEventListener('click', () => { sfx.click(); refreshOpts(); ui.xpause.classList.add('opts'); });
+$('#oBack').addEventListener('click', () => { sfx.click(); ui.xpause.classList.remove('opts'); });
 $('#setSound').addEventListener('click', () => { muted = !muted; store.set('nv_muted', muted); sfx.init(); sfx.setMuted(muted); refreshSettings(); sfx.click(); });
 refreshSettings();
 
@@ -2997,7 +3027,7 @@ canvas.addEventListener('wheel', e => {
 xUI.act.addEventListener('click', e => { e.stopPropagation(); interact(); });
 xUI.dlg.addEventListener('click', () => advanceDialog());
 function pauseExplore(on) {
-  if (on && state === 'explore') { state = 'xpaused'; ex.keys.clear(); if (ex.dlg) { sfx.stopVoice(); closeDialog(); } refreshDirty(); show(ui.xpause, true); }
+  if (on && state === 'explore') { state = 'xpaused'; ex.keys.clear(); if (ex.dlg) { sfx.stopVoice(); closeDialog(); } refreshDirty(); ui.xpause.classList.remove('opts'); refreshOpts(); show(ui.xpause, true); }
   else if (!on && state === 'xpaused') { state = 'explore'; show(ui.xpause, false); clock.getDelta(); }
 }
 $('#xMenuBtn').addEventListener('click', () => { sfx.click(); pauseExplore(true); });
@@ -3529,7 +3559,10 @@ function jamesGear(rifle, pick) {
     add(new THREE.CylinderGeometry(.022, .022, .16, 8), gun, 0, .08, .02).rotation.x = Math.PI / 2;
     const sl = add(new THREE.BoxGeometry(.008, .006, .1), new THREE.MeshStandardMaterial({ color: 0x40e6ff, emissive: 0x40e6ff, emissiveIntensity: 1.5 }), .032, .02, .1);
     sl.castShadow = false;
-    g.position.set(.02, .32, -.19); g.rotation.set(-.15, 0, .75);
+    // basis: barrel up over the right shoulder, gun lying flat against the back of the coat
+    const zA = new THREE.Vector3(-.6, .8, 0), xA = new THREE.Vector3(0, 0, -1), yA = new THREE.Vector3().crossVectors(zA, xA);
+    g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(xA, yA, zA));
+    g.position.set(0, .3, -.215);
     J.body.add(g); J.rifle = g;
   }
   if (!J.pick) {
