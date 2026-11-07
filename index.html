@@ -5927,6 +5927,11 @@ const PEDIA_LEADERS = [
     ] },
   { sp: 'human', name: 'DARIUS ANCIN', title: 'President of the Human Federation of Sol',
     facts: [['Species', 'Human'], ['Born', '2080s AD'], ['Homeworld', 'Earth, Sol III'], ['Realm', 'The Human Federation of Sol (HFOS)'], ['Head of state', 'Darius Ancin, President'], ['Head of government', 'Darius Ancin, President (presidential federation)'], ['Alignment', 'Lawful Good']],
+    // until Chapter III the Federation's government is run by General Hawthorne; after that Darius takes it back
+    dyn: ch => ch >= 3 ? null : {
+      facts: [['Species', 'Human'], ['Born', '2080s AD'], ['Homeworld', 'Earth, Sol III'], ['Realm', 'The Human Federation of Sol (HFOS)'], ['Head of state', 'Darius Ancin, President'], ['Head of government', 'Thomas Hawthorne, General of Terra Imperia'], ['Alignment', 'Lawful Good']],
+      paras2: 'He rose through the post-war reconstruction councils that eventually joined Earth’s rebuilt nations and its first colonies into the Human Federation of Sol. When he was elected President he became its head of state. The day-to-day running of the Federation, however, sits with its head of government, Thomas Hawthorne, a General of Terra Imperia, an arrangement Darius has never publicly explained.'
+    },
     align: 'A believer in rules made fairly and kept for everyone. Darius thinks the Federation is only worth defending if it lives up to its own laws.',
     paras: [
       'Darius Ancin was born on Earth in the 2080s and grew up during the Third World War and the hard years that followed it. He belongs to the generation that cleared the rubble, rebuilt the cities and swore humanity would never come so close to ending itself again.',
@@ -6030,7 +6035,7 @@ const CH_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X
 const pdUnlockText = (tab, L) => { const at = L && L.unlockAt ? L.unlockAt : PEDIA_UNLOCK_AT[tab]; return `Chapter ${CH_ROMAN[at] || at}`; };
 function pdEntryLocked(L, tab = pedia.tab) {
   const at = L.unlockAt || PEDIA_UNLOCK_AT[tab]; if (!at) return false;
-  if ((wanderer.chapter | 0) >= at) return false;
+  if (chNow() >= at) return false;
   if (tab === 'leaders' && wanderer.ch1 && wanderer.ch1.slept && spOf(wanderer) === L.sp) return false;
   return true;
 }
@@ -6169,7 +6174,7 @@ function loadFigure(c) {
   figCache[key].catch(() => { delete figCache[key]; });
   return figCache[key];
 }
-const companionsNow = () => COMPANIONS.filter(c => !(c.hideFrom && (wanderer.chapter | 0) >= c.hideFrom));
+const companionsNow = () => COMPANIONS.filter(c => !(c.hideFrom && chNow() >= c.hideFrom));
 const primeCache = {};
 function loadPrime(p) {
   if (primeCache[p.tag]) return primeCache[p.tag];
@@ -6225,8 +6230,14 @@ function pediaList() {
   }
   pediaPreview();
 }
+function pdResolve(L) {
+  const d = L.dyn && L.dyn(chNow()); if (!d) return L;
+  const R = Object.assign({}, L, d);
+  if (d.paras2) { R.paras = [...L.paras]; R.paras[1] = d.paras2; }
+  return R;
+}
 function pediaEntry(i) {
-  const L = pdSet()[i]; if (!L) return; pedia.cur = L;
+  const L0 = pdSet()[i]; if (!L0) return; pedia.cur = L0; const L = pdResolve(L0);
   pUI.list.classList.add('hidden'); pUI.body.classList.remove('hidden');
   if (pdEntryLocked(L)) {
     pUI.eyebrow.textContent = 'Nostrapedia · classified file'; pUI.title.textContent = '[REDACTED]';
