@@ -44,6 +44,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 | Interact / advance text | TALK / LOOK / TAKE button, or tap the text | E or Enter |
 | Hotbar | Tap a slot | 1–6 |
 | Inventory & crafting | Bag button | I or Tab |
+| Earth map | Tap the minimap | M |
 | Pause | ☰ button | Esc |
 
 ## Survival
@@ -55,6 +56,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   - Med kit: +40 health.
   - Thermal lamp, wind barrier and signal beacon.
   - Camp heater: heals you while you stand nearby.
+- **Minimap and Earth map:** outside, a heading-up minimap (top right) shows the terrain, the station, your beacons and a gold diamond on the current objective, with its distance. Tap it or press M for the full north-up Earth map with your coordinates.
 - **Held items:** whatever is selected in the hotbar (ice pick, med kit, thermal lamp, or a placeable) is shown in your right hand, positioned to fit your species.
 - **Building:** select a placeable in the hotbar and a green preview appears in front of you; attack to place it. Walk up to it and press E (TAKE) to pick it back up.
 - What you mine and build is remembered per wanderer and saved with your save game.
