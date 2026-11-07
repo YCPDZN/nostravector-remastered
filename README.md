@@ -73,13 +73,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   - **Hak Chompjak V**, Emperor of the Chompy Empire (Neutral Good, formerly Chaotic Evil)
   - **Darius Ancin**, President of the Human Federation of Sol (Lawful Good)
   - **Am-Grek**, High Hierarch of the Grek Empire, ruling from Carax (Lawful Neutral)
-  **The Primes** covers the three mysterious powers, shown only as black silhouettes against a glow: **Archamus**, the Prime Good and god of the Grek Empire, **Josiah Richards**, the Prime Secretary, and **Lord Zark**, the Prime Evil who corrupted Lord Sevirrus. Both are said to be children of the one the old texts call only the Prime Secretary.
-  **Vectors** covers the **Oilkoumene Vectors**, also shown as silhouettes: five brothers born in the Big Bang in the Cyrannus Galaxy, five galaxies from the Milky Way, all sons of Lord Zark:
-  - **Apolinothanatus**, Vector of Light (formerly the Vector of Despair), right hand of Archamus, watching over Archiostal (Neutral Good, formerly Neutral Evil)
-  - **Tyronihlus**, Vector of Order, right hand of Tyromairon’as (Lawful Evil)
-  - **Tyrotaronus**, Vector of Neutrality, once ruler of Andromeda, now waiting for rescue in the Milky Way (True Neutral)
-  - **Tyromairon’as**, Vector of Darkness, once ruler of the Oilkoumene Empire, now a power broker in the shadows (Neutral Evil)
-  - **Obsidnia**, Vector of Destruction, right hand of Lord Zark, overthrown by his own Grob Robotic Collective (Chaotic Evil)
+  Two further sections are **classified**: their files show only redaction bars until they are declassified in a later chapter.
   **Creations** lists what you've made in Custom creations; full entries for them are coming soon.
 - **Custom creations** (main menu): creator tools in the spirit of Spore's editors and Galactic Adventures. Creations are stored on this device separately from save slots, and are only saved when you press Save.
   - **Species creator:** build a creature with a live 3D preview (drag to rotate, scroll to zoom, Walk to see it move). You can set legs (0, 2, 4 or 6), leg length, arms, body length and width, tail, back spikes, neck, head, snout, 1–8 eyes, horns, ears, skin pattern (plain, stripes, spots, bands, scales), three colours, bioluminescence and size. Add lore: temperament, diet, homeworld and a description.
@@ -102,7 +96,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 
 ```
 index.html                  the complete game, with all assets embedded
-assets/models/              source 3D models (.glb); primes/ and vectors/ hold the Nostrapedia figures; characters/ holds the Project BC and Sevirrus models, including hfos_soldier.glb (original HFOS colours)
+assets/models/              source 3D models (.glb); primes/ and vectors/ hold figures for classified Nostrapedia files; characters/ holds the Project BC and Sevirrus models, including hfos_soldier.glb (original HFOS colours)
 assets/audio/               main menu theme, combat themes (combat/), Antarctica exploration music (antarctica/), opening narration, James Brown's lines (prologue + Chapter I)
 assets/logo_reference.png   logo / font style reference
 ```

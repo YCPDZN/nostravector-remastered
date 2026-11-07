@@ -213,6 +213,11 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 #pdList .mi small{display:block;font-size:8px;letter-spacing:.2em;color:var(--mute);margin-top:5px;text-transform:uppercase}
 #pdList .mi span{text-align:left}
 #pdBody.hidden,#pdList.hidden{display:none}
+.rd{display:inline-block;height:.95em;vertical-align:-.12em;background:#e6e9f0;opacity:.85;margin:1px 0}
+.rd-p{line-height:2!important;word-spacing:.15em}
+#pdList .mi .rd{height:1em;background:var(--ink)}
+.rd-card b{color:#ff9f86;font-weight:500;letter-spacing:.2em}
+.rd-line{color:#ff9f86;border-left-color:#ff9f86}
 @media (max-width:720px),(max-aspect-ratio:1/1){ #pedia{background:none} }
 #cc:not([data-tab=characters]) #ccAtk{display:none}
 .cc-desc p{margin:0 0 12px;font-size:11px;line-height:1.8;letter-spacing:.03em;color:#c9cfda}
@@ -574,7 +579,7 @@ body.touch .jopts kbd{display:none}
     <div class="cr-head">
       <div class="eyebrow" id="pdEyebrow">Nostrapedia</div>
       <h2 class="cr-title" id="pdTitle">THE FOUR LEADERS</h2>
-      <div class="tabs" id="pdTabs"><button class="tab on" data-t="leaders">Leaders</button><button class="tab" data-t="primes">Primes</button><button class="tab" data-t="vectors">Vectors</button><button class="tab" data-t="mine">Creations</button></div>
+      <div class="tabs" id="pdTabs"><button class="tab on" data-t="leaders">Leaders</button><button class="tab" data-t="primes">▮▮▮▮▮</button><button class="tab" data-t="vectors">▮▮▮▮▮▮▮</button><button class="tab" data-t="mine">Creations</button></div>
     </div>
     <div class="panes"><div class="cc-list" id="pdList"></div><div class="cc-body hidden" id="pdBody"></div></div>
     <div class="cr-actions"><button class="btn" id="pdBack"><span>Main menu</span></button></div>
@@ -5637,6 +5642,11 @@ const PEDIA_VECTORS = [
     ] }
 ];
 const PRIME_TABS = { primes: () => PEDIA_PRIMES, vectors: () => PEDIA_VECTORS };
+// classified until a later chapter: set true (or unlock from story progress) to reveal them
+const PEDIA_UNLOCK = { primes: false, vectors: false };
+const pdLocked = () => PRIME_TABS[pedia.tab] && !PEDIA_UNLOCK[pedia.tab];
+const bar = n => `<span class="rd" style="width:${Math.round(n)}ch"></span>`;
+const barsFor = text => text.split(' ').map(w => bar(Math.max(2, w.length * .9))).join(' ');
 const primeCache = {};
 function loadPrime(p) {
   if (primeCache[p.tag]) return primeCache[p.tag];
@@ -5677,6 +5687,10 @@ function pediaList() {
   if (pedia.tab === 'leaders') {
     pUI.title.textContent = 'THE FOUR LEADERS';
     pUI.list.innerHTML = PEDIA_LEADERS.map((L, i) => `<button class="mi" data-i="${i}"><i>${pad(i + 1)}</i><span>${L.name}<small>${L.title} · ${L.facts.find(f => f[0] === 'Alignment')[1]}</small></span><em class="arr">›</em></button>`).join('');
+  } else if (pdLocked()) {
+    pUI.title.textContent = '[REDACTED]';
+    pUI.list.innerHTML = `<div class="sp-card cc-desc rd-card"><p><b>CLASSIFIED.</b> These files will be declassified in a later chapter.</p></div>` +
+      PRIME_TABS[pedia.tab]().map((L, i) => `<button class="mi" data-i="${i}"><i>${pad(i + 1)}</i><span>${bar(L.name.length * 1.05)}<small>[Redacted] · Unlocks in a later chapter</small></span><em class="arr">›</em></button>`).join('');
   } else if (PRIME_TABS[pedia.tab]) {
     pUI.title.textContent = pedia.tab === 'vectors' ? 'THE OILKOUMENE VECTORS' : 'THE PRIMES';
     pUI.list.innerHTML = (pedia.tab === 'vectors' ? '<div class="sp-card cc-desc"><p>Five brothers born in the Big Bang in the Cyrannus Galaxy, five galaxies from the Milky Way. All are sons of Lord Zark.</p></div>' : '') + PRIME_TABS[pedia.tab]().map((L, i) => `<button class="mi" data-i="${i}"><i>${pad(i + 1)}</i><span>${L.name}<small>${L.title} · ${L.facts.find(f => f[0] === 'Alignment')[1]}</small></span><em class="arr">›</em></button>`).join('');
@@ -5689,6 +5703,16 @@ function pediaList() {
   pediaPreview();
 }
 function pediaEntry(i) {
+  if (pdLocked()) {
+    const L = PRIME_TABS[pedia.tab]()[i]; pedia.cur = L;
+    pUI.list.classList.add('hidden'); pUI.body.classList.remove('hidden');
+    pUI.eyebrow.textContent = 'Nostrapedia · classified file'; pUI.title.textContent = '[REDACTED]';
+    pUI.body.innerHTML = `<dl class="cc-meta pd-meta">${L.facts.map(([k, v]) => `<dt>${bar(k.length)}</dt><dd>${barsFor(v)}</dd>`).join('')}</dl>
+      <p class="pd-align rd-line">This file will be declassified in a later chapter.</p>
+      <div class="sp-card cc-desc">${L.paras.map(p => `<p class="rd-p">${barsFor(p)}</p>`).join('')}</div>`;
+    pUI.body.scrollTop = 0; $('#pdBack span').textContent = 'Back';
+    pediaPreview(); return;
+  }
   const L = (PRIME_TABS[pedia.tab] ? PRIME_TABS[pedia.tab]() : PEDIA_LEADERS)[i]; pedia.cur = L;
   pUI.list.classList.add('hidden'); pUI.body.classList.remove('hidden');
   pUI.eyebrow.textContent = `Nostrapedia · ${L.title}`; pUI.title.textContent = L.name;
@@ -5700,6 +5724,7 @@ function pediaEntry(i) {
 }
 function pediaPreview() {
   ccClear(); cc.loadTok++; ccStage.visible = true; cc.rot = .3;
+  if (pdLocked()) { cc.prime = false; cc.lookY = 1; cc.dist = 6; return; }
   if (PRIME_TABS[pedia.tab]) {
     const tok = cc.loadTok, list = pedia.cur ? [pedia.cur] : PRIME_TABS[pedia.tab]();
     list.forEach((p, i) => {
