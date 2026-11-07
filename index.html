@@ -1239,6 +1239,7 @@ function setMenuLook(kind) {
 // James joins you in the main menu once he's your companion
 function menuCompanion() {
   if (!(state === 'title' || state === 'loading')) return;
+  menuOrion();
   const want = companionOn() && !isCh4Menu();
   if (!want) { if (james.ready && james.root.parent === scene) james.root.visible = false; return; }
   ensureJames().then(() => {
@@ -1251,6 +1252,7 @@ function menuCompanion() {
   });
 }
 function menuTick(dt) {
+  menuOrionTick(dt);
   if (aurora.visible) auroraTick();
   if (menuSnow.visible) snowTick(dt);
   const J = james;
@@ -3173,7 +3175,7 @@ function setCh1(patch) {
 // after James joins: set up a camp with him, then the ice is yours to explore
 function ch2Tasks(task) {
   const c2 = wanderer.ch2 || {};
-  return task(true, 'Wake up at Orion’s') + task(!!c2.talkedOrion, 'Speak to Orion') + (c2.talkedOrion ? task(false, 'Explore Africa') : '');
+  return task(true, 'Wake up at Orion’s') + task(!!c2.talkedOrion, 'Speak to Orion') + (c2.talkedOrion ? task(false, 'Explore Africa with Orion') : '');
 }
 function campTasks(p, task) {
   if (!p.campDone) {
@@ -4311,7 +4313,7 @@ async function interact() {
   } else if (n.id === 'bed') {
     sleepOutside();
   } else if (n.id === 'orion') {
-    talkOrion();
+    if (orionJoined()) { ex.cSel = 'orion'; refreshJamesUI(); toggleJamesMenu(); } else talkOrion();
   } else if (n.id === 'push') {
     pushJames();
   } else if (n.id === 'rover') {
@@ -5020,9 +5022,10 @@ function teleportTo(t) {
   }, 480);
 }
 // ---- one companion command system for everyone in your party ----
-const PARTY = { james: { name: 'James', full: 'James Brown' } }; // Orion, Khazglar, Charon and the rest join here in later chapters
+const PARTY = { james: { name: 'James', full: 'James Brown' }, orion: { name: 'Orion', full: 'Orion Mascar' } }; // Orion, Khazglar, Charon and the rest join here in later chapters
 function partyNow() {
   const out = companionOn() ? ['james'] : [];
+  if (orionJoined()) out.push('orion');
   for (const id of wanderer.party || []) if (PARTY[id] && !out.includes(id)) out.push(id);
   return out;
 }
@@ -5030,8 +5033,8 @@ function partySel() { const p = partyNow(), s = ex.cSel; return s === 'all' && p
 function cmdCompanion(mode) {
   const sel = partySel(); if (!sel || !JCMDS.includes(mode)) return;
   const ids = sel === 'all' ? partyNow() : [sel];
-  for (const id of ids) { if (id === 'james') jamesCmd(mode, ids.length > 1 || sel !== 'james'); else { (wanderer.cmds || (wanderer.cmds = {}))[id] = mode; const c = curChar(); if (c) c.cmds = wanderer.cmds; } }
-  if (sel !== 'james') { sfx.click(); lootMsg(`${sel === 'all' ? 'Everyone' : PARTY[sel].name} · ${jBarkSet()[mode]}`, '#7fe0a0'); saveRoster(); }
+  for (const id of ids) { if (id === 'james') jamesCmd(mode, ids.length > 1 || sel !== 'james'); else if (id === 'orion') orionCmd(mode, ids.length > 1); else { (wanderer.cmds || (wanderer.cmds = {}))[id] = mode; const c = curChar(); if (c) c.cmds = wanderer.cmds; } }
+  if (sel === 'all') { sfx.click(); lootMsg(`Everyone · ${jBarkSet()[mode]}`, '#7fe0a0'); saveRoster(); }
   toggleJamesMenu(false); refreshJamesUI();
 }
 function cycleCompanion() {
@@ -5529,9 +5532,9 @@ function jamesGear(rifle, pick) {
 function refreshJamesUI() {
   if (!$('#jMode')) return;
   const p = partyNow(), sel = partySel() || 'james';
-  const mode = sel === 'james' || sel === 'all' ? comp.mode : (wanderer.cmds && wanderer.cmds[sel]) || 'follow';
-  $('#jWho').textContent = sel === 'all' ? 'EVERYONE' : (PARTY[sel] || PARTY.james).name.toUpperCase();
-  $('#jMode').textContent = sel === 'james' && comp.mode === 'base' && comp.arrived ? 'AT BASE' : JLABEL[mode] || 'FOLLOWING';
+  const mode = sel === 'orion' ? orionC.mode : sel === 'james' || sel === 'all' ? comp.mode : (wanderer.cmds && wanderer.cmds[sel]) || 'follow';
+  $('#jWho').textContent = sel === 'all' ? 'EVERYONE' : sel === 'orion' ? `ORION · LV ${orionLevel()}` : (PARTY[sel] || PARTY.james).name.toUpperCase();
+  $('#jMode').textContent = sel === 'orion' ? OLABEL[mode] || 'FOLLOWING' : sel === 'james' && comp.mode === 'base' && comp.arrived ? 'AT BASE' : JLABEL[mode] || 'FOLLOWING';
   for (const b of document.querySelectorAll('#jOpts button[data-m]')) b.classList.toggle('on', b.dataset.m === mode);
   const row = $('#jWhoRow'); row.style.display = p.length > 1 ? '' : 'none';
   row.innerHTML = p.length > 1 ? [...p, 'all'].map(id => `<button data-w="${id}" class="${id === sel ? 'on' : ''}">${id === 'all' ? 'Everyone' : PARTY[id].name}</button>`).join('') : '';
@@ -6496,22 +6499,129 @@ async function placeOrion() {
     } catch (e) { console.error('Orion failed to load', e); return; }
   }
   const R = world.orion; if (R.root.parent !== wScene) wScene.add(R.root);
-  R.root.visible = true; R.root.position.set(9.6, 0, 1.8); R.root.rotation.y = Math.PI / 2; R.mode = 'idle';
+  R.root.visible = true; R.mode = 'idle';
+  orionC.mode = (wanderer.ch2 && wanderer.ch2.orionMode) || 'follow';
+  if (orionJoined() && orionC.mode !== 'base') { const p = player.position; R.root.position.set(p.x - 1.6, groundAt(p.x - 1.6, p.z - 1.2, p.y + .5), p.z - 1.2); }
+  else { R.root.position.set(9.6, groundAt(9.6, 1.8, 1), 1.8); R.root.rotation.y = Math.PI / 2; }
   if (R.lips && R.lips.mouth) R.lips.mouth.scale.y = .7; // his face relaxes now you're alive
 }
 function orionTick(dt) {
   const R = world.orion; if (!R || !R.root.visible || curArea() !== 'africa') return;
   const p = player.position, o = R.root.position, d = Math.hypot(p.x - o.x, p.z - o.z);
-  if (d < 8) R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - o.x, p.z - o.z), Math.min(1, dt * 3));
+  if (orionJoined() && !ex.dlg && state === 'explore') orionAI(R, dt);
+  else { R.mode = 'idle'; if (d < 8) R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - o.x, p.z - o.z), Math.min(1, dt * 3)); }
   animRig(R, dt);
   if (R.lips) { const t = !!(ex.dlg && ex.dlg.who === 'ORION MASCAR'), L = R.lips, target = t ? clamp((sfx.voiceLevel() - .015) / .24, 0, 1) : 0; L.open += (target - L.open) * Math.min(1, dt * (target > L.open ? 28 : 14)); L.jaw.rotation.x = L.base + L.open * .26; if (L.mouth) L.mouth.scale.y = .7 * (1 + L.open * 3.2); }
+}
+// ---- Orion Mascar as a companion: the same orders as James, his own replies, level 14 and rising with you ----
+const OBARK = {
+  mine: 'Leave the digging to an old man. I’ve done worse for less.',
+  explore: 'I’ll take a look over the next rise. Don’t wait up.',
+  base: 'I’ll head back to the house. The kettle won’t boil itself.',
+  wander: 'I’ll stretch these old legs. Shout if you need me.',
+  follow: 'Right behind you, friend.'
+};
+const OLABEL = { mine: 'MINING', explore: 'EXPLORING', base: 'AT HOME', wander: 'WANDERING', follow: 'FOLLOWING' };
+const orionC = { mode: 'follow', wp: null, wpT: 0, node: null, swingT: 0, legs: 0 };
+const orionJoined = () => !!(wanderer && wanderer.ch2 && wanderer.ch2.orionJoined);
+function orionLevel() { const c2 = (wanderer && wanderer.ch2) || {}; return clamp(14 + levelInfo((wanderer && wanderer.xp) || 0).level - (c2.orionBase || 1), 14, 100); }
+function orionCmd(mode, quiet) {
+  if (!JCMDS.includes(mode)) return;
+  orionC.mode = mode; orionC.wp = null; orionC.node = null;
+  wanderer.ch2 = Object.assign({}, wanderer.ch2, { orionMode: mode }); const c = curChar(); if (c) c.ch2 = wanderer.ch2; saveRoster();
+  if (!quiet) {
+    sfx.click(); lootMsg(`Orion · ${OBARK[mode]}`, '#ffc94a');
+    sfx.loadClips('orionCmd').then(cl => { const b = cl && cl[JCMDS.indexOf(mode)]; if (b && !ex.dlg) sfx.playBuf(b, 1.25); });
+  }
+  refreshJamesUI();
+}
+function orionNodeNear(o, r) {
+  let best = null, bd = r;
+  for (const g of world.chunks.values()) for (const n of g.userData.nodes || []) if (!n.dead) { const d = Math.hypot(n.x - o.x, n.z - o.z); if (d < bd) { bd = d; best = n; } }
+  return best;
+}
+function orionHit(n) {
+  const lv = orionLevel(); n.hp -= 1 + lv / 25; n.shake = .25;
+  const col = n.type === 'tree' ? [.45, .3, .18] : n.type === 'rock' ? [.55, .57, .62] : [.8, .45, .25];
+  burst(n.x, n.y, n.z, 10, 3, col[0], col[1], col[2], .6, .8, 1);
+  const heard = Math.hypot(n.x - player.position.x, n.z - player.position.z) < 30; if (heard) sfx.hit(n.type === 'tree' ? 'crate' : n.type);
+  if (n.hp <= 0) {
+    n.dead = true; for (const m of n.meshes) m.parent && m.parent.remove(m);
+    wsState().mined[n.key] = 1; saveRoster(); gainXP(6);
+    for (const drop of LOOT[n.type]()) if (drop) { giveItem(drop[0], drop[1]); lootMsg(`Orion · +${drop[1]} ${ITEMS[drop[0]].name}`, '#ffc94a'); }
+    if (heard) sfx.thud();
+    return true;
+  }
+  return false;
+}
+function orionAI(R, dt) {
+  const C = orionC, p = player.position, o = R.root.position;
+  const walkTo = (x, z, stop, run) => {
+    const dx = x - o.x, dz = z - o.z, d = Math.hypot(dx, dz);
+    if (d <= stop) { R.mode = 'idle'; return true; }
+    const sp = run ? 5.4 : 2.4, nx = o.x + dx / d * Math.min(d, sp * dt), nz = o.z + dz / d * Math.min(d, sp * dt);
+    if (!(Math.abs(nx) < 7.6 && Math.abs(nz) < 3.6)) { o.x = nx; o.z = nz; } else { o.x += (dz / d) * sp * dt; o.z -= (dx / d) * sp * dt; } // round the house
+    o.y = groundAt(o.x, o.z, o.y + .5); R.mode = 'walk'; R.t += dt * (run ? .9 : 0);
+    R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 8));
+    return false;
+  };
+  const dp = Math.hypot(p.x - o.x, p.z - o.z);
+  if (C.mode === 'follow') {
+    if (dp > 40) { const a = player.rotation.y; o.set(p.x - Math.sin(a) * 2.2, 0, p.z - Math.cos(a) * 2.2); o.y = groundAt(o.x, o.z, p.y + .5); burst(o.x, o.y + 1, o.z, 14, 2, .84, .7, .47, .6, .4, .6); }
+    else if (walkTo(p.x, p.z, 2.4, dp > 6)) R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - o.x, p.z - o.z), Math.min(1, dt * 3));
+  } else if (C.mode === 'base') {
+    if (walkTo(9.6, 1.8, .4, Math.hypot(o.x - 9.6, o.z - 1.8) > 10)) R.root.rotation.y = angLerp(R.root.rotation.y, Math.PI / 2, Math.min(1, dt * 2));
+  } else if (C.mode === 'wander' || C.mode === 'explore') {
+    const far = C.mode === 'explore';
+    if (!C.wp || (C.wpT -= dt) <= 0) { const a = Math.random() * Math.PI * 2, r = far ? 30 + Math.random() * 40 : 4 + Math.random() * 10, cx = far ? o.x : p.x, cz = far ? o.z : p.z; C.wp = [cx + Math.cos(a) * r, cz + Math.sin(a) * r]; C.wpT = far ? 25 : 9; C.legs++; }
+    if (walkTo(C.wp[0], C.wp[1], .8, far)) { C.wpT = Math.min(C.wpT, far ? 1.5 : 3); if (far && C.legs % 3 === 0 && !C.node) C.node = orionNodeNear(o, 10); }
+    if (far && Math.hypot(o.x, o.z) > 220) C.wp = [o.x * .5, o.z * .5]; // he doesn't go too far from home
+  }
+  if (C.mode === 'mine' || (C.mode === 'explore' && C.node)) {
+    if (!C.node || C.node.dead) C.node = orionNodeNear(o, C.mode === 'mine' ? 45 : 10);
+    if (!C.node) { if (C.mode === 'mine') walkTo(p.x, p.z, 3, dp > 6); return; }
+    const n = C.node;
+    if (walkTo(n.x, n.z, (n.r || .8) + .9, true)) {
+      R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(n.x - o.x, n.z - o.z), Math.min(1, dt * 6)); R.mode = 'attack';
+      if ((C.swingT -= dt) <= 0) { C.swingT = 1.1; if (orionHit(n)) C.node = null; }
+    }
+  }
+}
+// on the main menu, beside your wanderer
+let menuOrionR = null, menuOrionLoad = null;
+function menuOrion() {
+  const want = state === 'title' && orionJoined() && !isCh4Menu();
+  if (!want) { if (menuOrionR) menuOrionR.root.visible = false; return; }
+  if (!menuOrionLoad) menuOrionLoad = (async () => {
+    const el = document.getElementById('cpOrion'); if (!el) return null;
+    const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    const R = autoRig(SkeletonUtils.clone(await parseGlb(u8.buffer)), 1.85); armRig(R, 'none'); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    menuOrionR = R; return R;
+  })().catch(() => null);
+  menuOrionLoad.then(R => { if (!R || state !== 'title' || !orionJoined()) return; const p = player.position; scene.add(R.root); R.root.visible = true; R.root.position.set(p.x - 1.7, height(p.x - 1.7, p.z - .4), p.z - .4); R.mode = 'idle'; });
+}
+function menuOrionTick(dt) {
+  const R = menuOrionR; if (!R || !R.root.visible || R.root.parent !== scene) return;
+  if (state !== 'title') { R.root.visible = false; return; }
+  const p = player.position, a = player.rotation.y, fx = Math.sin(a), fz = Math.cos(a);
+  const tx = p.x - fz * 1.7 - fx * .4, tz = p.z + fx * 1.7 - fz * .4, dx = tx - R.root.position.x, dz = tz - R.root.position.z, d = Math.hypot(dx, dz);
+  if (d > .6) { const sp = Math.min(2.8, d * 1.8); R.root.position.x += dx / d * sp * dt; R.root.position.z += dz / d * sp * dt; R.mode = 'walk'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 6)); }
+  else { R.mode = 'idle'; R.root.rotation.y = angLerp(R.root.rotation.y, a, Math.min(1, dt * 3)); }
+  R.root.position.y = height(R.root.position.x, R.root.position.z);
+  animRig(R, dt);
 }
 function talkOrion() {
   sfx.loadClips('orionWake').then(clips => {
     openDialog('ORION MASCAR', ORION_WAKE, false, () => {
       const first = !(wanderer.ch2 && wanderer.ch2.talkedOrion);
       wanderer.ch2 = Object.assign({}, wanderer.ch2, { talkedOrion: true }); const c = curChar(); if (c) c.ch2 = wanderer.ch2; saveRoster(); renderTasks();
-      if (first) { gainXP(40); sfx.chime(); setTimeout(() => notice('New objective', 'EXPLORE AFRICA', 3200), 400); }
+      if (first) {
+        wanderer.ch2 = Object.assign({}, wanderer.ch2, { orionJoined: true, orionBase: levelInfo(wanderer.xp || 0).level, orionMode: 'follow' }); if (c) c.ch2 = wanderer.ch2; saveRoster();
+        orionC.mode = 'follow'; ui.xhud.classList.add('comp'); ex.cSel = 'orion'; refreshJamesUI(); renderTasks();
+        gainXP(40); sfx.chime();
+        setTimeout(() => notice(`Orion Mascar · level ${orionLevel()}`, 'JOINED YOUR PARTY', 3400), 400);
+        setTimeout(() => notice(document.body.classList.contains('touch') ? 'Tap ORION under your objectives' : '1 Mine · 2 Explore · 3 Base · 4 Wander · 5 Follow', 'GIVE ORION ORDERS', 4200), 4200);
+      }
     }, clips || []);
   });
 }
@@ -6558,7 +6668,7 @@ function enterWorld(place) {
   player.position.y = groundAt(player.position.x, player.position.z, place && place.area === 'world' && place.y != null ? +place.y + .1 : -1e9);
   placeJamesOutside();
   ex.air = false; ex.act = null; ex.hp = null; ex.sta = null; closeModals();
-  ui.xhud.classList.add('world'); ui.xhud.classList.toggle('comp', companionOn()); renderHotbar(); refreshJamesUI();
+  ui.xhud.classList.add('world'); ui.xhud.classList.toggle('comp', companionOn() || orionJoined()); renderHotbar(); refreshJamesUI();
   ex.snap = true; ex.pitch = .3; ex.dist = 4.2;
   sfx.wind(.4);
   renderTasks(); resize();
@@ -6706,7 +6816,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { orion: ['Talk to Orion', 'TALK'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
+    const PR = { orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
