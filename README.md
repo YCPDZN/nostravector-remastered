@@ -66,6 +66,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   - **5 · Follow me:** the default. If you get more than 40 m ahead, he catches up by appearing just behind you.
   On a phone, tap **JAMES** under your objectives, or walk up to him and tap **ORDER**. He shows as a green dot on the minimap.
 - **Voiced scenes:** the meeting cutscene (James and the soldier) and James's lines at the end of the trail are fully voiced with lip sync.
+- **Chapter IV main menu:** once a wanderer reaches Chapter IV, the main menu turns red and darker, the year reads 2127 AD, Antarctica sinks into a blood-red night with falling ash, the Chapter IV theme plays, and a voice taunts you line by line. To preview it now, open the game with `?menu=ch4` at the end of the address (for example `index.html?menu=ch4`).
 - **Main menu:** set in Antarctica at polar night, with aurora and snowfall; once James has joined you, he walks alongside your wanderer. The moon-style menu is kept for when the story reaches the Moon.
 - **Options:** in the pause menu (and Settings on the main menu) you can turn the music on or off separately from all sound. Both choices are remembered.
 - **Nostrapedia** (main menu): the in-game encyclopaedia. **Leaders** holds detailed files on the four species leaders. They are classified until Chapter III, except the leader of your wanderer's species, whose file opens once you have met them in your dream.
@@ -94,7 +95,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 ```
 index.html                  the complete game, with all assets embedded
 assets/models/              source 3D models (.glb); primes/, vectors/ and companions/ hold Nostrapedia figures; characters/ holds the Project BC and Sevirrus models, including hfos_soldier.glb (original HFOS colours)
-assets/audio/               main menu theme, combat themes (combat/), Antarctica exploration music (antarctica/), opening narration, James Brown's lines (prologue + Chapter I)
+assets/audio/               main menu themes (incl. Chapter IV), combat themes (combat/), Antarctica exploration music (antarctica/), opening narration, James Brown's lines (prologue + Chapter I)
 assets/logo_reference.png   logo / font style reference
 ```
 
