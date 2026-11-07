@@ -154,6 +154,7 @@ The files in `assets/` are the source copies. The game doesn't load them, becaus
 
 The game never autosaves. It writes progress only when you choose **Save game**, either from the main menu (Save / Load) or from the pause menu in a chapter.
 
+- **Export / import (for itch.io and other browsers):** on the Save / Load screen, **Export saves** downloads one file (`nostravector-saves-YYYY-MM-DD.json`) holding every save slot, wanderer, setting and custom creation, including uploaded .glb models. **Import saves** (tap twice to confirm) loads such a file and replaces what's on this device, then reloads the game. Browsers, and itch.io's game frames especially, can wipe site storage, so export now and then. Only saved progress is exported, so save first.
 - There are three save slots. Each holds all your wanderers, the active one, their chapter progress, and where you were standing if you saved in the station.
 - Changes since your last save are kept only in memory and are marked **UNSAVED**. Loading or overwriting a slot asks you to confirm.
 - **Delete save** (in Save / Load or the pause menu) clears a slot after a second tap to confirm.

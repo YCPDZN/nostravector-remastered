@@ -549,6 +549,7 @@ button.bm-c.no{opacity:.45}
 .boss-bar .bb{height:6px;background:rgba(255,70,60,.15);border:1px solid rgba(255,70,60,.45);transform:skewX(-14deg)}
 .boss-bar .bb i{display:block;height:100%;background:linear-gradient(90deg,#8a1414,#ff3b2f)}
 .boss-bar em{display:block;font-style:normal;font-size:8px;letter-spacing:.3em;color:var(--mute);margin-top:6px;text-transform:uppercase}
+.slot-io{margin:4px 0 10px;gap:10px}
 </style>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
@@ -819,6 +820,8 @@ button.bm-c.no{opacity:.45}
     <h2 class="h1" id="slotTitle">SAVE</h2>
     <div class="slot-list" id="slotList"></div>
     <div class="slot-msg" id="slotMsg"></div>
+    <div class="row slot-io"><button class="btn small" id="slotExport"><span>Export saves</span></button><button class="btn small" id="slotImport"><span>Import saves</span></button></div>
+    <input type="file" id="slotFile" accept=".json,application/json" hidden>
     <button class="btn small" id="slotBack"><span>Back</span></button>
   </div>
 </section>
@@ -6421,6 +6424,41 @@ function refreshDirty() {
   el.classList.toggle('warn', dirty);
 }
 function slotMsg(t, warn) { slotUI.msg.textContent = t; slotUI.msg.classList.toggle('warn', !!warn); }
+// ---- export / import: everything the game keeps in this browser, as one file (for itch.io players, whose browser storage can be wiped) ----
+const toB64 = buf => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return window.btoa(s); };
+const fromB64 = b64 => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; };
+async function exportSaves() {
+  const keys = {};
+  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('nv_')) keys[k] = localStorage.getItem(k); }
+  let models = [];
+  try { models = ((await idb.all()) || []).map(r => Object.assign({}, r, { data: r.data ? toB64(r.data) : null })); } catch { models = []; }
+  const file = JSON.stringify({ game: 'NOSTRAVECTOR', version: 1, exportedAt: new Date().toISOString(), keys, models });
+  const a = document.createElement('a'), url = window.URL.createObjectURL(new window.Blob([file], { type: 'application/json' }));
+  a.href = url; a.download = `nostravector-saves-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+  sfx.chime();
+  slotMsg(dirty ? 'Exported your saved slots. Progress since your last save isn’t included, so save first if you want it.' : 'Saves exported. Keep the file somewhere safe.', dirty);
+}
+let importArm = false;
+$('#slotExport').addEventListener('click', () => { sfx.click(); exportSaves(); });
+$('#slotImport').addEventListener('click', () => {
+  sfx.click();
+  if (!importArm) { importArm = true; slotMsg('Importing replaces every save, wanderer and creation on this device. Tap Import again to choose a file.', true); return; }
+  importArm = false; $('#slotFile').value = ''; $('#slotFile').click();
+});
+$('#slotFile').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (!d || d.game !== 'NOSTRAVECTOR' || typeof d.keys !== 'object') throw new Error('not a save file');
+    const old = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('nv_')) old.push(k); }
+    for (const k of old) localStorage.removeItem(k);
+    for (const [k, v] of Object.entries(d.keys)) if (k.startsWith('nv_') && typeof v === 'string') localStorage.setItem(k, v);
+    for (const m of d.models || []) if (m && m.id) await idb.put(Object.assign({}, m, { data: m.data ? fromB64(m.data) : null }));
+    slotMsg('Saves imported. Reloading…'); sfx.chime();
+    setTimeout(() => window.location.reload(), 900);
+  } catch (err) { slotMsg('That file isn’t a NOSTRAVECTOR save export.', true); console.error(err); }
+});
 function fmtWhen(ts) { try { return new Date(ts).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } }
 function renderSlots() {
   slotUI.title.textContent = { save: 'SAVE', load: 'LOAD', delete: 'DELETE' }[slotMode];
@@ -6533,7 +6571,7 @@ const idb = (() => {
   let dbp = null;
   const open = () => dbp || (dbp = new Promise((res, rej) => { const r = window.indexedDB.open('nostravector', 1); r.onupgradeneeded = () => r.result.createObjectStore('models', { keyPath: 'id' }); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
   const run = async (mode, fn) => { const db = await open(); return new Promise((res, rej) => { const t = db.transaction('models', mode), rq = fn(t.objectStore('models')); t.oncomplete = () => res(rq && rq.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); };
-  return { get: id => run('readonly', s => s.get(id)), put: o => run('readwrite', s => s.put(o)), del: id => run('readwrite', s => s.delete(id)) };
+  return { get: id => run('readonly', s => s.get(id)), put: o => run('readwrite', s => s.put(o)), del: id => run('readwrite', s => s.delete(id)), all: () => run('readonly', s => s.getAll()) };
 })();
 const charCache = {};
 function parseGlb(buf) { return new Promise((res, rej) => new GLTFLoader().parse(buf, '', g => res(g.scene), e => rej(e))); }
