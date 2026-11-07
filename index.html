@@ -3615,7 +3615,7 @@ function loadCroxian() {
     const el = document.getElementById('cpCroxian'); if (!el) return null;
     const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-    const sc = await parseGlb(u8.buffer); const R = autoRig(SkeletonUtils.clone(sc), 1.95);
+    const sc = await parseGlb(u8.buffer); const R = autoRig(SkeletonUtils.clone(sc), 2.2); // a head taller than most wanderers
     armRig(R, 'none'); R.weapon = 'sword';
     const sock = R.rh ? boneSocket(R.rh) : R.ra ? handSocket(R.ra) : null; if (sock) { const sy = makeScythe(); sock.add(sy); R.gear.push(sy); }
     R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
@@ -6630,12 +6630,9 @@ function makeSword() {
 // ---- auto-rig: skeleton bones, named pivot groups, or a geometric split for anything else ----
 function autoRig(src, targetH) {
   const root = new THREE.Group(), turn = new THREE.Group(), m = src; root.add(turn); turn.add(m);
-  // measure from bind-pose geometry (works for skinned meshes before the skeleton has ever been posed)
-  const measure = () => {
-    m.updateMatrixWorld(true); const bx = new THREE.Box3(), b = new THREE.Box3();
-    m.traverse(o => { if (o.isMesh && o.geometry) { if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); b.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); bx.union(b); } });
-    return bx;
-  };
+  // measure the model as it actually renders (skinning included), exactly as the player and James are measured,
+  // so every character comes out at its true height next to you
+  const measure = () => { m.updateMatrixWorld(true); return new THREE.Box3().setFromObject(m); };
   let box = measure();
   const k = targetH / Math.max(.01, box.max.y - box.min.y); m.scale.multiplyScalar(k);
   box = measure();
