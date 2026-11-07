@@ -562,6 +562,10 @@ button.bm-c.no{opacity:.45}
 #ferryCut.title .fc-text,#ferryCut.title2 .fc-text{opacity:1}
 #ferryCut .fc-text small{display:block;font-size:10px;letter-spacing:.6em;color:var(--mute);margin-bottom:14px;text-transform:uppercase}
 #ferryCut .fc-text b{display:block;font-family:var(--display);font-weight:500;font-size:clamp(28px,6vw,64px);letter-spacing:.32em;color:var(--ink);text-shadow:0 2px 24px rgba(0,0,0,.8)}
+
+#c2fx{position:fixed;inset:0;z-index:29;pointer-events:none;--red:0;--tun:0;
+  background:radial-gradient(ellipse at center,rgba(0,0,0,0) calc(62% - var(--tun) * 55%),rgba(0,0,0,calc(.15 + var(--tun) * .85)) calc(100% - var(--tun) * 40%)),
+  radial-gradient(ellipse at center,rgba(120,0,0,0) 40%,rgba(150,0,0,calc(var(--red) * .75)) 100%)}
 </style>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
@@ -852,6 +856,7 @@ button.bm-c.no{opacity:.45}
 </section>
 
 <!-- Leaving Antarctica -->
+<div id="c2fx"></div>
 <div id="ferryCut"><div class="fc-bar top"></div><div class="fc-bar bot"></div><div class="fc-black"></div><div class="fc-text"><small id="fcSub"></small><b id="fcTitle"></b></div></div>
 
 <!-- Loading -->
@@ -1740,7 +1745,7 @@ const sfx = (() => {
     };
   }
   let musicBus = null;
-  let ctx = null, master, noiseBuf, musicGain, musicLevel = .85, voiceBufs = null, voiceSrc = null, windGain = null, windBP = null, clipCache = {}, vAn = null, vData = null, narrSrc = null;
+  let ctx = null, master, noiseBuf, musicGain, musicLevel = .85, voiceBufs = null, voiceSrc = null, windGain = null, windBP = null, clipCache = {}, vAn = null, vData = null, narrSrc = null, ringO = null, ringG = null;
   function init() {
     if (ctx) { ctx.resume && ctx.resume(); return; }
     try {
@@ -1865,6 +1870,11 @@ const sfx = (() => {
         const src = ctx.createBufferSource(), g = ctx.createGain();
         src.buffer = buf; g.gain.value = vol; src.connect(g); g.connect(master); src.onended = () => { if (narrSrc === src) narrSrc = null; res(); }; src.start(); narrSrc = src;
       });
+    },
+    ring(level) {
+      if (!ctx) return;
+      if (!ringO) { ringO = ctx.createOscillator(); ringG = ctx.createGain(); ringO.frequency.value = 6100; ringG.gain.value = 0; ringO.connect(ringG); ringG.connect(master); ringO.start(); }
+      ringG.gain.setTargetAtTime(level * .022, ctx.currentTime, .5);
     },
     playOnce(buf, vol = 1.2) { if (!ctx || !buf) return; const src = ctx.createBufferSource(), g = ctx.createGain(); src.buffer = buf; g.gain.value = vol; src.connect(g); g.connect(master); src.start(); },
     stopNarr() { try { if (narrSrc) narrSrc.stop(); } catch {} narrSrc = null; },
@@ -2044,7 +2054,7 @@ startBtn.addEventListener('click', () => {
   setTimeout(() => {
     f.style.transition = 'opacity 2.2s'; f.style.opacity = 0;
     setTimeout(() => { f.style.transition = ''; }, 2300);
-    if ((wanderer.chapter | 0) >= 2 && ch1().escaped) showCh2Soon('title'); else if ((wanderer.chapter | 0) >= 1) startChapter1(false); else runCutscene();
+    if ((wanderer.chapter | 0) >= 2 && ch1().escaped) { if (!(wanderer.ch2 && wanderer.ch2.introSeen)) startCh2Intro('title'); else showCh2Soon('title'); } else if ((wanderer.chapter | 0) >= 1) startChapter1(false); else runCutscene();
   }, 650);
 });
 function goMenu(id) {
@@ -3844,23 +3854,178 @@ function updateFerryCut(dt) {
   if (t > 17.2 && fc.shown < 4) { fc.shown = 4; $('#fcSub').textContent = 'Starting Chapter II'; $('#fcTitle').textContent = 'AFRICA'; el.classList.add('title2'); sfx.thud(); }
   if (t > 23 && fc.shown < 5) { fc.shown = 5; endChapterOne(); }
 }
+// ============ Chapter II opening: you collapse on the road out of the harbour, and Orion finds you ============
+const ORION_FIND = [
+  'Hey! Hey, are you alright? Somebody get water!',
+  'Oh God. Oh God, don’t move. Don’t you move.',
+  'You’re burning up. How long have you been walking in this heat in that thing?',
+  'Look at me. Look at me. Breathe with me. In… and out.',
+  'You came off the southern ferry? Nobody walks off that boat looking like this.',
+  'Stay with me, friend. I’ve watched too many people close their eyes for the last time. You are not going to be one of them.'
+];
+const afScene = new THREE.Scene();
+const ci = { built: false, t: 0, shot: 0, beat: 0, beatT: 0, orion: null };
+function buildAfrica() {
+  if (ci.built) return; ci.built = true;
+  // a hot, hazy sky
+  const cv = document.createElement('canvas'); cv.width = 4; cv.height = 256; const g2 = cv.getContext('2d');
+  const gr = g2.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#6f8fb5'); gr.addColorStop(.45, '#e7c48c'); gr.addColorStop(.62, '#f3d6a1'); gr.addColorStop(1, '#c79a5e');
+  g2.fillStyle = gr; g2.fillRect(0, 0, 4, 256); const sky = new THREE.CanvasTexture(cv); sky.colorSpace = THREE.SRGBColorSpace;
+  afScene.background = sky; afScene.fog = new THREE.FogExp2(0xe8c896, .016);
+  const sun = new THREE.DirectionalLight(0xfff0d2, 2.6); sun.position.set(-20, 38, 14); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  Object.assign(sun.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18 }); afScene.add(sun, sun.target);
+  afScene.add(new THREE.HemisphereLight(0xffe7bd, 0x8a6a40, .95));
+  // dunes and a dirt road out of the harbour
+  const gg = new THREE.PlaneGeometry(420, 420, 90, 90); gg.rotateX(-Math.PI / 2);
+  const pa = gg.attributes.position; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), z = pa.getZ(i), road = Math.max(0, 1 - Math.abs(x) / 9); pa.setY(i, (Math.sin(x * .05) * 1.4 + Math.sin(z * .04 + x * .02) * 1.1 + Math.sin(x * .17 + z * .11) * .25) * (1 - road)); }
+  gg.computeVertexNormals();
+  const ground = new THREE.Mesh(gg, new THREE.MeshStandardMaterial({ color: 0xd2a467, roughness: 1 })); ground.receiveShadow = true; afScene.add(ground);
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(5, 300), new THREE.MeshStandardMaterial({ color: 0x9a7650, roughness: 1 })); road.rotation.x = -Math.PI / 2; road.position.y = .02; road.receiveShadow = true; afScene.add(road);
+  // acacias, crates and the harbour behind you
+  const leaf = new THREE.MeshStandardMaterial({ color: 0x6d7636, roughness: .9, flatShading: true }), bark = hdW.barkMat || new THREE.MeshStandardMaterial({ color: 0x5a4632 });
+  for (const [x, z, s] of [[-14, 8, 1], [16, -6, 1.2], [-22, -18, .9], [24, 20, 1.1], [-9, 34, 1.3], [12, 42, .8], [-30, 4, 1]]) {
+    const t = new THREE.Group(); t.position.set(x, 0, z); t.scale.setScalar(s);
+    const tr = new THREE.Mesh(hdW.barkGeo || new THREE.CylinderGeometry(.4, .45, 1.6, 8), bark); tr.scale.set(.45, 2, .45); tr.position.y = 1.6; tr.rotation.z = .12; tr.castShadow = true; t.add(tr);
+    const cp = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 6), leaf); cp.scale.set(3.6, .55, 3.2); cp.position.y = 3.5; cp.castShadow = true; t.add(cp);
+    afScene.add(t);
+  }
+  const crateM = new THREE.MeshStandardMaterial({ color: 0x8a6a45, roughness: .9 }), contM = [0xb3202a, 0x2f5f8f, 0x9a8a3a].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: .7, metalness: .3 }));
+  for (const [x, z, r] of [[4.2, -3, .3], [5, -1.8, .9], [-4.6, 6, .2]]) { const c = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), crateM); c.position.set(x, .5, z); c.rotation.y = r; c.castShadow = true; afScene.add(c); }
+  for (let i = 0; i < 9; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.6, 6), contM[i % 3]); c.position.set(-16 + (i % 3) * 2.6, 1.3 + Math.floor(i / 3) % 2 * 2.6, -58 - Math.floor(i / 6) * 7); c.castShadow = true; afScene.add(c); }
+  for (const x of [-30, 22]) { const cr = new THREE.Group(); const m = new THREE.MeshStandardMaterial({ color: 0xd9a020, metalness: .4, roughness: .6 }); const leg = new THREE.Mesh(new THREE.BoxGeometry(1, 22, 1), m); leg.position.y = 11; cr.add(leg); const arm = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 18), m); arm.position.set(0, 22, -5); cr.add(arm); cr.position.set(x, 0, -80); afScene.add(cr); }
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(600, 200), new THREE.MeshStandardMaterial({ color: 0x2f6f8f, roughness: .2, metalness: .3 })); sea.rotation.x = -Math.PI / 2; sea.position.set(0, -.3, -190); afScene.add(sea);
+  ci.blood = new THREE.Mesh(new THREE.CircleGeometry(.5, 20), new THREE.MeshStandardMaterial({ color: 0x4a0606, roughness: .4, transparent: true, opacity: 0 })); ci.blood.rotation.x = -Math.PI / 2; ci.blood.position.set(0, .03, .55); afScene.add(ci.blood);
+}
+async function startCh2Intro(from) {
+  ci.from = from; buildAfrica();
+  if (from === 'explore') leaveExplore(false);
+  show(ui.title, false); show(ui.xhud, false); closeDialog();
+  const fcEl = $('#ferryCut'); fcEl.classList.add('on', 'black'); fcEl.classList.remove('title');
+  afScene.add(player); afScene.add(particles); resetRig(); hideSuitGear();
+  if (ex.held && ex.held.parent) ex.held.parent.remove(ex.held);
+  player.visible = true; player.position.set(0, 0, -7); player.rotation.set(0, 0, 0); inner.rotation.set(0, 0, 0); inner.position.set(0, 0, 0);
+  ci.t = 0; ci.shot = 0; ci.beatT = 0; ci.blood.material.opacity = 0; ci.talked = false; ci.done = false;
+  state = 'ch2intro';
+  // Orion, waiting further up the road
+  try {
+    const el = document.getElementById('cpOrion');
+    if (el && !ci.orion) {
+      const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      const R = autoRig(SkeletonUtils.clone(await parseGlb(u8.buffer)), 1.85); armRig(R, 'none'); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); ci.orion = R;
+    }
+  } catch (e) { console.error('Orion failed to load', e); }
+  if (ci.orion) { afScene.add(ci.orion.root); ci.orion.root.position.set(1.5, 0, 26); ci.orion.root.rotation.set(0, Math.PI, 0); ci.orion.root.visible = true; ci.orion.mode = 'idle'; }
+  setTimeout(() => { fcEl.classList.remove('title2', 'black'); fcEl.classList.add('letter'); }, 900);
+}
+function ciFx(blur, red, tunnel) {
+  renderer.domElement.style.filter = blur > .05 ? `blur(${blur.toFixed(2)}px) saturate(${(1 + red * .6).toFixed(2)})` : '';
+  const fx = $('#c2fx'); fx.style.setProperty('--red', red.toFixed(3)); fx.style.setProperty('--tun', tunnel.toFixed(3));
+}
+const ciDummy = { ra: new THREE.Object3D(), la: new THREE.Object3D(), rl: new THREE.Object3D(), ll: new THREE.Object3D() };
+function updateCh2Intro(dt) {
+  const RG = rig.ra && rig.la && rig.rl && rig.ll ? rig : ciDummy;
+  ci.t += dt; const t = ci.t, p = player.position, O = ci.orion;
+  const ease = k => k * k * (3 - 2 * k), seg = (a, b) => clamp((t - a) / (b - a), 0, 1);
+  // the heartbeat: racing, then failing
+  const bpm = t < 15 ? 70 + t * 7 : Math.max(38, 170 - (t - 15) * 14), beatGap = 60 / bpm;
+  ci.beatT -= dt; let beat = 0;
+  if (ci.beatT <= 0) { ci.beatT = beatGap; sfx.heart(t < 15 ? .6 + t * .03 : Math.max(.2, 1.1 - (t - 15) * .06)); ci.beat = 1; }
+  ci.beat = Math.max(0, ci.beat - dt * 4); beat = ci.beat;
+  let blur = 0, red = 0, tun = 0;
+  if (t < 7) {
+    // staggering up the road, swaying, every step heavier
+    const w = t * 3.2, k = seg(0, 7);
+    p.z = -7 + t * .75; p.y = 0;
+    RG.rl.rotation.x = Math.sin(w) * .45; RG.ll.rotation.x = -Math.sin(w) * .45;
+    RG.ra.rotation.x = .15 + Math.sin(w) * .08; RG.la.rotation.x = .25; RG.ra.rotation.z = -.08; RG.la.rotation.z = .1;
+    inner.rotation.z = Math.sin(w * .5) * (.06 + k * .1); inner.rotation.x = .12 + k * .12;
+    blur = .4 + k * 1.2 + beat * .8; red = k * .25 + beat * .1;
+    camera.position.set(3.4 - t * .1, 1.5, p.z + 6.5 - t * .2); camera.lookAt(p.x, 1.2, p.z);
+    if (t > 3 && !ci.cough1) { ci.cough1 = 1; burst(p.x, 1.5, p.z + .35, 10, .8, .6, .02, .02, .7, 1.2, .6); }
+  } else if (t < 11) {
+    // he stops; a hand to his head; the nose bleeds onto the sand
+    const k = seg(7, 11);
+    RG.rl.rotation.x *= .9; RG.ll.rotation.x *= .9;
+    damp(RG.ra.rotation, 'x', -2.25, 4, dt); damp(RG.ra.rotation, 'z', .35, 4, dt); damp(RG.la.rotation, 'x', .3, 4, dt);
+    inner.rotation.z = Math.sin(t * 2.3) * .14; inner.rotation.x = .25 + Math.sin(t * 1.7) * .05;
+    if (Math.random() < dt * 6) burst(p.x + .05, 1.45, p.z + .18, 1, .1, .55, .01, .01, 1, 1.6, -.2);
+    ci.blood.position.set(p.x, .03, p.z + .3); ci.blood.material.opacity = Math.min(.85, k * .9); ci.blood.scale.setScalar(.2 + k * .5);
+    blur = 1.6 + beat * 2.4 + Math.sin(t * 3) * .6; red = .35 + beat * .35;
+    camera.position.set(p.x + .9, 1.55, p.z + 1.6); camera.lookAt(p.x, 1.45, p.z);
+  } else if (t < 14.5) {
+    // the knees go; one hand on the ground; coughing blood
+    const k = ease(seg(11, 12.2));
+    p.y = -.55 * k; RG.rl.rotation.x = 1.25 * k; RG.ll.rotation.x = 1.1 * k;
+    damp(RG.la.rotation, 'x', -1.05, 5, dt); damp(RG.ra.rotation, 'x', .1, 3, dt); damp(RG.ra.rotation, 'z', .1, 3, dt);
+    inner.rotation.x = .45 * k + Math.max(0, Math.sin(t * 9)) * .1; inner.rotation.z = Math.sin(t * 1.4) * .06;
+    if (t > 12.6 && !ci.cough2) { ci.cough2 = 1; burst(p.x, .95, p.z + .5, 26, 1.4, .5, .01, .01, .9, 1.4, .3); sfx.thud(); }
+    if (t > 13.6 && !ci.cough3) { ci.cough3 = 1; burst(p.x, .9, p.z + .45, 18, 1.1, .45, .01, .01, .9, 1.4, .2); }
+    if (t > 11.4 && !ci.kneel) { ci.kneel = 1; sfx.thud(); burst(p.x, .1, p.z, 22, 1.6, .82, .68, .45, .8, .6, .8); }
+    blur = 2.2 + beat * 2; red = .5 + beat * .3;
+    camera.position.set(p.x - 2.4, .55, p.z + 1.2); camera.lookAt(p.x, .8, p.z);
+  } else if (t < 16.5) {
+    // and he falls, face first, into the dirt
+    const k = ease(seg(14.5, 15.15));
+    inner.rotation.x = .45 + k * 1.1; p.y = -.55 + k * .4; RG.la.rotation.x = -1.05 + k * .6;
+    if (k >= 1 && !ci.fell) { ci.fell = 1; sfx.thud(); sfx.thud(); burst(p.x, .2, p.z + 1, 40, 2.2, .84, .7, .47, 1.1, .5, 1); camera.position.y += .15; }
+    blur = 2.5 + beat; red = .55; tun = seg(15, 16.5) * .35;
+    if (!ci.fell) camera.position.set(p.x - 2.6, .6, p.z + 1.8); camera.lookAt(p.x, .5, p.z + .6);
+  } else {
+    // face in the sand: everything far away, a ringing, a man running
+    sfx.ring(clamp((t - 16.5) / 4, 0, 1) * (ci.talked ? .5 : 1));
+    inner.rotation.x = 1.55 + Math.sin(t * 7) * .015 * Math.max(0, 1 - (t - 16.5) / 6); // the twitching fades
+    camera.position.set(p.x + .35, .22, p.z + .55); camera.lookAt(p.x + 1.2, .4, p.z + 6);
+    if (O) {
+      const R = O, o = R.root.position, tx = p.x + .9, tz = p.z + 1.2, dx = tx - o.x, dz = tz - o.z, d = Math.hypot(dx, dz);
+      if (t > 17.5 && d > .4 && !ci.kneelO) { R.mode = 'walk'; o.x += dx / d * Math.min(d, 6.2 * dt); o.z += dz / d * Math.min(d, 6.2 * dt); R.root.rotation.y = Math.atan2(dx, dz); if (Math.random() < dt * 8) burst(o.x, .1, o.z, 2, .9, .84, .7, .47, .5, .6, .4); }
+      else if (t > 17.5 && !ci.kneelO) { ci.kneelO = t; R.mode = 'idle'; sfx.thud(); }
+      if (ci.kneelO) {
+        const k = ease(clamp((t - ci.kneelO) / .5, 0, 1));
+        R.root.position.y = -.5 * k; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - o.x, p.z - o.z), Math.min(1, dt * 4));
+        camera.position.set(p.x + .3, .35 + k * .3, p.z - .5); camera.lookAt(o.x, .9 - k * .3, o.z);
+      }
+      animRig(R, dt);
+      if (ci.kneelO) { if (R.rl) R.rl.rotation.x = 1.2; if (R.ll) R.ll.rotation.x = -.4; if (R.ra) R.ra.rotation.x = -.9; if (R.la) R.la.rotation.x = -.6; }
+    }
+    if (((ci.kneelO && t > ci.kneelO + .7) || (!O && t > 19)) && !ci.talked) {
+      ci.talked = true;
+      sfx.loadClips('orionFind').then(clips => { openDialog('???', ORION_FIND, false, () => { ci.endT = ci.t; }, clips || []); if (ex.dlg) ex.dlg.auto = true; });
+    }
+    blur = 3 + Math.sin(t * 1.3) * 1.2 + beat * 1.5; red = .45 + beat * .2;
+    tun = .4 + Math.sin(t * .9) * .12 + (ci.endT ? clamp((t - ci.endT) / 2.5, 0, 1) * .7 : 0);
+    if (ex.dlg) tun -= .12; // fighting to stay awake while he talks
+    if (ci.endT && t > ci.endT + 3 && !ci.done) { ci.done = true; endCh2Intro(); }
+  }
+  ciFx(blur, red, clamp(tun, 0, 1));
+}
+function endCh2Intro() {
+  const fcEl = $('#ferryCut'); fcEl.classList.add('black');
+  sfx.ring(0);
+  setTimeout(() => {
+    renderer.domElement.style.filter = ''; ciFx(0, 0, 0);
+    if (ci.orion) ci.orion.root.visible = false;
+    wanderer.ch2 = Object.assign({}, wanderer.ch2, { started: true, introSeen: true }); const c = curChar(); if (c) c.ch2 = wanderer.ch2; saveRoster();
+    scene.add(player); scene.add(particles); resetRig(); inner.rotation.set(0, 0, 0); inner.position.set(0, 0, 0); player.position.set(0, height(0, 0), 0);
+    fcEl.classList.remove('on', 'letter', 'title', 'title2', 'black');
+    showCh2Soon(ci.from === 'explore' ? 'explore' : 'title');
+  }, 1800);
+}
 function endChapterOne() {
   if (world.ferryShip) world.ferryShip.visible = false;
   setCh1({ ferryGone: true });
   wanderer.chapter = Math.max(2, wanderer.chapter | 0); wanderer.ch2 = Object.assign({ started: true }, wanderer.ch2);
   const c = curChar(); if (c) { c.chapter = wanderer.chapter; c.ch2 = wanderer.ch2; }
-  saveRoster(); renderTasks(); show(ui.xhud, true);
-  showCh2Soon('explore');
-  $('#ferryCut').classList.remove('on', 'letter', 'title', 'title2', 'black');
+  saveRoster(); renderTasks();
+  startCh2Intro('explore');
 }
-// Chapter II isn't built yet: a holding screen (save from the pause menu first to keep your progress)
+// Chapter II isn't built yet past its opening: a holding screen (offering to save when you've just played through)
 function showCh2Soon(from) {
-  $('#tbc .eyebrow').textContent = 'You escaped Antarctica';
+  $('#tbc .eyebrow').textContent = 'Chapter II';
   $('#tbc .h1').innerHTML = 'CHAPTER II<br>AFRICA';
-  $('#tbc .brief').textContent = from === 'explore' ? 'Coming soon. Save your game to keep your progress.' : 'Coming soon.';
+  $('#tbc .brief').textContent = from === 'explore' ? 'To be continued. Save your game to keep your progress.' : 'To be continued.';
   $('#tbcKeep').style.display = from === 'explore' ? '' : 'none';
-  $('#tbcKeep span').textContent = from === 'explore' ? 'Save game' : 'Keep exploring';
-  ui.tbc.dataset.from = from; show(ui.tbc, true); state = from === 'explore' ? 'xdone' : 'ch2soon';
+  $('#tbcKeep span').textContent = 'Save game';
+  ui.tbc.dataset.from = 'ch2'; show(ui.tbc, true); state = 'ch2soon';
 }
 function renderTasks() {
   // wanderers from before levels existed get XP for the story they've already played
@@ -4218,7 +4383,7 @@ function pauseExplore(on) {
 $('#xMenuBtn').addEventListener('click', () => { sfx.click(); pauseExplore(true); });
 $('#xResume').addEventListener('click', () => { sfx.click(); pauseExplore(false); });
 $('#xQuit').addEventListener('click', () => { sfx.click(); leaveExplore(); });
-$('#tbcKeep').addEventListener('click', () => { sfx.click(); show(ui.tbc, false); if (ui.tbc.dataset.from === 'explore' && (wanderer.chapter | 0) >= 2) { state = 'xpaused'; openSlots('save', 'explore'); return; } state = 'explore'; });
+$('#tbcKeep').addEventListener('click', () => { sfx.click(); show(ui.tbc, false); if (ui.tbc.dataset.from === 'ch2') { ui.tbc.dataset.from = ''; show(ui.title, true); state = 'title'; openSlots('save', 'title'); return; } state = 'explore'; });
 $('#tbcBtn').addEventListener('click', () => { sfx.click(); if (state === 'ch2soon') { show(ui.tbc, false); show(ui.title, true); state = 'title'; return; } leaveExplore(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseExplore(true); });
 
@@ -7985,6 +8150,7 @@ function loop() {
   }
   if (state === 'cutscene') { updateCutscene(dt); sfx.music(0); renderer.render(aScene, camera); return; }
   if (state === 'dream') { tickDialog(dt); updateDream(dt); sfx.music(0); renderer.render(dScene, camera); return; }
+  if (state === 'ch2intro') { updateCh2Intro(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); renderer.render(afScene, camera); return; }
   if (state === 'ferryCut') { updateFerryCut(dt); updateAnim(dt); worldActionPose(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh' || state === 'sleeping' || state === 'wcut') {
     if (state === 'explore') updateExplore(dt);
