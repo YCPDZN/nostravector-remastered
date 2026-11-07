@@ -60,6 +60,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
     - He has his own voiced replies (ORIONCOMMAND1–5), the same from Chapter II through Chapter V.
     - He follows you, and catches up if you get too far ahead. He mines rocks, trees and crates for you, and hits harder as he levels. He explores the savanna (digging as he goes), wanders nearby, or heads home to his porch.
     - He stands beside your wanderer on the main menu, just as James did.
+    - **Armed:** Orion carries a **rifle** and shoots hostile animals that come near (threats come before any order). When he mines, he swaps it for his **obsidian pickaxe**.
   - Saving remembers that you're in Africa. Deploying a Chapter II wanderer who has seen the opening takes you straight back there.
 - **Day and night:** outside, a full day lasts 20 minutes. The sun rises and sets with warm dusk light, nights turn dark blue with a sky full of stars, and the light and haze change with it. Each planet keeps its own time of day in your save.
 - **HD Antarctica:** the ice uses an HD snow texture (tiled every 4 m, seamless across the endless terrain) under an HD polar sky panorama. Rock outcrops use an HD rock model (with colour, normal and roughness maps), and groves of bare, wind-stripped trees built from an HD bark model stand on the flatter ground. The distance haze and sunlight are matched to the sky's horizon and sun.
@@ -182,3 +183,7 @@ The game never autosaves. It writes progress only when you choose **Save game**,
 - Each wanderer remembers exactly where they were (out on the ice or in the station). Saving, loading, Continue and going to the main menu all put you back on that spot.
 - When the game starts, it reads your most recent save so Continue picks up where you left off. That only reads; it never writes.
 - Saves live in the browser's local storage, so each browser and device keeps its own slots.
+
+### Weapons and tools update
+- **Obsidian pickaxe:** a new tool and an upgrade on the ice pick. You craft it at a crafting table from your ice pick (which is used up), 3 obsidian, 2 wood and 1 metal plate. It triples your mining and melee damage (the ice pick doubles it), hits animals harder, breaks obsidian, and has its own black-glass model in your hand.
+- **James uses his rifle now:** when he shoots, the rifle comes off his back and up to his shoulder, with both hands on it and the pick put away. When the fight ends, it goes back over his shoulder. The same rifle logic drives Orion.
