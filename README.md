@@ -73,7 +73,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   - **Hak Chompjak V**, Emperor of the Chompy Empire (Neutral Good, formerly Chaotic Evil)
   - **Darius Ancin**, President of the Human Federation of Sol (Lawful Good)
   - **Am-Grek**, High Hierarch of the Grek Empire, ruling from Carax (Lawful Neutral)
-  **The Primes** covers the two mysterious powers, shown only as black silhouettes against a glow: **Archamus**, the Prime Good and god of the Grek Empire, and **Lord Zark**, the Prime Evil who corrupted Lord Sevirrus. Both are said to be children of the one the old texts call only the Prime Secretary.
+  **The Primes** covers the three mysterious powers, shown only as black silhouettes against a glow: **Archamus**, the Prime Good and god of the Grek Empire, **Josiah Richards**, the Prime Secretary, and **Lord Zark**, the Prime Evil who corrupted Lord Sevirrus. Both are said to be children of the one the old texts call only the Prime Secretary.
   **Creations** lists what you've made in Custom creations; full entries for them are coming soon.
 - **Custom creations** (main menu): creator tools in the spirit of Spore's editors and Galactic Adventures. Creations are stored on this device separately from save slots, and are only saved when you press Save.
   - **Species creator:** build a creature with a live 3D preview (drag to rotate, scroll to zoom, Walk to see it move). You can set legs (0, 2, 4 or 6), leg length, arms, body length and width, tail, back spikes, neck, head, snout, 1–8 eyes, horns, ears, skin pattern (plain, stripes, spots, bands, scales), three colours, bioluminescence and size. Add lore: temperament, diet, homeworld and a description.
