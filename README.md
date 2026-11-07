@@ -111,7 +111,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 - **Base building** (B, or the BUILD button): a No Man's Sky-style build menu.
   - **Pieces:** floor, wall, doorway, roof and ramp, each in **wood, stone, metal, obsidian or ice** (2–3 of that material per piece).
   - **Placement:** pieces snap to a 3 m grid. Walls and doorways sit on the grid lines, and turn to face the way you're facing. New pieces line up with the heights of what you've already built, so you can stack storeys: build a ramp, walk up it, and lay floors on top of your walls.
-  - **Walking:** floors, roofs and ramps can be walked on, and walls block you. Doorways can be walked through.
+  - **Walking:** floors, roofs and ramps can be walked on, and walls block you. Doorways can be walked through. You can also land on and walk along the tops of walls and crafting tables, and if you ever end up inside a wall, rock or tree you can always walk back out.
   - **Changing your mind:** while building, walk up to a piece and press E (TAKE) to dismantle it for a full refund. The preview turns red when you can't place a piece, or can't afford it.
 - **New materials:**
   - **Wood:** chop trees (2–4 each, +14 XP; James chops them too), or find it in supply crates.
