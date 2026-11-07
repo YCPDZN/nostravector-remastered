@@ -3419,9 +3419,12 @@ function sayAuto(who, text) {
     xUI.dlg.classList.toggle('cyan', who !== 'JAMES BROWN');
   });
 }
-async function runMeeting() {
+function runMeeting() {
   if (meet.active) return;
   meet.active = true; meet.skip = false;
+  playMeeting().catch(e => { console.error(e); endMeeting(); });
+}
+async function playMeeting() {
   await ensureSoldier();
   const [mx, mz, ma] = world.meetAt, dx = Math.cos(ma), dz = Math.sin(ma), nx = -dz, nz = dx;
   meet.M = [mx, mz, dx, dz, nx, nz];
@@ -3802,7 +3805,19 @@ function updateWorldMode(dt) {
     james.raise = near ? .3 : .9; james.headTilt = near ? .05 : .15;
     if (jd < 2.3) ex.near = { id: 'james2', label: 'James Brown' };
   }
-  if (world.meetAt && !ch1().sawMeeting && !ch1().found && !meet.active && Math.hypot(world.meetAt[0] - p.x, world.meetAt[1] - p.z) < 32) runMeeting();
+  if (world.meetAt && world.jamesAt && !ch1().sawMeeting && !ch1().found && !meet.active) {
+    // halfway: either you reach the meeting spot on the trail, or you're halfway to James by any route
+    const J = world.jamesAt, nearSpot = Math.hypot(world.meetAt[0] - p.x, world.meetAt[1] - p.z) < 32;
+    const half = Math.hypot(J.x - p.x, J.z - p.z) < Math.hypot(J.x, J.z) * .55;
+    if (nearSpot || half) {
+      if (!nearSpot) {
+        // stage the meeting just ahead of you, on the way to James
+        const vx = J.x - p.x, vz = J.z - p.z, l = Math.hypot(vx, vz) || 1, ux = vx / l, uz = vz / l;
+        world.meetAt = [p.x + ux * 20, p.z + uz * 20, Math.atan2(uz, ux)];
+      }
+      runMeeting();
+    }
+  }
   if (world.flare) world.flare.material.opacity = .45 + Math.sin(time * 2.3) * .08 + Math.sin(time * 7.1) * .04;
   if (!ex.near && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
   if (!ex.near) {
