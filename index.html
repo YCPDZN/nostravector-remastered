@@ -575,6 +575,9 @@ button.bm-c.no{opacity:.45}
 #xhud.cineonly{z-index:31;pointer-events:none}
 #xhud.cineonly > *:not(#xDlg){display:none!important}
 #xhud.cineonly #xDlg{pointer-events:auto}
+
+#fcNarr{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,84vw);text-align:center;font-size:clamp(15px,1.9vw,21px);line-height:1.7;letter-spacing:.04em;color:var(--ink);opacity:0;transition:opacity 1s ease;font-style:italic}
+#fcNarr.on.show{opacity:1}
 </style>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
@@ -866,7 +869,7 @@ button.bm-c.no{opacity:.45}
 
 <!-- Leaving Antarctica -->
 <div id="c2fx"></div>
-<div id="ferryCut"><div class="fc-bar top"></div><div class="fc-bar bot"></div><div class="fc-black"></div><div class="fc-text"><small id="fcSub"></small><b id="fcTitle"></b></div></div>
+<div id="ferryCut"><div class="fc-bar top"></div><div class="fc-bar bot"></div><div class="fc-black"></div><div class="fc-text"><small id="fcSub"></small><b id="fcTitle"></b></div><div id="fcNarr"></div></div>
 
 <!-- Loading -->
 <section class="screen" id="loading">
@@ -4082,10 +4085,44 @@ function endCh2Intro() {
     if (ci.orion) ci.orion.root.visible = false;
     wanderer.ch2 = Object.assign({}, wanderer.ch2, { started: true, introSeen: true }); const c = curChar(); if (c) c.ch2 = wanderer.ch2; saveRoster();
     scene.add(player); scene.add(particles); resetRig(); inner.rotation.set(0, 0, 0); inner.position.set(0, 0, 0); player.position.set(0, height(0, 0), 0);
-    fcEl.classList.remove('on', 'letter', 'title', 'title2', 'black');
-    showCh2Soon(ci.from === 'explore' ? 'explore' : 'title');
+    ui.xhud.classList.remove('cineonly'); show(ui.xhud, false);
+    ch2Narration(ci.from === 'explore' ? 'explore' : 'title');
   }, 1800);
 }
+// ---- two weeks later: the narrator picks up the story over black ----
+const NARR_CH2 = [
+  'The wanderer had escaped Antarctica from Croxian Mascar, a member of the Human Federation of Sol’s Terra Imperia military.',
+  'Weeks at sea, on a ferry deck baking under the equatorial sun, finished what the ice had started. Their body gave out on the first road they found.',
+  'The man who found them asked no questions. He carried them to his home on the edge of the harbour town, and he kept them alive.',
+  'For fourteen days the wanderer drifted in and out of fever, hearing a voice that talked to them as though they could answer.',
+  'His name was Orion. And when the wanderer finally whispered the name Croxian Mascar, the old man went very quiet.',
+  'Now, at last, the wanderer is awake.'
+];
+async function ch2Narration(from) {
+  state = 'ch2narr';
+  const el = $('#ferryCut'); el.classList.add('on', 'letter', 'black'); el.classList.remove('title');
+  $('#fcSub').textContent = ''; $('#fcTitle').textContent = '2 WEEKS LATER'; el.classList.add('title2');
+  const clips = (await sfx.loadClips('narrCh2')) || [];
+  await waitMs(3600);
+  el.classList.remove('title2'); await waitMs(1200);
+  const nb = $('#fcNarr'); nb.classList.add('on');
+  ch2n.skip = false;
+  for (let i = 0; i < NARR_CH2.length && state === 'ch2narr'; i++) {
+    nb.textContent = NARR_CH2[i]; nb.classList.remove('show'); void nb.offsetWidth; nb.classList.add('show');
+    const ms = clips[i] ? clips[i].duration * 1000 + 600 : 1800 + NARR_CH2[i].split(' ').length * 330;
+    const play = clips[i] ? sfx.playNarr(clips[i], 1.3) : null;
+    ch2n.skip = false; const t0 = performance.now();
+    while (state === 'ch2narr' && !ch2n.skip && performance.now() - t0 < ms) await waitMs(100);
+    if (play) sfx.stopNarr();
+    nb.classList.remove('show'); await waitMs(700);
+  }
+  nb.classList.remove('on');
+  el.classList.remove('on', 'letter', 'title', 'title2', 'black');
+  showCh2Soon(from);
+}
+const ch2n = { skip: false };
+addEventListener('keydown', e => { if (state === 'ch2narr' && ['Space', 'Enter', 'KeyE'].includes(e.code)) { e.preventDefault(); ch2n.skip = true; } });
+addEventListener('pointerdown', () => { if (state === 'ch2narr') ch2n.skip = true; });
 function endChapterOne() {
   if (world.ferryShip) world.ferryShip.visible = false;
   setCh1({ ferryGone: true });
