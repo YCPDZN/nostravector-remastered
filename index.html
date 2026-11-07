@@ -233,10 +233,11 @@ body.touch .x-prompt kbd{display:none}
 .x-dlg.ready .tap{opacity:.85}
 .x-hint{position:absolute;left:50%;top:calc(var(--st) + 22px);transform:translateX(-50%);font-size:9px;letter-spacing:.3em;color:var(--mute);text-transform:uppercase;white-space:nowrap;transition:opacity 1.2s;text-shadow:0 0 8px #000}
 @media (max-width:720px){ .x-hint{top:auto;bottom:calc(var(--sb) + 170px)} .x-prompt{bottom:calc(var(--sb) + 230px)} }
-.x-card{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);text-align:center;opacity:0;transition:opacity 1.4s;white-space:nowrap}
+.x-card{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);text-align:center;opacity:0;transition:opacity 1.4s;width:min(92vw,980px);pointer-events:none}
 .x-card.on{opacity:1}
-.x-card small{display:block;font-size:9px;letter-spacing:.5em;color:var(--mute);margin-bottom:14px}
-.x-card b{font-family:var(--display);font-weight:600;font-size:clamp(20px,4.6vw,40px);letter-spacing:.18em;text-shadow:0 0 24px rgba(0,0,0,.6)}
+.x-card small{display:block;font-size:9px;letter-spacing:.5em;line-height:1.9;color:var(--mute);margin-bottom:14px;text-wrap:balance}
+.x-card b{display:block;font-family:var(--display);font-weight:600;font-size:clamp(20px,4.6vw,40px);letter-spacing:.18em;line-height:1.25;text-shadow:0 0 24px rgba(0,0,0,.6);text-wrap:balance}
+.x-card.long b{font-size:clamp(17px,3vw,30px);letter-spacing:.14em}
 .touch-ui{display:none}
 body.touch .touch-ui{display:block}
 #joyHint{position:absolute;left:calc(var(--sl) + 34px);bottom:calc(var(--sb) + 34px);width:116px;height:116px;border-radius:50%;border:1px dashed rgba(230,233,240,.25);
@@ -279,6 +280,10 @@ body.touch .touch-ui{display:block}
 .mmap .cap b{color:#9fe6ff;font-weight:400}
 @media (max-width:720px),(pointer:coarse){ .mmap{width:108px;right:calc(var(--sr) + 66px)} .mmap canvas{width:108px;height:108px} .mmap .cap{font-size:6.5px;letter-spacing:.24em} }
 #xhud.cutting .mmap{opacity:0;pointer-events:none}
+@media (max-width:720px){
+  .mmap{top:calc(var(--st) + 64px);right:calc(var(--sr) + 12px);width:96px} .mmap canvas{width:96px;height:96px}
+  #xhud.world .hotbar{top:calc(var(--st) + 196px)}
+}
 .bigmap{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(3,6,12,.72);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 .bigmap.hidden{display:none}
 .bigmap .bm-box{position:relative;width:min(86vmin,640px);text-align:center}
@@ -313,7 +318,7 @@ body.touch .jopts kbd{display:none}
 .lvl b{font-weight:400;font-size:11px;letter-spacing:.24em;color:#ffc94a;min-width:52px}
 .xpbar{width:96px;height:3px;background:rgba(230,233,240,.14);position:relative;overflow:hidden;transform:skewX(-14deg)}
 .xpbar i{position:absolute;inset:0;background:#ffc94a;transform-origin:left;transform:scaleX(0);transition:transform .4s}
-.lvl small{font-size:7.5px;letter-spacing:.2em;color:var(--mute)}
+#xhud .lvl small{display:inline-block;margin:0;padding:0;font-size:7.5px;letter-spacing:.2em;line-height:1;color:var(--mute);white-space:nowrap}
 #xhud.cutting .lvl{opacity:0}
 .lvl.up b{animation:lvup 1.2s ease}
 @keyframes lvup{0%{color:#fff;text-shadow:0 0 18px #ffc94a}100%{color:#ffc94a}}
@@ -2772,12 +2777,13 @@ function renderTasks() {
   let h = task(!!p.talked, 'Speak to James Brown');
   if (p.talked) h += task(allSeen(), `Inspect the station · ${seenCount()}/${XSPOTS.length}`);
   if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
-  if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown');
+  if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? task(false, 'Explore Antarctica with James') : '');
   xUI.tasks.innerHTML = h;
 }
 let noticeT;
 function notice(small, big, ms = 2800) {
   $('#xCardS').textContent = small; $('#xCardB').textContent = big;
+  xUI.card.classList.toggle('long', big.length > 18);
   xUI.card.classList.add('on'); clearTimeout(noticeT);
   noticeT = setTimeout(() => xUI.card.classList.remove('on'), ms);
 }
@@ -2896,7 +2902,7 @@ async function interact() {
       if (first) {
         sfx.chime(); startCompanion();
         setTimeout(() => notice('James Brown', 'JOINS YOU', 3600), 500);
-        setTimeout(() => notice('Give James orders', document.body.classList.contains('touch') ? 'TAP “JAMES” UNDER YOUR OBJECTIVES' : '1 MINE · 2 EXPLORE · 3 BASE · 4 WANDER · 5 FOLLOW', 5200), 4600);
+        setTimeout(() => notice(document.body.classList.contains('touch') ? 'Tap JAMES under your objectives' : '1 Mine · 2 Explore · 3 Base · 4 Wander · 5 Follow', 'GIVE JAMES ORDERS', 5200), 4600);
       }
     }, clips);
   } else if (n.id === 'placed') {
