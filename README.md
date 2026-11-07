@@ -75,6 +75,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 - **Options:** in the pause menu (and Settings on the main menu) you can turn the music on or off separately from all sound. Both choices are remembered.
 - **Nostrapedia** (main menu): the in-game encyclopaedia. **Leaders** holds detailed files on the four species leaders. They are classified until Chapter III, except the leader of your wanderer's species, whose file opens once you have met them in your dream.
   **Companions** holds files on the people who travel with you. James Brown's file is open from Chapter I; the rest are redacted and open as the story continues (Chapter II, III or IV).
+  **Ancient figures** is open from the start: history files on people you never meet in the game. They cover **Lord Sevirrus** (defeated in 1800 AD at Alphinos, capital city of Aridaxx), **Shakhak Chompjak** (founder of the Chompy Empire, c. 1.5 billion BC to 199,999,998 BC, victor over the Grob leader Javek at Steca) and **Lianna Erisconos** (mother of Vishara, Alexia and Nyrexia, former Grob Governor of Eris, c. 2.5 billion BC to 1 billion BC).
   **Terra Imperia** appears from Chapter III, with files on its leadership; one of them changes as the story moves through Chapters IV and V.
   Two further sections are **classified**: their files show only redaction bars until they are declassified in Chapter IV, after which they appear in full colour.
   **Creations** lists what you've made in Custom creations; full entries for them are coming soon.
@@ -105,7 +106,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 
 ```
 index.html                  the complete game, with all assets embedded
-assets/models/              source 3D models (.glb); primes/, vectors/, companions/ and terra_imperia/ hold Nostrapedia figures; characters/ holds the Project BC and Sevirrus models, including hfos_soldier.glb (original HFOS colours)
+assets/models/              source 3D models (.glb); primes/, vectors/, companions/ and terra_imperia/ and ancient/ hold Nostrapedia figures; characters/ holds the Project BC and Sevirrus models, including hfos_soldier.glb (original HFOS colours)
 assets/audio/               main menu themes (incl. Chapter IV), combat themes (combat/), Antarctica exploration music (antarctica/), opening narration, James Brown's lines (prologue + Chapter I)
 assets/logo_reference.png   logo / font style reference
 ```
