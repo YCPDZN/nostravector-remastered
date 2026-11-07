@@ -43,7 +43,8 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 | Look | Drag the right side | Drag the mouse; wheel to zoom |
 | Interact / advance text | TALK / LOOK / TAKE button, or tap the text | E or Enter |
 | Hotbar | Tap a slot | 1–6 (once James has joined you: mouse wheel) |
-| Order James | JAMES button, or walk up to him and tap ORDER | 1 Mine · 2 Explore · 3 Base · 4 Wander · 5 Follow |
+| Order companions | Companion button (JAMES) under your objectives, or walk up and tap ORDER | 1 Mine · 2 Explore · 3 Base · 4 Wander · 5 Follow · V picks which companion (or Everyone) |
+| Build | BUILD button | B opens the build menu · F / click places · X stops building |
 | Zoom (outside, once James has joined) | — | − / = |
 | Inventory & crafting | Bag button | I or Tab |
 | Earth map | Tap the minimap | M |
@@ -68,7 +69,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 - **Voiced scenes:** the meeting cutscene (James and the soldier) and James's lines at the end of the trail are fully voiced with lip sync.
 - **Main menu by chapter:**
   - **Chapter I to early Chapter IV:** the normal blue menu, the original theme, and the year 2125 AD.
-  - **Chapter IV, after the time skip:** always blood red: red interface, red night with falling ash, the Chapter IV theme, the year 2127 AD, a taunting voice, and a rewritten mission brief.
+  - **Chapter IV, after the time skip:** always blood red: every screen, from the main menu (all eight buttons included) to the in-game HUD, pause and inventory menus, uses the red interface, red night with falling ash, the Chapter IV theme, the year 2127 AD, a taunting voice, and a rewritten mission brief.
   - **Chapter V onwards:** back to the normal menu and the original theme, still in 2127 AD. **Settings → Menu style** lets you switch to Blood red (which brings back the Chapter IV theme and the voice).
   - To preview, add `?menu=ch4pre`, `?menu=ch4` or `?menu=ch5` to the game's address.
 - **Main menu:** set in Antarctica at polar night, with aurora and snowfall; once James has joined you, he walks alongside your wanderer. The moon-style menu is kept for when the story reaches the Moon.
@@ -88,7 +89,6 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   - **XP from:** mining (rock 12, ice 10, crate 15; half when James mines), crafting (tools 30, everything else 20), placing builds (8), walking outside (1 per 40 m), hunting (skua 30, leopard seal 70, elephant seal bull 130; half when James makes the kill), and story moments (inspecting 15 each, talking to James 50, resting 100, stepping outside 50, the meeting 100, finding James 150, James joining 250).
   - **Each level:** +2 max health (298 at level 100), and a full heal on level up. Levels 20, 50 and 80 each add +1 mining damage.
   - XP needed per level grows from 200 (level 1→2) to about 70,000 (99→100); reaching level 10 takes about 7,400 XP, level 50 about 448,000, and level 100 about 2.7 million. Wanderers made before levels existed get XP for the story they've already played.
- in the pause menu (and Settings on the main menu) you can turn the music on or off separately from all sound. Both choices are remembered.
 - **Antarctic wildlife:** the ice is no longer empty.
   - **Emperor penguins** (passive) waddle about in colonies of 6–12 and belly-slide away if you get too close or hit them. They can't be hurt.
   - **South polar skuas** circle overhead and dive-bomb you (6 damage).
@@ -99,7 +99,21 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 - **Antarctica exploration music:** four tracks play while you're out on the ice, shuffled with quiet gaps of 9–25 seconds between them. The music fades when you go inside, softens during pauses and cutscenes, and steps aside for combat themes.
 - **Combat themes:** five tracks (Predator I–IV and Wonders of Laniakea, combat version). In play, one is picked at random whenever something hostile engages you; it takes over from the ambient music and fades out a few seconds after the fight ends. You can preview them in Settings → Combat themes, where each tap plays the next track.
 - **Held items:** whatever is selected in the hotbar (ice pick, med kit, thermal lamp, or a placeable) is shown in your right hand, positioned to fit your species.
-- **Building:** select a placeable in the hotbar and a green preview appears in front of you; attack to place it. Walk up to it and press E (TAKE) to pick it back up.
+- **Placeables:** select a placeable in the hotbar (lamp, wind barrier, heater, beacon) and a green preview appears in front of you; attack to place it. Walk up to it and press E (TAKE) to pick it back up.
+- **Base building** (B, or the BUILD button): a No Man's Sky-style build menu.
+  - **Pieces:** floor, wall, doorway, roof and ramp, each in **wood, stone, metal, obsidian or ice** (2–3 of that material per piece).
+  - **Placement:** pieces snap to a 3 m grid. Walls and doorways sit on the grid lines, and turn to face the way you're facing. New pieces line up with the heights of what you've already built, so you can stack storeys: build a ramp, walk up it, and lay floors on top of your walls.
+  - **Walking:** floors, roofs and ramps can be walked on, and walls block you. Doorways can be walked through.
+  - **Changing your mind:** while building, walk up to a piece and press E (TAKE) to dismantle it for a full refund. The preview turns red when you can't place a piece, or can't afford it.
+- **New materials:**
+  - **Wood:** found in supply crates.
+  - **Obsidian:** from rare black volcanic glass outcrops. You need the ice pick selected to break them.
+  - **Metal plate:** refined from 3 scrap metal at a crafting table.
+- **Crafting table** (build menu → Structures): refined recipes (metal plates) and teleporters only work within 5 m of one. Inside the station counts as having one. Press E at a table to open crafting.
+- **Merchants:** an Erisian trader keeps a stall on the ice (a pink diamond on the minimap). Press E to trade, selling resources for **Units** and buying materials, med kits and rations. Your Units balance shows in the inventory. Each planet the story reaches gets its own merchants.
+- **Teleporters:** a teleporter pad stands outside the station, and you can build your own at any base (it needs a crafting table nearby). Every pad joins one network: step onto a pad and press E to pick a destination. You can rename your bases, and pads show as cyan rings on the minimap. Pads on other planets are listed under their planet, and you can reach them once the story takes you there by ship.
+- **Nothing is lost between chapters:** your inventory, Units, everything you've built (stored per planet) and your companions' orders belong to the wanderer, not the chapter, so they carry into every chapter.
+- **Commanding companions:** the companion panel and the 1–5 keys work for any companion in your party. With more than one companion, the panel shows who you're commanding; tap a name, choose Everyone, or press V to switch. James is the only companion who has joined so far; the others join in later chapters.
 - What you mine and build is remembered per wanderer and saved with your save game.
 
 ## Repository layout
