@@ -69,11 +69,12 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 - **Main menu:** set in Antarctica at polar night, with aurora and snowfall; once James has joined you, he walks alongside your wanderer. The moon-style menu is kept for when the story reaches the Moon.
 - **Options:** in the pause menu (and Settings on the main menu) you can turn the music on or off separately from all sound. Both choices are remembered.
 - **Nostrapedia** (main menu): the in-game encyclopaedia. **Leaders** has full entries for the four species leaders, with species, birth, homeworld, realm, head of state, head of government, alignment and a detailed backstory, plus their 3D models on the stage:
-  - **Vishara Erisconos**, Matriarch of Eris (Lawful Neutral)
+  - **Vishara Erisconos**, Matriarch of Eris, ruler of the Erisian Empire (Lawful Neutral)
   - **Hak Chompjak V**, Emperor of the Chompy Empire (Neutral Good, formerly Chaotic Evil)
   - **Darius Ancin**, President of the Human Federation of Sol (Lawful Good)
-  - **Am-Grek**, High Hierarch of the Grek, ruling from Carax (Lawful Neutral)
-  **Your creations** lists what you've made in Custom creations; full entries for them are coming soon.
+  - **Am-Grek**, High Hierarch of the Grek Empire, ruling from Carax (Lawful Neutral)
+  **The Primes** covers the two mysterious powers, shown only as black silhouettes against a glow: **Archamus**, the Prime Good and god of the Grek Empire, and **Lord Zark**, the Prime Evil who corrupted Lord Sevirrus. Both are said to be children of the one the old texts call only the Prime Secretary.
+  **Creations** lists what you've made in Custom creations; full entries for them are coming soon.
 - **Custom creations** (main menu): creator tools in the spirit of Spore's editors and Galactic Adventures. Creations are stored on this device separately from save slots, and are only saved when you press Save.
   - **Species creator:** build a creature with a live 3D preview (drag to rotate, scroll to zoom, Walk to see it move). You can set legs (0, 2, 4 or 6), leg length, arms, body length and width, tail, back spikes, neck, head, snout, 1–8 eyes, horns, ears, skin pattern (plain, stripes, spots, bands, scales), three colours, bioluminescence and size. Add lore: temperament, diet, homeworld and a description.
   - **Planet maker:** pick a preset (terran, ice, desert, ocean, volcanic, jungle, toxic or gas giant) and tune the seed, sea level, continents versus islands, mountains, size, colours, atmosphere, clouds, rings, moons, climate, gravity and life.
