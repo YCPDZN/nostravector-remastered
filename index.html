@@ -206,6 +206,14 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 .cc-msg.warn{color:#ff9f86}
 #ccActions .btn{padding:14px 6px;font-size:9.5px;letter-spacing:.22em}
 #ccTabs .tab{letter-spacing:.14em;font-size:8.5px}
+#pedia{display:block;padding:0;pointer-events:none;text-align:left;background:linear-gradient(90deg,rgba(7,10,17,.55) 0%,rgba(7,10,17,0) 45%)}
+.pd-meta{grid-template-columns:110px 1fr;font-size:8.5px;line-height:1.6;margin-top:16px}
+.pd-meta dd{letter-spacing:.12em}
+.pd-align{font-size:10.5px;line-height:1.7;color:var(--ice);margin:12px 0 4px;border-left:2px solid var(--ice);padding-left:12px}
+#pdList .mi small{display:block;font-size:8px;letter-spacing:.2em;color:var(--mute);margin-top:5px;text-transform:uppercase}
+#pdList .mi span{text-align:left}
+#pdBody.hidden,#pdList.hidden{display:none}
+@media (max-width:720px),(max-aspect-ratio:1/1){ #pedia{background:none} }
 #cc:not([data-tab=characters]) #ccAtk{display:none}
 .cc-desc p{margin:0 0 12px;font-size:11px;line-height:1.8;letter-spacing:.03em;color:#c9cfda}
 .cc-meta{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:14px 0 4px;font-size:9px;letter-spacing:.2em;text-transform:uppercase}
@@ -505,7 +513,8 @@ body.touch .jopts kbd{display:none}
       <button class="mi" data-go="mMemory"><i>04</i><span>Save / Load</span><em class="val" id="memVal"></em></button>
       <button class="mi" data-go="mBrief"><i>05</i><span>Mission brief</span><em class="arr">›</em></button>
       <button class="mi" id="ccBtn"><i>06</i><span>Custom creations</span><em class="arr">›</em></button>
-      <button class="mi" data-go="mSettings"><i>07</i><span>Settings</span><em class="arr">›</em></button>
+      <button class="mi" id="pediaBtn"><i>07</i><span>Nostrapedia</span><em class="arr">›</em></button>
+      <button class="mi" data-go="mSettings"><i>08</i><span>Settings</span><em class="arr">›</em></button>
     </nav>
     <div class="menu off" id="mBrief">
       <p class="brief">The year is <b>2125 AD</b>. Beyond our small blue world, countless worlds wait in the dark. You are the Exploration Division’s lone <b>wanderer</b>, and your journey begins on the ice of <b>Antarctica</b>, where the cold will test you long before the stars do.</p>
@@ -556,6 +565,20 @@ body.touch .jopts kbd{display:none}
   </div>
   <input type="file" id="ccFile" accept=".glb,model/gltf-binary" hidden>
   <div class="cc-tools"><button class="chip" id="ccAtk"><span>Attack</span></button><button class="chip" id="ccWalk"><span>Walk</span></button><button class="chip on" id="ccSpin"><span>Spin</span></button></div>
+  <div class="cr-hint cc-hint">Drag to rotate · scroll to zoom</div>
+</section>
+
+<!-- Nostrapedia -->
+<section class="screen hidden" id="pedia">
+  <div class="cr-panel cc-panel">
+    <div class="cr-head">
+      <div class="eyebrow" id="pdEyebrow">Nostrapedia</div>
+      <h2 class="cr-title" id="pdTitle">THE FOUR LEADERS</h2>
+      <div class="tabs" id="pdTabs"><button class="tab on" data-t="leaders">Leaders</button><button class="tab" data-t="mine">Your creations</button></div>
+    </div>
+    <div class="panes"><div class="cc-list" id="pdList"></div><div class="cc-body hidden" id="pdBody"></div></div>
+    <div class="cr-actions"><button class="btn" id="pdBack"><span>Main menu</span></button></div>
+  </div>
   <div class="cr-hint cc-hint">Drag to rotate · scroll to zoom</div>
 </section>
 
@@ -5477,14 +5500,112 @@ $('#ccFile').addEventListener('change', async () => {
 });
 $('#ccSpin').addEventListener('click', () => { cc.spin = !cc.spin; $('#ccSpin').classList.toggle('on', cc.spin); sfx.click(); });
 $('#ccBtn').addEventListener('click', ccOpen);
-canvas.addEventListener('pointerdown', e => { if (state !== 'cc') return; cc.drag = { x: e.clientX, id: e.pointerId }; try { canvas.setPointerCapture(e.pointerId); } catch {} });
-canvas.addEventListener('pointermove', e => { if (state !== 'cc' || !cc.drag || cc.drag.id !== e.pointerId) return; cc.rot += (e.clientX - cc.drag.x) * .01; cc.drag.x = e.clientX; });
+canvas.addEventListener('pointerdown', e => { if (state !== 'cc' && state !== 'pedia') return; cc.drag = { x: e.clientX, id: e.pointerId }; try { canvas.setPointerCapture(e.pointerId); } catch {} });
+canvas.addEventListener('pointermove', e => { if ((state !== 'cc' && state !== 'pedia') || !cc.drag || cc.drag.id !== e.pointerId) return; cc.rot += (e.clientX - cc.drag.x) * .01; cc.drag.x = e.clientX; });
 for (const ev of ['pointerup', 'pointercancel']) canvas.addEventListener(ev, e => { if (cc.drag && cc.drag.id === e.pointerId) cc.drag = null; });
-canvas.addEventListener('wheel', e => { if (state === 'cc') cc.zoom = clamp(cc.zoom + e.deltaY * .001, .45, 2.2); }, { passive: true });
+canvas.addEventListener('wheel', e => { if (state === 'cc' || state === 'pedia') cc.zoom = clamp(cc.zoom + e.deltaY * .001, .45, 2.2); }, { passive: true });
 addEventListener('keydown', e => {
   if (state !== 'cc' || (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))) return;
   if (e.code === 'Escape') { if (cc.cur) $('#ccDone').click(); else ccClose(); }
 });
+
+
+/* ============ NOSTRAPEDIA ============ */
+const PEDIA_LEADERS = [
+  { sp: 'erisian', name: 'VISHARA ERISCONOS', title: 'Matriarch of Eris',
+    facts: [['Species', 'Erisian'], ['Born', 'c. 1,000,000,000 BC'], ['Homeworld', 'Eris, outer Sol system'], ['Realm', 'The Erisian Matriarchy'], ['Head of state', 'Vishara Erisconos, Matriarch of Eris'], ['Head of government', 'Vishara Erisconos (the great houses carry out her word)'], ['Alignment', 'Lawful Neutral']],
+    align: 'Bound by oaths older than most stars. Vishara keeps her word, protects the balance and rarely takes sides, but once she does, she never breaks faith.',
+    paras: [
+      'Vishara Erisconos was born roughly a billion years before the common era, when Eris was young and the outer Sol system had no names at all. She is the oldest living ruler known to any species, so old that Erisian scholars divide their history into the ages before and after her birth.',
+      'In the deep past an alien force swept into the region and threatened every world it touched. Vishara met it in a long series of campaigns, fighting side by side with Shakhak Chompjak, an ancestor of today’s Emperor Hak Chompjak. The alliance between Eris and the house of Chompjak was forged in that war, and Erisians still honour it. Few will speak the enemy’s name, even now.',
+      'When the fighting ended, Vishara turned Eris inward. Instead of armies she sent her people out as wandering merchants and sworn bodyguards, which is how Erisians came to know Earth long before Earth could reach them. She has watched empires rise and fall from the cold edge of the solar system, and she has outlived all of them.',
+      'As Matriarch she is both head of state and head of government. The great Erisian houses run trade, travel and their famous guard contracts, but every house answers to her, and a single word from the Matriarch can end a feud that has lasted ten thousand years.'
+    ] },
+  { sp: 'chompy', name: 'HAK CHOMPJAK V', title: 'Emperor of the Chompy Empire',
+    facts: [['Species', 'Chompy'], ['Born', '1750 AD'], ['Homeworld', 'Janira Prime'], ['Parents', 'Jakal Chompjak XVI and Hanaxa Chompjak'], ['Realm', 'The Chompy Empire'], ['Head of state', 'Hak Chompjak V, Emperor'], ['Head of government', 'Hak Chompjak V, ruling from Janira Prime'], ['Alignment', 'Neutral Good (formerly Chaotic Evil)']],
+    align: 'A tyrant who chose to become something better. Hak no longer trusts thrones or rules to make people good, so he does what is right himself, whatever the cost.',
+    paras: [
+      'Hak Chompjak was born in 1750 AD on Janira Prime, the throne world of the Chompy Empire, the son of Emperor Jakal Chompjak XVI and Hanaxa Chompjak. As a young prince he was ambitious, cruel and impatient for power, and the empire paid for it. Some say the young Hak and the usurper remembered as Lord Sevirrus were one and the same; Hak has never denied it.',
+      'His turning point came in 1826 AD on Carax. There he stood against the Cult of Zark and fought them to the end. He won, but the battle took his sight, and the prince who had once ruled through fear returned to Janira Prime blind. He renounced his old ways completely.',
+      'For nearly three centuries he led in darkness, learning to rule by listening rather than by watching. In time the empire forgave him, and he took the throne as Emperor Hak Chompjak V, the Chompy who swore that their worlds would never be divided again.',
+      'In 2100 AD Hak met humans for the first time, and through that meeting his vision was finally restored. He calls it the second gift of his life. Over more than two hundred years since Carax he has dedicated himself to making the galaxy a better place, and he is now humanity’s most patient friend among the stars.'
+    ] },
+  { sp: 'human', name: 'DARIUS ANCIN', title: 'President of the Human Federation of Sol',
+    facts: [['Species', 'Human'], ['Born', '2080s AD'], ['Homeworld', 'Earth, Sol III'], ['Realm', 'The Human Federation of Sol (HFOS)'], ['Head of state', 'Darius Ancin, President'], ['Head of government', 'Darius Ancin, President (presidential federation)'], ['Alignment', 'Lawful Good']],
+    align: 'A believer in rules made fairly and kept for everyone. Darius thinks the Federation is only worth defending if it lives up to its own laws.',
+    paras: [
+      'Darius Ancin was born on Earth in the 2080s and grew up during the Third World War and the hard years that followed it. He belongs to the generation that cleared the rubble, rebuilt the cities and swore humanity would never come so close to ending itself again.',
+      'He rose through the post-war reconstruction councils that eventually joined Earth’s rebuilt nations and its first colonies into the Human Federation of Sol. When he was elected President he became both its head of state and its head of government, the first leader to speak for all of humanity at once.',
+      'He came of age just as humanity met the Chompy Empire in 2100 AD, and his presidency has been defined by what came after. Darius has spent his career turning a frightening new neighbourhood into a set of allies: Eris, the Chompy Empire and the Grek. He is careful, stubborn and famously hard to rush.',
+      'The Federation’s soldiers wear blue and gold, and Darius is proud of what that armour stands for. Anyone wearing it in other colours does not speak for him.'
+    ] },
+  { sp: 'grek', name: 'AM-GREK', title: 'High Hierarch of the Grek',
+    facts: [['Species', 'Grek'], ['Born', '1700 AD'], ['Birthplace', 'Malana, in the Carax system'], ['Capital', 'Carax, the fortress world (taken in 1800 AD)'], ['Faith', 'Archamus, the Prime Good'], ['Realm', 'The Grek Dominion'], ['Head of state', 'Am-Grek, High Hierarch'], ['Head of government', 'Am-Grek, ruling from Carax'], ['Alignment', 'Lawful Neutral']],
+    align: 'Devout, disciplined and certain. Am-Grek follows Archamus’s law to the letter, and the subjugation of the Catharsis shows that his law is not always kind.',
+    paras: [
+      'Am-Grek was born in 1700 AD on Malana, a world in the same star system as Carax. He grew up in a family of priests and was raised on the teachings of Archamus, the Prime Good, whose guidance the Grek seek before every great decision. He remains the most devout follower of Archamus alive.',
+      'In 1800 AD, during the war against Sevirrus, Am-Grek led the Grek to capture Carax, the fortress world. He made it his capital and has ruled from it ever since, while most of his people still live among the forests of Archiostal, their garden station. Carax was also where the Cult of Zark was broken in 1826 AD, and Am-Grek guards it as sacred ground.',
+      'In another war he subjugated a species known only as the mysterious Catharsis. Little is known about them, and Am-Grek rarely speaks of it. His followers call it Archamus’s will; his critics call it the one stain on a righteous life.',
+      'As High Hierarch he is both head of state and head of government of the Grek Dominion, and the Grek follow him as they follow their faith: slowly, carefully and without question.'
+    ] }
+];
+const pedia = { tab: 'leaders', cur: null };
+const pUI = { root: $('#pedia'), list: $('#pdList'), body: $('#pdBody'), title: $('#pdTitle'), eyebrow: $('#pdEyebrow') };
+function pediaOpen() {
+  sfx.init(); sfx.click();
+  cc.rebuildT = 0; cc.cur = null;
+  state = 'pedia'; show(ui.title, false); show(pUI.root, true);
+  pediaTab('leaders'); resize();
+}
+function pediaClose() {
+  ccClear(); show(pUI.root, false); state = 'title'; show(ui.title, true); goMenu('mMain'); resize();
+}
+function pediaTab(t) {
+  pedia.tab = t; pedia.cur = null;
+  document.querySelectorAll('#pdTabs .tab').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  pediaList();
+}
+function pediaList() {
+  $('#pdBack span').textContent = 'Main menu';
+  pUI.eyebrow.textContent = 'Nostrapedia'; pUI.body.classList.add('hidden'); pUI.list.classList.remove('hidden');
+  if (pedia.tab === 'leaders') {
+    pUI.title.textContent = 'THE FOUR LEADERS';
+    pUI.list.innerHTML = PEDIA_LEADERS.map((L, i) => `<button class="mi" data-i="${i}"><i>${pad(i + 1)}</i><span>${L.name}<small>${L.title} · ${L.facts.find(f => f[0] === 'Alignment')[1]}</small></span><em class="arr">›</em></button>`).join('');
+  } else {
+    pUI.title.textContent = 'YOUR CREATIONS';
+    const n = k => ccData[k].length, names = k => ccData[k].map(o => ccEsc(o.name)).join(' · ') || '—';
+    pUI.list.innerHTML = `<div class="sp-card cc-desc"><p>Coming soon: every species, planet, character and adventure you make in Custom creations will get its own Nostrapedia entry here.</p></div>
+      <dl class="cc-meta pd-meta"><dt>Species</dt><dd>${n('species')} · ${names('species')}</dd><dt>Planets</dt><dd>${n('planets')} · ${names('planets')}</dd><dt>Characters</dt><dd>${n('characters')} · ${names('characters')}</dd><dt>Adventures</dt><dd>${n('adventures')} · ${names('adventures')}</dd></dl>`;
+  }
+  pediaPreview();
+}
+function pediaEntry(i) {
+  const L = PEDIA_LEADERS[i]; pedia.cur = L;
+  pUI.list.classList.add('hidden'); pUI.body.classList.remove('hidden');
+  pUI.eyebrow.textContent = `Nostrapedia · ${L.title}`; pUI.title.textContent = L.name;
+  pUI.body.innerHTML = `<dl class="cc-meta pd-meta">${L.facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
+    <p class="pd-align">${L.align}</p>
+    <div class="sp-card cc-desc">${L.paras.map(p => `<p>${p}</p>`).join('')}</div>`;
+  pUI.body.scrollTop = 0; $('#pdBack span').textContent = 'Back';
+  pediaPreview();
+}
+function pediaPreview() {
+  ccClear(); cc.loadTok++; ccStage.visible = true; cc.rot = .3;
+  if (pedia.tab !== 'leaders') { cc.lookY = 1; cc.dist = 6; return; }
+  const tok = cc.loadTok, list = pedia.cur ? [pedia.cur] : PEDIA_LEADERS;
+  list.forEach((L, i) => loadLeader(L.sp).then(h => {
+    if (!h || tok !== cc.loadTok || state !== 'pedia') return;
+    const n = list.length, ang = (i - (n - 1) / 2) * .6;
+    h.userData.keep = true; h.position.set(Math.sin(ang) * 2.3, 0, n > 1 ? Math.cos(ang) * 1.1 - .9 : 0); h.rotation.y = -ang * .5;
+    ccRoot.add(h);
+  }));
+  cc.lookY = 1.1; cc.dist = pedia.cur ? 4.6 : 7.8;
+}
+document.querySelectorAll('#pdTabs .tab').forEach(b => b.addEventListener('click', () => { sfx.click(); pediaTab(b.dataset.t); }));
+pUI.list.addEventListener('click', e => { const b = e.target.closest('.mi'); if (!b || pedia.tab !== 'leaders') return; sfx.click(); pediaEntry(+b.dataset.i); });
+$('#pdBack').addEventListener('click', () => { sfx.click(); if (pedia.cur) { pedia.cur = null; pediaList(); } else pediaClose(); });
+$('#pediaBtn').addEventListener('click', pediaOpen);
+addEventListener('keydown', e => { if (state === 'pedia' && e.code === 'Escape') $('#pdBack').click(); });
 
 /* ============ loop ============ */
 const clock = new THREE.Clock();
@@ -5506,7 +5627,7 @@ function loop() {
     if (state !== 'loadingCh') { updateAnim(dt); if (ex.mode === 'world') worldActionPose(dt); else syncHeld(); jamesTick(dt); updateParticles(dt); exploreCamera(dt); if (ex.mode === 'world') updateWorldScene(dt); }
     sfx.music(0); renderer.render(ex.mode === 'world' ? wScene : aScene, camera); return;
   }
-  if (state === 'cc') { ccTick(dt); sfx.music(.85); renderer.render(ccScene, ccCam); return; }
+  if (state === 'cc' || state === 'pedia') { ccTick(dt); sfx.music(.85); renderer.render(ccScene, ccCam); return; }
   if (state === 'title') updateWander(dt);
   menuTick(dt);
   updateAnim(dt); updateWorld(dt); updateCamera(dt);
