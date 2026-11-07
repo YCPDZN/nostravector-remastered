@@ -309,6 +309,14 @@ body.touch .jopts kbd{display:none}
 .opt{display:flex;justify-content:space-between;align-items:center;background:rgba(8,12,20,.6);border:1px solid var(--line);color:#e6e9f0;font:inherit;font-size:10px;letter-spacing:.3em;text-transform:uppercase;padding:14px 16px;border-radius:3px;cursor:pointer}
 .opt:hover{border-color:rgba(159,230,255,.6)}
 .opt b{font-weight:400;color:#9fe6ff}
+.lvl{display:flex;align-items:center;gap:9px;margin-bottom:10px;text-shadow:0 0 8px #000}
+.lvl b{font-weight:400;font-size:11px;letter-spacing:.24em;color:#ffc94a;min-width:52px}
+.xpbar{width:96px;height:3px;background:rgba(230,233,240,.14);position:relative;overflow:hidden;transform:skewX(-14deg)}
+.xpbar i{position:absolute;inset:0;background:#ffc94a;transform-origin:left;transform:scaleX(0);transition:transform .4s}
+.lvl small{font-size:7.5px;letter-spacing:.2em;color:var(--mute)}
+#xhud.cutting .lvl{opacity:0}
+.lvl.up b{animation:lvup 1.2s ease}
+@keyframes lvup{0%{color:#fff;text-shadow:0 0 18px #ffc94a}100%{color:#ffc94a}}
 .hotbar{position:absolute;left:50%;bottom:calc(var(--sb) + 16px);transform:translateX(-50%);display:none;gap:6px;pointer-events:auto}
 #xhud.world .hotbar{display:flex}
 .hotbar button{position:relative;width:48px;height:48px;border:1px solid var(--faint);background:rgba(7,10,17,.55);color:var(--ink);font-family:var(--display);
@@ -406,7 +414,7 @@ body.touch .jopts kbd{display:none}
 <!-- Exploration HUD -->
 <div id="xhud" class="hidden">
   <div class="mmap" id="mmap"><canvas id="mmapC"></canvas><div class="cap" id="mmapCap"></div></div>
-  <div class="x-obj"><small id="xChap">CHAPTER I · ANTARCTICA</small><div id="xTasks"></div><div class="x-nav" id="xNav"></div><div class="bars"><div class="bar hp" id="hpBar"><i></i></div><div class="bar sta" id="staBar"><i></i></div></div>
+  <div class="x-obj"><div class="lvl" id="lvl"><b id="lvN">LV 1</b><div class="xpbar"><i id="xpI"></i></div><small id="xpT"></small></div><small id="xChap">CHAPTER I · ANTARCTICA</small><div id="xTasks"></div><div class="x-nav" id="xNav"></div><div class="bars"><div class="bar hp" id="hpBar"><i></i></div><div class="bar sta" id="staBar"><i></i></div></div>
     <div class="jcmd" id="jcmd"><button class="jbtn" id="jBtn"><span>JAMES</span><b id="jMode">FOLLOWING</b><em>▾</em></button>
       <div class="jopts" id="jOpts"><button data-m="mine"><kbd>1</kbd>Mine</button><button data-m="explore"><kbd>2</kbd>Explore</button><button data-m="base"><kbd>3</kbd>Meet me back at base</button><button data-m="wander"><kbd>4</kbd>Wander around</button><button data-m="follow"><kbd>5</kbd>Follow me</button></div>
     </div></div>
@@ -1568,7 +1576,7 @@ function refreshMenu() {
   const has = roster.length > 0;
   startBtn.style.display = has ? '' : 'none';
   rosterBtn.style.display = has ? '' : 'none';
-  $('#activeName').textContent = has ? wanderer.name : '';
+  $('#activeName').textContent = has ? `${wanderer.name} · LV ${levelOf(wanderer)}` : '';
   menuCompanion();
   $('#memVal').textContent = dirty ? 'UNSAVED' : '';
   $('#mSaveVal').textContent = dirty ? 'UNSAVED' : '';
@@ -2162,7 +2170,7 @@ function renderRoster() {
   if (!roster.length) { list.innerHTML = '<div class="roster-empty">No wanderers yet</div>'; }
   else list.innerHTML = roster.map((c, i) => {
     const id = IDENT[c.identity] || IDENT.nb;
-    return `<button class="mi${c.id === activeId ? ' active' : ''}" data-id="${c.id}"><i>${pad(i + 1)}</i><span><b class="swc" style="--c:${SUITC[c.suit] || SUITC[0]}"></b>${c.name.replace(/[<>&"]/g, '')}<small>${SPECIES[spOf(c)].label} · ${chapterOf(c).short} · ${id.pro}</small></span></button>`;
+    return `<button class="mi${c.id === activeId ? ' active' : ''}" data-id="${c.id}"><i>${pad(i + 1)}</i><span><b class="swc" style="--c:${SUITC[c.suit] || SUITC[0]}"></b>${c.name.replace(/[<>&"]/g, '')}<small>LV ${levelOf(c)} · ${SPECIES[spOf(c)].label} · ${chapterOf(c).short} · ${id.pro}</small></span></button>`;
   }).join('');
   $('#rNew').disabled = roster.length >= MAX_WANDERERS;
   $('#rNew span').textContent = roster.length >= MAX_WANDERERS ? `Roster full (${MAX_WANDERERS})` : 'New wanderer';
@@ -2705,12 +2713,61 @@ const ch1 = () => wanderer.ch1 || {};
 const seenCount = () => XSPOTS.filter(sp => (ch1().seen || []).includes(sp.id)).length;
 const allSeen = () => seenCount() >= XSPOTS.length;
 const sleepReady = () => !!ch1().talked && allSeen() && !ch1().slept;
+
+/* ============ levels: 1 to 100 ============ */
+const MAX_LEVEL = 100;
+const xpNeed = L => Math.round(30 * Math.pow(L, 1.35) + 70);          // XP to go from level L to L+1
+function levelInfo(xp) {
+  let L = 1, rest = Math.max(0, xp | 0);
+  while (L < MAX_LEVEL && rest >= xpNeed(L)) { rest -= xpNeed(L); L++; }
+  return { level: L, into: rest, need: L >= MAX_LEVEL ? 0 : xpNeed(L) };
+}
+const levelOf = c => levelInfo((c && c.xp) || 0).level;
+const maxHP = () => 100 + (levelOf(wanderer) - 1) * 2;               // +2 max health per level (298 at 100)
+const lvDmg = () => { const L = levelOf(wanderer); return (L >= 20) + (L >= 50) + (L >= 80); };   // extra mining damage
+function gainXP(n, why) {
+  n = Math.round(n); if (n <= 0 || !wanderer) return;
+  const before = levelOf(wanderer);
+  if (before >= MAX_LEVEL) return;
+  wanderer.xp = (wanderer.xp || 0) + n;
+  const c = curChar(); if (c) c.xp = wanderer.xp;
+  saveRoster();
+  if (why) lootMsg(`+${n} XP · ${why}`, '#ffc94a');
+  const after = levelOf(wanderer);
+  if (after > before) {
+    sfx.chime(); setTimeout(() => sfx.chime(), 260);
+    const perk = after >= MAX_LEVEL ? 'MAXIMUM LEVEL' : [20, 50, 80].includes(after) ? 'MINING POWER UP' : `MAX HEALTH ${maxHP()}`;
+    notice(`Level up · ${perk}`, `LEVEL ${after}`, 3400);
+    const p = player.position; burst(p.x, p.y + 1, p.z, 40, 4, 1, .8, .3, 1.2, .2, 2);
+    const el = $('#lvl'); el.classList.remove('up'); void el.offsetWidth; el.classList.add('up');
+    if (ex.hp != null) { ex.hp = maxHP(); const inv = invState(); inv.hp = ex.hp; }
+  }
+  renderLevel();
+}
+function renderLevel() {
+  const I = levelInfo((wanderer && wanderer.xp) || 0);
+  $('#lvN').textContent = `LV ${I.level}`;
+  $('#xpI').style.transform = `scaleX(${I.need ? I.into / I.need : 1})`;
+  $('#xpT').textContent = I.need ? `${I.into} / ${I.need} XP` : 'MAX';
+}
+// story milestones
+const STORY_XP = { talked: [50, 'Spoke to James'], slept: [100, 'Rested'], outside: [50, 'Stepped outside'], sawMeeting: [100, 'Witnessed the meeting'], found: [150, 'Found James'], metOutside: [250, 'James joins you'] };
 function setCh1(patch) {
-  wanderer.ch1 = Object.assign({}, ch1(), patch);
+  const prev = ch1();
+  wanderer.ch1 = Object.assign({}, prev, patch);
   const c = curChar(); if (c) c.ch1 = wanderer.ch1;
   saveRoster();
+  for (const k in STORY_XP) if (patch[k] && !prev[k]) setTimeout(() => gainXP(STORY_XP[k][0], STORY_XP[k][1]), 300);
+  if (patch.seen && patch.seen.length > (prev.seen || []).length) gainXP(15 * (patch.seen.length - (prev.seen || []).length), 'Inspected');
 }
 function renderTasks() {
+  // wanderers from before levels existed get XP for the story they've already played
+  if (wanderer && wanderer.xp == null) {
+    const p = ch1(); let xp = 15 * (p.seen || []).length;
+    for (const k in STORY_XP) if (p[k]) xp += STORY_XP[k][0];
+    wanderer.xp = xp; const c = curChar(); if (c) c.xp = xp;
+  }
+  renderLevel();
   const p = ch1(), task = (done, text) => `<div class="x-task${done ? ' done' : ''}"><i></i><span>${text}</span></div>`;
   let h = task(!!p.talked, 'Speak to James Brown');
   if (p.talked) h += task(allSeen(), `Inspect the station · ${seenCount()}/${XSPOTS.length}`);
@@ -3115,7 +3172,7 @@ $('#invCraft').addEventListener('click', e => {
   const b = e.target.closest('button[data-c]'); if (!b) return;
   const id = b.dataset.c; if (!canCraft(id)) return;
   for (const [r, n] of Object.entries(ITEMS[id].cost)) takeItem(r, n);
-  giveItem(id, 1); sfx.chime(); lootMsg(`Crafted ${ITEMS[id].name}`, '#a9dcff'); renderInv();
+  giveItem(id, 1); sfx.chime(); lootMsg(`Crafted ${ITEMS[id].name}`, '#a9dcff'); gainXP(ITEMS[id].kind === 'tool' ? 30 : 20); renderInv();
 });
 function openInv(on) {
   ex.invOpen = on; show($('#inv'), on);
@@ -3205,18 +3262,18 @@ function doAttack() {
     const g = ghostSpot();
     if (!g.ok) { lootMsg('Can’t place that here', '#ff8f86'); return; }
     const o = { t: it, x: +g.x.toFixed(2), z: +g.z.toFixed(2), r: +g.r.toFixed(3) };
-    wsState().placed.push(o); addPlaced(o); takeItem(it, 1); sfx.thud(); return;
+    wsState().placed.push(o); addPlaced(o); takeItem(it, 1); sfx.thud(); gainXP(8); return;
   }
   if (it && ITEMS[it].kind === 'use') {
-    if (!have(it) || ex.hp >= 100) { lootMsg(ex.hp >= 100 ? 'Already at full health' : 'None left', '#ff8f86'); return; }
-    ex.hp = Math.min(100, ex.hp + 40); invState().hp = ex.hp; takeItem(it, 1); sfx.chime(); lootMsg('+40 health', '#ff7a72'); return;
+    if (!have(it) || ex.hp >= maxHP()) { lootMsg(ex.hp >= maxHP() ? 'Already at full health' : 'None left', '#ff8f86'); return; }
+    ex.hp = Math.min(maxHP(), ex.hp + 40); invState().hp = ex.hp; takeItem(it, 1); sfx.chime(); lootMsg('+40 health', '#ff7a72'); return;
   }
   if (!spend(STA.attack)) return;
   ex.act = { type: 'attack', t: 0, dur: .5, hit: false };
 }
 function strike() {
   const p = player.position, a = player.rotation.y, fx_ = Math.sin(a), fz = Math.cos(a);
-  const dmg = selItem() === 'pick' ? 2 : 1;
+  const dmg = (selItem() === 'pick' ? 2 : 1) + lvDmg();
   let best = null, bd = 1e9;
   for (const n of nodesNear(p.x, p.z)) {
     if (n.dead) continue;
@@ -3235,6 +3292,7 @@ function strike() {
     best.dead = true;
     for (const m of best.meshes) m.parent && m.parent.remove(m);
     wsState().mined[best.key] = 1; saveRoster();
+    gainXP({ rock: 12, ice: 10, crate: 15 }[best.type] || 10);
     burst(best.x, best.y, best.z, 30, 5, col[0], col[1], col[2], 1, 1, 2);
     for (const drop of LOOT[best.type]()) if (drop) { giveItem(drop[0], drop[1]); lootMsg(`+${drop[1]} ${ITEMS[drop[0]].name}`, ITEMS[drop[0]].color); }
     sfx.thud();
@@ -3242,14 +3300,14 @@ function strike() {
 }
 function updateSurvival(dt) {
   const inv = invState();
-  if (ex.hp == null) ex.hp = inv.hp == null ? 100 : inv.hp;
+  if (ex.hp == null) ex.hp = inv.hp == null ? maxHP() : Math.min(maxHP(), inv.hp);
   if (ex.sta == null) ex.sta = 100;
   if (time - (ex.staT || 0) > .7) ex.sta = Math.min(100, ex.sta + 30 * dt);
   // heaters heal you and light the snow
   let near = null, nd = 1e9;
   for (const o of world.placed) if (o.data.t === 'heater') { const d = Math.hypot(o.data.x - player.position.x, o.data.z - player.position.z); if (d < nd) { nd = d; near = o; } }
   if (near && nd < 18) { world.heatLight.position.set(near.data.x, wHeight(near.data.x, near.data.z) + .8, near.data.z); world.heatLight.intensity = 9 + Math.sin(time * 9) * .6; } else world.heatLight.intensity = 0;
-  if (near && nd < 3.2 && ex.hp < 100) { ex.hp = Math.min(100, ex.hp + 6 * dt); inv.hp = Math.round(ex.hp); }
+  if (near && nd < 3.2 && ex.hp < maxHP()) { ex.hp = Math.min(maxHP(), ex.hp + 6 * dt); inv.hp = Math.round(ex.hp); }
   for (const o of world.placed) if (o.mesh.userData.blink) o.mesh.userData.blink.material.opacity = Math.sin(time * 4) > 0 ? .95 : .2;
   // shaking nodes when struck
   for (const n of nodesNear(player.position.x, player.position.z)) if (n.shake > 0) {
@@ -3258,7 +3316,7 @@ function updateSurvival(dt) {
   }
   // HUD
   const hp = $('#hpBar'), st = $('#staBar');
-  hp.firstChild.style.transform = `scaleX(${ex.hp / 100})`; hp.classList.toggle('low', ex.hp < 25);
+  hp.firstChild.style.transform = `scaleX(${ex.hp / maxHP()})`; hp.classList.toggle('low', ex.hp < maxHP() * .25);
   st.firstChild.style.transform = `scaleX(${ex.sta / 100})`; st.classList.toggle('low', ex.sta < 20);
   // placement preview
   const it = selItem();
@@ -3651,6 +3709,7 @@ function jamesHit(n) {
     n.dead = true;
     for (const m of n.meshes) m.parent && m.parent.remove(m);
     wsState().mined[n.key] = 1; saveRoster();
+    gainXP(Math.round(({ rock: 12, ice: 10, crate: 15 }[n.type] || 10) / 2));
     burst(n.x, n.y, n.z, 24, 4.5, col[0], col[1], col[2], 1, 1, 2);
     for (const drop of LOOT[n.type]()) if (drop) { giveItem(drop[0], drop[1]); lootMsg(`James · +${drop[1]} ${ITEMS[drop[0]].name}`, '#7fe0a0'); }
     if (heard) sfx.thud();
@@ -4149,6 +4208,8 @@ function updateWorldMode(dt) {
   const maxSlope = ex.air ? 3 : 1.4;
   if (!worldBlocked(nx, p.z) && slope(nx, p.z) < maxSlope) p.x = nx; else vel.x = 0;
   if (!worldBlocked(p.x, nz) && slope(p.x, nz) < maxSlope) p.z = nz; else vel.z = 0;
+  ex.walkAcc = (ex.walkAcc || 0) + Math.hypot(vel.x, vel.z) * dt;
+  if (ex.walkAcc >= 25) { ex.walkAcc -= 25; gainXP(1); }
   const ground = wHeight(p.x, p.z);
   if (ex.air) {
     ex.vy -= 18 * dt; p.y += ex.vy * dt;
