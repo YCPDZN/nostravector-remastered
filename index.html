@@ -4019,7 +4019,7 @@ function tickDialog(dt) {
   }
 }
 function updateExplore(dt) {
-  stormClock(dt); aiTick();
+  stormClock(dt);
   if (ex.mode === 'world') { updateWorldMode(dt); return; }
   const R = ROOM, p = player.position;
   // typewriter
@@ -7965,93 +7965,6 @@ try {
 } catch { setupModel(fallbackAstronaut()); ready(); }
 renderer.setAnimationLoop(loop);
 
-/* ============ TEMPORARY: AI playtest mode (remove when playtesting is done) ============
-   Lets an AI playtester drive your wanderer from the browser console / automation:
-   window.nvAI.status(), .goto(x, z), .gotoTarget(), .interact(), .attack(), .advance(), .mine(type), .build(k, m), .place(), .craft(id) ...
-   Turn the on-screen badge and log on with ?ai in the URL, or nvAI.enable(). */
-const ai = { on: false, goal: null, errors: [], log: [], stuckT: 0, lastD: 1e9, side: 0 };
-addEventListener('error', e => { ai.errors.push(String(e.message || e)); if (ai.errors.length > 50) ai.errors.shift(); });
-addEventListener('unhandledrejection', e => { ai.errors.push('promise: ' + String(e.reason && (e.reason.message || e.reason))); });
-function aiLog(msg) {
-  ai.log.push(`[${new Date().toLocaleTimeString('en-GB')}] ${msg}`); if (ai.log.length > 200) ai.log.shift();
-  const el = document.getElementById('aiLog'); if (el) { el.textContent = ai.log.slice(-6).join('\n'); }
-}
-function aiEnable() {
-  if (ai.on) return; ai.on = true;
-  const b = document.createElement('div'); b.id = 'aiBadge';
-  b.style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:99;padding:5px 12px;border:1px solid #ff6b5e;color:#ff6b5e;font:600 9px/1 Inter,system-ui,sans-serif;letter-spacing:.35em;background:rgba(10,4,6,.7);pointer-events:none';
-  b.textContent = 'AI PLAYTEST MODE'; document.body.appendChild(b);
-  const l = document.createElement('pre'); l.id = 'aiLog';
-  l.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99;max-width:46vw;margin:0;padding:6px 8px;background:rgba(0,0,0,.55);color:#cfe;font:10px/1.35 ui-monospace,monospace;white-space:pre-wrap;pointer-events:none';
-  document.body.appendChild(l); aiLog('AI playtester connected');
-}
-// steering: turns a goal into stick input relative to the camera, every frame
-function aiTick() {
-  const G = ai.goal; if (!G) return;
-  const p = player.position, dx = G.x - p.x, dz = G.z - p.z, d = Math.hypot(dx, dz), t = performance.now() / 1000;
-  if (d < G.r || state !== 'explore' || ex.dlg) { const done = d < G.r; aiStopMove(); G.res({ ok: done, reason: done ? 'arrived' : ex.dlg ? 'dialogue' : 'state ' + state, dist: +d.toFixed(1) }); return; }
-  if (t > G.until) { aiStopMove(); G.res({ ok: false, reason: 'timeout', dist: +d.toFixed(1) }); return; }
-  // stuck? try going round
-  if (t - ai.stuckT > 1.2) { if (ai.lastD - d < .4) ai.side = ai.side ? -ai.side : 1; else ai.side = 0; ai.lastD = d; ai.stuckT = t; }
-  let a = Math.atan2(dx, dz) + ai.side * 1.1;
-  const tx = Math.sin(a), tz = Math.cos(a), yaw = ex.yaw;
-  const rx = Math.cos(yaw), rz = -Math.sin(yaw), fx = -Math.sin(yaw), fz = -Math.cos(yaw);
-  ex.joyX = tx * rx + tz * rz; ex.joyY = tx * fx + tz * fz;
-  if (G.run && ex.mode === 'world' && d > 8 && ex.sta > 40) ex.keys.add('ShiftLeft'); else ex.keys.delete('ShiftLeft');
-}
-function aiStopMove() { ai.goal = null; ex.joyX = 0; ex.joyY = 0; ex.keys.delete('ShiftLeft'); }
-function aiGoto(x, z, r = 1.4, opt = {}) {
-  aiStopMove();
-  return new Promise(res => { ai.goal = { x, z, r, res, run: opt.run !== false, until: performance.now() / 1000 + (opt.timeout || 90) }; ai.stuckT = performance.now() / 1000; ai.lastD = 1e9; ai.side = 0; });
-}
-const aiWait = ms => new Promise(r => setTimeout(r, ms));
-function aiStatus() {
-  const p = player.position, c = ch1(), q = ex.mode === 'world' ? questTarget() : null, inv = invState();
-  return {
-    state, mode: ex.mode, chapter: wanderer && wanderer.chapter, name: wanderer && wanderer.name, species: wanderer && spOf(wanderer),
-    pos: { x: +p.x.toFixed(1), y: +p.y.toFixed(2), z: +p.z.toFixed(1) }, hp: Math.round(ex.hp || 0), heat: Math.round(suitHeat()), stamina: Math.round(ex.sta || 0), level: wanderer && wanderer.level,
-    objectives: ($('#xTasks') || {}).innerText, near: ex.near && { id: ex.near.id, label: ex.near.label }, prompt: xUI.prompt.classList.contains('on') ? xUI.promptT.textContent : null,
-    dialog: ex.dlg ? { who: ex.dlg.who, i: ex.dlg.i, of: ex.dlg.lines.length, line: ex.dlg.lines[ex.dlg.i] } : null,
-    quest: q, ch1: c, bag: inv.bag, bar: inv.bar, sel: inv.sel, units: inv.units | 0,
-    storm: +(world.storm || 0).toFixed(2), betrayal: world.betrayal && world.betrayal.phase, boss: world.boss && { x: +world.boss.x.toFixed(1), z: +world.boss.z.toFixed(1), st: world.boss.st },
-    vehicle: !!ex.vehicle, errors: ai.errors.slice(-10)
-  };
-}
-window.nvAI = {
-  enable: aiEnable,
-  status: aiStatus,
-  log: m => aiLog(m),
-  logs: () => ai.log.slice(),
-  errors: () => ai.errors.slice(),
-  goto: (x, z, r, opt) => aiGoto(x, z, r, opt),
-  gotoTarget: async (r = 2) => { const q = questTarget(); if (!q) return { ok: false, reason: 'no quest target' }; return aiGoto(q.x, q.z, r); },
-  stop: aiStopMove,
-  key: async (code, ms = 120) => { window.dispatchEvent(new window.KeyboardEvent('keydown', { code, key: code, bubbles: true })); await aiWait(ms); window.dispatchEvent(new window.KeyboardEvent('keyup', { code, key: code, bubbles: true })); },
-  interact: () => { interact(); return aiStatus().near; },
-  attack: () => doAttack(), jump: () => doJump(), dodge: () => doDodge(),
-  advance: () => { if (ex.dlg) advanceDialog(); return !!ex.dlg; },
-  skipDialog: async () => { let n = 0; while (ex.dlg && n++ < 80) { advanceDialog(); await aiWait(250); } return n; },
-  select: i => selectSlot(i),
-  craft: id => { if (!ITEMS[id] || !canCraft(id)) return false; for (const [r, n] of Object.entries(ITEMS[id].cost)) takeItem(r, n); giveItem(id, 1); gainXP(ITEMS[id].kind === 'tool' ? 30 : 20); renderInv(); return true; },
-  build: (k, m) => selectBuild(k, m), place: () => { const before = wsState().build.length; placeBuild(); return wsState().build.length > before; }, stopBuild: () => stopBuild(),
-  face: (x, z) => { player.rotation.y = Math.atan2(x - player.position.x, z - player.position.z); },
-  spots: () => ex.mode === 'world' ? [] : XSPOTS.map(s => ({ id: s.id, label: s.label, x: +(s.x + ROOM.x).toFixed(2), z: +(s.z + ROOM.z).toFixed(2), r: s.r })),
-  james: () => james.ready && { x: +james.root.position.x.toFixed(1), z: +james.root.position.z.toFixed(1), visible: james.root.visible, mode: comp.mode },
-  nodes: (type, n = 5) => { const p = player.position, out = []; for (const g of world.chunks.values()) for (const nd of g.userData.nodes || []) if (!nd.dead && (!type || nd.type === type)) out.push({ type: nd.type, key: nd.key, x: +nd.x.toFixed(1), z: +nd.z.toFixed(1), d: +Math.hypot(nd.x - p.x, nd.z - p.z).toFixed(1) }); return out.sort((a, b) => a.d - b.d).slice(0, n); },
-  mine: async (type, max = 12) => {
-    const n = window.nvAI.nodes(type, 1)[0]; if (!n) return { ok: false, reason: 'none near' };
-    const g = await aiGoto(n.x, n.z, 1.9); if (!g.ok) return g;
-    window.nvAI.face(n.x, n.z);
-    for (let i = 0; i < max; i++) { doAttack(); await aiWait(650); if (!window.nvAI.nodes(type, 3).some(m => m.key === n.key)) return { ok: true, mined: n.key, swings: i + 1 }; }
-    return { ok: false, reason: 'still standing', key: n.key };
-  },
-  shelterHere: async (m = 'ice') => { // floor + 3 walls + roof around the spot in front of you
-    const r = []; for (const k of ['floor', 'roof']) { selectBuild(k, m); await aiWait(200); r.push(k + ':' + window.nvAI.place()); }
-    return r;
-  },
-  screenshotHint: () => 'use the browser screenshot tool'
-};
-if (new window.URLSearchParams(window.location.search).has('ai')) aiEnable();
 </script>
 </body>
 </html>

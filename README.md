@@ -45,10 +45,6 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 - **The meeting on the ice:** about halfway along James's trail, a cutscene plays: James talking with a soldier in black armour with cyan trim. The armour is a Human Federation of Sol (HFOS) design, but the Federation doesn't wear those colours. Press Space/E to advance a line, or Skip. It plays once per wanderer.
 - **Lip sync:** James and all four species leaders move their jaws and mouths with their recorded voices.
 
-## Temporary: AI playtest mode
-
-Add `?ai` to the game's URL, or run `nvAI.enable()` in the console, to show an **AI PLAYTEST MODE** badge and log. `window.nvAI` lets an automated playtester drive your wanderer: `status()`, `goto(x, z)`, `gotoTarget()`, `interact()`, `attack()`, `skipDialog()`, `mine(type)`, `build(piece, material)`, `place()`, `craft(id)`, `spots()`, `nodes()` and `errors()`. This is temporary and will be removed after playtesting.
-
 ## Controls
 
 | | Phone | Computer |
