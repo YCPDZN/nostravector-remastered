@@ -29,7 +29,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 - **The wake-up:** you wake to find the outer hatch open and James Brown gone. The new objective is to find him.
 - **Procedural Antarctica:** step outside into endless, procedurally generated terrain in the style of No Man's Sky: snowfields, wind-cut ridges, rocky cliffs, frozen lakes, rock outcrops and ice spires, all under a blizzard. Each wanderer has their own world seed. James's footprints lead away from the station; fresh patches of prints and his lantern glow lead you to him about 400 m out (objectives: Find James Brown → Speak to James Brown). Hold Shift (or push the stick fully) to run.
 - **Make camp:** once James joins you, the next objective is to set up a camp with him: build a **crafting table** (+60 XP), then a **teleporter** beside it (+120 XP), which links your camp to the station's pad. Then:
-  - **Speak to James Brown:** a gold marker leads you to him. He warns that a big storm is rolling in off the plateau, too soon to reach the station, so you'll have to build a shelter.
+  - **Speak to James Brown:** a gold marker leads you to him. He warns (voiced) that a big storm is rolling in off the plateau, too soon to reach the station, so you'll have to build a shelter.
   - **Build a shelter:** a floor with a roof over it, closed in by walls or doorways. One side may stay open as the way in, and bigger bases of several floors and roofs work too. The objective tracks your floor, walls (3) and roof as you build.
   - **Get inside the shelter:** the storm builds over about 20 seconds after James's warning: the wind and snow speed up, the snowflakes grow and a whiteout swallows the sky. Out in the open the cold slowly drains your health, though never below a quarter (a camp heater keeps you warm). Once you're inside, James joins you and the storm passes about 25 seconds later.
   - **Explore Antarctica with James.** Wanderers who already built these get the credit when they next step outside.
@@ -77,7 +77,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   - **3 · Meet me back at base:** walks back to the station and waits by the door (and is inside when you go in).
   - **4 · Wander around:** strolls around where he is.
   - **5 · Follow me:** the default. If you get more than 40 m ahead, he catches up by appearing just behind you.
-  On a phone, tap **JAMES** under your objectives, or walk up to him and tap **ORDER**. He shows as a green dot on the minimap.
+  Each order gets a voiced reply from James (Chapters I and II; he has different lines when he rejoins you later). On a phone, tap **JAMES** under your objectives, or walk up to him and tap **ORDER**. He shows as a green dot on the minimap.
 - **Voiced scenes:** the meeting cutscene (James and the soldier) and James's lines at the end of the trail are fully voiced with lip sync.
 - **Main menu by chapter:**
   - **Chapter I to early Chapter IV:** the normal blue menu, the original theme, and the year 2125 AD.
