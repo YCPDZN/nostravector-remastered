@@ -66,7 +66,11 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   - **5 · Follow me:** the default. If you get more than 40 m ahead, he catches up by appearing just behind you.
   On a phone, tap **JAMES** under your objectives, or walk up to him and tap **ORDER**. He shows as a green dot on the minimap.
 - **Voiced scenes:** the meeting cutscene (James and the soldier) and James's lines at the end of the trail are fully voiced with lip sync.
-- **Chapter IV main menu:** once a wanderer reaches Chapter IV, the main menu turns red and darker, the year reads 2127 AD, Antarctica sinks into a blood-red night with falling ash, the Chapter IV theme plays, and a voice taunts you line by line. The Mission brief is rewritten for Chapter IV as well. From Chapter V the menu returns to normal, and **Settings → Menu style** lets you switch between Normal and Blood red. To preview, open the game with `?menu=ch4` or `?menu=ch5` at the end of the address (for example `index.html?menu=ch4`).
+- **Main menu by chapter:**
+  - **Chapter I to early Chapter IV:** the normal blue menu, the original theme, and the year 2125 AD.
+  - **Chapter IV, after the time skip:** always blood red: red interface, red night with falling ash, the Chapter IV theme, the year 2127 AD, a taunting voice, and a rewritten mission brief.
+  - **Chapter V onwards:** back to the normal menu and the original theme, still in 2127 AD. **Settings → Menu style** lets you switch to Blood red (which brings back the Chapter IV theme and the voice).
+  - To preview, add `?menu=ch4pre`, `?menu=ch4` or `?menu=ch5` to the game's address.
 - **Main menu:** set in Antarctica at polar night, with aurora and snowfall; once James has joined you, he walks alongside your wanderer. The moon-style menu is kept for when the story reaches the Moon.
 - **Options:** in the pause menu (and Settings on the main menu) you can turn the music on or off separately from all sound. Both choices are remembered.
 - **Nostrapedia** (main menu): the in-game encyclopaedia. **Leaders** holds detailed files on the four species leaders. They are classified until Chapter III, except the leader of your wanderer's species, whose file opens once you have met them in your dream.

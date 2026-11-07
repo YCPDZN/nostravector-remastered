@@ -173,7 +173,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 
 
 /* ---------- chapter IV main menu: red, darker, someone is watching ---------- */
-.yearstamp,.taunt{display:none}
+.taunt{display:none}
+#title .yearstamp{position:absolute;top:calc(var(--st) + 22px);right:calc(var(--sr) + 26px);font-family:var(--display);font-size:11px;letter-spacing:.5em;color:var(--ice);opacity:.7}
 body.ch4 #title{--ink:#ff5a4e;--mute:#9a4540;--faint:rgba(255,70,60,.16);--line:rgba(255,70,60,.5);--ice:#ff3b2f;
   background:linear-gradient(90deg,rgba(9,1,2,.97) 0%,rgba(9,1,2,.82) 30%,rgba(9,1,2,0) 62%)}
 body.ch4 #title .wordmark{text-shadow:0 0 30px rgba(255,40,30,.55);animation:ch4flick 6s infinite}
@@ -189,7 +190,7 @@ body.ch4 #title .taunt{display:block;position:absolute;right:calc(var(--sr) + 6v
 @media (max-width:720px),(max-aspect-ratio:1/1){
   body.ch4 #title .taunt{left:24px;right:24px;max-width:none;text-align:center;bottom:auto;top:calc(var(--st) + 30vh)}
   .taunt span{font-size:12px}
-  body.ch4 #title .yearstamp{top:calc(var(--st) + 12px);right:50%;transform:translateX(50%);font-size:9px}
+  #title .yearstamp{top:calc(var(--st) + 12px);right:50%;transform:translateX(50%);font-size:9px}
 }
 
 /* ---------- custom creations ---------- */
@@ -967,7 +968,8 @@ const BRIEF_START = 'The year is <b>2125 AD</b>. Beyond our small blue world, co
 const BRIEF_CH4 = 'The year is <b>2127 AD</b>. The old world is dead. <b>Hawthorne is gone</b>, and the Exploration Division is scattered across a galaxy that no longer feels safe. The <b>Catharsis</b> is spreading, world by world, and the voice in the dark grows louder each time you close your eyes. You are still the <b>wanderer</b>. You are still standing. Find who is left, and find out what is coming, before it finds you.';
 function applyMenuEra() {
   const on = isCh4Menu();
-  const bt = $('#briefT'); if (bt) bt.innerHTML = chNow() >= 4 ? BRIEF_CH4 : BRIEF_START;
+  const bt = $('#briefT'); if (bt) bt.innerHTML = postSkip() ? BRIEF_CH4 : BRIEF_START;
+  const ys = $('#yearStamp'); if (ys) ys.textContent = postSkip() ? '2127 AD' : '2125 AD';
   const st = $('#setStyle'); if (st) { st.style.display = chNow() >= 5 ? '' : 'none'; st.querySelector('.val').textContent = menuStyle === 'red' ? 'BLOOD RED' : 'NORMAL'; }
   document.body.classList.toggle('ch4', on);
   sfx.menuTrack(on ? 'musicCh4' : 'music');
@@ -1039,12 +1041,15 @@ function snowTick(dt) {
   }
   menuSnow.geometry.attributes.position.needsUpdate = true;
 }
-// ?menu=ch4 / ?menu=ch5 preview those chapters' main menus
-const forceCh = +((window.location.search.match(/[?&]menu=ch(\d+)/) || [])[1] || 0);
+// ?menu=ch4pre (Chapter IV before the time skip), ?menu=ch4 (after it) and ?menu=ch5 preview those main menus
+const forceM = window.location.search.match(/[?&]menu=ch(\d+)(pre)?/) || [];
+const forceCh = +(forceM[1] || 0), forcePre = !!forceM[2];
 const chNow = () => forceCh || (wanderer ? wanderer.chapter | 0 : 0);
+// the two-year time skip happens partway through Chapter IV (story code sets wanderer.ch4.timeSkip)
+const postSkip = () => { const c = chNow(); return c >= 5 || (c === 4 && (forceCh === 4 ? !forcePre : !!(wanderer && wanderer.ch4 && wanderer.ch4.timeSkip))); };
 let menuStyle = store.get('nv_menuStyle', 'normal');
-// Chapter IV is always blood red; from Chapter V you choose
-const isCh4Menu = () => { const c = chNow(); return c === 4 || (c >= 5 && menuStyle === 'red'); };
+// after the skip, Chapter IV is always blood red; from Chapter V you choose (normal by default)
+const isCh4Menu = () => { const c = chNow(); return (c === 4 && postSkip()) || (c >= 5 && menuStyle === 'red'); };
 function menuLookFor() { return isCh4Menu() ? 'abyss' : wanderer && wanderer.location === 'moon' ? 'moon' : 'antarctica'; }
 function setMenuLook(kind) {
   if (menuLook === kind) return;
