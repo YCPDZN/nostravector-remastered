@@ -57,6 +57,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   - Thermal lamp, wind barrier and signal beacon.
   - Camp heater: heals you while you stand nearby.
 - **Minimap and Earth map:** outside, a heading-up minimap (top right) shows the terrain, the station, your beacons and a gold diamond on the current objective, with its distance. Tap it or press M for the full north-up Earth map with your coordinates.
+- **Combat themes:** five tracks (Predator I–IV and Wonders of Laniakea, combat version). In play, one is picked at random whenever something hostile engages you; it takes over from the ambient music and fades out a few seconds after the fight ends. You can preview them in Settings → Combat themes, where each tap plays the next track.
 - **Held items:** whatever is selected in the hotbar (ice pick, med kit, thermal lamp, or a placeable) is shown in your right hand, positioned to fit your species.
 - **Building:** select a placeable in the hotbar and a green preview appears in front of you; attack to place it. Walk up to it and press E (TAKE) to pick it back up.
 - What you mine and build is remembered per wanderer and saved with your save game.
@@ -66,7 +67,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 ```
 index.html                  the complete game, with all assets embedded
 assets/models/              source 3D models (.glb), including hfos_soldier.glb (original HFOS colours)
-assets/audio/               main menu theme, opening narration, James Brown's lines (prologue + Chapter I)
+assets/audio/               main menu theme, combat themes (combat/), opening narration, James Brown's lines (prologue + Chapter I)
 assets/logo_reference.png   logo / font style reference
 ```
 
