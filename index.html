@@ -571,6 +571,10 @@ button.bm-c.no{opacity:.45}
 #c2fx::before,#c2fx::after{content:"";position:absolute;left:-5%;right:-5%;height:calc(var(--lid) * 53vh);background:#000;box-shadow:0 0 60px 40px #000}
 #c2fx::before{top:0;border-radius:0 0 50% 50%/0 0 30% 30%}
 #c2fx::after{bottom:0;border-radius:50% 50% 0 0/30% 30% 0 0}
+
+#xhud.cineonly{z-index:31;pointer-events:none}
+#xhud.cineonly > *:not(#xDlg){display:none!important}
+#xhud.cineonly #xDlg{pointer-events:auto}
 </style>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
@@ -3917,7 +3921,7 @@ function buildAfrica() {
 async function startCh2Intro(from) {
   ci.from = from; buildAfrica(); ci.flat = false;
   if (from === 'explore') leaveExplore(false);
-  show(ui.title, false); show(ui.xhud, false); closeDialog();
+  show(ui.title, false); closeDialog(); ui.xhud.classList.add('cineonly'); show(ui.xhud, true);
   const fcEl = $('#ferryCut'); fcEl.classList.add('on', 'black'); fcEl.classList.remove('title');
   afScene.add(player); afScene.add(particles); resetRig(); hideSuitGear();
   if (ex.held && ex.held.parent) ex.held.parent.remove(ex.held);
@@ -3930,7 +3934,7 @@ async function startCh2Intro(from) {
     const el = document.getElementById('cpOrion');
     if (el && !ci.orion) {
       const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-      const R = autoRig(SkeletonUtils.clone(await parseGlb(u8.buffer)), 1.85); armRig(R, 'none'); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); ci.orion = R;
+      const R = autoRig(SkeletonUtils.clone(await parseGlb(u8.buffer)), 1.85); armRig(R, 'none'); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); R.lips = faceRig(R.root); ci.orion = R;
     }
   } catch (e) { console.error('Orion failed to load', e); }
   if (ci.orion) { afScene.add(ci.orion.root); ci.orion.root.position.set(1.5, 0, 26); ci.orion.root.rotation.set(0, Math.PI, 0); ci.orion.root.visible = true; ci.orion.mode = 'idle'; }
@@ -3940,10 +3944,29 @@ function ciFx(blur, red, tunnel, lid = 0, sat = 1) {
   renderer.domElement.style.filter = blur > .05 || sat < .99 ? `blur(${blur.toFixed(2)}px) saturate(${sat.toFixed(2)}) contrast(${(1 + red * .25).toFixed(2)})` : '';
   const fx = $('#c2fx'); fx.style.setProperty('--red', red.toFixed(3)); fx.style.setProperty('--tun', tunnel.toFixed(3)); fx.style.setProperty('--lid', lid.toFixed(3));
 }
+// a hinged jaw and mouth for lip sync, built from the model's own Jaw / Mouth meshes; the mouth is set to a grim, frightened line
+function faceRig(root) {
+  root.updateMatrixWorld(true);
+  const jm = root.getObjectByName('Jaw'), mm = root.getObjectByName('Mouth_neutral') || root.getObjectByName('Mouth neutral');
+  if (!jm || !jm.parent) return null;
+  const bj = new THREE.Box3().setFromObject(jm), cj = bj.getCenter(new THREE.Vector3());
+  const jaw = new THREE.Group(); jm.parent.add(jaw); jaw.position.copy(jm.parent.worldToLocal(new THREE.Vector3(cj.x, bj.max.y, bj.min.z))); jaw.updateMatrixWorld(true); jaw.attach(jm);
+  let mouth = null;
+  if (mm && mm.parent) { const c = new THREE.Box3().setFromObject(mm).getCenter(new THREE.Vector3()); mouth = new THREE.Group(); mm.parent.add(mouth); mouth.position.copy(mm.parent.worldToLocal(c)); mouth.updateMatrixWorld(true); mouth.attach(mm); mouth.scale.y = -.85; }
+  return { jaw, mouth, base: jaw.rotation.x, open: 0 };
+}
+function lipTick(L, dt, talking) {
+  if (!L) return;
+  const target = talking ? clamp((sfx.voiceLevel() - .015) / .24, 0, 1) : 0;
+  L.open += (target - L.open) * Math.min(1, dt * (target > L.open ? 28 : 14));
+  L.jaw.rotation.x = L.base + .05 + L.open * .26; // never quite closed: he's breathing hard
+  if (L.mouth) L.mouth.scale.y = -.85 * (1 + L.open * 3.2);
+}
 const ciDummy = { ra: new THREE.Object3D(), la: new THREE.Object3D(), rl: new THREE.Object3D(), ll: new THREE.Object3D() };
 // smooth pseudo-random wobble (for handheld camera and a body that won't hold still)
 const wob = (t, seed) => Math.sin(t * 1.31 + seed) * .5 + Math.sin(t * 2.71 + seed * 2.3) * .3 + Math.sin(t * 5.9 + seed * 4.1) * .2;
 function updateCh2Intro(dt) {
+  if (ci.done) { sfx.drone(0); sfx.ring(0); return; }
   const RG = rig.ra && rig.la && rig.rl && rig.ll ? rig : ciDummy;
   ci.t += dt;
   // slow motion as the body goes down
@@ -4031,7 +4054,7 @@ function updateCh2Intro(dt) {
         R.root.position.y = -.5 * k * k; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - o.x, p.z - o.z), Math.min(1, dt * 5));
         cam.set(p.x + .3, .28 + k * .2, p.z - .35); look.set(o.x, 1 - k * .35, o.z); roll = 1.1 - k * .4;
       }
-      animRig(R, dt);
+      animRig(R, dt); lipTick(R.lips, dt, !!ex.dlg);
       if (ci.kneelO) { if (R.rl) R.rl.rotation.x = 1.25; if (R.ll) R.ll.rotation.x = -.45; if (R.ra) R.ra.rotation.x = -1 + wob(t * 3, 1) * .15; if (R.la) R.la.rotation.x = -.7 + wob(t * 3, 2) * .15; } // shaking you
     }
     if (((ci.kneelO && t > ci.kneelO + .6) || (!O && t > 20)) && !ci.talked) {
@@ -4073,6 +4096,7 @@ function endChapterOne() {
 }
 // Chapter II isn't built yet past its opening: a holding screen (offering to save when you've just played through)
 function showCh2Soon(from) {
+  sfx.drone(0); sfx.ring(0); sfx.flatline(false); ui.xhud.classList.remove('cineonly'); show(ui.xhud, false);
   $('#tbc .eyebrow').textContent = 'Chapter II';
   $('#tbc .h1').innerHTML = 'CHAPTER II<br>AFRICA';
   $('#tbc .brief').textContent = from === 'explore' ? 'To be continued. Save your game to keep your progress.' : 'To be continued.';
