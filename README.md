@@ -34,10 +34,28 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 
 | | Phone | Computer |
 |---|---|---|
-| Move | Left thumbstick | WASD / arrow keys |
+| Move | Left thumbstick (push fully to run, lightly to walk) | WASD / arrow keys (run by default; C toggles walking) |
+| Sprint | SPRINT button (toggle) | Hold Shift |
+| Jump | JUMP | Space |
+| Dodge roll | DODGE | Q |
+| Attack / mine / place / use | ATTACK | Click (without dragging) or F |
 | Look | Drag the right side | Drag the mouse; wheel to zoom |
-| Interact / advance text | TALK / LOOK button, or tap the text | E, Enter or Space |
+| Interact / advance text | TALK / LOOK / TAKE button, or tap the text | E or Enter |
+| Hotbar | Tap a slot | 1–6 |
+| Inventory & crafting | Bag button | I or Tab |
 | Pause | ☰ button | Esc |
+
+## Survival
+
+- **Health and stamina:** sprinting, jumping, dodging and swinging cost stamina, which refills when you rest.
+- **Gathering:** attack rocks (stone, sometimes scrap metal), ice spires (ice, sometimes frost crystal) and supply crates (scrap metal, cloth, sometimes frost crystal). Three crates sit near the station to get you started.
+- **Crafting** (Inventory → Craft):
+  - Ice pick: doubles mining and melee damage.
+  - Med kit: +40 health.
+  - Thermal lamp, wind barrier and signal beacon.
+  - Camp heater: heals you while you stand nearby.
+- **Building:** select a placeable in the hotbar and a green preview appears in front of you; attack to place it. Walk up to it and press E (TAKE) to pick it back up.
+- What you mine and build is remembered per wanderer and saved with your save game.
 
 ## Repository layout
 
