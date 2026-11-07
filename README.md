@@ -42,7 +42,9 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 | Attack / mine / place / use | ATTACK | Click (without dragging) or F |
 | Look | Drag the right side | Drag the mouse; wheel to zoom |
 | Interact / advance text | TALK / LOOK / TAKE button, or tap the text | E or Enter |
-| Hotbar | Tap a slot | 1–6 |
+| Hotbar | Tap a slot | 1–6 (once James has joined you: mouse wheel) |
+| Order James | JAMES button, or walk up to him and tap ORDER | 1 Mine · 2 Explore · 3 Base · 4 Wander · 5 Follow |
+| Zoom (outside, once James has joined) | — | − / = |
 | Inventory & crafting | Bag button | I or Tab |
 | Earth map | Tap the minimap | M |
 | Pause | ☰ button | Esc |
@@ -56,6 +58,15 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   - Med kit: +40 health.
   - Thermal lamp, wind barrier and signal beacon.
   - Camp heater: heals you while you stand nearby.
+- **James Brown, companion:** after you find him and he finishes speaking, James joins you. He carries his own rifle (slung on his back, ready for when hostile creatures arrive) and takes orders:
+  - **1 · Mine:** heads for the nearest rock, ice spire or crate, mines it with his pick and adds what he finds to your bag.
+  - **2 · Explore:** scouts on his own, up to ~260 m away, and sometimes brings back a resource.
+  - **3 · Meet me back at base:** walks back to the station and waits by the door (and is inside when you go in).
+  - **4 · Wander around:** strolls around where he is.
+  - **5 · Follow me:** the default. If you get more than 40 m ahead, he catches up by appearing just behind you.
+  On a phone, tap **JAMES** under your objectives, or walk up to him and tap **ORDER**. He shows as a green dot on the minimap.
+- **Voiced scenes:** the meeting cutscene (James and the soldier) and James's lines at the end of the trail are fully voiced with lip sync.
+- **Main menu:** set in Antarctica at polar night, with aurora and snowfall; once James has joined you, he walks alongside your wanderer. The moon-style menu is kept for when the story reaches the Moon.
 - **Minimap and Earth map:** outside, a heading-up minimap (top right) shows the terrain, the station, your beacons and a gold diamond on the current objective, with its distance. Tap it or press M for the full north-up Earth map with your coordinates.
 - **Antarctica exploration music:** four tracks play while you're out on the ice, shuffled with quiet gaps of 9–25 seconds between them. The music fades when you go inside, softens during pauses and cutscenes, and steps aside for combat themes.
 - **Combat themes:** five tracks (Predator I–IV and Wonders of Laniakea, combat version). In play, one is picked at random whenever something hostile engages you; it takes over from the ambient music and fades out a few seconds after the fight ends. You can preview them in Settings → Combat themes, where each tap plays the next track.
