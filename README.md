@@ -69,6 +69,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 - **Main menu:** set in Antarctica at polar night, with aurora and snowfall; once James has joined you, he walks alongside your wanderer. The moon-style menu is kept for when the story reaches the Moon.
 - **Options:** in the pause menu (and Settings on the main menu) you can turn the music on or off separately from all sound. Both choices are remembered.
 - **Nostrapedia** (main menu): the in-game encyclopaedia. **Leaders** holds detailed files on the four species leaders. They are classified until Chapter III, except the leader of your wanderer's species, whose file opens once you have met them in your dream.
+  **Companions** holds files on the people who travel with you. James Brown's file is open from Chapter I; the rest are redacted and open as the story continues (Chapter II, III or IV).
   Two further sections are **classified**: their files show only redaction bars until they are declassified in Chapter IV.
   **Creations** lists what you've made in Custom creations; full entries for them are coming soon.
 - **Custom creations** (main menu): creator tools in the spirit of Spore's editors and Galactic Adventures. Creations are stored on this device separately from save slots, and are only saved when you press Save.
@@ -92,7 +93,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 
 ```
 index.html                  the complete game, with all assets embedded
-assets/models/              source 3D models (.glb); primes/ and vectors/ hold figures for classified Nostrapedia files; characters/ holds the Project BC and Sevirrus models, including hfos_soldier.glb (original HFOS colours)
+assets/models/              source 3D models (.glb); primes/, vectors/ and companions/ hold Nostrapedia figures; characters/ holds the Project BC and Sevirrus models, including hfos_soldier.glb (original HFOS colours)
 assets/audio/               main menu theme, combat themes (combat/), Antarctica exploration music (antarctica/), opening narration, James Brown's lines (prologue + Chapter I)
 assets/logo_reference.png   logo / font style reference
 ```
