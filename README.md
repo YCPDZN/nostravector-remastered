@@ -29,7 +29,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 - **The wake-up:** you wake to find the outer hatch open and James Brown gone. The new objective is to find him.
 - **Procedural Antarctica:** step outside into endless, procedurally generated terrain in the style of No Man's Sky: snowfields, wind-cut ridges, rocky cliffs, frozen lakes, rock outcrops and ice spires, all under a blizzard. Each wanderer has their own world seed. James's footprints lead away from the station; fresh patches of prints and his lantern glow lead you to him about 400 m out (objectives: Find James Brown → Speak to James Brown). Hold Shift (or push the stick fully) to run.
 - **Make camp:** once James joins you, the next objective is to set up a camp with him: build a **crafting table** (+60 XP), then a **teleporter** beside it (+120 XP), which links your camp to the station's pad. After that, the objective becomes Explore Antarctica with James. Wanderers who already built these get the credit when they next step outside.
-- **HD Antarctica:** the ice uses an HD snow texture (tiled every 4 m, seamless across the endless terrain) under an HD polar sky panorama. The distance haze and sunlight are matched to the sky's horizon and sun.
+- **HD Antarctica:** the ice uses an HD snow texture (tiled every 4 m, seamless across the endless terrain) under an HD polar sky panorama. Rock outcrops use an HD rock model (with colour, normal and roughness maps), and groves of bare, wind-stripped trees built from an HD bark model stand on the flatter ground. The distance haze and sunlight are matched to the sky's horizon and sun.
 - **The meeting on the ice:** about halfway along James's trail, a cutscene plays: James talking with a soldier in black armour with cyan trim. The armour is a Human Federation of Sol (HFOS) design, but the Federation doesn't wear those colours. Press Space/E to advance a line, or Skip. It plays once per wanderer.
 - **Lip sync:** James and all four species leaders move their jaws and mouths with their recorded voices.
 
@@ -114,7 +114,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   - **Walking:** floors, roofs and ramps can be walked on, and walls block you. Doorways can be walked through.
   - **Changing your mind:** while building, walk up to a piece and press E (TAKE) to dismantle it for a full refund. The preview turns red when you can't place a piece, or can't afford it.
 - **New materials:**
-  - **Wood:** found in supply crates.
+  - **Wood:** chop trees (2–4 each, +14 XP; James chops them too), or find it in supply crates.
   - **Obsidian:** from rare black volcanic glass outcrops. You need the ice pick selected to break them.
   - **Metal plate:** refined from 3 scrap metal at a crafting table.
 - **Crafting table** (build menu → Structures): refined recipes (metal plates) and teleporters only work within 5 m of one. Inside the station counts as having one. Press E at a table to open crafting.
@@ -130,6 +130,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 index.html                  the complete game, with all assets embedded
 assets/models/              source 3D models (.glb); primes/, vectors/, companions/ and terra_imperia/ and ancient/ hold Nostrapedia figures; characters/ holds the Project BC and Sevirrus models, including hfos_soldier.glb (original HFOS colours)
 assets/audio/               main menu themes (incl. Chapter IV), combat themes (combat/), Antarctica exploration music (antarctica/), opening narration, James Brown's lines (prologue + Chapter I)
+assets/models/world/        HD rock and tree-bark models (embedded with JPEG textures in index.html)
 assets/textures/            HD Antarctica sky panorama and snow texture (embedded as JPEG in index.html)
 assets/logo_reference.png   logo / font style reference
 ```
