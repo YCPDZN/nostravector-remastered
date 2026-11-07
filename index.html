@@ -3062,7 +3062,13 @@ function campTasks(p, task) {
     if (p.campBench) h += task(!!p.campTele, 'Make camp · build a teleporter');
     return h;
   }
-  return task(true, 'Make camp with James') + task(false, 'Explore Antarctica with James');
+  let h = task(true, 'Make camp with James');
+  if (!p.stormTalk) return h + task(false, 'Speak to James Brown');
+  h += task(true, 'Speak to James Brown');
+  if (!p.shelterBuilt) { const s = shelterStatus(); return h + task(false, `Build a shelter · floor ${s.floor ? '✓' : '✗'} · walls ${Math.min(3, s.walls)}/3 · roof ${s.roof ? '✓' : '✗'}`); }
+  h += task(true, 'Build a shelter');
+  if (!p.stormSafe) return h + task(false, 'Get inside the shelter');
+  return h + task(true, 'Get inside the shelter') + task(false, 'Explore Antarctica with James');
 }
 function campProgress(k) {
   const c = ch1(); if (!c.metOutside || c.campDone) return;
@@ -3072,7 +3078,89 @@ function campProgress(k) {
   } else if (k === 'tele' && c.campBench && !c.campTele) {
     setCh1({ campTele: true, campDone: true }); gainXP(120); sfx.chime(); renderTasks();
     setTimeout(() => notice('Camp linked to the station', 'CAMP MADE', 3400), 900);
-    setTimeout(() => notice('New objective', 'EXPLORE ANTARCTICA WITH JAMES', 3400), 4600);
+    setTimeout(() => notice('James wants a word', 'SPEAK TO JAMES BROWN', 3400), 4600);
+  }
+}
+// ---- the storm: James warns you, you build a shelter and get inside before it hits ----
+const JAMES_STORM = [
+  'Feel that? The wind’s turned. There’s a storm rolling in off the plateau, and it’s a big one.',
+  'We’ll never make it back to the station before it hits. We need to get inside a shelter.',
+  'There’s no shelter out here, so we build one. A floor, walls and a roof, out of whatever we’ve gathered. Let’s move.'
+];
+function stormTalk() {
+  james.headTilt = .05;
+  openDialog('JAMES BROWN', JAMES_STORM, false, () => {
+    const first = !ch1().stormTalk;
+    setCh1({ stormTalk: true }); renderTasks();
+    if (first) {
+      gainXP(50); sfx.chime();
+      setTimeout(() => notice('A storm is coming', 'BUILD A SHELTER', 3600), 400);
+      setTimeout(() => notice(document.body.classList.contains('touch') ? 'BUILD → a floor, 3 walls and a roof' : 'B → a floor, 3 walls and a roof', 'FLOOR · WALLS · ROOF', 4200), 4400);
+    }
+  });
+}
+function shelterCells() {
+  const B = world.build.map(b => b.data), key = (x, z) => Math.round(x / GS) + ',' + Math.round(z / GS);
+  const roofs = B.filter(o => o.k === 'roof'), walls = B.filter(o => o.k === 'wall' || o.k === 'door'), cells = new Map();
+  for (const f of B) if (f.k === 'floor' && roofs.some(r => Math.abs(r.x - f.x) < .2 && Math.abs(r.z - f.z) < .2 && Math.abs(r.y - WH - f.y) < .6)) cells.set(key(f.x, f.z), f);
+  const wallAt = (x, z, y) => walls.some(w => Math.abs(w.x - x) < .2 && Math.abs(w.z - z) < .2 && Math.abs(w.y - y) < .9);
+  const seen = new Set(), out = [];
+  for (const k0 of cells.keys()) {
+    if (seen.has(k0)) continue;
+    const comp = [], stack = [k0]; let open = 0; seen.add(k0);
+    while (stack.length) {
+      const f = cells.get(stack.pop()); comp.push(f);
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nk = key(f.x + dx * GS, f.z + dz * GS);
+        if (cells.has(nk)) { if (!seen.has(nk)) { seen.add(nk); stack.push(nk); } } else if (!wallAt(f.x + dx * GS / 2, f.z + dz * GS / 2, f.y)) open++;
+      }
+    }
+    out.push({ cells: comp, open });
+  }
+  return out;
+}
+const shelters = () => shelterCells().filter(sh => sh.open <= 1); // one open side is allowed as the way in
+function shelterStatus() {
+  const B = world.build.map(b => b.data);
+  return { floor: B.some(o => o.k === 'floor'), walls: B.filter(o => o.k === 'wall' || o.k === 'door').length, roof: B.some(o => o.k === 'roof') };
+}
+function insideShelter() {
+  const p = player.position;
+  for (const sh of shelters()) for (const f of sh.cells) if (Math.abs(p.x - f.x) < GS / 2 && Math.abs(p.z - f.z) < GS / 2 && p.y > f.y - .4 && p.y < f.y + 1.2) return true;
+  return false;
+}
+function stormProgress() { const c = ch1(); if (c.stormTalk && !c.shelterBuilt) renderTasks(); }
+function stormTick(dt) {
+  const c = ch1(), active = !!(c.stormTalk && !c.stormSafe);
+  world.storm = clamp((world.storm || 0) + (active ? dt / 20 : -dt / 25), 0, 1);
+  const st = world.storm;
+  wScene.fog.density = .0105 + .045 * st * st;
+  wScene.fog.color.set(W_FOG).lerp(wTmp.set(0xb9c6d3), st);
+  if (world.veil) world.veil.material.opacity = Math.min(.92, st * 1.1);
+  world.snow.material.size = .08 + .07 * st;
+  if (state !== 'explore') return;
+  if ((world.stormCheck = (world.stormCheck || 0) - dt) > 0) return;
+  world.stormCheck = .4;
+  if (c.stormTalk && !c.shelterBuilt && shelters().length) {
+    setCh1({ shelterBuilt: true }); gainXP(150); sfx.chime(); renderTasks();
+    notice('Shelter built', 'GET INSIDE', 3400);
+  } else if (c.shelterBuilt && !c.stormSafe && insideShelter()) {
+    setCh1({ stormSafe: true }); gainXP(100); sfx.chime(); renderTasks();
+    notice('You made it inside', 'THE STORM HITS', 3600);
+    if (companionOn() && james.ready && james.root.parent === wScene) jTeleportNear();
+    world.stormEnd = time + 26;
+  }
+  if (world.stormEnd && time > world.stormEnd) {
+    world.stormEnd = 0;
+    notice('The storm has passed', 'EXPLORE ANTARCTICA WITH JAMES', 3800);
+  }
+  // caught out in the whiteout: the cold bites, but never below a quarter of your health
+  if (active && st > .6 && !insideShelter() && ex.hp > maxHP() * .25) {
+    let warm = false; for (const o of world.placed) if (o.data.t === 'heater' && Math.hypot(o.data.x - player.position.x, o.data.z - player.position.z) < 3.2) warm = true;
+    if (!warm) {
+      ex.hp = Math.max(maxHP() * .25, ex.hp - .25); invState().hp = Math.round(ex.hp);
+      if (!world.coldMsg || time - world.coldMsg > 30) { world.coldMsg = time; notice('The cold is biting', 'GET TO SHELTER', 2600); }
+    }
   }
 }
 function renderTasks() {
@@ -3202,7 +3290,7 @@ async function interact() {
   } else if (n.id === 'hatch' && ch1().slept) {
     goOutside();
   } else if (n.id === 'james2' && companionOn()) {
-    toggleJamesMenu();
+    if (ch1().campDone && !ch1().stormTalk) stormTalk(); else toggleJamesMenu();
   } else if (n.id === 'james2') {
     james.headTilt = .05;
     const clips = await sfx.loadClips('foundVoices');
@@ -3689,7 +3777,7 @@ function dismantle(b) {
   world.buildGroup.remove(b.mesh); world.build = world.build.filter(x => x !== b);
   const st = wsState(); st.build = st.build.filter(x => x !== b.data);
   for (const [r, n] of Object.entries(pieceCost(b.data.k, b.data.m))) giveItem(r, n);
-  lootMsg(`Dismantled ${pieceName(b.data)}`, '#e6e9f0'); sfx.click();
+  lootMsg(`Dismantled ${pieceName(b.data)}`, '#e6e9f0'); sfx.click(); stormProgress();
 }
 const benchNear = () => ex.mode === 'station' || (ex.mode === 'world' && world.build.some(b => b.data.k === 'bench' && Math.hypot(b.data.x - player.position.x, b.data.z - player.position.z) < 5));
 // ---- placement: pieces snap to a 3 m grid and to the heights of what you've already built ----
@@ -3760,7 +3848,7 @@ function placeBuild() {
   if (!S) o.m = B.m;
   if (o.k === 'tele') o.name = `Base ${tpNetwork().filter(t => t.ref).length + 1}`;
   for (const [r, n] of Object.entries(cost)) takeItem(r, n);
-  wsState().build.push(o); addBuild(o); saveRoster(); campProgress(o.k);
+  wsState().build.push(o); addBuild(o); saveRoster(); campProgress(o.k); stormProgress();
   sfx.thud(); gainXP(S ? 15 : 4);
   if (o.k === 'tele') { sfx.chime(); lootMsg(`Teleporter “${o.name}” joined your network`, '#7fd8ff'); }
   if (ex.bOpenT) renderBuild();
@@ -4267,6 +4355,7 @@ function mapTiles(x0, z0, x1, z1, budget) {
 function questTarget() {
   const c = ch1();
   if (wanderer.chapter === 1 && c.slept && !c.metOutside && world.jamesAt) return { x: world.jamesAt.x, z: world.jamesAt.z, label: c.found ? 'Speak to James Brown' : 'Find James Brown' };
+  if (c.campDone && !c.stormTalk && companionOn() && james.ready && james.root.parent === wScene) return { x: james.root.position.x, z: james.root.position.z, label: 'Speak to James Brown' };
   return null;
 }
 function mapMarkers() {
@@ -5210,6 +5299,9 @@ function buildWorld(seed) {
     world.buildGroup = new THREE.Group(); wScene.add(world.buildGroup);
     wObsMat = new THREE.MeshStandardMaterial({ color: 0x15101c, roughness: .12, metalness: .4, flatShading: true, emissive: 0x1a0a2a, emissiveIntensity: .35, envMapIntensity: .8 });
     world.stationTp = makePiece({ k: 'tele' }); wScene.add(world.stationTp);
+    // the storm's whiteout, drawn over the sky but behind the terrain
+    world.veil = new THREE.Mesh(new THREE.SphereGeometry(250, 24, 16), new THREE.MeshBasicMaterial({ color: 0xb9c6d3, side: THREE.BackSide, transparent: true, opacity: 0, fog: false, depthWrite: false }));
+    world.veil.renderOrder = -1; world.veil.frustumCulled = false; wScene.add(world.veil);
     world.heatLight = new THREE.PointLight(0xff8a3d, 0, 10, 1.5); wScene.add(world.heatLight);
     wIceMat = new THREE.MeshStandardMaterial({ color: 0xbfe3f5, roughness: .15, metalness: .1, transparent: true, opacity: .85, flatShading: true, envMapIntensity: .6 });
     wScene.add(new THREE.HemisphereLight(0xdfe8f3, 0x7a8796, 1.05));
@@ -5456,8 +5548,8 @@ function updateWorldMode(dt) {
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
     const PR = { door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
-    xUI.promptT.textContent = PR ? PR[0] : ord ? 'Give orders' : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
-    xUI.act.textContent = PR ? PR[1] : ord ? 'ORDER' : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
+    xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
+    xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
   // where's home, and your nearest beacon
   const dist = Math.hypot(p.x - 8, p.z), dirs = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
@@ -5476,7 +5568,8 @@ function updateWorldScene(dt) {
   faunaTick(dt); if (state === 'explore') jamesShoot(dt);
   soldierTick(dt);
   const c = camera.position, pa = world.snow.geometry.attributes.position.array;
-  const gust = .7 + .4 * Math.sin(time * .5) + .2 * Math.sin(time * 1.9), wx = -9 * gust, wz = 3.5 * gust;
+  stormTick(dt);
+  const st = world.storm || 0, gust = (.7 + .4 * Math.sin(time * .5) + .2 * Math.sin(time * 1.9)) * (1 + st * 2.2), wx = -9 * gust, wz = 3.5 * gust;
   for (let i = 0; i < world.sN; i++) {
     const j = i * 3, sd = world.sSeed[i];
     pa[j] += (wx + Math.sin(time * 2 + sd) * 1.6) * dt; pa[j + 1] += (-2.2 + Math.cos(time * 1.6 + sd)) * dt; pa[j + 2] += (wz + Math.sin(time * 1.3 + sd * 2) * 1.6) * dt;
@@ -5487,7 +5580,8 @@ function updateWorldScene(dt) {
   world.snow.geometry.attributes.position.needsUpdate = true;
   sfx.gust(300 + gust * 150);
   const p = player.position;
-  world.sun.position.set(p.x + 24.4, p.y + 45, p.z + 26.5); // lined up with the sun in the sky texture world.sun.target.position.copy(p);
+  if (world.veil) world.veil.position.copy(camera.position);
+  world.sun.position.set(p.x + 24.4, p.y + 45, p.z + 26.5); world.sun.target.position.copy(p); // lined up with the sun in the sky texture
   if (world.beacon) world.beacon.material.opacity = .45 + .55 * (Math.sin(time * 3) > 0 ? 1 : 0);
 }
 function worldCamera(dt) {
