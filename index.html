@@ -2080,7 +2080,7 @@ startBtn.addEventListener('click', () => {
   setTimeout(() => {
     f.style.transition = 'opacity 2.2s'; f.style.opacity = 0;
     setTimeout(() => { f.style.transition = ''; }, 2300);
-    if ((wanderer.chapter | 0) >= 2 && ch1().escaped) { if (!(wanderer.ch2 && wanderer.ch2.introSeen)) startCh2Intro('title'); else showCh2Soon('title'); } else if ((wanderer.chapter | 0) >= 1) startChapter1(false); else runCutscene();
+    if ((wanderer.chapter | 0) >= 2 && ch1().escaped) { if (!(wanderer.ch2 && wanderer.ch2.introSeen)) startCh2Intro('title'); else startChapter2(wanderer.place && wanderer.place.where === 'africa' ? wanderer.place : null); } else if ((wanderer.chapter | 0) >= 1) startChapter1(false); else runCutscene();
   }, 650);
 });
 function goMenu(id) {
@@ -3159,6 +3159,10 @@ function setCh1(patch) {
   if (patch.seen && patch.seen.length > (prev.seen || []).length) gainXP(15 * (patch.seen.length - (prev.seen || []).length), 'Inspected');
 }
 // after James joins: set up a camp with him, then the ice is yours to explore
+function ch2Tasks(task) {
+  const c2 = wanderer.ch2 || {};
+  return task(true, 'Wake up at Orion’s') + task(!!c2.talkedOrion, 'Speak to Orion') + (c2.talkedOrion ? task(false, 'Explore Africa') : '');
+}
 function campTasks(p, task) {
   if (!p.campDone) {
     let h = task(!!p.campBench, 'Make camp · build a crafting table');
@@ -3369,7 +3373,7 @@ function skyTick(dt) {
   }
   if (world.stars) { world.stars.material.opacity = clamp((1 - dl) * (1 - sm * 1.2), 0, 1); world.stars.position.copy(camera.position); world.stars.visible = world.stars.material.opacity > .01; }
   // haze
-  wScene.fog.color.set(W_FOG).lerp(DUSK_C, duskA * .6).lerp(NIGHT_C, (1 - dl) * .9).lerp(stormC, sm);
+  wScene.fog.color.set(areaFog()).lerp(DUSK_C, duskA * .6).lerp(NIGHT_C, (1 - dl) * .9).lerp(stormC, sm);
   wScene.fog.density = .0105 + .045 * sm * sm + (1 - dl) * .006;
   world.snow.material.size = .08 + .07 * sm;
 }
@@ -3584,6 +3588,7 @@ function buildFerry() {
 const ferryAng = () => Math.atan2(FERRY.dx, FERRY.dz);
 function ferryWorld(lx, lz) { const c = Math.cos(ferryAng()), sn = Math.sin(ferryAng()); return [FERRY.x + lx * c + lz * sn, FERRY.z - lx * sn + lz * c]; }
 function ferryLocal(x, z) {
+  if (curArea() !== 'antarctica') return null;
   const dx = x - FERRY.x, dz = z - FERRY.z; if (dx * dx + dz * dz > 40000) return null;
   const c = Math.cos(ferryAng()), sn = Math.sin(ferryAng());
   return [dx * c - dz * sn, dx * sn + dz * c];
@@ -4118,8 +4123,9 @@ async function ch2Narration(from) {
     nb.classList.remove('show'); await waitMs(700);
   }
   nb.classList.remove('on');
+  const f = $('#fade'); f.style.transition = ''; f.style.opacity = 1;
   el.classList.remove('on', 'letter', 'title', 'title2', 'black');
-  showCh2Soon(from);
+  startChapter2(null);
 }
 const ch2n = { skip: false };
 addEventListener('keydown', e => { if (state === 'ch2narr' && ['Space', 'Enter', 'KeyE'].includes(e.code)) { e.preventDefault(); ch2n.skip = true; } });
@@ -4131,16 +4137,6 @@ function endChapterOne() {
   const c = curChar(); if (c) { c.chapter = wanderer.chapter; c.ch2 = wanderer.ch2; }
   saveRoster(); renderTasks();
   startCh2Intro('explore');
-}
-// Chapter II isn't built yet past its opening: a holding screen (offering to save when you've just played through)
-function showCh2Soon(from) {
-  sfx.drone(0); sfx.ring(0); sfx.flatline(false); ui.xhud.classList.remove('cineonly'); show(ui.xhud, false);
-  $('#tbc .eyebrow').textContent = 'Chapter II';
-  $('#tbc .h1').innerHTML = 'CHAPTER II<br>AFRICA';
-  $('#tbc .brief').textContent = from === 'explore' ? 'To be continued. Save your game to keep your progress.' : 'To be continued.';
-  $('#tbcKeep').style.display = from === 'explore' ? '' : 'none';
-  $('#tbcKeep span').textContent = 'Save game';
-  ui.tbc.dataset.from = 'ch2'; show(ui.tbc, true); state = 'ch2soon';
 }
 function renderTasks() {
   // wanderers from before levels existed get XP for the story they've already played
@@ -4155,6 +4151,7 @@ function renderTasks() {
   if (p.talked) h += task(allSeen(), `Inspect the station · ${seenCount()}/${XSPOTS.length}`);
   if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
   if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? campTasks(p, task) : '');
+  if (curArea() === 'africa') h = ch2Tasks(task);
   xUI.tasks.innerHTML = h;
 }
 let noticeT;
@@ -4165,6 +4162,8 @@ function notice(small, big, ms = 2800) {
   noticeT = setTimeout(() => xUI.card.classList.remove('on'), ms);
 }
 async function startChapter1(fromCutscene, place) {
+  if ((wanderer.chapter | 0) >= 2 && ch1().escaped && wanderer.ch2 && wanderer.ch2.introSeen) { startChapter2(place); return; }
+  world.area = 'antarctica';
   state = 'loadingCh';
   sfx.init();
   await Promise.all([ensureJames(), ensureSoldier(), loadSpecies(spOf(wanderer)).catch(() => null), sfx.loadClips('ch1Voices'), loadWorldHD()]);
@@ -4298,6 +4297,8 @@ async function interact() {
     openInv(true);
   } else if (n.id === 'bed') {
     sleepOutside();
+  } else if (n.id === 'orion') {
+    talkOrion();
   } else if (n.id === 'push') {
     pushJames();
   } else if (n.id === 'rover') {
@@ -4658,9 +4659,10 @@ function ghostSpot() {
 // Inventory, units and everything you build live on the character (wanderer.inv / wanderer.worlds[area]),
 // never on a chapter, so it all carries into every chapter. New planets just add an AREA_INFO entry.
 const AREA_INFO = {
-  antarctica: { planet: 'Earth', name: 'Antarctica', stationTp: { x: 10.5, z: 5, name: 'Station teleporter' } }
+  antarctica: { planet: 'Earth', name: 'Antarctica', stationTp: { x: 10.5, z: 5, name: 'Station teleporter' } },
+  africa: { planet: 'Earth', name: 'Africa', stationTp: { x: 10.5, z: 6, name: 'Orion’s teleporter' } }
 };
-const curArea = () => 'antarctica'; // later chapters set this from the planet you're on
+const curArea = () => world.area || 'antarctica'; // set when you arrive somewhere new (Antarctica in Chapter I, Africa in Chapter II)
 const MATS = {
   wood: { name: 'Wood', color: 0x7a5434, rough: .85, metal: 0 },
   stone: { name: 'Stone', color: 0x7d8189, rough: .95, metal: 0, flat: true },
@@ -5347,6 +5349,7 @@ function mapTiles(x0, z0, x1, z1, budget) {
 }
 function questTarget() {
   const c = ch1();
+  if (curArea() === 'africa') return world.orion && !(wanderer.ch2 && wanderer.ch2.talkedOrion) ? { x: world.orion.root.position.x, z: world.orion.root.position.z, label: 'Orion' } : null;
   if (wanderer.chapter === 1 && c.slept && !c.metOutside && world.jamesAt) return { x: world.jamesAt.x, z: world.jamesAt.z, label: c.found ? 'Speak to James Brown' : 'Find James Brown' };
   if (world.betrayal && world.betrayal.phase === 'chase') { const [x, z] = ferryWorld(117.5 + 4.8, 36); return { x, z, label: 'The ferry’s gangway' }; }
   if (c.roverTalk && !c.roverFound && world.rover) return { x: world.rover.position.x, z: world.rover.position.z, label: 'James’s rover' };
@@ -5828,7 +5831,7 @@ function strikeFauna(dmgBase) {
   return true;
 }
 function faunaTick(dt) {
-  if (ex.mode !== 'world') return;
+  if (ex.mode !== 'world' || curArea() !== 'antarctica') return;
   const live = state === 'explore';
   if (live && (fauna.spawnT -= dt) <= 0) { fauna.spawnT = 1.2; faunaSpawner(); }
   const p = player.position;
@@ -6118,8 +6121,15 @@ function wNoise(x, y, k = 0) {
 function wFbm(x, y, oct, k) { let s = 0, a = .5, f = 1, n = 0; for (let i = 0; i < oct; i++) { s += wNoise(x * f, y * f, k + i) * a; n += a; f *= 2.03; a *= .5; } return s / n; }
 const LAKE_Y = -7;
 const FERRY = { x: -720, z: 700, dx: -.7169, dz: .6972 }; // dock point, and the direction out to sea
-function lakeAmt(x, z) { return smooth(.34, .27, wFbm(x * .0042 + 90, z * .0042 + 40, 2, 50)); }
+function lakeAmt(x, z) { return curArea() === 'africa' ? 0 : smooth(.34, .27, wFbm(x * .0042 + 90, z * .0042 + 40, 2, 50)); }
 function wHeight(x, z) {
+  if (curArea() === 'africa') {
+    // rolling savanna: long low swells, the odd rocky kopje, a few dry gullies
+    const n = wFbm(x * .002, z * .002, 4, 201), k = Math.pow(Math.max(0, wFbm(x * .009 + 7, z * .009 - 3, 3, 210) - .62), 2) * 160;
+    let h = (n - .5) * 26 + k + (wFbm(x * .05, z * .05, 2, 220) - .5) * .7;
+    const r = Math.hypot(x, z);
+    return lerp(0, h, smooth(26, 90, r));
+  }
   const n1 = wFbm(x * .0025, z * .0025, 4, 1);
   const ridge = 1 - Math.abs(wFbm(x * .006 + 31, z * .006 - 17, 3, 10) * 2 - 1);
   let h = (n1 - .45) * 75 + Math.pow(ridge, 3) * 48 * smooth(.42, .68, n1);
@@ -6131,6 +6141,7 @@ function wHeight(x, z) {
   const r = Math.hypot(x, z);
   return lerp(0, h, smooth(26, 80, r));
 }
+const SAND_C = new THREE.Color(0xcfa56a), SAND_SHADE = new THREE.Color(0xb18452), GRASS_C = new THREE.Color(0x8f8a48), DIRT_C = new THREE.Color(0x7a5a3c);
 const SNOW_C = new THREE.Color(0xeef3f9), SNOW_SHADE = new THREE.Color(0xc9d6e6), ROCK_C = new THREE.Color(0x3b3f47), ICE_C = new THREE.Color(0x9cc6de), wTmp = new THREE.Color();
 let wTerrainMat, wRockMat, wCapMat, wIceMat, wCrateMat, wObsMat;
 // ---- HD rock and tree-bark models (the low-poly shapes stand in until they've loaded) ----
@@ -6172,6 +6183,12 @@ function makeTree(a, b) {
     const f = k => (i * k + a + b) % 1;
     tube(r * .26, h * (.26 + .14 * f(.71)), top * (.42 + .5 * f(.37)), .75 + .55 * f(.53), i / nb * Math.PI * 2 + b * 3, 0);
   }
+  if (curArea() === 'africa') {
+    // flat-topped acacia crown
+    if (!hdW.leaf) hdW.leaf = new THREE.MeshStandardMaterial({ color: 0x6d7636, roughness: .9, flatShading: true });
+    const cp = new THREE.Mesh(hdW.canopyGeo || (hdW.canopyGeo = new THREE.SphereGeometry(1, 10, 6)), hdW.leaf); cp.userData.shared = true;
+    cp.scale.set(2.6 + a * 2, .5 + b * .3, 2.4 + b * 2); cp.position.y = top * 1.12; cp.castShadow = true; g.add(cp);
+  }
   g.userData.r = .43 * r + .12;
   return g;
 }
@@ -6185,7 +6202,8 @@ function buildChunk(cx, cz) {
     const nx = wHeight(x - e, z) - wHeight(x + e, z), nz = wHeight(x, z - e) - wHeight(x, z + e), ny = 2 * e, l = Math.hypot(nx, ny, nz);
     nrm.setXYZ(i, nx / l, ny / l, nz / l);
     const steep = smooth(.8, .62, ny / l), lake = lakeAmt(x, z) * smooth(.9, .97, ny / l);
-    wTmp.copy(SNOW_C).lerp(SNOW_SHADE, clamp(wNoise(x * .05, z * .05, 30) * .7, 0, 1)).lerp(ICE_C, lake).lerp(ROCK_C, steep);
+    if (curArea() === 'africa') wTmp.copy(SAND_C).lerp(SAND_SHADE, clamp(wNoise(x * .05, z * .05, 30) * .8, 0, 1)).lerp(GRASS_C, smooth(.55, .75, wNoise(x * .018, z * .018, 33)) * .8).lerp(DIRT_C, steep);
+    else wTmp.copy(SNOW_C).lerp(SNOW_SHADE, clamp(wNoise(x * .05, z * .05, 30) * .7, 0, 1)).lerp(ICE_C, lake).lerp(ROCK_C, steep);
     col[i * 3] = wTmp.r; col[i * 3 + 1] = wTmp.g; col[i * 3 + 2] = wTmp.b;
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -6216,7 +6234,7 @@ function buildChunk(cx, cz) {
     }
     nodes.push({ key, type: 'rock', x, z, y: y + s * .4, r: s * .85, hp: 3 + Math.round(s), meshes: cap ? [rock, cap] : [rock] });
   }
-  if (wHash(cx, cz, 120) > .72) {
+  if (curArea() === 'antarctica' && wHash(cx, cz, 120) > .72) {
     const x0 = ox + (wHash(cx, cz, 121) - .5) * CH * .7, z0 = oz + (wHash(cx, cz, 122) - .5) * CH * .7;
     if (Math.hypot(x0, z0) > 30) for (let i = 0; i < 6; i++) {
       const key = `s${cx}_${cz}_${i}`; if (mined[key]) continue;
@@ -6242,7 +6260,7 @@ function buildChunk(cx, cz) {
     nodes.push({ key, type: 'crate', x, z, y: y + .5, r: .7, hp: 3, meshes: [c] });
   }
   // groves of bare, snow-bitten trees: chop them for wood
-  if (hdW.barkGeo && wHash(cx, cz, 400) > .62) {
+  if (hdW.barkGeo && wHash(cx, cz, 400) > (curArea() === 'africa' ? .35 : .62)) {
     const gx = ox + (wHash(cx, cz, 401) - .5) * CH * .6, gz = oz + (wHash(cx, cz, 402) - .5) * CH * .6, n = 2 + Math.floor(wHash(cx, cz, 403) * 6);
     for (let i = 0; i < n; i++) {
       const key = `t${cx}_${cz}_${i}`; if (mined[key]) continue;
@@ -6254,7 +6272,7 @@ function buildChunk(cx, cz) {
     }
   }
   // rare volcanic glass: needs an ice pick
-  if (wHash(cx, cz, 300) > .86) {
+  if (curArea() === 'antarctica' && wHash(cx, cz, 300) > .86) {
     const key = `o${cx}_${cz}`, x = ox + (wHash(cx, cz, 301) - .5) * CH * .7, z = oz + (wHash(cx, cz, 302) - .5) * CH * .7;
     if (!mined[key] && Math.hypot(x, z) > 25 && !worldBlocked(x, z, true) && lakeAmt(x, z) < .3 && !nearJames(x, z)) {
       const y = wHeight(x, z), sz = .6 + wHash(cx, cz, 303) * .5, ob = new THREE.Mesh(new THREE.OctahedronGeometry(sz, 0), wObsMat);
@@ -6343,8 +6361,9 @@ function buildWorld(seed) {
     world.snow = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: .08, map: glowTex, transparent: true, opacity: .9, depthWrite: false }));
     world.snow.frustumCulled = false; wScene.add(world.snow);
   }
-  if (world.seed !== seed || world.owner !== activeId || !world.chunks.size) {
-    clearWorld(); world.seed = seed; world.owner = activeId;
+  if (world.seed !== seed || world.owner !== activeId || !world.chunks.size || world.builtArea !== curArea()) {
+    clearWorld(); world.seed = seed; world.owner = activeId; world.builtArea = curArea();
+    if (curArea() !== 'antarctica') { world.jamesAt = null; world.meetAt = null; } else {
     world.footDir = wHash(3, 7, 900) * Math.PI * 1.2 - Math.PI * .6;
     // James's footprints, fading into the snow
     const n = 140, feet = new THREE.InstancedMesh(new THREE.CircleGeometry(.11, 10), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, envMapIntensity: 0 }), n);
@@ -6384,6 +6403,7 @@ function buildWorld(seed) {
     const pack = new THREE.Mesh(new THREE.BoxGeometry(.5, .35, .35), new THREE.MeshStandardMaterial({ color: 0x6a1f22, roughness: .9 })); pack.position.set(.9, .17, -.4); pack.rotation.y = .6; camp.add(pack);
   }
 }
+  }
 function worldBlocked(x, z, stationOnly, y = player.position.y) {
   if (Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true;
   for (const m of merchantsHere()) if (m.px != null && (x - m.px) ** 2 + (z - m.pz) ** 2 < 1.7) return true;
@@ -6404,8 +6424,106 @@ function nodesNear(x, z) {
   }
   return out;
 }
+const AREA_FOG = { antarctica: 0xa6d3f4, africa: 0xe6c896 };
+const areaFog = () => AREA_FOG[curArea()] || W_FOG;
+function applyAreaLook() {
+  const af = curArea() === 'africa';
+  if (af && !world.afSky) {
+    const cv = document.createElement('canvas'); cv.width = 4; cv.height = 256; const g2 = cv.getContext('2d');
+    const gr = g2.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#5f86b8'); gr.addColorStop(.42, '#a9c3dc'); gr.addColorStop(.5, '#f0d7a6'); gr.addColorStop(1, '#c89a5e');
+    g2.fillStyle = gr; g2.fillRect(0, 0, 4, 256); world.afSky = new THREE.CanvasTexture(cv); world.afSky.colorSpace = THREE.SRGBColorSpace;
+  }
+  if (!world.iceSky && wScene.background && wScene.background.isTexture && !af) world.iceSky = wScene.background;
+  if (af) { if (wScene.background !== world.afSky) { if (wScene.background && wScene.background.isTexture && wScene.background !== world.afSky) world.iceSky = wScene.background; wScene.background = world.afSky; } }
+  else if (world.iceSky) wScene.background = world.iceSky;
+  wScene.fog.color.set(areaFog());
+  if (world.snow) world.snow.visible = !af;
+  if (world.station) world.station.visible = !af;
+  if (world.ferry) world.ferry.visible = !af;
+  if (world.rover) world.rover.visible = !af && !!ch1().rover;
+  if (world.bedMesh) world.bedMesh.visible = !af && !!ch1().bed;
+  for (const list of Object.values(MERCHANTS)) for (const m of list) if (m.stall) m.stall.visible = !af && curArea() === 'antarctica';
+  if (af) buildOrionHouse(); if (world.house) world.house.visible = af;
+  if (world.orion) world.orion.root.visible = af;
+}
+// Orion's home at the edge of the harbour town (same footprint as the Antarctic station)
+function buildOrionHouse() {
+  if (world.house) return;
+  const g = new THREE.Group(), M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .95 }, o));
+  const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; g.add(o); return o; };
+  const wall = M(0xb98a5a), trim = M(0x7a4f30), roofM = M(0x8c6a44, { roughness: .8, metalness: .2 });
+  add(new THREE.BoxGeometry(14, 3.2, 6.2), wall, 0, 1.6, 0);
+  const roof = add(new THREE.BoxGeometry(15, .25, 7.4), roofM, 0, 3.45, 0); roof.rotation.z = .04;
+  add(new THREE.BoxGeometry(.14, 2.2, 1.3), trim, 7.06, 1.1, 0); // door
+  for (const z of [-2, 2]) add(new THREE.BoxGeometry(.1, 1, 1.4), M(0x2b3a48, { roughness: .2, metalness: .5 }), 7.06, 1.9, z);
+  for (const x of [-4, 0, 4]) add(new THREE.BoxGeometry(1.4, 1, .1), M(0x2b3a48, { roughness: .2, metalness: .5 }), x, 1.9, 3.12);
+  // a shaded porch, a water tank, a chair
+  add(new THREE.BoxGeometry(3.2, .12, 5), roofM, 8.6, 2.7, 0);
+  for (const z of [-2.3, 2.3]) add(new THREE.CylinderGeometry(.08, .08, 2.7, 6), trim, 10.1, 1.35, z);
+  add(new THREE.CylinderGeometry(1, 1, 2, 14), M(0x6f7a80, { metalness: .5, roughness: .5 }), -8.4, 1, 2.4);
+  add(new THREE.BoxGeometry(.6, .5, .6), trim, 9.4, .25, 1.6);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  wScene.add(g); world.house = g;
+}
+const ORION_WAKE = [
+  'You’re awake. Good. For a while there I wasn’t sure you were coming back to us.',
+  'Two weeks you’ve been in that bed. Fever, mostly. You said a lot of things. Most of them didn’t make sense.',
+  'One of them did. But that can wait.',
+  'Get some air. Stretch your legs. Just don’t wander too far, and if anyone asks, you’re my cousin from the coast.'
+];
+async function placeOrion() {
+  if (curArea() !== 'africa') { if (world.orion) world.orion.root.visible = false; return; }
+  if (!world.orion) {
+    try {
+      const el = document.getElementById('cpOrion'); if (!el) return;
+      const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      const R = autoRig(SkeletonUtils.clone(await parseGlb(u8.buffer)), 1.85); armRig(R, 'none'); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+      R.lips = faceRig(R.root); world.orion = R;
+    } catch (e) { console.error('Orion failed to load', e); return; }
+  }
+  const R = world.orion; if (R.root.parent !== wScene) wScene.add(R.root);
+  R.root.visible = true; R.root.position.set(9.6, 0, 1.8); R.root.rotation.y = Math.PI / 2; R.mode = 'idle';
+  if (R.lips && R.lips.mouth) R.lips.mouth.scale.y = .7; // his face relaxes now you're alive
+}
+function orionTick(dt) {
+  const R = world.orion; if (!R || !R.root.visible || curArea() !== 'africa') return;
+  const p = player.position, o = R.root.position, d = Math.hypot(p.x - o.x, p.z - o.z);
+  if (d < 8) R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - o.x, p.z - o.z), Math.min(1, dt * 3));
+  animRig(R, dt);
+  if (R.lips) { const t = !!(ex.dlg && ex.dlg.who === 'ORION'), L = R.lips, target = t ? clamp((sfx.voiceLevel() - .015) / .24, 0, 1) : 0; L.open += (target - L.open) * Math.min(1, dt * (target > L.open ? 28 : 14)); L.jaw.rotation.x = L.base + L.open * .26; if (L.mouth) L.mouth.scale.y = .7 * (1 + L.open * 3.2); }
+}
+function talkOrion() {
+  sfx.loadClips('orionWake').then(clips => {
+    openDialog('ORION', ORION_WAKE, false, () => {
+      const first = !(wanderer.ch2 && wanderer.ch2.talkedOrion);
+      wanderer.ch2 = Object.assign({}, wanderer.ch2, { talkedOrion: true }); const c = curChar(); if (c) c.ch2 = wanderer.ch2; saveRoster(); renderTasks();
+      if (first) { gainXP(40); sfx.chime(); setTimeout(() => notice('New objective', 'EXPLORE AFRICA', 3200), 400); }
+    }, clips || []);
+  });
+}
+// Chapter II free roam: wake up at Orion's, then the savanna is yours
+async function startChapter2(place) {
+  state = 'loadingCh'; sfx.init();
+  await Promise.all([loadSpecies(spOf(wanderer)).catch(() => null), loadWorldHD()]);
+  applyLook(wanderer);
+  world.area = 'africa';
+  show(ui.title, false); show(ui.tbc, false); show(ui.xpause, false);
+  ex.keys.clear(); ex.joyX = ex.joyY = 0; ex.jid = null; ex.drags.clear(); ex.dlg = null;
+  camera.up.set(0, 1, 0); renderer.domElement.style.filter = '';
+  const pl = place && place.area === 'world' && place.where === 'africa' ? place : null;
+  enterWorld(pl);
+  if (!pl) { player.position.set(11.8, 0, 3.4); player.position.y = groundAt(11.8, 3.4, -1e9); player.rotation.y = -Math.PI / 2; ex.yaw = player.rotation.y + Math.PI; ex.snap = true; }
+  await placeOrion();
+  show(ui.xhud, true); renderTasks();
+  const f = $('#fade'); f.style.transition = 'opacity 2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 2100);
+  state = 'explore'; resize();
+  notice('Chapter II', 'AFRICA', 2800);
+  if (!(wanderer.ch2 && wanderer.ch2.talkedOrion)) setTimeout(() => notice('Orion is waiting on the porch', 'SPEAK TO ORION', 3200), 3200);
+}
 function enterWorld(place) {
+  if (!place || place.where !== 'africa') { if (!world.area) world.area = 'antarctica'; }
   buildWorld(worldSeedOf(curChar() || wanderer));
+  applyAreaLook();
   ex.mode = 'world';
   if (james.ready) james.root.visible = false;
   wScene.add(player); wScene.add(particles);
@@ -6418,7 +6536,8 @@ function enterWorld(place) {
   }
   setupMerchants();
   updateChunks(99);
-  rebuildPlaced(); rebuildBuild(); stopBuild(); placeBed(); placeRover(); buildFerry();
+  rebuildPlaced(); rebuildBuild(); stopBuild();
+  if (curArea() === 'antarctica') { placeBed(); placeRover(); buildFerry(); } applyAreaLook();
   if (world.build.some(b => b.data.k === 'bench')) campProgress('bench');
   if (world.build.some(b => b.data.k === 'tele')) campProgress('tele');
   const STP = AREA_INFO[curArea()].stationTp; world.stationTp.position.set(STP.x, wHeight(STP.x, STP.z), STP.z);
@@ -6434,7 +6553,7 @@ function enterWorld(place) {
     : companionOn() ? 'Shift sprint · Space jump (hold for jetpack) · R / right-click block · Q dodge · Click/F attack · Wheel hotbar · 1–5 companions · B build · M map · I inventory'
     : 'Shift sprint · C walk · Space jump (hold for jetpack) · R / right-click block · Q dodge · Click/F attack · 1–6 hotbar · B build · I inventory';
   xUI.hint.style.opacity = 1; setTimeout(() => { xUI.hint.style.opacity = 0; }, 9000);
-  if (!ch1().outside) {
+  if (curArea() === 'antarctica' && !ch1().outside) {
     setCh1({ outside: true });
     setTimeout(() => notice('Footprints in the snow', 'FOLLOW JAMES’S TRAIL', 3200), 1200);
     setTimeout(() => notice('Survival', 'GATHER · CRAFT · BUILD', 3000), 5200);
@@ -6561,7 +6680,8 @@ function updateWorldMode(dt) {
   if (!ex.near) for (const b of world.build) if (b.data.k === 'bench' && Math.hypot(b.data.x - p.x, b.data.z - p.z) < 2 && Math.abs(b.data.y - p.y) < 1.5) ex.near = { id: 'bench', label: 'Crafting table' };
   if (!ex.near && ch1().bed && !ch1().slept2) { const B = ch1().bed; if (Math.hypot(B.x - p.x, B.z - p.z) < 1.9 && Math.abs(B.y - p.y) < 1.5) ex.near = { id: 'bed', label: 'Bed' }; }
   if (!ex.near && world.rover && !ex.vehicle && world.rover.visible && Math.hypot(world.rover.position.x - p.x, world.rover.position.z - p.z) < 3.4) ex.near = { id: 'rover', label: 'Rover' };
-  if (!ex.near && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
+  if (!ex.near && curArea() === 'africa' && world.orion && world.orion.root.visible && Math.hypot(world.orion.root.position.x - p.x, world.orion.root.position.z - p.z) < 2.4) ex.near = { id: 'orion', label: 'Orion' };
+  if (!ex.near && curArea() === 'antarctica' && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
   if (ex.vehicle) ex.near = { id: 'roverOut', label: 'Rover' };
   if (world.betrayal) ex.near = world.betrayal.phase === 'push' && james.root.visible && Math.hypot(james.root.position.x - p.x, james.root.position.z - p.z) < 2.6 ? { id: 'push', label: 'James Brown' } : null;
   if (!ex.near) {
@@ -6572,7 +6692,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
+    const PR = { orion: ['Talk to Orion', 'TALK'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
@@ -6594,7 +6714,7 @@ function updateWorldScene(dt) {
   faunaTick(dt); if (state === 'explore') jamesShoot(dt);
   soldierTick(dt);
   const c = camera.position, pa = world.snow.geometry.attributes.position.array;
-  stormTick(dt); skyTick(dt); betrayalTick(dt);
+  stormTick(dt); skyTick(dt); betrayalTick(dt); orionTick(dt);
   const st = world.storm || 0, gust = (.7 + .4 * Math.sin(time * .5) + .2 * Math.sin(time * 1.9)) * (1 + st * 2.2), wx = -9 * gust, wz = 3.5 * gust;
   for (let i = 0; i < world.sN; i++) {
     const j = i * 3, sd = world.sSeed[i];
@@ -6817,7 +6937,7 @@ function openSlots(mode, from) {
 function closeSlots() { show(slotUI.root, false); refreshMenu(); refreshDirty(); }
 function currentPlace() {
   return ex.mode === 'world'
-    ? { mode: 'explore', area: 'world', x: +player.position.x.toFixed(2), z: +player.position.z.toFixed(2), y: +player.position.y.toFixed(2), rot: player.rotation.y, yaw: ex.yaw }
+    ? { mode: 'explore', area: 'world', where: curArea(), x: +player.position.x.toFixed(2), z: +player.position.z.toFixed(2), y: +player.position.y.toFixed(2), rot: player.rotation.y, yaw: ex.yaw }
     : { mode: 'explore', area: 'station', x: player.position.x - ROOM.x, z: player.position.z - ROOM.z, rot: player.rotation.y, yaw: ex.yaw };
 }
 // each wanderer remembers where they were, so Continue / Load put you back there
@@ -8258,7 +8378,7 @@ function loop() {
   time += dt;
   combatTick(dt);
   // Antarctica's exploration music plays while you're out on the ice
-  const onIce = ex.mode === 'world' && (state === 'explore' || state === 'xpaused' || state === 'wcut' || state === 'xdone');
+  const onIce = ex.mode === 'world' && curArea() === 'antarctica' && (state === 'explore' || state === 'xpaused' || state === 'wcut' || state === 'xdone');
   sfx.area(onIce ? (state === 'explore' ? .75 : .3) : 0);
   if (state === 'intro' || state === 'introOut') {
     updateIntro(dt); sfx.music(0); if (intro.scene === 'earth') renderer.render(eScene, eCam); else renderer.render(gScene, gCam); return;
