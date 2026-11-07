@@ -550,6 +550,18 @@ button.bm-c.no{opacity:.45}
 .boss-bar .bb i{display:block;height:100%;background:linear-gradient(90deg,#8a1414,#ff3b2f)}
 .boss-bar em{display:block;font-style:normal;font-size:8px;letter-spacing:.3em;color:var(--mute);margin-top:6px;text-transform:uppercase}
 .slot-io{margin:4px 0 10px;gap:10px}
+
+#ferryCut{position:fixed;inset:0;z-index:30;pointer-events:none;display:none}
+#ferryCut.on{display:block}
+#ferryCut .fc-bar{position:absolute;left:0;right:0;height:0;background:#000;transition:height 1.6s ease}
+#ferryCut .fc-bar.top{top:0} #ferryCut .fc-bar.bot{bottom:0}
+#ferryCut.letter .fc-bar{height:11vh}
+#ferryCut .fc-black{position:absolute;inset:0;background:#000;opacity:0;transition:opacity 1.6s ease}
+#ferryCut.black .fc-black{opacity:1}
+#ferryCut .fc-text{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;opacity:0;transition:opacity 1.4s ease}
+#ferryCut.title .fc-text,#ferryCut.title2 .fc-text{opacity:1}
+#ferryCut .fc-text small{display:block;font-size:10px;letter-spacing:.6em;color:var(--mute);margin-bottom:14px;text-transform:uppercase}
+#ferryCut .fc-text b{display:block;font-family:var(--display);font-weight:500;font-size:clamp(28px,6vw,64px);letter-spacing:.32em;color:var(--ink);text-shadow:0 2px 24px rgba(0,0,0,.8)}
 </style>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
@@ -838,6 +850,9 @@ button.bm-c.no{opacity:.45}
     </div>
   </div>
 </section>
+
+<!-- Leaving Antarctica -->
+<div id="ferryCut"><div class="fc-bar top"></div><div class="fc-bar bot"></div><div class="fc-black"></div><div class="fc-text"><small id="fcSub"></small><b id="fcTitle"></b></div></div>
 
 <!-- Loading -->
 <section class="screen" id="loading">
@@ -2029,7 +2044,7 @@ startBtn.addEventListener('click', () => {
   setTimeout(() => {
     f.style.transition = 'opacity 2.2s'; f.style.opacity = 0;
     setTimeout(() => { f.style.transition = ''; }, 2300);
-    if ((wanderer.chapter | 0) >= 1) startChapter1(false); else runCutscene();
+    if ((wanderer.chapter | 0) >= 2 && ch1().escaped) showCh2Soon('title'); else if ((wanderer.chapter | 0) >= 1) startChapter1(false); else runCutscene();
   }, 650);
 });
 function goMenu(id) {
@@ -3794,18 +3809,58 @@ function bossDeath() {
 }
 function bossWin() {
   const B = world.betrayal; B.phase = 'won';
-  croxClips().then(c => bark(CROX_LOSE, 4000, c && c[8])); $('#bossBar').classList.remove('on'); sfx.combat && sfx.combat(false);
-  notice('You make it aboard as the ferry casts off', 'YOU ESCAPED', 3600); sfx.chime(); gainXP(400);
+  croxClips().then(c => bark(CROX_LOSE, 4000, c && c[8])); $('#bossBar').classList.remove('on'); sfx.combat(false);
+  notice('You make it aboard as the ferry casts off', 'YOU ESCAPED', 3200); sfx.chime(); gainXP(400);
   setTimeout(() => {
-    const bo = $('#blackout'); bo.style.transition = 'opacity 2s'; bo.style.opacity = 1;
-    setTimeout(() => {
-      clearBoss(); world.betrayal = null; if (world.ferryShip) world.ferryShip.visible = false;
-      setCh1({ betrayed: true, jamesDead: true, escaped: true, ferryGone: true }); ui.xhud.classList.remove('comp'); renderTasks();
-      bo.style.opacity = 0; setTimeout(() => { bo.style.transition = ''; }, 2100);
-      notice('Chapter I · Antarctica', 'TO BE CONTINUED', 4200);
-      setTimeout(() => { $('#tbc .eyebrow').textContent = 'You escaped Antarctica'; show(ui.tbc, true); state = 'xdone'; }, 4600);
-    }, 2100);
-  }, 3800);
+    const bo = $('#blackout'); bo.style.transition = 'opacity .9s'; bo.style.opacity = 1;
+    setTimeout(() => { startFerryCutscene(); bo.style.opacity = 0; setTimeout(() => { bo.style.transition = ''; }, 1000); }, 950);
+  }, 3400);
+}
+// ---- leaving Antarctica: the ferry sails north, then Chapter II ----
+const fc = { t: 0, smoke: 0, shown: 0 };
+function startFerryCutscene() {
+  clearBoss(); world.betrayal = null; closeModals(); stopBuild(); hideNarr(); closeDialog();
+  if (james.ready) james.root.visible = false;
+  setCh1({ betrayed: true, jamesDead: true, escaped: true, ferryGone: false });
+  const ship = world.ferryShip; if (ship) { ship.visible = true; ship.position.set(117.5, 0, 6); }
+  show(ui.xhud, false); vel.set(0, 0, 0); ex.keys.clear(); ex.joyX = ex.joyY = 0; player.visible = true;
+  fc.t = 0; fc.smoke = 0; fc.shown = 0;
+  const el = $('#ferryCut'); el.classList.remove('black', 'title2'); el.classList.add('on'); $('#fcTitle').textContent = ''; $('#fcSub').textContent = '';
+  state = 'ferryCut'; sfx.thud(); setTimeout(() => sfx.thud(), 500);
+}
+function updateFerryCut(dt) {
+  fc.t += dt; const t = fc.t, ship = world.ferryShip, el = $('#ferryCut');
+  // the ferry pulls away from the jetty and gathers speed out to sea
+  const ox = 117.5 + t * t * .05, oz = 6 + t * 1.4 + t * t * .32;
+  if (ship) ship.position.set(ox, 0, oz);
+  const [px, pz] = ferryWorld(ox + 12, oz + 56); player.position.set(px, 2.35, pz); player.rotation.y = ferryAng() + Math.PI; // you, at the stern, watching the ice go
+  if ((fc.smoke -= dt) <= 0) { fc.smoke = .12; const [sx, sz] = ferryWorld(ox + 12, oz + 32); burst(sx, 10, sz, 3, .8, .35, .37, .4, 1.6, -.1, 1.8); }
+  // a slow crane shot from the jetty, rising as she leaves
+  const [cx, cz] = ferryWorld(108 - t * .8, 22 - t * .6), [lx, lz] = ferryWorld(ox + 12, oz + 44);
+  camera.position.set(cx, 3.2 + t * .55, cz); camera.lookAt(lx, 3 + t * .1, lz);
+  if (t > 1.5 && fc.shown < 1) { fc.shown = 1; el.classList.add('letter'); }
+  if (t > 10.5 && fc.shown < 2) { fc.shown = 2; $('#fcTitle').textContent = 'ARRIVING IN AFRICA'; el.classList.add('title'); sfx.chime(); }
+  if (t > 15.5 && fc.shown < 3) { fc.shown = 3; el.classList.remove('title'); el.classList.add('black'); }
+  if (t > 17.2 && fc.shown < 4) { fc.shown = 4; $('#fcSub').textContent = 'Starting Chapter II'; $('#fcTitle').textContent = 'AFRICA'; el.classList.add('title2'); sfx.thud(); }
+  if (t > 23 && fc.shown < 5) { fc.shown = 5; endChapterOne(); }
+}
+function endChapterOne() {
+  if (world.ferryShip) world.ferryShip.visible = false;
+  setCh1({ ferryGone: true });
+  wanderer.chapter = Math.max(2, wanderer.chapter | 0); wanderer.ch2 = Object.assign({ started: true }, wanderer.ch2);
+  const c = curChar(); if (c) { c.chapter = wanderer.chapter; c.ch2 = wanderer.ch2; }
+  saveRoster(); renderTasks(); show(ui.xhud, true);
+  showCh2Soon('explore');
+  $('#ferryCut').classList.remove('on', 'letter', 'title', 'title2', 'black');
+}
+// Chapter II isn't built yet: a holding screen (save from the pause menu first to keep your progress)
+function showCh2Soon(from) {
+  $('#tbc .eyebrow').textContent = 'You escaped Antarctica';
+  $('#tbc .h1').innerHTML = 'CHAPTER II<br>AFRICA';
+  $('#tbc .brief').textContent = from === 'explore' ? 'Coming soon. Save your game to keep your progress.' : 'Coming soon.';
+  $('#tbcKeep').style.display = from === 'explore' ? '' : 'none';
+  $('#tbcKeep span').textContent = from === 'explore' ? 'Save game' : 'Keep exploring';
+  ui.tbc.dataset.from = from; show(ui.tbc, true); state = from === 'explore' ? 'xdone' : 'ch2soon';
 }
 function renderTasks() {
   // wanderers from before levels existed get XP for the story they've already played
@@ -4163,8 +4218,8 @@ function pauseExplore(on) {
 $('#xMenuBtn').addEventListener('click', () => { sfx.click(); pauseExplore(true); });
 $('#xResume').addEventListener('click', () => { sfx.click(); pauseExplore(false); });
 $('#xQuit').addEventListener('click', () => { sfx.click(); leaveExplore(); });
-$('#tbcKeep').addEventListener('click', () => { sfx.click(); show(ui.tbc, false); state = 'explore'; });
-$('#tbcBtn').addEventListener('click', () => { sfx.click(); leaveExplore(); });
+$('#tbcKeep').addEventListener('click', () => { sfx.click(); show(ui.tbc, false); if (ui.tbc.dataset.from === 'explore' && (wanderer.chapter | 0) >= 2) { state = 'xpaused'; openSlots('save', 'explore'); return; } state = 'explore'; });
+$('#tbcBtn').addEventListener('click', () => { sfx.click(); if (state === 'ch2soon') { show(ui.tbc, false); show(ui.title, true); state = 'title'; return; } leaveExplore(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseExplore(true); });
 
 
@@ -7930,6 +7985,7 @@ function loop() {
   }
   if (state === 'cutscene') { updateCutscene(dt); sfx.music(0); renderer.render(aScene, camera); return; }
   if (state === 'dream') { tickDialog(dt); updateDream(dt); sfx.music(0); renderer.render(dScene, camera); return; }
+  if (state === 'ferryCut') { updateFerryCut(dt); updateAnim(dt); worldActionPose(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh' || state === 'sleeping' || state === 'wcut') {
     if (state === 'explore') updateExplore(dt);
     tickDialog(dt);
