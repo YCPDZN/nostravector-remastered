@@ -548,7 +548,7 @@ body.touch .jopts kbd{display:none}
     <div class="row">
       <button class="btn small" id="xDelete"><span>Delete save</span></button>
       <button class="btn small" id="xOptions"><span>Options</span></button>
-      <button class="btn small" id="xQuit"><span>Return to base</span></button>
+      <button class="btn small" id="xQuit"><span>Main menu</span></button>
     </div>
   </div>
   <div class="panel opt-panel">
@@ -2802,7 +2802,8 @@ async function startChapter1(fromCutscene, place) {
   player.visible = true; inner.visible = true; resetRig(); vel.set(0, 0, 0);
   player.position.set(ROOM.x - 5, 0, ROOM.z + 1.1); player.rotation.y = Math.PI / 2;
   ex.yaw = player.rotation.y + Math.PI;
-  const pl = place || (!fromCutscene && resumePlace && resumePlace.who === activeId ? resumePlace : null);
+  const own = wanderer.place && wanderer.place.mode === 'explore' ? wanderer.place : null;
+  const pl = place || (!fromCutscene && resumePlace && resumePlace.who === activeId ? resumePlace : null) || (!fromCutscene ? own : null);
   const worldPl = pl && pl.area === 'world' ? pl : null;
   if (pl && !worldPl) {
     player.position.set(ROOM.x + clamp(+pl.x || 0, -6.5, 6.5), 0, ROOM.z + clamp(+pl.z || 0, -2.5, 2.5));
@@ -2822,6 +2823,7 @@ async function startChapter1(fromCutscene, place) {
   if (worldPl) enterWorld(worldPl);
 }
 function leaveExplore(goTitle = true) {
+  if (goTitle && (state === 'xpaused' || state === 'explore') && (wanderer.chapter | 0) >= 1) rememberPlace();
   if (soldier.ready) soldier.root.visible = false; meet.active = false; ui.xhud.classList.remove('cutting');
   ex.mode = 'station'; openMap(false); $('#xNav').textContent = ''; ui.xhud.classList.remove('world'); hideGhost(); show($('#inv'), false); ex.invOpen = false; ex.act = null; ex.air = false;
   if (ex.held && ex.held.parent) ex.held.parent.remove(ex.held);
@@ -4457,13 +4459,19 @@ function openSlots(mode, from) {
   renderSlots(); show(slotUI.root, true);
 }
 function closeSlots() { show(slotUI.root, false); refreshMenu(); refreshDirty(); }
+function currentPlace() {
+  return ex.mode === 'world'
+    ? { mode: 'explore', area: 'world', x: +player.position.x.toFixed(2), z: +player.position.z.toFixed(2), rot: player.rotation.y, yaw: ex.yaw }
+    : { mode: 'explore', area: 'station', x: player.position.x - ROOM.x, z: player.position.z - ROOM.z, rot: player.rotation.y, yaw: ex.yaw };
+}
+// each wanderer remembers where they were, so Continue / Load put you back there
+function rememberPlace() {
+  const p = currentPlace(); wanderer.place = p;
+  const c = curChar(); if (c) c.place = p;
+  return p;
+}
 function doSave(i) {
-  const inStation = slotFrom === 'explore';
-  const place = inStation
-    ? (ex.mode === 'world'
-      ? { mode: 'explore', area: 'world', x: player.position.x, z: player.position.z, rot: player.rotation.y, yaw: ex.yaw }
-      : { mode: 'explore', area: 'station', x: player.position.x - ROOM.x, z: player.position.z - ROOM.z, rot: player.rotation.y, yaw: ex.yaw })
-    : { mode: 'menu' };
+  const place = slotFrom === 'explore' ? rememberPlace() : { mode: 'menu' };
   slots[i] = { savedAt: Date.now(), roster: JSON.parse(JSON.stringify(roster)), activeId, place };
   store.set('nv_slots', slots);
   dirty = false; slotArm = -1; lastSlot = i;
