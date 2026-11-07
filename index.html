@@ -2995,20 +2995,72 @@ function worldActionPose(dt) {
     rig.ra.rotation.z = -.15;
     inner.rotation.y = k < .62 ? lerp(0, -.3, smooth(.3, .62, k)) : lerp(-.3, 0, smooth(.62, 1, k));
   } else damp(inner.rotation, 'y', 0, 10, dt);
-  // the ice pick in your hand
-  const want = selItem() === 'pick' ? rig.ra : null;
-  if (ex.held && ex.held.parent !== want) { ex.held.parent && ex.held.parent.remove(ex.held); if (!want) ex.held = null; }
-  if (want && (!ex.held || ex.held.parent !== want)) {
-    if (!ex.held) {
-      const g = new THREE.Group(), metal = new THREE.MeshStandardMaterial({ color: 0x9aa3ad, metalness: .8, roughness: .35 });
-      const h = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, .6, 6), new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: .8 })); h.rotation.x = Math.PI / 2; h.position.z = .2; g.add(h);
-      const head = new THREE.Mesh(new THREE.BoxGeometry(.05, .3, .05), metal); head.position.set(0, .05, .48); head.rotation.x = .3; g.add(head);
-      ex.held = g;
-    }
-    const s = headYFor(wanderer) / 1.66, wsc = new THREE.Vector3(); want.getWorldScale(wsc);
-    ex.held.scale.setScalar(1 / Math.max(.05, wsc.x)); ex.held.position.set(0, -.72 * s / Math.max(.05, wsc.y), .06 / Math.max(.05, wsc.z));
-    want.add(ex.held);
+  // whatever is selected in the hotbar sits in your right hand
+  syncHeld();
+}
+const HELD_KINDS = new Set(['pick', 'medkit', 'lamp', 'wall', 'heater', 'beacon']);
+function heldModel(id) {
+  const g = new THREE.Group(), M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .6 }, o));
+  const add = (geo, mat, x = 0, y = 0, z = 0, rx = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.x = rx; m.castShadow = true; g.add(m); return m; };
+  if (id === 'pick') {
+    // handle runs forward out of the fist, head points down like a real ice axe
+    add(new THREE.CylinderGeometry(.022, .026, .62, 8), M(0x2c2420, { roughness: .85 }), 0, 0, .2, Math.PI / 2);
+    add(new THREE.CylinderGeometry(.03, .03, .1, 8), M(0x111318), 0, 0, -.02, Math.PI / 2);
+    const metal = M(0xa9b2bc, { metalness: .85, roughness: .3 });
+    add(new THREE.BoxGeometry(.04, .07, .09), metal, 0, 0, .5);
+    add(new THREE.ConeGeometry(.022, .26, 6), metal, 0, -.16, .52, Math.PI);
+    add(new THREE.BoxGeometry(.03, .1, .07), metal, 0, .08, .5);
+  } else if (id === 'medkit') {
+    add(new THREE.BoxGeometry(.2, .14, .08), M(0xe9ecef), 0, -.06, .05);
+    const red = M(0xd8333f, { emissive: 0x400000 });
+    add(new THREE.BoxGeometry(.11, .035, .085), red, 0, -.06, .05); add(new THREE.BoxGeometry(.035, .11, .085), red, 0, -.06, .05);
+  } else if (id === 'lamp') {
+    add(new THREE.CylinderGeometry(.008, .008, .12, 6), M(0x333333), 0, -.04, .04);
+    add(new THREE.CylinderGeometry(.05, .055, .14, 10), M(0xffd27a, { emissive: 0xffb347, emissiveIntensity: 2.2, transparent: true, opacity: .9 }), 0, -.16, .04);
+    add(new THREE.CylinderGeometry(.06, .06, .025, 10), M(0x2a2d33, { metalness: .6 }), 0, -.085, .04);
+  } else if (id === 'wall') {
+    add(new THREE.BoxGeometry(.2, .12, .14), M(0x7d838c, { roughness: .95 }), 0, -.06, .06);
+  } else if (id === 'heater') {
+    add(new THREE.BoxGeometry(.16, .16, .12), M(0x3a3f47, { metalness: .5 }), 0, -.08, .06);
+    add(new THREE.BoxGeometry(.12, .1, .01), M(0xff7a3d, { emissive: 0xff5a1a, emissiveIntensity: 1.6 }), 0, -.08, .125);
+  } else if (id === 'beacon') {
+    add(new THREE.CylinderGeometry(.015, .015, .42, 6), M(0x9aa3ad, { metalness: .7 }), 0, .12, .04);
+    add(new THREE.SphereGeometry(.035, 10, 8), M(0xff4d4d, { emissive: 0xff2020, emissiveIntensity: 2 }), 0, .34, .04);
   }
+  g.userData.id = id;
+  return g;
+}
+// where the fist is, measured from the arm's own meshes, so it fits every species
+function handSocket(arm) {
+  if (arm.userData.socket) return arm.userData.socket;
+  arm.updateWorldMatrix(true, true);
+  const inv = new THREE.Matrix4().copy(arm.matrixWorld).invert(), box = new THREE.Box3(), b = new THREE.Box3();
+  arm.traverse(o => {
+    if (!o.isMesh || !o.geometry) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    b.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld).applyMatrix4(inv); box.union(b);
+  });
+  const sock = new THREE.Group(), wsc = new THREE.Vector3(); arm.getWorldScale(wsc);
+  const k = Math.max(.05, (wsc.x + wsc.y + wsc.z) / 3);
+  if (box.isEmpty()) sock.position.set(0, -.62 / k, .02 / k);
+  else { const c = box.getCenter(new THREE.Vector3()); sock.position.set(c.x, box.min.y + (box.max.y - box.min.y) * .07, c.z); }
+  // undo the arm's scale so props keep their real-world size
+  sock.scale.set(1 / Math.max(.05, wsc.x), 1 / Math.max(.05, wsc.y), 1 / Math.max(.05, wsc.z));
+  sock.name = 'handSocket';
+  arm.add(sock); arm.userData.socket = sock;
+  return sock;
+}
+function syncHeld() {
+  const id = ex.mode === 'world' && state !== 'wcut' ? selItem() : null;
+  const want = id && HELD_KINDS.has(id) && have(id) ? id : null;
+  if (ex.held && (!want || ex.held.userData.id !== want || ex.held.parent !== (rig.ra && rig.ra.userData.socket))) {
+    if (ex.held.parent) ex.held.parent.remove(ex.held);
+    if (!want || ex.held.userData.id !== want) ex.held = null;
+  }
+  if (!want || !rig.ra) return;
+  if (!ex.held) ex.held = heldModel(want);
+  const sock = handSocket(rig.ra);
+  if (ex.held.parent !== sock) sock.add(ex.held);
 }
 // ---- input for survival actions ----
 addEventListener('keydown', e => {
@@ -3769,7 +3821,7 @@ function loop() {
   if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh' || state === 'sleeping' || state === 'wcut') {
     if (state === 'explore') updateExplore(dt);
     tickDialog(dt);
-    if (state !== 'loadingCh') { updateAnim(dt); if (ex.mode === 'world') worldActionPose(dt); jamesTick(dt); updateParticles(dt); exploreCamera(dt); if (ex.mode === 'world') updateWorldScene(dt); }
+    if (state !== 'loadingCh') { updateAnim(dt); if (ex.mode === 'world') worldActionPose(dt); else syncHeld(); jamesTick(dt); updateParticles(dt); exploreCamera(dt); if (ex.mode === 'world') updateWorldScene(dt); }
     sfx.music(0); renderer.render(ex.mode === 'world' ? wScene : aScene, camera); return;
   }
   if (state === 'title') updateWander(dt);

@@ -55,6 +55,7 @@ Open `index.html` in a modern browser. It needs an internet connection the first
   - Med kit: +40 health.
   - Thermal lamp, wind barrier and signal beacon.
   - Camp heater: heals you while you stand nearby.
+- **Held items:** whatever is selected in the hotbar (ice pick, med kit, thermal lamp, or a placeable) is shown in your right hand, positioned to fit your species.
 - **Building:** select a placeable in the hotbar and a green preview appears in front of you; attack to place it. Walk up to it and press E (TAKE) to pick it back up.
 - What you mine and build is remembered per wanderer and saved with your save game.
 
