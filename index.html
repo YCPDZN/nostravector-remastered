@@ -3107,7 +3107,13 @@ function campTasks(p, task) {
   h += task(true, 'Wait out the storm with James');
   if (!p.bed) return h;
   if (!p.slept2) return h + task(false, 'Sleep');
-  return h + task(true, 'Sleep') + task(false, 'Explore Antarctica with James');
+  h += task(true, 'Sleep');
+  if (!p.roverTalk) return h + task(false, 'Explore Antarctica with James');
+  h += task(!!p.roverFound, 'Find James’s rover by the teleporter');
+  if (!p.roverFound) return h;
+  const fd = Math.round(Math.hypot(player.position.x - FERRY.x, player.position.z - FERRY.z));
+  h += task(!!p.ferry, p.ferry ? 'Drive to the ferry' : `Drive to the ferry · ${fd > 999 ? (fd / 1000).toFixed(1) + ' km' : fd + ' m'}`);
+  return p.ferry ? h + task(false, 'To be continued…') : h;
 }
 function campProgress(k) {
   const c = ch1(); if (!c.metOutside || c.campDone) return;
@@ -3232,7 +3238,7 @@ function stormTick(dt) {
   if (state === 'explore' && c.stormTalk && !c.stormHit && !world.narrating && (world.storm > .97 || c.stormSafe)) stormHits();
   if (state !== 'explore') return;
   // suit heat: drains out in the blizzard, recovers in a shelter, by a heater, or once the storm is gone
-  const inv = invState(), sheltered = insideShelterCached(dt) || nearHeater();
+  const inv = invState(), sheltered = !!ex.vehicle || insideShelterCached(dt) || nearHeater();
   let h = suitHeat();
   if (active && world.storm > .6 && !sheltered) h -= 1.1 * dt; // about 90 seconds from full to empty
   else h += (sheltered ? 9 : 3) * dt;
@@ -3246,6 +3252,8 @@ function stormTick(dt) {
   if ((world.stormCheck = (world.stormCheck || 0) - dt) > 0) return;
   world.stormCheck = .4;
   if (c.stormOver && !c.bed && companionOn() && time >= (world.bedTalkAt || 0) && !world.narrating) jamesBedTalk();
+  if (c.slept2 && !c.roverTalk && companionOn() && time >= (world.roverTalkAt || 0)) jamesRoverTalk();
+  if (c.roverFound && !c.ferry && Math.hypot(player.position.x - FERRY.x, player.position.z - FERRY.z) < 45) reachFerry();
   if (c.stormTalk && !c.shelterBuilt && shelters().length) {
     setCh1({ shelterBuilt: true }); gainXP(150); sfx.chime(); renderTasks();
     notice('Shelter built', 'GET INSIDE', 3400);
@@ -3361,10 +3369,137 @@ function sleepOutside() {
         b.style.opacity = 0; b.style.transition = 'opacity 3s ease'; ui.xhud.classList.remove('talking'); sfx.wind(.4);
         state = 'explore';
         setTimeout(() => { b.style.transition = ''; notice('A voice in your dream', 'DO NOT TRUST JAMES BROWN', 3600); }, 1600);
-        setTimeout(() => { notice('New objective', 'EXPLORE ANTARCTICA WITH JAMES', 3400); sfx.chime(); }, 5800);
+        world.roverTalkAt = time + 6;
       }, 900);
     }, { sp: 'grek', who: '????', lines: grekDream(), clips: human ? gc : [...(gc || []).slice(0, 3), ...(ga || [])] });
   }, 4600);
+}
+// ---- James's rover and the ferry ----
+const JAMES_ROVER = ['I want to get out of Antarctica. You can take my rover to the nearest ferry. It’s about a kilometre away. I parked it next to the teleporter.'];
+function makeRoverMesh() {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body); g.userData.body = body;
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .55, metalness: .35 }, o));
+  const add = (par, geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; par.add(o); return o; };
+  add(body, new THREE.BoxGeometry(2.3, .7, 4.2), M(0xd8dde4), 0, .95, 0);
+  add(body, new THREE.BoxGeometry(2.32, .18, 4.22), M(0xe0662a), 0, 1.2, 0);
+  add(body, new THREE.BoxGeometry(2.05, .85, 2.2), M(0xcfd5dc), 0, 1.72, -.35);
+  add(body, new THREE.BoxGeometry(1.9, .55, .05), M(0x1d2a38, { roughness: .1, metalness: .6, envMapIntensity: 1 }), 0, 1.78, .76);
+  for (const x of [-1.04, 1.04]) add(body, new THREE.BoxGeometry(.05, .5, 1.8), M(0x1d2a38, { roughness: .1, metalness: .6 }), x, 1.8, -.35);
+  add(body, new THREE.BoxGeometry(2.4, .12, .5), M(0x2b2f36), 0, .7, 2.1);
+  add(body, new THREE.CylinderGeometry(.025, .025, 1.6, 6), M(0x2b2f36), -.85, 2.9, -1.2);
+  for (const x of [-.75, .75]) { const l = glowSprite(0xfff1d6, 1.6, .85); l.position.set(x, 1.05, 2.15); body.add(l); }
+  const beacon = glowSprite(0xffa040, .9, .9); beacon.position.set(-.85, 3.72, -1.2); body.add(beacon); g.userData.beacon = beacon;
+  g.userData.wheels = [];
+  const wg = new THREE.CylinderGeometry(.55, .55, .45, 16), wm = M(0x1a1c20, { roughness: .9, metalness: .1 });
+  for (const z of [-1.45, 0, 1.45]) for (const x of [-1.25, 1.25]) { const w = add(g, wg, wm, x, .55, z); w.rotation.z = Math.PI / 2; g.userData.wheels.push(w); }
+  return g;
+}
+function roverSpot() {
+  // parked next to the teleporter you built (or the station's pad)
+  const st = wsState(), tp = (st.build || []).find(o => o.k === 'tele'), S = AREA_INFO[curArea()].stationTp;
+  const t = tp || S, x = t.x + 4.2, z = t.z + 1.5;
+  return { x: +x.toFixed(2), z: +z.toFixed(2), r: 0 };
+}
+function placeRover() {
+  const c = ch1(); if (!c.rover || ex.mode !== 'world') { if (world.rover) world.rover.visible = false; return; }
+  if (!world.rover) { world.rover = makeRoverMesh(); wScene.add(world.rover); }
+  const R = world.rover; R.visible = true; R.userData.speed = 0; R.userData.heading = c.rover.r || 0;
+  R.position.set(c.rover.x, wHeight(c.rover.x, c.rover.z), c.rover.z); R.rotation.set(0, R.userData.heading, 0, 'YXZ');
+}
+async function jamesRoverTalk() {
+  if (state !== 'explore' || ex.mode !== 'world' || ex.dlg) return;
+  world.roverTalkAt = time + 1e9;
+  const clips = await sfx.loadClips('roverVoices');
+  if (state !== 'explore' || ex.dlg) { world.roverTalkAt = time + 3; return; }
+  openDialog('JAMES BROWN', JAMES_ROVER, false, () => {
+    setCh1({ roverTalk: true, rover: ch1().rover || roverSpot() }); placeRover(); renderTasks(); sfx.chime();
+    setTimeout(() => notice('James’s rover · by the teleporter', 'TAKE IT TO THE FERRY', 3600), 400);
+  }, clips);
+}
+function enterRover() {
+  const R = world.rover; if (!R) return;
+  ex.vehicle = { mesh: R, speed: 0, heading: R.userData.heading || 0, x: R.position.x, z: R.position.z, saveT: 0, taskT: 0 };
+  player.visible = false; vel.set(0, 0, 0); stopBuild(); hideGhost(); ex.dist = 8.5;
+  if (!ch1().roverFound) { setCh1({ roverFound: true }); gainXP(60); renderTasks(); setTimeout(() => notice('The ferry is about a kilometre away', 'DRIVE TO THE FERRY', 3600), 300); }
+  sfx.thud(); lootMsg(document.body.classList.contains('touch') ? 'Stick to drive · EXIT to get out' : 'W / S drive · A / D steer · E to get out', '#e6e9f0');
+}
+function exitRover() {
+  const V = ex.vehicle; if (!V) return;
+  const h = V.heading; let x = V.x - Math.cos(h) * 2.4, z = V.z + Math.sin(h) * 2.4;
+  if (worldBlocked(x, z, false, wHeight(x, z))) { x = V.x + Math.cos(h) * 2.4; z = V.z - Math.sin(h) * 2.4; }
+  ex.vehicle = null; V.mesh.userData.heading = h;
+  player.visible = true; player.position.set(x, 0, z); player.position.y = groundAt(x, z, wHeight(x, z) + .5); player.rotation.y = h; ex.snap = true; ex.dist = 4.2; vel.set(0, 0, 0);
+  setCh1({ rover: { x: +V.x.toFixed(2), z: +V.z.toFixed(2), r: +h.toFixed(3) } });
+  if (companionOn() && james.ready && james.root.parent === wScene && comp.mode === 'follow') { james.root.visible = true; jTeleportNear(); }
+  sfx.thud();
+}
+function driveTick(dt) {
+  const V = ex.vehicle, R = V.mesh, k = ex.keys, p = player.position;
+  let thr = ex.joyY, steer = -ex.joyX;
+  if (k.has('KeyW') || k.has('ArrowUp')) thr += 1; if (k.has('KeyS') || k.has('ArrowDown')) thr -= 1;
+  if (k.has('KeyA') || k.has('ArrowLeft')) steer += 1; if (k.has('KeyD') || k.has('ArrowRight')) steer -= 1;
+  if (ex.dlg || ex.invOpen) thr = steer = 0;
+  thr = clamp(thr, -1, 1); steer = clamp(steer, -1, 1);
+  const braking = thr * V.speed < 0;
+  V.speed += thr * (braking ? 26 : 9) * dt;
+  V.speed -= V.speed * (thr ? .25 : 1.1) * dt;
+  V.speed = clamp(V.speed, -7, 24);
+  V.heading += steer * dt * 1.5 * clamp(V.speed / 7, -1, 1);
+  const fx = Math.sin(V.heading), fz = Math.cos(V.heading), nx = V.x + fx * V.speed * dt, nz = V.z + fz * V.speed * dt;
+  const y0 = wHeight(V.x, V.z), y1 = wHeight(nx, nz), lead = Math.sign(V.speed) * 2;
+  const steep = Math.abs(y1 - y0) / Math.max(.001, Math.hypot(nx - V.x, nz - V.z)) > 1.3;
+  if (worldBlocked(nx + fx * lead, nz + fz * lead, false, y1) || worldBlocked(nx, nz, false, y1) || steep) {
+    if (Math.abs(V.speed) > 6) { sfx.thud(); ex.shake = .25; }
+    V.speed *= -.25;
+  } else { V.x = nx; V.z = nz; }
+  // sit on the snow, tilting with the ground
+  const y = wHeight(V.x, V.z), yf = wHeight(V.x + fx * 1.6, V.z + fz * 1.6), yb = wHeight(V.x - fx * 1.6, V.z - fz * 1.6);
+  const rx = Math.cos(V.heading), rz = -Math.sin(V.heading), yr = wHeight(V.x + rx * 1.2, V.z + rz * 1.2), yl = wHeight(V.x - rx * 1.2, V.z - rz * 1.2);
+  R.position.set(V.x, y, V.z);
+  R.rotation.set(-Math.atan2(yf - yb, 3.2), V.heading, Math.atan2(yr - yl, 2.4), 'YXZ');
+  for (const w of R.userData.wheels) w.rotation.x += V.speed * dt / .55;
+  if (R.userData.beacon) R.userData.beacon.material.opacity = Math.sin(time * 6) > 0 ? .95 : .15;
+  if (Math.abs(V.speed) > 3 && Math.random() < dt * 30) burst(V.x - fx * 2.2, y + .3, V.z - fz * 2.2, 2, 1.6, .92, .95, 1, .6, .6, .8);
+  // you're inside: the camera follows the rover from behind
+  p.set(V.x, y + .9, V.z); player.rotation.y = V.heading; vel.set(fx * V.speed, 0, fz * V.speed);
+  ex.yaw = angLerp(ex.yaw, V.heading + Math.PI, Math.min(1, dt * (Math.abs(V.speed) > 2 ? 2.2 : .4)));
+  sfx.gust(300 + Math.abs(V.speed) * 25);
+  if ((V.saveT -= dt) <= 0) { V.saveT = 1; const c = ch1(); if (c.rover) Object.assign(c.rover, { x: +V.x.toFixed(2), z: +V.z.toFixed(2), r: +V.heading.toFixed(3) }); }
+  if ((V.taskT -= dt) <= 0) { V.taskT = 1; if (!ch1().ferry) renderTasks(); }
+  // XP for the distance driven, as on foot
+  ex.walkAcc = (ex.walkAcc || 0) + Math.abs(V.speed) * dt * .25; if (ex.walkAcc >= 40) { ex.walkAcc -= 40; gainXP(1); }
+}
+function buildFerry() {
+  if (world.ferry) return;
+  const g = new THREE.Group(), M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .6, metalness: .2 }, o));
+  const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; g.add(o); return o; };
+  // local +z points out to sea
+  const sea = new THREE.Mesh(new THREE.CircleGeometry(230, 48), new THREE.MeshStandardMaterial({ color: 0x0d2a3f, roughness: .15, metalness: .25, transparent: true, opacity: .93, envMapIntensity: .8 }));
+  sea.rotation.x = -Math.PI / 2; sea.position.set(0, -1.6, 150); sea.receiveShadow = true; g.add(sea);
+  for (let i = 0; i < 26; i++) { const a = i * 2.39, d = 40 + (i * 37) % 170, fl = add(new THREE.CylinderGeometry(1 + (i % 4), 1.4 + (i % 4), .5, 7), M(0xeef3f9, { roughness: .9, metalness: 0 }), Math.cos(a) * d * .9, -1.45, 60 + Math.abs(Math.sin(a)) * d); fl.castShadow = false; }
+  const wood = M(0x5a4636, { roughness: .9, metalness: 0 });
+  add(new THREE.BoxGeometry(7, .4, 46), wood, 0, 1.4, 28);
+  for (let z = 6; z <= 50; z += 6) for (const x of [-3.2, 3.2]) add(new THREE.CylinderGeometry(.25, .25, 6, 8), wood, x, -1.4, z);
+  // the ferry
+  const hull = M(0xe9ecef), red = M(0xb3202a);
+  add(new THREE.BoxGeometry(12, 4, 44), hull, 12, .3, 44);
+  add(new THREE.BoxGeometry(12.05, 1.2, 44.05), red, 12, -1.1, 44);
+  add(new THREE.BoxGeometry(10, 3.2, 16), hull, 12, 3.9, 38);
+  add(new THREE.BoxGeometry(10.05, .8, 16.05), M(0x1d2a38, { roughness: .15, metalness: .6 }), 12, 4.4, 38);
+  add(new THREE.CylinderGeometry(1.1, 1.3, 4.5, 14), red, 12, 7.5, 32);
+  // terminal building and lights
+  add(new THREE.BoxGeometry(12, 4.5, 8), M(0x4b525d, { metalness: .4 }), -11, 2.25, -4);
+  add(new THREE.BoxGeometry(12.4, .4, 8.4), M(0xeaf0f7, { roughness: .9 }), -11, 4.7, -4);
+  for (const z of [10, 26, 42]) { const l = glowSprite(0xffd9a0, 3.4, .7); l.position.set(3.4, 4, z); g.add(l); add(new THREE.CylinderGeometry(.06, .06, 3, 6), M(0x2b2f36), 3.4, 2.6, z); }
+  const ang = Math.atan2(FERRY.dx, FERRY.dz);
+  g.position.set(FERRY.x, 0, FERRY.z); g.rotation.y = ang;
+  wScene.add(g); world.ferry = g;
+}
+function reachFerry() {
+  if (ex.vehicle) { /* stay in; the arrival still counts */ }
+  setCh1({ ferry: true }); gainXP(200); sfx.chime(); renderTasks();
+  notice('Ross Sea ferry terminal', 'YOU MADE IT', 3800);
+  setTimeout(() => notice('Chapter I · Antarctica', 'TO BE CONTINUED', 4200), 4600);
 }
 function renderTasks() {
   // wanderers from before levels existed get XP for the story they've already played
@@ -3435,6 +3570,7 @@ function leaveExplore(goTitle = true) {
   ex.mode = 'station'; openMap(false); $('#xNav').textContent = ''; ui.xhud.classList.remove('world'); hideGhost(); stopBuild(); closeModals(); ex.act = null; ex.air = false;
   if (ex.held && ex.held.parent) ex.held.parent.remove(ex.held);
   hideSuitGear(); ex.blocking = ex.jetting = false; stopNarration();
+  if (ex.vehicle) { ex.vehicle = null; player.visible = true; }
   closeDialog(); ui.xhud.classList.remove('dreaming'); show(ui.xhud, false); show(ui.xpause, false); show(ui.tbc, false);
   const bo = $('#blackout'); bo.style.opacity = 0; bo.classList.remove('on');
   if (james.ready) james.root.visible = false;
@@ -3520,6 +3656,10 @@ async function interact() {
     openInv(true);
   } else if (n.id === 'bed') {
     sleepOutside();
+  } else if (n.id === 'rover') {
+    enterRover();
+  } else if (n.id === 'roverOut') {
+    exitRover();
   } else if (n.id === 'door') {
     goInside();
   } else if (n.id === 'bunk' && sleepReady()) {
@@ -4072,6 +4212,7 @@ function renderBuild() {
   $('#bmStop').disabled = !ex.build;
 }
 function openBuild(on) {
+  if (on && ex.vehicle) return;
   if (on && ex.mode !== 'world') { lootMsg('You can build outside the station', '#ff8f86'); return; }
   openModal('#buildMenu', on); ex.bOpenT = on;
   if (on) renderBuild();
@@ -4242,12 +4383,12 @@ $('#jWhoRow').addEventListener('pointerdown', e => { const b = e.target.closest(
 const STA = { sprint: 22, jump: 12, dodge: 26, attack: 6 };
 function spend(n) { if (ex.sta < n) return false; ex.sta -= n; ex.staT = time; return true; }
 function doJump() {
-  if (ex.mode !== 'world' || ex.air || ex.act || ex.invOpen || ex.dlg) return;
+  if (ex.mode !== 'world' || ex.vehicle || ex.air || ex.act || ex.invOpen || ex.dlg) return;
   if (!spend(STA.jump)) return;
   ex.air = true; ex.vy = 6.4; ex.jumpT = time; sfx.blip();
 }
 function doDodge() {
-  if (ex.mode !== 'world' || ex.act || ex.invOpen || ex.dlg) return;
+  if (ex.mode !== 'world' || ex.vehicle || ex.act || ex.invOpen || ex.dlg) return;
   if (!spend(STA.dodge)) return;
   let ix = ex.joyX, iy = ex.joyY; const k = ex.keys;
   if (k.has('KeyA') || k.has('ArrowLeft')) ix -= 1; if (k.has('KeyD') || k.has('ArrowRight')) ix += 1;
@@ -4259,7 +4400,7 @@ function doDodge() {
   sfx.whoosh();
 }
 function doAttack() {
-  if (ex.mode !== 'world' || ex.act || ex.invOpen || ex.dlg) return;
+  if (ex.mode !== 'world' || ex.vehicle || ex.act || ex.invOpen || ex.dlg) return;
   if (ex.build) { placeBuild(); return; }
   const it = selItem();
   if (it && ITEMS[it].kind === 'place') {
@@ -4562,6 +4703,8 @@ function mapTiles(x0, z0, x1, z1, budget) {
 function questTarget() {
   const c = ch1();
   if (wanderer.chapter === 1 && c.slept && !c.metOutside && world.jamesAt) return { x: world.jamesAt.x, z: world.jamesAt.z, label: c.found ? 'Speak to James Brown' : 'Find James Brown' };
+  if (c.roverTalk && !c.roverFound && world.rover) return { x: world.rover.position.x, z: world.rover.position.z, label: 'James’s rover' };
+  if (c.roverFound && !c.ferry) return { x: FERRY.x, z: FERRY.z, label: 'Ferry terminal' };
   if (c.campDone && !c.stormTalk && companionOn() && james.ready && james.root.parent === wScene) return { x: james.root.position.x, z: james.root.position.z, label: 'Speak to James Brown' };
   return null;
 }
@@ -4815,6 +4958,7 @@ function jamesHit(n) {
 }
 function companionTick(dt) {
   if (!companionOn() || !james.ready || meet.active) return;
+  if (ex.vehicle && comp.mode === 'follow') { james.root.visible = false; return; } // riding in the rover with you
   const J = james, r = J.root, rp = r.position, p = player.position;
   if (r.parent !== wScene || !r.visible) return;
   J.swing = false; J.ground = null;
@@ -5326,6 +5470,7 @@ function wNoise(x, y, k = 0) {
 }
 function wFbm(x, y, oct, k) { let s = 0, a = .5, f = 1, n = 0; for (let i = 0; i < oct; i++) { s += wNoise(x * f, y * f, k + i) * a; n += a; f *= 2.03; a *= .5; } return s / n; }
 const LAKE_Y = -7;
+const FERRY = { x: -720, z: 700, dx: -.7169, dz: .6972 }; // dock point, and the direction out to sea
 function lakeAmt(x, z) { return smooth(.34, .27, wFbm(x * .0042 + 90, z * .0042 + 40, 2, 50)); }
 function wHeight(x, z) {
   const n1 = wFbm(x * .0025, z * .0025, 4, 1);
@@ -5333,6 +5478,9 @@ function wHeight(x, z) {
   let h = (n1 - .45) * 75 + Math.pow(ridge, 3) * 48 * smooth(.42, .68, n1);
   h += (wFbm(x * .06, z * .02, 2, 20) - .5) * 1.1;
   h = lerp(h, LAKE_Y, lakeAmt(x, z));
+  // the Ross Sea ferry terminal, about a kilometre out: a flat landing and a bay of open water
+  const fx = x - FERRY.x, fz = z - FERRY.z, fd = Math.hypot(fx, fz);
+  if (fd < 320) { const along = fx * FERRY.dx + fz * FERRY.dz; h = lerp(h, lerp(1.2, -9, smooth(6, 30, along)), smooth(320, 150, fd)); }
   const r = Math.hypot(x, z);
   return lerp(0, h, smooth(26, 80, r));
 }
@@ -5398,7 +5546,7 @@ function buildChunk(cx, cz) {
   const grp = new THREE.Group(); grp.add(mesh);
   // gatherable rocks, ice spires and supply caches
   const mined = wsState().mined, nodes = [];
-  const nearJames = (x, z) => (world.jamesAt && (x - world.jamesAt.x) ** 2 + (z - world.jamesAt.z) ** 2 < 36) || (world.meetAt && (x - world.meetAt[0]) ** 2 + (z - world.meetAt[1]) ** 2 < 49);
+  const nearJames = (x, z) => Math.hypot(x - FERRY.x, z - FERRY.z) < 230 || (world.jamesAt && (x - world.jamesAt.x) ** 2 + (z - world.jamesAt.z) ** 2 < 36) || (world.meetAt && (x - world.meetAt[0]) ** 2 + (z - world.meetAt[1]) ** 2 < 49);
   const nRocks = Math.floor(wHash(cx, cz, 60) * 5);
   for (let i = 0; i < nRocks; i++) {
     const key = `r${cx}_${cz}_${i}`; if (mined[key]) continue;
@@ -5593,6 +5741,7 @@ function worldBlocked(x, z, stationOnly, y = player.position.y) {
   if (Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true;
   for (const m of merchantsHere()) if (m.px != null && (x - m.px) ** 2 + (z - m.pz) ** 2 < 1.7) return true;
   if (stationOnly) return false;
+  if (world.rover && world.rover.visible && !ex.vehicle && (x - world.rover.position.x) ** 2 + (z - world.rover.position.z) ** 2 < 2.4) return true;
   if (world.build && buildBlocked(x, z, y)) return true;
   if (world.jamesAt && ex.mode === 'world' && !companionOn() && (x - world.jamesAt.x) ** 2 + (z - world.jamesAt.z) ** 2 < .5) return true;
   for (const n of nodesNear(x, z)) if (!n.dead && (x - n.x) ** 2 + (z - n.z) ** 2 < (n.r + .3) ** 2) return true;
@@ -5621,7 +5770,7 @@ function enterWorld(place) {
   }
   setupMerchants();
   updateChunks(99);
-  rebuildPlaced(); rebuildBuild(); stopBuild(); placeBed();
+  rebuildPlaced(); rebuildBuild(); stopBuild(); placeBed(); placeRover(); buildFerry();
   if (world.build.some(b => b.data.k === 'bench')) campProgress('bench');
   if (world.build.some(b => b.data.k === 'tele')) campProgress('tele');
   const STP = AREA_INFO[curArea()].stationTp; world.stationTp.position.set(STP.x, wHeight(STP.x, STP.z), STP.z);
@@ -5669,6 +5818,7 @@ function setStationAfter(after) {
 }
 function updateWorldMode(dt) {
   const p = player.position, d = ex.dlg;
+  if (ex.vehicle) driveTick(dt); else {
   let ix = ex.joyX, iy = ex.joyY; const k = ex.keys;
   if (k.has('KeyA') || k.has('ArrowLeft')) ix -= 1;
   if (k.has('KeyD') || k.has('ArrowRight')) ix += 1;
@@ -5721,6 +5871,7 @@ function updateWorldMode(dt) {
     if (p.y <= ground) { p.y = ground; ex.air = false; ex.vy = 0; burst(p.x, p.y + .05, p.z, 10, 2, .9, .95, 1, .6, .4, .5); }
   } else p.y += (ground - p.y) * Math.min(1, dt * 18);
   if (Math.hypot(vel.x, vel.z) > .2 && !(A && A.type === 'attack')) player.rotation.y = angLerp(player.rotation.y, Math.atan2(vel.x, vel.z), Math.min(1, dt * 10));
+  }
   // things to interact with: the station door and anything you've built
   ex.near = null;
   if (companionOn()) {
@@ -5761,7 +5912,9 @@ function updateWorldMode(dt) {
   }
   if (!ex.near) for (const b of world.build) if (b.data.k === 'bench' && Math.hypot(b.data.x - p.x, b.data.z - p.z) < 2 && Math.abs(b.data.y - p.y) < 1.5) ex.near = { id: 'bench', label: 'Crafting table' };
   if (!ex.near && ch1().bed && !ch1().slept2) { const B = ch1().bed; if (Math.hypot(B.x - p.x, B.z - p.z) < 1.9 && Math.abs(B.y - p.y) < 1.5) ex.near = { id: 'bed', label: 'Bed' }; }
+  if (!ex.near && world.rover && !ex.vehicle && world.rover.visible && Math.hypot(world.rover.position.x - p.x, world.rover.position.z - p.z) < 3.4) ex.near = { id: 'rover', label: 'Rover' };
   if (!ex.near && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
+  if (ex.vehicle) ex.near = { id: 'roverOut', label: 'Rover' };
   if (!ex.near) {
     let bd = 2;
     for (const o of world.placed) { const dd = Math.hypot(o.data.x - p.x, o.data.z - p.z); if (dd < bd) { bd = dd; ex.near = { id: 'placed', ref: o, label: ITEMS[o.data.t].name }; } }
@@ -5770,7 +5923,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
+    const PR = { rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
@@ -5778,6 +5931,7 @@ function updateWorldMode(dt) {
   const dist = Math.hypot(p.x - 8, p.z), dirs = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
   const brg = (x, z) => dirs[((Math.round(Math.atan2(-(z - p.z), x - p.x) / (Math.PI / 4)) % 8) + 8) % 8];
   let nav = dist < 6 ? 'At the station' : `Station · ${Math.round(dist)} m · ${brg(8, 0)}`;
+  if (ex.vehicle) nav = `Rover · ${Math.round(Math.abs(ex.vehicle.speed) * 3.6)} km/h<br>` + nav;
   let bb = null, bdist = 1e9;
   for (const o of world.placed) if (o.data.t === 'beacon') { const dd = Math.hypot(o.data.x - p.x, o.data.z - p.z); if (dd < bdist) { bdist = dd; bb = o; } }
   if (bb && bdist > 4) nav += `<br>Beacon · ${Math.round(bdist)} m · ${brg(bb.data.x, bb.data.z)}`;
