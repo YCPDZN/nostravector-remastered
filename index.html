@@ -1566,7 +1566,18 @@ function headYFor(c) {
 const lieYFor = c => (speciesInfo[spOf(c)] || {}).lieY || .26;
 const MAX_WANDERERS = 12;
 const CHAPTERS = [{ short: 'Prologue', full: 'Prologue' }, { short: 'Ch. I · Antarctica', full: 'Chapter I · Antarctica' }];
-const chapterOf = c => CHAPTERS[clamp((c && c.chapter) | 0, 0, CHAPTERS.length - 1)];
+const CHN_ROMAN = ['Prologue', 'I', 'II', 'III', 'IV', 'V'], CH_HOME = ['', 'Antarctica', 'Africa'];
+// "Chapter II · Africa", but named after wherever you actually are (go back to Antarctica in Chapter II and it says so)
+function chapterOf(c) {
+  const n = clamp((c && c.chapter) | 0, 0, 5); if (!n) return CHAPTERS[0];
+  const w = c && c.place && c.place.mode === 'explore' ? (c.place.where || (c.place.area === 'station' ? 'antarctica' : null)) : null;
+  const area = (w && AREA_INFO[w] && AREA_INFO[w].name) || CH_HOME[n] || '';
+  return { short: `Ch. ${CHN_ROMAN[n]}${area ? ' · ' + area : ''}`, full: `Chapter ${CHN_ROMAN[n]}${area ? ' · ' + area : ''}` };
+}
+function liveChapterLabel() {
+  const n = (wanderer && wanderer.chapter) | 0, area = ex.mode === 'world' ? AREA_INFO[curArea()].name : n >= 2 && curArea() === 'africa' ? 'Africa' : 'Antarctica';
+  return `Chapter ${CHN_ROMAN[Math.max(1, n)]} · ${area}`;
+}
 function saveRoster() { dirty = true; } // marks unsaved changes; nothing is written until the player saves
 function setActive(id) {
   activeId = id;
@@ -4154,6 +4165,7 @@ function renderTasks() {
   if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? campTasks(p, task) : '');
   if (curArea() === 'africa') h = ch2Tasks(task);
   xUI.tasks.innerHTML = h;
+  $('#xChap').textContent = liveChapterLabel().toUpperCase();
 }
 let noticeT;
 function notice(small, big, ms = 2800) {
@@ -5442,18 +5454,19 @@ function renderMap(cv, range, headingUp, budget, round) {
   }
 }
 function earthCoords(x, z) {
-  // the station sits at 79.4°S, 112.1°E, 1° of latitude ≈ 111 km
-  const lat = -79.4 - z / 111000, lon = 112.1 + x / (111000 * Math.cos(79.4 * Math.PI / 180));
-  return `${Math.abs(lat).toFixed(3)}°S ${lon.toFixed(3)}°E`;
+  // the station sits at 79.4°S, 112.1°E; Orion's house near 4.1°S, 39.6°E on the east African coast. 1° of latitude ≈ 111 km
+  const [la0, lo0] = curArea() === 'africa' ? [-4.1, 39.6] : [-79.4, 112.1];
+  const lat = la0 - z / 111000, lon = lo0 + x / (111000 * Math.cos(la0 * Math.PI / 180));
+  return `${Math.abs(lat).toFixed(3)}°${lat < 0 ? 'S' : 'N'} ${lon.toFixed(3)}°E`;
 }
 let mapAcc = 0;
 function updateMinimap(dt) {
   mapAcc += dt;
-  if (MAP.big) { renderMap($('#bigmapC'), 320, false, 6, false); $('#bmSub').textContent = `ANTARCTICA · ${earthCoords(player.position.x, player.position.z)}`; return; }
+  if (MAP.big) { renderMap($('#bigmapC'), 320, false, 6, false); $('#bmSub').textContent = `${AREA_INFO[curArea()].name.toUpperCase()} · ${earthCoords(player.position.x, player.position.z)}`; return; }
   if (mapAcc < 1 / 30) return; mapAcc = 0;
   renderMap($('#mmapC'), 110, true, 2, true);
   const q = questTarget(), p = player.position;
-  $('#mmapCap').innerHTML = q ? `<b>◆</b> ${Math.round(Math.hypot(q.x - p.x, q.z - p.z))} m` : 'ANTARCTICA';
+  $('#mmapCap').innerHTML = q ? `<b>◆</b> ${Math.round(Math.hypot(q.x - p.x, q.z - p.z))} m` : AREA_INFO[curArea()].name.toUpperCase();
 }
 function openMap(on) {
   if (on && (ex.mode !== 'world' || state !== 'explore')) return;
@@ -6491,11 +6504,11 @@ function orionTick(dt) {
   const p = player.position, o = R.root.position, d = Math.hypot(p.x - o.x, p.z - o.z);
   if (d < 8) R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - o.x, p.z - o.z), Math.min(1, dt * 3));
   animRig(R, dt);
-  if (R.lips) { const t = !!(ex.dlg && ex.dlg.who === 'ORION'), L = R.lips, target = t ? clamp((sfx.voiceLevel() - .015) / .24, 0, 1) : 0; L.open += (target - L.open) * Math.min(1, dt * (target > L.open ? 28 : 14)); L.jaw.rotation.x = L.base + L.open * .26; if (L.mouth) L.mouth.scale.y = .7 * (1 + L.open * 3.2); }
+  if (R.lips) { const t = !!(ex.dlg && ex.dlg.who === 'ORION MASCAR'), L = R.lips, target = t ? clamp((sfx.voiceLevel() - .015) / .24, 0, 1) : 0; L.open += (target - L.open) * Math.min(1, dt * (target > L.open ? 28 : 14)); L.jaw.rotation.x = L.base + L.open * .26; if (L.mouth) L.mouth.scale.y = .7 * (1 + L.open * 3.2); }
 }
 function talkOrion() {
   sfx.loadClips('orionWake').then(clips => {
-    openDialog('ORION', ORION_WAKE, false, () => {
+    openDialog('ORION MASCAR', ORION_WAKE, false, () => {
       const first = !(wanderer.ch2 && wanderer.ch2.talkedOrion);
       wanderer.ch2 = Object.assign({}, wanderer.ch2, { talkedOrion: true }); const c = curChar(); if (c) c.ch2 = wanderer.ch2; saveRoster(); renderTasks();
       if (first) { gainXP(40); sfx.chime(); setTimeout(() => notice('New objective', 'EXPLORE AFRICA', 3200), 400); }
@@ -6925,7 +6938,7 @@ function renderSlots() {
   slotUI.list.innerHTML = slots.map((sl, i) => {
     if (!sl) return `<button class="slot empty" data-i="${i}"${slotMode !== 'save' ? ' disabled' : ''}><b>SLOT ${i + 1}</b><span>Empty</span><small>${slotMode === 'save' ? 'Tap to save here' : 'No save'}</small></button>`;
     const r = Array.isArray(sl.roster) ? sl.roster : [], a = r.find(c => c.id === sl.activeId) || r[0] || {};
-    const sp = SPECIES[spOf(a)].label, ch = chapterOf(a).short, where = sl.place && sl.place.mode === 'explore' ? (sl.place.area === 'world' ? 'Antarctic wilds' : 'Station') : 'Base';
+    const sp = SPECIES[spOf(a)].label, ch = chapterOf(Object.assign({}, a, { place: sl.place && sl.place.mode === 'explore' ? sl.place : a.place })).short, where = sl.place && sl.place.mode === 'explore' ? (sl.place.area === 'world' ? (sl.place.where === 'africa' ? 'African savanna' : 'Antarctic wilds') : 'Station') : 'Base';
     const name = String(a.name || 'WANDERER').replace(/[<>&"]/g, '');
     return `<button class="slot${slotArm === i ? ' armed' : ''}" data-i="${i}"><b>SLOT ${i + 1}</b><span>${name} · ${sp} · ${ch}</span><small>${fmtWhen(sl.savedAt)} · ${r.length} wanderer${r.length === 1 ? '' : 's'} · ${where}</small></button>`;
   }).join('');
