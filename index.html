@@ -603,6 +603,7 @@ button.bm-c.no{opacity:.45}
 .al-ct small{font-size:10.5px;color:#9aa0a8;letter-spacing:.04em}
 .al-ct em{font-style:normal;font-size:11px;letter-spacing:.16em;font-weight:600}
 .al-np{opacity:.7}
+.al-empty{font-size:13px;color:#9aa0a8;padding:14px 4px}
 .al-inf{display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#9aa0a8}
 .al-inf i{display:block;width:90px;height:5px;border-radius:3px;background:rgba(230,233,240,.12);overflow:hidden}
 .al-inf u{display:block;height:100%;background:#cfd6e6;text-decoration:none}
@@ -4732,7 +4733,11 @@ function alignAct(d, why) {
   if (!$('#alignScr').classList.contains('hidden')) renderAlign();
 }
 const alView = { sel: null, R: null, scene: null, cam: null, obj: null, tok: 0, raf: 0, rot: 0 };
-function alCompList() { return companionsNow().filter(L => !pdEntryLocked(L, 'companions')).map(L => ({ L, sub: L.title })).concat(AL_EXTRA.map(L => ({ L, sub: L.sub }))); }
+// only the companions travelling with you now; characters from other games appear only once they've been brought into your party
+function alCompList() {
+  const party = partyNow(), mine = wanderer.party || [];
+  return COMPANIONS.filter(L => party.includes(L.id)).map(L => ({ L, sub: L.title })).concat(AL_EXTRA.filter(L => mine.includes(L.id)).map(L => ({ L, sub: L.sub })));
+}
 function renderAlign() {
   const st = alState(), party = partyNow(), comps = alCompList();
   const pick = alView.sel && comps.find(c => c.L.id === alView.sel);
@@ -4752,7 +4757,8 @@ function renderAlign() {
   }
   $('#alMe').innerHTML = `<div class="al-feat">${chart}<div class="al-model" id="alModel"></div></div><div class="al-me-t">${info}</div>`;
   const yb = $('#alYou'); if (yb) yb.addEventListener('click', () => { sfx.click(); alView.sel = null; renderAlign(); });
-  $('#alComps').innerHTML = comps.map(({ L, sub }) => {
+  $('#alComps').innerHTML = comps.length ? '' : '<div class="al-empty">No companions with you right now.</div>';
+  if (comps.length) $('#alComps').innerHTML = comps.map(({ L, sub }) => {
     const A = alComp(L), inP = party.includes(L.id);
     return `<button class="al-card${inP ? ' in' : ''}${alView.sel === L.id ? ' sel' : ''}" data-id="${L.id}">${alChart(A.hidden ? 0 : A.a, false, A.hidden)}<div class="al-ct"><b>${L.name}</b><small>${sub}</small>`
       + `<em style="color:${A.hidden ? '#9aa0a8' : alColor(A.a)}">${A.hidden ? 'UNKNOWN' : alRank(A.a)}</em>`
@@ -8955,7 +8961,7 @@ function pediaEntry(i) {
     pUI.body.innerHTML = `<dl class="cc-meta pd-meta">${L.facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
       ${L.align ? `<p class="pd-align">${L.align}</p>` : ''}
       <div class="sp-card cc-desc">${L.paras.map(p => `<p>${p}</p>`).join('')}</div>`;
-    if (pedia.tab === 'companions' && wanderer) { const A = alComp(L0); pUI.body.insertAdjacentHTML('beforeend', `<div class="al-pd">${alChart(A.hidden ? 0 : A.a, false, A.hidden)}<div class="al-ct"><small>Alignment chart</small><em style="color:${A.hidden ? '#9aa0a8' : alColor(A.a)}">${A.hidden ? 'UNKNOWN' : alRank(A.a)}</em>${A.met ? `<div class="al-inf"><span>Influence</span><i><u style="width:${Math.round(A.inf)}%"></u></i></div>` : ''}</div></div>`); }
+    if (pedia.tab === 'companions' && wanderer && partyNow().includes(L0.id)) { const A = alComp(L0); pUI.body.insertAdjacentHTML('beforeend', `<div class="al-pd">${alChart(A.hidden ? 0 : A.a, false, A.hidden)}<div class="al-ct"><small>Alignment chart</small><em style="color:${A.hidden ? '#9aa0a8' : alColor(A.a)}">${A.hidden ? 'UNKNOWN' : alRank(A.a)}</em>${A.met ? `<div class="al-inf"><span>Influence</span><i><u style="width:${Math.round(A.inf)}%"></u></i></div>` : ''}</div></div>`); }
   }
   pUI.body.scrollTop = 0; $('#pdBack span').textContent = 'Back';
   pediaPreview();
