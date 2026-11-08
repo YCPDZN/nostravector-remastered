@@ -493,3 +493,6 @@ Orion has known him since the war and gets the last word either way. Afterwards 
 
 ### Lip sync for everyone who speaks
 Hawthorne, Darius, Nico, Malia and the HFOS guards move their mouths with their lines, and Croxian's mask eyes flare as he speaks. Orion's mouth moves through the trial and the escape too. Recorded lines follow the voice; lines without a recording still move the mouth while the words appear. On phones, **Skip** during the trial jumps straight to the escape.
+
+### Mobile, again
+On phones the objective list shows only what's still to do, plus the step you just finished, so long chapters don't run over the joystick or push Orion's panel off screen. Held sideways, the dialogue box is slimmer so cutscenes like the trial and the arrest stay visible. The escape's boss bars fit between the task list and the minimap sideways, and sit above the controls upright.
