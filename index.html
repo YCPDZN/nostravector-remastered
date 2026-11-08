@@ -1324,7 +1324,8 @@ function menuTick(dt) {
   if (state !== 'title') { J.root.visible = false; J.wdir = null; J.walking = false; return; }
   const r = J.root, p = player.position, a = player.rotation.y, fx = Math.sin(a), fz = Math.cos(a);
   const tx = p.x + fz * 1.7 - fx * .4, tz = p.z - fx * 1.7 - fz * .4, dx = tx - r.position.x, dz = tz - r.position.z, d = Math.hypot(dx, dz);
-  if (d > .6) { J.walking = true; J.wdir = [dx / d, dz / d]; J.speed = Math.min(2.8, d * 1.8); r.rotation.y = angLerp(r.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 6)); }
+  if (J.menuWalk ? d < .3 : d > .95) J.menuWalk = !J.menuWalk;
+  if (J.menuWalk) { J.walking = true; J.wdir = [dx / d, dz / d]; J.speed = clamp(d * 1.8, 1.1, 2.8); r.rotation.y = angLerp(r.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 6)); }
   else { J.walking = false; r.rotation.y = angLerp(r.rotation.y, a, Math.min(1, dt * 3)); r.position.y = height(r.position.x, r.position.z); }
   jamesTick(dt);
 }
@@ -1610,6 +1611,7 @@ function applyAltLook(sp, info, c) {
     const target = cols[r]; if (!target) continue;
     if (orig[r]) o.material.color.copy(o.userData.orig);
     else o.material.color.copy(target).multiplyScalar(o.userData.k || 1);
+    if (r === 'armour' || r === 'rim') { const k = alDarkK((c.align && c.align.p) || 0) * .8; if (k) o.material.color.lerp(AL_DARK, k); }
   }
   const id = IDENT[c.identity] || IDENT.nb, xf = c.identity === 'female' ? .94 : c.identity === 'male' ? 1.03 : 1;
   info.model.scale.set(info.base * id.h * xf, info.base * id.h, info.base * id.h);
@@ -1767,6 +1769,7 @@ function applyHumanLook(c) {
     look.visor.color.set(v[1]); look.visor.opacity = v[2];
     if ('metalness' in look.visor) { look.visor.metalness = v[3]; look.visor.roughness = .08; }
   }
+  { const k = alDarkK((c.align && c.align.p) || 0) * .8; if (k) for (const m of [look.base, look.accent, look.hBase, look.hAccent, look.trim]) if (m) m.color.lerp(AL_DARK, k); }
   look.skinMat.color.set(SKIN[c.skin] || SKIN[2]); look.hairMat.color.set(HAIRC[c.hairColor] || HAIRC[1]);
   buildHair(c.hair);
   const id = IDENT[c.identity] || IDENT.nb;
@@ -4716,6 +4719,35 @@ function alChart(v, big, hidden) {
   return `<div class="al-chart${big ? ' big' : ''}"><div class="al-col"><b class="al-fill" style="top:${fillTop}%;height:${fillH}%;--c:${col}"></b><i class="al-mid"></i><i class="al-mark${hidden ? ' unk' : ''}" style="top:${pos}%;--c:${col}">${hidden ? '?' : ''}</i></div>`
     + `<div class="al-lbl"><span>ENLIGHTENED HERO</span><span>NEUTRAL</span><span>AWAKENED VILLAIN</span></div></div>`;
 }
+// how far into the dark someone has gone: nothing until -15, fully dark by -80
+const alDarkK = v => v > -15 ? 0 : Math.min(1, (-v - 15) / 65);
+const AL_DARK = new THREE.Color(0x0c0d11);
+const NOT_CLOTH = /face|jaw|nose|neck|ear|eye|iris|pupil|glint|brow|mouth|lip|teeth|tongue|nostril|hair|sideburn|beard|moustache|fringe|crown|palm|finger|lens|cybernetic|terminal|skin|head/i;
+// darken a character's outfit (not skin, hair or eyes) by k, from their own original colours
+function alOutfit(root, k) {
+  if (!root || root.userData.alK === k) return;
+  root.userData.alK = k;
+  root.traverse(o => {
+    if (!o.isMesh || !o.name || !o.material || Array.isArray(o.material) || NOT_CLOTH.test(o.name || '') || NOT_CLOTH.test(o.material.name || '')) return;
+    if (!o.userData.alOrig) { o.material = o.material.clone(); o.userData.alOrig = o.material.color.clone(); }
+    o.material.color.copy(o.userData.alOrig).lerp(AL_DARK, k * .8);
+  });
+}
+// companions: only those who started good or neutral change; born villains (Sevirrus, Kevin, Peter, Josiah...) stay as they are
+function alCompDarkK(id) {
+  const L = COMPANIONS.find(c => c.id === id) || AL_EXTRA.find(c => c.id === id); if (!L || !wanderer) return 0;
+  const b = alBaseOf(L); if (b == null || b <= -15) return 0;
+  return alDarkK(alComp(L).a);
+}
+let alSyncT = 0;
+function alOutfitSync(dt) {
+  if ((alSyncT -= dt) > 0 || !wanderer) return; alSyncT = .5;
+  if (james.ready) alOutfit(james.root, alCompDarkK('james'));
+  if (world.orion) alOutfit(world.orion.root, alCompDarkK('orion'));
+  if (menuOrionR) alOutfit(menuOrionR.root, alCompDarkK('orion'));
+  const pk = alDarkK((wanderer.align && wanderer.align.p) || 0);
+  if (alOutfitSync.pk !== pk) { alOutfitSync.pk = pk; applyLook(wanderer); }
+}
 function alignAct(d, why) {
   if (!wanderer || !d) return;
   const st = alState(); st.p = clamp(st.p + d, -100, 100);
@@ -4796,6 +4828,7 @@ async function alShowModel(L) {
     } catch { obj = null; }
     if (tok !== alView.tok || !obj) return;
     obj.position.set(0, 0, 0); obj.rotation.set(0, 0, 0);
+    if (L) alOutfit(obj, alCompDarkK(L.id));
     if (!L) { obj.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(obj), h = Math.max(.01, b.max.y - b.min.y); obj.scale.multiplyScalar(H / h); obj.updateMatrixWorld(true); const b2 = new THREE.Box3().setFromObject(obj); obj.position.y = -b2.min.y; }
     alView.pivot.add(obj); alView.obj = obj; alView.H = H;
   }
@@ -7024,7 +7057,9 @@ function menuOrionTick(dt) {
   if (state !== 'title') { R.root.visible = false; return; }
   const p = player.position, a = player.rotation.y, fx = Math.sin(a), fz = Math.cos(a);
   const tx = p.x - fz * 1.7 - fx * .4, tz = p.z + fx * 1.7 - fz * .4, dx = tx - R.root.position.x, dz = tz - R.root.position.z, d = Math.hypot(dx, dz);
-  if (d > .6) { const sp = Math.min(2.8, d * 1.8); R.root.position.x += dx / d * sp * dt; R.root.position.z += dz / d * sp * dt; R.mode = 'walk'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 6)); }
+  // start walking only once you're properly ahead, stop once caught up: no flicker between walk and idle
+  if (R.menuWalk ? d < .3 : d > .95) R.menuWalk = !R.menuWalk;
+  if (R.menuWalk) { const sp = clamp(d * 1.8, 1.1, 2.8); R.root.position.x += dx / d * Math.min(d, sp * dt); R.root.position.z += dz / d * Math.min(d, sp * dt); R.mode = 'walk'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 6)); }
   else { R.mode = 'idle'; R.root.rotation.y = angLerp(R.root.rotation.y, a, Math.min(1, dt * 3)); }
   R.root.position.y = height(R.root.position.x, R.root.position.z);
   animRig(R, dt);
@@ -9038,6 +9073,7 @@ function loop() {
   const dt = Math.min(clock.getDelta(), .05);
   time += dt;
   combatTick(dt);
+  alOutfitSync(dt);
   // each region has its own exploration playlist: Antarctica on the ice, Africa on the savanna
   const outside = ex.mode === 'world' && (state === 'explore' || state === 'xpaused' || state === 'wcut' || state === 'xdone');
   sfx.area(outside ? (state === 'explore' ? .75 : .3) : 0, curArea() === 'africa' ? 'af' : 'ax');

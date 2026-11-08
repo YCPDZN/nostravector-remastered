@@ -230,7 +230,13 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   - Starting points come from each character's alignment: Good +45 to +65, Neutral around 0, Evil −55 to −75.
   - James Brown's chart reads **UNKNOWN** with a "?" marker, and he approves of everything you do.
 - **Character model:** a 3D model stands beside the big chart, slowly turning. It shows your own wanderer by default, as they look right now. Click a companion's card and the big chart and model switch to that companion alone, life-size and large. Click the card again, or **Back to you**, to return. Lord Sevirrus keeps his red eyes and neck snap here too.
+- **Darker clothes:** going down the villain path darkens outfits. Nothing changes until −15. From there clothing (never skin, hair or eyes) slides toward near-black, and it's fully dark by −80.
+  - Your wanderer: the suit and accents darken with your own alignment. It works for every species and is back to default colours once you're neutral or good again.
+  - Companions: each companion's outfit follows their own alignment, in the world, on the main menu and in the Alignment viewer. Characters who start out as villains (Sevirrus, Kevin, Peter, Josiah and the like) stay exactly as they are.
 - **Deeds:**
   - Heroic: **Share food** with a companion (key **6** or the companion panel; uses a roast meat or seal ration) +4. Kill a hostile animal while you have companions with you +1. Build a camp heater or signal beacon +1 (counts the first 10).
   - Villainous: **Intimidate** a companion (key **7**) −4. Attack a peaceful buffalo herd −3. Strike a harmless penguin −2. Kill a gazelle while you're at full health, for sport rather than food, −2.
 - **Companion reactions:** heroic companions favour good deeds and dislike evil ones, villainous companions the reverse, and neutral companions simply drift with you. Losing influence never makes anyone leave. Instead, their own alignment slides in the direction you pushed it.
+
+### Fix: companions on the main menu
+- Orion (and James, and any companion standing with you on the main menu) no longer flickers between walking and standing. He starts walking only once you're properly ahead, keeps a steady pace, and stops once he's caught up.
