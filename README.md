@@ -467,3 +467,9 @@ Objective: **Report to the Houses of Parliament.** The door guard tells you the 
 ### Voices, and the nightmare in New London
 - The arrest and New London lines are voiced (`data/arrestVoices.js`: CH2ARREST1–6 for the arrest, CH2ARREST7–10 for the four New London lines).
 - The Chapter II nightmare (James, then Croxian Mascar) happens **once**. You get it the first time you take Orion back to Antarctica, or, if you haven't done that before the arrest, in Parliament Square right after Orion mentions the war. Whichever comes first, it doesn't happen again in the other place. The New London version swaps Orion's pier and ice lines for Westminster ones (CH2ORIONALTVISION1–6, `data/lonOrionVoices.js`). The memories themselves still play out on the Antarctic pier.
+
+### New London music, map, mobile and autosave
+- **Music:** five New London tracks (`data/lonMusic1–5.js`, from CH2LONDON1–5) play in turn while you walk Westminster. Each is fetched only when it's about to play, and they fade out for the nightmare and cutscenes.
+- **Map:** New London has its own drawn minimap and big map: the Thames, Westminster Bridge, the streets, the Palace, Big Ben with its halo, Portcullis House, Parliament Square and the London Eye. Landmark names appear on the big map. The research-station marker only shows in Antarctica.
+- **Mobile:** on phones held sideways, the minimap sits left of the bag and menu buttons, clear of the action button, and the hotbar is a row along the bottom instead of a column through the attack buttons.
+- **Autosave:** when you leave the game (switch apps, lock the phone, close the tab) and every minute while you're free to roam, your current save slot (or the first empty one) is brought up to date, so Continue puts you back exactly where you were. It never saves in the middle of a scene. A save made between the cantina fight and the arrest goes on to New London.

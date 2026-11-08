@@ -489,6 +489,14 @@ body.touch .jopts kbd{display:none}
   #xhud.world .x-prompt{bottom:calc(var(--sb) + 318px)}
   #xhud.world #xAct{right:calc(var(--sr) + 24px)!important;bottom:calc(var(--sb) + 214px)!important}
 }
+/* phones held sideways (short screens): the minimap steps left of the bag and menu buttons, clear of the action button,
+   and the hotbar becomes a row along the bottom instead of a column through the attack buttons */
+@media (pointer:coarse) and (orientation:landscape) and (max-height:520px){
+  .mmap{right:calc(var(--sr) + 128px)!important;top:calc(var(--st) + 10px)!important}
+  .hotbar{left:50%!important;right:auto!important;top:auto!important;bottom:calc(var(--sb) + 8px)!important;transform:translateX(-50%)!important;flex-direction:row!important}
+  #xhud.world .hotbar{top:auto!important}
+  .hotbar button{width:40px;height:34px}
+}
 .loot{position:absolute;left:calc(var(--sl) + 20px);bottom:calc(var(--sb) + 26%);display:flex;flex-direction:column;gap:6px;pointer-events:none}
 .loot div{font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;text-shadow:0 0 8px #000;animation:lootIn 2.6s ease forwards}
 .loot b{display:inline-block;width:8px;height:8px;margin-right:9px;background:var(--c);transform:skewX(-14deg)}
@@ -1030,7 +1038,7 @@ body.touch .al-key{display:none}
   <button class="btn small bm-close" id="bmClose"><span>Close</span></button>
   <h3>EARTH</h3><div class="bm-sub" id="bmSub">ANTARCTICA</div>
   <canvas id="bigmapC"></canvas>
-  <div class="bm-leg"><span><i style="background:#ffffff"></i>You</span><span><i style="background:#9fe6ff"></i>Station</span><span><i style="background:#ff6b5e"></i>Beacon</span><span><i style="background:#ffc94a"></i>Objective</span><span><i style="background:#7fe0a0"></i>James</span><span><i style="background:#ff4a3d"></i>Hostile</span><span><i style="background:#e8edf4"></i>Penguins</span></div>
+  <div class="bm-leg"><span><i style="background:#ffffff"></i>You</span><span><i style="background:#9fe6ff"></i><b id="bmLegSt" style="font-weight:inherit">Station</b></span><span><i style="background:#ff6b5e"></i>Beacon</span><span><i style="background:#ffc94a"></i>Objective</span><span><i style="background:#7fe0a0"></i>James</span><span><i style="background:#ff4a3d"></i>Hostile</span><span><i style="background:#e8edf4"></i>Penguins</span></div>
 </div></div>
 <script type="application/octet-stream" id="cm1"></script><script src="data/cm1.js"></script>
 <script type="application/octet-stream" id="cm2"></script><script src="data/cm2.js"></script>
@@ -1947,11 +1955,13 @@ const sfx = (() => {
     warp() { tone(120, 1800, 1.2, 'sawtooth', .06); noise(1.2, 400, 6000, .15); },
     click() { tone(1200, 900, .05, 'square', .04); },
     // a track of its own (the cantina fight): loops on the music bus, so it follows the music volume
-    playSong(buf, vol = .85) {
+    playSong(buf, vol = .85, onEnd) {
       if (!ctx || !buf || (songSrc && songSrc.buf === buf)) return; this.stopSong(.3);
-      const s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = buf; s.loop = true; g.gain.value = 0; g.gain.setTargetAtTime(vol, ctx.currentTime, .25);
-      s.connect(g); g.connect(musicBus); s.start(); songSrc = { s, g, buf };
+      const s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = buf; s.loop = !onEnd; g.gain.value = 0; g.gain.setTargetAtTime(vol, ctx.currentTime, .25);
+      s.connect(g); g.connect(musicBus); s.start(); const me = songSrc = { s, g, buf };
+      if (onEnd) s.onended = () => { if (songSrc === me) { songSrc = null; onEnd(); } }; // a playlist moves on; a song that was stopped doesn't
     },
+    songBuf() { return songSrc && songSrc.buf; },
     stopSong(t = 1.5) { if (!songSrc || !ctx) return; const { s, g } = songSrc; songSrc = null; g.gain.cancelScheduledValues(ctx.currentTime); g.gain.setTargetAtTime(0, ctx.currentTime, t / 3); try { s.stop(ctx.currentTime + t + .1); } catch {} },
     music(level) { if (level === musicLevel) return; musicLevel = level; if (musicGain && !combatOn) musicGain.gain.setTargetAtTime(level, ctx.currentTime, .5); },
     // combat themes: their own looping layer that ducks the menu theme, crossfading between tracks
@@ -4363,6 +4373,7 @@ async function startChapter1(fromCutscene, place) {
     const own = place || (!fromCutscene && resumePlace && resumePlace.who === activeId ? resumePlace : null) || (wanderer.place && wanderer.place.mode === 'explore' ? wanderer.place : null);
     resumePlace = null;
     if (own && own.where === 'europe') { visitNewLondon(own); return; }
+    if (wanderer.ch2.husbandFound && !wanderer.ch2.arrested) { setCh2({ arrested: true, arrived: true }); visitNewLondon(null); return; } // saved between the fight and the arrest: the Federation already has you
     if (own && (own.where === 'antarctica' || own.area === 'station')) { visitAntarctica(own); return; }
     const af = own && own.area === 'world' ? Object.assign({}, own, { where: 'africa' }) : null; // saves from before the ferry didn't say where; they were all in Africa
     startChapter2(af); return; // exactly where you left off in Africa
@@ -5757,6 +5768,38 @@ function placeJamesOutside() {
 
 
 /* ============ minimap + Earth map ============ */
+// New London has a drawn map of its own (2 px per metre over the whole walkable city): the Thames, the bridge, the streets,
+// the Palace, Big Ben, Portcullis House, the square and the Eye, in the same cold holo style as the ice
+function londonMapCanvas() {
+  if (LON.mapCv) return LON.mapCv;
+  const B = LON.bounds, K = 2, cv = document.createElement('canvas'); cv.width = (B.x1 - B.x0) * K; cv.height = (B.z1 - B.z0) * K;
+  const g = cv.getContext('2d'), X = x => (x - B.x0) * K, Z = z => (z - B.z0) * K;
+  const rect = (x0, x1, z0, z1, f, st) => { g.fillStyle = f; g.fillRect(X(x0), Z(z0), (x1 - x0) * K, (z1 - z0) * K); if (st) { g.strokeStyle = st; g.lineWidth = 2; g.strokeRect(X(x0), Z(z0), (x1 - x0) * K, (z1 - z0) * K); } };
+  const ctr = (w, d, x, z, f) => rect(x - w / 2, x + w / 2, z - d / 2, z + d / 2, f);
+  g.fillStyle = '#16233a'; g.fillRect(0, 0, cv.width, cv.height);
+  // a fine city grid
+  g.strokeStyle = 'rgba(120,190,255,.06)'; g.lineWidth = 1; for (let x = 0; x < cv.width; x += 20 * K) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, cv.height); g.stroke(); } for (let z = 0; z < cv.height; z += 20 * K) { g.beginPath(); g.moveTo(0, z); g.lineTo(cv.width, z); g.stroke(); }
+  // streets
+  const road = '#33445e'; ctr(150, 24, -5, -68, road); ctr(14, 420, -4, -110, road); ctr(12, 250, 10, 80, road); ctr(14, 280, 62, -220, road); ctr(14, 700, 190, -40, road);
+  ctr(110, 120, -50, 0, '#4a5a70'); // the square's paving
+  // the Thames and Westminster Bridge
+  const R = LON.river, Br = LON.bridge; rect(R.x0, R.x1, B.z0, B.z1, '#0e4a6e'); g.strokeStyle = '#5fd2ff'; g.lineWidth = 2; for (const x of [R.x0, R.x1]) { g.beginPath(); g.moveTo(X(x), 0); g.lineTo(X(x), cv.height); g.stroke(); }
+  rect(Br.x0, Br.x1, Br.z0, Br.z1, '#3d6b55', '#7fe0a0');
+  // Parliament Square: lawn, diagonal paths, the emblem
+  rect(-82, -22, -32, 32, '#2f5a3a', '#6fbf7a'); g.strokeStyle = '#8fa0b0'; g.lineWidth = 4 * K / 2; g.beginPath(); g.moveTo(X(-82), Z(-32)); g.lineTo(X(-22), Z(32)); g.moveTo(X(-82), Z(32)); g.lineTo(X(-22), Z(-32)); g.stroke();
+  g.fillStyle = '#7fe6ff'; g.beginPath(); g.arc(X(-52), Z(0), 3 * K, 0, Math.PI * 2); g.fill();
+  // every other building (towers, Whitehall)
+  for (const c of LON.cols) { if (c[1] - c[0] < 4) continue; rect(c[0], c[1], c[2], c[3], '#4f6d8f', 'rgba(150,215,255,.35)'); }
+  // the landmarks, picked out
+  rect(20, 66, -28, 170, '#c9ad6e', '#ffe2a0');                                  // the Palace of Westminster
+  ctr(22, 22, 40, 158, '#e6c983'); g.strokeStyle = '#fff1c8'; g.strokeRect(X(29), Z(147), 22 * K, 22 * K); // Victoria Tower
+  ctr(13, 13, 52, -40, '#ffd36a'); g.strokeStyle = '#7fe6ff'; g.lineWidth = 3; g.beginPath(); g.arc(X(52), Z(-40), 11 * K, 0, Math.PI * 2); g.stroke(); // Big Ben and its halo
+  rect(16, 64, -142, -92, '#8a6a44', '#e0b27a');                                  // Portcullis House
+  g.strokeStyle = '#e8eef4'; g.lineWidth = 3 * K; g.beginPath(); g.moveTo(X(214), Z(-232)); g.lineTo(X(214), Z(-108)); g.stroke(); // the London Eye, edge-on
+  g.fillStyle = '#9fe6ff'; for (let i = 0; i <= 12; i++) { g.beginPath(); g.arc(X(214), Z(-232 + i * 124 / 12), 1.6 * K, 0, Math.PI * 2); g.fill(); }
+  return (LON.mapCv = cv);
+}
+const LON_LABELS = [[43, 112, 'HOUSES OF PARLIAMENT'], [52, -54, 'BIG BEN'], [40, -150, 'PORTCULLIS HOUSE'], [-52, -40, 'PARLIAMENT SQUARE'], [214, -244, 'LONDON EYE'], [125, -96, 'WESTMINSTER BRIDGE'], [125, 230, 'RIVER THAMES'], [-4, -250, 'WHITEHALL']];
 const MAP = { TILE: 64, PX: 32, tiles: new Map(), seed: null, queue: [], big: false };
 function mapTileKey(tx, tz) { return tx + ',' + tz; }
 function genMapTile(tx, tz) {
@@ -5782,7 +5825,7 @@ function genMapTile(tx, tz) {
   return cv;
 }
 function mapTiles(x0, z0, x1, z1, budget) {
-  if (MAP.seed !== world.seed) { MAP.tiles.clear(); MAP.seed = world.seed; }
+  if (MAP.seed !== world.seed + ':' + curArea()) { MAP.tiles.clear(); MAP.seed = world.seed + ':' + curArea(); } // each region has its own tiles
   const T = MAP.TILE, out = [];
   for (let tz = Math.floor(z0 / T); tz <= Math.floor(z1 / T); tz++) for (let tx = Math.floor(x0 / T); tx <= Math.floor(x1 / T); tx++) {
     const k = mapTileKey(tx, tz); let t = MAP.tiles.get(k);
@@ -5838,7 +5881,7 @@ function compName(id) {
 // story companions in your party, plus any custom or imported characters you've brought along
 const mapCompanions = () => [...new Set([...(wanderer ? partyNow() : []), ...((wanderer && wanderer.party) || []).filter(id => !PARTY[id])])];
 function mapMarkers() {
-  const m = [{ x: 0, z: 0, kind: 'station' }];
+  const m = curArea() === 'antarctica' ? [{ x: 0, z: 0, kind: 'station' }] : []; // the research station is only on the ice
   for (const o of world.placed) if (o.data.t === 'beacon') m.push({ x: o.data.x, z: o.data.z, kind: 'beacon' });
   for (const t of tpNetwork()) if (t.area === curArea()) m.push({ x: t.x, z: t.z, kind: 'tele' });
   for (const mc of merchantsHere()) if (mc.px != null) m.push({ x: mc.px, z: mc.pz, kind: 'merchant' });
@@ -5900,15 +5943,25 @@ function renderMap(cv, range, headingUp, budget, round) {
   if (round) { cx.beginPath(); cx.arc(W / 2, H / 2, R, 0, Math.PI * 2); cx.clip(); }
   cx.fillStyle = '#0a1220'; cx.fillRect(0, 0, W, H);
   const span = range * (headingUp ? 1.45 : Math.max(W, H) / Math.min(W, H) * 1.05);
-  const tiles = mapTiles(p.x - span, p.z - span, p.x + span, p.z + span, budget);
+  const lon = curArea() === 'europe', tiles = lon ? [] : mapTiles(p.x - span, p.z - span, p.x + span, p.z + span, budget);
   cx.save(); cx.translate(W / 2, H / 2); cx.rotate(th); cx.scale(k, k); cx.translate(-p.x, -p.z);
   cx.imageSmoothingEnabled = true;
+  if (lon) { const Bd = LON.bounds; cx.drawImage(londonMapCanvas(), Bd.x0, Bd.z0, Bd.x1 - Bd.x0, Bd.z1 - Bd.z0); }
   for (const [ox, oz, t] of tiles) cx.drawImage(t, ox - .05, oz - .05, MAP.TILE + .1, MAP.TILE + .1);
   // a faint grid every 100 m
   cx.strokeStyle = 'rgba(150,220,255,.07)'; cx.lineWidth = 1 / k;
   for (let g = Math.ceil((p.x - span) / 100) * 100; g < p.x + span; g += 100) { cx.beginPath(); cx.moveTo(g, p.z - span); cx.lineTo(g, p.z + span); cx.stroke(); }
   for (let g = Math.ceil((p.z - span) / 100) * 100; g < p.z + span; g += 100) { cx.beginPath(); cx.moveTo(p.x - span, g); cx.lineTo(p.x + span, g); cx.stroke(); }
   cx.restore();
+  // New London's landmarks, named on the big map (the minimap is too small for words; its shapes say enough)
+  if (lon && !round) {
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    for (const [lx, lz, name] of LON_LABELS) {
+      const [x, y] = toS(lx, lz); if (x < 0 || x > W || y < 0 || y > H) continue;
+      cx.font = `600 ${10 * dpr}px system-ui,sans-serif`; cx.lineWidth = 3 * dpr; cx.lineJoin = 'round'; cx.strokeStyle = 'rgba(6,16,26,.85)'; cx.strokeText(name, x, y); cx.fillStyle = '#e8f6ff'; cx.fillText(name, x, y);
+    }
+    cx.textBaseline = 'alphabetic';
+  }
   // markers; ones out of view sit on the rim
   const ms = 5.5 * dpr * (round ? 1 : 1.3), lim = round ? R - ms * 1.6 : 0;
   for (const m of mapMarkers()) {
@@ -5943,7 +5996,7 @@ function earthCoords(x, z) {
 let mapAcc = 0;
 function updateMinimap(dt) {
   mapAcc += dt;
-  if (MAP.big) { renderMap($('#bigmapC'), 320, false, 6, false); $('#bmSub').textContent = `${AREA_INFO[curArea()].name.toUpperCase()} · ${earthCoords(player.position.x, player.position.z)}`; return; }
+  if (MAP.big) { $('#bmLegSt').textContent = curArea() === 'antarctica' ? 'Station' : 'Teleporter'; renderMap($('#bigmapC'), 320, false, 6, false); $('#bmSub').textContent = `${AREA_INFO[curArea()].name.toUpperCase()} · ${earthCoords(player.position.x, player.position.z)}`; return; }
   if (mapAcc < 1 / 30) return; mapAcc = 0;
   renderMap($('#mmapC'), 110, true, 2, true);
   const q = questTarget(), p = player.position;
@@ -8832,6 +8885,31 @@ async function visitNewLondon(pl) {
   const f = $('#fade'); f.style.transition = 'opacity 2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 2100);
   await arriveNewLondon(pl && pl.area === 'world' ? pl : null);
 }
+/* ---- New London's music: five tracks (CH2LONDON1-5) played in turn while you walk Westminster. Each lives in its own
+   data/lonMusicN.js and is only fetched when it's about to play, so the city doesn't slow the game's first load. ---- */
+const lonMus = { on: false, i: -1, gen: 0, cache: {}, cur: null, N: 5 };
+function lonMusicLoad(n) {
+  if (lonMus.cache[n]) return lonMus.cache[n];
+  return (lonMus.cache[n] = new Promise(res => {
+    const id = 'lonMusic' + n;
+    if (!document.getElementById(id)) { const j = document.createElement('script'); j.type = 'application/json'; j.id = id; document.body.appendChild(j); }
+    const sc = document.createElement('script'); sc.src = `data/${id}.js`;
+    sc.onload = () => sfx.loadClips(id).then(c => res((c && c[0]) || null)).catch(() => res(null));
+    sc.onerror = () => { delete lonMus.cache[n]; res(null); }; document.body.appendChild(sc);
+  }));
+}
+async function lonMusicNext() {
+  const gen = ++lonMus.gen; lonMus.i = (lonMus.i + 1) % lonMus.N;
+  const b = await lonMusicLoad(lonMus.i + 1);
+  if (gen !== lonMus.gen || !lonMus.on || !b) return;
+  lonMus.cur = b; sfx.playSong(b, .5, () => { if (lonMus.on) lonMusicNext(); });
+  lonMusicLoad((lonMus.i + 1) % lonMus.N + 1); // have the next one ready
+}
+function lonMusicTick() {
+  const want = curArea() === 'europe' && ex.mode === 'world' && (state === 'explore' || state === 'xpaused' || state === 'xdone');
+  if (want && !lonMus.on) { lonMus.on = true; lonMusicNext(); }
+  else if (!want && lonMus.on) { lonMus.on = false; lonMus.gen++; if (lonMus.cur && sfx.songBuf() === lonMus.cur) sfx.stopSong(2); lonMus.cur = null; } // the nightmare, a cutscene, or leaving the city: it fades
+}
 function londonGuardsTick(dt) {
   if (!LON.guards || curArea() !== 'europe') return;
   const p = player.position;
@@ -9774,6 +9852,27 @@ function doSave(i) {
   sfx.chime(); renderSlots(); refreshMenu(); refreshDirty();
   slotMsg(`Saved to slot ${i + 1}`);
 }
+// autosave: whenever you leave the game (switch app, lock the phone, close the tab) and every minute while you're free to roam,
+// your current slot (or the first empty one) is quietly brought up to date, so Continue puts you back exactly where you were
+function canAutosave() {
+  if (!roster.length || ex.mode !== 'world' && ex.mode !== 'station') return false;
+  if (!(state === 'explore' || state === 'xpaused') || sceneLocked()) return false;
+  if (arr.on || cant.on || fb.on || (typeof ft !== 'undefined' && ft.on)) return false; // never in the middle of a scene
+  return (wanderer.chapter | 0) >= 1;
+}
+function autosave() {
+  if (!canAutosave()) return false;
+  let i = lastSlot >= 0 ? lastSlot : slots.findIndex(sl => !sl); if (i < 0) return false;
+  const place = rememberPlace();
+  slots[i] = { savedAt: Date.now(), roster: JSON.parse(JSON.stringify(roster)), activeId, place, auto: true };
+  try { store.set('nv_slots', slots); } catch { return false; }
+  lastSlot = i; dirty = false; try { refreshDirty(); } catch {}
+  return true;
+}
+let autoT = 0;
+setInterval(() => { if (state === 'explore' && dirty !== null && ++autoT >= 6) { autoT = 0; autosave(); } }, 10000);
+addEventListener('pagehide', autosave);
+document.addEventListener('visibilitychange', () => { if (document.hidden) autosave(); });
 function doLoad(i) {
   const sl = slots[i]; if (!sl) return;
   loadSlotData(sl); lastSlot = i;
@@ -11425,6 +11524,7 @@ function loop() {
   if (state === 'intro' || state === 'introOut') {
     updateIntro(dt); sfx.music(0); if (intro.scene === 'earth') renderer.render(eScene, eCam); else renderer.render(gScene, gCam); return;
   }
+  lonMusicTick();
   if (state === 'cutscene') { updateCutscene(dt); sfx.music(0); renderer.render(aScene, camera); return; }
   if (state === 'dream') { tickDialog(dt); updateDream(dt); sfx.music(0); renderer.render(dScene, camera); return; }
   if (state === 'farmCut') { farmCutTick(dt); tickDialog(dt); renderer.render(fhc.scene, camera); return; }
