@@ -7333,12 +7333,36 @@ function dressTownsfolk(src, d) {
   }
   return m;
 }
+// phones: fold each townsperson's many small parts into one mesh per limb (vertex colours, one shared material),
+// so a person costs a handful of draw calls instead of a hundred
+const TOWN_SKIN = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .85, metalness: .05 });
+function bakeRig(R) {
+  const holders = new Set([R.model, R.ra, R.la, R.raL, R.laL, R.rl, R.ll, R.rk, R.lk, R.neck, R.head, R.torso, R.hips].filter(Boolean));
+  R.root.updateMatrixWorld(true);
+  const groups = new Map();
+  R.model.traverse(o => {
+    if (!o.isMesh || o.isSkinnedMesh) return;
+    const m = o.material; if (Array.isArray(m) || m.map || m.transparent || (m.emissive && m.emissive.getHex())) return;
+    let a = o.parent; while (a && !holders.has(a)) a = a.parent; if (!a) return;
+    if (!groups.has(a)) groups.set(a, []); groups.get(a).push(o);
+  });
+  for (const [a, list] of groups) {
+    const inv = new THREE.Matrix4().copy(a.matrixWorld).invert(), parts = []; let n = 0;
+    for (const o of list) { const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld)); parts.push([g, o.material.color]); n += g.attributes.position.count; }
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), colr = new Float32Array(n * 3); let k = 0;
+    for (const [g, c] of parts) { const cnt = g.attributes.position.count; pos.set(g.attributes.position.array, k * 3); if (g.attributes.normal) nor.set(g.attributes.normal.array, k * 3); for (let i = 0; i < cnt; i++) { colr[(k + i) * 3] = c.r; colr[(k + i) * 3 + 1] = c.g; colr[(k + i) * 3 + 2] = c.b; } k += cnt; g.dispose(); }
+    const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); mg.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); mg.setAttribute('color', new THREE.BufferAttribute(colr, 3));
+    if (!parts.length || !parts[0][0]) continue;
+    const mesh = new THREE.Mesh(mg, TOWN_SKIN); mesh.castShadow = true; mesh.frustumCulled = false; a.add(mesh);
+    for (const o of list) { o.parent.remove(o); o.material.dispose(); }
+  }
+}
 async function spawnTownsfolk() {
   if (TOWN.npcs.length || TOWN.spawning) return; TOWN.spawning = true;
   for (const d of TOWNSFOLK) {
     try {
       const src = await townModel(d.sp); if (!src || !world.town) continue;
-      const R = autoRig(dressTownsfolk(src, d), d.sp === 'human' ? (d.female ? 1.7 : 1.78) : SPECIES[d.sp].height * .98); armRig(R, 'none');
+      const R = autoRig(dressTownsfolk(src, d), d.sp === 'human' ? (d.female ? 1.7 : 1.78) : SPECIES[d.sp].height * .98); armRig(R, 'none'); try { bakeRig(R); } catch (e) { console.warn('bakeRig', e); }
       const spot = d.at && TOWN.spots[d.at], z = d.zone && TZ[d.zone];
       const x = spot ? spot[0] : rand(z[0], z[1]), zz = spot ? spot[1] : rand(z[2], z[3]);
       R.root.position.set(x, townNpcY(x, zz), zz); R.root.rotation.y = rand(0, 6.28);
@@ -7368,9 +7392,12 @@ function townTick(dt) {
     else if (c2.metNico && !c2.townFound) { setCh2({ townFound: true }); notice('Ad-Nostra', 'ASK THE TOWNSFOLK', 3600); }
   }
   for (const n of TOWN.npcs) {
-    const R = n.R, o = R.root.position; R.root.visible = near;
+    const R = n.R, o = R.root.position, dP = Math.hypot(p.x - o.x, p.z - o.z);
+    R.root.visible = near && dP < 75;
     if (!near) continue;
-    const dP = Math.hypot(p.x - o.x, p.z - o.z), talking = world.townTalk === n && ex.dlg;
+    const sh = dP < 28; if (n.sh !== sh) { n.sh = sh; R.root.traverse(m => { if (m.isMesh) m.castShadow = sh; }); }
+    if (!R.root.visible && !n.home) { if (n.tgt) { o.x = n.tgt[0]; o.z = n.tgt[1]; n.tgt = null; n.wait = rand(2, 8); } continue; }
+    const talking = world.townTalk === n && ex.dlg;
     if (talking || (dP < 3.2 && state === 'explore')) {
       R.mode = 'idle'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - o.x, p.z - o.z), Math.min(1, dt * 4));
     } else if (n.home) {
