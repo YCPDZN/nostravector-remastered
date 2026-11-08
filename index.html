@@ -1035,7 +1035,7 @@ body.touch .al-key{display:none}
 <script type="application/json" id="orionFind"></script><script src="data/orionFind.js"></script>
 <script type="application/json" id="narrCh2"></script><script src="data/narrCh2.js"></script>
 <script type="application/json" id="orionWake"></script><script src="data/orionWake.js"></script>
-<script type="application/json" id="orionCmd"></script><script src="data/orionCmd.js"></script><script type="application/json" id="callVoices"></script><script src="data/callVoices.js"></script><script type="application/json" id="doorVoices"></script><script src="data/doorVoices.js"></script><script type="application/octet-stream" id="nicoGlb"></script><script src="data/nicoGlb.js"></script><script type="application/json" id="farmVoices"></script><script src="data/farmVoices.js"></script><script type="application/json" id="antOrionVoices"></script><script src="data/antOrionVoices.js"></script>
+<script type="application/json" id="orionCmd"></script><script src="data/orionCmd.js"></script><script type="application/json" id="callVoices"></script><script src="data/callVoices.js"></script><script type="application/json" id="doorVoices"></script><script src="data/doorVoices.js"></script><script type="application/octet-stream" id="nicoGlb"></script><script src="data/nicoGlb.js"></script><script type="application/json" id="farmVoices"></script><script src="data/farmVoices.js"></script><script type="application/json" id="antOrionVoices"></script><script src="data/antOrionVoices.js"></script><script type="application/json" id="antOrionFlashVoices"></script><script src="data/antOrionFlashVoices.js"></script>
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -7655,7 +7655,8 @@ async function startFlashback() {
   resetRig(); inner.rotation.set(0, 0, 0); inner.position.set(0, 0, 0);
   // Orion just behind you, still finding his feet on the boards
   if (world.orion) { const R = world.orion.root; R.visible = true; R.position.set(p.x - Math.sin(D.rot) * 1.8 + Math.cos(D.rot) * 1.2, D.y, p.z - Math.cos(D.rot) * 1.8 - Math.sin(D.rot) * 1.2); R.rotation.y = D.rot; world.orion.mode = 'idle'; }
-  const [J, C] = await Promise.all([ensureJames().then(() => james.ready ? james : null).catch(() => null), loadCroxian(), sfx.loadClips('betrayalVoices'), sfx.loadClips('croxPre'), croxClips()]);
+  const [J, C, , , , lines, replies] = await Promise.all([ensureJames().then(() => james.ready ? james : null).catch(() => null), loadCroxian(), sfx.loadClips('betrayalVoices'), sfx.loadClips('croxPre'), croxClips(), sfx.loadClips('antOrionFlashVoices'), sfx.loadClips('antOrionVoices')]);
+  fb.lines = lines || []; fb.replies = replies || [];
   fb.J = J; fb.C = C;
   if (C) { wScene.add(C.root); C.root.visible = false; }
   if (J) { wScene.add(J.root); J.root.visible = false; }
@@ -7777,13 +7778,12 @@ function endFlashback() {
   if (O) { O.root.visible = true; O.root.position.set(p.x + Math.sin(H.rot) * 1.15, H.y, p.z + Math.cos(H.rot) * 1.15); O.root.rotation.y = H.rot + Math.PI; O.mode = 'idle'; }
   fb.on = false; state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta();
   setCh2({ antFlashback: true });
-  sfx.loadClips('antOrionVoices').then(c => { fb.replies = c || []; });
   const after = () => notice('The ferry terminal', 'ANTARCTICA', 3000);
-  openDialog('ORION MASCAR', FLASH_ORION, false, () => openChoice('ORION MASCAR', [
+  openDialog('ORION MASCAR', FLASH_ORION, false, () => openChoice('ORION MASCAR', [ // voiced: CH2ORIONANTARCTICA1–6
     // voiced: CH2ANTORIONGOOD1–3 and CH2ANTORIONBAD1–4 (antOrionVoices: the three GOOD lines, then the four BAD)
     { text: 'Got it.', onPick: () => { influence('orion', 10); setCh2({ antChoice: 'calm' }); openDialog('ORION MASCAR', FLASH_ORION_CALM, false, after, (fb.replies || []).slice(0, 3)); } },
     { text: 'I will find Croxian. And when I do…', onPick: () => { influence('orion', -20); setCh2({ antChoice: 'vengeance' }); openDialog('ORION MASCAR', FLASH_ORION_VENGEANCE, false, after, (fb.replies || []).slice(3, 7)); } }
-  ]));
+  ]), fb.lines);
 }
 const CALL_SEQ = [
   ['ORION MASCAR', ['Hold on. That’s my phone.', 'Hello? Slow down, slow down. I can’t understand you. Who is this?']],

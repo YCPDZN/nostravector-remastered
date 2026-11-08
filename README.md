@@ -413,7 +413,7 @@ The first time you step off the ferry in Antarctica with Orion, it all comes bac
    - The choice is saved as `ch2.antChoice` (`calm` or `vengeance`) for later chapters. Influence shows in Orion's alignment panel and in the loot feed (*Orion · influence +10*).
    - Dialogue choices are new to the game. Any conversation can now offer them with `openChoice(speaker, options)`, and `influence(companion, amount)` changes one companion's influence directly.
 
-The flashback uses the voice lines James and Croxian already have. Orion's two replies are voiced and lip-synced: CH2ANTORIONGOOD1–3 for "Got it." and CH2ANTORIONBAD1–4 for the Croxian reply. They're packed as `data/antOrionVoices.js`, with the sources in `assets/audio/orion_ch2_antarctica/`. His six lines before the choice are still text only. The flag is `ch2.antFlashback`.
+The flashback uses the voice lines James and Croxian already have. Orion's two replies are voiced and lip-synced: CH2ANTORIONGOOD1–3 for "Got it." and CH2ANTORIONBAD1–4 for the Croxian reply. They're packed as `data/antOrionVoices.js`, with the sources in `assets/audio/orion_ch2_antarctica/`. His six lines before the choice are voiced too: CH2ORIONANTARCTICA1–6, packed as `data/antOrionFlashVoices.js`, with the sources in the same folder. The flag is `ch2.antFlashback`.
 - **Fix:** the Chapter I super blizzard can never start again once you've escaped Antarctica.
 
 ### Fix: saves put you back exactly where you left off (both chapters)
