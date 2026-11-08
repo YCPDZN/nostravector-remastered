@@ -8978,10 +8978,21 @@ function pediaList() {
   pediaPreview();
 }
 function pdResolve(L) {
-  const d = L.dyn && L.dyn(chNow()); if (!d) return L;
-  const R = Object.assign({}, L, d);
-  if (d.paras2) { R.paras = [...L.paras]; R.paras[1] = d.paras2; }
-  return R;
+  const d = L.dyn && L.dyn(chNow());
+  const R = d ? Object.assign({}, L, d) : L;
+  if (d && d.paras2) { R.paras = [...L.paras]; R.paras[1] = d.paras2; }
+  return pdAlign(R);
+}
+// companions' files follow their alignment in this save (a new game shows their original alignment)
+function pdAlign(R) {
+  const C = wanderer && wanderer.align && wanderer.align.c && wanderer.align.c[R.id];
+  if (!C || !COMPANIONS.some(c => c.id === R.id)) return R;
+  const orig = alFact(R); if (!(orig in AL_BASE)) return R;
+  const law = /^Lawful/.test(orig) ? 'Lawful' : /^Chaotic/.test(orig) ? 'Chaotic' : 'Neutral';
+  const moral = C.a >= 15 ? 'Good' : C.a <= -15 ? 'Evil' : 'Neutral';
+  const now = law === 'Neutral' && moral === 'Neutral' ? 'True Neutral' : `${law} ${moral}`;
+  if (now === orig) return R;
+  return Object.assign({}, R, { facts: R.facts.map(f => f[0] === 'Alignment' ? ['Alignment', `${now} · was ${orig}`] : f) });
 }
 function pediaEntry(i) {
   const L0 = pdSet()[i]; if (!L0) return; pedia.cur = L0; const L = pdResolve(L0);
@@ -9056,6 +9067,7 @@ function pediaPreview() {
     if (L.sil) { const hx = Math.sin(ang) * 2.3, hz = n > 1 ? Math.cos(ang) * 1.1 - 2.6 : -2.4; const g1 = glowSprite(0xff3b2f, L.h * 2.4, .8); g1.position.set(hx, L.h * .55, hz); ccBg.add(g1); }
     (L.tag ? loadFigure(L) : loadLeader(L.sp)).then(h => {
     if (!h || tok !== cc.loadTok || state !== 'pedia') return;
+    if (pedia.tab === 'companions') alOutfit(h, alCompDarkK(L.id));
     h.userData.keep = true; h.position.set(Math.sin(ang) * 2.3, 0, n > 1 ? Math.cos(ang) * 1.1 - .9 : 0); h.rotation.y = -ang * .5;
     ccRoot.add(h);
   }); });
