@@ -490,3 +490,6 @@ Orion has known him since the war and gets the last word either way. Afterwards 
   - **Nico** (level 30, two pistols) beats them easily, with Orion backing her up.
   - Board the ship and it takes off, followed by "Escaped New London" and a Chapter II to-be-continued screen. If you die, the escape restarts from the Palace door.
 - Voiced: the trial (`data/trialVoices.js`, CH2TRIAL1–22) and the escape shouts (`data/escapeVoices.js`, CH2ESCAPE1–9). The guard's summons (CH2SUMMON1) is text only for now.
+
+### Lip sync for everyone who speaks
+Hawthorne, Darius, Nico, Malia and the HFOS guards move their mouths with their lines, and Croxian's mask eyes flare as he speaks. Orion's mouth moves through the trial and the escape too. Recorded lines follow the voice; lines without a recording still move the mouth while the words appear. On phones, **Skip** during the trial jumps straight to the escape.
