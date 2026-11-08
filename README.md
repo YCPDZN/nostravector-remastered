@@ -196,3 +196,14 @@ The game never autosaves. It writes progress only when you choose **Save game**,
 ### Africa music and the split build
 - **Africa has its own music:** five exploration tracks (CH2AFRICA1–5) play as a shuffled playlist with quiet gaps between them, the same way Antarctica's do. Crossing between Antarctica and Africa fades one playlist out and starts the other.
 - **No more single-file limit:** the embedded assets moved out of `index.html` (which was 94 MB, close to GitHub's 100 MB limit) into `data/`. The game itself hasn't changed.
+
+### African wildlife
+Africa's savanna now has its own animals, all built and animated in code. They trot at walking pace, gallop when running, graze when standing, and swish their tails.
+- **Passive: Thomson's gazelle.** They roam in herds of 5–9 and the whole herd bolts when you get within about 15 m. You can hunt them for raw meat (and sometimes cloth). James and Orion never shoot them.
+- **Neutral: Cape buffalo.** They graze in groups of three and ignore you until you hit one. Then the whole herd charges (*The buffalo herd charges!*). They give up after about 12 seconds or once you're far enough away. Companions only shoot a buffalo that's already charging.
+- **Predators:**
+  - **Lions** hunt in pairs. A lion stalks slowly at first, then charges hard.
+  - **Spotted hyenas** run in packs of three. When one sees you, the whole pack comes, and they fan out around you instead of queueing in a line.
+- **New food:** animals drop **Raw meat**. Craft **Roast meat** from 1 raw meat and 1 wood; it restores 30 health. Seal rations need ice, so this gives Africa its own way to heal.
+- **Combat music:** fights in Africa use the same Predator combat themes as Antarctica.
+- **Blacking out in Africa:** you come to outside Orion's home. Once Orion has joined you, he carries you back there.

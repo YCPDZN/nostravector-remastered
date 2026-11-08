@@ -4548,16 +4548,18 @@ const ITEMS = {
   heater: { name: 'Camp heater', kind: 'place', short: 'HEAT', desc: 'Restores your health while you stand close to it.', cost: { scrap: 4, stone: 2, crystal: 1 } },
   beacon: { name: 'Signal beacon', kind: 'place', short: 'BCN', desc: 'A tall marker. Your HUD shows the distance to the nearest one.', cost: { scrap: 3, crystal: 2, cloth: 1 } },
   medkit: { name: 'Med kit', kind: 'use', short: 'MED', desc: 'Restores 40 health.', heal: 40, cost: { cloth: 2, ice: 1 } },
+  roast: { name: 'Roast meat', kind: 'use', short: 'ROAST', desc: 'Savanna game cooked over a wood fire. Restores 30 health.', heal: 30, cost: { meat: 1, wood: 1 } },
   ration: { name: 'Seal ration', kind: 'use', short: 'FOOD', desc: 'Rendered blubber and meltwater. Restores 25 health.', heal: 25, cost: { blubber: 1, ice: 1 } },
   lining: { name: 'Insulated lining', kind: 'tool', short: 'LINE', desc: 'Skua down sewn into your suit: +20 max health while you carry it.', cost: { feather: 4, cloth: 2, blubber: 1 } },
   blubber: { name: 'Blubber', kind: 'res', color: '#d9c39a' },
   feather: { name: 'Skua feather', kind: 'res', color: '#8a6a52' },
+  meat: { name: 'Raw meat', kind: 'res', color: '#b8483e' },
   wood: { name: 'Wood', kind: 'res', color: '#a0703f' },
   obsidian: { name: 'Obsidian', kind: 'res', color: '#6a5a82' },
   metal: { name: 'Metal plate', kind: 'res', color: '#aab4bf', desc: 'Scrap hammered flat and refined. Builds metal pieces and teleporters.', cost: { scrap: 3 }, bench: true }
 };
-const RES_IDS = ['stone', 'ice', 'wood', 'scrap', 'metal', 'obsidian', 'crystal', 'cloth', 'blubber', 'feather'];
-const CRAFT_IDS = ['metal', 'pick', 'opick', 'medkit', 'ration', 'lining', 'lamp', 'wall', 'heater', 'beacon'];
+const RES_IDS = ['stone', 'ice', 'wood', 'scrap', 'metal', 'obsidian', 'crystal', 'cloth', 'blubber', 'feather', 'meat'];
+const CRAFT_IDS = ['metal', 'pick', 'opick', 'medkit', 'ration', 'roast', 'lining', 'lamp', 'wall', 'heater', 'beacon'];
 const LOOT = {
   rock: () => [['stone', 2 + (Math.random() < .5)], Math.random() < .2 && ['scrap', 1]],
   ice: () => [['ice', 2], Math.random() < .3 && ['crystal', 1]],
@@ -5399,7 +5401,7 @@ function mapMarkers() {
   for (const t of tpNetwork()) if (t.area === curArea()) m.push({ x: t.x, z: t.z, kind: 'tele' });
   for (const mc of merchantsHere()) if (mc.px != null) m.push({ x: mc.px, z: mc.pz, kind: 'merchant' });
   if (companionOn() && james.ready && james.root.parent === wScene && james.root.visible) m.push({ x: james.root.position.x, z: james.root.position.z, kind: 'james' });
-  for (const c of fauna.list) if (!c.dead) m.push({ x: c.x, z: c.z, kind: c.D.passive ? 'penguin' : 'enemy' });
+  for (const c of fauna.list) if (!c.dead) m.push({ x: c.x, z: c.z, kind: c.D.passive || (c.D.neutral && c.state !== 'hunt') ? 'penguin' : 'enemy' });
   const q = questTarget(); if (q) m.push(Object.assign({ kind: 'quest' }, q));
   return m;
 }
@@ -5701,7 +5703,19 @@ const FAUNA = {
   penguin: { name: 'Emperor penguin', hp: 1, passive: true, speed: 1.0, r: .45 },
   skua: { name: 'South polar skua', hp: 16, dmg: 6, speed: 8, xp: 30, r: .6, reach: 1.6, cd: 4.5, loot: () => [['feather', 1 + (Math.random() < .5)]] },
   leopard: { name: 'Leopard seal', hp: 55, dmg: 12, speed: 4.4, xp: 70, r: 1.2, reach: 2.2, aggro: 22, cd: 1.5, loot: () => [['blubber', 2], Math.random() < .35 && ['cloth', 1]] },
-  elephant: { name: 'Elephant seal bull', hp: 120, dmg: 20, speed: 3.4, xp: 130, r: 1.8, reach: 3, aggro: 9, cd: 2.2, loot: () => [['blubber', 4], Math.random() < .5 && ['cloth', 1]] }
+  elephant: { name: 'Elephant seal bull', hp: 120, dmg: 20, speed: 3.4, xp: 130, r: 1.8, reach: 3, aggro: 9, cd: 2.2, loot: () => [['blubber', 4], Math.random() < .5 && ['cloth', 1]] },
+  // ---- African savanna (beast: prey = runs, neutral = only fights back, pred = hunts you) ----
+  gazelle: { name: 'Thomson’s gazelle', beast: 'prey', passive: true, huntable: true, hp: 14, speed: 2.2, run: 11, shy: 15, xp: 20, r: .5, loot: () => [['meat', 1], Math.random() < .3 && ['cloth', 1]] },
+  buffalo: { name: 'Cape buffalo', beast: 'neutral', neutral: true, hp: 140, dmg: 18, speed: 1.6, run: 7.2, xp: 120, r: 1.4, reach: 2.6, cd: 1.8, leash: 34, loot: () => [['meat', 3], ['cloth', 1]] },
+  lion: { name: 'Lion', beast: 'pred', hp: 85, dmg: 16, speed: 1.8, run: 6.9, xp: 110, r: 1.1, reach: 2.3, aggro: 20, leash: 55, cd: 1.6, loot: () => [['meat', 2], ['cloth', 1]] },
+  hyena: { name: 'Spotted hyena', beast: 'pred', pack: true, hp: 30, dmg: 7, speed: 2, run: 6.4, xp: 45, r: .7, reach: 1.7, aggro: 17, leash: 50, cd: 1.15, loot: () => [['meat', 1], Math.random() < .4 && ['cloth', 1]] }
+};
+const BEASTS = {
+  // L torso length · W girth · H leg length · neck/head sizes · colours
+  gazelle: { L: .9, W: .26, H: .62, neck: .42, head: .13, legW: .03, coat: ['plain', '#c48a4e', '#a8703c'], belly: 0xf2ece0, horns: 'gazelle', tail: .18 },
+  buffalo: { L: 1.9, W: .62, H: .72, neck: .3, head: .3, legW: .1, coat: ['plain', '#2e2a28', '#1c1918'], belly: 0x2a2624, horns: 'buffalo', tail: .55 },
+  lion: { L: 1.55, W: .42, H: .66, neck: .32, head: .26, legW: .085, coat: ['plain', '#c8954f', '#b07c3a'], belly: 0xdcb880, mane: 0x5a3416, tail: .8, tuft: true },
+  hyena: { L: 1.05, W: .32, H: .58, neck: .26, head: .2, legW: .055, coat: ['spots', '#a08a66', '#4a3a2a'], belly: 0xb8a582, ears: true, slope: .22, tail: .3 }
 };
 const fauna = { list: [], spawnT: 0, msgT: 0 };
 function fMesh(geo, mat, parent, x = 0, y = 0, z = 0) { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; parent.add(m); return m; }
@@ -5770,6 +5784,102 @@ function buildSeal(kind) {
   g.userData = { segs, head, jaw, girth };
   return g;
 }
+function buildBeast(type) {
+  const B = BEASTS[type], M = fMats(), g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const S = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .8 }, o));
+  const coat = new THREE.MeshStandardMaterial({ map: patternTex(B.coat[0], B.coat[1], B.coat[2], type.length * 13), roughness: .85 }), belly = S(B.belly), hoof = S(0x1a1612);
+  const baseY = B.H + B.W * .55, slope = B.slope || 0; body.position.y = baseY;
+  const t = fMesh(new THREE.SphereGeometry(1, 18, 12), coat, body); t.scale.set(B.W, B.W * 1.05, B.L * .55); t.rotation.x = -slope * .5;
+  const bl = fMesh(new THREE.SphereGeometry(1, 14, 10), belly, body, 0, -B.W * .35, 0); bl.scale.set(B.W * .85, B.W * .6, B.L * .45);
+  // legs hang from shoulders and hips; front legs are a touch longer on a hyena
+  const legs = [];
+  for (const [front, side] of [[1, -1], [1, 1], [0, -1], [0, 1]]) {
+    const p = new THREE.Group(), len = B.H + B.W * .45;
+    p.position.set(side * B.W * .62, -B.W * .1, (front ? 1 : -1) * B.L * .4); body.add(p);
+    const up = fMesh(new THREE.CylinderGeometry(B.legW * 1.5, B.legW, len * .55, 7), coat, p, 0, -len * .27, 0);
+    const lo = new THREE.Group(); lo.position.y = -len * .55; p.add(lo);
+    fMesh(new THREE.CylinderGeometry(B.legW, B.legW * .8, len * .45, 6), coat, lo, 0, -len * .22, 0);
+    fMesh(new THREE.CylinderGeometry(B.legW * .95, B.legW * 1.1, .05, 6), hoof, lo, 0, -len * .45, 0);
+    legs.push({ p, lo, front, side, up });
+  }
+  body.rotation.x = -slope * .35;
+  // neck and head
+  const neck = new THREE.Group(); neck.position.set(0, B.W * .35, B.L * .5); body.add(neck);
+  const nk = fMesh(new THREE.CylinderGeometry(B.head * .45, B.W * .5, B.neck, 10), coat, neck, 0, B.neck * .4, B.neck * .15); nk.rotation.x = .55;
+  const head = new THREE.Group(); head.position.set(0, B.neck * .8, B.neck * .4); neck.add(head);
+  const sk = fMesh(new THREE.SphereGeometry(B.head, 14, 10), coat, head); sk.scale.set(.85, .85, 1.25);
+  const snout = fMesh(new THREE.SphereGeometry(B.head * .55, 10, 8), type === 'buffalo' ? S(0x141110) : belly, head, 0, -B.head * .25, B.head * 1.05); snout.scale.set(1, .8, 1.2);
+  fMesh(new THREE.SphereGeometry(B.head * .14, 8, 6), M.black, head, 0, -B.head * .05, B.head * 1.55);
+  for (const s2 of [-1, 1]) fMesh(new THREE.SphereGeometry(B.head * .12, 8, 6), M.eye, head, s2 * B.head * .55, B.head * .25, B.head * .7);
+  const ear = (sz, mat) => { for (const s2 of [-1, 1]) { const e = fMesh(new THREE.SphereGeometry(sz, 8, 6), mat, head, s2 * B.head * .7, B.head * .75, -B.head * .2); e.scale.set(.6, 1, .35); } };
+  ear(B.ears ? B.head * .42 : B.head * .3, coat);
+  if (B.horns === 'gazelle') for (const s2 of [-1, 1]) { const h = fMesh(new THREE.ConeGeometry(.02, .32, 6), M.black, head, s2 * .05, B.head + .12, -.02); h.rotation.x = -.35; h.rotation.z = -s2 * .1; }
+  if (B.horns === 'buffalo') {
+    const horn = S(0x3a342c, { roughness: .5 });
+    fMesh(new THREE.BoxGeometry(B.head * 1.5, B.head * .35, B.head * .7), horn, head, 0, B.head * .8, -B.head * .1);
+    for (const s2 of [-1, 1]) { const h = fMesh(new THREE.TorusGeometry(B.head * .9, B.head * .13, 6, 10, Math.PI * .7), horn, head, s2 * B.head * .75, B.head * .35, -B.head * .1); h.rotation.set(Math.PI / 2, 0, s2 > 0 ? -.4 : Math.PI + .4); }
+  }
+  if (B.mane) { const mn = fMesh(new THREE.SphereGeometry(1, 14, 10), S(B.mane, { roughness: 1 }), neck, 0, B.neck * .55, B.neck * .25); mn.scale.set(B.W * 1.05, B.W * 1.15, B.W * 1); }
+  // tail
+  const tail = new THREE.Group(); tail.position.set(0, B.W * .3, -B.L * .52); body.add(tail);
+  const tl = fMesh(new THREE.CylinderGeometry(.025, .04, B.tail, 6), coat, tail, 0, -B.tail * .45, -.05); tl.rotation.x = .35;
+  if (B.tuft) fMesh(new THREE.SphereGeometry(.07, 8, 6), S(B.mane || 0x3a2a1a, { roughness: 1 }), tail, 0, -B.tail * .9, -.2);
+  g.userData = { body, head, neck, legs, tail, baseY, beast: true };
+  return g;
+}
+function beastAI(c, D, u, dt, p, dx, dz, dP, toward, ctl) {
+  let threat = false;
+  if (D.beast === 'prey') {
+    if (c.state === 'flee' || dP < D.shy) {
+      if (c.state !== 'flee') { c.state = 'flee'; c.t = 0; for (const o of fauna.list) if (o !== c && o.type === c.type && o.state !== 'flee' && Math.hypot(o.x - c.x, o.z - c.z) < 18) { o.state = 'flee'; o.t = Math.random() * .4; } } // the whole herd bolts
+      ctl.mx = -dx / (dP || 1); ctl.mz = -dz / (dP || 1); ctl.sp = c.t < 5 ? D.run : D.speed * 1.5;
+      if (c.t > 7 && dP > D.shy * 1.6) { c.state = 'idle'; c.home = [c.x, c.z]; c.tgt = null; }
+    } else {
+      if (!c.tgt || (c.wait -= dt) <= 0) { c.tgt = [c.home[0] + rand(-8, 8), c.home[1] + rand(-8, 8)]; c.wait = rand(4, 10); }
+      if (toward(c.tgt[0], c.tgt[1], D.speed) < .6) ctl.sp = 0;
+    }
+  } else {
+    if (c.state === 'idle' || c.state === 'flee') {
+      c.state = 'idle';
+      if (D.beast === 'pred' && dP < D.aggro) {
+        c.state = 'hunt'; c.t = 0;
+        if (time - fauna.msgT > 3) { lootMsg(c.type === 'lion' ? 'A lion has spotted you!' : 'Hyenas are closing in!', '#ff9f86'); fauna.msgT = time; sfx.thud(); }
+        if (D.pack) for (const o of fauna.list) if (o !== c && o.type === c.type && o.state === 'idle' && Math.hypot(o.x - c.x, o.z - c.z) < 25) { o.state = 'hunt'; o.t = 0; }
+      } else { if (!c.tgt || (c.wait -= dt) <= 0) { c.tgt = [c.home[0] + rand(-10, 10), c.home[1] + rand(-10, 10)]; c.wait = rand(5, 12); } if (toward(c.tgt[0], c.tgt[1], D.speed) < .6) ctl.sp = 0; }
+    } else if (c.state === 'hunt') {
+      threat = true;
+      const homeD = Math.hypot(c.x - c.home[0], c.z - c.home[1]);
+      if (homeD > D.leash + 20 || dP > D.leash || (D.neutral && c.t > 12)) { c.state = 'return'; c.t = 0; }
+      else if (dP > D.reach) {
+        // hyenas fan out around you instead of queueing in a line
+        const off = D.pack ? (fauna.list.indexOf(c) % 3 - 1) * 2.2 : 0, ox = -dz / (dP || 1) * off, oz = dx / (dP || 1) * off;
+        toward(p.x + ox * Math.min(1, dP / 8), p.z + oz * Math.min(1, dP / 8), D.run * (c.type === 'lion' && dP > 12 && c.t < 2 ? .45 : 1)); // a lion stalks before it charges
+      } else { ctl.mx = dx / (dP || 1) * .001; ctl.mz = dz / (dP || 1) * .001; ctl.sp = .001; }
+      c.cd -= dt;
+      if (dP < D.reach + .3 && c.cd <= 0) { c.cd = D.cd; c.bite = .35; hurtPlayer(D.dmg, c); }
+    } else if (c.state === 'return') {
+      if (toward(c.home[0], c.home[1], D.speed * 2) < 2) { c.state = 'idle'; c.hp = Math.min(D.hp, c.hp + D.hp * .3); }
+      if (D.beast === 'pred' && dP < D.aggro * .6 && c.t > 2) { c.state = 'hunt'; c.t = 0; }
+    }
+  }
+  // gait: trot at walking pace, gallop when running; graze when standing still
+  const sp = ctl.sp, moving = sp > .05;
+  c.gait = (c.gait || 0) + dt * (moving ? 3 + sp * 1.25 : 0);
+  const gallop = sp > 5, amp = moving ? Math.min(.85, .3 + sp * .07) : 0;
+  for (const L of u.legs) {
+    const off = gallop ? (L.front ? 0 : Math.PI) + (L.side > 0 ? .55 : 0) : (L.front === (L.side > 0) ? 0 : Math.PI), ph = c.gait + off;
+    L.p.rotation.x = lerp(L.p.rotation.x, Math.sin(ph) * amp, Math.min(1, dt * 14));
+    L.lo.rotation.x = lerp(L.lo.rotation.x, moving ? Math.max(0, -Math.cos(ph)) * amp * .9 : 0, Math.min(1, dt * 14));
+  }
+  c.bite = Math.max(0, (c.bite || 0) - dt);
+  u.body.position.y = u.baseY + (moving ? Math.abs(Math.sin(c.gait * (gallop ? 1 : 2))) * (gallop ? .09 : .03) * BEASTS[c.type].H : 0);
+  u.body.rotation.x = lerp(u.body.rotation.x, (gallop ? Math.sin(c.gait) * .07 : 0) - (BEASTS[c.type].slope || 0) * .35 - (c.bite > 0 ? .2 : 0), Math.min(1, dt * 10));
+  const graze = !moving && c.state === 'idle' && D.beast !== 'pred' && Math.sin(c.phase * .35) > -.2;
+  u.neck.rotation.x = lerp(u.neck.rotation.x, graze ? .95 : c.state === 'hunt' && D.beast === 'pred' ? .25 : 0, Math.min(1, dt * 3));
+  u.head.rotation.x = c.bite > 0 ? -.35 : 0;
+  u.tail.rotation.y = Math.sin(c.phase * (moving ? 6 : 2.2)) * .45;
+  return threat;
+}
 function hpBar() {
   const g = new THREE.Group();
   const bg = new THREE.Mesh(new THREE.PlaneGeometry(1, .09), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .55, depthWrite: false, fog: false }));
@@ -5779,10 +5889,10 @@ function hpBar() {
 }
 function spawnFauna(type, x, z, home) {
   const D = FAUNA[type];
-  const mesh = type === 'penguin' ? buildPenguin() : type === 'skua' ? buildSkua() : buildSeal(type);
+  const mesh = type === 'penguin' ? buildPenguin() : type === 'skua' ? buildSkua() : BEASTS[type] ? buildBeast(type) : buildSeal(type);
   const c = { type, D, mesh, x, z, y: wHeight(x, z), rot: Math.random() * 6.28, hp: D.hp, state: 'idle', t: 0, cd: D.cd ? Math.random() * D.cd : 0, home: home || [x, z], tgt: null, wait: rand(1, 4), hurtT: 0, dead: 0, alt: 5 + Math.random() * 2, phase: Math.random() * 6 };
   if (type === 'skua') c.y += c.alt;
-  c.bar = hpBar(); c.bar.position.y = type === 'elephant' ? 2.4 : type === 'leopard' ? 1.6 : type === 'skua' ? .6 : 1.4;
+  c.bar = hpBar(); c.bar.position.y = BEASTS[type] ? BEASTS[type].H + BEASTS[type].W * 2.2 + BEASTS[type].neck : type === 'elephant' ? 2.4 : type === 'leopard' ? 1.6 : type === 'skua' ? .6 : 1.4;
   mesh.add(c.bar); mesh.position.set(x, c.y, z); mesh.rotation.y = c.rot; wScene.add(mesh);
   fauna.list.push(c);
   return c;
@@ -5805,9 +5915,17 @@ function faunaSpot(p, dmin, dmax) {
 }
 function faunaSpawner() {
   const p = player.position, n = t => fauna.list.filter(c => c.type === t && !c.dead).length;
+  if (curArea() === 'africa') {
+    // a gazelle herd, a few buffalo, a pride pair of lions and a hyena pack
+    if (n('gazelle') < 4) { const s = faunaSpot(p, 70, 125); if (s) { const k = 5 + (Math.random() * 5 | 0); for (let i = 0; i < k; i++) spawnFauna('gazelle', s[0] + rand(-7, 7), s[1] + rand(-7, 7), s); } }
+    else if (n('buffalo') < 2) { const s = faunaSpot(p, 70, 120); if (s) for (let i = 0; i < 3; i++) spawnFauna('buffalo', s[0] + rand(-6, 6), s[1] + rand(-6, 6), s); }
+    else if (n('lion') < 1) { const s = faunaSpot(p, 75, 120); if (s) for (let i = 0; i < 2; i++) spawnFauna('lion', s[0] + rand(-4, 4), s[1] + rand(-4, 4), s); }
+    else if (n('hyena') < 2) { const s = faunaSpot(p, 70, 115); if (s) for (let i = 0; i < 3; i++) spawnFauna('hyena', s[0] + rand(-4, 4), s[1] + rand(-4, 4), s); }
+  } else {
   const want = { penguin: 8, skua: 2, leopard: 2, elephant: 1 };
   if (n('penguin') < 4) { const s = faunaSpot(p, 70, 120); if (s) { const k = 6 + (Math.random() * 6 | 0); for (let i = 0; i < k; i++) spawnFauna('penguin', s[0] + rand(-5, 5), s[1] + rand(-5, 5), s); } }
   for (const t of ['skua', 'leopard', 'elephant']) if (n(t) < want[t]) { const s = faunaSpot(p, 60, 110); if (s) spawnFauna(t, s[0], s[1]); break; }
+  }
   for (const c of [...fauna.list]) if (Math.hypot(c.x - p.x, c.z - p.z) > 175 && c.state !== 'hunt') removeFauna(c);
 }
 function hurtPlayer(n, src) {
@@ -5834,17 +5952,22 @@ function blackout() {
   for (const c of [...fauna.list]) if (Math.hypot(c.x - 11, c.z - 3) < 90) removeFauna(c);
   const p = player.position; p.set(11.5, wHeight(11.5, 3), 3); vel.set(0, 0, 0); ex.snap = true;
   ex.hp = Math.round(maxHP() * .5); invState().hp = ex.hp;
-  notice('You blacked out', companionOn() ? 'JAMES DRAGGED YOU BACK TO THE STATION' : 'YOU CAME TO AT THE STATION', 4200);
+  if (curArea() === 'africa') notice('You blacked out', orionJoined() ? 'ORION CARRIED YOU BACK TO HIS HOME' : 'YOU CAME TO OUTSIDE ORION’S HOME', 4200);
+  else notice('You blacked out', companionOn() ? 'JAMES DRAGGED YOU BACK TO THE STATION' : 'YOU CAME TO AT THE STATION', 4200);
 }
 function damageFauna(c, dmg, fromJames) {
   if (c.dead) return;
-  if (c.D.passive) {
+  if (c.D.passive && !c.D.huntable) {
     c.state = 'flee'; c.t = 0; c.tgt = null;
     if (time - fauna.msgT > 2) { lootMsg('The penguin squawks and slides away', '#cfd6e6'); fauna.msgT = time; }
     return;
   }
   c.hp -= dmg; c.hurtT = .25; c.barT = 4;
-  if (c.state !== 'hunt') { c.state = 'hunt'; c.t = 0; }
+  if (c.D.beast === 'prey') { c.state = 'flee'; c.t = 0; }
+  else if (c.state !== 'hunt') {
+    c.state = 'hunt'; c.t = 0;
+    if (c.D.neutral) { for (const o of fauna.list) if (o !== c && o.type === c.type && !o.dead && Math.hypot(o.x - c.x, o.z - c.z) < 16) { o.state = 'hunt'; o.t = 0; } if (time - fauna.msgT > 2) { lootMsg('The buffalo herd charges!', '#ff9f86'); fauna.msgT = time; } }
+  }
   burst(c.x, c.y + (c.type === 'skua' ? 0 : .6), c.z, 12, 3, .75, .2, .2, .6, 1, 1);
   if (c.hp <= 0) {
     c.dead = 1; c.state = 'dead'; c.t = 0;
@@ -5868,7 +5991,7 @@ function strikeFauna(dmgBase) {
   return true;
 }
 function faunaTick(dt) {
-  if (ex.mode !== 'world' || curArea() !== 'antarctica') return;
+  if (ex.mode !== 'world') return;
   const live = state === 'explore';
   if (live && (fauna.spawnT -= dt) <= 0) { fauna.spawnT = 1.2; faunaSpawner(); }
   const p = player.position;
@@ -5923,6 +6046,11 @@ function faunaTick(dt) {
       const flap = c.state === 'dive' ? .15 : Math.sin(c.phase * (c.state === 'climb' ? 16 : 10)) * .7;
       for (const w of u.wings) w.p.rotation.z = w.s * flap;
       u.body.rotation.x = c.state === 'dive' ? .5 : c.state === 'climb' ? -.4 : 0;
+    } else if (D.beast) {
+      const ctl = { mx, mz, sp };
+      const tw = (tx, tz, s2) => { const vx = tx - c.x, vz = tz - c.z, l = Math.hypot(vx, vz); if (l > .05) { ctl.mx = vx / l; ctl.mz = vz / l; ctl.sp = s2; } return l; };
+      if (beastAI(c, D, u, dt, p, dx, dz, dP, tw, ctl)) threat = true;
+      mx = ctl.mx; mz = ctl.mz; sp = ctl.sp;
     } else {
       // seals: leopard seals hunt you on sight, elephant bulls defend their patch
       const ele = c.type === 'elephant';
@@ -5986,7 +6114,7 @@ function jamesShoot(dt) {
   if (!companionOn() || !james.ready || james.root.parent !== wScene || !james.root.visible) return;
   const r = james.root.position; let best = null, bd = 24;
   for (const c of fauna.list) {
-    if (c.dead || c.D.passive) continue;
+    if (c.dead || c.D.passive || (c.D.neutral && c.state !== 'hunt')) continue;
     if (c.state === 'idle' && Math.hypot(c.x - player.position.x, c.z - player.position.z) > 14) continue;
     const d = Math.hypot(c.x - r.x, c.z - r.z); if (d < bd) { bd = d; best = c; }
   }
@@ -6589,7 +6717,7 @@ function orionGear(R, kind) {
 }
 function orionShoot(R, dt) {
   const o = R.root.position; let best = null, bd = 26;
-  for (const c of fauna.list) { if (c.dead || c.D.passive) continue; const d = Math.hypot(c.x - o.x, c.z - o.z); if (d < bd) { bd = d; best = c; } }
+  for (const c of fauna.list) { if (c.dead || c.D.passive || (c.D.neutral && c.state !== 'hunt')) continue; const d = Math.hypot(c.x - o.x, c.z - o.z); if (d < bd) { bd = d; best = c; } }
   orionC.shootT = (orionC.shootT || 0) - dt;
   if (!best) return false;
   orionGear(R, 'rifle'); R.mode = 'attack';
