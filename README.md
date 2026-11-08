@@ -220,3 +220,6 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
 ### Lord Sevirrus: red eyes and the neck snap
 - **Red eyes:** Sevirrus's irises are now blood red with a faint glow and near-black pupils, everywhere his model appears: the Nostrapedia (Ancient figures and Lore events) and the character viewer.
 - **Slasher neck snap:** every few seconds his head snaps sideways and tilts, holds, then eases back. It always goes the same way, never alternating left and right. It now plays on his Nostrapedia figure too, not only on the rigged character.
+
+### Fix: combat theme preview
+- A combat theme you play from **Settings** now stops when you leave Settings, and the main menu theme fades back in. Before, it kept playing through the menus until you went back into Settings and cycled it off.
