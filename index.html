@@ -642,6 +642,7 @@ button.bm-c.no{opacity:.45}
   .sh-btns button.on{background:rgba(159,230,255,.25);border-color:var(--ice)}
   .sh-speed{bottom:calc(var(--sb) + 200px);width:150px}.sh-speed span{font-size:15px}
 }
+@media (max-width:720px) and (orientation:portrait){ .sh-top{top:calc(var(--st) + 64px);width:80vw} }
 @media (pointer:coarse) and (orientation:landscape) and (max-height:520px){ .sh-stick{bottom:calc(var(--sb) + 24px);width:104px;height:104px} .sh-speed{left:calc(var(--sl) + 150px);bottom:calc(var(--sb) + 20px)} .sh-btns{flex-direction:row;gap:10px} .sh-btns button{width:70px;height:48px} .sh-obj{display:none} }
 .esc-bars{position:absolute;top:calc(var(--st,0px) + 14px);left:50%;transform:translateX(-50%);width:min(420px,64vw);opacity:0;transition:opacity .4s;pointer-events:none;z-index:6;display:flex;flex-direction:column;gap:9px}
 .esc-bars.on{opacity:1}
@@ -9824,10 +9825,10 @@ function spaceOn(place) {
   SPC.saveNear = SPC.saveFar = null; camera.near = 1; camera.far = 1.4e6; camera.updateProjectionMatrix();
   if (place && place.sp) { SPC.pos.fromArray(place.sp); SPC.q.fromArray(place.sq || [0, 0, 0, 1]); }
   if (place && place.fromPlanet) { const P = SOL.find(o => o.id === place.fromPlanet); if (P) { const n = place.dir ? tmpVs.fromArray(place.dir) : tmpVs.set(0, 1, 0); SPC.pos.copy(P.pos).addScaledVector(n, P.r + planetH(P, n) + 520); const f = tmpVs2.set(0, 1, 0).cross(n); if (f.lengthSq() < .01) f.set(1, 0, 0); f.normalize(); const m = new THREE.Matrix4().lookAt(new THREE.Vector3(), f.clone().negate().addScaledVector(n, -.35), n); SPC.q.setFromRotationMatrix(m); } }
-  if (!place) { // just off Earth, the Moon ahead of you
-    const E = SOL.find(o => o.id === 'earth'), Mn = SOL.find(o => o.id === 'moon');
-    SPC.pos.copy(E.pos).add(tmpVs.set(0, E.r * .7, 0)).addScaledVector(tmpVs2.subVectors(Mn.pos, E.pos).normalize(), E.r * 1.6);
-    const m = new THREE.Matrix4().lookAt(SPC.pos, Mn.pos, new THREE.Vector3(0, 1, 0)); SPC.q.setFromRotationMatrix(m);
+  if (!place) { // just off Earth, on its sunlit side, the planet filling the view below you
+    const E = SOL.find(o => o.id === 'earth'), toSun = tmpVs2.copy(E.pos).negate().normalize();
+    SPC.pos.copy(E.pos).addScaledVector(toSun, E.r * 2.5).add(tmpVs.set(0, E.r * .6, 0));
+    const m = new THREE.Matrix4().lookAt(SPC.pos, new THREE.Vector3().copy(E.pos).add(new THREE.Vector3(0, E.r * .95, 0)), new THREE.Vector3(0, 1, 0)); SPC.q.setFromRotationMatrix(m);
   }
   SPC.vel = 60; SPC.thr = .3; SPC.camInit = false; clock.getDelta();
   wanderer.place = currentPlace(); const c = curChar(); if (c) c.place = wanderer.place;
