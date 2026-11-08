@@ -264,3 +264,9 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   - In the station the camera stays inside the walls, and outside it never dips below the ground.
   - Radio-style lines from someone more than 14 m away, inspections and narration keep the normal view.
 - **No pausing during scenes:** pausing in the middle of a conversation used to close it without running its ending, which soft-locked the story. While anyone is talking, during Orion's phone call, during the meeting cutscene and through the betrayal on the pier, the pause button is hidden and Esc/P shows *You can’t pause during a scene*. Switching tabs mid-scene no longer pauses and breaks it either.
+
+### Fix: companions on the minimap
+- Every companion with you now has a live marker on the minimap and the big map (M). James is green with a "J" and Orion is orange with an "O".
+- The marker moves with them and has a pointer showing which way they're facing. It turns with the map just like your own arrow, and sits on the rim when they're out of view.
+- On the big map their name is written under the marker.
+- Before, Orion had no marker of his own at all.

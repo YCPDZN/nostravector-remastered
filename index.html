@@ -5676,15 +5676,25 @@ function mapMarkers() {
   for (const o of world.placed) if (o.data.t === 'beacon') m.push({ x: o.data.x, z: o.data.z, kind: 'beacon' });
   for (const t of tpNetwork()) if (t.area === curArea()) m.push({ x: t.x, z: t.z, kind: 'tele' });
   for (const mc of merchantsHere()) if (mc.px != null) m.push({ x: mc.px, z: mc.pz, kind: 'merchant' });
-  if (companionOn() && james.ready && james.root.parent === wScene && james.root.visible) m.push({ x: james.root.position.x, z: james.root.position.z, kind: 'james' });
+  // every companion with you: a live marker that moves with them and points the way they face
+  if (companionOn() && james.ready && james.root.parent === wScene && james.root.visible) m.push({ x: james.root.position.x, z: james.root.position.z, rot: james.root.rotation.y, kind: 'comp', col: MK.james, label: 'James' });
+  if (orionJoined() && world.orion && world.orion.root.parent === wScene && world.orion.root.visible) m.push({ x: world.orion.root.position.x, z: world.orion.root.position.z, rot: world.orion.root.rotation.y, kind: 'comp', col: MK.orion, label: 'Orion' });
   for (const c of fauna.list) if (!c.dead) m.push({ x: c.x, z: c.z, kind: c.D.passive || (c.D.neutral && c.state !== 'hunt') ? 'penguin' : 'enemy' });
   const q = questTarget(); if (q) m.push(Object.assign({ kind: 'quest' }, q));
   return m;
 }
-const MK = { station: '#9fe6ff', beacon: '#ff6b5e', quest: '#ffc94a', james: '#7fe0a0', tele: '#7fd8ff', merchant: '#eda8d4' };
-function drawMarker(cx, x, y, kind, size, edge) {
+const MK = { station: '#9fe6ff', beacon: '#ff6b5e', quest: '#ffc94a', james: '#7fe0a0', orion: '#ffb36e', tele: '#7fd8ff', merchant: '#eda8d4' };
+function drawMarker(cx, x, y, kind, size, edge, m) {
   cx.save(); cx.translate(x, y);
-  if (kind === 'station') { cx.fillStyle = MK.station; cx.strokeStyle = '#06101a'; cx.lineWidth = size * .25; cx.beginPath(); cx.rect(-size * .55, -size * .55, size * 1.1, size * 1.1); cx.fill(); cx.stroke(); }
+  if (kind === 'comp') {
+    // a coloured disc with a pointer showing which way they're facing
+    cx.save(); cx.rotate(m.ang || 0);
+    cx.fillStyle = m.col; cx.strokeStyle = '#06101a'; cx.lineWidth = size * .22;
+    cx.beginPath(); cx.moveTo(0, -size * 1.25); cx.lineTo(size * .55, -size * .45); cx.lineTo(-size * .55, -size * .45); cx.closePath(); cx.fill(); cx.stroke();
+    cx.restore();
+    cx.fillStyle = m.col; cx.strokeStyle = '#06101a'; cx.lineWidth = size * .25; cx.beginPath(); cx.arc(0, 0, size * .62, 0, Math.PI * 2); cx.fill(); cx.stroke();
+    cx.fillStyle = '#06101a'; cx.font = `bold ${size * .9}px system-ui,sans-serif`; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(m.label[0], 0, size * .05); cx.textBaseline = 'alphabetic';
+  } else if (kind === 'station') { cx.fillStyle = MK.station; cx.strokeStyle = '#06101a'; cx.lineWidth = size * .25; cx.beginPath(); cx.rect(-size * .55, -size * .55, size * 1.1, size * 1.1); cx.fill(); cx.stroke(); }
   else if (kind === 'enemy' || kind === 'penguin') { cx.fillStyle = kind === 'enemy' ? '#ff4a3d' : '#e8edf4'; cx.beginPath(); cx.arc(0, 0, size * (kind === 'enemy' ? .45 : .3), 0, Math.PI * 2); cx.fill(); }
   else if (kind === 'james') { cx.fillStyle = MK.james; cx.strokeStyle = '#06101a'; cx.lineWidth = size * .25; cx.beginPath(); cx.arc(0, 0, size * .7, 0, Math.PI * 2); cx.fill(); cx.stroke(); }
   else if (kind === 'tele') { cx.strokeStyle = MK.tele; cx.lineWidth = size * .3; cx.beginPath(); cx.arc(0, 0, size * .55, 0, Math.PI * 2); cx.stroke(); }
@@ -5738,7 +5748,9 @@ function renderMap(cv, range, headingUp, budget, round) {
     if (round) { const dx = x - W / 2, dy = y - H / 2, l = Math.hypot(dx, dy); if (l > lim) { x = W / 2 + dx / l * lim; y = H / 2 + dy / l * lim; edge = true; } }
     else { const pad = ms * 2; if (x < pad || x > W - pad || y < pad || y > H - pad) { x = clamp(x, pad, W - pad); y = clamp(y, pad, H - pad); edge = true; } }
     if (edge && m.kind === 'station' && round) cx.globalAlpha = .7;
-    drawMarker(cx, x, y, m.kind, ms * (edge ? .85 : 1), edge);
+    if (m.rot != null) { const f = Math.atan2(Math.cos(m.rot), Math.sin(m.rot)); m.ang = (headingUp ? f + th : f) + Math.PI / 2; } // same convention as your own arrow
+    drawMarker(cx, x, y, m.kind, ms * (edge ? .85 : 1), edge, m);
+    if (!round && m.kind === 'comp') { cx.fillStyle = m.col; cx.font = `${10 * dpr}px system-ui,sans-serif`; cx.textAlign = 'center'; cx.fillText(m.label.toUpperCase(), x, y + ms * 2.6); }
     cx.globalAlpha = 1;
     if (!round && m.kind === 'quest') { cx.fillStyle = MK.quest; cx.font = `${10 * dpr}px system-ui,sans-serif`; cx.textAlign = 'center'; cx.fillText(`${m.label.toUpperCase()} · ${Math.round(Math.hypot(m.x - p.x, m.z - p.z))} M`, x, y - ms * 2.4); }
   }
