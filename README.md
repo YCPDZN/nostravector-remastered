@@ -234,6 +234,7 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   - Your wanderer: the suit and accents darken with your own alignment. It works for every species and is back to default colours once you're neutral or good again.
   - Companions: each companion's outfit follows their own alignment, in the world, on the main menu and in the Alignment viewer. Characters who start out as villains (Sevirrus, Kevin, Peter, Josiah and the like) stay exactly as they are.
 - **Nostrapedia follows your save:** a companion's Nostrapedia file shows the alignment they have in this save. The order/chaos side of their original alignment is kept, and the good/evil side follows their chart (Good from +15, Evil from −15). Orion pushed to −55 reads *Chaotic Evil · was Chaotic Good*, both in the list and in his file, and his figure wears his darkened outfit. A new game, or a companion you've never influenced, shows the original alignment.
+- **Tyrotaronus in the Vectors section:** Tyrotaronus is also filed under the Oilkoumene Vectors. That file follows the same alignment, so in the Chapter V villain preview it reads *Neutral Evil · was True Neutral*. Because he's scaled, only his silver armour darkens.
 - **Deeds:**
   - Heroic: **Share food** with a companion (key **6** or the companion panel; uses a roast meat or seal ration) +4. Kill a hostile animal while you have companions with you +1. Build a camp heater or signal beacon +1 (counts the first 10).
   - Villainous: **Intimidate** a companion (key **7**) −4. Attack a peaceful buffalo herd −3. Strike a harmless penguin −2. Kill a gazelle while you're at full health, for sport rather than food, −2.
@@ -253,3 +254,6 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   - Every one of them has slid to Awakened Villain. The ones who started good have darkened outfits, and their Nostrapedia files read *… Evil · was … Good*.
   - The born villains look as they always did, and keep high influence because they approve of your path.
   - The Alignment screen lists all of them with their charts and influence.
+
+### Naming: Tyromairon
+- The Vector of Darkness is now called **Tyromairon** everywhere: his Nostrapedia name, his file, and Tyronihlus's "Serves" line. *Tyromairon’as* is no longer used.

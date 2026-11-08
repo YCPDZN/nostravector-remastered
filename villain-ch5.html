@@ -4735,11 +4735,14 @@ const alDarkK = v => v > -15 ? 0 : Math.min(1, (-v - 15) / 65);
 const AL_DARK = new THREE.Color(0x0c0d11);
 const NOT_CLOTH = /face|jaw|nose|neck|ear|eye|iris|pupil|glint|brow|mouth|lip|teeth|tongue|nostril|hair|sideburn|beard|moustache|fringe|crown|palm|finger|lens|cybernetic|terminal|skin|head/i;
 // darken a character's outfit (not skin, hair or eyes) by k, from their own original colours
-function alOutfit(root, k) {
+const AL_CLOTH_ONLY = { tyrotaronus: /silver|pauldron|bracer|shell|guard|louvre|keel|conduit|casing|armour/i };
+function alOutfit(root, k, id) {
   if (!root || root.userData.alK === k) return;
   root.userData.alK = k;
+  const only = AL_CLOTH_ONLY[id];
   root.traverse(o => {
-    if (!o.isMesh || !o.name || !o.material || Array.isArray(o.material) || NOT_CLOTH.test(o.name || '') || NOT_CLOTH.test(o.material.name || '')) return;
+    if (!o.isMesh || !o.name || !o.material || Array.isArray(o.material)) return;
+    if (only ? !only.test(o.name) || /lens|core|node|glow|emitter/i.test(o.name) : NOT_CLOTH.test(o.name || '') || NOT_CLOTH.test(o.material.name || '')) return;
     if (!o.userData.alOrig) { o.material = o.material.clone(); o.userData.alOrig = o.material.color.clone(); }
     o.material.color.copy(o.userData.alOrig).lerp(AL_DARK, k * .8);
   });
@@ -4753,9 +4756,9 @@ function alCompDarkK(id) {
 let alSyncT = 0;
 function alOutfitSync(dt) {
   if ((alSyncT -= dt) > 0 || !wanderer) return; alSyncT = .5;
-  if (james.ready) alOutfit(james.root, alCompDarkK('james'));
-  if (world.orion) alOutfit(world.orion.root, alCompDarkK('orion'));
-  if (menuOrionR) alOutfit(menuOrionR.root, alCompDarkK('orion'));
+  if (james.ready) alOutfit(james.root, alCompDarkK('james'), 'james');
+  if (world.orion) alOutfit(world.orion.root, alCompDarkK('orion'), 'orion');
+  if (menuOrionR) alOutfit(menuOrionR.root, alCompDarkK('orion'), 'orion');
   const pk = alDarkK((wanderer.align && wanderer.align.p) || 0);
   if (alOutfitSync.pk !== pk) { alOutfitSync.pk = pk; applyLook(wanderer); }
 }
@@ -4839,7 +4842,7 @@ async function alShowModel(L) {
     } catch { obj = null; }
     if (tok !== alView.tok || !obj) return;
     obj.position.set(0, 0, 0); obj.rotation.set(0, 0, 0);
-    if (L) alOutfit(obj, alCompDarkK(L.id));
+    if (L) alOutfit(obj, alCompDarkK(L.id), L.id);
     if (!L) { obj.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(obj), h = Math.max(.01, b.max.y - b.min.y); obj.scale.multiplyScalar(H / h); obj.updateMatrixWorld(true); const b2 = new THREE.Box3().setFromObject(obj); obj.position.y = -b2.min.y; }
     alView.pivot.add(obj); alView.obj = obj; alView.H = H;
   }
@@ -8559,11 +8562,11 @@ const PEDIA_VECTORS = [
       'His brothers call him a traitor. Obsidnia calls him worse. Apolinothanatus still calls them family, and keeps the light on.'
     ] },
   { tag: 'vcNihl', h: 3, glow: 0x6f8cff, name: 'TYRONIHLUS', title: 'Vector of Order',
-    facts: [...VEC_COMMON, ['Serves', 'Tyromairon’as, as his right hand'], ['Alignment', 'Lawful Evil']],
+    facts: [...VEC_COMMON, ['Serves', 'Tyromairon, as his right hand'], ['Alignment', 'Lawful Evil']],
     align: 'Order without conscience. Tyronihlus keeps rules perfectly; he has simply never asked whose rules they are, or what they are for.',
     paras: [
       'Tyronihlus emerged from the Big Bang in the Cyrannus Galaxy, a son of Lord Zark and the Vector of Order. In his hands, order means one thing: obedience to whoever is strongest.',
-      'For billions of years that has meant his much older brother, Tyromairon’as. Tyronihlus is his right hand, his enforcer and, as the other Vectors put it less kindly, his lapdog. He carries out his brother’s will with perfect precision and has never once questioned it.',
+      'For billions of years that has meant his much older brother, Tyromairon. Tyronihlus is his right hand, his enforcer and, as the other Vectors put it less kindly, his lapdog. He carries out his brother’s will with perfect precision and has never once questioned it.',
       'When the Oilkoumene Empire still ruled Cyrannus, Tyronihlus kept its laws, its calendars and its executions running on time. When it fell, he followed his brother into the shadows without complaint. Order, he says, does not need a throne. It only needs someone to obey.',
       'Whether Tyronihlus wants anything for himself is the one question no one has been brave, or foolish, enough to ask him.'
     ] },
@@ -8576,11 +8579,11 @@ const PEDIA_VECTORS = [
       'Now he is here, somewhere in the Milky Way, waiting for a rescue. Rescue from what, or by whom, nobody knows. He has not asked anyone for help. He has simply let it be known that he is here, and that he is patient.',
       'Every power in the galaxy has wondered whether he could be useful. None of them has found a way to make him care.'
     ] },
-  { tag: 'vcMair', h: 3.05, glow: 0x7a3cff, name: 'TYROMAIRON’AS', title: 'Vector of Darkness',
+  { tag: 'vcMair', h: 3.05, glow: 0x7a3cff, name: 'TYROMAIRON', title: 'Vector of Darkness',
     facts: [...VEC_COMMON, ['Once ruled', 'The Oilkoumene Empire, across Cyrannus'], ['Right hand', 'Tyronihlus'], ['Now', 'A power broker in the shadows'], ['Alignment', 'Neutral Evil']],
     align: 'Self-interest dressed as patience. Tyromairon keeps no laws and serves no cause except his own advantage, and he is very good at waiting for it.',
     paras: [
-      'Tyromairon’as, called Tyromairon by his brothers, was among the first of the Vectors to emerge from the Big Bang, long before his younger brother Tyronihlus. Like all of them he is a son of Lord Zark. He is the Vector of Darkness.',
+      'Tyromairon was among the first of the Vectors to emerge from the Big Bang, long before his younger brother Tyronihlus. Like all of them he is a son of Lord Zark. He is the Vector of Darkness.',
       'Billions of years ago he ruled the Oilkoumene Empire, the greatest power the Vectors ever built, spread across the Cyrannus Galaxy. He lost his hold on it, and the empire that bore his family’s name passed into history.',
       'He did not disappear. Tyromairon became a power broker in the shadows, trading favours, secrets and debts, so that empires rise or fall depending on who owes him. He rarely appears in person; Tyronihlus speaks for him.',
       'He is the Vector of Darkness not because he destroys things, but because nothing he does is ever seen until it is far too late.'
@@ -8995,9 +8998,11 @@ function pdResolve(L) {
   return pdAlign(R);
 }
 // companions' files follow their alignment in this save (a new game shows their original alignment)
+const PD_ALIAS = { vcTaro: 'tyrotaronus' }; // the same person filed under the Vectors
 function pdAlign(R) {
-  const C = wanderer && wanderer.align && wanderer.align.c && wanderer.align.c[R.id];
-  if (!C || !COMPANIONS.some(c => c.id === R.id)) return R;
+  const cid = COMPANIONS.some(c => c.id === R.id) ? R.id : PD_ALIAS[R.tag];
+  const C = cid && wanderer && wanderer.align && wanderer.align.c && wanderer.align.c[cid];
+  if (!C) return R;
   const orig = alFact(R); if (!(orig in AL_BASE)) return R;
   const law = /^Lawful/.test(orig) ? 'Lawful' : /^Chaotic/.test(orig) ? 'Chaotic' : 'Neutral';
   const moral = C.a >= 15 ? 'Good' : C.a <= -15 ? 'Evil' : 'Neutral';
@@ -9068,6 +9073,7 @@ function pediaPreview() {
       const halo2 = glowSprite(p.glow, p.h * 1.3, .3); halo2.position.set(x, p.h * .62, -2.4); ccBg.add(halo2);
       loadPrime(p).then(h => {
         if (tok !== cc.loadTok || state !== 'pedia') return;
+        if (PD_ALIAS[p.tag]) alOutfit(h, alCompDarkK(PD_ALIAS[p.tag]), PD_ALIAS[p.tag]);
         h.position.set(x, 0, 0); h.rotation.y = 0; ccRoot.add(h);
       }).catch(() => {});
     });
@@ -9078,7 +9084,7 @@ function pediaPreview() {
     if (L.sil) { const hx = Math.sin(ang) * 2.3, hz = n > 1 ? Math.cos(ang) * 1.1 - 2.6 : -2.4; const g1 = glowSprite(0xff3b2f, L.h * 2.4, .8); g1.position.set(hx, L.h * .55, hz); ccBg.add(g1); }
     (L.tag ? loadFigure(L) : loadLeader(L.sp)).then(h => {
     if (!h || tok !== cc.loadTok || state !== 'pedia') return;
-    if (pedia.tab === 'companions') alOutfit(h, alCompDarkK(L.id));
+    if (pedia.tab === 'companions') alOutfit(h, alCompDarkK(L.id), L.id);
     h.userData.keep = true; h.position.set(Math.sin(ang) * 2.3, 0, n > 1 ? Math.cos(ang) * 1.1 - .9 : 0); h.rotation.y = -ang * .5;
     ccRoot.add(h);
   }); });
