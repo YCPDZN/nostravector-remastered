@@ -262,6 +262,10 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   - The scene is ten lines (CH2FARM1–10, text for now). Camera shots switch between over Orion's shoulder, over Nico's and a close-up of the cradle. Orion and Nico both lip-sync.
 - **Next objective:** Nico's husband went into town for supplies yesterday and hasn't come back, so the objective is **Find Nico’s husband in town** (no marker yet).
 - Nico joins as a companion after Chapter II, in her normal (not pregnant) model. Her model is already loaded and ready for that.
+- **Nico's Nostrapedia file** (Companions, opens in Chapter III; redacted before then) shows her in her normal model.
+  - **Facts:** born 2000 AD, cryogenically frozen in 2030 AD and woken in 2123 AD, home is a farmhouse east of town in Africa, her son Orion was born in 2125 AD, and her alignment is Neutral Good (a placeholder until her alignment is decided).
+  - **Text:** a short biography of the century she lost and the new life she built.
+  - **Map marker:** pink, reserved for when she joins the party.
 
 ### Cinematic conversations (Chapters I and II) and the pause fix
 - **Cinematic conversations:** whenever a character speaks to you up close (James, Orion, the woman behind the farmhouse door, Croxian Mascar), the game switches to a cinematic camera.
