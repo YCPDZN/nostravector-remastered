@@ -169,6 +169,7 @@ data/                       every model, texture, music track and voice set as <
 assets/models/              source 3D models (.glb); primes/, vectors/, companions/ and terra_imperia/ and ancient/ hold Nostrapedia figures; characters/ holds the Project BC and Sevirrus models, including hfos_soldier.glb (original HFOS colours)
 assets/audio/               main menu themes (incl. Chapter IV), combat themes (combat/), Antarctica exploration music (antarctica/), opening narration, James Brown's lines (prologue + Chapter I)
 assets/models/world/        HD rock and tree-bark models (packed with JPEG textures into data/)
+assets/models/companions/   Nico (Lady Luck) model
 assets/audio/music_africa/   Africa exploration music (CH2AFRICA1–5)
 assets/audio/storm/         exosuit warning (SUIT, SUIT2) and narrator lines (NARRATOR1–5) for the super blizzard
 assets/textures/            HD Antarctica sky panorama and snow texture (packed as JPEG into data/)
@@ -254,7 +255,13 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   2. **Drive off the lions**, with a counter of how many are left. Three lions prowl a broken-fenced yard around the smashed front door. Orion's kills count too. If you leave and come back, any lions still alive return.
   3. **Check on the woman.** Call through the farmhouse door. Clearing the lions is a heroic deed (+3).
 - **The farmhouse:** a mud-walled farmhouse on a levelled yard, with its front door hanging off one hinge, claw marks beside it and gaps in the fence where the lions came through.
-- The call (CH2ORIONCALL1–7) and the door scene (CH2DOOR1–2) are fully voiced, and Orion lip-syncs his lines. The scene currently ends with **TO BE CONTINUED**.
+- The call (CH2ORIONCALL1–7) and the door scene (CH2DOOR1–2) are fully voiced, and Orion lip-syncs his lines.
+- **Inside the farmhouse:** after the door, the screen fades to a small lamp-lit room.
+  - **Nico** (her own model, `assets/models/companions/nico_lady_luck.glb`) stands by the bed. She still looks heavily pregnant, as a new mother does; that's built from her model at runtime. Beside her, her newborn son sleeps in a gently rocking cradle.
+  - The baby was born just after she called, and he hasn't made a sound. She has already named him **Orion**, after the stars of Orion's Belt her grandmother showed her, which is a coincidence that catches Orion off guard.
+  - The scene is ten lines (CH2FARM1–10, text for now). Camera shots switch between over Orion's shoulder, over Nico's and a close-up of the cradle. Orion and Nico both lip-sync.
+- **Next objective:** Nico's husband went into town for supplies yesterday and hasn't come back, so the objective is **Find Nico’s husband in town** (no marker yet).
+- Nico joins as a companion after Chapter II, in her normal (not pregnant) model. Her model is already loaded and ready for that.
 
 ### Cinematic conversations (Chapters I and II) and the pause fix
 - **Cinematic conversations:** whenever a character speaks to you up close (James, Orion, the woman behind the farmhouse door, Croxian Mascar), the game switches to a cinematic camera.
