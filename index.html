@@ -2098,22 +2098,25 @@ function updateWander(dt) {
   if (Math.hypot(vel.x, vel.z) > .2) player.rotation.y = angLerp(player.rotation.y, Math.atan2(vel.x, vel.z), Math.min(1, dt * 5));
 }
 function damp(obj, prop, target, rate, dt) { obj[prop] += (target - obj[prop]) * Math.min(1, dt * rate); }
+// the human suit is modelled with its arms held out (an A-pose); lower them to hang at the sides
+const HUMAN_ARMS_DOWN = .46;
 function updateAnim(dt) {
   if (!rig.ra) return;
+  const down = curSpecies === 'human' ? HUMAN_ARMS_DOWN : 0;
   const hs = (state === 'title' || state === 'explore') ? Math.hypot(vel.x, vel.z) : 0;
   if (hs > .25) {
     walkPhase += dt * (3 + hs * 1.25);
     const sw = Math.max(.32, Math.min(1, hs / SPEED)) * .7, s = Math.sin(walkPhase);
     damp(rig.rl.rotation, 'x', s * sw, 14, dt); damp(rig.ll.rotation, 'x', -s * sw, 14, dt);
     damp(rig.ra.rotation, 'x', -s * sw * .8, 14, dt); damp(rig.la.rotation, 'x', s * sw * .8, 14, dt);
-    damp(rig.ra.rotation, 'z', 0, 8, dt); damp(rig.la.rotation, 'z', 0, 8, dt);
+    damp(rig.ra.rotation, 'z', down, 8, dt); damp(rig.la.rotation, 'z', -down, 8, dt);
     inner.position.y = Math.abs(Math.cos(walkPhase)) * .07 * (sw / .7);
     damp(inner.rotation, 'x', sw * .16, 6, dt);
   } else {
     const b = Math.sin(time * 1.6);
     for (const l of [rig.rl, rig.ll]) damp(l.rotation, 'x', 0, 8, dt);
     damp(rig.ra.rotation, 'x', b * .04, 6, dt); damp(rig.la.rotation, 'x', -b * .04, 6, dt);
-    damp(rig.ra.rotation, 'z', -.04 - b * .03, 6, dt); damp(rig.la.rotation, 'z', .04 + b * .03, 6, dt);
+    damp(rig.ra.rotation, 'z', down - .04 - b * .03, 6, dt); damp(rig.la.rotation, 'z', -down + .04 + b * .03, 6, dt);
     inner.position.y = (b + 1) * .008;
     damp(inner.rotation, 'x', 0, 6, dt);
   }
@@ -7329,6 +7332,21 @@ function dressTownsfolk(src, d) {
   });
   for (const o of drop) o.parent && o.parent.remove(o);
   if (d.sp === 'human') {
+    // shoulder and hip joints, exactly where the wanderer's own rig puts them, so the arms swing from the shoulder
+    // and can hang at the sides (left to the generic rig, the suit stands with its arms held out)
+    m.updateMatrixWorld(true);
+    const joint = (name, x, y) => { const g = new THREE.Group(); g.name = name; g.position.set(x, y, 0); m.add(g); g.updateMatrixWorld(true); return g; };
+    const J = { ra: joint('Right arm', -.27, 1.34), la: joint('Left arm', .27, 1.34), rl: joint('Right leg', -.12, .84), ll: joint('Left leg', .12, .84) };
+    const ARM = /(upper arm|forearm|sleeve fold|elbow pad|wrist seal|mitten|thumb|glove seam)/, LEG = /(thigh|shin|leg fold|knee|boot|ankle)/;
+    for (const o of [...m.children]) {
+      const n = (o.name || '').replace(/_/g, ' ').toLowerCase(), side = n.startsWith('right') ? 'r' : n.startsWith('left') ? 'l' : null;
+      if (side && ARM.test(n)) J[side + 'a'].attach(o); else if (side && LEG.test(n)) J[side + 'l'].attach(o);
+    }
+    // how far out the gloves sit, so the arms can be lowered by exactly that much
+    for (const [k, gl] of [['ra', 'right mitten glove'], ['la', 'left mitten glove']]) {
+      const g = J[k].children.find(o => (o.name || '').replace(/_/g, ' ').toLowerCase() === gl);
+      if (g) { g.geometry.computeBoundingBox(); const w = g.geometry.boundingBox.getCenter(new THREE.Vector3()).applyMatrix4(g.matrixWorld); J[k].worldToLocal(w); m.userData[k + 'Drop'] = Math.atan2(Math.abs(w.x), -w.y) - .14; } // the glove's centre (its origin sits at the model's feet)
+    }
     // the suit becomes work clothes; give them a face and hair where the helmet was
     const skin = new THREE.MeshStandardMaterial({ color: SKIN[d.skin == null ? 2 : d.skin], roughness: .65 }), hair = new THREE.MeshStandardMaterial({ color: HAIRC[d.female ? 1 : 0], roughness: .8 });
     const head = new THREE.Group(); head.position.set(0, 1.655, .02); m.add(head);
@@ -7373,7 +7391,9 @@ async function spawnTownsfolk() {
   for (const d of TOWNSFOLK) {
     try {
       const src = await townModel(d.sp); if (!src || !world.town) continue;
-      const R = autoRig(dressTownsfolk(src, d), d.sp === 'human' ? (d.female ? 1.7 : 1.78) : d.sp === 'hfos' ? 1.88 : SPECIES[d.sp].height * .98); armRig(R, 'none'); try { bakeRig(R); } catch (e) { console.warn('bakeRig', e); }
+      const R = autoRig(dressTownsfolk(src, d), d.sp === 'human' ? (d.female ? 1.7 : 1.78) : d.sp === 'hfos' ? 1.88 : SPECIES[d.sp].height * .98); armRig(R, 'none');
+      if (d.sp === 'human') for (const [k, sg] of [['ra', 1], ['la', -1]]) { const a = R[k], dr = R.model.userData[k + 'Drop']; if (a && dr > 0) { a.rotation.z += sg * dr; R.rest.get(a).z = a.rotation.z; } } // arms down at the sides
+      try { bakeRig(R); } catch (e) { console.warn('bakeRig', e); }
       const spot = d.at && TOWN.spots[d.at], z = d.zone && TZ[d.zone];
       const x = spot ? spot[0] : rand(z[0], z[1]), zz = spot ? spot[1] : rand(z[2], z[3]);
       R.root.position.set(x, townNpcY(x, zz), zz); R.root.rotation.y = rand(0, 6.28);
