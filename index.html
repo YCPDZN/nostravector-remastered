@@ -621,6 +621,12 @@ button.bm-c.no{opacity:.45}
 .al-note{font-size:12px;color:#9aa0a8;margin:14px 0 0;max-width:none}
 .al-pd{display:flex;gap:14px;align-items:center;margin-top:14px;padding:12px;border:1px solid rgba(230,233,240,.1);border-radius:6px}
 #jOpts .al-deed.good kbd{color:#7fe3ff}#jOpts .al-deed.evil kbd{color:#ff7a6e}
+
+/* cinematic dialogue: letterbox, HUD out of the way, no pause button */
+#xhud.cine .cbar{height:11vh}
+#xhud.cine .x-obj,#xhud.cine .x-menu,#xhud.cine .hotbar,#xhud.cine .touch-ui,#xhud.cine .x-prompt,#xhud.cine .x-hint,#xhud.cine .loot,#xhud.cine .mmap,#xhud.cine .jcmd,#xhud.cine .x-nav{opacity:0;pointer-events:none;transition:opacity .5s}
+#xhud.cine .x-dlg{bottom:calc(11vh + 18px)}
+#xhud.talking #xMenuBtn,#xhud.cutting #xMenuBtn{opacity:0;pointer-events:none}
 </style>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
@@ -4332,13 +4338,13 @@ function dlgLine(d) {
   if (buf) sfx.playBuf(buf, 1.25); else sfx.stopVoice();
 }
 function openDialog(who, lines, inspect, onDone, bufs) {
-  ex.dlg = { who, lines, i: 0, n: 0, acc: 0, onDone, bufs, rate: .026 };
+  ex.dlg = { who, lines, i: 0, n: 0, acc: 0, onDone, bufs, rate: .026, inspect: !!inspect };
   dlgLine(ex.dlg);
   xUI.dlg.classList.toggle('inspect', !!inspect); xUI.who.textContent = who;
   xUI.line.textContent = ''; xUI.dlg.classList.add('on'); xUI.dlg.classList.remove('ready');
   ui.xhud.classList.add('talking'); vel.set(0, 0, 0);
 }
-function closeDialog() { if (ex.dlg) sfx.stopVoice(); ex.dlg = null; xUI.dlg.classList.remove('on', 'ready'); ui.xhud.classList.remove('talking'); }
+function closeDialog() { if (ex.dlg) sfx.stopVoice(); ex.dlg = null; if (cine.on) { cine.on = false; ui.xhud.classList.remove('cine'); ex.snap = false; } xUI.dlg.classList.remove('on', 'ready'); ui.xhud.classList.remove('talking'); }
 function advanceDialog() {
   const d = ex.dlg; if (!d) return;
   const text = d.lines[d.i];
@@ -4508,6 +4514,7 @@ function updateExplore(dt) {
 function exploreCamera(dt) {
   if (state === 'wcut') { wcutCamera(dt); return; }
   if (ex.mode === 'world') { worldCamera(dt); return; }
+  if (cineCamera(dt, v => { v.x = clamp(v.x, ROOM.x - 6.6, ROOM.x + 6.6); v.z = clamp(v.z, ROOM.z - 2.6, ROOM.z + 2.6); v.y = clamp(v.y, .5, 2.7); })) return;
   const R = ROOM, p = player.position, hy = headYFor(wanderer);
   const tgt = tmpV.set(p.x, p.y + hy * .85, p.z);
   const dd = ex.dist * (camera.aspect < .8 ? 1.25 : 1);
@@ -4589,7 +4596,12 @@ canvas.addEventListener('wheel', e => {
 }, { passive: true });
 xUI.act.addEventListener('click', e => { e.stopPropagation(); interact(); });
 xUI.dlg.addEventListener('click', () => advanceDialog());
+function sceneLocked() {
+  const B = world.betrayal;
+  return !!ex.dlg || !!world.callBusy || meet.active || ui.xhud.classList.contains('cutting') || !!(B && B.phase !== 'chase' && B.phase !== 'won' && B.phase !== 'dead');
+}
 function pauseExplore(on) {
+  if (on && state === 'explore' && sceneLocked()) { if (time - (ex.lockMsgT || -9) > 2) { ex.lockMsgT = time; lootMsg('You can’t pause during a scene', '#cfd6e6'); } return; }
   if (on && state === 'explore') { state = 'xpaused'; ex.keys.clear(); if (ex.dlg) { sfx.stopVoice(); closeDialog(); } refreshDirty(); ui.xpause.classList.remove('opts'); refreshOpts(); show(ui.xpause, true); }
   else if (!on && state === 'xpaused') { state = 'explore'; show(ui.xpause, false); clock.getDelta(); }
 }
@@ -4598,7 +4610,7 @@ $('#xResume').addEventListener('click', () => { sfx.click(); pauseExplore(false)
 $('#xQuit').addEventListener('click', () => { sfx.click(); leaveExplore(); });
 $('#tbcKeep').addEventListener('click', () => { sfx.click(); show(ui.tbc, false); if (ui.tbc.dataset.from === 'ch2') { ui.tbc.dataset.from = ''; show(ui.title, true); state = 'title'; openSlots('save', 'title'); return; } state = 'explore'; });
 $('#tbcBtn').addEventListener('click', () => { sfx.click(); if (state === 'ch2soon') { show(ui.tbc, false); show(ui.title, true); state = 'title'; return; } leaveExplore(); });
-document.addEventListener('visibilitychange', () => { if (document.hidden) pauseExplore(true); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && !sceneLocked()) pauseExplore(true); });
 
 
 
@@ -7449,7 +7461,46 @@ function updateWorldScene(dt) {
   world.sun.position.set(p.x + 24.4, p.y + 45, p.z + 26.5); world.sun.target.position.copy(p); // lined up with the sun in the sky texture
   if (world.beacon) world.beacon.material.opacity = .45 + .55 * (Math.sin(time * 3) > 0 ? 1 : 0);
 }
+// who's talking to you, and where their face is
+function dlgSpeaker() {
+  const d = ex.dlg; if (!d || d.inspect) return null;
+  const w = d.who || '', v = new THREE.Vector3();
+  const at = (o, h) => o && o.visible !== false ? v.set(o.position.x, o.position.y + h, o.position.z) : null;
+  if (/JAMES/.test(w) && james.ready && james.root.visible) return at(james.root, 1.62);
+  if (/ORION|ON THE PHONE/.test(w) && world.orion && world.orion.root.visible) return at(world.orion.root, 1.62);
+  if (/BEHIND THE DOOR/.test(w) && world.farm) return v.set(FARM.x - 5.1, farmY() + 1.5, FARM.z);
+  if (/CROXIAN/.test(w) && world.boss) return at(world.boss.R.root, 1.65);
+  return null;
+}
+function dlgSpeakerNear() { const S = dlgSpeaker(); return S && Math.hypot(S.x - player.position.x, S.z - player.position.z) < 14 ? S : null; } // too far away (a radio call) stays a normal shot
+// a slow over-the-shoulder push-in that changes angle on each line, with letterbox bars
+const cine = { on: false, line: -1, t: 0, cam: new THREE.Vector3(), look: new THREE.Vector3() };
+function cineCamera(dt, clampFn) {
+  const S = dlgSpeakerNear(), live = !!S && !ui.xhud.classList.contains('cutting');
+  if (live !== cine.on) { cine.on = live; ui.xhud.classList.toggle('cine', live); if (live) { cine.cam.copy(camera.position); cine.look.copy(lookTarget); cine.line = -1; } }
+  if (!live) return false;
+  const p = player.position, hy = headYFor(wanderer), P = tmpV.set(p.x, p.y + hy * .9, p.z);
+  if (ex.dlg.i !== cine.line) { cine.line = ex.dlg.i; cine.t = 0; }
+  cine.t += dt;
+  const dx = S.x - P.x, dz = S.z - P.z, dl = Math.hypot(dx, dz) || 1, fx = dx / dl, fz = dz / dl, sx = -fz, sz = fx;
+  player.rotation.y = angLerp(player.rotation.y, Math.atan2(fx, fz), Math.min(1, dt * 5)); // you turn to face them
+  const shot = cine.line % 3, push = Math.min(1, cine.t / 6) * .35;
+  let cx, cy, cz, lx, ly, lz;
+  if (shot === 2) { // close-up on the speaker from just beside you
+    const back = 1.35 - push * .6; cx = S.x - fx * back + sx * .45; cz = S.z - fz * back + sz * .45; cy = S.y + .05; lx = S.x; ly = S.y - .02; lz = S.z;
+  } else { // over your shoulder (alternating sides), looking at them
+    const side = shot ? -1 : 1, back = 1.75 - push;
+    cx = P.x - fx * back + sx * .62 * side; cz = P.z - fz * back + sz * .62 * side; cy = P.y + .28;
+    lx = lerp(P.x, S.x, .8); ly = lerp(P.y, S.y, .85) - .05; lz = lerp(P.z, S.z, .8);
+  }
+  const des = tmpV2.set(cx, cy, cz); if (clampFn) clampFn(des);
+  const k = Math.min(1, dt * 2.6);
+  cine.cam.lerp(des, k); cine.look.lerp(tmpV.set(lx, ly, lz), k);
+  camera.position.copy(cine.cam); lookTarget.copy(cine.look); camera.lookAt(lookTarget);
+  return true;
+}
 function worldCamera(dt) {
+  if (cineCamera(dt, v => { v.y = Math.max(v.y, wHeight(v.x, v.z) + .35); })) return;
   const p = player.position, hy = headYFor(wanderer);
   const tgt = tmpV.set(p.x, p.y + hy * .85, p.z);
   const dd = ex.dist * (camera.aspect < .8 ? 1.2 : 1);

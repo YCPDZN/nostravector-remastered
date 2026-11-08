@@ -255,3 +255,12 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   3. **Check on the woman.** Call through the farmhouse door. Clearing the lions is a heroic deed (+3).
 - **The farmhouse:** a mud-walled farmhouse on a levelled yard, with its front door hanging off one hinge, claw marks beside it and gaps in the fence where the lions came through.
 - The call (CH2ORIONCALL1–7) and the door scene (CH2DOOR1–2) are fully voiced, and Orion lip-syncs his lines. The scene currently ends with **TO BE CONTINUED**.
+
+### Cinematic conversations (Chapters I and II) and the pause fix
+- **Cinematic conversations:** whenever a character speaks to you up close (James, Orion, the woman behind the farmhouse door, Croxian Mascar), the game switches to a cinematic camera.
+  - Letterbox bars slide in, and the HUD steps aside: objectives, minimap, hotbar, loot messages, companion panel, navigation and the pause button.
+  - You turn to face the speaker.
+  - Each new line changes the shot. The camera cycles through over the right shoulder, over the left shoulder and a close-up on the speaker, with a slow push-in during every line.
+  - In the station the camera stays inside the walls, and outside it never dips below the ground.
+  - Radio-style lines from someone more than 14 m away, inspections and narration keep the normal view.
+- **No pausing during scenes:** pausing in the middle of a conversation used to close it without running its ending, which soft-locked the story. While anyone is talking, during Orion's phone call, during the meeting cutscene and through the betrayal on the pier, the pause button is hidden and Esc/P shows *You can’t pause during a scene*. Switching tabs mid-scene no longer pauses and breaks it either.
