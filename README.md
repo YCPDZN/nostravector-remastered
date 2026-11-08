@@ -249,7 +249,7 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
 ### Chapter II: the call
 - **Orion's phone:** about ten seconds after Orion joins you (or after you load a save from that point), his phone rings. A woman in distress tells him that lions came over her fence and broke her door in. She has locked herself in the back room, and she's expecting: the baby is coming now. Orion tells her to stay put and keep breathing, then tells you to follow him. He switches to **Follow** automatically.
 - **On the phone:** when it rings, Orion stops where he is and raises a phone in his left hand to his ear, leaning into it, with the screen lit. He keeps it there through the whole call, then hangs up and puts it away before turning to you with his last line.
-- **Orion's phone:**- **Objectives:**
+- **Objectives:**
   1. **Reach the farmhouse east of town**, about 220 m east of Orion's home. A gold marker shows the way on the map.
   2. **Drive off the lions**, with a counter of how many are left. Three lions prowl a broken-fenced yard around the smashed front door. Orion's kills count too. If you leave and come back, any lions still alive return.
   3. **Check on the woman.** Call through the farmhouse door. Clearing the lions is a heroic deed (+3).
