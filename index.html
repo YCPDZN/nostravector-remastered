@@ -6951,16 +6951,38 @@ function dialogSeq(seq, onDone, clips) {
   };
   step(0);
 }
+// a phone in Orion's left hand, held up to his ear for the whole call
+function makePhone() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(.075, .15, .012), new THREE.MeshStandardMaterial({ color: 0x15171b, roughness: .35, metalness: .6 })); g.add(body);
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(.064, .13), new THREE.MeshStandardMaterial({ color: 0x0d2a3a, emissive: 0x5fc8ff, emissiveIntensity: .9 })); scr.position.z = .0065; g.add(scr);
+  g.position.set(0, -.06, .02); g.rotation.x = -.3;
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+function orionPhonePose(R, dt) {
+  // he hangs up before turning to you with the last line
+  const on = !!world.onCall && !(ex.dlg && ex.dlg.lines === CALL_SEQ[4][1] && ex.dlg.i >= 1);
+  R.callK = clamp((R.callK || 0) + (on ? dt * 2.5 : -dt * 3), 0, 1);
+  if (on && !R.phone) { R.phone = makePhone(); const sock = R.lh ? boneSocket(R.lh) : R.la ? handSocket(R.la) : null; if (sock) sock.add(R.phone); }
+  if (R.phone) R.phone.visible = R.callK > .35;
+  const k = smooth(0, 1, R.callK); if (!k) return;
+  // upper arm forward a little, forearm folded up so the hand sits at the ear
+  const rs = o => R.rest.get(o);
+  if (R.la && rs(R.la)) { R.la.rotation.x = lerp(R.la.rotation.x, rs(R.la).x - .5, k); R.la.rotation.z = lerp(R.la.rotation.z, rs(R.la).z - wxSign(R) * .35, k); }
+  if (R.laL && rs(R.laL)) R.laL.rotation.x = lerp(R.laL.rotation.x, rs(R.laL).x - 2.35, k);
+  if (R.head && rs(R.head)) R.head.rotation.z = lerp(R.head.rotation.z, rs(R.head).z + wxSign(R) * .12, k); // leans into the phone
+}
 function orionPhoneCall() {
-  world.callBusy = true;
+  world.callBusy = true; world.onCall = true;
   sfx.phone(); setTimeout(() => sfx.phone(), 1100);
   notice('Orion’s phone is ringing', 'INCOMING CALL', 2600);
   const clipsP = sfx.loadClips('callVoices');
   setTimeout(async () => {
     const clips = await clipsP;
-    if (state !== 'explore' || ex.dlg) { world.callBusy = false; world.callAt = time + 4; return; }
+    if (state !== 'explore' || ex.dlg) { world.callBusy = false; world.onCall = false; world.callAt = time + 4; return; }
     dialogSeq(CALL_SEQ, () => {
-      world.callBusy = false; setCh2({ call: true });
+      world.callBusy = false; world.onCall = false; setCh2({ call: true });
       if (orionJoined()) orionCmd('follow', true);
       setTimeout(() => notice('A farmhouse east of town', 'LIONS AT THE DOOR', 3600), 300);
     }, clips);
@@ -7042,9 +7064,10 @@ async function placeOrion() {
 function orionTick(dt) {
   const R = world.orion; if (!R || !R.root.visible || curArea() !== 'africa') return;
   const p = player.position, o = R.root.position, d = Math.hypot(p.x - o.x, p.z - o.z);
-  if (orionJoined() && !ex.dlg && state === 'explore') orionAI(R, dt);
+  if (orionJoined() && !ex.dlg && !world.onCall && state === 'explore') orionAI(R, dt);
   else { if (orionJoined()) orionGear(R, 'rifle'); R.mode = 'idle'; if (d < 8) R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - o.x, p.z - o.z), Math.min(1, dt * 3)); }
   animRig(R, dt);
+  orionPhonePose(R, dt);
   if (R.lips) { const t = !!(ex.dlg && ex.dlg.who === 'ORION MASCAR'), L = R.lips, target = t ? clamp((sfx.voiceLevel() - .015) / .24, 0, 1) : 0; L.open += (target - L.open) * Math.min(1, dt * (target > L.open ? 28 : 14)); L.jaw.rotation.x = L.base + L.open * .26; if (L.mouth) L.mouth.scale.y = .7 * (1 + L.open * 3.2); }
 }
 // ---- Orion Mascar as a companion: the same orders as James, his own replies (ORIONCOMMAND1–5, the same in Chapters II–V), level 14 and rising with you ----
