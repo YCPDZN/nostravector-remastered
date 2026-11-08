@@ -392,5 +392,5 @@ The human suit is modelled with its arms held about 34° out from the body, and 
   - The ice, station, teleporters, your Antarctic builds and James's rover (if you drove it) are all there, and the station's teleporter takes you home to the station, where the lamps are on and the hatch is open.
   - James Brown is gone, and his trail and camp no longer appear.
   - Your Chapter II objectives stay on screen, and the chapter label reads *Chapter II · Antarctica*.
-  - Orion stays behind in Africa ("Orion stays behind in Ad-Nostra") and is with you again when you get back.
+  - **Orion comes with you.** Once he's joined you, he boards with you and steps off beside you at either pier. In Antarctica he follows, mines, explores, wanders and shoots hostile animals just as he does in Africa, and you can walk up to him for orders (ORDER). On **Base** there, he waits by the station's door. He's also there if you load a save made in Antarctica.
 - **Saving** in Antarctica (outside or inside the station) brings a Chapter II wanderer back there on Continue or Load.

@@ -6973,7 +6973,7 @@ function applyAreaLook() {
   if (world.bedMesh) world.bedMesh.visible = !af && !!ch1().bed;
   for (const list of Object.values(MERCHANTS)) for (const m of list) if (m.stall) m.stall.visible = list === merchantsHere();
   if (af) { buildOrionHouse(); buildFarmhouse(); buildTown(); } if (world.town) world.town.visible = af; if (world.sea) world.sea.visible = af; if (world.house) world.house.visible = af; if (world.farm) world.farm.visible = af;
-  if (world.orion) world.orion.root.visible = af;
+  if (world.orion) world.orion.root.visible = af || orionJoined();
 }
 // Orion's home at the edge of the harbour town (same footprint as the Antarctic station)
 /* ---- Chapter II: the call. A woman east of town, lions at her door, a baby on the way ---- */
@@ -7477,7 +7477,7 @@ function talkTownsfolk(n) {
 }
 /* ---- the ferry: Ad-Nostra ⇄ the Antarctic terminal (Chapter II on, once you've found Ad-Nostra) ----
    Board at either pier. The ship pulls out, there's a title card over black, and you step off at the other end.
-   Orion stays behind in Africa while you're away and is waiting when you come back. */
+   Orion, once he's joined you, sails with you and steps off beside you. */
 const ferryOpen = () => !!(wanderer && (wanderer.chapter | 0) >= 2 && ch1().escaped && wanderer.ch2 && wanderer.ch2.townSeen);
 const TOWN_FERRY = { x: -226, z: 9.6, board: [-230, 2.2], arrive: [-216, 0] };
 function antFerryDock() { // on the terminal pier, facing the shore
@@ -7511,7 +7511,7 @@ function startFerryTrip() {
   const from = curArea(), to = from === 'africa' ? 'antarctica' : 'africa';
   Object.assign(ft, { on: true, t: 0, from, to, switched: false, ready: false });
   closeDialog(); closeModals(); stopBuild(); vel.set(0, 0, 0); ex.keys.clear(); ex.joyX = ex.joyY = 0;
-  player.visible = false; show(ui.xhud, false); sfx.thud(); setTimeout(() => sfx.thud(), 400);
+  player.visible = false; if (world.orion) world.orion.root.visible = false; show(ui.xhud, false); sfx.thud(); setTimeout(() => sfx.thud(), 400); // you're both aboard
   const el = $('#ferryCut'); el.classList.remove('black', 'title', 'title2'); el.classList.add('on', 'letter'); $('#fcTitle').textContent = ''; $('#fcSub').textContent = '';
   state = 'ferryTrip';
 }
@@ -7532,7 +7532,6 @@ function ferryTripTick(dt) {
   } else if (ft.ready && t > 9.2) {
     ft.on = false; el.classList.remove('black', 'title', 'letter', 'on'); state = 'explore'; player.visible = true; show(ui.xhud, true); ex.snap = true; clock.getDelta();
     notice(ft.to === 'africa' ? 'Africa' : 'The ferry terminal', ft.to === 'africa' ? 'AD-NOSTRA' : 'ANTARCTICA', 3200);
-    if (ft.to === 'antarctica' && orionJoined()) setTimeout(() => lootMsg('Orion stays behind in Ad-Nostra', '#ffb36e'), 3400);
   }
 }
 async function ferryArrive() {
@@ -7549,7 +7548,7 @@ async function ferryArrive() {
   }
   const D = to === 'africa' ? { x: TOWN_FERRY.arrive[0], z: TOWN_FERRY.arrive[1], y: TOWN.deck, rot: Math.PI / 2 } : antFerryDock();
   enterWorld({ mode: 'explore', area: 'world', where: to, x: D.x, z: D.z, y: D.y, rot: D.rot, yaw: D.rot + Math.PI });
-  if (to === 'africa') await placeOrion();
+  await placeOrion(); // Orion sails with you
   player.visible = false; show(ui.xhud, false); state = 'ferryTrip'; // enterWorld shows the HUD; keep the card up a moment longer
   ft.ready = true;
 }
@@ -7568,6 +7567,7 @@ async function visitAntarctica(pl) {
   camera.up.set(0, 1, 0); renderer.domElement.style.filter = '';
   const D = antFerryDock();
   enterWorld(pl && pl.area === 'world' ? pl : { mode: 'explore', area: 'world', where: 'antarctica', x: D.x, z: D.z, y: D.y, rot: D.rot, yaw: D.rot + Math.PI });
+  await placeOrion();
   show(ui.xhud, true); renderTasks();
   const f = $('#fade'); f.style.transition = 'opacity 2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 2100);
   state = 'explore'; resize();
@@ -7851,7 +7851,7 @@ const ORION_WAKE = [
   'Get some air. Stretch your legs. Just don’t wander too far, and if anyone asks, you’re my cousin from the coast.'
 ];
 async function placeOrion() {
-  if (curArea() !== 'africa') { if (world.orion) world.orion.root.visible = false; return; }
+  if (curArea() !== 'africa' && !orionJoined()) { if (world.orion) world.orion.root.visible = false; return; } // once he's joined you, he comes wherever you go
   if (!world.orion) {
     try {
       const el = document.getElementById('cpOrion'); if (!el) return;
@@ -7868,7 +7868,7 @@ async function placeOrion() {
   if (R.lips && R.lips.mouth) R.lips.mouth.scale.y = .7; // his face relaxes now you're alive
 }
 function orionTick(dt) {
-  const R = world.orion; if (!R || !R.root.visible || curArea() !== 'africa') return;
+  const R = world.orion; if (!R || !R.root.visible || (curArea() !== 'africa' && !orionJoined())) return;
   const p = player.position, o = R.root.position, d = Math.hypot(p.x - o.x, p.z - o.z);
   if (orionJoined() && !ex.dlg && !world.onCall && state === 'explore') orionAI(R, dt);
   else { if (orionJoined()) orionGear(R, 'rifle'); R.mode = 'idle'; if (d < 8) R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - o.x, p.z - o.z), Math.min(1, dt * 3)); }
@@ -8207,7 +8207,7 @@ function updateWorldMode(dt) {
   if (!ex.near && curArea() === 'africa' && wanderer.ch2 && wanderer.ch2.lionsDone && !wanderer.ch2.doorReached && Math.hypot(p.x - (FARM.x - 5.6), p.z - FARM.z) < 2.6) ex.near = { id: 'farmDoor', label: 'Farmhouse door' };
   if (!ex.near) { const fn = ferryNear(p); if (fn) ex.near = fn; }
   if (!ex.near && curArea() === 'africa' && TOWN.npcs.length) { const tn = townNear(p); if (tn) ex.near = { id: 'townsfolk', ref: tn, label: tn.label }; }
-  if (!ex.near && curArea() === 'africa' && world.orion && world.orion.root.visible && Math.hypot(world.orion.root.position.x - p.x, world.orion.root.position.z - p.z) < 2.4) ex.near = { id: 'orion', label: 'Orion' };
+  if (!ex.near && (curArea() === 'africa' || orionJoined()) && world.orion && world.orion.root.visible && Math.hypot(world.orion.root.position.x - p.x, world.orion.root.position.z - p.z) < 2.4) ex.near = { id: 'orion', label: 'Orion' };
   if (!ex.near && curArea() === 'antarctica' && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
   if (ex.vehicle) ex.near = { id: 'roverOut', label: 'Rover' };
   if (world.betrayal) ex.near = world.betrayal.phase === 'push' && james.root.visible && Math.hypot(james.root.position.x - p.x, james.root.position.z - p.z) < 2.6 ? { id: 'push', label: 'James Brown' } : null;
