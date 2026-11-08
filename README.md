@@ -223,3 +223,13 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
 
 ### Fix: combat theme preview
 - A combat theme you play from **Settings** now stops when you leave Settings, and the main menu theme fades back in. Before, it kept playing through the menus until you went back into Settings and cycled it off.
+
+### Alignment (KOTOR / Mass Effect style, every chapter)
+- **Your chart:** press **L**, or choose **Alignment** in the pause menu. A vertical bar runs from **ENLIGHTENED HERO** (cyan, top) through **NEUTRAL** (grey, middle) to **AWAKENED VILLAIN** (red, bottom). Every wanderer starts at grey (0). As you move up or down, the marker, the fill and your rank stay grey with a hint of cyan or red that grows stronger the further you go. The scale runs from −100 to +100; you're a hero at +34 or above and a villain at −34 or below. Your alignment is saved with your wanderer and carries through every chapter.
+- **Companion charts:** the Alignment screen shows a chart for every companion whose Nostrapedia file you've unlocked, plus the Project BC cast (Josiah Richards, Peter Chambers, Gareth Williams, Kevin Murderhorn) and Lord Sevirrus. Each companion's Nostrapedia file also shows their chart. Party members also show an **Influence** bar.
+  - Starting points come from each character's alignment: Good +45 to +65, Neutral around 0, Evil −55 to −75.
+  - James Brown's chart reads **UNKNOWN** with a "?" marker, and he approves of everything you do.
+- **Deeds:**
+  - Heroic: **Share food** with a companion (key **6** or the companion panel; uses a roast meat or seal ration) +4. Kill a hostile animal while you have companions with you +1. Build a camp heater or signal beacon +1 (counts the first 10).
+  - Villainous: **Intimidate** a companion (key **7**) −4. Attack a peaceful buffalo herd −3. Strike a harmless penguin −2. Kill a gazelle while you're at full health, for sport rather than food, −2.
+- **Companion reactions:** heroic companions favour good deeds and dislike evil ones, villainous companions the reverse, and neutral companions simply drift with you. Losing influence never makes anyone leave. Instead, their own alignment slides in the direction you pushed it.
