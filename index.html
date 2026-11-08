@@ -345,6 +345,17 @@ body.touch .touch-ui{display:block}
 #xhud.cutting .x-dlg{bottom:calc(9vh + 18px)}
 .x-dlg.cyan{border-left-color:#40e6ff}
 .x-dlg.choice{cursor:default}
+#fbSub{position:fixed;left:50%;bottom:17%;width:min(92vw,1100px);transform:translateX(-50%);z-index:32;pointer-events:none;text-align:center;opacity:0;transition:opacity .12s}
+#fbSub.on{opacity:1}
+#fbSub .w{display:block;font-family:'Lexend Exa',sans-serif;font-weight:600;font-size:clamp(10px,1.2vw,13px);letter-spacing:.42em;margin-bottom:12px;opacity:.9}
+#fbSub .t{display:inline;font-family:'Lexend Exa',sans-serif;font-weight:700;font-size:clamp(20px,3.6vw,44px);line-height:1.18;letter-spacing:.01em;text-transform:uppercase}
+#fbSub .t span{display:inline-block;margin:0 .14em;will-change:transform}
+#fbSub .t span.new{filter:brightness(1.6)}
+#fbSub.james{color:#dfe9ff;--g1:rgba(80,170,255,.75);--g2:rgba(255,255,255,.35)}
+#fbSub.crox{color:#ff2b2b;--g1:rgba(255,0,0,.85);--g2:rgba(0,0,0,.9)}
+#fbSub.orion{color:#ffcf8a;--g1:rgba(255,150,40,.7);--g2:rgba(0,0,0,.8)}
+#fbSub .t{text-shadow:-3px 0 var(--g1),3px 0 rgba(0,230,255,.45),0 0 26px var(--g1),0 2px 0 var(--g2),0 0 3px rgba(0,0,0,.9);-webkit-text-stroke:1px rgba(0,0,0,.55)}
+#fbSub .w{text-shadow:0 0 6px rgba(0,0,0,.95),0 0 14px var(--g1)}
 .x-dlg.choice .tap{display:none}
 .x-dlg .opts{display:flex;flex-direction:column;gap:8px;margin-top:2px}
 .x-dlg .opt{all:unset;box-sizing:border-box;display:flex;gap:14px;align-items:baseline;padding:10px 14px;border:1px solid rgba(230,233,240,.14);background:rgba(255,255,255,.03);font-weight:300;font-size:clamp(14px,1.9vw,17px);line-height:1.45;cursor:pointer;transition:background .15s,border-color .15s}
@@ -1983,6 +1994,16 @@ const sfx = (() => {
         try { if (narrSrc) narrSrc.stop(); } catch {}
         const src = ctx.createBufferSource(), g = ctx.createGain();
         src.buffer = buf; g.gain.value = vol; src.connect(g); g.connect(master); src.onended = () => { if (narrSrc === src) narrSrc = null; res(); }; src.start(); narrSrc = src;
+      });
+    },
+    // a voice from far away / through ringing ears: muffled and quieter
+    playFar(buf, vol = 1) {
+      return new Promise(res => {
+        if (!ctx || !buf) { res(); return; }
+        try { if (narrSrc) narrSrc.stop(); } catch {}
+        const src = ctx.createBufferSource(), lp = ctx.createBiquadFilter(), g = ctx.createGain();
+        lp.type = 'lowpass'; lp.frequency.value = 850; lp.Q.value = .7; g.gain.value = vol;
+        src.buffer = buf; src.connect(lp); lp.connect(g); g.connect(master); src.onended = () => { if (narrSrc === src) narrSrc = null; res(); }; src.start(); narrSrc = src;
       });
     },
     breath(v = 1) { noise(.42, 1100, 260, .05 * v); },
@@ -7643,6 +7664,37 @@ const FLASH_ORION_VENGEANCE = [
   'I’m not leaving you out here on the ice. But we are done talking about him.'
 ];
 const fb = { t: 0, on: false };
+// the flashback's subtitles: big, shaking, word by word in time with the voice
+let fbSubEl = null;
+function fbSay(who, text, clip, vol = 1.25, far = false) {
+  if (!fbSubEl) { fbSubEl = document.createElement('div'); fbSubEl.id = 'fbSub'; fbSubEl.innerHTML = '<span class="w"></span><span class="t"></span>'; document.body.appendChild(fbSubEl); }
+  const words = text.split(/\s+/), dur = clip ? clip.duration : words.length * .34;
+  fb.sub = { who, words, start: performance.now(), dur, n: 0, kind: /JAMES/.test(who) ? 'james' : /ORION/.test(who) ? 'orion' : 'crox' };
+  fbSubEl.className = 'on ' + fb.sub.kind; fbSubEl.querySelector('.w').textContent = who; fbSubEl.querySelector('.t').innerHTML = '';
+  if (clip) (far ? sfx.playFar(clip, vol) : sfx.playNarr(clip, vol)).then(() => { if (fb.sub && fb.sub.words === words) fb.sub.done = performance.now(); });
+}
+function fbSubHide() { fb.sub = null; if (fbSubEl) fbSubEl.className = ''; }
+const FB_GLITCH = '#$%&@!?/\\<>█▓▒░';
+function fbSubTick() {
+  const S = fb.sub; if (!S || !fbSubEl) return;
+  if (S.done && performance.now() - S.done > 700) { fbSubHide(); return; }
+  const el = (performance.now() - S.start) / 1000, n = clamp(Math.ceil(el / Math.max(.3, S.dur) * S.words.length * 1.06), 1, S.words.length);
+  const from = Math.max(0, n - (S.kind === 'james' ? 9 : 12)); // a long speech scrolls; the newest words stay on screen
+  const t = fbSubEl.querySelector('.t');
+  if (n !== S.n || from !== S.from) {
+    S.n = n; S.from = from;
+    t.innerHTML = S.words.slice(from, n).map((w, i) => `<span${from + i === n - 1 ? ' class="new"' : ''}>${w.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</span>`).join(' ');
+    if (S.kind !== 'james') { fb.shake = Math.max(fb.shake, .05); }
+  }
+  // shake with the heartbeat; Croxian's words shudder hardest, and now and then one glitches
+  const k = (S.kind === 'crox' ? 1 : S.kind === 'orion' ? .8 : .45) * (1 + fb.beat * 1.5);
+  for (const sp of t.children) {
+    sp.style.transform = `translate(${((Math.random() - .5) * 5 * k).toFixed(1)}px,${((Math.random() - .5) * 4 * k).toFixed(1)}px) rotate(${((Math.random() - .5) * 2.4 * k).toFixed(2)}deg) scale(${sp.classList.contains('new') ? (1.08 + Math.random() * .06 * k).toFixed(3) : 1})`;
+    if (!sp.dataset.w) sp.dataset.w = sp.textContent;
+    sp.textContent = Math.random() < .025 * k ? sp.dataset.w.replace(/[A-Za-z]/g, () => FB_GLITCH[Math.floor(Math.random() * FB_GLITCH.length)]) : sp.dataset.w;
+  }
+  fbSubEl.style.transform = `translateX(-50%) translate(${((Math.random() - .5) * 3 * k).toFixed(1)}px,${((Math.random() - .5) * 3 * k).toFixed(1)}px)`;
+}
 let fbFlashEl = null;
 function fbFlash(a, c = '#fff') {
   if (!fbFlashEl) { fbFlashEl = document.createElement('div'); fbFlashEl.style.cssText = 'position:fixed;inset:0;z-index:31;pointer-events:none;opacity:0'; document.body.appendChild(fbFlashEl); }
@@ -7704,7 +7756,7 @@ function flashTick(dt) {
   } else if (t < 4.6) {
     // James on the pier, his hand coming out of his coat
     if (J) { J.root.visible = true; J.root.rotation.z = 0; fbPut(J.root, 0, 30); fbFace(J.root, 0, 23); J.raise = 1.25; J.headTilt = .05; }
-    once('james', () => { showNarr('JAMES BROWN', 'This is where we part company.'); sfx.loadClips('betrayalVoices').then(c => c && sfx.playNarr(c[JB_BETRAYAL.length - 1], 1.2)); });
+    once('james', () => sfx.loadClips('betrayalVoices').then(c => fbSay('JAMES BROWN', JB_BETRAYAL[JB_BETRAYAL.length - 1], c && c[JB_BETRAYAL.length - 1], 1.2)));
     fbCam(0, 3.15, 23.6, 0, 3.2, 30); blur = .8; sat = .12; red = .05;
   } else if (t < 5.8) {
     // and over the side, into the sea
@@ -7721,7 +7773,7 @@ function flashTick(dt) {
     const atkHit = (k, at) => { if (!fb.hits[k] && t > at) { fb.hits[k] = 1; sfx.swing(); sfx.thud(); fb.shake = .7; fb.red = 1; flashC = '#7a0000'; } };
     if (t < 7.0) { // he steps off the ferry and looks straight at you
       const k = seg(5.8, 7); fbPut(C.root, lerp(9.5, 6.5, k), 30); fbFace(C.root, 0, 24); C.mode = 'walk'; C.t += dt;
-      once('name', () => { sfx.loadClips('croxPre').then(c => c && sfx.playNarr(c[3], 1.3)); showNarr('CROXIAN MASCAR', CROX_PRE[3]); });
+      once('name', () => sfx.loadClips('croxPre').then(c => fbSay('CROXIAN MASCAR', CROX_PRE[3], c && c[3], 1.35)));
       fbCam(1.5, 1.5, 27.5, lerp(9.5, 6.5, k), 3.3, 30, -.08);
     } else if (t < 8.6) { // down the gangway and at you, fast
       const k = seg(7, 8.6); fbPut(C.root, lerp(6.5, 0, smooth(0, .6, k)), lerp(30, 25.2, k)); fbFace(C.root, 0, 23.5); C.mode = k < .8 ? 'walk' : 'attack'; if (k >= .8 && !fb.said.a1) { fb.said.a1 = 1; C.t = .3; }
@@ -7731,15 +7783,15 @@ function flashTick(dt) {
     } else if (t < 10.0) { // the scythe, again and again
       fbPut(C.root, 0, 25.4); fbFace(C.root, 0, 23.5); C.mode = 'attack'; C.t += dt * .9;
       fbCam(-1.2, 1.3, 23.4, 0, 2.5, 25.4, .22); atkHit('h2', 8.95); atkHit('h3', 9.75);
-      once('b1', () => croxClips().then(c => bark(CROX_BARKS[0], 1400, c && c[0])));
+      once('b1', () => croxClips().then(c => fbSay('CROXIAN MASCAR', CROX_BARKS[0], c && c[0], 1.4)));
     } else if (t < 11.6) { // he leaps
       const k = seg(10.2, 11.2); fbPut(C.root, 0, lerp(29, 24.6, k), Math.sin(k * Math.PI) * 4.2); fbFace(C.root, 0, 23.5); C.mode = 'idle';
       if (k >= 1) once('land', () => { sfx.thud(); fb.shake = 1; const [x, z] = fbW(0, 24.6); burst(x, 1.8, z, 60, 7, .9, .95, 1, .9, 1.2, 1.5); fb.red = 1; });
-      once('b2', () => croxClips().then(c => bark(CROX_BARKS[2], 1600, c && c[2])));
+      once('b2', () => croxClips().then(c => fbSay('CROXIAN MASCAR', CROX_BARKS[2], c && c[2], 1.4)));
       fbCam(1.6, 2.05, 21.6, 0, 3.2 + Math.sin(k * Math.PI) * 2.5, 25, -.15);
     } else if (t < 13.2) { // close: the face, the scythe coming up, slowed down
       fbPut(C.root, 0, 24.7); fbFace(C.root, 0, 23.5); C.mode = 'attack'; C.t += dt * .35;
-      once('close', () => croxClips().then(c => bark(CROX_TOO_CLOSE, 1600, c && c[7])));
+      once('close', () => croxClips().then(c => fbSay('CROXIAN MASCAR', CROX_TOO_CLOSE, c && c[7], 1.5)));
       const k = seg(11.6, 13.2); fbCam(.3, 3.3, 22.9 + k * .45, 0, 3.3, 24.7, .05 * Math.sin(t * 9));
     } else if (t < 14.4) { // the last swing, straight at you
       fbPut(C.root, 0, 24.3); fbFace(C.root, 0, 23.5); C.mode = 'attack'; if (!fb.said.last) { fb.said.last = 1; C.t = .35; } C.t += dt * 1.3;
@@ -7756,13 +7808,14 @@ function flashTick(dt) {
   }
   if (t >= 15.2 && t < 18.2) {
     // black; ringing; a voice somewhere far off
-    flash = 1; flashC = '#000'; hideNarr();
-    once('hey', () => { if (C) C.root.visible = false; setTimeout(() => showNarr('ORION MASCAR', 'Hey. HEY!'), 900); });
+    flash = 1; flashC = '#000';
+    once('black', () => { fbSubHide(); sfx.stopNarr(); if (C) C.root.visible = false; });
+    if (t > 16.1) once('hey', () => fbSay('ORION MASCAR', 'Hey. HEY!', fb.lines && fb.lines[6], 1.6, true)); // CH2ORIONANTARCTICA0, from far away
   }
   if (t >= 18.2 && !fb.said.end) {
-    fb.said.end = 1; hideNarr(); endFlashback(); return;
+    fb.said.end = 1; fbSubHide(); endFlashback(); return;
   }
-  ciFx(blur, red, 0, lid, sat); fbFlash(flash, flashC);
+  ciFx(blur, red, 0, lid, sat); fbFlash(flash, flashC); fbSubTick();
   if (J && J.root.visible) jamesTick(dt);
 }
 function endFlashback() {
@@ -7783,7 +7836,7 @@ function endFlashback() {
     // voiced: CH2ANTORIONGOOD1–3 and CH2ANTORIONBAD1–4 (antOrionVoices: the three GOOD lines, then the four BAD)
     { text: 'Got it.', onPick: () => { influence('orion', 10); setCh2({ antChoice: 'calm' }); openDialog('ORION MASCAR', FLASH_ORION_CALM, false, after, (fb.replies || []).slice(0, 3)); } },
     { text: 'I will find Croxian. And when I do…', onPick: () => { influence('orion', -20); setCh2({ antChoice: 'vengeance' }); openDialog('ORION MASCAR', FLASH_ORION_VENGEANCE, false, after, (fb.replies || []).slice(3, 7)); } }
-  ]), fb.lines);
+  ]), (fb.lines || []).slice(0, 6));
 }
 const CALL_SEQ = [
   ['ORION MASCAR', ['Hold on. That’s my phone.', 'Hello? Slow down, slow down. I can’t understand you. Who is this?']],

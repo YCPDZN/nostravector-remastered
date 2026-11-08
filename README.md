@@ -404,7 +404,7 @@ The first time you step off the ferry in Antarctica with Orion, it all comes bac
    - He comes down the gangway at you far too fast, and his scythe swings again and again. Each hit lands with a red flash, a hard shake and a thud.
    - He leaps and slams down in front of you ("Run, wanderer…", "The ice keeps whatever I give it").
    - A slowed close-up of his mask as the scythe comes up ("Too close."), then one last swing straight at the camera and a red-and-black strobe.
-4. **Black and ringing,** then a voice far off: "Hey. HEY!"
+4. **Black and ringing,** then Orion's voice from far away: "Hey. HEY!" (CH2ORIONANTARCTICA0, muffled and quieter, as if heard through the ringing).
 5. **Orion,** angry, right in your face on the pier (six lines, with the cinematic camera). You were screaming and clawing at the boards, and there's nothing here. You screamed *that name* again, the one you whispered with the fever in his house. "Don't say it again. Not to me. Not anywhere I can hear it." Then: get up.
 
 6. **Your reply,** chosen from two options in the dialogue box (click, tap, or press 1 / 2):
@@ -413,7 +413,9 @@ The first time you step off the ferry in Antarctica with Orion, it all comes bac
    - The choice is saved as `ch2.antChoice` (`calm` or `vengeance`) for later chapters. Influence shows in Orion's alignment panel and in the loot feed (*Orion · influence +10*).
    - Dialogue choices are new to the game. Any conversation can now offer them with `openChoice(speaker, options)`, and `influence(companion, amount)` changes one companion's influence directly.
 
-The flashback uses the voice lines James and Croxian already have. Orion's two replies are voiced and lip-synced: CH2ANTORIONGOOD1–3 for "Got it." and CH2ANTORIONBAD1–4 for the Croxian reply. They're packed as `data/antOrionVoices.js`, with the sources in `assets/audio/orion_ch2_antarctica/`. His six lines before the choice are voiced too: CH2ORIONANTARCTICA1–6, packed as `data/antOrionFlashVoices.js`, with the sources in the same folder. The flag is `ch2.antFlashback`.
+**Flashback subtitles:** James's, Croxian's and Orion's words appear one at a time in time with their voices, in big uppercase text that shakes with the heartbeat and has a split-colour glow. James's are icy blue-white, and a long speech scrolls so the newest words stay on screen. Croxian's are blood red, shudder hardest, and now and then a word (sometimes his own name) glitches into symbols. Orion's are amber. They replace the normal subtitle bar for this scene only.
+
+The flashback uses the voice lines James and Croxian already have. Orion's two replies are voiced and lip-synced: CH2ANTORIONGOOD1–3 for "Got it." and CH2ANTORIONBAD1–4 for the Croxian reply. They're packed as `data/antOrionVoices.js`, with the sources in `assets/audio/orion_ch2_antarctica/`. His six lines before the choice are voiced too: CH2ORIONANTARCTICA1–6 (and 0 for the far-off "Hey. HEY!"), packed as `data/antOrionFlashVoices.js`, with the sources in the same folder. The flag is `ch2.antFlashback`.
 - **Fix:** the Chapter I super blizzard can never start again once you've escaped Antarctica.
 
 ### Fix: saves put you back exactly where you left off (both chapters)
