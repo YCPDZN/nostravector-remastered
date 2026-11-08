@@ -1092,7 +1092,7 @@ body.touch .al-key{display:none}
 <script type="application/json" id="orionFind"></script><script src="data/orionFind.js"></script>
 <script type="application/json" id="narrCh2"></script><script src="data/narrCh2.js"></script>
 <script type="application/json" id="orionWake"></script><script src="data/orionWake.js"></script>
-<script type="application/json" id="orionCmd"></script><script src="data/orionCmd.js"></script><script type="application/json" id="callVoices"></script><script src="data/callVoices.js"></script><script type="application/json" id="doorVoices"></script><script src="data/doorVoices.js"></script><script type="application/octet-stream" id="nicoGlb"></script><script src="data/nicoGlb.js"></script><script type="application/json" id="farmVoices"></script><script src="data/farmVoices.js"></script><script type="application/json" id="antOrionVoices"></script><script src="data/antOrionVoices.js"></script><script type="application/json" id="antOrionFlashVoices"></script><script src="data/antOrionFlashVoices.js"></script><script type="application/json" id="cantinaFightMusic"></script><script src="data/cantinaFightMusic.js"></script>
+<script type="application/json" id="orionCmd"></script><script src="data/orionCmd.js"></script><script type="application/json" id="callVoices"></script><script src="data/callVoices.js"></script><script type="application/json" id="doorVoices"></script><script src="data/doorVoices.js"></script><script type="application/octet-stream" id="nicoGlb"></script><script src="data/nicoGlb.js"></script><script type="application/json" id="farmVoices"></script><script src="data/farmVoices.js"></script><script type="application/json" id="antOrionVoices"></script><script src="data/antOrionVoices.js"></script><script type="application/json" id="antOrionFlashVoices"></script><script src="data/antOrionFlashVoices.js"></script><script type="application/json" id="cantinaFightMusic"></script><script src="data/cantinaFightMusic.js"></script><script type="application/json" id="cantinaVoices"></script><script src="data/cantinaVoices.js"></script><script type="application/json" id="hypeVoices"></script><script src="data/hypeVoices.js"></script>
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -7984,10 +7984,10 @@ const DANIEL_CLUES = ['GATE WARDEN', 'SHOPKEEPER', 'OLD MAN'];
 const danielClues = () => { const a = (wanderer.ch2 && wanderer.ch2.townAsked) || {}; return DANIEL_CLUES.filter(n => a[n]).length; };
 // the lines, in order (text for now; ids are what the recordings will be called)
 const CANT_SCENE = [
-  { at: 1.8, who: 'ORION MASCAR', id: 'CH2CANTORION1', text: 'Daniel?' },
-  { at: 3.6, who: 'DANIEL BROWN', id: 'CH2CANTDANIEL1', text: 'Orion?! Wait. Wait, this isn’t what it looks like.' },
-  { at: 7.0, who: 'ORION MASCAR', id: 'CH2CANTORION2', text: 'Your wife is lying in that farmhouse with your newborn son in her arms.' },
-  { at: 10.6, who: 'ORION MASCAR', id: 'CH2CANTORION3', text: 'And you are here.' }
+  { at: 1.8, who: 'ORION MASCAR', id: 'CH2CANTORION1', clip: 0, text: 'Daniel?' },
+  { at: 3.6, who: 'DANIEL BROWN', id: 'CH2CANTDANIEL1', clip: 1, text: 'Orion?! Wait. Wait, this isn’t what it looks like.' },
+  { at: 7.0, who: 'ORION MASCAR', id: 'CH2CANTORION2', clip: 2, text: 'Your wife is lying in that farmhouse with your newborn son in her arms.' },
+  { at: 10.6, who: 'ORION MASCAR', id: 'CH2CANTORION3', clip: 3, text: 'And you are here.' }
 ];
 const cant = { on: false, t: 0, beat: false, hitT: 0, hits: 0, decals: [] };
 function buildCantinaInside(S, live, M, box, cyl, col) {
@@ -8070,37 +8070,46 @@ function startCantinaScene() {
   const R = TOWN.rooms.cantina; player.position.set(R.door, 0, R.z0 + 1.2); player.rotation.y = 0; player.visible = true;
   if (world.orion) { world.orion.root.visible = true; world.orion.root.position.set(R.door - 1, 0, R.z0 + .9); world.orion.root.rotation.y = .5; world.orion.mode = 'idle'; }
   fightCrowd(); // the regulars are already in
+  cant.vo = null; cant.T = null; sfx.loadClips('cantinaVoices').then(c => { cant.vo = c || []; cantTimes(); }); sfx.loadClips('hypeVoices').then(c => { cf.hypeClips = c || []; });
   for (const g of world.chunks.values()) g.visible = false; // the savanna can't be seen from in here, so don't draw it
   state = 'cantinaScene';
+}
+// the scene's beats follow the recordings (CH2CANTINA1-4), so no line is cut off by the next
+function cantTimes() {
+  const d = i => (cant.vo && cant.vo[i] ? cant.vo[i].duration : [1, 3.5, 3.4, 1.5][i]);
+  const a0 = 1.8, a1 = a0 + d(0) + .35, a2 = a1 + d(1) + .35, a3 = a2 + d(2) + .4;
+  CANT_SCENE[0].at = a0; CANT_SCENE[1].at = a1; CANT_SCENE[2].at = a2; CANT_SCENE[3].at = a3;
+  cant.T = { split: a1, step: a2, walk: a3, fight: a3 + Math.max(1.8, d(3) + .5) };
 }
 function cantinaSceneTick(dt) {
   if (cant.phase === 'fight' || cant.phase === 'ko' || cant.phase === 'lost') { fightTick(dt); return; }
   if (cant.phase !== 'scene') return;
   cant.t += dt; const t = cant.t, D = cant.D, W = cant.W, O = world.orion, R = TOWN.rooms.cantina, p = player.position;
   const once = (k, fn) => { if (!cant.said[k]) { cant.said[k] = 1; fn(); } };
-  for (const L of CANT_SCENE) if (t > L.at) once(L.id, () => showNarr(L.who, L.text));
+  const T = cant.T || (cantTimes(), cant.T);
+  for (const L of CANT_SCENE) if (t > L.at) once(L.id, () => { showNarr(L.who, L.text); const c = cant.vo && cant.vo[L.clip]; if (c) sfx.playNarr(c, 1.25); });
   crowdTick(dt, .2);
-  if (t < 3.6) { // the two of them, wrapped up in each other in the corner
+  if (t < T.split) { // the two of them, wrapped up in each other in the corner
     for (const A of [D, W]) { A.mode = 'idle'; animRig(A, dt); A.ra.rotation.x = -1.15; A.la.rotation.x = -1.05; }
     D.root.rotation.x = .12; W.root.rotation.x = .1;
   } else { // caught: they spring apart; Daniel turns to face you, hands up
-    W.mode = 'idle'; animRig(W, dt); W.root.rotation.x = 0; const wk = clamp((t - 3.6) / 1.2, 0, 1); W.root.position.set(lerp(-87.8, -86.9, wk), 0, lerp(17.1, 17.9, wk));
+    W.mode = 'idle'; animRig(W, dt); W.root.rotation.x = 0; const wk = clamp((t - T.split) / 1.2, 0, 1); W.root.position.set(lerp(-87.8, -86.9, wk), 0, lerp(17.1, 17.9, wk));
     D.mode = 'idle'; animRig(D, dt); D.root.rotation.x = 0; D.root.rotation.y = angLerp(D.root.rotation.y, Math.atan2(p.x - D.root.position.x, p.z - D.root.position.z), Math.min(1, dt * 4));
     D.ra.rotation.x = -1.6; D.la.rotation.x = -1.6;
-    if (t > 7) { const k = clamp((t - 7) / 5, 0, 1); D.root.position.set(lerp(-88.4, -89.2, k), 0, lerp(16.4, 15.4, k)); }
+    if (t > T.step) { const k = clamp((t - T.step) / (T.fight - T.step), 0, 1); D.root.position.set(lerp(-88.4, -89.2, k), 0, lerp(16.4, 15.4, k)); }
   }
   if (O) {
     O.mode = 'idle'; animRig(O, dt);
     O.root.rotation.y = angLerp(O.root.rotation.y, Math.atan2(D.root.position.x - O.root.position.x, D.root.position.z - O.root.position.z), Math.min(1, dt * 3));
-    if (t > 10.6) { const k = clamp((t - 10.6) / 1.4, 0, 1); O.root.position.set(lerp(R.door - 1, -91.2, k), 0, lerp(R.z0 + .9, 13.6, k)); O.mode = 'walk'; animRig(O, 0); }
+    if (t > T.walk) { const k = clamp((t - T.walk) / 1.4, 0, 1); O.root.position.set(lerp(R.door - 1, -91.2, k), 0, lerp(R.z0 + .9, 13.6, k)); O.mode = k < 1 ? 'walk' : 'idle'; animRig(O, 0); }
   }
   if (state === 'cantinaScene') {
-    if (t < 3.6) { const k = t / 3.6; camera.position.set(R.door - .5, 1.75, R.z0 + .6 + k * .8); camera.lookAt(-88.2, 1.5, 16.7); }
-    else if (t < 7) { camera.position.set(-90.6, 1.6, 14.4); camera.lookAt(D.root.position.x, 1.55, D.root.position.z); }
-    else if (t < 10.6) { camera.position.set(-89.6, 1.7, 15.7); camera.lookAt(O.root.position.x, 1.65, O.root.position.z); }
+    if (t < T.split) { const k = t / T.split; camera.position.set(R.door - .5, 1.75, R.z0 + .6 + k * .8); camera.lookAt(-88.2, 1.5, 16.7); }
+    else if (t < T.step) { camera.position.set(-90.6, 1.6, 14.4); camera.lookAt(D.root.position.x, 1.55, D.root.position.z); }
+    else if (t < T.walk) { camera.position.set(-89.6, 1.7, 15.7); camera.lookAt(O.root.position.x, 1.65, O.root.position.z); }
     else { camera.position.set(-93.2, 1.3, 15.6); camera.lookAt(O.root.position.x, 1.4, O.root.position.z); }
   }
-  if (t > 12.4) { hideNarr(); startFight(); }
+  if (t > T.fight) { hideNarr(); startFight(); }
 }
 
 /* ---- The fight: you play as Orion. A brawler in a packed cantina, with the crowd on the walls and MC Irie on the bar.
@@ -8136,8 +8145,8 @@ const HYPE = {
   lost:    [['CH2HYPE18', 'Orion drop! Bloodclaat! Run it back, run it back!']]
 };
 const CANT_WIN = [
-  { who: 'ORION MASCAR', id: 'CH2CANTWINORION1', text: 'That’s for Nico.' },
-  { who: 'ORION MASCAR', id: 'CH2CANTWINORION2', text: 'Come on. He can explain the rest to her himself when he wakes up.' }
+  { who: 'ORION MASCAR', id: 'CH2CANTWINORION1', clip: 5, text: 'That’s for Nico.' },
+  { who: 'ORION MASCAR', id: 'CH2CANTWINORION2', clip: 6, text: 'Come on. He can explain the rest to her himself when he wakes up.' }
 ];
 const cf = { keys: new Set(), touch: null };
 let cfHud = null;
@@ -8162,9 +8171,12 @@ function fightHud(on) {
 }
 function fightPop(text, cls = '') { const el = cfHud.querySelector('.pop'); el.className = 'pop ' + cls; el.textContent = text; void el.offsetWidth; el.classList.add('go'); }
 function hype(kind, force, not) {
-  const now = performance.now(); if (!force && now - (cf.hypeT || 0) < 2600) return;
+  const now = performance.now(); if (!force && (now - (cf.hypeT || 0) < 2600 || now < (cf.hypeUntil || 0))) return;
   const all = HYPE[kind]; if (!all) return; const list = all.length > 1 ? all.filter(l => l[0] !== not) : all, [id, text] = list[Math.floor(Math.random() * list.length)]; cf.lastHype = id;
   cf.hypeT = now; const el = cfHud.querySelector('.hype'); el.querySelector('small').textContent = MC; el.querySelector('span').textContent = text;
+  const clip = cf.hypeClips && cf.hypeClips[+id.replace('CH2HYPE', '') - 1], dur = clip ? clip.duration : 2;
+  if (clip) sfx.playNarr(clip, 1.3); cf.hypeUntil = now + dur * 1000 + 300;
+  el.style.animationDuration = Math.max(2.6, dur + .8).toFixed(2) + 's'; // the caption stays up as long as he's talking
   el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); cf.mcPump = 1;
 }
 addEventListener('keydown', e => {
@@ -8187,7 +8199,7 @@ function startFight() {
   player.position.set(-92.6, 0, 9.4); player.rotation.y = .3; // you watch from the door with the others
   fightHud(true); fightPop('FIGHT!', 'fight'); sfx.thud(); hype('open', true);
   sfx.loadClips('cantinaFightMusic').then(c => { if (c && c[0] && cant.phase === 'fight') sfx.playSong(c[0]); }); // Rotating Motors
-  setTimeout(() => { if (cant.phase === 'fight') { const el = cfHud.querySelector('.hype'); el.querySelector('small').textContent = 'WOMAN'; el.querySelector('span').textContent = 'Get off him! Somebody help!'; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); cf.hypeT = performance.now(); } }, 3600);
+  setTimeout(() => { if (cant.phase === 'fight') { const el = cfHud.querySelector('.hype'); el.querySelector('small').textContent = 'WOMAN'; el.querySelector('span').textContent = 'Get off him! Somebody help!'; el.style.animationDuration = '3.4s'; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); cf.hypeT = performance.now(); const c = cant.vo && cant.vo[4]; if (c) { sfx.playNarr(c, 1.25); cf.hypeUntil = performance.now() + c.duration * 1000 + 300; } } }, cf.hypeClips && cf.hypeClips[0] ? cf.hypeClips[0].duration * 1000 + 450 : 3600); // after MC Irie's opening line
 }
 function fightInput(b) {
   const f = cf.o; if (!f || cant.phase !== 'fight') return;
@@ -8362,7 +8374,7 @@ function endFight() {
   const O = world.orion; O.root.rotation.set(0, O.root.rotation.y, 0); O.root.position.y = 0; O.mode = 'idle';
   const D = cant.D; D.root.position.y = .15; D.root.rotation.set(-Math.PI / 2, D.root.rotation.y, 0, 'YXZ');
   state = 'explore'; show(ui.xhud, true); ex.snap = true;
-  const run = i => { if (i >= CANT_WIN.length) { cantinaEnd(); return; } openDialog(CANT_WIN[i].who, [CANT_WIN[i].text], false, () => run(i + 1)); };
+  const run = i => { if (i >= CANT_WIN.length) { cantinaEnd(); return; } const c = cant.vo && cant.vo[CANT_WIN[i].clip]; openDialog(CANT_WIN[i].who, [CANT_WIN[i].text], false, () => run(i + 1), c ? [c] : undefined); };
   run(0);
 }
 // ---- the crowd along the walls, and MC Irie up on the bar ----
