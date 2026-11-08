@@ -341,6 +341,7 @@ body.touch .touch-ui{display:block}
 #xhud.cutting .cbar{height:9vh}
 #xSkip{position:absolute;right:calc(var(--sr) + 20px);bottom:calc(var(--sb) + 16px);display:none;pointer-events:auto;z-index:3}
 #xhud.cutting #xSkip{display:inline-block}
+#xhud.cutting.noskip #xSkip{display:none}
 #xhud.cutting .x-obj,#xhud.cutting .x-menu,#xhud.cutting .hotbar,#xhud.cutting .touch-ui,#xhud.cutting .x-prompt,#xhud.cutting .x-hint,#xhud.cutting .loot{opacity:0;pointer-events:none}
 #xhud.cutting .x-dlg{bottom:calc(9vh + 18px)}
 .x-dlg.cyan{border-left-color:#40e6ff}
@@ -3293,7 +3294,12 @@ function ch2Tasks(task) {
   if (c2.farmFound) h += task(!!c2.lionsDone, c2.lionsDone ? 'Drive off the lions' : `Drive off the lions · ${world.farmLeft == null ? 3 : world.farmLeft} left`);
   if (c2.lionsDone) h += task(!!c2.doorReached, 'Check on the woman');
   if (c2.metNico) h += task(!!c2.townFound, 'Reach Ad-Nostra, the harbour town');
-  if (c2.metNico && c2.townFound) { const n = Object.keys(c2.townAsked || {}).length; h += task(!!c2.husbandFound, `Find Nico’s husband in Ad-Nostra${n && !c2.husbandFound ? ` · asked ${n}` : ''}`); }
+  if (c2.metNico && c2.townFound) {
+    const n = danielClues();
+    if (!c2.cantinaClue && !c2.husbandFound) h += task(false, `${n ? 'Find Daniel Brown' : 'Find Nico’s husband'} in Ad-Nostra · clues ${n}/${DANIEL_CLUES.length}`);
+    if (n >= DANIEL_CLUES.length && !c2.cantinaClue && !c2.husbandFound) h += task(false, 'Ask at the harbour office');
+    if (c2.cantinaClue || c2.husbandFound) h += task(!!c2.husbandFound, 'Find Daniel Brown in The Salt Lantern');
+  }
   return h;
 }
 function campTasks(p, task) {
@@ -5736,6 +5742,8 @@ function questTarget() {
     if (c2.call && !c2.lionsDone) return { x: FARM.x, z: FARM.z, label: c2.farmFound ? 'Drive off the lions' : 'The farmhouse' };
     if (c2.lionsDone && !c2.doorReached) return { x: FARM.x - 5.4, z: FARM.z, label: 'The farmhouse door' };
     if (c2.metNico && !c2.townFound) return { x: TOWN.x1 - 1, z: 0, label: 'Ad-Nostra' };
+    if (c2.townFound && !c2.husbandFound && c2.cantinaClue) return { x: -92, z: 6.6, label: 'The Salt Lantern' };
+    if (c2.townFound && !c2.husbandFound && danielClues() >= DANIEL_CLUES.length && TOWN.spots) return { x: TOWN.spots.office[0], z: TOWN.spots.office[1], label: 'Harbour office' };
     return null;
   }
   if (wanderer.chapter === 1 && c.slept && !c.metOutside && world.jamesAt) return { x: world.jamesAt.x, z: world.jamesAt.z, label: c.found ? 'Speak to James Brown' : 'Find James Brown' };
@@ -7168,7 +7176,20 @@ function buildTown() {
   const building = (x0, x1, z0, z1, nz, opts = {}) => {
     const w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, floors = opts.floors || (rnd() < .45 ? 1 : rnd() < .8 ? 2 : 3), h = floors * 3.1;
     const wall = opts.wall || pick(WALLS), zF = nz < 0 ? z0 : z1;
-    box(w, h, d, wall, cx, h / 2, cz); col(x0, x1, z0, z1);
+    if (opts.hollow) {
+      // a room you can walk into: four walls with a doorway on the street side, a timber floor, the upper floor sealed above
+      const T = .3, dw = 1.8, dx = opts.doorX, zB = nz < 0 ? z1 : z0, fi = zF - nz * T / 2, bi = zB + nz * T / 2;
+      box(w, h - 3.1, d, wall, cx, 3.1 + (h - 3.1) / 2, cz);
+      box(w, 3.1, T, wall, cx, 1.55, bi); col(x0, x1, zB, zB + nz * T);
+      box(T, 3.1, d, wall, x0 + T / 2, 1.55, cz); col(x0, x0 + T, z0, z1);
+      box(T, 3.1, d, wall, x1 - T / 2, 1.55, cz); col(x1 - T, x1, z0, z1);
+      const L = dx - dw / 2 - x0, Rw = x1 - (dx + dw / 2);
+      box(L, 3.1, T, wall, x0 + L / 2, 1.55, fi); col(x0, dx - dw / 2, zF, zF - nz * T);
+      box(Rw, 3.1, T, wall, x1 - Rw / 2, 1.55, fi); col(dx + dw / 2, x1, zF, zF - nz * T);
+      box(dw, .8, T, wall, dx, 2.7, fi);
+      box(w - 2 * T, .06, d - 2 * T, M(0x5a3d26), cx, .03, cz);
+      TOWN.rooms = TOWN.rooms || {}; TOWN.rooms[opts.hollow] = { x0: x0 + T, x1: x1 - T, z0: z0 + T, z1: z1 - T, door: dx, zF, nz };
+    } else { box(w, h, d, wall, cx, h / 2, cz); col(x0, x1, z0, z1); }
     // parapet with a darker cap, and a plinth
     const cap = M(new THREE.Color(wall.color).multiplyScalar(.82).getHex());
     box(w + .1, .6, .26, wall, cx, h + .3, z0 + .13); box(w + .1, .6, .26, wall, cx, h + .3, z1 - .13);
@@ -7178,8 +7199,7 @@ function buildTown() {
     if (floors > 1) box(w + .04, .12, d + .04, cap, cx, 3.1, cz);
     // the door
     const door = opts.doorX != null ? opts.doorX : cx + rr(-w / 4, w / 4);
-    box(1.3, 2.2, .1, dark, door, 1.1, zF + nz * .02);
-    box(1.2, 2.1, .08, pick([trim, ...SHUT]), door + nz * .25, 1.05, zF + nz * .2, nz * .5);
+    if (!opts.hollow) { box(1.3, 2.2, .1, dark, door, 1.1, zF + nz * .02); box(1.2, 2.1, .08, pick([trim, ...SHUT]), door + nz * .25, 1.05, zF + nz * .2, nz * .5); }
     box(1.6, .14, .3, trim, door, 2.28, zF + nz * .12);
     facade(x0, x1, zF, nz, floors, wall, { door });
     // a few windows round the back
@@ -7189,7 +7209,7 @@ function buildTown() {
       const aw = Math.min(w - .6, opts.awningW || rr(3.4, 6)), cl = pick(CLOTH), az = zF + nz * 1.2;
       box(aw, .06, 2.5, cl, door, 2.75, az, 0, nz * -.32);
       for (const sx of [-1, 1]) box(.07, 2.6, .07, trim, door + sx * (aw / 2 - .1), 1.3, zF + nz * 2.3);
-      col(door - aw / 2, door + aw / 2, zF + nz * 2.2, zF + nz * 2.4);
+      for (const sx of [-1, 1]) col(door + sx * (aw / 2 - .1) - .1, door + sx * (aw / 2 - .1) + .1, zF + nz * 2.2, zF + nz * 2.4); // just the poles: you can walk under it
     }
     roofProps(cx, cz, w, d, h);
     return { door, zF, h };
@@ -7211,7 +7231,7 @@ function buildTown() {
   const spots = {};
   // front rows on the main street (north faces -z, south faces +z) and back rows behind them
   row(-178, -138, 8, -1, [8, 12], { 0: { w: 10, d: 10, floors: 2, wall: WALLS[1], sign: 'HARBOUR OFFICE', onBuilt: b => spots.office = [b.door, b.zF - 2.4] } });
-  row(-98, -64, 8, -1, [8, 12], { 0: { w: 12, d: 11, floors: 2, wall: WALLS[2], sign: 'THE SALT LANTERN', awning: true, awningW: 7, onBuilt: b => spots.cantina = [b.door + 2.5, b.zF - 3] } });
+  row(-98, -64, 8, -1, [8, 12], { 0: { w: 12, d: 11, floors: 2, wall: WALLS[2], sign: 'THE SALT LANTERN', awning: true, awningW: 7, hollow: 'cantina', doorX: -92, onBuilt: b => { spots.cantina = [b.door + 2.5, b.zF - 3]; buildCantinaInside(S, live, M, box, cyl, col); } } });
   row(-54, -36, 8, -1, [8, 11]);
   row(-178, -138, -8, 1, [8, 12], { 1: { w: 9, d: 9, floors: 1, wall: WALLS[1], sign: 'CLINIC' } });
   row(-98, -64, -8, 1, [8, 12], { 0: { w: 11, d: 10, floors: 1, wall: WALLS[5], sign: 'GENERAL SUPPLIES', awning: true, awningW: 7, onBuilt: (b, xa, xb) => { spots.store = [b.door + 2, b.zF + 3]; for (let k = 0; k < 4; k++) box(.9, .7, .8, wCrateMat, xa + 1 + k * 1.1, .35, b.zF + 3.6); col(xa + .5, xa + 5.2, b.zF + 3.1, b.zF + 4.1); } } });
@@ -7330,7 +7350,7 @@ const TZ = { main: [-196, -36, -3.4, 3.4], square: [-133, -103, -10, 8], quay: [
 const TOWNSFOLK = [
   { name: 'GATE WARDEN', sp: 'hfos', at: 'gate',
     lines: ['Welcome to Ad-Nostra. Keep your weapons holstered and your temper cool, and we’ll get along fine.', 'You’re the one Orion’s been looking after. His cousin from the coast, he says. Funny. You don’t look like anybody’s cousin.'],
-    husband: 'Nico’s man? The farmer from out east? He came through this gate yesterday morning with his cart. I didn’t see him go back out.' },
+    husband: 'Daniel Brown? Nico’s man, the farmer from out east? He came through this gate yesterday morning with his cart. I didn’t see him go back out.' },
   { name: 'HFOS SENTRY', sp: 'hfos', at: 'gate2',
     lines: [sp => sp === 'human' ? 'Federation checkpoint. Nobody asks for papers in Ad-Nostra, but we notice trouble.' : 'Off-worlders are welcome in Ad-Nostra, by order of the Federation. See that you behave like it.'],
     husband: 'If a man goes missing on this coast, the harbour office hears about it before we do. Start there.' },
@@ -7339,10 +7359,10 @@ const TOWNSFOLK = [
     husband: 'A missing farmer? Report it at the harbour office. They keep the logs. We keep the peace.' },
   { name: 'SHOPKEEPER', sp: 'human', at: 'store', c: [0xc9a24a, 0x6a4428], skin: 4,
     lines: ['General supplies. Rope, lamp oil, seed, ration packs. If it isn’t here, it’s on the next boat. Probably.'],
-    husband: 'He was in yesterday. Seed, lamp oil and a tin of formula. Said his wife was due any day now. He paid, and that’s the last I saw of him.' },
+    husband: 'Daniel Brown? He was in yesterday. Seed, lamp oil and a tin of formula. Said his wife was due any day now. He paid, and that’s the last I saw of him.' },
   { name: 'CANTINA OWNER', sp: 'human', at: 'cantina', c: [0x8f3a2a, 0xe8dcc6], skin: 2,
     lines: ['The Salt Lantern opens at sundown. Strong coffee by day, stronger things by night. No fighting inside.'],
-    husband: 'Wasn’t in here, and I’d remember. Farmers drink their coffee on market day and they’re home before dark. Most of them, anyway.' },
+    husband: 'I pour the drinks, friend. I don’t keep track of who drinks them.' },
   { name: 'HARBOUR CLERK', sp: 'human', at: 'office', c: [0xe8dcc6, 0x3d4f7a], skin: 5,
     lines: ['Harbour office. Every boat in and out of Ad-Nostra is written in this book. If it isn’t in the book, it didn’t happen.'],
     husband: 'Yesterday was busy. Three boats in, two out. If your farmer went aboard one of them, he’ll be in the book. I’ll have to look.' },
@@ -7351,7 +7371,7 @@ const TOWNSFOLK = [
     husband: 'The farmers from the east road always stop at my stall. Not him, not yesterday. He looked like a man in a hurry.' },
   { name: 'OLD MAN', sp: 'human', zone: 'square', c: [0xd9c4a0, 0x6a4428], skin: 4, slow: true,
     lines: ['When I was a boy this town had another name. The people who rebuilt it after the war called it Ad-Nostra, and nobody’s called it anything else since.'],
-    husband: 'Nico’s husband? Good lad. Always says hello. I saw him pushing that cart of his down the main street toward the harbour yesterday.' },
+    husband: 'Daniel Brown? Nico’s husband? Good lad. Always says hello. I saw him pushing that cart of his down the main street toward the harbour yesterday.' },
   { name: 'WATER SELLER', sp: 'human', zone: 'main', c: [0x3f6f8f, 0xe8dcc6], skin: 2,
     lines: ['Clean water! Filtered this morning! Cheaper than the stuff they sell at the harbour, and twice as clean!'],
     husband: 'Sorry, friend. I don’t watch faces, only cups.' },
@@ -7477,6 +7497,7 @@ function townTick(dt) {
   if (world.sea) world.sea.position.z = p.z;
   if (TOWN.lit) TOWN.lit.emissiveIntensity = night * 1.4;
   if (world.townTp) world.townTp.visible = !!(wanderer && wanderer.ch2 && wanderer.ch2.townSeen);
+  cantinaTick(dt);
   for (const g of TOWN.lamps) g.material.opacity = night * .85;
   if (TOWN.beacon) TOWN.beacon.material.opacity = (.35 + .65 * night) * (Math.sin(time * 2.2) > 0 ? 1 : .25);
   const near = p.x < TOWN.x1 + 140 && p.x > TOWN.x0 - 160 && Math.abs(p.z) < 220;
@@ -7522,9 +7543,22 @@ function townNear(p) { let best = null, bd = 9; for (const n of TOWN.npcs) { if 
 function talkTownsfolk(n) {
   if (!n || ex.dlg) return;
   const c2 = wanderer.ch2 || {}, sp = spOf(wanderer), say = l => typeof l === 'function' ? l(sp) : l, lines = n.d.lines.map(say);
-  if (c2.metNico && !c2.husbandFound && n.d.husband) lines.push(say(n.d.husband));
+  const toCantina = c2.metNico && !c2.husbandFound && n.d.name === 'HARBOUR CLERK' && danielClues() >= DANIEL_CLUES.length;
+  if (toCantina) lines.push('Daniel Brown. Let me see… no. He never boarded anything. But that cart of his has been sitting outside The Salt Lantern since last night. Try the cantina.');
+  else if (c2.metNico && !c2.husbandFound && n.d.husband) lines.push(say(n.d.husband));
   world.townTalk = n; sfx.click();
-  openDialog(n.d.name, lines, false, () => { world.townTalk = null; if (c2.metNico && n.d.husband) { const asked = Object.assign({}, c2.townAsked || {}); if (!asked[n.d.name]) { asked[n.d.name] = 1; setCh2({ townAsked: asked }); } } });
+  openDialog(n.d.name, lines, false, () => {
+    world.townTalk = null;
+    if (c2.metNico && n.d.husband && !c2.husbandFound) {
+      const before = danielClues(), asked = Object.assign({}, c2.townAsked || {});
+      if (!asked[n.d.name]) { asked[n.d.name] = 1; setCh2({ townAsked: asked }); }
+      const now = danielClues();
+      if (now > before) lootMsg(`Clue ${now} of ${DANIEL_CLUES.length}`, '#ffc94a');
+      if (now >= DANIEL_CLUES.length && before < DANIEL_CLUES.length) setTimeout(() => notice('Daniel Brown', 'ASK AT THE HARBOUR OFFICE', 3200), 600);
+    }
+    if (toCantina && !c2.cantinaClue) { setCh2({ cantinaClue: true }); notice('The Salt Lantern', 'FIND DANIEL BROWN', 3200); }
+    renderTasks();
+  });
 }
 /* ---- the ferry: Ad-Nostra ⇄ the Antarctic terminal (Chapter II on, once you've found Ad-Nostra) ----
    Board at either pier. The ship pulls out, there's a title card over black, and you step off at the other end.
@@ -7889,6 +7923,202 @@ function endFlashback() {
     { text: 'I will find Croxian. And when I do…', onPick: () => { influence('orion', -20); setCh2({ antChoice: 'vengeance' }); openDialog('ORION MASCAR', FLASH_ORION_VENGEANCE, false, after, (fb.replies || []).slice(3, 7)); } }
   ]), (fb.lines || []).slice(0, 6));
 }
+/* ---- Chapter II: Daniel Brown (no relation to James) and The Salt Lantern ----
+   Three townsfolk put you on his trail (the gate warden, the shopkeeper, the old man in the square); then the harbour clerk
+   tells you his cart has been outside The Salt Lantern since last night. Inside, Daniel is kissing a woman who isn't Nico.
+   Orion goes for him. You choose: pull Orion off him, or let him finish. */
+const DANIEL_CLUES = ['GATE WARDEN', 'SHOPKEEPER', 'OLD MAN'];
+const danielClues = () => { const a = (wanderer.ch2 && wanderer.ch2.townAsked) || {}; return DANIEL_CLUES.filter(n => a[n]).length; };
+// the lines, in order (text for now; ids are what the recordings will be called)
+const CANT_SCENE = [
+  { at: 1.8, who: 'ORION MASCAR', id: 'CH2CANTORION1', text: 'Daniel?' },
+  { at: 3.6, who: 'DANIEL BROWN', id: 'CH2CANTDANIEL1', text: 'Orion?! Wait. Wait, this isn’t what it looks like.' },
+  { at: 7.0, who: 'ORION MASCAR', id: 'CH2CANTORION2', text: 'Your wife is lying in that farmhouse with your newborn son in her arms.' },
+  { at: 10.6, who: 'ORION MASCAR', id: 'CH2CANTORION3', text: 'And you are here.' },
+  { at: 13.2, who: 'WOMAN', id: 'CH2CANTWOMAN1', text: 'Get off him! Somebody help!' }
+];
+const CANT_PULL = [ // "Pull Orion off him." (−10 influence)
+  { who: 'ORION MASCAR', id: 'CH2CANTPULLORION1', text: 'Let go of me!' },
+  { who: 'ORION MASCAR', id: 'CH2CANTPULLORION2', text: '…Fine. Fine.' },
+  { who: 'ORION MASCAR', id: 'CH2CANTPULLORION3', text: 'Nico named that boy after me. And this is the man who gets to be his father.' },
+  { who: 'DANIEL BROWN', id: 'CH2CANTPULLDANIEL1', text: 'Please… don’t tell her.' },
+  { who: 'ORION MASCAR', id: 'CH2CANTPULLORION4', text: 'Tell her yourself. Crawl home if you have to.' }
+];
+const CANT_LET = [ // "Let him finish." (+10 influence)
+  { who: 'ORION MASCAR', id: 'CH2CANTLETORION1', text: 'That’s for Nico.' },
+  { who: 'ORION MASCAR', id: 'CH2CANTLETORION2', text: 'And that one was for the boy.' },
+  { who: 'ORION MASCAR', id: 'CH2CANTLETORION3', text: 'Come on. He can explain the rest to her himself when he wakes up.' }
+];
+const cant = { on: false, t: 0, beat: false, hitT: 0, hits: 0, decals: [] };
+function buildCantinaInside(S, live, M, box, cyl, col) {
+  const R = TOWN.rooms.cantina, wood = M(0x6b4527), dark = M(0x2a1d12), brass = M(0xb8893a, { metalness: .6, roughness: .35 });
+  // the bar along the back wall, shelves of bottles behind it
+  box(6.2, 1.1, .8, wood, -94.2, .55, R.z1 - 1.9); box(6.4, .08, 1, dark, -94.2, 1.14, R.z1 - 1.9); col(-97.3, -91.1, R.z1 - 2.3, R.z1 - 1.5);
+  for (const y of [1.35, 1.95]) box(6, .06, .32, wood, -94.2, y, R.z1 - .2);
+  const BOT = [0x3a6b3a, 0x7a2a1a, 0xc9a24a, 0x2b4a6b, 0xe8dcc6].map(c => M(c, { roughness: .2, metalness: .1 }));
+  for (const y of [1.38, 1.98]) for (let x = -97; x < -91.4; x += .32) { const b = cyl(.05, .05, .3, BOT[Math.floor(Math.abs(x * 7 + y * 3)) % BOT.length], x, y + .18, R.z1 - .2, 6); b.scale.y = .8 + (Math.abs(Math.sin(x * 9)) * .5); }
+  for (let x = -96.8; x < -91.4; x += 1.2) { cyl(.18, .18, .06, dark, x, .76, R.z1 - 2.7, 10); cyl(.04, .04, .72, brass, x, .38, R.z1 - 2.7, 6); }
+  // tables and chairs
+  for (const [x, z] of [[-95.6, 11.2], [-95.2, 13.9], [-90.4, 11.4]]) {
+    cyl(.6, .6, .06, wood, x, .76, z, 14); cyl(.07, .1, .74, dark, x, .37, z, 8); col(x - .55, x + .55, z - .55, z + .55);
+    for (let k = 0; k < 3; k++) { const a = k * 2.1 + .4; box(.42, .06, .42, wood, x + Math.cos(a) * .95, .46, z + Math.sin(a) * .95); box(.42, .5, .06, wood, x + Math.cos(a) * 1.15, .74, z + Math.sin(a) * 1.15, -a + Math.PI / 2); }
+  }
+  // lamps (glow only: a real light here would cost every frame across the whole map)
+  for (const [x, z] of [[-95, 12.5], [-89.5, 12], [-94, R.z1 - 2]]) { cyl(.01, .01, .5, dark, x, 2.85, z, 4); const g = glowSprite(0xffb066, 1.6, .9); g.position.set(x, 2.55, z); live.add(g); }
+  TOWN.cantinaLight = true;
+  // Daniel's cart, still outside where he left it
+  const cart = new THREE.Group(), cw = M(0x7a5a3a);
+  const add = (o, x, y, z) => { o.position.set(x, y, z); o.castShadow = true; cart.add(o); return o; };
+  add(new THREE.Mesh(new THREE.BoxGeometry(2.2, .12, 1.2), cw), 0, .72, 0);
+  for (const sz of [-.6, .6]) add(new THREE.Mesh(new THREE.BoxGeometry(2.2, .35, .06), cw), 0, .95, sz);
+  for (const sz of [-.68, .68]) { const wh = add(new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, .08, 14), dark), .2, .45, sz); wh.rotation.x = Math.PI / 2; }
+  for (const sz of [-.4, .4]) { const h = add(new THREE.Mesh(new THREE.BoxGeometry(1.3, .06, .06), cw), 1.65, .78, sz); h.rotation.z = -.15; }
+  for (let k = 0; k < 3; k++) add(new THREE.Mesh(new THREE.SphereGeometry(.28, 8, 6), M(0xc9b48a)), -.6 + k * .55, 1.0, (k % 2 - .5) * .4).scale.set(1, .7, 1);
+  add(new THREE.Mesh(new THREE.CylinderGeometry(.1, .1, .2, 10), M(0xd8d8d8, { metalness: .6 })), .55, .88, .2);
+  cart.position.set(-96.9, 0, 6.5); cart.rotation.y = .15; live.add(cart); col(-98.1, -95.4, 5.8, 7.2);
+}
+const inCantina = (x, z) => { const R = TOWN.rooms && TOWN.rooms.cantina; return R && x > R.x0 && x < R.x1 && z > R.z0 && z < R.z1; };
+async function cantinaActors() {
+  if (cant.D) return;
+  const src = await townModel('human'); if (!src || !world.town) return;
+  const mk = d => { const R = autoRig(dressTownsfolk(src, d), d.female ? 1.68 : 1.8); armRig(R, 'none'); for (const [k, sg] of [['ra', 1], ['la', -1]]) { const a = R[k], dr = R.model.userData[k + 'Drop']; if (a && dr > 0) { a.rotation.z += sg * dr; R.rest.get(a).z = a.rotation.z; } } try { bakeRig(R); } catch (e) {} world.town.add(R.root); return R; };
+  cant.D = mk({ name: 'DANIEL BROWN', sp: 'human', c: [0x6a7a4b, 0x4a3a2a], skin: 4 });
+  cant.W = mk({ name: 'WOMAN', sp: 'human', c: [0x8f2f5a, 0x2b2f36], skin: 2, female: true });
+  cantinaPose();
+}
+// where everyone is before the scene, and after it
+function cantinaPose() {
+  const D = cant.D, W = cant.W; if (!D) return;
+  const c2 = wanderer.ch2 || {}, waiting = c2.cantinaClue && !c2.husbandFound;
+  D.root.visible = waiting || !!c2.husbandFound; W.root.visible = waiting && !cant.on;
+  if (waiting) {
+    D.root.position.set(-88.4, 0, 16.4); D.root.rotation.set(0, Math.atan2(.6, .7), 0);
+    W.root.position.set(-87.8, 0, 17.1); W.root.rotation.set(0, Math.atan2(-.6, -.7), 0);
+  } else if (c2.husbandFound) { // left where Orion put him
+    D.root.position.set(-89.3, .15, 15.4); D.root.rotation.set(-Math.PI / 2, 2.3, 0, 'YXZ'); D.mode = 'idle';
+  }
+}
+function cantinaTick(dt) {
+  const L = TOWN.cantinaLight, p = player.position; if (!L) return;
+  const near = Math.abs(p.x + 92) < 22 && Math.abs(p.z - 12) < 18;
+  if (!near && !cant.on) return;
+  const c2 = wanderer.ch2 || {};
+  if (c2.cantinaClue && !cant.D && !cant.loading) { cant.loading = true; cantinaActors(); }
+  const D = cant.D, W = cant.W; if (!D) return;
+  // before you walk in: the two of them in the corner, wrapped up in each other
+  if (!cant.on && c2.cantinaClue && !c2.husbandFound) {
+    for (const R of [D, W]) { R.mode = 'idle'; animRig(R, dt); R.ra.rotation.x = -1.15; R.la.rotation.x = -1.05; R.ra.rotation.z += .35 * (R === D ? 1 : -1); }
+    D.root.rotation.x = .12 + Math.sin(time * 1.3) * .02; W.root.rotation.x = .1;
+    if (state === 'explore' && inCantina(p.x, p.z) && !ex.dlg) startCantinaScene();
+  }
+  if (cant.on) cantinaSceneTick(dt);
+}
+function startCantinaScene() {
+  Object.assign(cant, { on: true, t: 0, beat: false, hitT: 0, hits: 0, said: {}, phase: 'scene' });
+  closeDialog(); closeModals(); stopBuild(); vel.set(0, 0, 0); ex.keys.clear(); ex.joyX = ex.joyY = 0;
+  world.cantinaScene = true; show(ui.xhud, true); ui.xhud.classList.add('cutting', 'noskip'); // letterbox bars, subtitles, nothing else
+  // you and Orion just inside the door
+  const R = TOWN.rooms.cantina; player.position.set(R.door, 0, R.z0 + 1.2); player.rotation.y = 0; player.visible = true;
+  if (world.orion) { world.orion.root.visible = true; world.orion.root.position.set(R.door - 1, 0, R.z0 + .9); world.orion.root.rotation.y = .5; world.orion.mode = 'idle'; }
+  state = 'cantinaScene';
+}
+function cantBlood(n = 1) {
+  const D = cant.D, h = D.root.position;
+  for (let i = 0; i < n; i++) {
+    const g = new THREE.Mesh(new THREE.CircleGeometry(rand(.08, .26), 10), new THREE.MeshStandardMaterial({ color: 0x5a0606, roughness: .3, transparent: true, opacity: .92, polygonOffset: true, polygonOffsetFactor: -4 }));
+    g.rotation.x = -Math.PI / 2; g.position.set(h.x + rand(-.7, .7), .07 + cant.decals.length * .0005, h.z + rand(-.7, .7)); g.scale.x = rand(.6, 1.6);
+    world.town.add(g); cant.decals.push(g);
+  }
+}
+function cantHit(big) {
+  const D = cant.D, h = D.root.position;
+  sfx.thud(); if (big) sfx.swing(); cant.hits++; cant.jolt = 1; cant.shake = big ? .35 : .18;
+  burst(h.x + .2, .45, h.z, big ? 26 : 14, big ? 3.2 : 2.2, .5, .02, .02, .5, 1.6, 1.2);
+  if (cant.hits % 2 || big) cantBlood(big ? 3 : 1);
+}
+function cantinaSceneTick(dt) {
+  cant.t += dt; const t = cant.t, D = cant.D, W = cant.W, O = world.orion, R = TOWN.rooms.cantina, p = player.position;
+  const once = (k, fn) => { if (!cant.said[k]) { cant.said[k] = 1; fn(); } };
+  cant.shake = Math.max(0, (cant.shake || 0) - dt * 2); cant.jolt = Math.max(0, (cant.jolt || 0) - dt * 6);
+  for (const L of CANT_SCENE) if (t > L.at) once(L.id, () => showNarr(L.who, L.text));
+  if (cant.phase === 'scene') {
+    if (t > 12.6 && t < 13.2) hideNarr();
+    if (t > 16.8) hideNarr();
+  }
+  // the couple
+  const kissing = t < 3.6;
+  if (kissing) {
+    for (const A of [D, W]) { A.mode = 'idle'; animRig(A, dt); A.ra.rotation.x = -1.15; A.la.rotation.x = -1.05; }
+    D.root.rotation.x = .12; W.root.rotation.x = .1;
+  } else if (t < 13) { // caught: they spring apart; Daniel turns to face you, hands up
+    W.mode = 'idle'; animRig(W, dt); W.root.rotation.x = 0; const wk = clamp((t - 3.6) / 1.2, 0, 1); W.root.position.set(lerp(-87.8, -86.9, wk), 0, lerp(17.1, 17.9, wk));
+    D.mode = 'idle'; animRig(D, dt); D.root.rotation.x = 0; D.root.rotation.y = angLerp(D.root.rotation.y, Math.atan2(p.x - D.root.position.x, p.z - D.root.position.z), Math.min(1, dt * 4));
+    D.ra.rotation.x = -1.6; D.la.rotation.x = -1.6;
+    if (t > 7) { const k = clamp((t - 7) / 5, 0, 1); D.root.position.set(lerp(-88.4, -88.9, k), 0, lerp(16.4, 16.0, k)); }
+  }
+  // Orion: still, then walking at him, then on him
+  if (O) {
+    if (t < 12) {
+      O.mode = 'idle'; animRig(O, dt);
+      O.root.rotation.y = angLerp(O.root.rotation.y, Math.atan2(D.root.position.x - O.root.position.x, D.root.position.z - O.root.position.z), Math.min(1, dt * 3));
+      if (t > 10.6) { const k = clamp((t - 10.6) / 1.4, 0, 1); O.root.position.set(lerp(R.door - 1, -89.9, k), 0, lerp(R.z0 + .9, 15.1, k)); O.mode = 'walk'; }
+    } else {
+      if (!cant.beat) { cant.beat = true; cant.hitT = .25; cant.rate = 1.9; }
+      O.root.position.set(-89.9, 0, 14.75); O.root.rotation.y = Math.atan2(D.root.position.x - O.root.position.x, D.root.position.z - O.root.position.z);
+    }
+  }
+  // the first blow knocks Daniel to the floor; then Orion stands over him
+  if (t >= 12.9) {
+    const k = clamp((t - 12.9) / .5, 0, 1);
+    D.mode = 'idle'; animRig(D, dt);
+    D.root.position.set(lerp(-88.9, -89.3, k), .15 * k, lerp(16.0, 15.4, k));
+    D.root.rotation.set(-Math.PI / 2 * k + cant.jolt * .12, 2.3, 0, 'YXZ');
+    D.ra.rotation.x = -.6 - cant.jolt * .8; D.la.rotation.x = -2.2 + cant.jolt * .5; // an arm up over his face
+    if (t > 13.3) { W.mode = 'idle'; animRig(W, dt); W.ra.rotation.x = -2.6; W.la.rotation.x = -2.6; }
+  }
+  if (O && cant.phase === 'done') { O.mode = 'idle'; animRig(O, dt); O.root.rotation.x = 0; }
+  if (cant.beat && O && cant.phase !== 'done') {
+    // punches, alternating arms, driven down at him
+    cant.hitT -= dt * cant.rate; animRig(O, dt); O.root.rotation.x = .28;
+    const ph = 1 - clamp(cant.hitT, 0, 1), arm = cant.hits % 2 ? O.la : O.ra;
+    arm.rotation.x = ph < .6 ? lerp(-.6, -2.7, ph / .6) : lerp(-2.7, -.5, (ph - .6) / .4);
+    (arm === O.ra ? O.la : O.ra).rotation.x = -1.2;
+    if (cant.hitT <= 0) { cant.hitT = 1; cantHit(cant.phase === 'finish' || cant.hits === 0); if (cant.phase === 'finish' && ++cant.finishHits >= 3) cantinaFinish(); }
+  }
+  // camera (only while the scene owns it; during the choice the dialogue camera takes over)
+  if (state === 'cantinaScene') {
+    const s = cant.shake, j = () => (Math.random() - .5) * s;
+    if (t < 3.6) { const k = t / 3.6; camera.position.set(R.door - .5 + j(), 1.75 + j(), R.z0 + .6 + k * .8); camera.lookAt(-88.2, 1.5, 16.7); }
+    else if (t < 7) { camera.position.set(-90.6 + j(), 1.6, 14.4 + j()); camera.lookAt(D.root.position.x, 1.55, D.root.position.z); }
+    else if (t < 10.6) { camera.position.set(-89.6 + j(), 1.7, 15.7 + j()); camera.lookAt(O.root.position.x, 1.65, O.root.position.z); }
+    else if (t < 12.9) { camera.position.set(-91.3 + j(), 1.2, 15.6 + j()); camera.lookAt(O.root.position.x, 1.4, O.root.position.z); }
+    else { camera.position.set(-91.4 + j(), 2.4 + j(), 16.6 + j()); camera.lookAt(-89.5, .5, 15.1); }
+    if (t > 17.2 && cant.phase === 'scene') cantinaChoice();
+  }
+  ciFx(0, cant.beat ? .12 + cant.shake * .6 : 0, 0, 0, cant.beat ? .75 : 1);
+}
+function cantinaChoice() {
+  cant.phase = 'choice'; cant.rate = 1.2; hideNarr();
+  ui.xhud.classList.remove('cutting', 'noskip'); state = 'explore'; show(ui.xhud, true); ex.snap = true;
+  openChoice('ORION MASCAR', [
+    { text: 'Pull Orion off him.', onPick: () => { influence('orion', -10); setCh2({ danielChoice: 'pulled' }); cant.phase = 'done'; cant.beat = false; cantinaLines(CANT_PULL, () => cantinaEnd()); } },
+    { text: 'Let him finish.', onPick: () => { influence('orion', 10); setCh2({ danielChoice: 'finished' }); cant.phase = 'finish'; cant.finishHits = 0; cant.rate = 1.6; cant.hitT = .3; } }
+  ]);
+}
+function cantinaFinish() { cant.phase = 'done'; cant.beat = false; setTimeout(() => cantinaLines(CANT_LET, () => cantinaEnd()), 700); }
+// one speaker after another, through the normal dialogue box (and its camera)
+function cantinaLines(list, done) {
+  const run = i => { if (i >= list.length) { done && done(); return; } openDialog(list[i].who, [list[i].text], false, () => run(i + 1)); };
+  if (world.orion) world.orion.root.rotation.x = 0;
+  run(0);
+}
+function cantinaEnd() {
+  cant.on = false; world.cantinaScene = false; ciFx(0, 0, 0, 0, 1);
+  if (cant.W) cant.W.root.visible = false; // she's gone before anyone can ask her name
+  if (world.orion) { world.orion.root.rotation.x = 0; world.orion.mode = 'idle'; }
+  setCh2({ husbandFound: true }); cantinaPose(); renderTasks();
+  notice('Ad-Nostra', 'DANIEL BROWN, FOUND', 3200);
+}
 const CALL_SEQ = [
   ['ORION MASCAR', ['Hold on. That’s my phone.', 'Hello? Slow down, slow down. I can’t understand you. Who is this?']],
   ['WOMAN ON THE PHONE', ['Please, you have to help me! Lions. They came over the fence and broke the door in. I locked myself in the back room.']],
@@ -8170,6 +8400,7 @@ async function placeOrion() {
 }
 function orionTick(dt) {
   const R = world.orion; if (!R || !R.root.visible || (curArea() !== 'africa' && !orionJoined())) return;
+  if (world.cantinaScene) return; // the scene in The Salt Lantern moves him
   const p = player.position, o = R.root.position, d = Math.hypot(p.x - o.x, p.z - o.z);
   if (orionJoined() && !ex.dlg && !world.onCall && state === 'explore') orionAI(R, dt);
   else { if (orionJoined()) orionGear(R, 'rifle'); R.mode = 'idle'; if (d < 8) R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - o.x, p.z - o.z), Math.min(1, dt * 3)); }
@@ -10477,6 +10708,7 @@ function loop() {
   if (state === 'dream') { tickDialog(dt); updateDream(dt); sfx.music(0); renderer.render(dScene, camera); return; }
   if (state === 'farmCut') { farmCutTick(dt); tickDialog(dt); renderer.render(fhc.scene, camera); return; }
   if (state === 'ch2intro') { updateCh2Intro(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); renderer.render(afScene, camera); return; }
+  if (state === 'cantinaScene') { updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'flashback') { flashTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'ferryTrip') { ferryTripTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'ferryCut') { updateFerryCut(dt); updateAnim(dt); worldActionPose(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
