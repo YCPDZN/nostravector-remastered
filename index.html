@@ -1035,7 +1035,7 @@ body.touch .al-key{display:none}
 <script type="application/json" id="orionFind"></script><script src="data/orionFind.js"></script>
 <script type="application/json" id="narrCh2"></script><script src="data/narrCh2.js"></script>
 <script type="application/json" id="orionWake"></script><script src="data/orionWake.js"></script>
-<script type="application/json" id="orionCmd"></script><script src="data/orionCmd.js"></script><script type="application/json" id="callVoices"></script><script src="data/callVoices.js"></script><script type="application/json" id="doorVoices"></script><script src="data/doorVoices.js"></script><script type="application/octet-stream" id="nicoGlb"></script><script src="data/nicoGlb.js"></script><script type="application/json" id="farmVoices"></script><script src="data/farmVoices.js"></script>
+<script type="application/json" id="orionCmd"></script><script src="data/orionCmd.js"></script><script type="application/json" id="callVoices"></script><script src="data/callVoices.js"></script><script type="application/json" id="doorVoices"></script><script src="data/doorVoices.js"></script><script type="application/octet-stream" id="nicoGlb"></script><script src="data/nicoGlb.js"></script><script type="application/json" id="farmVoices"></script><script src="data/farmVoices.js"></script><script type="application/json" id="antOrionVoices"></script><script src="data/antOrionVoices.js"></script>
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -2183,7 +2183,7 @@ startBtn.addEventListener('click', () => {
   setTimeout(() => {
     f.style.transition = 'opacity 2.2s'; f.style.opacity = 0;
     setTimeout(() => { f.style.transition = ''; }, 2300);
-    if ((wanderer.chapter | 0) >= 2 && ch1().escaped) { if (!(wanderer.ch2 && wanderer.ch2.introSeen)) startCh2Intro('title'); else startChapter2(wanderer.place && wanderer.place.where === 'africa' ? wanderer.place : null); } else if ((wanderer.chapter | 0) >= 1) startChapter1(false); else runCutscene();
+    if ((wanderer.chapter | 0) >= 2 && ch1().escaped) { if (!(wanderer.ch2 && wanderer.ch2.introSeen)) startCh2Intro('title'); else startChapter1(false); } else if ((wanderer.chapter | 0) >= 1) startChapter1(false); else runCutscene();
   }, 650);
 });
 function goMenu(id) {
@@ -4279,8 +4279,10 @@ function notice(small, big, ms = 2800) {
 async function startChapter1(fromCutscene, place) {
   if ((wanderer.chapter | 0) >= 2 && ch1().escaped && wanderer.ch2 && wanderer.ch2.introSeen) {
     const own = place || (!fromCutscene && resumePlace && resumePlace.who === activeId ? resumePlace : null) || (wanderer.place && wanderer.place.mode === 'explore' ? wanderer.place : null);
-    if (own && (own.where === 'antarctica' || own.area === 'station')) { resumePlace = null; visitAntarctica(own); return; }
-    startChapter2(place); return;
+    resumePlace = null;
+    if (own && (own.where === 'antarctica' || own.area === 'station')) { visitAntarctica(own); return; }
+    const af = own && own.area === 'world' ? Object.assign({}, own, { where: 'africa' }) : null; // saves from before the ferry didn't say where; they were all in Africa
+    startChapter2(af); return; // exactly where you left off in Africa
   }
   world.area = 'antarctica';
   state = 'loadingCh';
@@ -7775,10 +7777,12 @@ function endFlashback() {
   if (O) { O.root.visible = true; O.root.position.set(p.x + Math.sin(H.rot) * 1.15, H.y, p.z + Math.cos(H.rot) * 1.15); O.root.rotation.y = H.rot + Math.PI; O.mode = 'idle'; }
   fb.on = false; state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta();
   setCh2({ antFlashback: true });
+  sfx.loadClips('antOrionVoices').then(c => { fb.replies = c || []; });
   const after = () => notice('The ferry terminal', 'ANTARCTICA', 3000);
   openDialog('ORION MASCAR', FLASH_ORION, false, () => openChoice('ORION MASCAR', [
-    { text: 'Got it.', onPick: () => { influence('orion', 10); setCh2({ antChoice: 'calm' }); openDialog('ORION MASCAR', FLASH_ORION_CALM, false, after); } },
-    { text: 'I will find Croxian. And when I do…', onPick: () => { influence('orion', -20); setCh2({ antChoice: 'vengeance' }); openDialog('ORION MASCAR', FLASH_ORION_VENGEANCE, false, after); } }
+    // voiced: CH2ANTORIONGOOD1–3 and CH2ANTORIONBAD1–4 (antOrionVoices: the three GOOD lines, then the four BAD)
+    { text: 'Got it.', onPick: () => { influence('orion', 10); setCh2({ antChoice: 'calm' }); openDialog('ORION MASCAR', FLASH_ORION_CALM, false, after, (fb.replies || []).slice(0, 3)); } },
+    { text: 'I will find Croxian. And when I do…', onPick: () => { influence('orion', -20); setCh2({ antChoice: 'vengeance' }); openDialog('ORION MASCAR', FLASH_ORION_VENGEANCE, false, after, (fb.replies || []).slice(3, 7)); } }
   ]));
 }
 const CALL_SEQ = [
@@ -8702,7 +8706,7 @@ function currentPlace() {
 }
 // each wanderer remembers where they were, so Continue / Load put you back there
 function rememberPlace() {
-  const p = currentPlace(); wanderer.place = p;
+  const p = currentPlace(); wanderer.place = p; resumePlace = null; // this is newer than whatever slot was last loaded
   const c = curChar(); if (c) c.place = p;
   return p;
 }

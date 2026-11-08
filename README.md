@@ -413,5 +413,12 @@ The first time you step off the ferry in Antarctica with Orion, it all comes bac
    - The choice is saved as `ch2.antChoice` (`calm` or `vengeance`) for later chapters. Influence shows in Orion's alignment panel and in the loot feed (*Orion · influence +10*).
    - Dialogue choices are new to the game. Any conversation can now offer them with `openChoice(speaker, options)`, and `influence(companion, amount)` changes one companion's influence directly.
 
-The flashback uses the voice lines James and Croxian already have. Orion's lines here, including both replies, are text only for now (no voice files yet). The flag is `ch2.antFlashback`.
+The flashback uses the voice lines James and Croxian already have. Orion's two replies are voiced and lip-synced: CH2ANTORIONGOOD1–3 for "Got it." and CH2ANTORIONBAD1–4 for the Croxian reply. They're packed as `data/antOrionVoices.js`, with the sources in `assets/audio/orion_ch2_antarctica/`. His six lines before the choice are still text only. The flag is `ch2.antFlashback`.
 - **Fix:** the Chapter I super blizzard can never start again once you've escaped Antarctica.
+
+### Fix: saves put you back exactly where you left off (both chapters)
+- **Load** and **Continue** now always return you to the exact spot you saved or quit at, in Chapter I (in the station or out on the ice) and in Chapter II (in Africa or back in Antarctica).
+- **What was wrong:**
+  - Loading a Chapter II save, or pressing Continue, always restarted you at Orion's porch, because your saved position was never passed on.
+  - The position from the last slot you loaded could also hang around and override where you'd actually got to since.
+- Chapter II saves made before the ferry existed didn't record which region you were in. They're treated as Africa, where they could only have been.
