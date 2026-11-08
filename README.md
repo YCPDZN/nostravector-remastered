@@ -446,3 +446,6 @@ Daniel Brown is Nico's husband, and no relation to James.
 - **Performance:** while you're in the cantina scene, the savanna outside (which the walls hide) and the street townsfolk aren't drawn. This cuts each frame from about 3.2 million triangles to about 0.2 million, so the fight runs smoothly on phones. The townsfolk's merged meshes are also culled again when off screen, everywhere in town.
 - **Music:** *Rotating Motors* (cheafpicproductions, made with Suno) is the fight track. It loops from *FIGHT!* through the K.O. (and through a retry without restarting), fades out after the fight, and follows the music volume setting. It's packed as `data/cantinaFightMusic.js`, with the source at `assets/audio/music_cantina/CANTINA_FIGHT_MUSIC.mp3`.
 - **Voice:** all these lines are text only for now. Their recording ids are in the code (`CH2CANTORION1–3`, `CH2CANTDANIEL1`, `CH2CANTWINORION1–2`, `CH2HYPE1–18`).
+
+### Fix: the pause menu shows the right chapter
+The pause menu always said *Chapter I · Antarctica*. It now shows the chapter and place you're actually in, matching the in-game HUD: *Chapter II · Africa*, *Chapter II · Antarctica* after the ferry, or *Chapter I · Antarctica*.
