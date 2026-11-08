@@ -7364,7 +7364,9 @@ function charScene(c) {
     if (c.builtin) { const bin = atob(document.getElementById(c.tag).textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); buf = u8.buffer; }
     else if (cc.pending && cc.pending.id === c.id) buf = cc.pending.data.slice(0);
     else { const rec = await idb.get(c.id); if (!rec) throw new Error('missing model'); buf = rec.data.slice(0); }
-    return parseGlb(buf);
+    const sc = await parseGlb(buf);
+    if (c.tag === 'chSevirrus') sinisterEyes(sc);
+    return sc;
   })();
   charCache[c.id].catch(() => { delete charCache[c.id]; });
   return charCache[c.id];
@@ -7532,7 +7534,7 @@ function animRig(R, dt) {
       S(nk, 'z', d * .55 * e); S(nk, 'x', .12 * e); if (R.head && R.head !== nk) S(R.head, 'y', -d * .25 * e);
     } else {
       S(nk, 'z', 0); S(nk, 'x', 0); if (R.head && R.head !== nk) S(R.head, 'y', Math.sin(t * .6) * .1);
-      if ((R.twitchAt -= dt) <= 0) { R.twitch = .62; R.twitchDir = Math.random() < .5 ? -1 : 1; R.twitchAt = 2.2 + Math.random() * 4; }
+      if ((R.twitchAt -= dt) <= 0) { R.twitch = .62; R.twitchDir = 1; /* always snaps the same way */ R.twitchAt = 2.2 + Math.random() * 4; }
     }
   } else if (R.head && R.kind !== 'auto') S(R.head, 'y', Math.sin(t * .7) * .12);
 }
@@ -8149,6 +8151,7 @@ function ccTick(dt) {
   if (state === 'pedia' && cc.prime) { ccRoot.children.forEach((h, i) => { h.position.y = .25 + Math.sin(time * .8 + i) * .12; }); ccBg.children.forEach((g, i) => { if (g.material) g.material.opacity = (i % 2 ? .28 : .42) + Math.sin(time * (1.3 + i * .4)) * .06; }); }
   ccRoot.rotation.y = cc.rot;
   for (const e of cc.extra) e.o.rotation.y += dt * e.spin;
+  if (state === 'pedia') figSlasherTick(dt);
   for (const m of cc.anim) animSpecies(m, time, cc.walk);
   for (const R of cc.rigs) { R.mode = cc.charMode === 'attack' ? 'attack' : cc.walk ? 'walk' : 'idle'; animRig(R, dt); }
   // frame the preview beside the panel (left on desktop, top on phones)
@@ -8617,6 +8620,29 @@ function feminiseRobot(sc) {
   }
   if (body) { const sk = new THREE.Mesh(new THREE.CylinderGeometry(.62, .95, .55, 24, 1, true), plateM); sk.material.side = THREE.DoubleSide; sk.position.y = 2.05; body.add(sk); }
 }
+// Sevirrus: red irises that glow faintly in the dark, to show what he is
+function sinisterEyes(sc) {
+  sc.traverse(o => {
+    if (!o.isMesh || !/^iris/i.test(o.name || '')) return;
+    o.material = o.material.clone(); o.material.color.setHex(0xb3100c); o.material.emissive = new THREE.Color(0xff1a10); o.material.emissiveIntensity = .9;
+  });
+  sc.traverse(o => { if (o.isMesh && /^pupil/i.test(o.name || '')) { o.material = o.material.clone(); o.material.color.setHex(0x1a0000); } });
+}
+// static Nostrapedia figures get Sevirrus's neck snap too (one direction only)
+function figSlasher(sc) {
+  let neck = null, head = null;
+  sc.traverse(o => { if (o.isBone && o.name === 'Neck') neck = o; if (o.isBone && o.name === 'Head') head = o; });
+  return neck ? { neck, head, nz: neck.rotation.z, nx: neck.rotation.x, hy: head ? head.rotation.y : 0, t: 0, at: 1.5 } : null;
+}
+function figSlasherTick(dt) {
+  for (const h of ccRoot.children) {
+    const S = h.userData.slasher; if (!S) continue;
+    S.at -= dt; if (S.at <= 0 && S.t <= 0) { S.t = .62; S.at = 2.2 + Math.random() * 4; }
+    let e = 0; if (S.t > 0) { S.t -= dt; e = S.t > .5 ? smooth(.62, .54, S.t) : smooth(0, .12, S.t); }
+    S.neck.rotation.z = S.nz + .55 * e; S.neck.rotation.x = S.nx + .12 * e;
+    if (S.head) S.head.rotation.y = S.hy - .25 * e + (S.t > 0 ? 0 : Math.sin(time * .6) * .1);
+  }
+}
 function loadFigure(c) {
   const key = c.tag + (c.mod || '') + (c.sil ? ':sil' : '');
   if (figCache[key]) return figCache[key];
@@ -8625,6 +8651,7 @@ function loadFigure(c) {
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     const sc = await parseGlb(u8.buffer), holder = new THREE.Group(); holder.add(sc);
     if (c.mod === 'kizna') feminiseRobot(sc);
+    if (c.tag === 'chSevirrus') { sinisterEyes(sc); holder.userData.slasher = figSlasher(sc); }
     if (c.sil) { const black = new THREE.MeshBasicMaterial({ color: 0x000000 }); sc.traverse(o => { if (o.isMesh) o.material = black; }); }
     sc.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
     sc.updateMatrixWorld(true);

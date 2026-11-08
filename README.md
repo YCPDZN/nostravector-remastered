@@ -216,3 +216,7 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
 4. **The Siege of Carax** (1800 AD). While Sevirrus was pinned down on Aridaxx by his uncle Jazmak and by Arixal, Hanaxa and Aniz Chompjak, Am-Grek's Grek took Carax. Arixal defeated both Jazmak and Sevirrus and put Hanaxa on the throne.
 5. **Sevirrus' Redemption** (1826 AD). After 26 years in prison, the Chompy Empire released Hak (once Sevirrus). He returned to Carax and defeated the High Priest of Destruction, breaking the Cult of Zark.
 6. **The Siege of Carax: the Catharsis** (Chapter V). Redacted until Chapter V, the second siege you witness after the final boss of Chapter IV. At the top of Carax's five-floor bastion, the same summit where Hak was blinded in 1826, the Chompy Empire, Archamus, the Erisian Empire, the Grek and the Human Federation of Sol defeat **Lord Zark**. On the stage, an 8.5 m Lord Zark towers over the six who beat him: Archamus, Vishara, Hak, your own wanderer as they look now, Am-Grek and Darius.
+
+### Lord Sevirrus: red eyes and the neck snap
+- **Red eyes:** Sevirrus's irises are now blood red with a faint glow and near-black pupils, everywhere his model appears: the Nostrapedia (Ancient figures and Lore events) and the character viewer.
+- **Slasher neck snap:** every few seconds his head snaps sideways and tilts, holds, then eases back. It always goes the same way, never alternating left and right. It now plays on his Nostrapedia figure too, not only on the rigged character.
