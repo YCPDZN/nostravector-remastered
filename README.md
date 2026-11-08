@@ -347,3 +347,14 @@ Controls: WASD to move, Shift to sprint, Space to jump (higher in low gravity), 
 - Adventures now have full touch controls, in both play and the world studio (see above), with layouts sized for phones.
 - The Alignment screen fits phones better: a smaller chart and model, the companion list scrolls, and the "press L" hint is hidden on touch screens. Open it from the pause menu.
 - Everything else added recently already works by touch: companion orders, Share food and Intimidate (companion panel), the farmhouse door (TALK button), conversations (tap to continue), the map (tap the minimap), the Nostrapedia, Custom creations and the built-in worlds.
+
+### Adventures now look like the main game
+- **Playing an adventure** uses the same HUD as the main game, built from the same markup and styles:
+  - **Top left:** the objective list (with ticks) and the red health bar.
+  - **Top right:** the slanted pause button, which opens a pause panel with Resume, Restart and Leave adventure. Esc or P works too.
+  - **Each new act:** opens with the big centred chapter-style title card, with the act's story text in the narration box.
+  - **Talking:** uses the main dialogue box (name, line, *Tap to continue*) and the slanted **E** prompt.
+  - **Feedback:** pickups and tips appear in the loot feed, and damage flashes red around the edges.
+  - **On phones:** the stick appears under your thumb, with the same TALK / ATTACK / JUMP / SPRINT buttons as the story.
+- **The world studio** uses the game's panel style, slanted chips for tools and the game's buttons.
+- **Play as** lists characters with the main menu's numbered rows, and **Adventure complete** / **You were defeated** use the game's panels and buttons.
