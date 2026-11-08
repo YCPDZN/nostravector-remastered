@@ -243,17 +243,14 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
 ### Fix: companions on the main menu
 - Orion (and James, and any companion standing with you on the main menu) no longer flickers between walking and standing. He starts walking only once you're properly ahead, keeps a steady pace, and stops once he's caught up.
 
-### Villain previews (separate pages; `index.html` is unchanged)
-`villain-ch3.html`, `villain-ch4.html` and `villain-ch5.html` sit next to `index.html` and use the same `data/` folder. Each opens the game with a ready-made wanderer at **−85 (Awakened Villain)** in Chapter III, IV or V, so you can see the darker clothing on your wanderer and on Orion.
-- Orion is in your party at −55, with almost no influence left, so his outfit has darkened too.
-- The Chapter IV page uses the post-time-skip menu.
-- A red banner at the top has an **ALIGNMENT** button that opens the alignment screen straight from the main menu.
-- These pages read your settings but never read or write your saves. Anything you save in them lasts only until you close the tab.
-- **`villain-ch5-complete.html`** opens Chapter V, finished, as a −100 Awakened Villain with **the whole company following you**: Orion, Khazglar, Charon, Kizna, Nyrexia, Croxian, Malia, James Brown (Pontifex Maximus), Josiah Williams II and Tyrotaronus.
-  - They walk behind you in a loose two-row formation, on the main menu and out in the world, and catch up if you leave them far behind.
-  - Every one of them has slid to Awakened Villain. The ones who started good have darkened outfits, and their Nostrapedia files read *… Evil · was … Good*.
-  - The born villains look as they always did, and keep high influence because they approve of your path.
-  - The Alignment screen lists all of them with their charts and influence.
-
 ### Naming: Tyromairon
 - The Vector of Darkness is now called **Tyromairon** everywhere: his Nostrapedia name, his file, and Tyronihlus's "Serves" line. *Tyromairon’as* is no longer used.
+
+### Chapter II: the call
+- **Orion's phone:** about ten seconds after Orion joins you (or after you load a save from that point), his phone rings. A woman in distress tells him that lions came over her fence and broke her door in. She has locked herself in the back room, and she's expecting: the baby is coming now. Orion tells her to stay put and keep breathing, then tells you to follow him. He switches to **Follow** automatically.
+- **Objectives:**
+  1. **Reach the farmhouse east of town**, about 220 m east of Orion's home. A gold marker shows the way on the map.
+  2. **Drive off the lions**, with a counter of how many are left. Three lions prowl a broken-fenced yard around the smashed front door. Orion's kills count too. If you leave and come back, any lions still alive return.
+  3. **Check on the woman.** Call through the farmhouse door. Clearing the lions is a heroic deed (+3).
+- **The farmhouse:** a mud-walled farmhouse on a levelled yard, with its front door hanging off one hinge, claw marks beside it and gaps in the fence where the lions came through.
+- The scene currently ends with **TO BE CONTINUED**. The call and door dialogue is text only for now (no voice lines yet).

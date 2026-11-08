@@ -1872,6 +1872,7 @@ const sfx = (() => {
     init,
     setMuted(m) { if (master) master.gain.value = m ? 0 : .5; },
     setMusic(on) { if (musicBus) musicBus.gain.setTargetAtTime(on ? 1 : 0, ctx.currentTime, .15); },
+    phone() { for (let i = 0; i < 2; i++) { tone(1175, 1175, .16, 'square', .045, i * .42); tone(988, 988, .16, 'square', .045, i * .42 + .19); } },
     chime() { tone(330, 330, .6, 'sine', .12); tone(495, 495, .6, 'sine', .1, .15); tone(660, 660, .9, 'sine', .1, .3); },
     warp() { tone(120, 1800, 1.2, 'sawtooth', .06); noise(1.2, 400, 6000, .15); },
     click() { tone(1200, 900, .05, 'square', .04); },
@@ -3249,7 +3250,12 @@ function setCh1(patch) {
 // after James joins: set up a camp with him, then the ice is yours to explore
 function ch2Tasks(task) {
   const c2 = wanderer.ch2 || {};
-  return task(true, 'Wake up at Orion’s') + task(!!c2.talkedOrion, 'Speak to Orion') + (c2.talkedOrion ? task(false, 'Explore Africa with Orion') : '');
+  let h = task(true, 'Wake up at Orion’s') + task(!!c2.talkedOrion, 'Speak to Orion');
+  if (c2.talkedOrion && !c2.call) h += task(false, 'Explore Africa with Orion');
+  if (c2.call) h += task(!!c2.farmFound, 'Reach the farmhouse east of town');
+  if (c2.farmFound) h += task(!!c2.lionsDone, c2.lionsDone ? 'Drive off the lions' : `Drive off the lions · ${world.farmLeft == null ? 3 : world.farmLeft} left`);
+  if (c2.lionsDone) h += task(!!c2.doorReached, 'Check on the woman');
+  return h;
 }
 function campTasks(p, task) {
   if (!p.campDone) {
@@ -4387,6 +4393,7 @@ async function interact() {
     openInv(true);
   } else if (n.id === 'bed') {
     sleepOutside();
+  } else if (n.id === 'farmDoor') { farmDoorTalk();
   } else if (n.id === 'orion') {
     if (orionJoined()) { ex.cSel = 'orion'; refreshJamesUI(); toggleJamesMenu(); } else talkOrion();
   } else if (n.id === 'push') {
@@ -5638,7 +5645,13 @@ function mapTiles(x0, z0, x1, z1, budget) {
 }
 function questTarget() {
   const c = ch1();
-  if (curArea() === 'africa') return world.orion && !(wanderer.ch2 && wanderer.ch2.talkedOrion) ? { x: world.orion.root.position.x, z: world.orion.root.position.z, label: 'Orion' } : null;
+  if (curArea() === 'africa') {
+    const c2 = wanderer.ch2 || {};
+    if (world.orion && !c2.talkedOrion) return { x: world.orion.root.position.x, z: world.orion.root.position.z, label: 'Orion' };
+    if (c2.call && !c2.lionsDone) return { x: FARM.x, z: FARM.z, label: c2.farmFound ? 'Drive off the lions' : 'The farmhouse' };
+    if (c2.lionsDone && !c2.doorReached) return { x: FARM.x - 5.4, z: FARM.z, label: 'The farmhouse door' };
+    return null;
+  }
   if (wanderer.chapter === 1 && c.slept && !c.metOutside && world.jamesAt) return { x: world.jamesAt.x, z: world.jamesAt.z, label: c.found ? 'Speak to James Brown' : 'Find James Brown' };
   if (world.betrayal && world.betrayal.phase === 'chase') { const [x, z] = ferryWorld(117.5 + 4.8, 36); return { x, z, label: 'The ferry’s gangway' }; }
   if (c.roverTalk && !c.roverFound && world.rover) return { x: world.rover.position.x, z: world.rover.position.z, label: 'James’s rover' };
@@ -6564,8 +6577,9 @@ function wHeight(x, z) {
     // rolling savanna: long low swells, the odd rocky kopje, a few dry gullies
     const n = wFbm(x * .002, z * .002, 4, 201), k = Math.pow(Math.max(0, wFbm(x * .009 + 7, z * .009 - 3, 3, 210) - .62), 2) * 160;
     let h = (n - .5) * 26 + k + (wFbm(x * .05, z * .05, 2, 220) - .5) * .7;
-    const r = Math.hypot(x, z);
-    return lerp(0, h, smooth(26, 90, r));
+    const r = Math.hypot(x, z), fr = Math.hypot(x - FARM.x, z - FARM.z);
+    h = lerp(0, h, smooth(26, 90, r));
+    return fr < 42 ? lerp(farmY(), h, smooth(16, 42, fr)) : h;
   }
   const n1 = wFbm(x * .0025, z * .0025, 4, 1);
   const ridge = 1 - Math.abs(wFbm(x * .006 + 31, z * .006 - 17, 3, 10) * 2 - 1);
@@ -6653,7 +6667,7 @@ function buildChunk(cx, cz) {
   for (let i = 0; i < nRocks; i++) {
     const key = `r${cx}_${cz}_${i}`; if (mined[key]) continue;
     const x = ox + (wHash(cx, cz, 61 + i) - .5) * CH, z = oz + (wHash(cx, cz, 71 + i) - .5) * CH;
-    if (Math.hypot(x, z) < 30 || lakeAmt(x, z) > .3 || nearJames(x, z)) continue;
+    if (Math.hypot(x, z) < 30 || lakeAmt(x, z) > .3 || nearJames(x, z) || nearFarm(x, z)) continue;
     const s = 1 + wHash(cx, cz, 81 + i) * 3.5, y = wHeight(x, z);
     let rock, cap = null;
     if (hdW.rockGeo) {
@@ -6702,7 +6716,7 @@ function buildChunk(cx, cz) {
     for (let i = 0; i < n; i++) {
       const key = `t${cx}_${cz}_${i}`; if (mined[key]) continue;
       const x = gx + (wHash(cx, cz, 410 + i) - .5) * 14, z = gz + (wHash(cx, cz, 420 + i) - .5) * 14;
-      if (Math.hypot(x, z) < 34 || lakeAmt(x, z) > .25 || nearJames(x, z) || worldBlocked(x, z, true)) continue;
+      if (Math.hypot(x, z) < 34 || lakeAmt(x, z) > .25 || nearJames(x, z) || nearFarm(x, z) || worldBlocked(x, z, true)) continue;
       const y = wHeight(x, z); if (Math.abs(wHeight(x + 1, z) - y) > .8 || Math.abs(wHeight(x, z + 1) - y) > .8) continue;
       const t = makeTree(wHash(cx, cz, 430 + i), wHash(cx, cz, 440 + i)); t.position.set(x, y - .1, z); t.rotation.y = wHash(cx, cz, 450 + i) * 6; grp.add(t);
       nodes.push({ key, type: 'tree', x, z, y: y + 1.2, r: t.userData.r, hp: 5, meshes: [t] });
@@ -6843,6 +6857,7 @@ function buildWorld(seed) {
   }
 function worldBlocked(x, z, stationOnly, y = player.position.y) {
   if (Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true;
+  if (curArea() === 'africa' && Math.abs(x - FARM.x) < 5.3 && Math.abs(z - FARM.z) < 3.8) return true;
   for (const m of merchantsHere()) if (m.px != null && (x - m.px) ** 2 + (z - m.pz) ** 2 < 1.7) return true;
   if (stationOnly) return false;
   if (world.rover && world.rover.visible && !ex.vehicle && (x - world.rover.position.x) ** 2 + (z - world.rover.position.z) ** 2 < 2.4) return true;
@@ -6880,10 +6895,99 @@ function applyAreaLook() {
   if (world.rover) world.rover.visible = !af && !!ch1().rover;
   if (world.bedMesh) world.bedMesh.visible = !af && !!ch1().bed;
   for (const list of Object.values(MERCHANTS)) for (const m of list) if (m.stall) m.stall.visible = !af && curArea() === 'antarctica';
-  if (af) buildOrionHouse(); if (world.house) world.house.visible = af;
+  if (af) { buildOrionHouse(); buildFarmhouse(); } if (world.house) world.house.visible = af; if (world.farm) world.farm.visible = af;
   if (world.orion) world.orion.root.visible = af;
 }
 // Orion's home at the edge of the harbour town (same footprint as the Antarctic station)
+/* ---- Chapter II: the call. A woman east of town, lions at her door, a baby on the way ---- */
+const FARM = { x: 215, z: 64 };
+let farmYc = null;
+function farmY() { // the natural ground height at the farm, before the yard is levelled
+  if (farmYc == null) { const x = FARM.x, z = FARM.z, n = wFbm(x * .002, z * .002, 4, 201), k = Math.pow(Math.max(0, wFbm(x * .009 + 7, z * .009 - 3, 3, 210) - .62), 2) * 160; farmYc = (n - .5) * 26 + k; }
+  return farmYc;
+}
+const nearFarm = (x, z) => Math.hypot(x - FARM.x, z - FARM.z) < 22;
+function setCh2(patch) { wanderer.ch2 = Object.assign({}, wanderer.ch2, patch); const c = curChar(); if (c) c.ch2 = wanderer.ch2; saveRoster(); renderTasks(); }
+function buildFarmhouse() {
+  if (world.farm) return;
+  const g = new THREE.Group(), M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .95 }, o));
+  const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; g.add(o); return o; };
+  const wall = M(0xc79a68), trim = M(0x6a4428), roofM = M(0x7d6a52, { roughness: .7, metalness: .35 }), dark = M(0x1e1a16);
+  add(new THREE.BoxGeometry(10, 2.9, 7), wall, 0, 1.45, 0);
+  const r1 = add(new THREE.BoxGeometry(10.8, .18, 4.1), roofM, 0, 3.35, 1.75); r1.rotation.x = -.32;
+  const r2 = add(new THREE.BoxGeometry(10.8, .18, 4.1), roofM, 0, 3.35, -1.75); r2.rotation.x = .32;
+  // the front door faces town (west): smashed in, hanging off one hinge
+  add(new THREE.BoxGeometry(.12, 2.1, 1.3), dark, -5.04, 1.05, 0);
+  const door = add(new THREE.BoxGeometry(.1, 2.05, 1.25), trim, -5.5, 1.02, .75); door.rotation.y = 1.15; door.rotation.z = .08;
+  for (const z of [-2.3, 2.3]) add(new THREE.BoxGeometry(.1, .9, 1.2), M(0x2b3a48, { roughness: .2, metalness: .5 }), -5.04, 1.8, z);
+  // claw marks gouged into the wall by the door
+  for (let i = 0; i < 4; i++) { const c = add(new THREE.BoxGeometry(.04, .9, .06), dark, -5.03, 1.3 + i * .05, 1.1 + i * .12); c.rotation.x = .35; }
+  // a broken stock fence round the yard
+  const fence = M(0x5a3f26);
+  for (let a = 0; a < 26; a++) {
+    if (a === 13 || a === 14 || a === 4) continue; // gaps where the lions came through
+    const t = a / 26 * Math.PI * 2, x = Math.cos(t) * 13, z = Math.sin(t) * 11;
+    add(new THREE.CylinderGeometry(.07, .08, 1.2, 5), fence, x, .6, z).rotation.z = a % 5 === 0 ? .4 : 0;
+    const n = (a + 1) / 26 * Math.PI * 2; if (a % 3) { const rail = add(new THREE.BoxGeometry(.06, .08, Math.hypot(Math.cos(n) * 13 - x, Math.sin(n) * 11 - z)), fence, (x + Math.cos(n) * 13) / 2, .9, (z + Math.sin(n) * 11) / 2); rail.rotation.y = Math.atan2(Math.cos(n) * 13 - x, Math.sin(n) * 11 - z); }
+  }
+  add(new THREE.CylinderGeometry(.9, .9, 1.8, 12), M(0x6f7a80, { metalness: .5, roughness: .5 }), 3.6, .9, -4.6);
+  g.position.set(FARM.x, farmY(), FARM.z);
+  wScene.add(g); world.farm = g;
+}
+const CALL_SEQ = [
+  ['ORION MASCAR', ['Hold on. That’s my phone.', 'Hello? Slow down, slow down. I can’t understand you. Who is this?']],
+  ['WOMAN ON THE PHONE', ['Please, you have to help me! Lions. They came over the fence and broke the door in. I locked myself in the back room.']],
+  ['ORION MASCAR', ['Lions? Where are you? Are you hurt?']],
+  ['WOMAN ON THE PHONE', ['The farmhouse east of town, past the dry riverbed. I’m not hurt, but… the baby. I’m expecting, and it’s coming. It’s coming now, and I can’t get out!']],
+  ['ORION MASCAR', ['Listen to me. Stay in that room, keep the door shut and keep breathing. We’re coming.', 'You heard that. A woman alone, lions at her door and a baby on the way. Grab whatever you can and follow me. We go now.']]
+];
+function dialogSeq(seq, onDone) {
+  const step = i => { if (i >= seq.length) { if (onDone) onDone(); return; } openDialog(seq[i][0], seq[i][1], false, () => setTimeout(() => step(i + 1), 80)); };
+  step(0);
+}
+function orionPhoneCall() {
+  world.callBusy = true;
+  sfx.phone(); setTimeout(() => sfx.phone(), 1100);
+  notice('Orion’s phone is ringing', 'INCOMING CALL', 2600);
+  setTimeout(() => {
+    if (state !== 'explore' || ex.dlg) { world.callBusy = false; world.callAt = time + 4; return; }
+    dialogSeq(CALL_SEQ, () => {
+      world.callBusy = false; setCh2({ call: true });
+      if (orionJoined()) orionCmd('follow', true);
+      setTimeout(() => notice('A farmhouse east of town', 'LIONS AT THE DOOR', 3600), 300);
+    });
+  }, 2300);
+}
+function farmTick() {
+  if (curArea() !== 'africa' || state !== 'explore' || !orionJoined()) return;
+  const c2 = wanderer.ch2 || {};
+  if (!c2.call) {
+    if (world.callAt == null) world.callAt = time + 9;
+    if (!world.callBusy && !ex.dlg && time > world.callAt) orionPhoneCall();
+    return;
+  }
+  if (c2.lionsDone) return;
+  const p = player.position, d = Math.hypot(p.x - FARM.x, p.z - FARM.z);
+  const L = world.farmLions || [], gone = L.length && L.every(c => c.dead || !fauna.list.includes(c)) && !L.every(c => c.dead);
+  if (d < 95 && (!L.length || gone)) {
+    // three lions prowl the yard, circling the broken door
+    const n = L.length ? L.filter(c => !c.dead).length : 3;
+    world.farmLions = L.filter(c => c.dead).concat([[-8, 3], [-7, -5], [6, 7]].slice(0, n).map(([ox, oz]) => { const c = spawnFauna('lion', FARM.x + ox, FARM.z + oz, [FARM.x - 6, FARM.z]); c.farm = true; return c; }));
+  }
+  if (!c2.farmFound && d < 48) { setCh2({ farmFound: true }); notice('The farmhouse', 'DRIVE OFF THE LIONS', 3000); }
+  const left = (world.farmLions || []).filter(c => !c.dead).length;
+  if (world.farmLeft !== left) { world.farmLeft = left; renderTasks(); }
+  if (world.farmLions && world.farmLions.length && !left) {
+    setCh2({ lionsDone: true });
+    setTimeout(() => { notice('The lions are gone', 'CHECK ON THE WOMAN', 3400); alignAct(3, 'Saved a stranger from the lions'); }, 900);
+  }
+}
+function farmDoorTalk() {
+  dialogSeq([
+    ['ORION MASCAR', ['It’s safe now. The lions are gone. Ma’am? It’s Orion, the man you spoke to on the phone. Can you hear me?']],
+    ['WOMAN BEHIND THE DOOR', ['I… I hear you. Please. Please come in.']]
+  ], () => { setCh2({ doorReached: true }); setTimeout(() => notice('Chapter II', 'TO BE CONTINUED', 3600), 300); });
+}
 function buildOrionHouse() {
   if (world.house) return;
   const g = new THREE.Group(), M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .95 }, o));
@@ -7261,6 +7365,7 @@ function updateWorldMode(dt) {
   if (!ex.near) for (const b of world.build) if (b.data.k === 'bench' && Math.hypot(b.data.x - p.x, b.data.z - p.z) < 2 && Math.abs(b.data.y - p.y) < 1.5) ex.near = { id: 'bench', label: 'Crafting table' };
   if (!ex.near && ch1().bed && !ch1().slept2) { const B = ch1().bed; if (Math.hypot(B.x - p.x, B.z - p.z) < 1.9 && Math.abs(B.y - p.y) < 1.5) ex.near = { id: 'bed', label: 'Bed' }; }
   if (!ex.near && world.rover && !ex.vehicle && world.rover.visible && Math.hypot(world.rover.position.x - p.x, world.rover.position.z - p.z) < 3.4) ex.near = { id: 'rover', label: 'Rover' };
+  if (!ex.near && curArea() === 'africa' && wanderer.ch2 && wanderer.ch2.lionsDone && !wanderer.ch2.doorReached && Math.hypot(p.x - (FARM.x - 5.6), p.z - FARM.z) < 2.6) ex.near = { id: 'farmDoor', label: 'Farmhouse door' };
   if (!ex.near && curArea() === 'africa' && world.orion && world.orion.root.visible && Math.hypot(world.orion.root.position.x - p.x, world.orion.root.position.z - p.z) < 2.4) ex.near = { id: 'orion', label: 'Orion' };
   if (!ex.near && curArea() === 'antarctica' && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
   if (ex.vehicle) ex.near = { id: 'roverOut', label: 'Rover' };
@@ -7273,7 +7378,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
+    const PR = { farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
@@ -7295,7 +7400,7 @@ function updateWorldScene(dt) {
   faunaTick(dt); if (state === 'explore') jamesShoot(dt);
   soldierTick(dt);
   const c = camera.position, pa = world.snow.geometry.attributes.position.array;
-  stormTick(dt); skyTick(dt); betrayalTick(dt); orionTick(dt);
+  stormTick(dt); skyTick(dt); betrayalTick(dt); orionTick(dt); farmTick();
   const st = world.storm || 0, gust = (.7 + .4 * Math.sin(time * .5) + .2 * Math.sin(time * 1.9)) * (1 + st * 2.2), wx = -9 * gust, wz = 3.5 * gust;
   for (let i = 0; i < world.sN; i++) {
     const j = i * 3, sd = world.sSeed[i];
