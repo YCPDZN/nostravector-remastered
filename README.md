@@ -207,3 +207,12 @@ Africa's savanna now has its own animals, all built and animated in code. They t
 - **New food:** animals drop **Raw meat**. Craft **Roast meat** from 1 raw meat and 1 wood; it restores 30 health. Seal rations need ice, so this gives Africa its own way to heal.
 - **Combat music:** fights in Africa use the same Predator combat themes as Antarctica.
 - **Blacking out in Africa:** you come to outside Orion's home. Once Orion has joined you, he carries you back there.
+
+### Nostrapedia: Lore events
+A new **Lore events** tab sits next to Ancient figures. When you open an event, the figures who were there stand on the stage, but only those whose own Nostrapedia file you've unlocked.
+1. **The Third World War** (ended in the 2090s). The United States, China and Russia fought each other despite sharing one United Nations banner. It is said Orion Mascar fought alongside Thomas Hawthorne. Their names stay redacted until you meet them: Orion in Chapter II, Hawthorne in Chapter III.
+2. **The Massacre at Carax** (1790 AD). Sevirrus massacred the Chompy mining world of Carax under orders from the Cult of Zark.
+3. **The Murder of Jakal Chompjak XVI** (before 1790 AD). Sevirrus killed his cousin Damix Chompjak, then his own father, and seized the empire.
+4. **The Siege of Carax** (1800 AD). While Sevirrus was pinned down on Aridaxx by his uncle Jazmak and by Arixal, Hanaxa and Aniz Chompjak, Am-Grek's Grek took Carax. Arixal defeated both Jazmak and Sevirrus and put Hanaxa on the throne.
+5. **Sevirrus' Redemption** (1826 AD). After 26 years in prison, the Chompy Empire released Hak (once Sevirrus). He returned to Carax and defeated the High Priest of Destruction, breaking the Cult of Zark.
+6. **The Siege of Carax: the Catharsis** (Chapter V). Redacted until Chapter V, the second siege you witness after the final boss of Chapter IV.
