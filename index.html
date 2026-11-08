@@ -3364,7 +3364,8 @@ function ch2Tasks(task) {
     if (c2.cantinaClue || c2.husbandFound) h += task(!!c2.husbandFound, 'Find Daniel Brown in The Salt Lantern');
   }
   if (c2.arrested) h += task(true, 'Arrested by the Federation');
-  if (c2.arrived) h += task(false, c2.reportTried ? 'Report to the Houses of Parliament · wait for the Council' : 'Report to the Houses of Parliament');
+  if (c2.arrived && !c2.metHawthorne) h += task(false, c2.reportTried ? 'Report to the Houses of Parliament · wait for the Council' : 'Report to the Houses of Parliament');
+  if (c2.metHawthorne) h += task(true, 'Meet Thomas Hawthorne') + task(false, 'Wait for the Council’s summons');
   return h;
 }
 function campTasks(p, task) {
@@ -8911,7 +8912,110 @@ function lonMusicTick() {
   if (want && !lonMus.on) { lonMus.on = true; lonMusicNext(); }
   else if (!want && lonMus.on) { lonMus.on = false; lonMus.gen++; if (lonMus.cur && sfx.songBuf() === lonMus.cur) sfx.stopSong(2); lonMus.cur = null; } // the nightmare, a cutscene, or leaving the city: it fades
 }
+/* ---- Chapter II: Thomas Hawthorne, Head of Government of the Human Federation of Sol ----
+   After the door guard sends you back to wait, Hawthorne comes out to you himself, with two guards. To a fellow human he is
+   all warmth (and none of it is real); to anyone else he doesn't bother hiding what he thinks of them. Orion has known him
+   since the war. Lines are text for now: their recordings will be CH2HAWHUMAN1-8 and CH2HAWALIEN1-8 (hawVoices: the eight
+   human lines, then the eight alien ones). */
+const HAW_NAME = 'THOMAS HAWTHORNE';
+const HAW_HUMAN = [
+  { who: HAW_NAME, id: 'CH2HAWHUMAN1', text: 'There you are. My apologies for the guards. Protocol, you understand. Thomas Hawthorne. I run the Federation’s government.' },
+  { who: HAW_NAME, id: 'CH2HAWHUMAN2', text: 'One of our own, stranded at the bottom of the world, and nobody came for you. I’m sorry. Truly.' },
+  { who: HAW_NAME, id: 'CH2HAWHUMAN3', text: 'As for the cantina, let’s call it what it was. A misunderstanding. I’ve already had a word.' },
+  { who: 'ORION MASCAR', id: 'CH2HAWHUMAN4', text: 'Hawthorne.' },
+  { who: HAW_NAME, id: 'CH2HAWHUMAN5', text: 'Orion Mascar. Thirty years since the war, and you still look at me like we’re back in that trench.' },
+  { who: HAW_NAME, id: 'CH2HAWHUMAN6', text: 'You’re my guests here. The Council will want a word. A formality, nothing more. New London looks after its own.' },
+  { who: HAW_NAME, id: 'CH2HAWHUMAN7', text: 'Do stay where my guards can see you, though. For your own safety.' },
+  { who: 'ORION MASCAR', id: 'CH2HAWHUMAN8', text: 'Don’t believe a word of it. That man has never smiled at anyone he wasn’t planning to use.', after: true }
+];
+const HAW_ALIEN = [
+  { who: HAW_NAME, id: 'CH2HAWALIEN1', text: 'So this is what they dragged up from Africa.' },
+  { who: HAW_NAME, id: 'CH2HAWALIEN2', text: 'Thomas Hawthorne. Head of Government. You will call me General.' },
+  { who: HAW_NAME, id: 'CH2HAWALIEN3', text: 'Look around you. Every stone in this square was laid by human hands, after a war your kind never had to fight.' },
+  { who: HAW_NAME, id: 'CH2HAWALIEN4', text: 'And you walk into one of our ports and help put a Federation citizen on the floor.' },
+  { who: 'ORION MASCAR', id: 'CH2HAWALIEN5', text: 'I put him on the floor. Not them.' },
+  { who: HAW_NAME, id: 'CH2HAWALIEN6', text: 'Orion Mascar. A hero of the war, running errands for aliens. How far you’ve fallen.' },
+  { who: HAW_NAME, id: 'CH2HAWALIEN7', text: 'You are standing here because the President is a sentimental man. I am not. One step out of line, and you leave New London in chains.' },
+  { who: 'ORION MASCAR', id: 'CH2HAWALIEN8', text: 'Well. Now you’ve met the Federation’s other face.', after: true }
+];
+HAW_HUMAN.forEach((l, i) => l.clip = i); HAW_ALIEN.forEach((l, i) => l.clip = 8 + i);
+const haw = { R: null, guards: [], phase: null, wait: 0, t: 0, vo: null };
+const hawHuman = () => spOf(wanderer) === 'human';
+async function hawthorneRig() {
+  const src = await embGlb('tiHaw'); if (!src) return null;
+  const R = autoRig(SkeletonUtils.clone(src), 1.9); armRig(R, 'none'); try { bakeRig(R); } catch (e) {}
+  return R;
+}
+// where he comes from: out of St Stephen's entrance if you're close to the Palace, otherwise up the street towards you
+function hawStart() {
+  const p = player.position, D = LON.door;
+  if (Math.hypot(p.x - D.x, p.z - D.z) < 45) return [D.x - 1.5, D.z];
+  for (let k = 0; k < 16; k++) { const a = k * 2.39, x = p.x + Math.cos(a) * 16, z = p.z + Math.sin(a) * 16; if (!worldBlocked(x, z) && !worldBlocked((x + p.x) / 2, (z + p.z) / 2)) return [x, z]; }
+  return [p.x + 6, p.z];
+}
+async function spawnHawthorne() {
+  haw.phase = 'loading';
+  const [R, vo] = await Promise.all([hawthorneRig(), document.getElementById('hawVoices') ? sfx.loadClips('hawVoices').catch(() => null) : null]);
+  haw.vo = vo || [];
+  if (!R || curArea() !== 'europe') { haw.phase = null; haw.since = 0; return; }
+  const [x, z] = hawStart(); haw.R = R; R.root.position.set(x, 0, z); world.london.add(R.root);
+  haw.guards = [];
+  for (const s of [-1, 1]) { const G = await hfosGuard(x + s * 1.1, z, 0, world.london); if (G) haw.guards.push({ R: G, s }); }
+  haw.phase = 'walk'; haw.t = 0;
+  notice('Head of Government', 'THOMAS HAWTHORNE', 3400); sfx.chime();
+}
+function hawSay(list, done) {
+  const run = i => {
+    if (i >= list.length) { done && done(); return; }
+    const L = list[i]; if (L.after && haw.phase === 'talk') haw.phase = 'leave'; // he's already turned his back before Orion says it
+    const c = haw.vo && haw.vo[L.clip];
+    openDialog(L.who, [L.text], false, () => run(i + 1), c ? [c] : undefined);
+  };
+  run(0);
+}
+function hawWalk(R, tx, tz, sp, dt) {
+  const P = R.root.position, dx = tx - P.x, dz = tz - P.z, d = Math.hypot(dx, dz);
+  if (d > .12) { const st = Math.min(d, sp * dt); P.x += dx / d * st; P.z += dz / d * st; R.mode = 'walk'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 8)); }
+  else R.mode = 'idle';
+  animRig(R, dt); return d;
+}
+function hawthorneTick(dt) {
+  const c2 = wanderer.ch2 || {};
+  if (curArea() !== 'europe') return;
+  if (!haw.phase) {
+    if (!c2.reportTried || c2.metHawthorne || state !== 'explore' || ex.dlg || sceneLocked()) return;
+    if (!haw.since) haw.since = performance.now();
+    if (performance.now() - haw.since < 12000) return; // the Council takes its time (real seconds, whatever the frame rate)
+    spawnHawthorne(); return;
+  }
+  const R = haw.R; if (!R) return;
+  const p = player.position, P = R.root.position;
+  if (haw.phase === 'walk') {
+    haw.t += dt;
+    const d = Math.hypot(p.x - P.x, p.z - P.z), stop = 2.3, k = Math.max(0, d - stop) / Math.max(d, .01);
+    hawWalk(R, P.x + (p.x - P.x) * k, P.z + (p.z - P.z) * k, d > 14 ? 4.6 : 1.9, dt); // unhurried, unless you make him chase you
+    if (d <= stop + .25 && state === 'explore' && !ex.dlg) {
+      haw.phase = 'talk'; R.mode = 'idle'; R.root.rotation.y = Math.atan2(p.x - P.x, p.z - P.z);
+      const O = world.orion; if (O) O.root.rotation.y = Math.atan2(P.x - O.root.position.x, P.z - O.root.position.z);
+      const human = hawHuman();
+      hawSay(human ? HAW_HUMAN : HAW_ALIEN, () => { setCh2({ metHawthorne: true, hawMood: human ? 'friendly' : 'hostile' }); renderTasks(); notice('New London', 'WAIT FOR THE COUNCIL', 3000); if (haw.phase === 'talk') haw.phase = 'leave'; });
+    }
+  } else if (haw.phase === 'talk') {
+    R.mode = 'idle'; animRig(R, dt); R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - P.x, p.z - P.z), Math.min(1, dt * 4));
+    if (!hawHuman() && R.ra) { R.ra.rotation.x = -.35; R.la.rotation.x = -.35; } // hands clasped behind him, chin up
+  } else if (haw.phase === 'leave') { // back to the Palace, and gone
+    haw.t += dt;
+    const D = LON.door, d = hawWalk(R, D.x - 1.5, D.z, 1.9, dt);
+    if (d < .5 || haw.t > 120) { for (const o of [R, ...haw.guards.map(g => g.R)]) if (o.root.parent) o.root.parent.remove(o.root); haw.R = null; haw.guards = []; haw.phase = 'gone'; }
+  }
+  // the escort keeps a pace behind him, either side
+  if (haw.R) for (const G of haw.guards) {
+    const f = R.root.rotation.y, bx = P.x - Math.sin(f) * 1.6 + Math.cos(f) * G.s * 1.2, bz = P.z - Math.cos(f) * 1.6 - Math.sin(f) * G.s * 1.2;
+    hawWalk(G.R, bx, bz, 5, dt); if (G.R.mode === 'idle') G.R.root.rotation.y = angLerp(G.R.root.rotation.y, f, Math.min(1, dt * 4));
+  }
+}
 function londonGuardsTick(dt) {
+  hawthorneTick(dt);
   if (!LON.guards || curArea() !== 'europe') return;
   const p = player.position;
   for (const R of LON.guards) { R.mode = 'idle'; animRig(R, dt); const P = R.root.position; if (Math.hypot(p.x - P.x, p.z - P.z) < 6) R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - P.x, p.z - P.z), Math.min(1, dt * 3)); }
@@ -9596,6 +9700,7 @@ function dlgSpeaker() {
   if (/ORION|ON THE PHONE/.test(w) && world.orion && world.orion.root.visible) return at(world.orion.root, 1.62);
   if (w === 'HFOS OFFICER' && arr.officer) return at(arr.officer.root, 1.68);
   if (w === 'HFOS DOOR GUARD' && LON.guards && LON.guards[2]) return at(LON.guards[2].root, 1.68);
+  if (w === HAW_NAME && haw.R) return at(haw.R.root, 1.66);
   if (world.townTalk && w === world.townTalk.d.name) return at(world.townTalk.R.root, world.townTalk.d.sp === 'human' ? 1.6 : world.townTalk.d.sp === 'hfos' ? 1.68 : 1.75);
   if (/BEHIND THE DOOR/.test(w) && world.farm) return v.set(FARM.x - 5.1, farmY() + 1.5, FARM.z);
   if (/CROXIAN/.test(w) && world.boss) return at(world.boss.R.root, 1.65);
@@ -11040,7 +11145,7 @@ const PEDIA_EVENTS = [
     facts: [['Type', 'Global war'], ['Theatre', 'Earth'], ['Belligerents', 'United States of America · China · Russia'], ['Notable veterans', '—'], ['Ended', 'The 2090s']],
     align: '', paras: [],
     dyn: ch => {
-      const orion = ch >= 2 ? 'Orion Mascar' : bar(12), haw = ch >= 3 ? 'Thomas Hawthorne' : bar(16);
+      const orion = ch >= 2 ? 'Orion Mascar' : bar(12), haw = ch >= 3 || (wanderer && wanderer.ch2 && wanderer.ch2.metHawthorne) ? 'Thomas Hawthorne' : bar(16);
       return {
         facts: [['Type', 'Global war'], ['Theatre', 'Earth'], ['Belligerents', 'United States of America · China · Russia'], ['Notable veterans', `${orion} · ${haw}`], ['Ended', 'The 2090s']],
         align: 'Three powers under one banner, and none of them willing to stand under it together.',
