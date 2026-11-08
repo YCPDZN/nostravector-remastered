@@ -259,7 +259,7 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
 - **Inside the farmhouse:** after the door, the screen fades to a small lamp-lit room.
   - **Nico** (her own model, `assets/models/companions/nico_lady_luck.glb`) stands by the bed. She still looks heavily pregnant, as a new mother does; that's built from her model at runtime. Beside her, her newborn son sleeps in a gently rocking cradle.
   - The baby was born just after she called, and he hasn't made a sound. She has already named him **Orion**, after the stars of Orion's Belt her grandmother showed her, which is a coincidence that catches Orion off guard.
-  - The scene is ten lines (CH2FARM1–10, text for now). Camera shots switch between over Orion's shoulder, over Nico's and a close-up of the cradle. Orion and Nico both lip-sync.
+  - The scene is ten fully voiced lines (CH2FARM1–10). Camera shots switch between over Orion's shoulder, over Nico's and a close-up of the cradle. Orion and Nico both lip-sync.
 - **Next objective:** Nico's husband went into town for supplies yesterday and hasn't come back, so the objective is **Find Nico’s husband in town** (no marker yet).
 - Nico joins as a companion after Chapter II, in her normal (not pregnant) model. Her model is already loaded and ready for that.
 - **Nico's Nostrapedia file** (Companions) opens the moment you meet her inside the farmhouse; until then it's redacted ("Unlocks in Chapter II"). It shows her in her normal model.
