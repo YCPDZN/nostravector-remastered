@@ -3352,6 +3352,8 @@ function ch2Tasks(task) {
     if (n >= DANIEL_CLUES.length && !c2.cantinaClue && !c2.husbandFound) h += task(false, 'Ask at the harbour office');
     if (c2.cantinaClue || c2.husbandFound) h += task(!!c2.husbandFound, 'Find Daniel Brown in The Salt Lantern');
   }
+  if (c2.arrested) h += task(true, 'Arrested by the Federation');
+  if (c2.arrived) h += task(false, c2.reportTried ? 'Report to the Houses of Parliament · wait for the Council' : 'Report to the Houses of Parliament');
   return h;
 }
 function campTasks(p, task) {
@@ -3565,7 +3567,7 @@ function skyTick(dt) {
   if (world.stars) { world.stars.material.opacity = clamp((1 - dl) * (1 - sm * 1.2), 0, 1); world.stars.position.copy(camera.position); world.stars.visible = world.stars.material.opacity > .01; }
   // haze
   wScene.fog.color.set(areaFog()).lerp(DUSK_C, duskA * .6).lerp(NIGHT_C, (1 - dl) * .9).lerp(stormC, sm);
-  wScene.fog.density = .0105 + .045 * sm * sm + (1 - dl) * .006;
+  wScene.fog.density = curArea() === 'europe' ? .0042 + (1 - dl) * .003 : .0105 + .045 * sm * sm + (1 - dl) * .006; // London's air is clear enough to see the Eye from the square
   world.snow.material.size = .08 + .07 * sm;
 }
 // ---- after the storm: James makes a bed, you sleep, and someone else is waiting in the dream ----
@@ -3787,6 +3789,7 @@ function ferryLocal(x, z) {
 }
 function pierTop(x, z) {
   if (curArea() === 'africa') return townPier(x, z);
+  if (curArea() === 'europe') return londonPier(x, z);
   const L = ferryLocal(x, z); if (!L) return null;
   const [lx, lz] = L;
   const sh = world.ferryShip;
@@ -4359,6 +4362,7 @@ async function startChapter1(fromCutscene, place) {
   if ((wanderer.chapter | 0) >= 2 && ch1().escaped && wanderer.ch2 && wanderer.ch2.introSeen) {
     const own = place || (!fromCutscene && resumePlace && resumePlace.who === activeId ? resumePlace : null) || (wanderer.place && wanderer.place.mode === 'explore' ? wanderer.place : null);
     resumePlace = null;
+    if (own && own.where === 'europe') { visitNewLondon(own); return; }
     if (own && (own.where === 'antarctica' || own.area === 'station')) { visitAntarctica(own); return; }
     const af = own && own.area === 'world' ? Object.assign({}, own, { where: 'africa' }) : null; // saves from before the ferry didn't say where; they were all in Africa
     startChapter2(af); return; // exactly where you left off in Africa
@@ -4521,6 +4525,7 @@ async function interact() {
   } else if (n.id === 'farmDoor') { farmDoorTalk();
   } else if (n.id === 'townsfolk') { talkTownsfolk(n.ref);
   } else if (n.id === 'ferry') { startFerryTrip();
+  } else if (n.id === 'parliament') { lines(PARL_DOOR, () => { if (!wanderer.ch2.reportTried) { setCh2({ reportTried: true }); notice('New London', 'WAIT FOR THE COUNCIL', 3000); } });
   } else if (n.id === 'orion') {
     if (orionJoined()) { ex.cSel = 'orion'; refreshJamesUI(); toggleJamesMenu(); } else talkOrion();
   } else if (n.id === 'push') {
@@ -5079,7 +5084,8 @@ function ghostSpot() {
 // never on a chapter, so it all carries into every chapter. New planets just add an AREA_INFO entry.
 const AREA_INFO = {
   antarctica: { planet: 'Earth', name: 'Antarctica', stationTp: { x: 10.5, z: 5, name: 'Station teleporter' } },
-  africa: { planet: 'Earth', name: 'Africa', stationTp: { x: 10.5, z: 6, name: 'Orion’s teleporter' } }
+  africa: { planet: 'Earth', name: 'Africa', stationTp: { x: 10.5, z: 6, name: 'Orion’s teleporter' } },
+  europe: { planet: 'Earth', name: 'New London', stationTp: { x: -74, z: 30, name: 'Parliament Square teleporter' } }
 };
 const curArea = () => world.area || 'antarctica'; // set when you arrive somewhere new (Antarctica in Chapter I, Africa in Chapter II)
 const MATS = {
@@ -5788,6 +5794,7 @@ function mapTiles(x0, z0, x1, z1, budget) {
 }
 function questTarget() {
   const c = ch1();
+  if (curArea() === 'europe') { const c2 = wanderer.ch2 || {}; return c2.arrived && !c2.reportTried ? { x: LON.door.x - 2, z: LON.door.z, label: 'Houses of Parliament' } : null; }
   if (curArea() === 'africa') {
     const c2 = wanderer.ch2 || {};
     if (world.orion && !c2.talkedOrion) return { x: world.orion.root.position.x, z: world.orion.root.position.z, label: 'Orion' };
@@ -5929,7 +5936,7 @@ function renderMap(cv, range, headingUp, budget, round) {
 }
 function earthCoords(x, z) {
   // the station sits at 79.4°S, 112.1°E; Orion's house near 4.1°S, 39.6°E on the east African coast. 1° of latitude ≈ 111 km
-  const [la0, lo0] = curArea() === 'africa' ? [-4.1, 39.6] : [-79.4, 112.1];
+  const [la0, lo0] = curArea() === 'europe' ? [51.5007, -.1246] : curArea() === 'africa' ? [-4.1, 39.6] : [-79.4, 112.1];
   const lat = la0 - z / 111000, lon = lo0 + x / (111000 * Math.cos(la0 * Math.PI / 180));
   return `${Math.abs(lat).toFixed(3)}°${lat < 0 ? 'S' : 'N'} ${lon.toFixed(3)}°E`;
 }
@@ -6364,6 +6371,7 @@ function faunaSpot(p, dmin, dmax) {
   return null;
 }
 function faunaSpawner() {
+  if (curArea() === 'europe') return; // no wildlife in Westminster
   const p = player.position, n = t => fauna.list.filter(c => c.type === t && !c.dead).length;
   if (curArea() === 'africa') {
     // a gazelle herd, a few buffalo, a pride pair of lions and a hyena pack
@@ -6758,8 +6766,9 @@ function wNoise(x, y, k = 0) {
 function wFbm(x, y, oct, k) { let s = 0, a = .5, f = 1, n = 0; for (let i = 0; i < oct; i++) { s += wNoise(x * f, y * f, k + i) * a; n += a; f *= 2.03; a *= .5; } return s / n; }
 const LAKE_Y = -7;
 const FERRY = { x: -720, z: 700, dx: -.7169, dz: .6972 }; // dock point, and the direction out to sea
-function lakeAmt(x, z) { return curArea() === 'africa' ? 0 : smooth(.34, .27, wFbm(x * .0042 + 90, z * .0042 + 40, 2, 50)); }
+function lakeAmt(x, z) { return curArea() !== 'antarctica' ? 0 : smooth(.34, .27, wFbm(x * .0042 + 90, z * .0042 + 40, 2, 50)); }
 function wHeight(x, z) {
+  if (curArea() === 'europe') return londonHeight(x, z);
   if (curArea() === 'africa') {
     // rolling savanna: long low swells, the odd rocky kopje, a few dry gullies
     const n = wFbm(x * .002, z * .002, 4, 201), k = Math.pow(Math.max(0, wFbm(x * .009 + 7, z * .009 - 3, 3, 210) - .62), 2) * 160;
@@ -6840,13 +6849,15 @@ function buildChunk(cx, cz) {
     const nx = wHeight(x - e, z) - wHeight(x + e, z), nz = wHeight(x, z - e) - wHeight(x, z + e), ny = 2 * e, l = Math.hypot(nx, ny, nz);
     nrm.setXYZ(i, nx / l, ny / l, nz / l);
     const steep = smooth(.8, .62, ny / l), lake = lakeAmt(x, z) * smooth(.9, .97, ny / l);
-    if (curArea() === 'africa') wTmp.copy(SAND_C).lerp(SAND_SHADE, clamp(wNoise(x * .05, z * .05, 30) * .8, 0, 1)).lerp(GRASS_C, smooth(.55, .75, wNoise(x * .018, z * .018, 33)) * .8 * smooth(-188, -165, x)).lerp(DIRT_C, steep);
+    if (curArea() === 'europe') wTmp.setRGB(.5, .5, .49).multiplyScalar(.85 + wNoise(x * .2, z * .2, 30) * .15).lerp(ROCK_C, inRiver(x, z) ? .8 : 0);
+    else if (curArea() === 'africa') wTmp.copy(SAND_C).lerp(SAND_SHADE, clamp(wNoise(x * .05, z * .05, 30) * .8, 0, 1)).lerp(GRASS_C, smooth(.55, .75, wNoise(x * .018, z * .018, 33)) * .8 * smooth(-188, -165, x)).lerp(DIRT_C, steep);
     else wTmp.copy(SNOW_C).lerp(SNOW_SHADE, clamp(wNoise(x * .05, z * .05, 30) * .7, 0, 1)).lerp(ICE_C, lake).lerp(ROCK_C, steep);
     col[i * 3] = wTmp.r; col[i * 3 + 1] = wTmp.g; col[i * 3 + 2] = wTmp.b;
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   const mesh = new THREE.Mesh(g, wTerrainMat); mesh.position.set(ox, 0, oz); mesh.receiveShadow = true;
   const grp = new THREE.Group(); grp.add(mesh);
+  if (curArea() === 'europe') { wScene.add(grp); return grp; } // a city: no rocks, trees or caches
   // gatherable rocks, ice spires and supply caches
   const mined = wsState().mined, nodes = [];
   const nearJames = (x, z) => Math.hypot(x - FERRY.x, z - FERRY.z) < 230 || (world.jamesAt && (x - world.jamesAt.x) ** 2 + (z - world.jamesAt.z) ** 2 < 36) || (world.meetAt && (x - world.meetAt[0]) ** 2 + (z - world.meetAt[1]) ** 2 < 49);
@@ -7043,7 +7054,8 @@ function buildWorld(seed) {
 }
   }
 function worldBlocked(x, z, stationOnly, y = player.position.y) {
-  if (Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true;
+  if (curArea() !== 'europe' && Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true; // the station / Orion's house
+  if (curArea() === 'europe' && londonBlocked(x, z)) return true;
   if (curArea() === 'africa' && Math.abs(x - FARM.x) < 5.3 && Math.abs(z - FARM.z) < 3.8) return true;
   if (curArea() === 'africa' && townSolid(x, z)) return true;
   for (const m of merchantsHere()) if (m.px != null && (x - m.px) ** 2 + (z - m.pz) ** 2 < 1.7) return true;
@@ -7064,24 +7076,32 @@ function nodesNear(x, z) {
   }
   return out;
 }
-const AREA_FOG = { antarctica: 0xa6d3f4, africa: 0xe6c896 };
+const AREA_FOG = { antarctica: 0xa6d3f4, africa: 0xe6c896, europe: 0xb4bcc6 };
 const areaFog = () => AREA_FOG[curArea()] || W_FOG;
 function applyAreaLook() {
-  const af = curArea() === 'africa';
+  const af = curArea() === 'africa', eu = curArea() === 'europe';
+  if (eu && !world.euSky) {
+    const cv = document.createElement('canvas'); cv.width = 4; cv.height = 256; const g2 = cv.getContext('2d');
+    const gr = g2.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#4f6787'); gr.addColorStop(.4, '#9fb2c8'); gr.addColorStop(.5, '#d9d6cf'); gr.addColorStop(1, '#8a8f96');
+    g2.fillStyle = gr; g2.fillRect(0, 0, 4, 256); world.euSky = new THREE.CanvasTexture(cv); world.euSky.colorSpace = THREE.SRGBColorSpace;
+  }
   if (af && !world.afSky) {
     const cv = document.createElement('canvas'); cv.width = 4; cv.height = 256; const g2 = cv.getContext('2d');
     const gr = g2.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#5f86b8'); gr.addColorStop(.42, '#a9c3dc'); gr.addColorStop(.5, '#f0d7a6'); gr.addColorStop(1, '#c89a5e');
     g2.fillStyle = gr; g2.fillRect(0, 0, 4, 256); world.afSky = new THREE.CanvasTexture(cv); world.afSky.colorSpace = THREE.SRGBColorSpace;
   }
   if (!world.iceSky && wScene.background && wScene.background.isTexture && !af) world.iceSky = wScene.background;
-  if (af) { if (wScene.background !== world.afSky) { if (wScene.background && wScene.background.isTexture && wScene.background !== world.afSky) world.iceSky = wScene.background; wScene.background = world.afSky; } }
+  if (eu) { if (wScene.background && wScene.background.isTexture && wScene.background !== world.euSky && wScene.background !== world.afSky) world.iceSky = wScene.background; wScene.background = world.euSky; }
+  else if (af) { if (wScene.background !== world.afSky) { if (wScene.background && wScene.background.isTexture && wScene.background !== world.afSky) world.iceSky = wScene.background; wScene.background = world.afSky; } }
   else if (world.iceSky) wScene.background = world.iceSky;
   wScene.fog.color.set(areaFog());
-  if (world.snow) world.snow.visible = !af;
-  if (world.station) world.station.visible = !af;
-  if (world.ferry) world.ferry.visible = !af;
-  if (world.rover) world.rover.visible = !af && !!ch1().rover;
-  if (world.bedMesh) world.bedMesh.visible = !af && !!ch1().bed;
+  const ice = !af && !eu;
+  if (world.snow) world.snow.visible = ice;
+  if (world.station) world.station.visible = ice;
+  if (world.ferry) world.ferry.visible = ice;
+  if (world.rover) world.rover.visible = ice && !!ch1().rover;
+  if (world.bedMesh) world.bedMesh.visible = ice && !!ch1().bed;
+  if (eu) buildLondon(); if (world.london) world.london.visible = eu;
   for (const list of Object.values(MERCHANTS)) for (const m of list) if (m.stall) m.stall.visible = list === merchantsHere();
   if (af) { buildOrionHouse(); buildFarmhouse(); buildTown(); } if (world.town) world.town.visible = af; if (world.sea) world.sea.visible = af; if (world.house) world.house.visible = af; if (world.farm) world.farm.visible = af;
   if (world.orion) world.orion.root.visible = af || orionJoined();
@@ -8040,6 +8060,7 @@ function cantinaPose() {
   }
 }
 function cantinaTick(dt) {
+  arrestTick(dt);
   const L = TOWN.cantinaLight, p = player.position; if (!L) return;
   const near = Math.abs(p.x + 92) < 22 && Math.abs(p.z - 12) < 18;
   if (!near && !cant.on) return;
@@ -8432,7 +8453,348 @@ function cantinaEnd() {
   if (cant.crowd) for (const m of cant.crowd) m.R.root.visible = false; // the regulars clear out
   if (world.orion) { world.orion.root.rotation.x = 0; world.orion.root.position.y = 0; world.orion.mode = 'idle'; }
   setCh2({ husbandFound: true }); cantinaPose(); renderTasks();
-  notice('Ad-Nostra', 'DANIEL BROWN, FOUND', 3200);
+  startArrest(); // and then the Federation walks in
+}
+/* ---- Chapter II: New London, capital of the Human Federation of Sol (Europe) ----
+   Westminster, rebuilt: the Palace of Westminster on the west bank of the Thames with Elizabeth Tower (Big Ben) at its north end,
+   Westminster Bridge, Portcullis House across Bridge Street, Parliament Square, and the London Eye on the far bank, all in
+   Federation stone, bronze and light. +x is east, -z is north. */
+const LON = {
+  river: { x0: 70, x1: 180, water: -2.4, bed: -7 }, bridge: { x0: 64, x1: 186, z0: -80, z1: -56 },
+  bounds: { x0: -280, x1: 380, z0: -360, z1: 300 }, cols: [], cars: [], hands: [], lit: null, eye: null, halo: null,
+  arrive: { x: -16, z: 6 }, door: { x: 15.5, z: 70 }, tp: { x: -74, z: 30 }
+};
+const inRiver = (x, z) => x > LON.river.x0 && x < LON.river.x1;
+const onBridge = (x, z) => x > LON.bridge.x0 && x < LON.bridge.x1 && z > LON.bridge.z0 && z < LON.bridge.z1;
+function londonHeight(x, z) { // a flat city; the Thames runs north–south in its embanked channel
+  const R = LON.river; if (x <= R.x0 - .5 || x >= R.x1 + .5) return 0;
+  return lerp(0, R.bed, Math.min(smooth(R.x0 - .5, R.x0 + 1.5, x), smooth(R.x1 + .5, R.x1 - 1.5, x)));
+}
+function londonBlocked(x, z, pad = .3) {
+  const B = LON.bounds; if (x < B.x0 || x > B.x1 || z < B.z0 || z > B.z1) { if (time - (LON.fenceT || -9) > 4) { LON.fenceT = time; lootMsg('The Federation guards won’t let you go any further', '#cfd6e6'); } return true; }
+  if (inRiver(x, z) && !onBridge(x, z)) return true;
+  if (onBridge(x, z) && (z < LON.bridge.z0 + .9 || z > LON.bridge.z1 - .9)) return true; // the railings
+  for (const c of LON.cols) if (x > c[0] - pad && x < c[1] + pad && z > c[2] - pad && z < c[3] + pad) return true;
+  return false;
+}
+const londonPier = (x, z) => onBridge(x, z) ? 0 : null;
+function clockFaceTex() {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 512; const g = cv.getContext('2d'), c = 256;
+  g.fillStyle = '#0d0f14'; g.fillRect(0, 0, 512, 512);
+  const gr = g.createRadialGradient(c, c, 20, c, c, 240); gr.addColorStop(0, '#fff8e6'); gr.addColorStop(.85, '#f3e6c4'); gr.addColorStop(1, '#d7c18a');
+  g.fillStyle = gr; g.beginPath(); g.arc(c, c, 236, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#b8892e'; g.lineWidth = 14; g.stroke();
+  g.strokeStyle = '#1a1a1a'; g.lineWidth = 3; g.beginPath(); g.arc(c, c, 200, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.arc(c, c, 150, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = '#141414'; g.font = '600 40px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  const R = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; g.save(); g.translate(c + Math.sin(a) * 176, c - Math.cos(a) * 176); g.rotate(a); g.fillText(R[i], 0, 0); g.restore(); }
+  for (let i = 0; i < 60; i++) { const a = i / 60 * Math.PI * 2; g.fillRect(c + Math.sin(a) * 212 - 2, c - Math.cos(a) * 212 - 2, 4, 4); }
+  g.fillStyle = 'rgba(80,190,255,.55)'; g.beginPath(); g.arc(c, c, 18, 0, Math.PI * 2); g.fill(); // a Federation touch at the centre
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function windowTex(cols, rows, lit = .45, warm = true) {
+  const cv = document.createElement('canvas'); cv.width = cols * 8; cv.height = rows * 12; const g = cv.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height);
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (Math.random() < lit) { g.fillStyle = warm ? (Math.random() < .5 ? '#ffd9a0' : '#fff2d6') : (Math.random() < .6 ? '#9fe0ff' : '#e8f6ff'); g.fillRect(x * 8 + 2, y * 12 + 3, 4, 6); }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; return t;
+}
+function buildLondon() {
+  if (world.london) return;
+  let seed = 1834; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }, rr = (a, b) => a + rnd() * (b - a);
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .85 }, o));
+  const S = new THREE.Group(), live = new THREE.Group();
+  const box = (w, h, d, m, x, y, z, ry = 0, rx = 0, rz = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); S.add(o); return o; };
+  const cyl = (r0, r1, h, m, x, y, z, seg = 10) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r0, r1, h, seg), m); o.position.set(x, y, z); S.add(o); return o; };
+  const cone = (r, h, m, x, y, z, seg = 4, ry = Math.PI / 4) => { const o = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), m); o.position.set(x, y, z); o.rotation.y = ry; S.add(o); return o; };
+  const col = (x0, x1, z0, z1) => LON.cols.push([Math.min(x0, x1), Math.max(x0, x1), Math.min(z0, z1), Math.max(z0, z1)]);
+  const stone = M(0xe3cf9f, { roughness: .9 }), stoneDk = M(0xc2ab7c), slate = M(0x3a4048, { roughness: .6, metalness: .3 }), gold = M(0xd8a63a, { roughness: .3, metalness: .85 });
+  const iron = M(0x22262c, { roughness: .45, metalness: .7 }), glassDk = M(0x1c2632, { roughness: .12, metalness: .7 });
+  const glow = M(0x0a1a22, { emissive: 0x4fd8ff, emissiveIntensity: 1.6 }), glowGold = M(0x221a08, { emissive: 0xffc35a, emissiveIntensity: 1.2 });
+  const winLit = M(0x2a2620, { emissive: 0xffcf8a, emissiveIntensity: 0, roughness: .3 }); LON.lit = winLit;
+  const asphalt = M(0x2c2f34, { roughness: .95, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), paveL = M(0xa7a49c, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  const grass = M(0x4f7a3a, { roughness: 1 }), bronze = M(0x6b5332, { roughness: .45, metalness: .75 }), commonsGreen = M(0x3d6b4a, { roughness: .5, metalness: .4 });
+  const ground = (w, d, m, x, z, y = .02) => { const o = new THREE.Mesh(new THREE.PlaneGeometry(w, d), m); o.rotation.x = -Math.PI / 2; o.position.set(x, y, z); S.add(o); };
+  // ---- streets ----
+  ground(150, 24, asphalt, -5, -68);                 // Bridge Street, from the square to the bridge
+  ground(14, 420, asphalt, -4, -170 + 60);           // Parliament Street / Whitehall, north–south past the square
+  ground(12, 250, asphalt, 10, 80);                  // Abingdon Street, along the Palace's west front
+  ground(14, 280, asphalt, 62, -220);                // the Embankment, north of the bridge
+  ground(14, 700, asphalt, 190, -40);                // the far bank
+  ground(110, 120, paveL, -50, 0, .015);             // the paving round Parliament Square
+  // ---- the Thames, its embankment walls, and Westminster Bridge ----
+  const R = LON.river;
+  for (const x of [R.x0 - .8, R.x1 + .8]) box(1.6, 8, 1300, M(0x8d877c), x, -3.6, -30);
+  for (const x of [R.x0 - .4, R.x1 + .4]) for (let z = -640; z < 600; z += 18) { if (z > -90 && z < -46) continue; cyl(.12, .12, 1.1, iron, x, .55, z, 6); }
+  const B = LON.bridge, bw = B.z1 - B.z0, bz = (B.z0 + B.z1) / 2;
+  box(B.x1 - B.x0, .7, bw, M(0x9a958c), (B.x0 + B.x1) / 2, -.35, bz);
+  ground(B.x1 - B.x0, bw - 7, asphalt, (B.x0 + B.x1) / 2, bz, .015);
+  for (const s of [-1, 1]) {
+    box(B.x1 - B.x0, 1.1, .35, commonsGreen, (B.x0 + B.x1) / 2, .55, bz + s * (bw / 2 - .3)); // the famous green railings
+    box(B.x1 - B.x0, .5, .3, commonsGreen, (B.x0 + B.x1) / 2, 1.1, bz + s * (bw / 2 - .3));
+    for (let x = B.x0 + 4; x < B.x1; x += 10) { cyl(.12, .16, 6, commonsGreen, x, 3, bz + s * (bw / 2 - .6), 8); box(1.4, .1, .1, commonsGreen, x, 6, bz + s * (bw / 2 - .6)); const g = glowSprite(0xfff1c8, 2.2, .9); g.position.set(x, 6.1, bz + s * (bw / 2 - .6)); live.add(g); }
+    box(B.x1 - B.x0, .12, .2, glow, (B.x0 + B.x1) / 2, -.75, bz + s * (bw / 2 + .05)); // underglow
+  }
+  for (let i = 0; i < 7; i++) { const x = R.x0 + 8 + i * (R.x1 - R.x0 - 16) / 6; box(6, 8, bw + 2, M(0x8d877c), x, -4.5, bz); }
+  // ---- the Palace of Westminster ----
+  const P = { x0: 20, x1: 66, z0: -28, z1: 170 }, ph = 24, pcx = (P.x0 + P.x1) / 2, pcz = (P.z0 + P.z1) / 2;
+  box(P.x1 - P.x0, ph, P.z1 - P.z0, stone, pcx, ph / 2, pcz); col(P.x0, P.x1, P.z0, P.z1);
+  box(P.x1 - P.x0 - 6, 9, P.z1 - P.z0 - 6, slate, pcx, ph + 4.5, pcz, 0, 0, 0); // the roofs
+  for (const x of [P.x0 + 1.5, P.x1 - 1.5]) box(.5, 10, P.z1 - P.z0, slate, x, ph + 4, pcz, 0, 0, (x < pcx ? -1 : 1) * .5);
+  // the Gothic bays: buttress ribs, tall traceried windows, pinnacles all along the roofline (both long faces)
+  for (const [fx, nx] of [[P.x1, 1], [P.x0, -1]]) {
+    for (let z = P.z0 + 3; z < P.z1 - 1; z += 6) {
+      box(.9, ph + 2, .9, stoneDk, fx + nx * .35, (ph + 2) / 2, z);
+      cone(.55, 3.2, stoneDk, fx + nx * .35, ph + 3.6, z, 4);
+      for (const y of [5, 13, 20]) { box(.1, 5.2, 3.4, rnd() < .4 ? winLit : glassDk, fx + nx * .06, y, z + 3); box(.18, 5.6, .18, gold, fx + nx * .12, y, z + 3); }
+      box(.25, .5, 5.2, stoneDk, fx + nx * .2, 9, z + 3); box(.25, .5, 5.2, stoneDk, fx + nx * .2, 17, z + 3);
+    }
+    box(.12, .14, P.z1 - P.z0, glow, fx + nx * .2, 1.1, pcz); box(.12, .14, P.z1 - P.z0, glow, fx + nx * .2, ph - .4, pcz); // Federation light along the plinth and the parapet
+  }
+  for (const [fz, nz] of [[P.z0, -1], [P.z1, 1]]) for (let x = P.x0 + 3; x < P.x1; x += 6) { box(.9, ph + 2, .9, stoneDk, x, (ph + 2) / 2, fz + nz * .35); cone(.55, 3.2, stoneDk, x, ph + 3.6, fz + nz * .35, 4); }
+  // St Stephen's entrance, on the west front: where you'll report
+  box(1.2, 11, 7, stoneDk, P.x0 - .3, 5.5, LON.door.z); box(.4, 8.5, 4.4, M(0x120d08), P.x0 - .7, 4.25, LON.door.z);
+  box(.3, .6, 5.2, gold, P.x0 - .8, 8.9, LON.door.z); cone(1.4, 5, stoneDk, P.x0 - .3, 13.5, LON.door.z, 4);
+  for (let i = 0; i < 4; i++) box(1.1, .3 - i * .0, 8 - i * .8, stoneDk, P.x0 - 1.5 - i * 1.0, .15 + i * .3, LON.door.z);
+  // the Central Tower: an octagonal lantern and spire over the middle of the Palace
+  cyl(7.2, 7.2, 22, stone, pcx, ph + 11, 62, 8); cyl(7.6, 7.6, .8, gold, pcx, ph + 22.4, 62, 8); cone(7.2, 30, slate, pcx, ph + 37.8, 62, 8, Math.PI / 8); cyl(.12, .3, 6, gold, pcx, ph + 55.5, 62, 6);
+  for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; box(1.6, 10, .2, glassDk, pcx + Math.sin(a) * 7.1, ph + 12, 62 + Math.cos(a) * 7.1, a); }
+  // the Victoria Tower at the south end, with the Federation's flag
+  const vx = 40, vz = 158, vs = 22;
+  box(vs, 98, vs, stone, vx, 49, vz); col(vx - vs / 2, vx + vs / 2, vz - vs / 2, vz + vs / 2);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { box(2.6, 104, 2.6, stoneDk, vx + sx * vs / 2, 52, vz + sz * vs / 2); cone(1.9, 7, stoneDk, vx + sx * vs / 2, 107.5, vz + sz * vs / 2, 8, 0); cone(.3, 3, gold, vx + sx * vs / 2, 112, vz + sz * vs / 2, 6, 0); }
+  for (let y = 20; y < 95; y += 15) for (const [fx, fz, ry] of [[vx + vs / 2 + .06, vz, Math.PI / 2], [vx - vs / 2 - .06, vz, Math.PI / 2], [vx, vz + vs / 2 + .06, 0], [vx, vz - vs / 2 - .06, 0]]) box(5, 9, .1, rnd() < .5 ? winLit : glassDk, fx, y, fz, ry);
+  box(vs + 1, .5, vs + 1, gold, vx, 98.2, vz); cyl(.25, .3, 22, iron, vx, 109, vz, 8);
+  { const cv = document.createElement('canvas'); cv.width = 512; cv.height = 320; const g = cv.getContext('2d'); g.fillStyle = '#1d3f8f'; g.fillRect(0, 0, 512, 320); g.strokeStyle = '#e8b93c'; g.lineWidth = 14; g.beginPath(); g.arc(256, 160, 92, 0, Math.PI * 2); g.stroke(); g.lineWidth = 6; g.beginPath(); g.ellipse(256, 160, 140, 36, -.3, 0, Math.PI * 2); g.stroke(); g.fillStyle = '#e8b93c'; g.beginPath(); g.arc(256, 160, 30, 0, Math.PI * 2); g.fill(); g.fillRect(0, 290, 512, 14);
+    const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(16, 10, 16, 4), new THREE.MeshStandardMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: .35, side: THREE.DoubleSide, roughness: .7 }));
+    flag.position.set(vx + 8.3, 114, vz); live.add(flag); LON.flag = flag; flag.userData.base = flag.geometry.attributes.position.array.slice(); }
+  // ---- Elizabeth Tower: Big Ben ----
+  const T = { x: 52, z: -40, w: 12 };
+  box(T.w, 56, T.w, stone, T.x, 28, T.z); col(T.x - T.w / 2 - .5, T.x + T.w / 2 + .5, T.z - T.w / 2 - .5, T.z + T.w / 2 + .5);
+  for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const fx = T.x + nx * T.w / 2, fz = T.z + nz * T.w / 2, ry = nx ? Math.PI / 2 : 0;
+    for (let i = -2; i <= 2; i++) { const o = i * 2.4; box(.42, 56, .42, stoneDk, fx + nx * .2 + (nz ? o : 0), 28, fz + nz * .2 + (nx ? o : 0)); }
+    for (let y = 6; y < 56; y += 6.5) box(nx ? .3 : T.w + .4, .35, nx ? T.w + .4 : .3, stoneDk, fx + nx * .1, y, fz + nz * .1);
+    for (let y = 9; y < 52; y += 6.5) for (const i of [-1.2, 1.2]) box(nx ? .08 : 1.2, 3.6, nx ? 1.2 : .08, rnd() < .35 ? winLit : glassDk, fx + nx * .05 + (nz ? i : 0), y, fz + nz * .05 + (nx ? i : 0));
+    for (const i of [-3.6, 3.6]) box(nx ? .12 : .1, 54, nx ? .1 : .12, glow, fx + nx * .26 + (nz ? i : 0), 28, fz + nz * .26 + (nx ? i : 0)); // seams of Federation light
+  }
+  // the clock stage: four faces, gilded frames, hands that keep the game's time
+  const cy = 63, cw = 13.6, faceTex = clockFaceTex();
+  box(cw, 15, cw, stone, T.x, cy, T.z); box(cw + .6, .8, cw + .6, gold, T.x, cy - 7.5, T.z); box(cw + .6, .8, cw + .6, gold, T.x, cy + 7.5, T.z);
+  for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const fx = T.x + nx * (cw / 2 + .05), fz = T.z + nz * (cw / 2 + .05), ry = Math.atan2(nx, nz);
+    const face = new THREE.Mesh(new THREE.CircleGeometry(5.3, 48), new THREE.MeshStandardMaterial({ map: faceTex, emissive: 0xffe9b8, emissiveMap: faceTex, emissiveIntensity: .15, roughness: .5 }));
+    face.position.set(fx, cy, fz); face.rotation.y = ry; live.add(face);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(5.45, .32, 8, 48), gold); ring.position.copy(face.position); ring.rotation.y = ry; S.add(ring);
+    for (const [ox, oy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const d = box(1.6, 1.6, .2, gold, fx + (nz ? ox * 5.6 : 0), cy + oy * 5.6, fz + (nx ? ox * 5.6 : 0), ry); d.rotation.z = Math.PI / 4; }
+    for (const [len, w, kind] of [[3.4, .34, 'h'], [4.7, .22, 'm']]) {
+      const piv = new THREE.Group(); piv.position.set(fx + nx * .12, cy, fz + nz * .12); piv.rotation.y = ry;
+      const hand = new THREE.Mesh(new THREE.BoxGeometry(w, len, .08), iron); hand.position.y = len / 2 - .4; piv.add(hand); live.add(piv); LON.hands.push({ piv, kind });
+    }
+    LON.faces = LON.faces || []; LON.faces.push(face);
+  }
+  // the belfry, the iron spire, gilded pinnacles, and a halo of light
+  box(12.4, 10, 12.4, stone, T.x, cy + 12.5, T.z);
+  for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (const i of [-3.4, 0, 3.4]) box(nx ? .2 : 2.2, 7, nx ? 2.2 : .2, M(0x0c0d10), T.x + nx * 6.25 + (nz ? i : 0), cy + 12.5, T.z + nz * 6.25 + (nx ? i : 0));
+  box(13.4, .7, 13.4, gold, T.x, cy + 17.8, T.z);
+  cone(9.8, 17, iron, T.x, cy + 26.7, T.z, 4); cone(4.4, 9, gold, T.x, cy + 37, T.z, 4); cyl(.1, .5, 9, gold, T.x, cy + 45.5, T.z, 6);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { cyl(.8, .8, 6, stoneDk, T.x + sx * 6.3, cy + 21, T.z + sz * 6.3, 8); cone(.9, 5, gold, T.x + sx * 6.3, cy + 26.5, T.z + sz * 6.3, 8, 0); }
+  { const tip = glowSprite(0x7fe6ff, 4, .9); tip.position.set(T.x, cy + 50.6, T.z); live.add(tip); LON.tip = tip; }
+  { const h = new THREE.Mesh(new THREE.TorusGeometry(11, .18, 8, 64), new THREE.MeshBasicMaterial({ color: 0x6fe2ff, transparent: true, opacity: .55 })); h.position.set(T.x, cy + 30, T.z); h.rotation.x = Math.PI / 2; live.add(h); LON.halo = h; }
+  // ---- Portcullis House: the bronze chimneys, across Bridge Street ----
+  const Q = { x0: 16, x1: 64, z0: -142, z1: -92 }, qcx = (Q.x0 + Q.x1) / 2, qcz = (Q.z0 + Q.z1) / 2, qh = 30;
+  const qWin = windowTex(24, 10, .5, false); qWin.repeat.set(1, 1);
+  const qStone = M(0x55524c, { roughness: .7 }), qGlass = new THREE.MeshStandardMaterial({ color: 0x1a222b, roughness: .2, metalness: .6, emissive: 0xffffff, emissiveMap: qWin, emissiveIntensity: .6 });
+  box(Q.x1 - Q.x0, qh, Q.z1 - Q.z0, qStone, qcx, qh / 2, qcz); col(Q.x0, Q.x1, Q.z0, Q.z1);
+  for (const [fx, fz, w, ry] of [[Q.x1 + .06, qcz, Q.z1 - Q.z0 - 4, Math.PI / 2], [Q.x0 - .06, qcz, Q.z1 - Q.z0 - 4, Math.PI / 2], [qcx, Q.z1 + .06, Q.x1 - Q.x0 - 4, 0], [qcx, Q.z0 - .06, Q.x1 - Q.x0 - 4, 0]]) {
+    const o = new THREE.Mesh(new THREE.PlaneGeometry(w, qh - 9), qGlass); o.position.set(fx, qh / 2 + 3, fz); o.rotation.y = ry + (fx > qcx || fz > qcz ? 0 : Math.PI); S.add(o);
+    for (let k = -w / 2 + 2; k < w / 2; k += 4) box(ry ? .5 : .5, qh - 8, ry ? .5 : .5, bronze, fx + (ry ? 0 : k), qh / 2 + 3, fz + (ry ? k : 0));
+    box(ry ? .6 : w, 6, ry ? w : .6, M(0x2c2a27), fx, 3, fz); // the colonnade at street level
+  }
+  box(Q.x1 - Q.x0 - 2, 4, Q.z1 - Q.z0 - 2, bronze, qcx, qh + 2, qcz, 0, 0, 0);
+  box(Q.x1 - Q.x0 - 14, .3, Q.z1 - Q.z0 - 14, M(0x0a1a22, { emissive: 0x7fe6ff, emissiveIntensity: .7 }), qcx, qh + 4.2, qcz); // the glass atrium roof, lit from inside
+  for (let i = 0; i < 7; i++) for (const s of [-1, 1]) { const x = Q.x0 + 4 + i * (Q.x1 - Q.x0 - 8) / 6; cyl(1.1, 1.3, 13, bronze, x, qh + 8.5, qcz + s * ((Q.z1 - Q.z0) / 2 - 3), 12); cyl(1.25, 1.25, .6, gold, x, qh + 15.2, qcz + s * ((Q.z1 - Q.z0) / 2 - 3), 12); }
+  // ---- Parliament Square ----
+  const SQ = { x0: -82, x1: -22, z0: -32, z1: 32 };
+  box(SQ.x1 - SQ.x0, .25, SQ.z1 - SQ.z0, grass, (SQ.x0 + SQ.x1) / 2, .12, 0);
+  for (const [a, b] of [[[SQ.x0, SQ.z0], [SQ.x1, SQ.z1]], [[SQ.x0, SQ.z1], [SQ.x1, SQ.z0]]]) { const dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz); const o = new THREE.Mesh(new THREE.PlaneGeometry(4, L), paveL); o.rotation.x = -Math.PI / 2; o.rotation.z = Math.atan2(dx, dz); o.position.set((a[0] + b[0]) / 2, .27, (a[1] + b[1]) / 2); S.add(o); }
+  // statues on plinths round the edge (figures of the Federation's founders)
+  for (let i = 0; i < 10; i++) {
+    const side = i % 2, t = Math.floor(i / 2) / 4, x = side ? lerp(SQ.x0 + 4, SQ.x1 - 4, t) : SQ.x0 + 2.5, z = side ? SQ.z1 - 2.5 : lerp(SQ.z0 + 4, SQ.z1 - 4, t);
+    const px = i < 5 ? x : (side ? x : SQ.x1 - 2.5), pz = i < 5 ? z : (side ? SQ.z0 + 2.5 : z);
+    box(2.2, 3, 2.2, M(0x8f8a80), px, 1.5, pz); box(2.6, .3, 2.6, M(0x77736b), px, 3.1, pz);
+    cyl(.42, .62, 2.6, bronze, px, 4.6, pz, 10); const hd = new THREE.Mesh(new THREE.SphereGeometry(.34, 12, 8), bronze); hd.position.set(px, 6.2, pz); S.add(hd);
+    box(.22, 1.4, .22, bronze, px + .55, 5, pz, 0, 0, -.5); col(px - 1.2, px + 1.2, pz - 1.2, pz + 1.2);
+  }
+  // trees round the square
+  const leaf = M(0x3f6a33, { roughness: 1, flatShading: true }), trunk = M(0x4a3b2c);
+  for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2, x = -52 + Math.cos(a) * 40, z = Math.sin(a) * 40; if (x > -12) continue; cyl(.35, .45, 5, trunk, x, 2.5, z, 6); const c = new THREE.Mesh(new THREE.IcosahedronGeometry(3.4, 1), leaf); c.position.set(x, 7, z); S.add(c); col(x - .5, x + .5, z - .5, z + .5); }
+  // the Federation's emblem, a hologram over the middle of the square
+  { const hg = new THREE.Group(), hm = new THREE.MeshBasicMaterial({ color: 0x6fe2ff, transparent: true, opacity: .5, wireframe: true }), gm = new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: .7 });
+    hg.add(new THREE.Mesh(new THREE.IcosahedronGeometry(2.6, 2), hm));
+    const r1 = new THREE.Mesh(new THREE.TorusGeometry(4.2, .08, 6, 64), gm); r1.rotation.x = 1.3; hg.add(r1);
+    const r2 = new THREE.Mesh(new THREE.TorusGeometry(5.4, .05, 6, 64), gm); r2.rotation.x = 1.75; r2.rotation.y = .5; hg.add(r2);
+    hg.position.set(-52, 8, 0); live.add(hg); LON.holo = hg;
+    box(3.4, 1.4, 3.4, M(0x8f8a80), -52, .7, 0); box(2.6, .1, 2.6, glow, -52, 1.45, 0); col(-53.8, -50.2, -1.8, 1.8); }
+  // ---- the London Eye, on the far bank ----
+  { const E = { x: 214, y: 70, z: -170, r: 62 }, g = new THREE.Group(), wm = M(0xe8eef4, { roughness: .35, metalness: .6 }), cap = new THREE.MeshStandardMaterial({ color: 0xbfe6ff, roughness: .08, metalness: .3, transparent: true, opacity: .75, emissive: 0x2a6f9a, emissiveIntensity: .4 });
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(E.r, .7, 8, 120), wm); rim.rotation.y = Math.PI / 2; g.add(rim);
+    const rim2 = new THREE.Mesh(new THREE.TorusGeometry(E.r - 5, .45, 8, 120), wm); rim2.rotation.y = Math.PI / 2; g.add(rim2);
+    const rl = new THREE.Mesh(new THREE.TorusGeometry(E.r + .9, .18, 6, 160), new THREE.MeshBasicMaterial({ color: 0x6fe2ff })); rl.rotation.y = Math.PI / 2; g.add(rl);
+    for (let k = 0; k < 32; k++) {
+      const a = k / 32 * Math.PI * 2, sp = new THREE.Mesh(new THREE.CylinderGeometry(.09, .09, E.r - 3, 4), wm); sp.position.set(0, Math.cos(a) * (E.r - 3) / 2, Math.sin(a) * (E.r - 3) / 2); sp.rotation.x = a; g.add(sp);
+      const c = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), cap); c.scale.set(1.9, 1.5, 3.4); c.position.set(-2.4, Math.cos(a) * (E.r + 1.6), Math.sin(a) * (E.r + 1.6)); g.add(c); c.userData.cap = true;
+    }
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, 4, 20), wm); hub.rotation.z = Math.PI / 2; g.add(hub);
+    g.position.set(E.x, E.y, E.z); live.add(g); LON.eye = g;
+    for (const s of [-1, 1]) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(.9, 1.4, Math.hypot(40, E.y, 26), 10), wm); leg.position.set(E.x + 20, E.y / 2, E.z + s * 13); leg.lookAt(E.x, E.y, E.z); leg.rotateX(Math.PI / 2); S.add(leg); col(E.x + 38, E.x + 42, E.z + s * 26 - 2, E.z + s * 26 + 2); }
+    box(30, 1, 20, M(0x9a958c), E.x + 4, .5, E.z); }
+  // ---- New London beyond: glass towers with their lights on ----
+  const tWin = windowTex(16, 40, .4, false), tWin2 = windowTex(16, 40, .55, true);
+  const tw1 = new THREE.MeshStandardMaterial({ color: 0x2a3644, roughness: .18, metalness: .7, emissive: 0xffffff, emissiveMap: tWin, emissiveIntensity: .55 });
+  const tw2 = new THREE.MeshStandardMaterial({ color: 0x3a3a3e, roughness: .3, metalness: .5, emissive: 0xffffff, emissiveMap: tWin2, emissiveIntensity: .5 });
+  for (let i = 0; i < 90; i++) {
+    const a = rnd() * Math.PI * 2, d = rr(240, 720), x = 60 + Math.cos(a) * d, z = Math.sin(a) * d; if (x > 55 && x < 195) continue; // keep the river open
+    const w = rr(14, 34), dd = rr(14, 34), h = rr(40, d > 450 ? 260 : 150), m = rnd() < .6 ? tw1 : tw2;
+    box(w, h, dd, m, x, h / 2, z); if (rnd() < .35) { cyl(.2, .4, h * .2, iron, x, h + h * .1, z, 6); const b = glowSprite(0xff5a4a, 3, .8); b.position.set(x, h * 1.2, z); live.add(b); }
+    if (rnd() < .5) box(w + .4, .5, dd + .4, glow, x, h * rr(.3, .9), z);
+    if (x > LON.bounds.x0 - 20 && x < LON.bounds.x1 + 20 && z > LON.bounds.z0 - 20 && z < LON.bounds.z1 + 20) col(x - w / 2, x + w / 2, z - dd / 2, z + dd / 2);
+  }
+  // Whitehall's stone offices lining Parliament Street, north of the square
+  for (let z = -100; z > -340; z -= 30) for (const s of [-1, 1]) { if (s > 0 && z > -160) continue; const x = -4 + s * 22, h = rr(18, 28); box(28, h, 26, stone, x, h / 2, z); col(x - 14, x + 14, z - 13, z + 13); for (let y = 4; y < h - 2; y += 4.2) box(28.2, 2.2, 26.2, rnd() < .5 ? winLit : glassDk, x, y, z); box(28.6, .8, 26.6, stoneDk, x, h, z); }
+  // street lamps
+  for (const [x, z] of [[-14, -54], [-14, -82], [10, -54], [10, -82], [-26, -40], [-78, -40], [-26, 40], [-78, 40], [10, 20], [10, 50], [10, 100], [56, -100], [56, -160]]) { cyl(.12, .16, 7, iron, x, 3.5, z, 8); const g = glowSprite(0xfff1c8, 2.6, .9); g.position.set(x, 7.2, z); live.add(g); col(x - .2, x + .2, z - .2, z + .2); }
+  // ---- hover traffic: three lanes in the air ----
+  const carM = [0xe8eef4, 0x1d3f8f, 0x2b2f36, 0xd8a63a].map(c => M(c, { roughness: .3, metalness: .6 }));
+  const lanes = [
+    { a: [-260, 14, -64], b: [360, 14, -64] }, { a: [360, 18, -72], b: [-260, 18, -72] },         // over Bridge Street and the bridge
+    { a: [125, 26, -500], b: [125, 26, 400] }, { a: [125, 32, 400], b: [125, 32, -500] },          // up and down the river
+    { a: [-4, 22, -360], b: [-4, 22, 160] }, { a: [-4, 28, 160], b: [-4, 28, -360] }               // along Whitehall
+  ];
+  for (let i = 0; i < 18; i++) {
+    const L = lanes[i % lanes.length], c = new THREE.Group(), body = new THREE.Mesh(new THREE.CapsuleGeometry(.9, 2.6, 4, 10), carM[i % carM.length]); body.rotation.z = Math.PI / 2; c.add(body);
+    const cab = new THREE.Mesh(new THREE.SphereGeometry(.8, 10, 8), glassDk); cab.position.set(.3, .45, 0); cab.scale.set(1.3, .7, 1); c.add(cab);
+    const st = new THREE.Mesh(new THREE.BoxGeometry(4, .08, .1), new THREE.MeshBasicMaterial({ color: i % 2 ? 0x6fe2ff : 0xff5a4a })); st.position.y = -.5; c.add(st);
+    const lg = glowSprite(0x9fe8ff, 3, .7); lg.position.set(-1.8, -.6, 0); c.add(lg);
+    live.add(c); LON.cars.push({ c, L, t: rnd(), sp: rr(.018, .03) });
+  }
+  // ---- merge, add the river, finish ----
+  const merged = mergeStatic(S), grp = new THREE.Group(); grp.add(merged, live);
+  wScene.add(grp); world.london = grp;
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(R.x1 - R.x0 + 2, 1500), new THREE.MeshStandardMaterial({ color: 0x3b5560, roughness: .18, metalness: .45, transparent: true, opacity: .94 }));
+  water.rotation.x = -Math.PI / 2; water.position.set((R.x0 + R.x1) / 2, R.water, -30); grp.add(water);
+}
+function londonTick(dt) {
+  if (!world.london) return;
+  const eu = curArea() === 'europe'; world.london.visible = eu; if (!eu) return;
+  const night = 1 - (world.dayL == null ? 1 : world.dayL);
+  if (LON.lit) LON.lit.emissiveIntensity = .15 + night * 1.5;
+  if (LON.faces) for (const f of LON.faces) f.material.emissiveIntensity = .15 + night * .9; // the clock faces glow at night
+  // Big Ben keeps the game's time
+  const tod = (wsState().tod || 0) % 1, hrs = tod * 24, h12 = hrs % 12, mins = (hrs * 60) % 60;
+  for (const H of LON.hands) H.piv.rotation.z = -(H.kind === 'h' ? h12 / 12 : mins / 60) * Math.PI * 2;
+  if (LON.halo) { LON.halo.rotation.z += dt * .4; LON.halo.material.opacity = .35 + night * .4 + Math.sin(time * 2) * .08; }
+  if (LON.holo) LON.holo.rotation.y += dt * .5;
+  if (LON.eye) LON.eye.rotation.x += dt * .012; // a full turn takes about nine minutes
+  if (LON.eye) for (const c of LON.eye.children) if (c.userData.cap) c.rotation.x = -LON.eye.rotation.x; // the pods stay level
+  for (const C of LON.cars) { C.t = (C.t + C.sp * dt) % 1; const a = C.L.a, b = C.L.b; C.c.position.set(lerp(a[0], b[0], C.t), lerp(a[1], b[1], C.t) + Math.sin(time * 2 + C.t * 40) * .15, lerp(a[2], b[2], C.t)); C.c.rotation.y = Math.atan2(b[2] - a[2], b[0] - a[0]) * -1; }
+  if (LON.flag) { const pa = LON.flag.geometry.attributes.position, b0 = LON.flag.userData.base; for (let i = 0; i < pa.count; i++) { const x = b0[i * 3]; pa.array[i * 3 + 2] = Math.sin(x * .6 + time * 3) * (x + 8) * .06; } pa.needsUpdate = true; }
+  const p = player.position;
+  if (state === 'explore' && wanderer && wanderer.ch2 && wanderer.ch2.arrived && !wanderer.ch2.londonSeen && Math.hypot(p.x - LON.arrive.x, p.z - LON.arrive.z) > 40) setCh2({ londonSeen: true });
+}
+/* ---- after the fight: the Federation arrives. HFOS guards storm The Salt Lantern, arrest you and Orion, and take you to
+   New London. You arrive under guard in Parliament Square, free to walk Westminster until the Council calls for you. ---- */
+const ARREST = [
+  { who: 'HFOS OFFICER', id: 'CH2ARREST1', text: 'Federation Guard! Nobody move!' },
+  { who: 'HFOS OFFICER', id: 'CH2ARREST2', text: 'You. And you, old man. Hands where I can see them.' },
+  { who: 'ORION MASCAR', id: 'CH2ARREST3', text: 'He had it coming.' },
+  { who: 'HFOS OFFICER', id: 'CH2ARREST4', text: 'That’s for the Federation to decide. A beating in a Federation port is a matter for New London.' },
+  { who: 'ORION MASCAR', id: 'CH2ARREST5', text: 'New London? For a fight in a cantina?' },
+  { who: 'HFOS OFFICER', id: 'CH2ARREST6', text: 'For a man who nearly died on the floor of one. Move.' }
+];
+const ARRIVE = [
+  { who: 'HFOS OFFICER', id: 'CH2LONDON1', text: 'Welcome to New London, capital of the Human Federation of Sol.' },
+  { who: 'HFOS OFFICER', id: 'CH2LONDON2', text: 'You’re free to walk Westminster. Don’t try to leave it. When the Council is ready for you, you report to the Houses of Parliament.' },
+  { who: 'ORION MASCAR', id: 'CH2LONDON3', text: 'Big Ben. Still standing. Thirty years since the war, and they never let it fall.' }
+];
+const PARL_DOOR = [{ who: 'HFOS DOOR GUARD', id: 'CH2LONDON4', text: 'The Council isn’t ready for you yet. Wait in the square. They’ll call when they want you.' }];
+const arr = { guards: [], officer: null };
+async function hfosGuard(x, z, face, parent) {
+  const src = await townModel('hfos'); if (!src) return null;
+  const R = autoRig(dressTownsfolk(src, { sp: 'hfos' }), 1.88); armRig(R, 'none'); try { bakeRig(R); } catch (e) {}
+  R.root.position.set(x, 0, z); R.root.rotation.y = face; (parent || wScene).add(R.root); return R;
+}
+const aim = R => { R.ra.rotation.x = -1.45; R.la.rotation.x = -1.3; R.la.rotation.z = -.35; };
+function lines(list, done) { const run = i => { if (i >= list.length) { done && done(); return; } openDialog(list[i].who, [list[i].text], false, () => run(i + 1)); }; run(0); }
+async function startArrest() {
+  world.cantinaScene = true; arr.on = true; arr.t = 0;
+  const Rm = TOWN.rooms.cantina, spots = [[-91.6, 12.1], [-89.4, 12.5], [-93.4, 13.6], [-90.4, 10.6]];
+  arr.guards = [];
+  for (let i = 0; i < spots.length; i++) { const R = await hfosGuard(Rm.door, Rm.z0 - 3 - i, 0, world.town); if (R) arr.guards.push({ R, to: spots[i] }); }
+  arr.officer = arr.guards[0] && arr.guards[0].R;
+  sfx.thud(); setTimeout(() => sfx.thud(), 180); cf.shake = .4;
+  arr.phase = 'in';
+}
+function arrestTick(dt) {
+  if (!arr.on) return;
+  arr.t += dt; const O = world.orion, p = player.position;
+  for (const G of arr.guards) {
+    const R = G.R, P = R.root.position, dx = G.to[0] - P.x, dz = G.to[1] - P.z, d = Math.hypot(dx, dz);
+    if (d > .15) { const s = Math.min(d, 3.4 * dt); P.x += dx / d * s; P.z += dz / d * s; R.mode = 'walk'; R.root.rotation.y = Math.atan2(dx, dz); }
+    else { R.mode = 'idle'; const tgt = G === arr.guards[1] && O ? O.root.position : p; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(tgt.x - P.x, tgt.z - P.z), Math.min(1, dt * 6)); }
+    animRig(R, dt); aim(R);
+  }
+  if (arr.phase === 'in' && arr.t > 2.2 && state === 'explore' && !ex.dlg) {
+    arr.phase = 'talk';
+    if (O) { O.root.rotation.y = Math.atan2(arr.officer.root.position.x - O.root.position.x, arr.officer.root.position.z - O.root.position.z); }
+    lines(ARREST, () => { arr.phase = 'cuffed'; setTimeout(travelToNewLondon, 900); });
+  }
+  if (arr.phase === 'cuffed' || arr.phase === 'talk') { if (O) { O.mode = 'idle'; animRig(O, dt); O.ra.rotation.x = O.la.rotation.x = -2.7; } } // hands up
+}
+async function travelToNewLondon() {
+  arr.phase = 'travel'; state = 'travel'; player.visible = false; show(ui.xhud, false);
+  const el = $('#ferryCut'); el.classList.remove('title', 'title2', 'letter'); el.classList.add('on', 'black'); sfx.thud();
+  await new Promise(r => setTimeout(r, 900));
+  $('#fcSub').textContent = 'Europe · the capital of the Human Federation of Sol'; $('#fcTitle').textContent = 'NEW LONDON'; el.classList.add('title'); sfx.chime();
+  // tidy the cantina: the guards go, the town forgets the night; you and Orion are on your way north
+  for (const G of arr.guards) if (G.R.root.parent) G.R.root.parent.remove(G.R.root);
+  arr.on = false; arr.guards = []; world.cantinaScene = false; for (const g of world.chunks.values()) g.visible = true;
+  setCh2({ arrested: true, arrived: true });
+  await new Promise(r => setTimeout(r, 2600));
+  await arriveNewLondon();
+  el.classList.remove('black', 'title', 'on');
+}
+async function arriveNewLondon(pl) {
+  world.area = 'europe';
+  const A = LON.arrive;
+  enterWorld(pl || { mode: 'explore', area: 'world', where: 'europe', x: A.x, z: A.z, y: 0, rot: Math.PI / 2, yaw: Math.PI / 2 + Math.PI });
+  await placeOrion();
+  state = 'explore'; player.visible = true; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize();
+  // the escort, and the guards who keep the Palace
+  if (!LON.guardsUp) {
+    LON.guardsUp = true;
+    const posts = [[A.x + 3.2, A.z - 2.2, -Math.PI / 2], [A.x + 3.4, A.z + 2.4, -Math.PI / 2], [LON.door.x - 2.6, LON.door.z - 3.4, -Math.PI / 2], [LON.door.x - 2.6, LON.door.z + 3.4, -Math.PI / 2], [-30, -48, 0], [44, -52, Math.PI], [-24, 36, Math.PI / 2], [60, -86, Math.PI]];
+    LON.guards = [];
+    for (const [x, z, f] of posts) { const R = await hfosGuard(x, z, f, world.london); if (R) LON.guards.push(R); }
+    arr.officer = LON.guards[0];
+  }
+  notice('Europe', 'NEW LONDON', 3600);
+  if (!pl && !(wanderer.ch2 && wanderer.ch2.londonTalked)) setTimeout(() => { if (state === 'explore' && !ex.dlg) lines(ARRIVE, () => { setCh2({ londonTalked: true }); renderTasks(); }); }, 1800);
+  renderTasks();
+}
+// a Chapter II wanderer saved in New London comes back to it
+async function visitNewLondon(pl) {
+  state = 'loadingCh'; sfx.init();
+  await Promise.all([loadSpecies(spOf(wanderer)).catch(() => null), loadWorldHD()]); applyLook(wanderer);
+  show(ui.title, false); show(ui.tbc, false); show(ui.xpause, false);
+  ex.keys.clear(); ex.joyX = ex.joyY = 0; ex.jid = null; ex.drags.clear(); ex.dlg = null; camera.up.set(0, 1, 0); renderer.domElement.style.filter = '';
+  const f = $('#fade'); f.style.transition = 'opacity 2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 2100);
+  await arriveNewLondon(pl && pl.area === 'world' ? pl : null);
+}
+function londonGuardsTick(dt) {
+  if (!LON.guards || curArea() !== 'europe') return;
+  const p = player.position;
+  for (const R of LON.guards) { R.mode = 'idle'; animRig(R, dt); const P = R.root.position; if (Math.hypot(p.x - P.x, p.z - P.z) < 6) R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - P.x, p.z - P.z), Math.min(1, dt * 3)); }
 }
 const CALL_SEQ = [
   ['ORION MASCAR', ['Hold on. That’s my phone.', 'Hello? Slow down, slow down. I can’t understand you. Who is this?']],
@@ -9053,6 +9415,7 @@ function updateWorldMode(dt) {
   if (!ex.near && world.rover && !ex.vehicle && world.rover.visible && Math.hypot(world.rover.position.x - p.x, world.rover.position.z - p.z) < 3.4) ex.near = { id: 'rover', label: 'Rover' };
   if (!ex.near && curArea() === 'africa' && wanderer.ch2 && wanderer.ch2.lionsDone && !wanderer.ch2.doorReached && Math.hypot(p.x - (FARM.x - 5.6), p.z - FARM.z) < 2.6) ex.near = { id: 'farmDoor', label: 'Farmhouse door' };
   if (!ex.near) { const fn = ferryNear(p); if (fn) ex.near = fn; }
+  if (!ex.near && curArea() === 'europe' && Math.hypot(p.x - (LON.door.x - 1.5), p.z - LON.door.z) < 3.2) ex.near = { id: 'parliament', label: 'Houses of Parliament' };
   if (!ex.near && curArea() === 'africa' && TOWN.npcs.length) { const tn = townNear(p); if (tn) ex.near = { id: 'townsfolk', ref: tn, label: tn.label }; }
   if (!ex.near && (curArea() === 'africa' || orionJoined()) && world.orion && world.orion.root.visible && Math.hypot(world.orion.root.position.x - p.x, world.orion.root.position.z - p.z) < 2.4) ex.near = { id: 'orion', label: 'Orion' };
   if (!ex.near && curArea() === 'antarctica' && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
@@ -9066,14 +9429,14 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
+    const PR = { parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
   // where's home, and your nearest beacon
   const dist = Math.hypot(p.x - 8, p.z), dirs = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
   const brg = (x, z) => dirs[((Math.round(Math.atan2(-(z - p.z), x - p.x) / (Math.PI / 4)) % 8) + 8) % 8];
-  let nav = dist < 6 ? 'At the station' : `Station · ${Math.round(dist)} m · ${brg(8, 0)}`;
+  let nav = curArea() === 'europe' ? (d => d < 6 ? 'At the Houses of Parliament' : `Parliament · ${Math.round(d)} m · ${brg(LON.door.x, LON.door.z)}`)(Math.hypot(p.x - LON.door.x, p.z - LON.door.z)) : dist < 6 ? 'At the station' : `Station · ${Math.round(dist)} m · ${brg(8, 0)}`;
   if (ex.vehicle) nav = `Rover · ${Math.round(Math.abs(ex.vehicle.speed) * 3.6)} km/h<br>` + nav;
   let bb = null, bdist = 1e9;
   for (const o of world.placed) if (o.data.t === 'beacon') { const dd = Math.hypot(o.data.x - p.x, o.data.z - p.z); if (dd < bdist) { bdist = dd; bb = o; } }
@@ -9088,7 +9451,7 @@ function updateWorldScene(dt) {
   faunaTick(dt); if (state === 'explore') jamesShoot(dt);
   soldierTick(dt);
   const c = camera.position, pa = world.snow.geometry.attributes.position.array;
-  stormTick(dt); skyTick(dt); betrayalTick(dt); orionTick(dt); farmTick(); townTick(dt); ferryTick();
+  stormTick(dt); skyTick(dt); betrayalTick(dt); orionTick(dt); farmTick(); townTick(dt); ferryTick(); londonTick(dt); londonGuardsTick(dt);
   const st = world.storm || 0, gust = (.7 + .4 * Math.sin(time * .5) + .2 * Math.sin(time * 1.9)) * (1 + st * 2.2), wx = -9 * gust, wz = 3.5 * gust;
   for (let i = 0; i < world.sN; i++) {
     const j = i * 3, sd = world.sSeed[i];
@@ -9111,6 +9474,8 @@ function dlgSpeaker() {
   const at = (o, h) => o && o.visible !== false ? v.set(o.position.x, o.position.y + h, o.position.z) : null;
   if (/JAMES/.test(w) && james.ready && james.root.visible) return at(james.root, 1.62);
   if (/ORION|ON THE PHONE/.test(w) && world.orion && world.orion.root.visible) return at(world.orion.root, 1.62);
+  if (w === 'HFOS OFFICER' && arr.officer) return at(arr.officer.root, 1.68);
+  if (w === 'HFOS DOOR GUARD' && LON.guards && LON.guards[2]) return at(LON.guards[2].root, 1.68);
   if (world.townTalk && w === world.townTalk.d.name) return at(world.townTalk.R.root, world.townTalk.d.sp === 'human' ? 1.6 : world.townTalk.d.sp === 'hfos' ? 1.68 : 1.75);
   if (/BEHIND THE DOOR/.test(w) && world.farm) return v.set(FARM.x - 5.1, farmY() + 1.5, FARM.z);
   if (/CROXIAN/.test(w) && world.boss) return at(world.boss.R.root, 1.65);
@@ -11023,6 +11388,7 @@ function loop() {
   if (state === 'dream') { tickDialog(dt); updateDream(dt); sfx.music(0); renderer.render(dScene, camera); return; }
   if (state === 'farmCut') { farmCutTick(dt); tickDialog(dt); renderer.render(fhc.scene, camera); return; }
   if (state === 'ch2intro') { updateCh2Intro(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); renderer.render(afScene, camera); return; }
+  if (state === 'travel') { updateParticles(dt); renderer.render(wScene, camera); return; }
   if (state === 'cantinaScene') { updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'flashback') { flashTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'ferryTrip') { ferryTripTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }

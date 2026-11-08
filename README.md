@@ -449,3 +449,17 @@ Daniel Brown is Nico's husband, and no relation to James.
 
 ### Fix: the pause menu shows the right chapter
 The pause menu always said *Chapter I · Antarctica*. It now shows the chapter and place you're actually in, matching the in-game HUD: *Chapter II · Africa*, *Chapter II · Antarctica* after the ferry, or *Chapter I · Antarctica*.
+
+## Chapter II · Arrested, and New London
+
+After Daniel Brown goes down, four HFOS guards storm The Salt Lantern, train their rifles on you and Orion, and arrest you both (CH2ARREST1–6). A title card takes you north to **New London, Europe: the capital of the Human Federation of Sol**.
+
+You arrive under escort in **Parliament Square**, then you're free to walk Westminster, rebuilt in Federation stone, bronze and light:
+- **Houses of Parliament** with Gothic bays and pinnacles, St Stephen's Entrance, the Central Tower, and Victoria Tower flying the Federation flag
+- **Elizabeth Tower (Big Ben)** with glowing seams, a halo, and four lit clock faces whose hands keep the in-game time
+- **Portcullis House** with bronze chimneys and a lit window grid
+- **Parliament Square** with founder statues, trees and a holographic Federation emblem
+- **The London Eye** across the Thames: 32 lit pods on a turning wheel
+- Westminster Bridge, the embankments, a skyline of towers, Whitehall, and hover traffic, with full day and night lighting
+
+Objective: **Report to the Houses of Parliament.** The door guard tells you the Council isn't ready yet (CH2LONDON1–4). Saving in New London brings you back there.
