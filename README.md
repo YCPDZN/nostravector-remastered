@@ -479,4 +479,4 @@ After the door guard sends you back to wait, **Thomas Hawthorne**, Head of Gover
 - **Human:** fake friendly. Warm, apologetic, "New London looks after its own", and a soft warning to stay where his guards can see you (CH2HAWHUMAN1–8).
 - **Anyone else:** openly hostile. "You will call me General", and the threat of chains (CH2HAWALIEN1–8).
 
-Orion has known him since the war and gets the last word either way. Afterwards the objective is **Wait for the Council's summons**, and the codex's Third World War entry stops redacting Hawthorne's name. The lines are text only until the recordings are added (`hawVoices`: the eight human lines, then the eight alien lines).
+Orion has known him since the war and gets the last word either way. Afterwards the objective is **Wait for the Council's summons**, and the codex's Third World War entry stops redacting Hawthorne's name. Voiced from `data/hawVoices.js` (CH1HAWTHORNEHUMAN1–8, then CH1HAWTHORNENONHUMAN1–8).
