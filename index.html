@@ -1092,7 +1092,7 @@ body.touch .al-key{display:none}
 <script type="application/json" id="orionFind"></script><script src="data/orionFind.js"></script>
 <script type="application/json" id="narrCh2"></script><script src="data/narrCh2.js"></script>
 <script type="application/json" id="orionWake"></script><script src="data/orionWake.js"></script>
-<script type="application/json" id="orionCmd"></script><script src="data/orionCmd.js"></script><script type="application/json" id="callVoices"></script><script src="data/callVoices.js"></script><script type="application/json" id="doorVoices"></script><script src="data/doorVoices.js"></script><script type="application/octet-stream" id="nicoGlb"></script><script src="data/nicoGlb.js"></script><script type="application/json" id="farmVoices"></script><script src="data/farmVoices.js"></script><script type="application/json" id="antOrionVoices"></script><script src="data/antOrionVoices.js"></script><script type="application/json" id="antOrionFlashVoices"></script><script src="data/antOrionFlashVoices.js"></script><script type="application/json" id="cantinaFightMusic"></script><script src="data/cantinaFightMusic.js"></script><script type="application/json" id="cantinaVoices"></script><script src="data/cantinaVoices.js"></script><script type="application/json" id="hypeVoices"></script><script src="data/hypeVoices.js"></script>
+<script type="application/json" id="orionCmd"></script><script src="data/orionCmd.js"></script><script type="application/json" id="callVoices"></script><script src="data/callVoices.js"></script><script type="application/json" id="doorVoices"></script><script src="data/doorVoices.js"></script><script type="application/octet-stream" id="nicoGlb"></script><script src="data/nicoGlb.js"></script><script type="application/json" id="farmVoices"></script><script src="data/farmVoices.js"></script><script type="application/json" id="antOrionVoices"></script><script src="data/antOrionVoices.js"></script><script type="application/json" id="antOrionFlashVoices"></script><script src="data/antOrionFlashVoices.js"></script><script type="application/json" id="cantinaFightMusic"></script><script src="data/cantinaFightMusic.js"></script><script type="application/json" id="arrestVoices"></script><script src="data/arrestVoices.js"></script><script type="application/json" id="cantinaVoices"></script><script src="data/cantinaVoices.js"></script><script type="application/json" id="hypeVoices"></script><script src="data/hypeVoices.js"></script>
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -3782,14 +3782,14 @@ function buildFerry() {
 const ferryAng = () => Math.atan2(FERRY.dx, FERRY.dz);
 function ferryWorld(lx, lz) { const c = Math.cos(ferryAng()), sn = Math.sin(ferryAng()); return [FERRY.x + lx * c + lz * sn, FERRY.z - lx * sn + lz * c]; }
 function ferryLocal(x, z) {
-  if (curArea() !== 'antarctica') return null;
+  if (curArea() !== 'antarctica' && !world.memIce) return null;
   const dx = x - FERRY.x, dz = z - FERRY.z; if (dx * dx + dz * dz > 40000) return null;
   const c = Math.cos(ferryAng()), sn = Math.sin(ferryAng());
   return [dx * c - dz * sn, dx * sn + dz * c];
 }
 function pierTop(x, z) {
   if (curArea() === 'africa') return townPier(x, z);
-  if (curArea() === 'europe') return londonPier(x, z);
+  if (curArea() === 'europe' && !world.memIce) return londonPier(x, z);
   const L = ferryLocal(x, z); if (!L) return null;
   const [lx, lz] = L;
   const sh = world.ferryShip;
@@ -7771,6 +7771,21 @@ const FLASH_ORION_VENGEANCE = [
   'I told you not to say it. You heard me, and you said it anyway.',
   'I’m not leaving you out here on the ice. But we are done talking about him.'
 ];
+// the same nightmare, if it catches you in Parliament Square instead (new lines: CH2LONORION1–6)
+const FLASH_ORION_LON = [
+  FLASH_ORION[0],
+  'You were screaming. Down on your knees in the middle of Parliament Square, clawing at the stones like something was coming for you.', // CH2LONORION1
+  'There is nothing here. Guards, statues and a clock tower. That’s all. Do you hear me?',                                              // CH2LONORION2
+  FLASH_ORION[3], FLASH_ORION[4],
+  'Now get up. Half the Federation Guard just watched you fall apart, and we are in enough trouble already.'                            // CH2LONORION3
+];
+const FLASH_ORION_CALM_LON = [FLASH_ORION_CALM[0], FLASH_ORION_CALM[1], 'Come on. On your feet, before they decide you’re the one who needs locking up.']; // CH2LONORION4
+const FLASH_ORION_VENGEANCE_LON = [
+  FLASH_ORION_VENGEANCE[0],
+  'You couldn’t stand in a square full of statues without falling apart. He would cut you down before you got close enough to say his name.', // CH2LONORION5
+  FLASH_ORION_VENGEANCE[2],
+  'I’m not leaving you on these stones. But we are done talking about him.'                                                                   // CH2LONORION6
+];
 const fb = { t: 0, on: false };
 // the flashback's subtitles: big, shaking, word by word in time with the voice
 let fbSubEl = null;
@@ -7832,9 +7847,14 @@ function fbFlash(a, c = '#fff') {
   if (!fbFlashEl) { fbFlashEl = document.createElement('div'); fbFlashEl.style.cssText = 'position:fixed;inset:0;z-index:31;pointer-events:none;opacity:0'; document.body.appendChild(fbFlashEl); }
   fbFlashEl.style.background = c; fbFlashEl.style.opacity = a.toFixed(3);
 }
-async function startFlashback() {
-  Object.assign(fb, { t: 0, on: true, beatT: 0, beat: 0, shake: 0, cut: -1, hits: {}, said: {}, T: null, clip: null });
-  const D = antFerryDock(); fb.home = { x: D.x, z: D.z, y: D.y, rot: D.rot };
+async function startFlashback(where) {
+  Object.assign(fb, { t: 0, on: true, beatT: 0, beat: 0, shake: 0, cut: -1, hits: {}, said: {}, T: null, clip: null, lon: where === 'london', mem: false });
+  let D;
+  if (fb.lon) { // wherever you're standing in Parliament Square; the memories still play out on the Antarctic pier
+    const q = player.position; D = { x: q.x, z: q.z, y: q.y, rot: player.rotation.y }; buildFerry();
+    if (!fb.memGround) { const m = new THREE.Mesh(new THREE.PlaneGeometry(700, 420), new THREE.MeshStandardMaterial({ color: 0xeef3f9, roughness: .95 })); m.rotation.x = -Math.PI / 2; m.rotation.z = ferryAng(); const [gx, gz] = ferryWorld(0, -205); m.position.set(gx, .9, gz); m.receiveShadow = true; m.visible = false; wScene.add(m); fb.memGround = m; }
+  } else D = antFerryDock();
+  fb.home = { x: D.x, z: D.z, y: D.y, rot: D.rot };
   const p = player.position; p.set(D.x, D.y, D.z); player.rotation.y = D.rot; player.visible = true;
   resetRig(); inner.rotation.set(0, 0, 0); inner.position.set(0, 0, 0);
   // Orion just behind you, still finding his feet on the boards
@@ -7892,6 +7912,7 @@ function flashTick(dt) {
   if (cut !== fb.cut) { fb.cut = cut; if (cut > 0 && cut < cutAt.length) { sfx.whoosh(); fb.shake = Math.max(fb.shake, .12); } }
   const showPresent = t < T.j0 || t >= T.end;
   player.visible = showPresent; if (O) O.root.visible = showPresent;
+  if (fb.lon && fb.mem !== !showPresent) fbMemory(!showPresent);
   if (J) J.root.visible = false; if (C) C.root.visible = false;
   if (t < T.j0) {
     // the panic: hands to the helmet, shaking, then the knees go
@@ -7977,8 +7998,17 @@ function flashTick(dt) {
   ciFx(blur, red, 0, lid, sat); fbFlash(flash, flashC); fbSubTick();
   if (J && J.root.visible) jamesTick(dt);
 }
+// in New London, the memory shots swap Westminster out for the Antarctic pier (far off at the ferry's coordinates) and back
+function fbMemory(on) {
+  fb.mem = on; world.memIce = on;
+  if (world.london) world.london.visible = !on; for (const g of world.chunks.values()) g.visible = !on;
+  if (world.ferry) world.ferry.visible = on; if (fb.memGround) fb.memGround.visible = on;
+  if (on && world.ferryShip) { fb.shipWas = { v: world.ferryShip.visible, p: world.ferryShip.position.clone() }; world.ferryShip.visible = true; world.ferryShip.position.set(0, 0, 0); }
+  else if (!on && fb.shipWas && world.ferryShip) { world.ferryShip.visible = fb.shipWas.v; world.ferryShip.position.copy(fb.shipWas.p); }
+}
 function endFlashback() {
   const p = player.position, H = fb.home;
+  if (fb.lon && fb.mem) fbMemory(false);
   if (fb.C) { fb.C.root.visible = false; if (fb.C.root.parent) fb.C.root.parent.remove(fb.C.root); }
   if (fb.J) { fb.J.root.visible = false; fb.J.root.rotation.z = 0; }
   fbFlash(0); ciFx(0, 0, 0, 0, 1); $('#ferryCut').classList.remove('on', 'letter', 'black');
@@ -7989,13 +8019,15 @@ function endFlashback() {
   const O = world.orion;
   if (O) { O.root.visible = true; O.root.position.set(p.x + Math.sin(H.rot) * 1.15, H.y, p.z + Math.cos(H.rot) * 1.15); O.root.rotation.y = H.rot + Math.PI; O.mode = 'idle'; }
   fb.on = false; state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta();
-  setCh2({ antFlashback: true });
-  const after = () => notice('The ferry terminal', 'ANTARCTICA', 3000);
-  openDialog('ORION MASCAR', FLASH_ORION, false, () => openChoice('ORION MASCAR', [ // voiced: CH2ORIONANTARCTICA1–6
+  setCh2({ antFlashback: true, flashWhere: fb.lon ? 'london' : 'antarctica' });
+  const L = fb.lon, after = () => { if (L) { notice('Parliament Square', 'NEW LONDON', 3000); renderTasks(); } else notice('The ferry terminal', 'ANTARCTICA', 3000); };
+  // in New London the lines that name the pier and the ice change; those have no recording yet (CH2LONORION1–6), the rest reuse his Antarctica takes
+  const vo = (list, idx) => idx.map(i => i == null ? undefined : list[i]), FL = fb.lines || [], RP = fb.replies || [];
+  openDialog('ORION MASCAR', L ? FLASH_ORION_LON : FLASH_ORION, false, () => openChoice('ORION MASCAR', [ // voiced: CH2ORIONANTARCTICA1–6
     // voiced: CH2ANTORIONGOOD1–3 and CH2ANTORIONBAD1–4 (antOrionVoices: the three GOOD lines, then the four BAD)
-    { text: 'Got it.', onPick: () => { influence('orion', 10); setCh2({ antChoice: 'calm' }); openDialog('ORION MASCAR', FLASH_ORION_CALM, false, after, (fb.replies || []).slice(0, 3)); } },
-    { text: 'I will find Croxian. And when I do…', onPick: () => { influence('orion', -20); setCh2({ antChoice: 'vengeance' }); openDialog('ORION MASCAR', FLASH_ORION_VENGEANCE, false, after, (fb.replies || []).slice(3, 7)); } }
-  ]), (fb.lines || []).slice(0, 6));
+    { text: 'Got it.', onPick: () => { influence('orion', 10); setCh2({ antChoice: 'calm' }); openDialog('ORION MASCAR', L ? FLASH_ORION_CALM_LON : FLASH_ORION_CALM, false, after, L ? vo(RP, [0, 1, null]) : RP.slice(0, 3)); } },
+    { text: 'I will find Croxian. And when I do…', onPick: () => { influence('orion', -20); setCh2({ antChoice: 'vengeance' }); openDialog('ORION MASCAR', L ? FLASH_ORION_VENGEANCE_LON : FLASH_ORION_VENGEANCE, false, after, L ? vo(RP, [3, null, 5, null]) : RP.slice(3, 7)); } }
+  ]), L ? vo(FL, [0, null, null, 3, 4, null]) : FL.slice(0, 6));
 }
 /* ---- Chapter II: Daniel Brown (no relation to James) and The Salt Lantern ----
    Three townsfolk put you on his trail (the gate warden, the shopkeeper, the old man in the square); then the harbour clerk
@@ -8705,19 +8737,19 @@ function londonTick(dt) {
 /* ---- after the fight: the Federation arrives. HFOS guards storm The Salt Lantern, arrest you and Orion, and take you to
    New London. You arrive under guard in Parliament Square, free to walk Westminster until the Council calls for you. ---- */
 const ARREST = [
-  { who: 'HFOS OFFICER', id: 'CH2ARREST1', text: 'Federation Guard! Nobody move!' },
-  { who: 'HFOS OFFICER', id: 'CH2ARREST2', text: 'You. And you, old man. Hands where I can see them.' },
-  { who: 'ORION MASCAR', id: 'CH2ARREST3', text: 'He had it coming.' },
-  { who: 'HFOS OFFICER', id: 'CH2ARREST4', text: 'That’s for the Federation to decide. A beating in a Federation port is a matter for New London.' },
-  { who: 'ORION MASCAR', id: 'CH2ARREST5', text: 'New London? For a fight in a cantina?' },
-  { who: 'HFOS OFFICER', id: 'CH2ARREST6', text: 'For a man who nearly died on the floor of one. Move.' }
+  { who: 'HFOS OFFICER', id: 'CH2ARREST1', clip: 0, text: 'Federation Guard! Nobody move!' },
+  { who: 'HFOS OFFICER', id: 'CH2ARREST2', clip: 1, text: 'You. And you, old man. Hands where I can see them.' },
+  { who: 'ORION MASCAR', id: 'CH2ARREST3', clip: 2, text: 'He had it coming.' },
+  { who: 'HFOS OFFICER', id: 'CH2ARREST4', clip: 3, text: 'That’s for the Federation to decide. A beating in a Federation port is a matter for New London.' },
+  { who: 'ORION MASCAR', id: 'CH2ARREST5', clip: 4, text: 'New London? For a fight in a cantina?' },
+  { who: 'HFOS OFFICER', id: 'CH2ARREST6', clip: 5, text: 'For a man who nearly died on the floor of one. Move.' }
 ];
 const ARRIVE = [
-  { who: 'HFOS OFFICER', id: 'CH2LONDON1', text: 'Welcome to New London, capital of the Human Federation of Sol.' },
-  { who: 'HFOS OFFICER', id: 'CH2LONDON2', text: 'You’re free to walk Westminster. Don’t try to leave it. When the Council is ready for you, you report to the Houses of Parliament.' },
-  { who: 'ORION MASCAR', id: 'CH2LONDON3', text: 'Big Ben. Still standing. Thirty years since the war, and they never let it fall.' }
+  { who: 'HFOS OFFICER', id: 'CH2LONDON1', clip: 6, text: 'Welcome to New London, capital of the Human Federation of Sol.' },
+  { who: 'HFOS OFFICER', id: 'CH2LONDON2', clip: 7, text: 'You’re free to walk Westminster. Don’t try to leave it. When the Council is ready for you, you report to the Houses of Parliament.' },
+  { who: 'ORION MASCAR', id: 'CH2LONDON3', clip: 8, text: 'Big Ben. Still standing. Thirty years since the war, and they never let it fall.' }
 ];
-const PARL_DOOR = [{ who: 'HFOS DOOR GUARD', id: 'CH2LONDON4', text: 'The Council isn’t ready for you yet. Wait in the square. They’ll call when they want you.' }];
+const PARL_DOOR = [{ who: 'HFOS DOOR GUARD', id: 'CH2LONDON4', clip: 9, text: 'The Council isn’t ready for you yet. Wait in the square. They’ll call when they want you.' }];
 const arr = { guards: [], officer: null };
 async function hfosGuard(x, z, face, parent) {
   const src = await townModel('hfos'); if (!src) return null;
@@ -8725,9 +8757,11 @@ async function hfosGuard(x, z, face, parent) {
   R.root.position.set(x, 0, z); R.root.rotation.y = face; (parent || wScene).add(R.root); return R;
 }
 const aim = R => { R.ra.rotation.x = -1.45; R.la.rotation.x = -1.3; R.la.rotation.z = -.35; };
-function lines(list, done) { const run = i => { if (i >= list.length) { done && done(); return; } openDialog(list[i].who, [list[i].text], false, () => run(i + 1)); }; run(0); }
+// voiced: arrestVoices holds CH2ARREST1-10 (the six arrest lines, then the four New London lines)
+const arrVo = () => arr.vo ? Promise.resolve(arr.vo) : (arr.voP || (arr.voP = sfx.loadClips('arrestVoices').then(c => (arr.vo = c || []))));
+function lines(list, done) { const run = i => { if (i >= list.length) { done && done(); return; } const c = arr.vo && arr.vo[list[i].clip]; openDialog(list[i].who, [list[i].text], false, () => run(i + 1), c ? [c] : undefined); }; run(0); }
 async function startArrest() {
-  world.cantinaScene = true; arr.on = true; arr.t = 0;
+  world.cantinaScene = true; arr.on = true; arr.t = 0; arrVo();
   const Rm = TOWN.rooms.cantina, spots = [[-91.6, 12.1], [-89.4, 12.5], [-93.4, 13.6], [-90.4, 10.6]];
   arr.guards = [];
   for (let i = 0; i < spots.length; i++) { const R = await hfosGuard(Rm.door, Rm.z0 - 3 - i, 0, world.town); if (R) arr.guards.push({ R, to: spots[i] }); }
@@ -8779,7 +8813,13 @@ async function arriveNewLondon(pl) {
     arr.officer = LON.guards[0];
   }
   notice('Europe', 'NEW LONDON', 3600);
-  if (!pl && !(wanderer.ch2 && wanderer.ch2.londonTalked)) setTimeout(() => { if (state === 'explore' && !ex.dlg) lines(ARRIVE, () => { setCh2({ londonTalked: true }); renderTasks(); }); }, 1800);
+  // if the nightmare didn't catch you on the ice in Antarctica, it catches you here: Orion mentions the war, and it all comes rushing in
+  const flashDue = () => orionJoined() && !(wanderer.ch2 && wanderer.ch2.antFlashback);
+  arrVo().then(() => setTimeout(() => {
+    if (state !== 'explore' || ex.dlg) return;
+    if (!pl && !(wanderer.ch2 && wanderer.ch2.londonTalked)) lines(ARRIVE, () => { setCh2({ londonTalked: true }); renderTasks(); if (flashDue()) startFlashback('london'); });
+    else if (flashDue()) startFlashback('london');
+  }, 1800));
   renderTasks();
 }
 // a Chapter II wanderer saved in New London comes back to it

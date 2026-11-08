@@ -463,3 +463,7 @@ You arrive under escort in **Parliament Square**, then you're free to walk Westm
 - Westminster Bridge, the embankments, a skyline of towers, Whitehall, and hover traffic, with full day and night lighting
 
 Objective: **Report to the Houses of Parliament.** The door guard tells you the Council isn't ready yet (CH2LONDON1–4). Saving in New London brings you back there.
+
+### Voices, and the nightmare in New London
+- The arrest and New London lines are voiced (`data/arrestVoices.js`: CH2ARREST1–6 for the arrest, CH2ARREST7–10 for the four New London lines).
+- The Chapter II nightmare (James, then Croxian Mascar) happens **once**. You get it the first time you take Orion back to Antarctica, or, if you haven't done that before the arrest, in Parliament Square right after Orion mentions the war. Whichever comes first, it doesn't happen again in the other place. The New London version swaps Orion's pier and ice lines for Westminster ones (CH2LONORION1–6, text only for now). The memories themselves still play out on the Antarctic pier.
