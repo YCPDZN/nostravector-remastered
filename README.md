@@ -253,4 +253,4 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   2. **Drive off the lions**, with a counter of how many are left. Three lions prowl a broken-fenced yard around the smashed front door. Orion's kills count too. If you leave and come back, any lions still alive return.
   3. **Check on the woman.** Call through the farmhouse door. Clearing the lions is a heroic deed (+3).
 - **The farmhouse:** a mud-walled farmhouse on a levelled yard, with its front door hanging off one hinge, claw marks beside it and gaps in the fence where the lions came through.
-- The scene currently ends with **TO BE CONTINUED**. The call and door dialogue is text only for now (no voice lines yet).
+- The call (CH2ORIONCALL1–7) and the door scene (CH2DOOR1–2) are fully voiced, and Orion lip-syncs his lines. The scene currently ends with **TO BE CONTINUED**.

@@ -1022,7 +1022,7 @@ button.bm-c.no{opacity:.45}
 <script type="application/json" id="orionFind"></script><script src="data/orionFind.js"></script>
 <script type="application/json" id="narrCh2"></script><script src="data/narrCh2.js"></script>
 <script type="application/json" id="orionWake"></script><script src="data/orionWake.js"></script>
-<script type="application/json" id="orionCmd"></script><script src="data/orionCmd.js"></script>
+<script type="application/json" id="orionCmd"></script><script src="data/orionCmd.js"></script><script type="application/json" id="callVoices"></script><script src="data/callVoices.js"></script><script type="application/json" id="doorVoices"></script><script src="data/doorVoices.js"></script>
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -6941,21 +6941,29 @@ const CALL_SEQ = [
   ['WOMAN ON THE PHONE', ['The farmhouse east of town, past the dry riverbed. I’m not hurt, but… the baby. I’m expecting, and it’s coming. It’s coming now, and I can’t get out!']],
   ['ORION MASCAR', ['Listen to me. Stay in that room, keep the door shut and keep breathing. We’re coming.', 'You heard that. A woman alone, lions at her door and a baby on the way. Grab whatever you can and follow me. We go now.']]
 ];
-function dialogSeq(seq, onDone) {
-  const step = i => { if (i >= seq.length) { if (onDone) onDone(); return; } openDialog(seq[i][0], seq[i][1], false, () => setTimeout(() => step(i + 1), 80)); };
+// several speakers in a row; clips run in order across all their lines
+function dialogSeq(seq, onDone, clips) {
+  let k = 0;
+  const step = i => {
+    if (i >= seq.length) { if (onDone) onDone(); return; }
+    const lines = seq[i][1], bufs = (clips || []).slice(k, k + lines.length); k += lines.length;
+    openDialog(seq[i][0], lines, false, () => setTimeout(() => step(i + 1), 80), bufs);
+  };
   step(0);
 }
 function orionPhoneCall() {
   world.callBusy = true;
   sfx.phone(); setTimeout(() => sfx.phone(), 1100);
   notice('Orion’s phone is ringing', 'INCOMING CALL', 2600);
-  setTimeout(() => {
+  const clipsP = sfx.loadClips('callVoices');
+  setTimeout(async () => {
+    const clips = await clipsP;
     if (state !== 'explore' || ex.dlg) { world.callBusy = false; world.callAt = time + 4; return; }
     dialogSeq(CALL_SEQ, () => {
       world.callBusy = false; setCh2({ call: true });
       if (orionJoined()) orionCmd('follow', true);
       setTimeout(() => notice('A farmhouse east of town', 'LIONS AT THE DOOR', 3600), 300);
-    });
+    }, clips);
   }, 2300);
 }
 function farmTick() {
@@ -6982,11 +6990,13 @@ function farmTick() {
     setTimeout(() => { notice('The lions are gone', 'CHECK ON THE WOMAN', 3400); alignAct(3, 'Saved a stranger from the lions'); }, 900);
   }
 }
-function farmDoorTalk() {
+async function farmDoorTalk() {
+  const clips = await sfx.loadClips('doorVoices');
+  if (ex.dlg) return;
   dialogSeq([
     ['ORION MASCAR', ['It’s safe now. The lions are gone. Ma’am? It’s Orion Mascar, the man you spoke to on the phone. Can you hear me?']],
     ['WOMAN BEHIND THE DOOR', ['I… I hear you. Please. Please come in.']]
-  ], () => { setCh2({ doorReached: true }); setTimeout(() => notice('Chapter II', 'TO BE CONTINUED', 3600), 300); });
+  ], () => { setCh2({ doorReached: true }); setTimeout(() => notice('Chapter II', 'TO BE CONTINUED', 3600), 300); }, clips);
 }
 function buildOrionHouse() {
   if (world.house) return;
