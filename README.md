@@ -480,3 +480,13 @@ After the door guard sends you back to wait, **Thomas Hawthorne**, Head of Gover
 - **Anyone else:** openly hostile. "You will call me General", and the threat of chains (CH2HAWALIEN1–8).
 
 Orion has known him since the war and gets the last word either way. Afterwards the objective is **Wait for the Council's summons**, and the codex's Third World War entry stops redacting Hawthorne's name. Voiced from `data/hawVoices.js` (CH2HAWTHORNEHUMAN1–8, then CH2HAWTHORNENONHUMAN1–8).
+
+## Chapter II · The House of Commons, and the escape from New London
+- **The summons:** after Hawthorne leaves, an HFOS guard takes you and Orion into the **House of Commons** (CH2SUMMON1). The chamber has green benches facing each other, the Speaker's chair under a Federation hologram, the Table with its despatch boxes and mace, and Members on their feet.
+- **The trial (CH2TRIAL1–22):** President **Darius Ancin** and **Thomas Hawthorne** judge you, and the verdict is **guilty**. Then **Nico** bursts in. She exposes Hawthorne's spy (the woman with Daniel) and Terra Imperia hiring James Brown, then Croxian Mascar, to kill you. Orion speaks about the paranoia ("Croxian. Croxian. CROXIAN!"), and Hawthorne flies into a rage.
+- **The escape:** you run from the Palace to a Federation ship in Parliament Square, with Orion and Nico.
+  - **Hawthorne** chases you. He is level 55, has no health bar, can't be hurt, and smashes you if he catches you.
+  - On the way he summons **Croxian Mascar** and **Malia de Toro** (level 20 each, with health bars). Croxian can't kill you in one blow here.
+  - **Nico** (level 30, two pistols) beats them easily, with Orion backing her up.
+  - Board the ship and it takes off, followed by "Escaped New London" and a Chapter II to-be-continued screen. If you die, the escape restarts from the Palace door.
+- Shouted lines during the escape: CH2ESCAPE1–9. All of these lines are text only for now.
