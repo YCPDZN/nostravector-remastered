@@ -9852,27 +9852,6 @@ function doSave(i) {
   sfx.chime(); renderSlots(); refreshMenu(); refreshDirty();
   slotMsg(`Saved to slot ${i + 1}`);
 }
-// autosave: whenever you leave the game (switch app, lock the phone, close the tab) and every minute while you're free to roam,
-// your current slot (or the first empty one) is quietly brought up to date, so Continue puts you back exactly where you were
-function canAutosave() {
-  if (!roster.length || ex.mode !== 'world' && ex.mode !== 'station') return false;
-  if (!(state === 'explore' || state === 'xpaused') || sceneLocked()) return false;
-  if (arr.on || cant.on || fb.on || (typeof ft !== 'undefined' && ft.on)) return false; // never in the middle of a scene
-  return (wanderer.chapter | 0) >= 1;
-}
-function autosave() {
-  if (!canAutosave()) return false;
-  let i = lastSlot >= 0 ? lastSlot : slots.findIndex(sl => !sl); if (i < 0) return false;
-  const place = rememberPlace();
-  slots[i] = { savedAt: Date.now(), roster: JSON.parse(JSON.stringify(roster)), activeId, place, auto: true };
-  try { store.set('nv_slots', slots); } catch { return false; }
-  lastSlot = i; dirty = false; try { refreshDirty(); } catch {}
-  return true;
-}
-let autoT = 0;
-setInterval(() => { if (state === 'explore' && dirty !== null && ++autoT >= 6) { autoT = 0; autosave(); } }, 10000);
-addEventListener('pagehide', autosave);
-document.addEventListener('visibilitychange', () => { if (document.hidden) autosave(); });
 function doLoad(i) {
   const sl = slots[i]; if (!sl) return;
   loadSlotData(sl); lastSlot = i;
