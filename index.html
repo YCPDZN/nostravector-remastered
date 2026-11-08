@@ -344,6 +344,12 @@ body.touch .touch-ui{display:block}
 #xhud.cutting .x-obj,#xhud.cutting .x-menu,#xhud.cutting .hotbar,#xhud.cutting .touch-ui,#xhud.cutting .x-prompt,#xhud.cutting .x-hint,#xhud.cutting .loot{opacity:0;pointer-events:none}
 #xhud.cutting .x-dlg{bottom:calc(9vh + 18px)}
 .x-dlg.cyan{border-left-color:#40e6ff}
+.x-dlg.choice{cursor:default}
+.x-dlg.choice .tap{display:none}
+.x-dlg .opts{display:flex;flex-direction:column;gap:8px;margin-top:2px}
+.x-dlg .opt{all:unset;box-sizing:border-box;display:flex;gap:14px;align-items:baseline;padding:10px 14px;border:1px solid rgba(230,233,240,.14);background:rgba(255,255,255,.03);font-weight:300;font-size:clamp(14px,1.9vw,17px);line-height:1.45;cursor:pointer;transition:background .15s,border-color .15s}
+.x-dlg .opt:hover,.x-dlg .opt:focus-visible{background:rgba(255,156,159,.1);border-color:rgba(255,156,159,.55)}
+.x-dlg .opt b{font-weight:500;font-size:10px;letter-spacing:.2em;color:#ff9c9f;min-width:14px}
 .x-dlg.cyan .who{color:#40e6ff}
 #xhud.dreaming .x-obj,#xhud.dreaming .x-menu,#xhud.dreaming .touch-ui,#xhud.dreaming .x-prompt,#xhud.dreaming .x-hint{opacity:0;pointer-events:none}
 #xhud.dreaming .x-dlg{border-left-color:#b9a7ff}
@@ -4355,9 +4361,30 @@ function openDialog(who, lines, inspect, onDone, bufs) {
   xUI.line.textContent = ''; xUI.dlg.classList.add('on'); xUI.dlg.classList.remove('ready');
   ui.xhud.classList.add('talking'); vel.set(0, 0, 0);
 }
-function closeDialog() { if (ex.dlg) sfx.stopVoice(); ex.dlg = null; if (cine.on) { cine.on = false; ui.xhud.classList.remove('cine'); ex.snap = false; } xUI.dlg.classList.remove('on', 'ready'); ui.xhud.classList.remove('talking'); }
+// a dialogue choice: the speaker stays on camera, you pick a reply (click, tap, or 1-9)
+function openChoice(who, opts) {
+  ex.dlg = { who, lines: [''], i: 0, n: 0, acc: 0, choice: opts, rate: .026 };
+  xUI.dlg.classList.remove('inspect', 'ready'); xUI.dlg.classList.add('on', 'choice'); xUI.who.textContent = 'YOUR REPLY';
+  xUI.line.innerHTML = '<div class="opts">' + opts.map((o, i) => `<button class="opt" data-o="${i}"><b>${i + 1}</b><span>${o.text}</span></button>`).join('') + '</div>';
+  ui.xhud.classList.add('talking'); vel.set(0, 0, 0);
+}
+function pickChoice(i) {
+  const d = ex.dlg; if (!d || !d.choice || !d.choice[i]) return;
+  const o = d.choice[i]; sfx.click(); xUI.dlg.classList.remove('choice'); ex.dlg = null; xUI.line.textContent = '';
+  if (o.onPick) o.onPick(); if (!ex.dlg) closeDialog();
+}
+xUI.dlg.addEventListener('click', e => { const b = e.target.closest('button[data-o]'); if (b) { e.stopPropagation(); pickChoice(+b.dataset.o); } }, true);
+// influence with one companion, straight from a conversation (0-100, everyone starts at 50)
+function influence(id, d) {
+  if (!wanderer || !d) return;
+  const L = COMPANIONS.find(c => c.id === id), st = alState(), b = L ? alBaseOf(L) : 0;
+  const C = st.c[id] || (st.c[id] = { a: b == null ? 0 : b, inf: 50 });
+  C.inf = clamp(C.inf + d, 0, 100); alSave();
+  lootMsg(`${(PARTY[id] || { name: id }).name} · influence ${d > 0 ? '+' : '−'}${Math.abs(d)}`, d > 0 ? '#9fe6b0' : '#ffb36e');
+}
+function closeDialog() { if (ex.dlg) sfx.stopVoice(); xUI.dlg.classList.remove('choice'); ex.dlg = null; if (cine.on) { cine.on = false; ui.xhud.classList.remove('cine'); ex.snap = false; } xUI.dlg.classList.remove('on', 'ready'); ui.xhud.classList.remove('talking'); }
 function advanceDialog() {
-  const d = ex.dlg; if (!d) return;
+  const d = ex.dlg; if (!d || d.choice) return;
   const text = d.lines[d.i];
   if (d.n < text.length) { d.n = text.length; xUI.line.textContent = text; xUI.dlg.classList.add('ready'); return; }
   sfx.click();
@@ -4553,6 +4580,7 @@ addEventListener('keydown', e => {
   if (state === 'farmCut') { if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } return; }
   if (state !== 'explore') return;
   if (e.target && e.target.tagName === 'INPUT') return;
+  if (ex.dlg && ex.dlg.choice) { const m = /^(?:Digit|Numpad)([1-9])$/.exec(e.code); if (m) { e.preventDefault(); pickChoice(+m[1] - 1); } else if (['KeyE', 'Enter', 'Space'].includes(e.code)) e.preventDefault(); if (e.code !== 'Escape' && e.code !== 'KeyP') return; }
   if (e.code === 'Escape' || e.code === 'KeyP') { pauseExplore(true); return; }
   if (ex.invOpen) return;
   if (e.code === 'Space' && ex.mode === 'world' && !ex.dlg) { e.preventDefault(); ex.keys.add('Space'); doJump(); return; }
@@ -7600,6 +7628,18 @@ const FLASH_ORION = [
   'Don’t say it again. Not to me. Not anywhere I can hear it.',
   'Now get up. I didn’t cross an ocean to watch you fall apart on the first pier we found.'
 ];
+// your reply, and how he takes it
+const FLASH_ORION_CALM = [
+  'Good.',
+  'I’m sorry I shouted. I’ve watched men come home from a war and lose themselves on a quiet street, years after the shooting stopped. I won’t let that happen to you.',
+  'Come on. Let’s get off this pier.'
+];
+const FLASH_ORION_VENGEANCE = [
+  'And when you do, what? You’ll kill him?',
+  'You couldn’t stand on this pier without falling apart. He would cut you down before you got close enough to say his name.',
+  'I told you not to say it. You heard me, and you said it anyway.',
+  'I’m not leaving you out here on the ice. But we are done talking about him.'
+];
 const fb = { t: 0, on: false };
 let fbFlashEl = null;
 function fbFlash(a, c = '#fff') {
@@ -7735,7 +7775,11 @@ function endFlashback() {
   if (O) { O.root.visible = true; O.root.position.set(p.x + Math.sin(H.rot) * 1.15, H.y, p.z + Math.cos(H.rot) * 1.15); O.root.rotation.y = H.rot + Math.PI; O.mode = 'idle'; }
   fb.on = false; state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta();
   setCh2({ antFlashback: true });
-  openDialog('ORION MASCAR', FLASH_ORION, false, () => { notice('The ferry terminal', 'ANTARCTICA', 3000); });
+  const after = () => notice('The ferry terminal', 'ANTARCTICA', 3000);
+  openDialog('ORION MASCAR', FLASH_ORION, false, () => openChoice('ORION MASCAR', [
+    { text: 'Got it.', onPick: () => { influence('orion', 10); setCh2({ antChoice: 'calm' }); openDialog('ORION MASCAR', FLASH_ORION_CALM, false, after); } },
+    { text: 'I will find Croxian. And when I do…', onPick: () => { influence('orion', -20); setCh2({ antChoice: 'vengeance' }); openDialog('ORION MASCAR', FLASH_ORION_VENGEANCE, false, after); } }
+  ]));
 }
 const CALL_SEQ = [
   ['ORION MASCAR', ['Hold on. That’s my phone.', 'Hello? Slow down, slow down. I can’t understand you. Who is this?']],

@@ -407,5 +407,11 @@ The first time you step off the ferry in Antarctica with Orion, it all comes bac
 4. **Black and ringing,** then a voice far off: "Hey. HEY!"
 5. **Orion,** angry, right in your face on the pier (six lines, with the cinematic camera). You were screaming and clawing at the boards, and there's nothing here. You screamed *that name* again, the one you whispered with the fever in his house. "Don't say it again. Not to me. Not anywhere I can hear it." Then: get up.
 
-The flashback uses the voice lines James and Croxian already have. Orion's six lines here are text only for now (no voice files yet). The flag is `ch2.antFlashback`.
+6. **Your reply,** chosen from two options in the dialogue box (click, tap, or press 1 / 2):
+   - **"Got it."** gives **+10 influence with Orion.** He calms down: "Good." He apologises for shouting, says he's watched men come home from a war and lose themselves on a quiet street years later, and he won't let that happen to you. "Come on. Let's get off this pier."
+   - **"I will find Croxian. And when I do…"** gives **−20 influence with Orion.** He's furious: "And when you do, what? You'll kill him?" You couldn't stand on this pier without falling apart, and he'd cut you down before you got close enough to say his name. "I told you not to say it. You heard me, and you said it anyway." He won't leave you on the ice, but you're done talking about him.
+   - The choice is saved as `ch2.antChoice` (`calm` or `vengeance`) for later chapters. Influence shows in Orion's alignment panel and in the loot feed (*Orion · influence +10*).
+   - Dialogue choices are new to the game. Any conversation can now offer them with `openChoice(speaker, options)`, and `influence(companion, amount)` changes one companion's influence directly.
+
+The flashback uses the voice lines James and Croxian already have. Orion's lines here, including both replies, are text only for now (no voice files yet). The flag is `ch2.antFlashback`.
 - **Fix:** the Chapter I super blizzard can never start again once you've escaped Antarctica.
