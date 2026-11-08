@@ -496,3 +496,12 @@ Hawthorne, Darius, Nico, Malia and the HFOS guards move their mouths with their 
 
 ### Mobile, again
 On phones the objective list shows only what's still to do, plus the step you just finished, so long chapters don't run over the joystick or push Orion's panel off screen. Held sideways, the dialogue box is slimmer so cutscenes like the trial and the arrest stay visible. The escape's boss bars fit between the task list and the minimap sideways, and sit above the controls upright.
+
+## Chapter III · Sol (stage 1)
+After the escape from New London, **Chapter III · Sol** begins in your ship, just off Earth.
+- **Space:** the whole Sol system at game scale (planets a few kilometres across, as in No Man's Sky): the Sun, Mercury, Venus, Earth and the Moon, Mars, Jupiter, Saturn with its rings, Uranus and Neptune. Each planet has a name, faction and distance marker.
+- **HD procedural planets:** cube-sphere terrain with three levels of detail, coloured by height, plus oceans, atmosphere glow and clouds (Earth, Venus). The gas giants have procedural banded skies (Jupiter's Great Red Spot, Saturn's rings).
+- **Flying:** W/S thrust, A/D turn, ↑/↓ or drag to pitch, Shift for the **pulse drive** (crosses the system in seconds, off near planets). On phones: a stick, plus THRUST / PULSE / BRAKE buttons.
+- **Seamless landing:** fly down onto any rocky planet (Mercury, Venus, Earth, the Moon, Mars). Below about 420 m you hit the air and the ship sets down. Then walk the surface with Orion, on the same terrain you saw from orbit. Walk back to the ship and press FLY to take off. Gas giants have no surface.
+- Saves remember space (position and heading) and the planet you're on.
+- **Next stages:** the galaxy map and nine more systems (Sagittarius A* with Carax (Grek), Eris (Erisians), Steca Prime with Aridaxx and Steca (Chompy), Janira Proxima with Janira Prime (Chompy Empire), plus five others), the warp animation, warp cells (start with 5, craft more), mining and traders.
