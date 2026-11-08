@@ -6,7 +6,9 @@ A story-driven 3D sci-fi exploration game that runs in the browser on phones and
 
 ## Play
 
-Open `index.html` in a modern browser. It needs an internet connection the first time, because the 3D engine (Three.js) and the fonts load from public CDNs. Everything else is built into that one file: the models, music and voice lines.
+Open `index.html` in a modern browser, keeping the `data/` folder next to it. It needs an internet connection the first time, because the 3D engine (Three.js) and the fonts load from public CDNs. Everything else is in `data/`: the models, music and voice lines, one script file per asset. These are plain `<script>` files rather than fetched files, so the game still runs when you double-click `index.html` (file://) with no web server.
+
+**itch.io:** zip `index.html` together with the `data/` folder and upload the zip as an HTML game. `index.html` must sit at the top of the zip.
 
 ## What's in the game
 
@@ -162,16 +164,18 @@ Open `index.html` in a modern browser. It needs an internet connection the first
 ## Repository layout
 
 ```
-index.html                  the complete game, with all assets embedded
+index.html                  the game code, UI and loader (about 0.8 MB)
+data/                       every model, texture, music track and voice set as <id>.js, loaded by index.html
 assets/models/              source 3D models (.glb); primes/, vectors/, companions/ and terra_imperia/ and ancient/ hold Nostrapedia figures; characters/ holds the Project BC and Sevirrus models, including hfos_soldier.glb (original HFOS colours)
 assets/audio/               main menu themes (incl. Chapter IV), combat themes (combat/), Antarctica exploration music (antarctica/), opening narration, James Brown's lines (prologue + Chapter I)
-assets/models/world/        HD rock and tree-bark models (embedded with JPEG textures in index.html)
+assets/models/world/        HD rock and tree-bark models (packed with JPEG textures into data/)
+assets/audio/music_africa/   Africa exploration music (CH2AFRICA1–5)
 assets/audio/storm/         exosuit warning (SUIT, SUIT2) and narrator lines (NARRATOR1–5) for the super blizzard
-assets/textures/            HD Antarctica sky panorama and snow texture (embedded as JPEG in index.html)
+assets/textures/            HD Antarctica sky panorama and snow texture (packed as JPEG into data/)
 assets/logo_reference.png   logo / font style reference
 ```
 
-The files in `assets/` are the source copies. The game doesn't load them, because `index.html` already contains them.
+The files in `assets/` are the source copies. The game doesn't load them directly; it loads the packed copies in `data/`.
 
 ## Saves
 
@@ -188,3 +192,7 @@ The game never autosaves. It writes progress only when you choose **Save game**,
 ### Weapons and tools update
 - **Obsidian pickaxe:** a new tool and an upgrade on the ice pick. You craft it at a crafting table from your ice pick (which is used up), 3 obsidian, 2 wood and 1 metal plate. It triples your mining and melee damage (the ice pick doubles it), hits animals harder, breaks obsidian, and has its own black-glass model in your hand.
 - **James uses his rifle now:** when he shoots, the rifle comes off his back and up to his shoulder, with both hands on it and the pick put away. When the fight ends, it goes back over his shoulder. The same rifle logic drives Orion.
+
+### Africa music and the split build
+- **Africa has its own music:** five exploration tracks (CH2AFRICA1–5) play as a shuffled playlist with quiet gaps between them, the same way Antarctica's do. Crossing between Antarctica and Africa fades one playlist out and starts the other.
+- **No more single-file limit:** the embedded assets moved out of `index.html` (which was 94 MB, close to GitHub's 100 MB limit) into `data/`. The game itself hasn't changed.
