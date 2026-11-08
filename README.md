@@ -240,3 +240,10 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
 
 ### Fix: companions on the main menu
 - Orion (and James, and any companion standing with you on the main menu) no longer flickers between walking and standing. He starts walking only once you're properly ahead, keeps a steady pace, and stops once he's caught up.
+
+### Villain previews (separate pages; `index.html` is unchanged)
+`villain-ch3.html`, `villain-ch4.html` and `villain-ch5.html` sit next to `index.html` and use the same `data/` folder. Each opens the game with a ready-made wanderer at **−85 (Awakened Villain)** in Chapter III, IV or V, so you can see the darker clothing on your wanderer and on Orion.
+- Orion is in your party at −55, with almost no influence left, so his outfit has darkened too.
+- The Chapter IV page uses the post-time-skip menu.
+- A red banner at the top has an **ALIGNMENT** button that opens the alignment screen straight from the main menu.
+- These pages read your settings but never read or write your saves. Anything you save in them lasts only until you close the tab.
