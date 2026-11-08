@@ -7009,22 +7009,71 @@ function makePhone() {
   const g = new THREE.Group();
   const body = new THREE.Mesh(new THREE.BoxGeometry(.075, .15, .012), new THREE.MeshStandardMaterial({ color: 0x15171b, roughness: .35, metalness: .6 })); g.add(body);
   const scr = new THREE.Mesh(new THREE.PlaneGeometry(.064, .13), new THREE.MeshStandardMaterial({ color: 0x0d2a3a, emissive: 0x5fc8ff, emissiveIntensity: .9 })); scr.position.z = .0065; g.add(scr);
-  g.position.set(0, -.06, .02); g.rotation.x = -.3;
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
+}
+// the phone goes to his ear the way a real one does: a two-bone reach (shoulder + a split-off elbow) aimed at his ear,
+// and the handset itself sits against the side of his head, top by the ear, bottom toward his mouth
+const ikV = () => new THREE.Vector3(), ikQ = () => new THREE.Quaternion();
+function splitElbow(R) {
+  if (R.elbow !== undefined) return R.elbow;
+  R.elbow = null;
+  const arm = R.la; if (!arm) return null;
+  if (R.laL) { R.elbow = { el: R.laL, hand: R.lh ? R.lh : null }; return R.elbow; }
+  // a rigid arm: hinge the forearm, glove and hand off at the elbow
+  R.root.updateMatrixWorld(true);
+  const fore = []; arm.traverse(o => { if (o.isMesh && /lower ?arm|forearm|glove|thumb|hand|cuff|palm|finger|wrist/i.test(o.name || '')) fore.push(o); });
+  if (!fore.length) return null;
+  const box = new THREE.Box3(); for (const o of fore) box.expandByObject(o);
+  const top = ikV().set((box.min.x + box.max.x) / 2, box.max.y, (box.min.z + box.max.z) / 2), bottom = ikV().set(top.x, box.min.y, top.z);
+  const el = new THREE.Group(); arm.add(el); el.position.copy(arm.worldToLocal(top.clone())); el.updateMatrixWorld(true);
+  for (const o of fore) el.attach(o);
+  R.elbow = { el, handLocal: el.worldToLocal(bottom.clone()) };
+  return R.elbow;
+}
+function ikRotate(obj, from, to, k) {
+  const qw = ikQ().setFromUnitVectors(from, to), objW = obj.getWorldQuaternion(ikQ()), parW = obj.parent.getWorldQuaternion(ikQ());
+  const target = parW.invert().multiply(qw).multiply(objW);
+  obj.quaternion.slerp(target, k); obj.updateMatrixWorld(true);
 }
 function orionPhonePose(R, dt) {
   // he hangs up before turning to you with the last line
   const on = !!world.onCall && !(ex.dlg && ex.dlg.lines === CALL_SEQ[4][1] && ex.dlg.i >= 1);
-  R.callK = clamp((R.callK || 0) + (on ? dt * 2.5 : -dt * 3), 0, 1);
-  if (on && !R.phone) { R.phone = makePhone(); const sock = R.lh ? boneSocket(R.lh) : R.la ? handSocket(R.la) : null; if (sock) sock.add(R.phone); }
-  if (R.phone) R.phone.visible = R.callK > .35;
-  const k = smooth(0, 1, R.callK); if (!k) return;
-  // upper arm forward a little, forearm folded up so the hand sits at the ear
-  const rs = o => R.rest.get(o);
-  if (R.la && rs(R.la)) { R.la.rotation.x = lerp(R.la.rotation.x, rs(R.la).x - .5, k); R.la.rotation.z = lerp(R.la.rotation.z, rs(R.la).z - wxSign(R) * .35, k); }
-  if (R.laL && rs(R.laL)) R.laL.rotation.x = lerp(R.laL.rotation.x, rs(R.laL).x - 2.35, k);
-  if (R.head && rs(R.head)) R.head.rotation.z = lerp(R.head.rotation.z, rs(R.head).z + wxSign(R) * .12, k); // leans into the phone
+  R.callK = clamp((R.callK || 0) + (on ? dt * 2.2 : -dt * 3), 0, 1);
+  const E = splitElbow(R), rs = R.la && R.rest.get(R.la);
+  if (rs) R.la.rotation.y = rs.y; // animRig never touches the twist, so put it back each frame
+  if (E && E.el !== R.laL) E.el.quaternion.identity();
+  if (!R.phone) { R.phone = makePhone(); R.phone.position.set(0, 0, 0); R.phone.rotation.set(0, 0, 0); R.root.add(R.phone); }
+  R.phone.visible = R.callK > .55;
+  const k = smooth(0, 1, R.callK); if (!k || !E || !R.la) return;
+  R.root.updateMatrixWorld(true);
+  const rootP = R.root.getWorldPosition(ikV()), rootQ = R.root.getWorldQuaternion(ikQ()), up = ikV().set(0, 1, 0);
+  const fwd = ikV().set(0, 0, 1).applyQuaternion(rootQ).setY(0).normalize();
+  const S = R.la.getWorldPosition(ikV()), side = S.clone().sub(rootP).setY(0).normalize();
+  // where his ear is: the side of his face
+  const face = R.root.getObjectByName('Face') || R.head;
+  const fb = new THREE.Box3().setFromObject(face), fc = fb.getCenter(ikV()), fs = fb.getSize(ikV());
+  const half = Math.abs(fs.x * side.x) + Math.abs(fs.z * side.z);
+  const ear = fc.clone().addScaledVector(side, half * .5).addScaledVector(fwd, -fs.z * .08).addScaledVector(up, fs.y * .05);
+  const handT = ear.clone().addScaledVector(side, .07).addScaledVector(up, -.05).addScaledVector(fwd, .02);
+  // two-bone IK: shoulder to elbow, elbow to hand, elbow dropping down and out like a real arm
+  const el = E.el, El = el.getWorldPosition(ikV()), H = E.handLocal ? el.localToWorld(E.handLocal.clone()) : (E.hand ? E.hand.getWorldPosition(ikV()) : El.clone().addScaledVector(El.clone().sub(S).normalize(), S.distanceTo(El)));
+  const a = S.distanceTo(El), b = El.distanceTo(H), toT = handT.clone().sub(S);
+  const d = clamp(toT.length(), Math.abs(a - b) + .01, a + b - .01), dir = toT.normalize();
+  const cosA = clamp((a * a + d * d - b * b) / (2 * a * d), -1, 1), sinA = Math.sqrt(1 - cosA * cosA);
+  const pole = up.clone().multiplyScalar(-1).addScaledVector(side, .9).addScaledVector(fwd, .15);
+  const n = pole.sub(dir.clone().multiplyScalar(pole.dot(dir))).normalize();
+  const Ep = S.clone().addScaledVector(dir, cosA * a).addScaledVector(n, sinA * a);
+  ikRotate(R.la, El.clone().sub(S).normalize(), Ep.sub(S).normalize(), k);
+  const E2 = el.getWorldPosition(ikV()), H2 = E.handLocal ? el.localToWorld(E.handLocal.clone()) : (E.hand ? E.hand.getWorldPosition(ikV()) : E2);
+  if (H2.distanceTo(E2) > .01) ikRotate(el, H2.clone().sub(E2).normalize(), handT.clone().sub(E2).normalize(), k);
+  // the handset: flat against his cheek, top at the ear, bottom angled toward his mouth
+  const yA = up.clone().multiplyScalar(.8).addScaledVector(fwd, -.6).normalize(), zA = side.clone().negate(), xA = ikV().crossVectors(yA, zA).normalize();
+  zA.crossVectors(xA, yA).normalize();
+  const wq = ikQ().setFromRotationMatrix(new THREE.Matrix4().makeBasis(xA, yA, zA));
+  const ws = R.root.getWorldScale(ikV());
+  R.phone.position.copy(R.root.worldToLocal(ear.clone().addScaledVector(side, .03).addScaledVector(fwd, .03)));
+  R.phone.quaternion.copy(rootQ.clone().invert().multiply(wq)); R.phone.scale.setScalar(1 / Math.max(.001, ws.x));
 }
 function orionPhoneCall() {
   world.callBusy = true; world.onCall = true;
