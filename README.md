@@ -248,3 +248,8 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
 - The Chapter IV page uses the post-time-skip menu.
 - A red banner at the top has an **ALIGNMENT** button that opens the alignment screen straight from the main menu.
 - These pages read your settings but never read or write your saves. Anything you save in them lasts only until you close the tab.
+- **`villain-ch5-complete.html`** opens Chapter V, finished, as a −100 Awakened Villain with **the whole company following you**: Orion, Khazglar, Charon, Kizna, Nyrexia, Croxian, Malia, James Brown (Pontifex Maximus), Josiah Williams II and Tyrotaronus.
+  - They walk behind you in a loose two-row formation, on the main menu and out in the world, and catch up if you leave them far behind.
+  - Every one of them has slid to Awakened Villain. The ones who started good have darkened outfits, and their Nostrapedia files read *… Evil · was … Good*.
+  - The born villains look as they always did, and keep high influence because they approve of your path.
+  - The Alignment screen lists all of them with their charts and influence.
