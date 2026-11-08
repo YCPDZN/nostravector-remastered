@@ -229,6 +229,7 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
 - **Companion charts:** the Alignment screen shows a chart for every companion whose Nostrapedia file you've unlocked, plus the Project BC cast (Josiah Richards, Peter Chambers, Gareth Williams, Kevin Murderhorn) and Lord Sevirrus. Each companion's Nostrapedia file also shows their chart. Party members also show an **Influence** bar.
   - Starting points come from each character's alignment: Good +45 to +65, Neutral around 0, Evil −55 to −75.
   - James Brown's chart reads **UNKNOWN** with a "?" marker, and he approves of everything you do.
+- **Character model:** a 3D model stands beside the big chart, slowly turning. It shows your own wanderer by default, as they look right now. Click a companion's card and the big chart and model switch to that companion alone, life-size and large. Click the card again, or **Back to you**, to return. Lord Sevirrus keeps his red eyes and neck snap here too.
 - **Deeds:**
   - Heroic: **Share food** with a companion (key **6** or the companion panel; uses a roast meat or seal ration) +4. Kill a hostile animal while you have companions with you +1. Build a camp heater or signal beacon +1 (counts the first 10).
   - Villainous: **Intimidate** a companion (key **7**) −4. Attack a peaceful buffalo herd −3. Strike a harmless penguin −2. Kill a gazelle while you're at full health, for sport rather than food, −2.

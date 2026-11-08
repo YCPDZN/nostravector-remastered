@@ -581,7 +581,7 @@ button.bm-c.no{opacity:.45}
 
 #alignScr{z-index:27}
 .al-panel{max-width:900px;align-items:stretch;text-align:left}
-.al-wrap{display:grid;grid-template-columns:260px 1fr;gap:28px;width:100%;max-height:min(62vh,560px)}
+.al-wrap{display:grid;grid-template-columns:400px 1fr;gap:28px;width:100%;max-height:min(62vh,560px)}
 @media (max-width:720px){ .al-wrap{grid-template-columns:1fr;max-height:66vh;overflow-y:auto} }
 .al-me{display:flex;flex-direction:column;gap:16px;align-items:flex-start}
 .al-me-t{display:flex;flex-direction:column;gap:6px}
@@ -590,8 +590,14 @@ button.bm-c.no{opacity:.45}
 .al-me-t em{font-style:normal;color:#9aa0a8;font-size:13px}
 .al-side{overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
 .al-comps{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
-.al-card{display:flex;gap:12px;align-items:center;padding:10px 12px;border:1px solid rgba(230,233,240,.1);border-radius:6px;background:rgba(10,14,20,.45)}
+.al-card{font:inherit;color:inherit;text-align:left;cursor:pointer;width:100%;display:flex;gap:12px;align-items:center;padding:10px 12px;border:1px solid rgba(230,233,240,.1);border-radius:6px;background:rgba(10,14,20,.45)}
 .al-card.in{border-color:rgba(127,227,255,.35)}
+.al-card:hover{background:rgba(30,38,50,.6)}
+.al-card.sel{border-color:#e6e9f0;box-shadow:0 0 0 1px #e6e9f0 inset}
+.al-feat{display:flex;gap:6px;align-items:stretch;width:100%}
+.al-model{flex:1;min-width:0;height:330px;border-radius:8px;background:radial-gradient(ellipse at 50% 85%,rgba(230,233,240,.08),transparent 65%)}
+.al-model canvas{width:100%;height:100%;display:block}
+.al-you{margin-top:8px;align-self:flex-start}
 .al-ct{display:flex;flex-direction:column;gap:3px;min-width:0}
 .al-ct b{font-size:13px;letter-spacing:.08em}
 .al-ct small{font-size:10.5px;color:#9aa0a8;letter-spacing:.04em}
@@ -601,7 +607,7 @@ button.bm-c.no{opacity:.45}
 .al-inf i{display:block;width:90px;height:5px;border-radius:3px;background:rgba(230,233,240,.12);overflow:hidden}
 .al-inf u{display:block;height:100%;background:#cfd6e6;text-decoration:none}
 .al-chart{display:flex;gap:8px;height:120px;flex:none}
-.al-chart.big{height:290px}
+.al-chart.big{height:330px}
 .al-col{position:relative;width:12px;border-radius:7px;background:linear-gradient(180deg,#56d4ee 0%,#6f8c96 18%,#7f8389 50%,#957270 82%,#e0473f 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
 .al-chart.big .al-col{width:20px;border-radius:10px}
 .al-fill{position:absolute;left:0;right:0;background:var(--c);opacity:.55;border-radius:6px}
@@ -4686,11 +4692,11 @@ $('#invCraft').addEventListener('click', e => {
 const AL_BASE = { 'Lawful Good': 65, 'Neutral Good': 55, 'Chaotic Good': 45, 'Lawful Neutral': 8, 'True Neutral': 0, 'Neutral': 0, 'Chaotic Neutral': -8, 'Lawful Evil': -55, 'Neutral Evil': -60, 'Chaotic Evil': -75 };
 // characters from the other NOSTRAVECTOR games (Project BC, Sevirrus) get charts too
 const AL_EXTRA = [
-  { id: 'pbc-josiah', name: 'JOSIAH RICHARDS', sub: 'Project BC · The Prime Secretary', al: 'Lawful Evil' },
-  { id: 'pbc-peter', name: 'PETER CHAMBERS', sub: 'Project BC · The Deputy Prime Secretary', al: 'Neutral Evil' },
-  { id: 'pbc-gareth', name: 'GARETH WILLIAMS', sub: 'Project BC · Grade 7 Civil Servant', al: 'Neutral Good' },
-  { id: 'pbc-kevin', name: 'KEVIN MURDERHORN', sub: 'Project BC · The Black Mask', al: 'Chaotic Evil' },
-  { id: 'sev-sevirrus', name: 'LORD SEVIRRUS', sub: 'Sevirrus · The Usurper Prince', al: 'Chaotic Evil' }
+  { id: 'pbc-josiah', tag: 'chJosiah', h: 1.85, name: 'JOSIAH RICHARDS', sub: 'Project BC · The Prime Secretary', al: 'Lawful Evil' },
+  { id: 'pbc-peter', tag: 'chPeter', h: 1.85, name: 'PETER CHAMBERS', sub: 'Project BC · The Deputy Prime Secretary', al: 'Neutral Evil' },
+  { id: 'pbc-gareth', tag: 'chGareth', h: 1.85, name: 'GARETH WILLIAMS', sub: 'Project BC · Grade 7 Civil Servant', al: 'Neutral Good' },
+  { id: 'pbc-kevin', tag: 'chKevin', h: 1.85, name: 'KEVIN MURDERHORN', sub: 'Project BC · The Black Mask', al: 'Chaotic Evil' },
+  { id: 'sev-sevirrus', tag: 'chSevirrus', h: 1.85, name: 'LORD SEVIRRUS', sub: 'Sevirrus · The Usurper Prince', al: 'Chaotic Evil' }
 ];
 const alFact = L => L.al || ((L.facts || []).find(f => f[0] === 'Alignment') || [])[1];
 const alBaseOf = L => { const f = alFact(L); return f in AL_BASE ? AL_BASE[f] : null; }; // null = unreadable (James, before the pier)
@@ -4725,20 +4731,91 @@ function alignAct(d, why) {
   alSave();
   if (!$('#alignScr').classList.contains('hidden')) renderAlign();
 }
+const alView = { sel: null, R: null, scene: null, cam: null, obj: null, tok: 0, raf: 0, rot: 0 };
+function alCompList() { return companionsNow().filter(L => !pdEntryLocked(L, 'companions')).map(L => ({ L, sub: L.title })).concat(AL_EXTRA.map(L => ({ L, sub: L.sub }))); }
 function renderAlign() {
-  const st = alState(), v = st.p, party = partyNow();
-  $('#alMe').innerHTML = alChart(v, true) + `<div class="al-me-t"><small>${ccEsc(wanderer.name || 'The Wanderer')}</small><b style="color:${alColor(v)}">${alRank(v)}</b><em>${v > 0 ? '+' : ''}${Math.round(v)}</em></div>`;
-  const comps = companionsNow().filter(L => !pdEntryLocked(L, 'companions')).map(L => ({ L, sub: L.title })).concat(AL_EXTRA.map(L => ({ L, sub: L.sub })));
+  const st = alState(), party = partyNow(), comps = alCompList();
+  const pick = alView.sel && comps.find(c => c.L.id === alView.sel);
+  if (!pick) alView.sel = null;
+  // the featured chart: you, or the one companion you picked, shown big beside their model
+  let chart, info;
+  if (!pick) {
+    const v = st.p;
+    chart = alChart(v, true);
+    info = `<small>${ccEsc(wanderer.name || 'The Wanderer')}</small><b style="color:${alColor(v)}">${alRank(v)}</b><em>${v > 0 ? '+' : ''}${Math.round(v)}</em>`;
+  } else {
+    const A = alComp(pick.L), inP = party.includes(pick.L.id);
+    chart = alChart(A.hidden ? 0 : A.a, true, A.hidden);
+    info = `<small>${pick.L.name}</small><b style="color:${A.hidden ? '#9aa0a8' : alColor(A.a)}">${A.hidden ? 'UNKNOWN' : alRank(A.a)}</b><em>${A.hidden ? pick.sub : `${A.a > 0 ? '+' : ''}${Math.round(A.a)} · ${pick.sub}`}</em>`
+      + (inP ? `<div class="al-inf"><span>Influence</span><i><u style="width:${Math.round(A.inf)}%"></u></i></div>` : '')
+      + '<button class="btn small al-you" id="alYou"><span>‹ Back to you</span></button>';
+  }
+  $('#alMe').innerHTML = `<div class="al-feat">${chart}<div class="al-model" id="alModel"></div></div><div class="al-me-t">${info}</div>`;
+  const yb = $('#alYou'); if (yb) yb.addEventListener('click', () => { sfx.click(); alView.sel = null; renderAlign(); });
   $('#alComps').innerHTML = comps.map(({ L, sub }) => {
     const A = alComp(L), inP = party.includes(L.id);
-    return `<div class="al-card${inP ? ' in' : ''}">${alChart(A.hidden ? 0 : A.a, false, A.hidden)}<div class="al-ct"><b>${L.name}</b><small>${sub}</small>`
+    return `<button class="al-card${inP ? ' in' : ''}${alView.sel === L.id ? ' sel' : ''}" data-id="${L.id}">${alChart(A.hidden ? 0 : A.a, false, A.hidden)}<div class="al-ct"><b>${L.name}</b><small>${sub}</small>`
       + `<em style="color:${A.hidden ? '#9aa0a8' : alColor(A.a)}">${A.hidden ? 'UNKNOWN' : alRank(A.a)}</em>`
-      + (inP ? `<div class="al-inf"><span>Influence</span><i><u style="width:${Math.round(A.inf)}%"></u></i></div>` : '<small class="al-np">Not in your party</small>') + '</div></div>';
+      + (inP ? `<div class="al-inf"><span>Influence</span><i><u style="width:${Math.round(A.inf)}%"></u></i></div>` : '<small class="al-np">Not in your party</small>') + '</div></button>';
   }).join('');
+  alShowModel(pick ? pick.L : null).catch(() => {});
+}
+$('#alComps').addEventListener('click', e => { const b = e.target.closest('.al-card'); if (!b) return; sfx.click(); alView.sel = alView.sel === b.dataset.id ? null : b.dataset.id; renderAlign(); });
+// a small stage of its own, so only the one character you picked stands there, life-size and large
+function alStage() {
+  if (alView.R) return true;
+  try {
+    const cv = document.createElement('canvas');
+    alView.cv = cv; alView.R = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true });
+    alView.R.setPixelRatio(Math.min(2, devicePixelRatio || 1)); alView.R.outputColorSpace = THREE.SRGBColorSpace;
+    alView.scene = new THREE.Scene(); alView.cam = new THREE.PerspectiveCamera(30, 1, .05, 100);
+    alView.scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x1a1c22, 1.6));
+    const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(2, 4, 5); alView.scene.add(key);
+    const rim = new THREE.DirectionalLight(0x9fdcff, 1.2); rim.position.set(-3, 3, -4); alView.scene.add(rim);
+    alView.pivot = new THREE.Group(); alView.scene.add(alView.pivot);
+    return true;
+  } catch { alView.R = null; return false; }
+}
+async function alShowModel(L) {
+  const box = $('#alModel'); if (!box || !alStage()) return;
+  if (alView.cv.parentNode !== box) box.appendChild(alView.cv);
+  const tok = ++alView.tok, key = L ? L.id : 'me';
+  if (alView.key !== key) {
+    alView.key = key; alView.rot = 0;
+    for (const c of [...alView.pivot.children]) alView.pivot.remove(c);
+    let obj = null, H = 2;
+    try {
+      if (!L) { obj = SkeletonUtils.clone(inner); obj.userData.keep = true; H = (SPECIES[spOf(wanderer)] && SPECIES[spOf(wanderer)].height) || 2; }
+      else if (L.tag) { obj = await loadFigure(L); H = L.h || 1.9; }
+    } catch { obj = null; }
+    if (tok !== alView.tok || !obj) return;
+    obj.position.set(0, 0, 0); obj.rotation.set(0, 0, 0);
+    if (!L) { obj.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(obj), h = Math.max(.01, b.max.y - b.min.y); obj.scale.multiplyScalar(H / h); obj.updateMatrixWorld(true); const b2 = new THREE.Box3().setFromObject(obj); obj.position.y = -b2.min.y; }
+    alView.pivot.add(obj); alView.obj = obj; alView.H = H;
+  }
+  alLoop();
+}
+function alLoop() {
+  window.cancelAnimationFrame(alView.raf);
+  let last = performance.now();
+  const step = now => {
+    const scr = $('#alignScr'), box = $('#alModel');
+    if (!alView.R || scr.classList.contains('hidden') || !box) return;
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    const w = box.clientWidth || 260, h = box.clientHeight || 340, H = alView.H || 2;
+    if (alView.cv.width !== Math.round(w * alView.R.getPixelRatio())) alView.R.setSize(w, h, false);
+    alView.cam.aspect = w / h; alView.cam.position.set(0, H * .58, H * 2.55); alView.cam.lookAt(0, H * .5, 0); alView.cam.updateProjectionMatrix();
+    alView.rot += dt * .35; alView.pivot.rotation.y = Math.sin(alView.rot) * .55;
+    const S = alView.obj && alView.obj.userData.slasher; // Sevirrus keeps snapping his neck here too
+    if (S) { S.at -= dt; if (S.at <= 0 && S.t <= 0) { S.t = .62; S.at = 2.2 + Math.random() * 4; } let e = 0; if (S.t > 0) { S.t -= dt; e = S.t > .5 ? smooth(.62, .54, S.t) : smooth(0, .12, S.t); } S.neck.rotation.z = S.nz + .55 * e; S.neck.rotation.x = S.nx + .12 * e; }
+    alView.R.render(alView.scene, alView.cam);
+    alView.raf = requestAnimationFrame(step);
+  };
+  alView.raf = requestAnimationFrame(step);
 }
 function openAlign(on) {
   if (state === 'explore') openModal('#alignScr', on); else { show($('#alignScr'), on); sfx.click(); }
-  if (on) renderAlign();
+  if (on) { alView.sel = null; alView.key = null; renderAlign(); }
 }
 $('#alignClose').addEventListener('click', () => { if (state === 'explore') closeModals(); else show($('#alignScr'), false); sfx.click(); });
 $('#xAlign').addEventListener('click', () => openAlign(true));
