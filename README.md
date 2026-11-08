@@ -380,3 +380,17 @@ Controls: WASD to move, Shift to sprint, Space to jump (higher in low gravity), 
 
 ### Fix: human wanderers no longer stand in an A-pose
 The human suit is modelled with its arms held about 34° out from the body, and the idle and walk animations left them there, so human wanderers stood and walked with their arms out. The arms now hang at the sides when standing and swing from there when walking, on the main menu and in every chapter. Other species were already fine. Poses that set the arms themselves (combat, collapsing, sleeping) are unchanged.
+
+### Chapter II: the ferry and the Ad-Nostra teleporter
+- **Discovering Ad-Nostra** (walking in through the gate the first time) unlocks two things, both announced in the loot feed:
+  - **The Ad-Nostra teleporter:** a pad in the market square, just south of the signal tower. It appears and joins your teleporter network, alongside Orion's teleporter, any pads you've built in Africa, and the Antarctic ones (listed under *take the ferry to get here*).
+  - **The ferry to Antarctica:** the Nostra Line ferry, white with a red waterline and funnel, moored on the north side of the main pier with its gangway down. A red FERRY · ANTARCTICA sign stands at the pier head.
+- **Taking the ferry:** walk out along the main pier to the gangway and press **E** (*Board the ferry · Antarctica*, BOARD on phones).
+  - The ship pulls away from the pier in a letterboxed shot, the screen fades to black, and a title card reads *Across the Southern Ocean · ANTARCTICA*.
+  - You step off on the pier at the Antarctic ferry terminal, the one you escaped from. The ferry waits at the pier there, and boarding it at its gangway (*Board the ferry · Ad-Nostra*) brings you back to Ad-Nostra's main pier the same way.
+- **In Antarctica in Chapter II:**
+  - The ice, station, teleporters, your Antarctic builds and James's rover (if you drove it) are all there, and the station's teleporter takes you home to the station, where the lamps are on and the hatch is open.
+  - James Brown is gone, and his trail and camp no longer appear.
+  - Your Chapter II objectives stay on screen, and the chapter label reads *Chapter II · Antarctica*.
+  - Orion stays behind in Africa ("Orion stays behind in Ad-Nostra") and is with you again when you get back.
+- **Saving** in Antarctica (outside or inside the station) brings a Chapter II wanderer back there on Continue or Load.

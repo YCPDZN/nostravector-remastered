@@ -4259,7 +4259,7 @@ function renderTasks() {
   if (p.talked) h += task(allSeen(), `Inspect the station · ${seenCount()}/${XSPOTS.length}`);
   if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
   if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? campTasks(p, task) : '');
-  if (curArea() === 'africa') h = ch2Tasks(task);
+  if (curArea() === 'africa' || ((wanderer.chapter | 0) >= 2 && p.escaped)) h = ch2Tasks(task); // Chapter II's objectives follow you, even back to Antarctica
   xUI.tasks.innerHTML = h;
   $('#xChap').textContent = liveChapterLabel().toUpperCase();
 }
@@ -4271,7 +4271,11 @@ function notice(small, big, ms = 2800) {
   noticeT = setTimeout(() => xUI.card.classList.remove('on'), ms);
 }
 async function startChapter1(fromCutscene, place) {
-  if ((wanderer.chapter | 0) >= 2 && ch1().escaped && wanderer.ch2 && wanderer.ch2.introSeen) { startChapter2(place); return; }
+  if ((wanderer.chapter | 0) >= 2 && ch1().escaped && wanderer.ch2 && wanderer.ch2.introSeen) {
+    const own = place || (!fromCutscene && resumePlace && resumePlace.who === activeId ? resumePlace : null) || (wanderer.place && wanderer.place.mode === 'explore' ? wanderer.place : null);
+    if (own && (own.where === 'antarctica' || own.area === 'station')) { resumePlace = null; visitAntarctica(own); return; }
+    startChapter2(place); return;
+  }
   world.area = 'antarctica';
   state = 'loadingCh';
   sfx.init();
@@ -4408,6 +4412,7 @@ async function interact() {
     sleepOutside();
   } else if (n.id === 'farmDoor') { farmDoorTalk();
   } else if (n.id === 'townsfolk') { talkTownsfolk(n.ref);
+  } else if (n.id === 'ferry') { startFerryTrip();
   } else if (n.id === 'orion') {
     if (orionJoined()) { ex.cSel = 'orion'; refreshJamesUI(); toggleJamesMenu(); } else talkOrion();
   } else if (n.id === 'push') {
@@ -5267,6 +5272,7 @@ function tpNetwork() {
   wsState();
   const out = [];
   for (const [area, A] of Object.entries(AREA_INFO)) if (A.stationTp) out.push({ id: area + ':station', name: A.stationTp.name, area, x: A.stationTp.x, z: A.stationTp.z, y: null });
+  if (wanderer.ch2 && wanderer.ch2.townSeen) out.push({ id: 'africa:adnostra', name: TOWN.tp.name, area: 'africa', x: TOWN.tp.x, z: TOWN.tp.z, y: null });
   for (const [area, s] of Object.entries(wanderer.worlds || {})) for (const o of s.build || []) if (o.k === 'tele') out.push({ id: area + ':' + o.x + ',' + o.z, ref: o, name: o.name || 'Base', area, x: o.x, z: o.z, y: o.y });
   return out;
 }
@@ -5283,7 +5289,7 @@ function renderTp() {
   let h = '';
   for (const [area, ts] of Object.entries(byArea)) {
     const A = AREA_INFO[area] || { planet: '?', name: area }, reach = area === curArea();
-    h += `<div class="inv-h" style="margin-top:12px">${A.planet} · ${A.name}${reach ? '' : ' · reach this planet by ship first'}</div>`;
+    h += `<div class="inv-h" style="margin-top:12px">${A.planet} · ${A.name}${reach ? '' : A.planet === AREA_INFO[curArea()].planet ? (ferryOpen() ? ' · take the ferry to get here' : ' · reach it by sea first') : ' · reach this planet by ship first'}</div>`;
     h += ts.map(t => {
       const self = here && t.id === here.id, d = Math.round(Math.hypot(t.x - player.position.x, t.z - player.position.z));
       return `<div class="res-row shop${self ? ' zero' : ''}"><b style="--c:#7fd8ff"></b><span>${t.name}<small>${self ? 'You are here' : reach ? d + ' m away' : 'Another world'}</small></span><em></em><button class="mini" data-t="${t.id}"${self || !reach ? ' disabled' : ''}>Teleport</button></div>`;
@@ -5624,6 +5630,7 @@ const JAMES_FOUND = [
 ];
 function placeJamesOutside() {
   if (companionOn()) { placeCompanion(); return; }
+  if (ch1().betrayed) { if (james.ready) james.root.visible = false; return; } // after the pier, James is gone
   if (!james.ready || !world.jamesAt) return;
   const J = world.jamesAt;
   wScene.add(james.root); james.root.visible = true;
@@ -6883,7 +6890,7 @@ function buildWorld(seed) {
   }
   if (world.seed !== seed || world.owner !== activeId || !world.chunks.size || world.builtArea !== curArea()) {
     clearWorld(); world.seed = seed; world.owner = activeId; world.builtArea = curArea();
-    if (curArea() !== 'antarctica') { world.jamesAt = null; world.meetAt = null; } else {
+    if (curArea() !== 'antarctica' || ch1().betrayed) { world.jamesAt = null; world.meetAt = null; } else {
     world.footDir = wHash(3, 7, 900) * Math.PI * 1.2 - Math.PI * .6;
     // James's footprints, fading into the snow
     const n = 140, feet = new THREE.InstancedMesh(new THREE.CircleGeometry(.11, 10), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, envMapIntensity: 0 }), n);
@@ -7008,7 +7015,7 @@ function buildFarmhouse() {
    A flat-roofed coastal town: one main street from the east gate down to the quay, a market square with an old
    signal tower and a baobab, back rows of houses, warehouses, cranes and two piers over the sea. Buildings,
    lamps and townsfolk are fixed (the same for every wanderer); the savanna around it is still each wanderer's own. */
-const TOWN = { x0: -204, x1: -32, z0: -64, z1: 64, coast: -204, sea: -1.2, deck: .08, cols: [], piers: [], npcs: [], lamps: [], boats: [] };
+const TOWN = { x0: -204, x1: -32, z0: -64, z1: 64, coast: -204, sea: -1.2, deck: .08, tp: { x: -118, z: -8.5, name: 'Ad-Nostra teleporter' }, cols: [], piers: [], npcs: [], lamps: [], boats: [] };
 const inTown = (x, z, m = 0) => x > TOWN.x0 - m && x < TOWN.x1 + m && z > TOWN.z0 - m && z < TOWN.z1 + m;
 function townMask(x, z) { const dx = Math.max(TOWN.x0 - x, 0, x - TOWN.x1), dz = Math.max(TOWN.z0 - z, 0, z - TOWN.z1); return dx || dz ? smooth(46, 4, Math.hypot(dx, dz)) : 1; }
 // the town is levelled to the height of Orion's yard; west of it the land runs down to the sea (a quay inside town, a beach outside)
@@ -7242,7 +7249,13 @@ function buildTown() {
     if (sail) { add(new THREE.Mesh(new THREE.CylinderGeometry(.07, .09, len * .8, 6), wood), 0, len * .4 + .8, len * .08); const sl = add(new THREE.Mesh(new THREE.BoxGeometry(.25, .25, len * .55), M(0xe8e2d0)), 0, len * .55, len * .1); sl.rotation.x = -.35; }
     b.position.set(x, TOWN.sea, z); b.rotation.y = ry; b.userData.ph = rnd() * 6; live.add(b); TOWN.boats.push(b);
   };
-  boat(-216, 6.5, 9, .05, true); boat(-233, -6.6, 7, -.08, true); boat(-222, -35, 10, .1, true); boat(-214, -21, 6, 3.1, false); boat(-238, 7, 6.5, .12, false);
+  boat(-216, -7.2, 9, .05, true); boat(-233, -6.6, 7, -.08, true); boat(-222, -35, 10, .1, true); boat(-214, -21, 6, 3.1, false); boat(-241, -7.5, 6.5, .12, false);
+  // the ferry to Antarctica, moored on the north side of the main pier
+  buildTownFerry(live, M);
+  for (const dz of [-1.3, 1.3]) cyl(.08, .08, 3, dark, -205.4, 1.5, 4.2 + dz, 6);
+  { const fs = townSign('FERRY · ANTARCTICA', 3.2, .7, '#b3202a', '#ffffff'); fs.position.set(-205.3, 2.6, 4.2); fs.rotation.y = Math.PI / 2; live.add(fs); col(-205.6, -205.2, 2.8, 5.6); }
+  // the town's teleporter pad, in the market square (it joins your network once you've found the town)
+  { const tp = makePiece({ k: 'tele' }); tp.position.set(TOWN.tp.x, 0, TOWN.tp.z); live.add(tp); world.townTp = tp; tp.visible = !!(wanderer && wanderer.ch2 && wanderer.ch2.townSeen); }
   { // the freighter
     const f = new THREE.Group(), hull = M(0x3b4450, { roughness: .7, metalness: .3, fog: false }), FC = CONT.map(m => { const c = m.clone(); c.fog = false; return c; });
     const h = new THREE.Mesh(new THREE.BoxGeometry(16, 7, 90), hull); h.position.y = 1.5; f.add(h);
@@ -7412,6 +7425,7 @@ function townTick(dt) {
   const p = player.position, night = 1 - (world.dayL == null ? 1 : world.dayL);
   if (world.sea) world.sea.position.z = p.z;
   if (TOWN.lit) TOWN.lit.emissiveIntensity = night * 1.4;
+  if (world.townTp) world.townTp.visible = !!(wanderer && wanderer.ch2 && wanderer.ch2.townSeen);
   for (const g of TOWN.lamps) g.material.opacity = night * .85;
   if (TOWN.beacon) TOWN.beacon.material.opacity = (.35 + .65 * night) * (Math.sin(time * 2.2) > 0 ? 1 : .25);
   const near = p.x < TOWN.x1 + 140 && p.x > TOWN.x0 - 160 && Math.abs(p.z) < 220;
@@ -7419,7 +7433,12 @@ function townTick(dt) {
   // arriving in town
   if (state === 'explore' && wanderer && inTown(p.x, p.z, -2)) {
     const c2 = wanderer.ch2 || {};
-    if (!c2.townSeen) { setCh2(Object.assign({ townSeen: true }, c2.metNico ? { townFound: true } : {})); notice('The harbour town', 'AD-NOSTRA', 3800); if (c2.metNico) setTimeout(() => notice('Ask the townsfolk', 'FIND NICO’S HUSBAND', 3600), 4300); }
+    if (!c2.townSeen) {
+      setCh2(Object.assign({ townSeen: true }, c2.metNico ? { townFound: true } : {})); notice('The harbour town', 'AD-NOSTRA', 3800);
+      setTimeout(() => { lootMsg('Ad-Nostra teleporter added to your network', '#7fd8ff'); sfx.chime(); }, 1600);
+      setTimeout(() => lootMsg('The ferry to Antarctica leaves from the main pier', '#ffc94a'), 3400);
+      if (c2.metNico) setTimeout(() => notice('Ask the townsfolk', 'FIND NICO’S HUSBAND', 3600), 4300);
+    }
     else if (c2.metNico && !c2.townFound) { setCh2({ townFound: true }); notice('Ad-Nostra', 'ASK THE TOWNSFOLK', 3600); }
   }
   for (const n of TOWN.npcs) {
@@ -7455,6 +7474,119 @@ function talkTownsfolk(n) {
   if (c2.metNico && !c2.husbandFound && n.d.husband) lines.push(say(n.d.husband));
   world.townTalk = n; sfx.click();
   openDialog(n.d.name, lines, false, () => { world.townTalk = null; if (c2.metNico && n.d.husband) { const asked = Object.assign({}, c2.townAsked || {}); if (!asked[n.d.name]) { asked[n.d.name] = 1; setCh2({ townAsked: asked }); } } });
+}
+/* ---- the ferry: Ad-Nostra ⇄ the Antarctic terminal (Chapter II on, once you've found Ad-Nostra) ----
+   Board at either pier. The ship pulls out, there's a title card over black, and you step off at the other end.
+   Orion stays behind in Africa while you're away and is waiting when you come back. */
+const ferryOpen = () => !!(wanderer && (wanderer.chapter | 0) >= 2 && ch1().escaped && wanderer.ch2 && wanderer.ch2.townSeen);
+const TOWN_FERRY = { x: -226, z: 9.6, board: [-230, 2.2], arrive: [-216, 0] };
+function antFerryDock() { // on the terminal pier, facing the shore
+  const [x, z] = ferryWorld(0, 22), [x2, z2] = ferryWorld(0, 18);
+  return { x, z, y: 1.6, rot: Math.atan2(x2 - x, z2 - z) };
+}
+function buildTownFerry(live, M) {
+  const s = new THREE.Group(), add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; s.add(o); return o; };
+  const hull = M(0xe9ecef, { roughness: .6, metalness: .2 }), red = M(0xb3202a, { roughness: .6, metalness: .2 }), glass = M(0x1d2a38, { roughness: .15, metalness: .6 }), wood = M(0x5a4636);
+  // local +z is the bow (west), local -x faces the pier; the waterline is local y = 0 and the deck (2.3) is about 1 m above the pier
+  add(new THREE.BoxGeometry(11, 4, 38), hull, 0, .3, 0);
+  const bow = add(new THREE.CylinderGeometry(.01, 5.5, 8, 4, 1), hull, 0, .3, 22.9); bow.rotation.set(Math.PI / 2, Math.PI / 4, 0); bow.scale.set(1, 1, .72);
+  add(new THREE.BoxGeometry(11.06, .7, 38.06), red, 0, .15, 0);
+  add(new THREE.BoxGeometry(9, 3.2, 14), hull, 0, 3.9, -7);
+  add(new THREE.BoxGeometry(9.05, .8, 14.05), glass, 0, 4.4, -7);
+  add(new THREE.BoxGeometry(7, 2.4, 6), hull, 0, 6.7, -9);
+  add(new THREE.BoxGeometry(7.05, .6, 6.05), glass, 0, 7.1, -9);
+  add(new THREE.CylinderGeometry(1, 1.2, 4, 14), red, 0, 9.2, -12.5);
+  for (const sx of [-1, 1]) add(new THREE.BoxGeometry(.08, .9, 36), M(0x2b2f36), sx * 5.45, 2.75, 0); // rails
+  const sign = townSign('NOSTRA LINE', 6, .9, '#b3202a', '#ffffff'); sign.position.set(5.53, 1.4, -2); sign.rotation.y = Math.PI / 2; s.add(sign);
+  const sign2 = sign.clone(); sign2.position.x = -5.53; sign2.rotation.y = -Math.PI / 2; s.add(sign2);
+  // the gangway, from the pier up to the deck
+  const gw = add(new THREE.BoxGeometry(2.7, .16, 2.2), wood, -6.7, 1.8, 4); gw.rotation.z = Math.atan2(1.02, 2.4);
+  for (const dz of [-1.05, 1.05]) { const r = add(new THREE.BoxGeometry(2.6, .06, .06), M(0x2b2f36), -6.7, 2.65, 4 + dz); r.rotation.z = gw.rotation.z; }
+  s.position.set(TOWN_FERRY.x, TOWN.sea, TOWN_FERRY.z); s.rotation.y = -Math.PI / 2; s.userData.base = s.position.clone();
+  live.add(s); world.townFerry = s;
+}
+const ft = { on: false, t: 0, from: null, to: null, switched: false };
+function startFerryTrip() {
+  if (ft.on || !ferryOpen()) return;
+  const from = curArea(), to = from === 'africa' ? 'antarctica' : 'africa';
+  Object.assign(ft, { on: true, t: 0, from, to, switched: false, ready: false });
+  closeDialog(); closeModals(); stopBuild(); vel.set(0, 0, 0); ex.keys.clear(); ex.joyX = ex.joyY = 0;
+  player.visible = false; show(ui.xhud, false); sfx.thud(); setTimeout(() => sfx.thud(), 400);
+  const el = $('#ferryCut'); el.classList.remove('black', 'title', 'title2'); el.classList.add('on', 'letter'); $('#fcTitle').textContent = ''; $('#fcSub').textContent = '';
+  state = 'ferryTrip';
+}
+function ferryTripTick(dt) {
+  ft.t += dt; const t = ft.t, el = $('#ferryCut');
+  if (!ft.switched) {
+    // the ship pulls away from the pier and heads out to sea
+    if (ft.from === 'africa' && world.townFerry) {
+      const s = world.townFerry, b = s.userData.base, d = t * 1.2 + t * t * .55; s.position.set(b.x - d, b.y + Math.sin(time * .9) * .1, b.z + t * .4);
+      camera.position.set(-203.5, 5 + t * .4, 18 - t * .3); camera.lookAt(s.position.x - 4, 2.2, s.position.z);
+    } else if (world.ferryShip) {
+      const ship = world.ferryShip, oz = t * 1.4 + t * t * .45; ship.position.set(t * t * .05, 0, oz);
+      const [cx, cz] = ferryWorld(-5 - t * .3, 14 - t * .4), [lx, lz] = ferryWorld(12, 44 + oz);
+      camera.position.set(cx, 4 + t * .4, cz); camera.lookAt(lx, 3, lz);
+    }
+    if (t > 3.4 && !el.classList.contains('black')) { el.classList.add('black'); }
+    if (t > 4.6) { ft.switched = true; ferryArrive(); }
+  } else if (ft.ready && t > 9.2) {
+    ft.on = false; el.classList.remove('black', 'title', 'letter', 'on'); state = 'explore'; player.visible = true; show(ui.xhud, true); ex.snap = true; clock.getDelta();
+    notice(ft.to === 'africa' ? 'Africa' : 'The ferry terminal', ft.to === 'africa' ? 'AD-NOSTRA' : 'ANTARCTICA', 3200);
+    if (ft.to === 'antarctica' && orionJoined()) setTimeout(() => lootMsg('Orion stays behind in Ad-Nostra', '#ffb36e'), 3400);
+  }
+}
+async function ferryArrive() {
+  const el = $('#ferryCut'), to = ft.to;
+  $('#fcSub').textContent = 'Across the Southern Ocean'; $('#fcTitle').textContent = to === 'africa' ? 'AD-NOSTRA' : 'ANTARCTICA'; el.classList.add('title'); sfx.chime();
+  if (world.townFerry) world.townFerry.position.copy(world.townFerry.userData.base);
+  if (world.ferryShip) world.ferryShip.position.set(0, 0, 0);
+  world.area = to;
+  if (to === 'antarctica') {
+    await loadWorldHD(); buildAntarctica();
+    aScene.fog.color.set(0x14100d); aScene.background.set(0x0b0908); aScene.fog.density = .02;
+    ant.hemi.intensity = .28; ant.sun.intensity = 0; ant.heat.intensity = 15; ant.lamp.intensity = 2.4; ant.lamp2.intensity = 2.6;
+    ant.snow.visible = false; ant.drift.visible = false; setStationAfter(true);
+  }
+  const D = to === 'africa' ? { x: TOWN_FERRY.arrive[0], z: TOWN_FERRY.arrive[1], y: TOWN.deck, rot: Math.PI / 2 } : antFerryDock();
+  enterWorld({ mode: 'explore', area: 'world', where: to, x: D.x, z: D.z, y: D.y, rot: D.rot, yaw: D.rot + Math.PI });
+  if (to === 'africa') await placeOrion();
+  player.visible = false; show(ui.xhud, false); state = 'ferryTrip'; // enterWorld shows the HUD; keep the card up a moment longer
+  ft.ready = true;
+}
+// a Chapter II wanderer saved in Antarctica (or on the ferry pier there) comes back to it
+async function visitAntarctica(pl) {
+  state = 'loadingCh'; sfx.init();
+  await Promise.all([loadSpecies(spOf(wanderer)).catch(() => null), loadWorldHD()]);
+  buildAntarctica(); applyLook(wanderer);
+  // the station as you left it: lamps and heater on, the outer hatch open
+  aScene.fog.color.set(0x14100d); aScene.background.set(0x0b0908); aScene.fog.density = .02;
+  ant.hemi.intensity = .28; ant.sun.intensity = 0; ant.heat.intensity = 15; ant.lamp.intensity = 2.4; ant.lamp2.intensity = 2.6;
+  ant.snow.visible = false; ant.drift.visible = false; setStationAfter(true);
+  world.area = 'antarctica';
+  show(ui.title, false); show(ui.tbc, false); show(ui.xpause, false);
+  ex.keys.clear(); ex.joyX = ex.joyY = 0; ex.jid = null; ex.drags.clear(); ex.dlg = null;
+  camera.up.set(0, 1, 0); renderer.domElement.style.filter = '';
+  const D = antFerryDock();
+  enterWorld(pl && pl.area === 'world' ? pl : { mode: 'explore', area: 'world', where: 'antarctica', x: D.x, z: D.z, y: D.y, rot: D.rot, yaw: D.rot + Math.PI });
+  show(ui.xhud, true); renderTasks();
+  const f = $('#fade'); f.style.transition = 'opacity 2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 2100);
+  state = 'explore'; resize();
+  notice(liveChapterLabel().split(' · ')[0], 'ANTARCTICA', 2800);
+  if (pl && pl.area === 'station') goInside();
+}
+function ferryTick() {
+  if (state === 'ferryTrip' || !ferryOpen()) return;
+  // in Antarctica the ferry waits at the terminal pier for you
+  if (curArea() === 'antarctica' && world.ferryShip && !world.betrayal) { world.ferryShip.visible = true; if (world.ferryShip.position.lengthSq()) world.ferryShip.position.set(0, 0, 0); }
+}
+function ferryNear(p) {
+  if (!ferryOpen() || ft.on) return null;
+  if (curArea() === 'africa' && world.townFerry && Math.hypot(p.x - TOWN_FERRY.board[0], p.z - TOWN_FERRY.board[1]) < 3 && Math.abs(p.y - TOWN.deck) < 1) return { id: 'ferry', label: 'Antarctica' };
+  if (curArea() === 'antarctica' && world.ferryShip && world.ferryShip.visible) {
+    const L = ferryLocal(p.x, p.z);
+    if (L && ((Math.abs(L[0] - 2.4) < 2.2 && Math.abs(L[1] - 30) < 3.5) || pierTop(p.x, p.z) > 2)) return { id: 'ferry', label: 'Ad-Nostra' };
+  }
+  return null;
 }
 const CALL_SEQ = [
   ['ORION MASCAR', ['Hold on. That’s my phone.', 'Hello? Slow down, slow down. I can’t understand you. Who is this?']],
@@ -8073,6 +8205,7 @@ function updateWorldMode(dt) {
   if (!ex.near && ch1().bed && !ch1().slept2) { const B = ch1().bed; if (Math.hypot(B.x - p.x, B.z - p.z) < 1.9 && Math.abs(B.y - p.y) < 1.5) ex.near = { id: 'bed', label: 'Bed' }; }
   if (!ex.near && world.rover && !ex.vehicle && world.rover.visible && Math.hypot(world.rover.position.x - p.x, world.rover.position.z - p.z) < 3.4) ex.near = { id: 'rover', label: 'Rover' };
   if (!ex.near && curArea() === 'africa' && wanderer.ch2 && wanderer.ch2.lionsDone && !wanderer.ch2.doorReached && Math.hypot(p.x - (FARM.x - 5.6), p.z - FARM.z) < 2.6) ex.near = { id: 'farmDoor', label: 'Farmhouse door' };
+  if (!ex.near) { const fn = ferryNear(p); if (fn) ex.near = fn; }
   if (!ex.near && curArea() === 'africa' && TOWN.npcs.length) { const tn = townNear(p); if (tn) ex.near = { id: 'townsfolk', ref: tn, label: tn.label }; }
   if (!ex.near && curArea() === 'africa' && world.orion && world.orion.root.visible && Math.hypot(world.orion.root.position.x - p.x, world.orion.root.position.z - p.z) < 2.4) ex.near = { id: 'orion', label: 'Orion' };
   if (!ex.near && curArea() === 'antarctica' && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
@@ -8086,7 +8219,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
+    const PR = { ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
@@ -8108,7 +8241,7 @@ function updateWorldScene(dt) {
   faunaTick(dt); if (state === 'explore') jamesShoot(dt);
   soldierTick(dt);
   const c = camera.position, pa = world.snow.geometry.attributes.position.array;
-  stormTick(dt); skyTick(dt); betrayalTick(dt); orionTick(dt); farmTick(); townTick(dt);
+  stormTick(dt); skyTick(dt); betrayalTick(dt); orionTick(dt); farmTick(); townTick(dt); ferryTick();
   const st = world.storm || 0, gust = (.7 + .4 * Math.sin(time * .5) + .2 * Math.sin(time * 1.9)) * (1 + st * 2.2), wx = -9 * gust, wz = 3.5 * gust;
   for (let i = 0; i < world.sN; i++) {
     const j = i * 3, sd = world.sSeed[i];
@@ -10043,6 +10176,7 @@ function loop() {
   if (state === 'dream') { tickDialog(dt); updateDream(dt); sfx.music(0); renderer.render(dScene, camera); return; }
   if (state === 'farmCut') { farmCutTick(dt); tickDialog(dt); renderer.render(fhc.scene, camera); return; }
   if (state === 'ch2intro') { updateCh2Intro(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); renderer.render(afScene, camera); return; }
+  if (state === 'ferryTrip') { ferryTripTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'ferryCut') { updateFerryCut(dt); updateAnim(dt); worldActionPose(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh' || state === 'sleeping' || state === 'wcut') {
     if (state === 'explore') updateExplore(dt);
