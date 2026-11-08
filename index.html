@@ -1890,7 +1890,7 @@ const sfx = (() => {
   }
   // area music: a shuffled playlist per region, with quiet gaps between tracks (No Man's Sky style)
   let areaGain = null, areaSrc = null, areaOn = false, areaLvl = 0, areaOrder = [], areaLast = -1, areaTimer = null, areaTok = 0, areaSet = 'ax'; const areaCache = {};
-  const AREA_TRACKS = { ax: 4, af: 5 }; // ax = Antarctica, af = Africa
+  const AREA_TRACKS = { ax: 4, af: 5, eu: 0 }; // ax = Antarctica, af = Africa, eu = New London (its own tracks play through lonMusicTick, never these)
   function decodeTag(cache, id) {
     if (!cache[id]) cache[id] = new Promise(res => {
       try {
@@ -1904,6 +1904,7 @@ const sfx = (() => {
   function applyAreaGain() { if (areaGain) areaGain.gain.setTargetAtTime(combatOn ? 0 : areaLvl, ctx.currentTime, .7); }
   async function areaNext() {
     const tok = areaTok;
+    if (!AREA_TRACKS[areaSet]) return; // a region with no playlist here stays silent
     if (!areaOrder.length) {
       areaOrder = [...Array(AREA_TRACKS[areaSet]).keys()].sort(() => Math.random() - .5);
       if (areaOrder[0] === areaLast) areaOrder.push(areaOrder.shift());
@@ -11499,7 +11500,7 @@ function loop() {
   alOutfitSync(dt);
   // each region has its own exploration playlist: Antarctica on the ice, Africa on the savanna; New London has its own tracks (lonMusicTick), so no ice music there, not even under the nightmare
   const outside = ex.mode === 'world' && curArea() !== 'europe' && (state === 'explore' || state === 'xpaused' || state === 'wcut' || state === 'xdone');
-  sfx.area(outside ? (state === 'explore' ? .75 : .3) : 0, curArea() === 'africa' ? 'af' : 'ax');
+  sfx.area(outside ? (state === 'explore' ? .75 : .3) : 0, curArea() === 'africa' ? 'af' : curArea() === 'europe' ? 'eu' : 'ax');
   if (state === 'intro' || state === 'introOut') {
     updateIntro(dt); sfx.music(0); if (intro.scene === 'earth') renderer.render(eScene, eCam); else renderer.render(gScene, gCam); return;
   }
