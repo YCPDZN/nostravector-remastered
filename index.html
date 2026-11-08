@@ -7164,7 +7164,7 @@ function buildTown() {
   }
   box(1.2, 1, 14, gw, -33, 5.6, 0); box(1.4, .16, 14.2, trim, -33, 6.15, 0);
   for (const s of [1, -1]) { const g = townSign('AD-NOSTRA', 9, 1.25); g.position.set(-33 + s * .62, 4.55, 0); g.rotation.y = s * Math.PI / 2; live.add(g); }
-  spots.gate = [-36.5, 4.4];
+  spots.gate = [-36.5, 4.4]; spots.gate2 = [-36.5, -4.4];
   // ---- the market square: stalls, the old signal tower and a baobab ----
   for (let k = 0; k < 4; k++) {
     const x = -130 + k * 8, z = -16.5, cl = CLOTH[(k * 2 + 1) % CLOTH.length];
@@ -7261,9 +7261,15 @@ function buildTown() {
    and stop to talk (E). Once you've met Nico, each of them has something to say about her husband. ---- */
 const TZ = { main: [-196, -36, -3.4, 3.4], square: [-133, -103, -10, 8], quay: [-201, -184, -20, 20], pier: [-242, -207, -1.6, 1.6] };
 const TOWNSFOLK = [
-  { name: 'GATE WARDEN', sp: 'human', at: 'gate', c: [0x5b6a4b, 0x2b2f36], skin: 3,
+  { name: 'GATE WARDEN', sp: 'hfos', at: 'gate',
     lines: ['Welcome to Ad-Nostra. Keep your weapons holstered and your temper cool, and we’ll get along fine.', 'You’re the one Orion’s been looking after. His cousin from the coast, he says. Funny. You don’t look like anybody’s cousin.'],
     husband: 'Nico’s man? The farmer from out east? He came through this gate yesterday morning with his cart. I didn’t see him go back out.' },
+  { name: 'HFOS SENTRY', sp: 'hfos', at: 'gate2',
+    lines: [sp => sp === 'human' ? 'Federation checkpoint. Nobody asks for papers in Ad-Nostra, but we notice trouble.' : 'Off-worlders are welcome in Ad-Nostra, by order of the Federation. See that you behave like it.'],
+    husband: 'If a man goes missing on this coast, the harbour office hears about it before we do. Start there.' },
+  { name: 'HFOS PATROL', sp: 'hfos', zone: 'main', slow: true,
+    lines: ['The Federation keeps the peace on this coast. Thirty years since the war, and somebody still has to.'],
+    husband: 'A missing farmer? Report it at the harbour office. They keep the logs. We keep the peace.' },
   { name: 'SHOPKEEPER', sp: 'human', at: 'store', c: [0xc9a24a, 0x6a4428], skin: 4,
     lines: ['General supplies. Rope, lamp oil, seed, ration packs. If it isn’t here, it’s on the next boat. Probably.'],
     husband: 'He was in yesterday. Seed, lamp oil and a tin of formula. Said his wife was due any day now. He paid, and that’s the last I saw of him.' },
@@ -7296,7 +7302,7 @@ const TOWNSFOLK = [
     husband: 'I watch faces for a living. Yesterday there were many. None of them were looking for trouble, and trouble is what I watch for.' },
   { name: 'GREK PILGRIM', sp: 'grek', zone: 'main', c: [0x8a7a5a, 0xc5a87c], slow: true,
     lines: ['Archamus teaches that every harbour is a doorway. I have come a long way from Archiostal to see which doors your world keeps open.'],
-    husband: 'Forgive me. I am new here, and to me, all of you humans look as though you are in a hurry.' },
+    husband: sp => sp === 'human' ? 'Forgive me. I am new here, and to me, all of you humans look as though you are in a hurry.' : sp === 'grek' ? 'Forgive me, kin of Archiostal. I am new here, and to me, every human in this town looks as though they are in a hurry.' : 'Forgive me. I am new here, and to me, everyone in this town looks as though they are in a hurry.' },
   { name: 'CHOMPY SPICE SELLER', sp: 'chompy', zone: 'square', c: [0x9959c5, 0xc9a24a],
     lines: ['Three hundred years I have lived. I remember when the Empire was whole. Now I sell spices in a human market. Emperor Hak Chompjak the Fifth would laugh at me.'],
     husband: 'Humans come and go from this market like the tide. Try the harbour. Everything in this town ends up at the harbour sooner or later.' }
@@ -7304,7 +7310,7 @@ const TOWNSFOLK = [
 const townSrc = {};
 function townModel(sp) {
   if (townSrc[sp]) return townSrc[sp];
-  return (townSrc[sp] = embGlb(sp === 'human' ? 'glb' : 'sp_' + sp).then(sc => sc || null));
+  return (townSrc[sp] = embGlb(sp === 'human' ? 'glb' : sp === 'hfos' ? 'hfosGlb' : 'sp_' + sp).then(sc => sc || null));
 }
 const HIDE_RE = /weapon|holster|sidearm|shield|thorn|helmet|visor|backpack|pack battery|hose|chest control|chest vent|main button|switch|dial|wrist|badge|oxygen|status light|crest|cloak|piping|cape/;
 function dressTownsfolk(src, d) {
@@ -7312,6 +7318,7 @@ function dressTownsfolk(src, d) {
   m.traverse(o => {
     if (!o.isMesh) return;
     const n = (o.name || '').replace(/_/g, ' ').toLowerCase(), mn = (o.material && o.material.name || '').toLowerCase();
+    if (d.sp === 'hfos') { o.material = o.material.clone(); return; } // Federation infantry, in the Federation's own blue and gold
     if (HIDE_RE.test(n) || mn === 'visor' || mn === 'glass_highlight') { drop.push(o); return; }
     const mat = o.material.clone(); o.material = mat;
     if (d.sp === 'human') {
@@ -7348,7 +7355,11 @@ function bakeRig(R) {
   });
   for (const [a, list] of groups) {
     const inv = new THREE.Matrix4().copy(a.matrixWorld).invert(), parts = []; let n = 0;
-    for (const o of list) { const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld)); parts.push([g, o.material.color]); n += g.attributes.position.count; }
+    for (const o of list) {
+      const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(), mx = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld); g.applyMatrix4(mx);
+      if (mx.determinant() < 0) for (const key of ['position', 'normal']) { const at = g.attributes[key]; if (!at) continue; const a = at.array; for (let t = 0; t < a.length; t += 9) for (let c = 0; c < 3; c++) { const tmp = a[t + 3 + c]; a[t + 3 + c] = a[t + 6 + c]; a[t + 6 + c] = tmp; } } // mirrored parts: keep their faces pointing out
+      parts.push([g, o.material.color]); n += g.attributes.position.count;
+    }
     const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), colr = new Float32Array(n * 3); let k = 0;
     for (const [g, c] of parts) { const cnt = g.attributes.position.count; pos.set(g.attributes.position.array, k * 3); if (g.attributes.normal) nor.set(g.attributes.normal.array, k * 3); for (let i = 0; i < cnt; i++) { colr[(k + i) * 3] = c.r; colr[(k + i) * 3 + 1] = c.g; colr[(k + i) * 3 + 2] = c.b; } k += cnt; g.dispose(); }
     const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); mg.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); mg.setAttribute('color', new THREE.BufferAttribute(colr, 3));
@@ -7362,11 +7373,11 @@ async function spawnTownsfolk() {
   for (const d of TOWNSFOLK) {
     try {
       const src = await townModel(d.sp); if (!src || !world.town) continue;
-      const R = autoRig(dressTownsfolk(src, d), d.sp === 'human' ? (d.female ? 1.7 : 1.78) : SPECIES[d.sp].height * .98); armRig(R, 'none'); try { bakeRig(R); } catch (e) { console.warn('bakeRig', e); }
+      const R = autoRig(dressTownsfolk(src, d), d.sp === 'human' ? (d.female ? 1.7 : 1.78) : d.sp === 'hfos' ? 1.88 : SPECIES[d.sp].height * .98); armRig(R, 'none'); try { bakeRig(R); } catch (e) { console.warn('bakeRig', e); }
       const spot = d.at && TOWN.spots[d.at], z = d.zone && TZ[d.zone];
       const x = spot ? spot[0] : rand(z[0], z[1]), zz = spot ? spot[1] : rand(z[2], z[3]);
       R.root.position.set(x, townNpcY(x, zz), zz); R.root.rotation.y = rand(0, 6.28);
-      const face = d.at === 'gate' ? Math.PI / 2 : zz > 0 ? Math.PI : 0; if (spot) R.root.rotation.y = face;
+      const face = d.at && d.at.startsWith('gate') ? Math.PI / 2 : zz > 0 ? Math.PI : 0; if (spot) R.root.rotation.y = face;
       world.town.add(R.root);
       TOWN.npcs.push({ d, R, face, home: spot ? [x, zz] : null, tgt: null, wait: rand(0, 4), speed: d.slow ? .7 : rand(1.05, 1.35), label: d.name.charAt(0) + d.name.slice(1).toLowerCase() });
     } catch (e) { console.warn('Townsfolk failed', d.name, e); }
@@ -7420,8 +7431,8 @@ function townTick(dt) {
 function townNear(p) { let best = null, bd = 9; for (const n of TOWN.npcs) { if (!n.R.root.visible) continue; const d = Math.hypot(n.R.root.position.x - p.x, n.R.root.position.z - p.z); if (d < (n.home ? 3.8 : 2.4) && d < bd) { bd = d; best = n; } } return best; }
 function talkTownsfolk(n) {
   if (!n || ex.dlg) return;
-  const c2 = wanderer.ch2 || {}, lines = n.d.lines.slice();
-  if (c2.metNico && !c2.husbandFound && n.d.husband) lines.push(n.d.husband);
+  const c2 = wanderer.ch2 || {}, sp = spOf(wanderer), say = l => typeof l === 'function' ? l(sp) : l, lines = n.d.lines.map(say);
+  if (c2.metNico && !c2.husbandFound && n.d.husband) lines.push(say(n.d.husband));
   world.townTalk = n; sfx.click();
   openDialog(n.d.name, lines, false, () => { world.townTalk = null; if (c2.metNico && n.d.husband) { const asked = Object.assign({}, c2.townAsked || {}); if (!asked[n.d.name]) { asked[n.d.name] = 1; setCh2({ townAsked: asked }); } } });
 }
@@ -8055,7 +8066,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
+    const PR = { townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
@@ -8100,7 +8111,7 @@ function dlgSpeaker() {
   const at = (o, h) => o && o.visible !== false ? v.set(o.position.x, o.position.y + h, o.position.z) : null;
   if (/JAMES/.test(w) && james.ready && james.root.visible) return at(james.root, 1.62);
   if (/ORION|ON THE PHONE/.test(w) && world.orion && world.orion.root.visible) return at(world.orion.root, 1.62);
-  if (world.townTalk && w === world.townTalk.d.name) return at(world.townTalk.R.root, world.townTalk.d.sp === 'human' ? 1.6 : 1.75);
+  if (world.townTalk && w === world.townTalk.d.name) return at(world.townTalk.R.root, world.townTalk.d.sp === 'human' ? 1.6 : world.townTalk.d.sp === 'hfos' ? 1.68 : 1.75);
   if (/BEHIND THE DOOR/.test(w) && world.farm) return v.set(FARM.x - 5.1, farmY() + 1.5, FARM.z);
   if (/CROXIAN/.test(w) && world.boss) return at(world.boss.R.root, 1.65);
   return null;
