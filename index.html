@@ -1109,7 +1109,7 @@ body.touch .al-key{display:none}
 <script type="application/json" id="orionFind"></script><script src="data/orionFind.js"></script>
 <script type="application/json" id="narrCh2"></script><script src="data/narrCh2.js"></script>
 <script type="application/json" id="orionWake"></script><script src="data/orionWake.js"></script>
-<script type="application/json" id="orionCmd"></script><script src="data/orionCmd.js"></script><script type="application/json" id="callVoices"></script><script src="data/callVoices.js"></script><script type="application/json" id="doorVoices"></script><script src="data/doorVoices.js"></script><script type="application/octet-stream" id="nicoGlb"></script><script src="data/nicoGlb.js"></script><script type="application/json" id="farmVoices"></script><script src="data/farmVoices.js"></script><script type="application/json" id="antOrionVoices"></script><script src="data/antOrionVoices.js"></script><script type="application/json" id="antOrionFlashVoices"></script><script src="data/antOrionFlashVoices.js"></script><script type="application/json" id="cantinaFightMusic"></script><script src="data/cantinaFightMusic.js"></script><script type="application/json" id="hawVoices"></script><script src="data/hawVoices.js"></script><script type="application/json" id="lonOrionVoices"></script><script src="data/lonOrionVoices.js"></script><script type="application/json" id="arrestVoices"></script><script src="data/arrestVoices.js"></script><script type="application/json" id="cantinaVoices"></script><script src="data/cantinaVoices.js"></script><script type="application/json" id="hypeVoices"></script><script src="data/hypeVoices.js"></script>
+<script type="application/json" id="orionCmd"></script><script src="data/orionCmd.js"></script><script type="application/json" id="callVoices"></script><script src="data/callVoices.js"></script><script type="application/json" id="doorVoices"></script><script src="data/doorVoices.js"></script><script type="application/octet-stream" id="nicoGlb"></script><script src="data/nicoGlb.js"></script><script type="application/json" id="farmVoices"></script><script src="data/farmVoices.js"></script><script type="application/json" id="antOrionVoices"></script><script src="data/antOrionVoices.js"></script><script type="application/json" id="antOrionFlashVoices"></script><script src="data/antOrionFlashVoices.js"></script><script type="application/json" id="cantinaFightMusic"></script><script src="data/cantinaFightMusic.js"></script><script type="application/json" id="escapeVoices"></script><script src="data/escapeVoices.js"></script><script type="application/json" id="trialVoices"></script><script src="data/trialVoices.js"></script><script type="application/json" id="hawVoices"></script><script src="data/hawVoices.js"></script><script type="application/json" id="lonOrionVoices"></script><script src="data/lonOrionVoices.js"></script><script type="application/json" id="arrestVoices"></script><script src="data/arrestVoices.js"></script><script type="application/json" id="cantinaVoices"></script><script src="data/cantinaVoices.js"></script><script type="application/json" id="hypeVoices"></script><script src="data/hypeVoices.js"></script>
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -9033,7 +9033,7 @@ function hawthorneTick(dt) {
    verdict is guilty, until Nico bursts in with the truth about Terra Imperia. Hawthorne loses his temper and comes after you
    himself (level 55, and nothing you do will hurt him); you run from the Palace to a ship in Parliament Square with Orion and
    Nico, and on the way he summons Croxian Mascar and Malia de Toro (level 20 each, with health bars). Nico (level 30) is
-   more than a match for both. Lines are text for now; their ids are what the recordings will be called. */
+   more than a match for both. The trial (trialVoices: CH2TRIAL1-22) and the escape's shouts (escapeVoices: CH2ESCAPE1-9) are voiced; the summons is text for now. */
 const SUMMON = [{ who: 'HFOS GUARD', id: 'CH2SUMMON1', text: 'The Council is ready for you. Both of you. Follow me.' }];
 const TRIAL = [
   { who: 'DARIUS ANCIN', id: 'CH2TRIAL1', text: 'Order. Order! This House is in session.' },
@@ -9077,7 +9077,12 @@ const SHIP = { x: -64, z: 6, hatch: [-64, 21] }; // the ship on the lawn of Parl
 const trial = { on: false, t: 0, actors: {}, cam: new THREE.Vector3(), look: new THREE.Vector3() };
 const esc = { on: false, t: 0, foes: [], H: null, N: null, said: {}, phase: null };
 const summon = { phase: null, since: 0, G: null };
-const say = (L, ms) => { showNarr(L.who, L.text); clearTimeout(esc.narrT); esc.narrT = setTimeout(hideNarr, ms || 1800 + L.text.length * 45); };
+Object.values(ESC).forEach(L => L.clip = +L.id.replace('CH2ESCAPE', '') - 1); // escapeVoices: CH2ESCAPE1-9
+const say = (L, ms) => {
+  const c = esc.vo && esc.vo[L.clip]; showNarr(L.who, L.text); clearTimeout(esc.narrT);
+  if (c) sfx.playNarr(c, 1.25);
+  esc.narrT = setTimeout(hideNarr, Math.max(ms || 1800 + L.text.length * 45, c ? c.duration * 1000 + 300 : 0));
+};
 
 // ---- the House of Commons: green benches facing each other across the floor, the Speaker's chair, the Table of the House ----
 function buildCommons() {
@@ -9306,6 +9311,7 @@ function escBars() {
 }
 async function startEscape() {
   esc.on = true; esc.t = 0; esc.said = {}; esc.phase = 'run'; esc.foes = []; esc.dead = false;
+  if (!esc.vo) esc.vo = (await sfx.loadClips('escapeVoices').catch(() => null)) || [];
   world.commons && (world.commons.visible = false); if (world.london) world.london.visible = true; for (const g of world.chunks.values()) g.visible = true;
   // out of St Stephen's entrance onto Abingdon Street
   const p = player.position; p.set(8, 0, 66); player.rotation.y = -Math.PI / 2; ex.yaw = Math.PI / 2 + Math.PI; vel.set(0, 0, 0); player.visible = true; ex.snap = true;

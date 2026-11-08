@@ -489,4 +489,4 @@ Orion has known him since the war and gets the last word either way. Afterwards 
   - On the way he summons **Croxian Mascar** and **Malia de Toro** (level 20 each, with health bars). Croxian can't kill you in one blow here.
   - **Nico** (level 30, two pistols) beats them easily, with Orion backing her up.
   - Board the ship and it takes off, followed by "Escaped New London" and a Chapter II to-be-continued screen. If you die, the escape restarts from the Palace door.
-- Shouted lines during the escape: CH2ESCAPE1–9. All of these lines are text only for now.
+- Voiced: the trial (`data/trialVoices.js`, CH2TRIAL1–22) and the escape shouts (`data/escapeVoices.js`, CH2ESCAPE1–9). The guard's summons (CH2SUMMON1) is text only for now.
