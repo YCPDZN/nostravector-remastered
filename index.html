@@ -3262,7 +3262,8 @@ function ch2Tasks(task) {
   if (c2.call) h += task(!!c2.farmFound, 'Reach the farmhouse east of town');
   if (c2.farmFound) h += task(!!c2.lionsDone, c2.lionsDone ? 'Drive off the lions' : `Drive off the lions · ${world.farmLeft == null ? 3 : world.farmLeft} left`);
   if (c2.lionsDone) h += task(!!c2.doorReached, 'Check on the woman');
-  if (c2.metNico) h += task(false, 'Find Nico’s husband in town');
+  if (c2.metNico) h += task(!!c2.townFound, 'Reach Ad-Nostra, the harbour town');
+  if (c2.metNico && c2.townFound) { const n = Object.keys(c2.townAsked || {}).length; h += task(!!c2.husbandFound, `Find Nico’s husband in Ad-Nostra${n && !c2.husbandFound ? ` · asked ${n}` : ''}`); }
   return h;
 }
 function campTasks(p, task) {
@@ -3458,7 +3459,7 @@ function timeOfDay() { const st = wsState(); if (st.tod == null) st.tod = .32; r
 function skyTick(dt) {
   const st0 = wsState(); st0.tod = (timeOfDay() + dt / DAY_LEN) % 1;
   const t = st0.tod, sunH = Math.sin((t - .25) * Math.PI * 2); // 0 at sunrise (.25) and sunset (.75), 1 at noon
-  const dl = smooth(-.14, .22, sunH), dusk = clamp(1 - Math.abs(sunH) / .28, 0, 1), sm = world.storm || 0;
+  const dl = smooth(-.14, .22, sunH), dusk = clamp(1 - Math.abs(sunH) / .28, 0, 1), sm = world.storm || 0; world.dayL = dl;
   const dark = world.stormDarkT ? smooth(0, 6, time - world.stormDarkT) * sm : 0; // the sky darkens when the storm hits
   // lights
   if (world.hemi) world.hemi.intensity = (.16 + .89 * dl) * (1 - .35 * dark);
@@ -3697,6 +3698,7 @@ function ferryLocal(x, z) {
   return [dx * c - dz * sn, dx * sn + dz * c];
 }
 function pierTop(x, z) {
+  if (curArea() === 'africa') return townPier(x, z);
   const L = ferryLocal(x, z); if (!L) return null;
   const [lx, lz] = L;
   const sh = world.ferryShip;
@@ -4402,6 +4404,7 @@ async function interact() {
   } else if (n.id === 'bed') {
     sleepOutside();
   } else if (n.id === 'farmDoor') { farmDoorTalk();
+  } else if (n.id === 'townsfolk') { talkTownsfolk(n.ref);
   } else if (n.id === 'orion') {
     if (orionJoined()) { ex.cSel = 'orion'; refreshJamesUI(); toggleJamesMenu(); } else talkOrion();
   } else if (n.id === 'push') {
@@ -5191,6 +5194,11 @@ const MERCHANTS = {
     id: 'erisTrader', who: 'Erisian trader', x: -44, z: 36,
     lines: ['Units for ice, units for stone. Even at the bottom of your world, there is trade.', 'Erisians have walked colder places than this. Buy what you need, sell what you don’t.', 'Patience is cheap on Eris. Here it costs extra.'],
     buy: { wood: 10, metal: 45, obsidian: 55, crystal: 30, scrap: 12, medkit: 60, ration: 25 }
+  }],
+  africa: [{
+    id: 'adnTrader', who: 'Erisian trader', x: -105, z: 16, face: Math.atan2(-13, -18),
+    lines: ['Ad-Nostra trades with half the coast and all of the sea. Today, it trades with you.', 'Erisians crossed the dark between worlds to sell to your kind. A harbour is a short walk by comparison.', 'Salt, wood, metal. Everything has a price here, even the shade under this awning.'],
+    buy: { wood: 8, metal: 40, obsidian: 60, crystal: 28, scrap: 10, medkit: 55, ration: 20 }
   }]
 };
 const SELL = { stone: 2, ice: 1, scrap: 5, crystal: 12, cloth: 6, blubber: 4, feather: 3, wood: 4, metal: 18, obsidian: 22 };
@@ -5218,7 +5226,7 @@ function setupMerchants() {
       }
     }
     m.stall.position.set(m.px, wHeight(m.px, m.pz), m.pz);
-    m.stall.rotation.y = Math.atan2(-m.px, -m.pz); // facing the station
+    m.stall.rotation.y = m.face != null ? m.face : Math.atan2(-m.px, -m.pz); // facing the station (or the way it's set to face)
   }
 }
 function tickMerchants(dt) {
@@ -5639,6 +5647,7 @@ function genMapTile(tx, tz) {
     let r = 22 + 70 * light, g = 34 + 88 * light, b = 52 + 108 * light;          // snow, as a cold holo-map
     if (slope > .55) { const k = clamp((slope - .55) * 2.5, 0, 1) * .7; r = lerp(r, 28, k); g = lerp(g, 30, k); b = lerp(b, 38, k); }
     if (lake > .5) { r = 18; g = 74 + 20 * light; b = 104 + 24 * light; }
+    if (curArea() === 'africa') { const wx = ox + i * step, wz = oz + j * step; if (h < TOWN.sea && townPier(wx, wz) == null) { r = 14; g = 58 + 14 * light; b = 92 + 20 * light; } else if (inTown(wx, wz, 2) && townSolid(wx, wz, 0)) { r = 150; g = 205; b = 228; } }
     // contour every 8 m
     const c0 = Math.floor(h / 8);
     if (c0 !== Math.floor(hs[j * N + i + 1] / 8) || c0 !== Math.floor(hs[(j + 1) * N + i] / 8)) { r += 26; g += 56; b += 70; }
@@ -5665,6 +5674,7 @@ function questTarget() {
     if (world.orion && !c2.talkedOrion) return { x: world.orion.root.position.x, z: world.orion.root.position.z, label: 'Orion' };
     if (c2.call && !c2.lionsDone) return { x: FARM.x, z: FARM.z, label: c2.farmFound ? 'Drive off the lions' : 'The farmhouse' };
     if (c2.lionsDone && !c2.doorReached) return { x: FARM.x - 5.4, z: FARM.z, label: 'The farmhouse door' };
+    if (c2.metNico && !c2.townFound) return { x: TOWN.x1 - 1, z: 0, label: 'Ad-Nostra' };
     return null;
   }
   if (wanderer.chapter === 1 && c.slept && !c.metOutside && world.jamesAt) return { x: world.jamesAt.x, z: world.jamesAt.z, label: c.found ? 'Speak to James Brown' : 'Find James Brown' };
@@ -6225,6 +6235,7 @@ function faunaSpot(p, dmin, dmax) {
   for (let k = 0; k < 8; k++) {
     const a = Math.random() * Math.PI * 2, d = rand(dmin, dmax), x = p.x + Math.sin(a) * d, z = p.z + Math.cos(a) * d;
     if (Math.hypot(x, z) < 55) continue;                                        // keep the station safe
+    if (curArea() === 'africa' && (inTown(x, z, 45) || x < TOWN.coast + 20)) continue; // and the town, and the sea
     if (world.jamesAt && !companionOn() && Math.hypot(x - world.jamesAt.x, z - world.jamesAt.z) < 30) continue;
     if (world.meetAt && !ch1().sawMeeting && Math.hypot(x - world.meetAt[0], z - world.meetAt[1]) < 40) continue;
     return [x, z];
@@ -6400,7 +6411,8 @@ function faunaTick(dt) {
       u.segs[0].position.y = moving ? Math.abs(wav) * u.girth * .15 : 0;
     }
     if (sp > 0) {
-      c.x += mx * sp * dt; c.z += mz * sp * dt;
+      const nx = c.x + mx * sp * dt, nz = c.z + mz * sp * dt;
+      if (!(curArea() === 'africa' && townSolid(nx, nz, .5))) { c.x = nx; c.z = nz; }
       c.rot = angLerp(c.rot, Math.atan2(mx, mz), Math.min(1, dt * (c.type === 'skua' ? 4 : 6)));
     }
     if (c.type !== 'skua') c.y = wHeight(c.x, c.z);
@@ -6632,7 +6644,7 @@ function wHeight(x, z) {
     const n = wFbm(x * .002, z * .002, 4, 201), k = Math.pow(Math.max(0, wFbm(x * .009 + 7, z * .009 - 3, 3, 210) - .62), 2) * 160;
     let h = (n - .5) * 26 + k + (wFbm(x * .05, z * .05, 2, 220) - .5) * .7;
     const r = Math.hypot(x, z), fr = Math.hypot(x - FARM.x, z - FARM.z);
-    h = lerp(0, h, smooth(26, 90, r));
+    h = townHeight(x, z, lerp(0, h, smooth(26, 90, r)));
     return fr < 42 ? lerp(farmY(), h, smooth(16, 42, fr)) : h;
   }
   const n1 = wFbm(x * .0025, z * .0025, 4, 1);
@@ -6707,7 +6719,7 @@ function buildChunk(cx, cz) {
     const nx = wHeight(x - e, z) - wHeight(x + e, z), nz = wHeight(x, z - e) - wHeight(x, z + e), ny = 2 * e, l = Math.hypot(nx, ny, nz);
     nrm.setXYZ(i, nx / l, ny / l, nz / l);
     const steep = smooth(.8, .62, ny / l), lake = lakeAmt(x, z) * smooth(.9, .97, ny / l);
-    if (curArea() === 'africa') wTmp.copy(SAND_C).lerp(SAND_SHADE, clamp(wNoise(x * .05, z * .05, 30) * .8, 0, 1)).lerp(GRASS_C, smooth(.55, .75, wNoise(x * .018, z * .018, 33)) * .8).lerp(DIRT_C, steep);
+    if (curArea() === 'africa') wTmp.copy(SAND_C).lerp(SAND_SHADE, clamp(wNoise(x * .05, z * .05, 30) * .8, 0, 1)).lerp(GRASS_C, smooth(.55, .75, wNoise(x * .018, z * .018, 33)) * .8 * smooth(-188, -165, x)).lerp(DIRT_C, steep);
     else wTmp.copy(SNOW_C).lerp(SNOW_SHADE, clamp(wNoise(x * .05, z * .05, 30) * .7, 0, 1)).lerp(ICE_C, lake).lerp(ROCK_C, steep);
     col[i * 3] = wTmp.r; col[i * 3 + 1] = wTmp.g; col[i * 3 + 2] = wTmp.b;
   }
@@ -6721,7 +6733,7 @@ function buildChunk(cx, cz) {
   for (let i = 0; i < nRocks; i++) {
     const key = `r${cx}_${cz}_${i}`; if (mined[key]) continue;
     const x = ox + (wHash(cx, cz, 61 + i) - .5) * CH, z = oz + (wHash(cx, cz, 71 + i) - .5) * CH;
-    if (Math.hypot(x, z) < 30 || lakeAmt(x, z) > .3 || nearJames(x, z) || nearFarm(x, z)) continue;
+    if (Math.hypot(x, z) < 30 || lakeAmt(x, z) > .3 || nearJames(x, z) || nearFarm(x, z) || (curArea() === 'africa' && nearTown(x, z))) continue;
     const s = 1 + wHash(cx, cz, 81 + i) * 3.5, y = wHeight(x, z);
     let rock, cap = null;
     if (hdW.rockGeo) {
@@ -6755,7 +6767,7 @@ function buildChunk(cx, cz) {
   if (wHash(cx, cz, 200) > .8) crates.push([`c${cx}_${cz}`, ox + (wHash(cx, cz, 201) - .5) * CH * .8, oz + (wHash(cx, cz, 202) - .5) * CH * .8]);
   if (cx === 0 && cz === 0) [[14, 7], [-13, -10], [4, 17]].forEach(([x, z], i) => crates.push([`c0_${i}`, x, z]));
   for (const [key, x, z] of crates) {
-    if (mined[key] || worldBlocked(x, z, true) || lakeAmt(x, z) > .3 || nearJames(x, z)) continue;
+    if (mined[key] || worldBlocked(x, z, true) || lakeAmt(x, z) > .3 || nearJames(x, z) || (curArea() === 'africa' && nearTown(x, z))) continue;
     const y = wHeight(x, z), c = new THREE.Group();
     const bx = new THREE.Mesh(new THREE.BoxGeometry(1.1, .75, .8), wCrateMat); bx.position.y = .36; c.add(bx);
     const lid = new THREE.Mesh(new THREE.BoxGeometry(1.15, .1, .85), wCapMat); lid.position.y = .78; c.add(lid);
@@ -6770,7 +6782,7 @@ function buildChunk(cx, cz) {
     for (let i = 0; i < n; i++) {
       const key = `t${cx}_${cz}_${i}`; if (mined[key]) continue;
       const x = gx + (wHash(cx, cz, 410 + i) - .5) * 14, z = gz + (wHash(cx, cz, 420 + i) - .5) * 14;
-      if (Math.hypot(x, z) < 34 || lakeAmt(x, z) > .25 || nearJames(x, z) || nearFarm(x, z) || worldBlocked(x, z, true)) continue;
+      if (Math.hypot(x, z) < 34 || lakeAmt(x, z) > .25 || nearJames(x, z) || nearFarm(x, z) || (curArea() === 'africa' && nearTown(x, z)) || worldBlocked(x, z, true)) continue;
       const y = wHeight(x, z); if (Math.abs(wHeight(x + 1, z) - y) > .8 || Math.abs(wHeight(x, z + 1) - y) > .8) continue;
       const t = makeTree(wHash(cx, cz, 430 + i), wHash(cx, cz, 440 + i)); t.position.set(x, y - .1, z); t.rotation.y = wHash(cx, cz, 450 + i) * 6; grp.add(t);
       nodes.push({ key, type: 'tree', x, z, y: y + 1.2, r: t.userData.r, hp: 5, meshes: [t] });
@@ -6912,6 +6924,7 @@ function buildWorld(seed) {
 function worldBlocked(x, z, stationOnly, y = player.position.y) {
   if (Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true;
   if (curArea() === 'africa' && Math.abs(x - FARM.x) < 5.3 && Math.abs(z - FARM.z) < 3.8) return true;
+  if (curArea() === 'africa' && townSolid(x, z)) return true;
   for (const m of merchantsHere()) if (m.px != null && (x - m.px) ** 2 + (z - m.pz) ** 2 < 1.7) return true;
   if (stationOnly) return false;
   if (world.rover && world.rover.visible && !ex.vehicle && (x - world.rover.position.x) ** 2 + (z - world.rover.position.z) ** 2 < 2.4) return true;
@@ -6948,8 +6961,8 @@ function applyAreaLook() {
   if (world.ferry) world.ferry.visible = !af;
   if (world.rover) world.rover.visible = !af && !!ch1().rover;
   if (world.bedMesh) world.bedMesh.visible = !af && !!ch1().bed;
-  for (const list of Object.values(MERCHANTS)) for (const m of list) if (m.stall) m.stall.visible = !af && curArea() === 'antarctica';
-  if (af) { buildOrionHouse(); buildFarmhouse(); } if (world.house) world.house.visible = af; if (world.farm) world.farm.visible = af;
+  for (const list of Object.values(MERCHANTS)) for (const m of list) if (m.stall) m.stall.visible = list === merchantsHere();
+  if (af) { buildOrionHouse(); buildFarmhouse(); buildTown(); } if (world.town) world.town.visible = af; if (world.sea) world.sea.visible = af; if (world.house) world.house.visible = af; if (world.farm) world.farm.visible = af;
   if (world.orion) world.orion.root.visible = af;
 }
 // Orion's home at the edge of the harbour town (same footprint as the Antarctic station)
@@ -6987,6 +7000,403 @@ function buildFarmhouse() {
   add(new THREE.CylinderGeometry(.9, .9, 1.8, 12), M(0x6f7a80, { metalness: .5, roughness: .5 }), 3.6, .9, -4.6);
   g.position.set(FARM.x, farmY(), FARM.z);
   wScene.add(g); world.farm = g;
+}
+/* ---- Chapter II: Ad-Nostra, the harbour town on the coast west of Orion's home ----
+   A flat-roofed coastal town: one main street from the east gate down to the quay, a market square with an old
+   signal tower and a baobab, back rows of houses, warehouses, cranes and two piers over the sea. Buildings,
+   lamps and townsfolk are fixed (the same for every wanderer); the savanna around it is still each wanderer's own. */
+const TOWN = { x0: -204, x1: -32, z0: -64, z1: 64, coast: -204, sea: -1.2, deck: .08, cols: [], piers: [], npcs: [], lamps: [], boats: [] };
+const inTown = (x, z, m = 0) => x > TOWN.x0 - m && x < TOWN.x1 + m && z > TOWN.z0 - m && z < TOWN.z1 + m;
+function townMask(x, z) { const dx = Math.max(TOWN.x0 - x, 0, x - TOWN.x1), dz = Math.max(TOWN.z0 - z, 0, z - TOWN.z1); return dx || dz ? smooth(46, 4, Math.hypot(dx, dz)) : 1; }
+// the town is levelled to the height of Orion's yard; west of it the land runs down to the sea (a quay inside town, a beach outside)
+function townHeight(x, z, h) {
+  const tm = townMask(x, z); if (tm > 0) h = lerp(h, 0, tm);
+  if (x < -150) {
+    const quay = smooth(80, 64, Math.abs(z)), prof = x >= TOWN.coast ? 0 : -9 * lerp(smooth(TOWN.coast, TOWN.coast - 34, x), smooth(TOWN.coast, TOWN.coast - 7, x), quay);
+    h = lerp(h, prof, smooth(-150, -200, x));
+  }
+  return h;
+}
+function townPier(x, z) { for (const p of TOWN.piers) if (x >= p[0] && x <= p[1] && z >= p[2] && z <= p[3]) return TOWN.deck; return null; }
+// walls, buildings and the sea (anything below the waterline that isn't a pier)
+function townSolid(x, z, pad = .3) {
+  if (x > TOWN.x1 + 10) return false;
+  if (inTown(x, z, 6)) for (const c of TOWN.cols) if (x > c[0] - pad && x < c[1] + pad && z > c[2] - pad && z < c[3] + pad) return true;
+  return x < TOWN.coast + 1 && wHeight(x, z) < TOWN.sea + .3 && townPier(x, z) == null;
+}
+const nearTown = (x, z) => inTown(x, z, 8) || x < TOWN.coast + 8;
+// one mesh per material for everything that never moves
+function mergeStatic(src) {
+  src.updateMatrixWorld(true);
+  const byMat = new Map(), out = new THREE.Group();
+  src.traverse(o => { if (o.isMesh) { if (!byMat.has(o.material)) byMat.set(o.material, []); byMat.get(o.material).push(o); } });
+  for (const [mat, list] of byMat) {
+    const geos = []; let n = 0;
+    for (const o of list) { const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); g.applyMatrix4(o.matrixWorld); geos.push(g); n += g.attributes.position.count; }
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2); let k = 0;
+    for (const g of geos) { const c = g.attributes.position.count; pos.set(g.attributes.position.array, k * 3); nor.set(g.attributes.normal.array, k * 3); if (g.attributes.uv) uv.set(g.attributes.uv.array, k * 2); k += c; g.dispose(); }
+    const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); mg.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); mg.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    mg.computeBoundingSphere();
+    const m = new THREE.Mesh(mg, mat); m.castShadow = !mat.userData.noShadow; m.receiveShadow = true; out.add(m);
+  }
+  src.traverse(o => { if (o.isMesh) o.geometry.dispose(); });
+  return out;
+}
+function townSign(text, w, h, bg = '#2a1d12', fg = '#f1d9a8') {
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = Math.round(1024 * h / w); const g = cv.getContext('2d');
+  g.fillStyle = bg; g.fillRect(0, 0, cv.width, cv.height);
+  g.strokeStyle = fg; g.globalAlpha = .55; g.lineWidth = 10; g.strokeRect(14, 14, cv.width - 28, cv.height - 28); g.globalAlpha = 1;
+  let fs = cv.height * .5; g.font = `600 ${fs}px "Lexend Zetta", "Lexend Exa", sans-serif`;
+  while (g.measureText(text).width > cv.width * .86 && fs > 10) { fs *= .92; g.font = `600 ${fs}px "Lexend Zetta", "Lexend Exa", sans-serif`; }
+  g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, cv.width / 2, cv.height / 2 + fs * .04);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: t, roughness: .8 }));
+}
+function buildTown() {
+  if (world.town) return;
+  let seed = 20125; const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const rr = (a, b) => a + rnd() * (b - a), pick = a => a[Math.floor(rnd() * a.length)];
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .95 }, o));
+  const S = new THREE.Group(), live = new THREE.Group(); // S gets merged; live keeps moving / unique parts
+  const box = (w, h, d, m, x, y, z, ry = 0, rx = 0, rz = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); S.add(o); return o; };
+  const cyl = (r0, r1, h, m, x, y, z, seg = 8) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r0, r1, h, seg), m); o.position.set(x, y, z); S.add(o); return o; };
+  const col = (x0, x1, z0, z1) => TOWN.cols.push([Math.min(x0, x1), Math.max(x0, x1), Math.min(z0, z1), Math.max(z0, z1)]);
+  const WALLS = [0xd9c4a0, 0xe8dcc6, 0xc98b5e, 0xb9a27c, 0xa9bcc0, 0xd6a35c, 0xe2cfb0, 0xbf7a52].map(c => M(c));
+  const trim = M(0x6a4428), dark = M(0x1c1814), glass = M(0x2b3a48, { roughness: .2, metalness: .5 }), lit = M(0x3a3026, { emissive: 0xffc27a, emissiveIntensity: 0, roughness: .4 });
+  const SHUT = [0x2f6f8f, 0x5b7a4b, 0x8f3a2a, 0x3d4f7a, 0x6a4428].map(c => M(c, { roughness: .8 }));
+  const CLOTH = [0xa8402e, 0x2f5f8f, 0xc9a24a, 0x5b7a4b, 0xe8dcc6, 0x8a3c6a].map(c => M(c, { roughness: .9, side: THREE.DoubleSide }));
+  const metal = M(0x8a8f94, { roughness: .55, metalness: .6 }), rust = M(0x7d5a44, { roughness: .8, metalness: .4 }), solar = M(0x1d2a3a, { roughness: .25, metalness: .7 });
+  const stone = M(0x9a8f80), sand = M(0xc9a26e), wood = M(0x6b4e33), crane = M(0xd9a020, { roughness: .6, metalness: .4 });
+  const CONT = [0xb3202a, 0x2f5f8f, 0x9a8a3a, 0x3f6f4a, 0xd0d4d8, 0xc7652a].map(c => M(c, { roughness: .7, metalness: .3 }));
+  const leaf = M(0x5f7a34, { roughness: .9, flatShading: true }), palmBark = M(0x7a6248), bark = M(0x8a7a66);
+  // ---- ground: the main street, the market square, the lane and the stone quay ----
+  const ground = (w, d, m, x, z, y = .03) => { const o = new THREE.Mesh(new THREE.PlaneGeometry(w, d), m); o.rotation.x = -Math.PI / 2; o.position.set(x, y, z); S.add(o); };
+  const dirt = M(0x9a7650, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), paving = M(0xb8976a, { polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }), quayM = M(0x8d8578, { polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+  ground(TOWN.x1 - TOWN.x0 + 20, 10, dirt, (TOWN.x0 + TOWN.x1) / 2 + 10, 0);
+  ground(38, 46, paving, -118, 0, .035);
+  ground(10, 128, dirt, -59, 0);
+  ground(24, 128, quayM, -192, 0, .04);
+  // ---- the quay wall, bollards, piers and their piles ----
+  box(2.6, 6.1, TOWN.z1 - TOWN.z0, stone, TOWN.coast - 1.2, -3, 0);
+  for (let z = TOWN.z0 + 3; z < TOWN.z1; z += 8) cyl(.18, .22, .6, dark, TOWN.coast + .7, .3, z, 8);
+  for (const [x0, x1, z0, z1] of [[-246, TOWN.coast - 1, -3, 3], [-232, TOWN.coast - 1, -31, -25]]) {
+    TOWN.piers.push([x0, x1 + 1.5, z0, z1]);
+    box(x1 - x0, .24, z1 - z0, wood, (x0 + x1) / 2, TOWN.deck - .12, (z0 + z1) / 2);
+    for (let x = x0 + 1; x < x1; x += 4) for (const z of [z0 + .3, z1 - .3]) cyl(.2, .2, 7, wood, x, -3.4, z, 6);
+    for (let x = x0 + 2; x < x1; x += 8) for (const z of [z0 + .25, z1 - .25]) cyl(.14, .16, .5, dark, x, .33, z, 6);
+  }
+  // ---- buildings: flat roofs and parapets, shuttered windows, doors onto the street ----
+  const facade = (x0, x1, zF, nz, floors, wall, opts = {}) => {
+    // windows and shutters along a street facade at z = zF, facing nz (+1 / -1)
+    const W = x1 - x0, nwin = Math.max(1, Math.floor(W / 3.2)), sh = pick(SHUT);
+    for (let f = 0; f < floors; f++) for (let i = 0; i < nwin; i++) {
+      const x = x0 + (i + .5) * W / nwin; if (f === 0 && Math.abs(x - opts.door) < 1.6) continue;
+      const y = 1.7 + f * 3.1;
+      box(1, 1.25, .08, rnd() < .38 ? lit : glass, x, y, zF + nz * .03);
+      box(.08, 1.45, .1, trim, x - .55, y, zF + nz * .05); box(.08, 1.45, .1, trim, x + .55, y, zF + nz * .05);
+      box(1.25, .1, .2, trim, x, y - .72, zF + nz * .1);
+      if (rnd() < .6) { box(.5, 1.3, .06, sh, x - .82, y, zF + nz * .08, nz * .35); box(.5, 1.3, .06, sh, x + .82, y, zF + nz * .08, -nz * .35); }
+    }
+  };
+  const roofProps = (cx, cz, w, d, top) => {
+    if (rnd() < .55) { cyl(.7, .7, 1.4, pick([metal, M(0x2b2f36), M(0x3f6f8f, { metalness: .4 })]), cx + rr(-w / 4, w / 4), top + .7, cz + rr(-d / 4, d / 4), 12); }
+    if (rnd() < .5) { const p = box(Math.min(3, w * .4), .08, 1.6, solar, cx + rr(-w / 5, w / 5), top + .55, cz + rr(-d / 5, d / 5), 0, -.45); box(.08, .5, .08, metal, p.position.x, top + .25, p.position.z); }
+    if (rnd() < .3) { const dish = new THREE.Mesh(new THREE.SphereGeometry(.45, 10, 6, 0, Math.PI * 2, 0, .9), metal); dish.position.set(cx + rr(-w / 3, w / 3), top + .7, cz + rr(-d / 3, d / 3)); dish.rotation.x = -.9; S.add(dish); }
+    if (rnd() < .35) box(2, 2.2, 2, pick(WALLS), cx + rr(-w / 4, w / 4), top + 1.1, cz + rr(-d / 4, d / 4)); // a stair hut
+  };
+  const building = (x0, x1, z0, z1, nz, opts = {}) => {
+    const w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, floors = opts.floors || (rnd() < .45 ? 1 : rnd() < .8 ? 2 : 3), h = floors * 3.1;
+    const wall = opts.wall || pick(WALLS), zF = nz < 0 ? z0 : z1;
+    box(w, h, d, wall, cx, h / 2, cz); col(x0, x1, z0, z1);
+    // parapet with a darker cap, and a plinth
+    const cap = M(new THREE.Color(wall.color).multiplyScalar(.82).getHex());
+    box(w + .1, .6, .26, wall, cx, h + .3, z0 + .13); box(w + .1, .6, .26, wall, cx, h + .3, z1 - .13);
+    box(.26, .6, d, wall, x0 + .13, h + .3, cz); box(.26, .6, d, wall, x1 - .13, h + .3, cz);
+    box(w + .2, .1, .34, cap, cx, h + .63, z0 + .13); box(w + .2, .1, .34, cap, cx, h + .63, z1 - .13);
+    box(w + .06, .35, d + .06, cap, cx, .17, cz);
+    if (floors > 1) box(w + .04, .12, d + .04, cap, cx, 3.1, cz);
+    // the door
+    const door = opts.doorX != null ? opts.doorX : cx + rr(-w / 4, w / 4);
+    box(1.3, 2.2, .1, dark, door, 1.1, zF + nz * .02);
+    box(1.2, 2.1, .08, pick([trim, ...SHUT]), door + nz * .25, 1.05, zF + nz * .2, nz * .5);
+    box(1.6, .14, .3, trim, door, 2.28, zF + nz * .12);
+    facade(x0, x1, zF, nz, floors, wall, { door });
+    // a few windows round the back
+    for (let f = 0; f < floors; f++) if (rnd() < .6) box(.9, 1.1, .08, rnd() < .3 ? lit : glass, cx + rr(-w / 3, w / 3), 1.8 + f * 3.1, (nz < 0 ? z1 : z0) - nz * .03);
+    // an awning over the door (shops)
+    if (opts.awning || rnd() < .35) {
+      const aw = Math.min(w - .6, opts.awningW || rr(3.4, 6)), cl = pick(CLOTH), az = zF + nz * 1.2;
+      box(aw, .06, 2.5, cl, door, 2.75, az, 0, nz * -.32);
+      for (const sx of [-1, 1]) box(.07, 2.6, .07, trim, door + sx * (aw / 2 - .1), 1.3, zF + nz * 2.3);
+      col(door - aw / 2, door + aw / 2, zF + nz * 2.2, zF + nz * 2.4);
+    }
+    roofProps(cx, cz, w, d, h);
+    return { door, zF, h };
+  };
+  const row = (xa, xb, zF, nz, depth, special = {}) => {
+    // fills xa→xb with buildings whose fronts sit on z = zF, facing nz, with alleys between
+    let x = xa, i = 0;
+    while (x < xb - 6) {
+      const w = Math.min(xb - x, special[i] && special[i].w || rr(7, 12)), d = special[i] && special[i].d || rr(depth[0], depth[1]);
+      const z0 = nz < 0 ? zF : zF - d, z1 = nz < 0 ? zF + d : zF;
+      const b = building(x, x + w, z0, z1, nz, special[i] || {});
+      if (special[i] && special[i].sign) {
+        const s = townSign(special[i].sign, Math.min(w - 1.5, 6), .9); s.position.set(b.door, 3.25 + (special[i].floors > 1 ? 0 : -.1), b.zF + nz * .12); s.rotation.y = nz < 0 ? Math.PI : 0; live.add(s);
+      }
+      if (special[i] && special[i].onBuilt) special[i].onBuilt(b, x, x + w);
+      x += w + rr(1.4, 3.2); i++;
+    }
+  };
+  const spots = {};
+  // front rows on the main street (north faces -z, south faces +z) and back rows behind them
+  row(-178, -138, 8, -1, [8, 12], { 0: { w: 10, d: 10, floors: 2, wall: WALLS[1], sign: 'HARBOUR OFFICE', onBuilt: b => spots.office = [b.door, b.zF - 2.4] } });
+  row(-98, -64, 8, -1, [8, 12], { 0: { w: 12, d: 11, floors: 2, wall: WALLS[2], sign: 'THE SALT LANTERN', awning: true, awningW: 7, onBuilt: b => spots.cantina = [b.door + 2.5, b.zF - 3] } });
+  row(-54, -36, 8, -1, [8, 11]);
+  row(-178, -138, -8, 1, [8, 12], { 1: { w: 9, d: 9, floors: 1, wall: WALLS[1], sign: 'CLINIC' } });
+  row(-98, -64, -8, 1, [8, 12], { 0: { w: 11, d: 10, floors: 1, wall: WALLS[5], sign: 'GENERAL SUPPLIES', awning: true, awningW: 7, onBuilt: (b, xa, xb) => { spots.store = [b.door + 2, b.zF + 3]; for (let k = 0; k < 4; k++) box(.9, .7, .8, wCrateMat, xa + 1 + k * 1.1, .35, b.zF + 3.6); col(xa + .5, xa + 5.2, b.zF + 3.1, b.zF + 4.1); } } });
+  row(-54, -36, -8, 1, [8, 11]);
+  for (const nz of [-1, 1]) { const zF = nz < 0 ? 34 : -34; row(-178, -100, zF, nz, [9, 14]); row(-98, -36, zF, nz, [9, 14]); }
+  // ---- the east gate: two pillars, a lintel and the town's name, with a low wall either side ----
+  const gw = WALLS[0];
+  for (const s of [-1, 1]) {
+    box(1.6, 5.8, 1.6, gw, -33, 2.9, s * 6.2); box(1.9, .3, 1.9, trim, -33, 5.9, s * 6.2); col(-33.8, -32.2, s * 6.2 - .8, s * 6.2 + .8);
+    box(.8, 2.2, 15, gw, -33, 1.1, s * 14.5); box(.95, .14, 15, M(0xb5a080), -33, 2.25, s * 14.5); col(-33.4, -32.6, s * 7, s * 22);
+  }
+  box(1.2, 1, 14, gw, -33, 5.6, 0); box(1.4, .16, 14.2, trim, -33, 6.15, 0);
+  for (const s of [1, -1]) { const g = townSign('AD-NOSTRA', 9, 1.25); g.position.set(-33 + s * .62, 4.55, 0); g.rotation.y = s * Math.PI / 2; live.add(g); }
+  spots.gate = [-36.5, 4.4];
+  // ---- the market square: stalls, the old signal tower and a baobab ----
+  for (let k = 0; k < 4; k++) {
+    const x = -130 + k * 8, z = -16.5, cl = CLOTH[(k * 2 + 1) % CLOTH.length];
+    box(4.2, .08, 3.6, cl, x, 2.65, z, 0, .12);
+    for (const sx of [-2, 2]) for (const sz of [-1.6, 1.6]) box(.08, 2.6, .08, trim, x + sx, 1.3, z + sz);
+    box(3.6, .1, 1.4, wood, x, .9, z + .9); box(3.4, .85, .1, wood, x, .45, z + 1.55);
+    for (let j = 0; j < 4; j++) { const b = cyl(.3, .24, .3, pick([M(0xc9a24a), M(0xa8402e), M(0x5b7a4b), M(0xd98a3a)]), x - 1.3 + j * .85, 1.1, z + .9, 10); b.scale.y = 1; }
+    col(x - 2.1, x + 2.1, z - 1.7, z + 1.7);
+  }
+  spots.stall = [-122, -17.7];
+  // the signal tower, older than anything else here
+  const tw = WALLS[3];
+  box(4.4, 1, 4.4, M(0x8f7d60), -118, .5, 15); box(4, 12, 4, tw, -118, 6, 15); col(-120.2, -115.8, 12.8, 17.2);
+  for (const sx of [-1.7, 1.7]) for (const sz of [-1.7, 1.7]) box(.5, 3, .5, tw, -118 + sx, 13.5, 15 + sz);
+  box(4.8, .4, 4.8, M(0x8f7d60), -118, 15.2, 15); box(4.8, .4, 4.8, M(0x8f7d60), -118, 12, 15);
+  cyl(.06, .06, 4, metal, -118, 17.4, 15, 6);
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; box(1.1, 1.6, .08, dark, -118 + Math.sin(a) * 2.02, 9.5, 15 + Math.cos(a) * 2.02, a); }
+  const beacon = glowSprite(0xff6b5e, 1.6, .9); beacon.position.set(-118, 19.5, 15); live.add(beacon); TOWN.beacon = beacon;
+  // the baobab
+  cyl(1.5, 2.1, 7, bark, -131, 3.5, 15, 12); col(-133, -129, 13, 17);
+  for (let k = 0; k < 7; k++) { const a = k / 7 * Math.PI * 2, br = cyl(.25, .45, 3.4, bark, -131 + Math.cos(a) * 1.3, 8, 15 + Math.sin(a) * 1.3, 6); br.rotation.set(Math.sin(a) * .7, 0, -Math.cos(a) * .7); const lf = new THREE.Mesh(new THREE.SphereGeometry(1.6, 8, 5), leaf); lf.position.set(-131 + Math.cos(a) * 3, 9.6, 15 + Math.sin(a) * 3); lf.scale.y = .45; S.add(lf); }
+  // the Erisian trader's stall stands across the square from the tower (see MERCHANTS.africa)
+  // ---- the harbour: warehouses, containers, cranes ----
+  for (const s of [1, -1]) {
+    const z0 = s * 26, z1 = s * 46, cz = (z0 + z1) / 2;
+    box(18, 6, 20, M(0xb8ad9a), -191, 3, cz); col(-200, -182, Math.min(z0, z1), Math.max(z0, z1));
+    for (const r of [1, -1]) box(18.8, .14, 10.8, metal, -191, 6.9, cz + r * 5, 0, r * .19);
+    box(18.6, .3, .3, rust, -191, 7.85, cz);
+    box(.1, 4.4, 6, rust, -182, 2.2, cz); box(.12, .25, 7, metal, -181.9, 4.5, cz);
+    for (let k = 0; k < 3; k++) box(18.1, .08, .08, rust, -191, 1.5 + k * 1.6, s > 0 ? z0 - .02 : z0 + .02);
+    // stacked containers by the water
+    for (let k = 0; k < 10; k++) { const x = -199 + (k % 5) * 2.7, z = s * (51 + Math.floor(k / 5) * 6.6); box(2.5, 2.6, 6.2, pick(CONT), x, 1.3, z); if (rnd() < .5) box(2.5, 2.6, 6.2, pick(CONT), x, 3.9, z); }
+    col(-200.3, -186.3, Math.min(s * 47.9, s * 61.7), Math.max(s * 47.9, s * 61.7));
+    // a crane on the quay with its jib out over the water
+    const cz2 = s * 22.5;
+    for (const dz of [-1.4, 1.4]) { box(.7, 20, .7, crane, -201.5, 10, cz2 + dz); box(.7, 20, .7, crane, -198.7, 10, cz2 + dz); }
+    for (let y = 3; y < 20; y += 4) { box(3.5, .2, .2, crane, -200.1, y, cz2 - 1.4); box(3.5, .2, .2, crane, -200.1, y, cz2 + 1.4); }
+    box(4, 2.4, 4, crane, -200.1, 21.2, cz2); box(2.2, 1.8, 2, M(0x2b3a48, { roughness: .2, metalness: .5 }), -198.5, 21.3, cz2);
+    box(26, .9, 1, crane, -212, 22.8, cz2); box(7, .9, 1, crane, -195, 22.8, cz2); box(2.4, 2, 2.4, M(0x4a4e55), -192.6, 22, cz2);
+    cyl(.04, .04, 14, dark, -220, 15.6, cz2, 4); box(1.2, .5, .8, crane, -220, 8.4, cz2);
+    col(-202.2, -198, cz2 - 2.1, cz2 + 2.1);
+  }
+  spots.dock = [-194, 0];
+  // palms along the quay and round the square
+  const palm = (x, z, hgt, lean) => {
+    const n = 7; let px = x, py = 0, pz = z;
+    for (let k = 0; k < n; k++) { const seg = cyl(.2 - k * .012, .24 - k * .012, hgt / n + .05, palmBark, px, py + hgt / n / 2, pz, 7); seg.rotation.z = lean * k / n; px -= Math.sin(lean * k / n) * hgt / n; py += Math.cos(lean * k / n) * hgt / n; }
+    for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2 + rr(0, .3), fr = new THREE.Mesh(new THREE.BoxGeometry(.5, .05, 3.2), leaf); fr.position.set(px + Math.cos(a) * 1.4, py - .25, pz + Math.sin(a) * 1.4); fr.rotation.set(0, -a + Math.PI / 2, 0); fr.rotateX(.42); S.add(fr); }
+    col(x - .35, x + .35, z - .35, z + .35);
+  };
+  for (const z of [-20, -11, 11, 20]) palm(-181.5, z, rr(6.5, 8.5), rr(-.25, .25));
+  for (const [x, z] of [[-135, -8], [-101, -8], [-101, 9], [-135, 9]]) palm(x, z, rr(6, 8), rr(-.2, .2));
+  // ---- street lamps (they glow at night) ----
+  for (let x = -40; x > -180; x -= 12) {
+    if (x < -97 && x > -139) continue;
+    const z = (Math.round(x / 12) % 2 ? 5.6 : -5.6);
+    cyl(.07, .1, 4.4, dark, x, 2.2, z, 6); box(.06, .06, .9, dark, x, 4.35, z - Math.sign(z) * .4); box(.32, .3, .32, M(0x1c1814), x, 4.2, z - Math.sign(z) * .8);
+    const g = glowSprite(0xffc27a, 2.4, 0); g.position.set(x, 4.05, z - Math.sign(z) * .8); live.add(g); TOWN.lamps.push(g);
+    col(x - .15, x + .15, z - .15, z + .15);
+  }
+  for (const [x, z] of [[-136.5, 21], [-99.5, 21], [-136.5, -21], [-99.5, -21], [-184, 22], [-184, -22]]) {
+    cyl(.07, .1, 4.4, dark, x, 2.2, z, 6); const g = glowSprite(0xffc27a, 2.6, 0); g.position.set(x, 4.5, z); live.add(g); TOWN.lamps.push(g); col(x - .15, x + .15, z - .15, z + .15);
+    box(.36, .4, .36, M(0x1c1814), x, 4.6, z);
+  }
+  // ---- boats: fishing dhows at the piers and a freighter out at anchor ----
+  const boat = (x, z, len, ry, sail) => {
+    const b = new THREE.Group(), hm = M(pick([0xe8dcc6, 0x2f5f8f, 0x8f3a2a, 0xd9c4a0]), { roughness: .8 }), add = (o, px, py, pz) => { o.position.set(px, py, pz); o.castShadow = true; b.add(o); return o; };
+    add(new THREE.Mesh(new THREE.BoxGeometry(len * .3, 1, len * .7), hm), 0, .3, -len * .05);
+    const bow = add(new THREE.Mesh(new THREE.CylinderGeometry(.01, len * .15, len * .36, 4, 1), hm), 0, .3, len * .42); bow.rotation.set(Math.PI / 2, Math.PI / 4, 0); bow.scale.set(1, 1, .75);
+    add(new THREE.Mesh(new THREE.BoxGeometry(len * .3 + .08, .12, len * .7 + .05), wood), 0, .82, -len * .05);
+    add(new THREE.Mesh(new THREE.BoxGeometry(len * .22, .7, len * .2), M(0xe2cfb0)), 0, 1.2, -len * .28);
+    if (sail) { add(new THREE.Mesh(new THREE.CylinderGeometry(.07, .09, len * .8, 6), wood), 0, len * .4 + .8, len * .08); const sl = add(new THREE.Mesh(new THREE.BoxGeometry(.25, .25, len * .55), M(0xe8e2d0)), 0, len * .55, len * .1); sl.rotation.x = -.35; }
+    b.position.set(x, TOWN.sea, z); b.rotation.y = ry; b.userData.ph = rnd() * 6; live.add(b); TOWN.boats.push(b);
+  };
+  boat(-216, 6.5, 9, .05, true); boat(-233, -6.6, 7, -.08, true); boat(-222, -35, 10, .1, true); boat(-214, -21, 6, 3.1, false); boat(-238, 7, 6.5, .12, false);
+  { // the freighter
+    const f = new THREE.Group(), hull = M(0x3b4450, { roughness: .7, metalness: .3, fog: false }), FC = CONT.map(m => { const c = m.clone(); c.fog = false; return c; });
+    const h = new THREE.Mesh(new THREE.BoxGeometry(16, 7, 90), hull); h.position.y = 1.5; f.add(h);
+    const bw = new THREE.Mesh(new THREE.BoxGeometry(16, 7, 12), hull); bw.position.set(0, 1.5, 49); bw.scale.x = .55; f.add(bw);
+    const br = new THREE.Mesh(new THREE.BoxGeometry(13, 9, 8), M(0xd8d6d0, { fog: false })); br.position.set(0, 9.5, -36); f.add(br);
+    for (let k = 0; k < 18; k++) { const c = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.6, 6), pick(FC)); c.position.set(-5 + (k % 5) * 2.6, 6.3 + Math.floor(k / 9) * 2.6, -20 + (Math.floor(k / 5) % 6) * 7); f.add(c); }
+    f.position.set(-330, TOWN.sea - 2, 55); f.rotation.y = .35; f.userData.ph = 0; f.userData.big = true; live.add(f); TOWN.boats.push(f);
+  }
+  // ---- merge, light up, and add the sea ----
+  lit.userData.lit = true; TOWN.lit = lit;
+  const merged = mergeStatic(S), g = new THREE.Group(); g.add(merged, live);
+  wScene.add(g); world.town = g; TOWN.spots = spots;
+  const seaM = new THREE.MeshStandardMaterial({ color: 0x1b6a86, roughness: .22, metalness: .12, transparent: true, opacity: .94, fog: false });
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000, 1, 1), seaM); sea.rotation.x = -Math.PI / 2; sea.receiveShadow = true;
+  sea.position.set(TOWN.coast - 1 - 2000, TOWN.sea, 0); wScene.add(sea); world.sea = sea;
+  spawnTownsfolk();
+}
+/* ---- the townsfolk: humans, Erisians, a Grek pilgrim and a Chompy veteran. They walk their own patch of street
+   and stop to talk (E). Once you've met Nico, each of them has something to say about her husband. ---- */
+const TZ = { main: [-196, -36, -3.4, 3.4], square: [-133, -103, -10, 8], quay: [-201, -184, -20, 20], pier: [-242, -207, -1.6, 1.6] };
+const TOWNSFOLK = [
+  { name: 'GATE WARDEN', sp: 'human', at: 'gate', c: [0x5b6a4b, 0x2b2f36], skin: 3,
+    lines: ['Welcome to Ad-Nostra. Keep your weapons holstered and your temper cool, and we’ll get along fine.', 'You’re the one Orion’s been looking after. His cousin from the coast, he says. Funny. You don’t look like anybody’s cousin.'],
+    husband: 'Nico’s man? The farmer from out east? He came through this gate yesterday morning with his cart. I didn’t see him go back out.' },
+  { name: 'SHOPKEEPER', sp: 'human', at: 'store', c: [0xc9a24a, 0x6a4428], skin: 4,
+    lines: ['General supplies. Rope, lamp oil, seed, ration packs. If it isn’t here, it’s on the next boat. Probably.'],
+    husband: 'He was in yesterday. Seed, lamp oil and a tin of formula. Said his wife was due any day now. He paid, and that’s the last I saw of him.' },
+  { name: 'CANTINA OWNER', sp: 'human', at: 'cantina', c: [0x8f3a2a, 0xe8dcc6], skin: 2,
+    lines: ['The Salt Lantern opens at sundown. Strong coffee by day, stronger things by night. No fighting inside.'],
+    husband: 'Wasn’t in here, and I’d remember. Farmers drink their coffee on market day and they’re home before dark. Most of them, anyway.' },
+  { name: 'HARBOUR CLERK', sp: 'human', at: 'office', c: [0xe8dcc6, 0x3d4f7a], skin: 5,
+    lines: ['Harbour office. Every boat in and out of Ad-Nostra is written in this book. If it isn’t in the book, it didn’t happen.'],
+    husband: 'Yesterday was busy. Three boats in, two out. If your farmer went aboard one of them, he’ll be in the book. I’ll have to look.' },
+  { name: 'STALL KEEPER', sp: 'human', at: 'stall', c: [0x2f6f8f, 0xc9a24a], skin: 3,
+    lines: ['Mangoes, cassava, dried fish! Fresh from the farms east of town!'],
+    husband: 'The farmers from the east road always stop at my stall. Not him, not yesterday. He looked like a man in a hurry.' },
+  { name: 'OLD MAN', sp: 'human', zone: 'square', c: [0xd9c4a0, 0x6a4428], skin: 4, slow: true,
+    lines: ['When I was a boy this town had another name. The people who rebuilt it after the war called it Ad-Nostra, and nobody’s called it anything else since.'],
+    husband: 'Nico’s husband? Good lad. Always says hello. I saw him pushing that cart of his down the main street toward the harbour yesterday.' },
+  { name: 'WATER SELLER', sp: 'human', zone: 'main', c: [0x3f6f8f, 0xe8dcc6], skin: 2,
+    lines: ['Clean water! Filtered this morning! Cheaper than the stuff they sell at the harbour, and twice as clean!'],
+    husband: 'Sorry, friend. I don’t watch faces, only cups.' },
+  { name: 'PORTER', sp: 'human', zone: 'main', c: [0x7d5a44, 0x2b2f36], skin: 5,
+    lines: ['Out of the way, out of the way! These crates won’t carry themselves. Well, they would, if somebody ever fixed the cargo drone.'],
+    husband: 'Haven’t seen him. Ask at the harbour office. They write down everybody who loads a boat.' },
+  { name: 'DOCKWORKER', sp: 'human', zone: 'quay', c: [0xd9772b, 0x2b2f36], skin: 3,
+    lines: ['Mind the quay. The supply boats from up the coast don’t wait for anyone, and neither does the foreman.'],
+    husband: 'A farmer after supplies? Then he’d have come down here when the boats unloaded yesterday. Half the town did.' },
+  { name: 'FISHERWOMAN', sp: 'human', zone: 'pier', c: [0x5b7a4b, 0xd9c4a0], skin: 1, female: true,
+    lines: ['Thirty years since the war and the fish still haven’t forgiven us. You have to go out past the reef now to catch anything worth selling.'],
+    husband: 'I’ve been out on the water since before dawn. Ask on the main street. Somebody always sees something.' },
+  { name: 'ERISIAN BODYGUARD', sp: 'erisian', zone: 'square', c: [0x636c7c, 0xeda8d4],
+    lines: ['I guard a human noble who is, at this moment, haggling over the price of a carpet. It has been three hours. Erisian patience is long. It is not endless.'],
+    husband: 'I watch faces for a living. Yesterday there were many. None of them were looking for trouble, and trouble is what I watch for.' },
+  { name: 'GREK PILGRIM', sp: 'grek', zone: 'main', c: [0x8a7a5a, 0xc5a87c], slow: true,
+    lines: ['Archamus teaches that every harbour is a doorway. I have come a long way from Archiostal to see which doors your world keeps open.'],
+    husband: 'Forgive me. I am new here, and to me, all of you humans look as though you are in a hurry.' },
+  { name: 'CHOMPY SPICE SELLER', sp: 'chompy', zone: 'square', c: [0x9959c5, 0xc9a24a],
+    lines: ['Three hundred years I have lived. I remember when the Empire was whole. Now I sell spices in a human market. Emperor Hak Chompjak the Fifth would laugh at me.'],
+    husband: 'Humans come and go from this market like the tide. Try the harbour. Everything in this town ends up at the harbour sooner or later.' }
+];
+const townSrc = {};
+function townModel(sp) {
+  if (townSrc[sp]) return townSrc[sp];
+  return (townSrc[sp] = embGlb(sp === 'human' ? 'glb' : 'sp_' + sp).then(sc => sc || null));
+}
+const HIDE_RE = /weapon|holster|sidearm|shield|thorn|helmet|visor|backpack|pack battery|hose|chest control|chest vent|main button|switch|dial|wrist|badge|oxygen|status light|crest|cloak|piping|cape/;
+function dressTownsfolk(src, d) {
+  const m = SkeletonUtils.clone(src), drop = [];
+  m.traverse(o => {
+    if (!o.isMesh) return;
+    const n = (o.name || '').replace(/_/g, ' ').toLowerCase(), mn = (o.material && o.material.name || '').toLowerCase();
+    if (HIDE_RE.test(n) || mn === 'visor' || mn === 'glass_highlight') { drop.push(o); return; }
+    const mat = o.material.clone(); o.material = mat;
+    if (d.sp === 'human') {
+      if (mn === 'suit') { mat.color.set(d.c[0]); mat.roughness = .92; mat.metalness = 0; }
+      else if (mn === 'trim' || mn === 'panel' || mn === 'gold' || mn === 'red' || mn === 'green' || mn === 'blue') { mat.color.set(d.c[1]); mat.roughness = .9; mat.metalness = 0; }
+    } else if (/armour|breastplate$|belly|plate|gauntlet|pouch|clasp|buckle/.test(n) && !/rim/.test(n)) { mat.color.set(d.c[0]); mat.roughness = .85; mat.metalness = .05; }
+    else if (/rim/.test(n)) { mat.color.set(d.c[1]); }
+  });
+  for (const o of drop) o.parent && o.parent.remove(o);
+  if (d.sp === 'human') {
+    // the suit becomes work clothes; give them a face and hair where the helmet was
+    const skin = new THREE.MeshStandardMaterial({ color: SKIN[d.skin == null ? 2 : d.skin], roughness: .65 }), hair = new THREE.MeshStandardMaterial({ color: HAIRC[d.female ? 1 : 0], roughness: .8 });
+    const head = new THREE.Group(); head.position.set(0, 1.655, .02); m.add(head);
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(.118, 20, 14), skin); skull.scale.set(.9, 1.1, 1); head.add(skull);
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(.055, .065, .14, 10), skin); neck.position.y = -.13; head.add(neck);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(.124, 20, 10, 0, Math.PI * 2, 0, d.female ? 1.9 : 1.25), hair); cap.scale.set(.9, 1.1, 1); cap.position.set(0, .01, -.01); cap.rotation.x = -.25; head.add(cap);
+    if (d.female) { const bun = new THREE.Mesh(new THREE.SphereGeometry(.06, 10, 8), hair); bun.position.set(0, .07, -.12); head.add(bun); }
+    for (const sx of [-.038, .038]) { const e = new THREE.Mesh(new THREE.SphereGeometry(.012, 6, 4), new THREE.MeshStandardMaterial({ color: 0x111111 })); e.position.set(sx, .02, .102); head.add(e); }
+  }
+  return m;
+}
+async function spawnTownsfolk() {
+  if (TOWN.npcs.length || TOWN.spawning) return; TOWN.spawning = true;
+  for (const d of TOWNSFOLK) {
+    try {
+      const src = await townModel(d.sp); if (!src || !world.town) continue;
+      const R = autoRig(dressTownsfolk(src, d), d.sp === 'human' ? (d.female ? 1.7 : 1.78) : SPECIES[d.sp].height * .98); armRig(R, 'none');
+      const spot = d.at && TOWN.spots[d.at], z = d.zone && TZ[d.zone];
+      const x = spot ? spot[0] : rand(z[0], z[1]), zz = spot ? spot[1] : rand(z[2], z[3]);
+      R.root.position.set(x, townNpcY(x, zz), zz); R.root.rotation.y = rand(0, 6.28);
+      const face = d.at === 'gate' ? Math.PI / 2 : zz > 0 ? Math.PI : 0; if (spot) R.root.rotation.y = face;
+      world.town.add(R.root);
+      TOWN.npcs.push({ d, R, face, home: spot ? [x, zz] : null, tgt: null, wait: rand(0, 4), speed: d.slow ? .7 : rand(1.05, 1.35), label: d.name.charAt(0) + d.name.slice(1).toLowerCase() });
+    } catch (e) { console.warn('Townsfolk failed', d.name, e); }
+  }
+  TOWN.spawning = false;
+}
+const townNpcY = (x, z) => townPier(x, z) != null ? TOWN.deck : Math.max(0, wHeight(x, z));
+function townTick(dt) {
+  if (!world.town) return;
+  const af = curArea() === 'africa'; world.town.visible = af; if (world.sea) world.sea.visible = af;
+  if (!af) return;
+  const p = player.position, night = 1 - (world.dayL == null ? 1 : world.dayL);
+  if (world.sea) world.sea.position.z = p.z;
+  if (TOWN.lit) TOWN.lit.emissiveIntensity = night * 1.4;
+  for (const g of TOWN.lamps) g.material.opacity = night * .85;
+  if (TOWN.beacon) TOWN.beacon.material.opacity = (.35 + .65 * night) * (Math.sin(time * 2.2) > 0 ? 1 : .25);
+  const near = p.x < TOWN.x1 + 140 && p.x > TOWN.x0 - 160 && Math.abs(p.z) < 220;
+  for (const b of TOWN.boats) { const ph = b.userData.ph; b.position.y = TOWN.sea + (b.userData.big ? -2 : 0) + Math.sin(time * .9 + ph) * (b.userData.big ? .15 : .12); if (!b.userData.big) { b.rotation.z = Math.sin(time * .7 + ph) * .035; b.rotation.x = Math.sin(time * .55 + ph * 2) * .02; } }
+  // arriving in town
+  if (state === 'explore' && wanderer && inTown(p.x, p.z, -2)) {
+    const c2 = wanderer.ch2 || {};
+    if (!c2.townSeen) { setCh2(Object.assign({ townSeen: true }, c2.metNico ? { townFound: true } : {})); notice('The harbour town', 'AD-NOSTRA', 3800); if (c2.metNico) setTimeout(() => notice('Ask the townsfolk', 'FIND NICO’S HUSBAND', 3600), 4300); }
+    else if (c2.metNico && !c2.townFound) { setCh2({ townFound: true }); notice('Ad-Nostra', 'ASK THE TOWNSFOLK', 3600); }
+  }
+  for (const n of TOWN.npcs) {
+    const R = n.R, o = R.root.position; R.root.visible = near;
+    if (!near) continue;
+    const dP = Math.hypot(p.x - o.x, p.z - o.z), talking = world.townTalk === n && ex.dlg;
+    if (talking || (dP < 3.2 && state === 'explore')) {
+      R.mode = 'idle'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - o.x, p.z - o.z), Math.min(1, dt * 4));
+    } else if (n.home) {
+      const dh = Math.hypot(n.home[0] - o.x, n.home[1] - o.z);
+      if (dh > .3) { const a = Math.atan2(n.home[0] - o.x, n.home[1] - o.z); R.root.rotation.y = angLerp(R.root.rotation.y, a, Math.min(1, dt * 5)); o.x += Math.sin(a) * dt; o.z += Math.cos(a) * dt; R.mode = 'walk'; }
+      else { R.mode = 'idle'; R.root.rotation.y = angLerp(R.root.rotation.y, n.face, Math.min(1, dt * 2)); }
+    } else {
+      const Z = TZ[n.d.zone];
+      if (!n.tgt) { if ((n.wait -= dt) <= 0) n.tgt = [rand(Z[0], Z[1]), rand(Z[2], Z[3])]; R.mode = 'idle'; }
+      else {
+        const vx = n.tgt[0] - o.x, vz = n.tgt[1] - o.z, l = Math.hypot(vx, vz);
+        if (l < .4) { n.tgt = null; n.wait = rand(2, 8); R.mode = 'idle'; }
+        else { const a = Math.atan2(vx, vz); R.root.rotation.y = angLerp(R.root.rotation.y, a, Math.min(1, dt * 5)); const s = Math.min(l, n.speed * dt); o.x += vx / l * s; o.z += vz / l * s; R.mode = 'walk'; }
+      }
+    }
+    o.y = townNpcY(o.x, o.z);
+    animRig(R, dt * (R.mode === 'walk' ? n.speed / 1.2 : 1));
+  }
+}
+function townNear(p) { let best = null, bd = 9; for (const n of TOWN.npcs) { if (!n.R.root.visible) continue; const d = Math.hypot(n.R.root.position.x - p.x, n.R.root.position.z - p.z); if (d < (n.home ? 3.8 : 2.4) && d < bd) { bd = d; best = n; } } return best; }
+function talkTownsfolk(n) {
+  if (!n || ex.dlg) return;
+  const c2 = wanderer.ch2 || {}, lines = n.d.lines.slice();
+  if (c2.metNico && !c2.husbandFound && n.d.husband) lines.push(n.d.husband);
+  world.townTalk = n; sfx.click();
+  openDialog(n.d.name, lines, false, () => { world.townTalk = null; if (c2.metNico && n.d.husband) { const asked = Object.assign({}, c2.townAsked || {}); if (!asked[n.d.name]) { asked[n.d.name] = 1; setCh2({ townAsked: asked }); } } });
 }
 const CALL_SEQ = [
   ['ORION MASCAR', ['Hold on. That’s my phone.', 'Hello? Slow down, slow down. I can’t understand you. Who is this?']],
@@ -7605,6 +8015,7 @@ function updateWorldMode(dt) {
   if (!ex.near && ch1().bed && !ch1().slept2) { const B = ch1().bed; if (Math.hypot(B.x - p.x, B.z - p.z) < 1.9 && Math.abs(B.y - p.y) < 1.5) ex.near = { id: 'bed', label: 'Bed' }; }
   if (!ex.near && world.rover && !ex.vehicle && world.rover.visible && Math.hypot(world.rover.position.x - p.x, world.rover.position.z - p.z) < 3.4) ex.near = { id: 'rover', label: 'Rover' };
   if (!ex.near && curArea() === 'africa' && wanderer.ch2 && wanderer.ch2.lionsDone && !wanderer.ch2.doorReached && Math.hypot(p.x - (FARM.x - 5.6), p.z - FARM.z) < 2.6) ex.near = { id: 'farmDoor', label: 'Farmhouse door' };
+  if (!ex.near && curArea() === 'africa' && TOWN.npcs.length) { const tn = townNear(p); if (tn) ex.near = { id: 'townsfolk', ref: tn, label: tn.label }; }
   if (!ex.near && curArea() === 'africa' && world.orion && world.orion.root.visible && Math.hypot(world.orion.root.position.x - p.x, world.orion.root.position.z - p.z) < 2.4) ex.near = { id: 'orion', label: 'Orion' };
   if (!ex.near && curArea() === 'antarctica' && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
   if (ex.vehicle) ex.near = { id: 'roverOut', label: 'Rover' };
@@ -7639,7 +8050,7 @@ function updateWorldScene(dt) {
   faunaTick(dt); if (state === 'explore') jamesShoot(dt);
   soldierTick(dt);
   const c = camera.position, pa = world.snow.geometry.attributes.position.array;
-  stormTick(dt); skyTick(dt); betrayalTick(dt); orionTick(dt); farmTick();
+  stormTick(dt); skyTick(dt); betrayalTick(dt); orionTick(dt); farmTick(); townTick(dt);
   const st = world.storm || 0, gust = (.7 + .4 * Math.sin(time * .5) + .2 * Math.sin(time * 1.9)) * (1 + st * 2.2), wx = -9 * gust, wz = 3.5 * gust;
   for (let i = 0; i < world.sN; i++) {
     const j = i * 3, sd = world.sSeed[i];
@@ -7662,6 +8073,7 @@ function dlgSpeaker() {
   const at = (o, h) => o && o.visible !== false ? v.set(o.position.x, o.position.y + h, o.position.z) : null;
   if (/JAMES/.test(w) && james.ready && james.root.visible) return at(james.root, 1.62);
   if (/ORION|ON THE PHONE/.test(w) && world.orion && world.orion.root.visible) return at(world.orion.root, 1.62);
+  if (world.townTalk && w === world.townTalk.d.name) return at(world.townTalk.R.root, world.townTalk.d.sp === 'human' ? 1.6 : 1.75);
   if (/BEHIND THE DOOR/.test(w) && world.farm) return v.set(FARM.x - 5.1, farmY() + 1.5, FARM.z);
   if (/CROXIAN/.test(w) && world.boss) return at(world.boss.R.root, 1.65);
   return null;
