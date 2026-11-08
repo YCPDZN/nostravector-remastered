@@ -394,3 +394,18 @@ The human suit is modelled with its arms held about 34° out from the body, and 
   - Your Chapter II objectives stay on screen, and the chapter label reads *Chapter II · Antarctica*.
   - **Orion comes with you.** Once he's joined you, he boards with you and steps off beside you at either pier. In Antarctica he follows, mines, explores, wanders and shoots hostile animals just as he does in Africa, and you can walk up to him for orders (ORDER). On **Base** there, he waits by the station's door. He's also there if you load a save made in Antarctica.
 - **Saving** in Antarctica (outside or inside the station) brings a Chapter II wanderer back there on Continue or Load.
+
+### Chapter II: back on the pier (the flashback)
+The first time you step off the ferry in Antarctica with Orion, it all comes back. It plays once per wanderer, about 18 seconds, letterboxed:
+1. **Panic:** on the pier where James betrayed you, your wanderer grabs their helmet, shakes and drops to their knees. Their heart races, their breathing goes ragged, and the picture blurs and drains of colour while Orion stares.
+2. **Flashes of Chapter I,** in near-black-and-white with white-flash cuts: James Brown at the gangway, his hand coming out of his coat ("This is where we part company", his own voice), then James going over the side into the sea.
+3. **Croxian Mascar, the heart of it:**
+   - He steps off the ferry ("My name is Croxian Mascar…", his own voice).
+   - He comes down the gangway at you far too fast, and his scythe swings again and again. Each hit lands with a red flash, a hard shake and a thud.
+   - He leaps and slams down in front of you ("Run, wanderer…", "The ice keeps whatever I give it").
+   - A slowed close-up of his mask as the scythe comes up ("Too close."), then one last swing straight at the camera and a red-and-black strobe.
+4. **Black and ringing,** then a voice far off: "Hey. HEY!"
+5. **Orion,** angry, right in your face on the pier (six lines, with the cinematic camera). You were screaming and clawing at the boards, and there's nothing here. You screamed *that name* again, the one you whispered with the fever in his house. "Don't say it again. Not to me. Not anywhere I can hear it." Then: get up.
+
+The flashback uses the voice lines James and Croxian already have. Orion's six lines here are text only for now (no voice files yet). The flag is `ch2.antFlashback`.
+- **Fix:** the Chapter I super blizzard can never start again once you've escaped Antarctica.

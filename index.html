@@ -3419,7 +3419,7 @@ function emergencyRecovery() {
   sfx.thud(); notice('Exosuit · emergency recovery', 'RETURNED TO THE STATION', 4200);
 }
 function stormTick(dt) {
-  const c = ch1(), active = !!(c.stormTalk && !c.stormOver);
+  const c = ch1(), active = !!(c.stormTalk && !c.stormOver && !c.escaped); // never again once you've left Antarctica
   world.storm = clamp((world.storm || 0) + (active ? dt / 20 : -dt / 25), 0, 1);
   // the storm hits once it's at full strength (or as soon as you're inside, if you were quick)
   if (state === 'explore' && c.stormTalk && !c.stormHit && !world.narrating && (world.storm > .97 || c.stormSafe)) stormHits();
@@ -7530,6 +7530,7 @@ function ferryTripTick(dt) {
     if (t > 3.4 && !el.classList.contains('black')) { el.classList.add('black'); }
     if (t > 4.6) { ft.switched = true; ferryArrive(); }
   } else if (ft.ready && t > 9.2) {
+    if (ft.to === 'antarctica' && orionJoined() && !(wanderer.ch2 && wanderer.ch2.antFlashback)) { ft.on = false; ft.ready = false; el.classList.remove('title'); startFlashback(); return; } // the first time back, it all comes rushing in
     ft.on = false; el.classList.remove('black', 'title', 'letter', 'on'); state = 'explore'; player.visible = true; show(ui.xhud, true); ex.snap = true; clock.getDelta();
     notice(ft.to === 'africa' ? 'Africa' : 'The ferry terminal', ft.to === 'africa' ? 'AD-NOSTRA' : 'ANTARCTICA', 3200);
   }
@@ -7587,6 +7588,154 @@ function ferryNear(p) {
     if (L && ((Math.abs(L[0] - 2.4) < 2.2 && Math.abs(L[1] - 30) < 3.5) || pierTop(p.x, p.z) > 2)) return { id: 'ferry', label: 'Ad-Nostra' };
   }
   return null;
+}
+/* ---- Chapter II: the first time back on the Antarctic pier with Orion ----
+   The wanderer panics where it all happened. Flashes of Chapter I (James on the pier, James going into the water),
+   then Croxian Mascar, most of all: off the ferry and on them, vicious and relentless. Then Orion, angry, pulls them out of it. */
+const FLASH_ORION = [
+  'Hey! HEY! Look at me! Snap out of it!',
+  'You were screaming. Down on your knees, clawing at the boards like something was coming up this pier for you.',
+  'There is nothing here. Ice, an empty pier and a ferry. That’s all. Do you hear me?',
+  'And that name. You screamed it over and over. The same name you whispered in my house with the fever burning you up.',
+  'Don’t say it again. Not to me. Not anywhere I can hear it.',
+  'Now get up. I didn’t cross an ocean to watch you fall apart on the first pier we found.'
+];
+const fb = { t: 0, on: false };
+let fbFlashEl = null;
+function fbFlash(a, c = '#fff') {
+  if (!fbFlashEl) { fbFlashEl = document.createElement('div'); fbFlashEl.style.cssText = 'position:fixed;inset:0;z-index:31;pointer-events:none;opacity:0'; document.body.appendChild(fbFlashEl); }
+  fbFlashEl.style.background = c; fbFlashEl.style.opacity = a.toFixed(3);
+}
+async function startFlashback() {
+  Object.assign(fb, { t: 0, on: true, beatT: 0, beat: 0, shake: 0, cut: -1, hits: {}, said: {} });
+  const D = antFerryDock(); fb.home = { x: D.x, z: D.z, y: D.y, rot: D.rot };
+  const p = player.position; p.set(D.x, D.y, D.z); player.rotation.y = D.rot; player.visible = true;
+  resetRig(); inner.rotation.set(0, 0, 0); inner.position.set(0, 0, 0);
+  // Orion just behind you, still finding his feet on the boards
+  if (world.orion) { const R = world.orion.root; R.visible = true; R.position.set(p.x - Math.sin(D.rot) * 1.8 + Math.cos(D.rot) * 1.2, D.y, p.z - Math.cos(D.rot) * 1.8 - Math.sin(D.rot) * 1.2); R.rotation.y = D.rot; world.orion.mode = 'idle'; }
+  const [J, C] = await Promise.all([ensureJames().then(() => james.ready ? james : null).catch(() => null), loadCroxian(), sfx.loadClips('betrayalVoices'), sfx.loadClips('croxPre'), croxClips()]);
+  fb.J = J; fb.C = C;
+  if (C) { wScene.add(C.root); C.root.visible = false; }
+  if (J) { wScene.add(J.root); J.root.visible = false; }
+  const el = $('#ferryCut'); el.classList.remove('title', 'title2', 'black'); el.classList.add('on', 'letter');
+  show(ui.xhud, false); state = 'flashback';
+}
+// pier coordinates (x across, z out to sea) to the world, and the heights there
+const fbW = (lx, lz) => ferryWorld(lx, lz);
+function fbPut(o, lx, lz, dy = 0) { const [x, z] = fbW(lx, lz); o.position.set(x, bossGround(x, z) + dy, z); }
+function fbFace(o, lx, lz) { const [x, z] = fbW(lx, lz); o.rotation.y = Math.atan2(x - o.position.x, z - o.position.z); }
+function fbCam(lx, ly, lz, tx, ty, tz, roll = 0) {
+  const [cx, cz] = fbW(lx, lz), [ax, az] = fbW(tx, tz), s = fb.shake;
+  camera.position.set(cx + (Math.random() - .5) * s, ly + (Math.random() - .5) * s, cz + (Math.random() - .5) * s);
+  camera.up.set(Math.sin(roll), Math.cos(roll), 0); camera.lookAt(ax, ty, az); camera.up.set(0, 1, 0);
+}
+function flashTick(dt) {
+  fb.t += dt; const t = fb.t, p = player.position, H = fb.home, R = rig, O = world.orion, J = fb.J, C = fb.C;
+  const seg = (a, b) => clamp((t - a) / (b - a), 0, 1), once = (k, fn) => { if (!fb.said[k]) { fb.said[k] = 1; fn(); } };
+  // the heart: racing through the panic, hammering through Croxian, then the ringing
+  const bpm = t < 3.2 ? 110 + t * 18 : t < 15.2 ? 170 : 0;
+  fb.beatT -= dt; if (bpm && fb.beatT <= 0) { fb.beatT = 60 / bpm; sfx.heart(t < 3.2 ? .8 : 1); fb.beat = 1; }
+  fb.beat = Math.max(0, fb.beat - dt * 5); fb.shake = Math.max(0, fb.shake - dt * 2.2);
+  sfx.drone(t < 15.2 ? .5 + seg(0, 15) * .5 : 0); sfx.ring(t > 15.2 && t < 18.2 ? 1 - seg(16.6, 18.2) : 0);
+  let blur = 0, red = 0, sat = 1, lid = 0, flash = 0, flashC = '#fff';
+  const cutAt = [3.2, 4.6, 5.8, 7.0, 8.6, 10.0, 11.6, 13.2, 14.4, 15.2];
+  for (const c of cutAt) flash = Math.max(flash, Math.max(0, 1 - Math.abs(t - c) / .09));
+  const cut = cutAt.filter(c => t >= c).length;
+  if (cut !== fb.cut) { fb.cut = cut; if (cut > 0 && cut < 10) { sfx.whoosh(); fb.shake = Math.max(fb.shake, .12); } }
+  const showPresent = t < 3.2 || t >= 18.2;
+  player.visible = showPresent; if (O) O.root.visible = showPresent;
+  if (J) J.root.visible = false; if (C) C.root.visible = false;
+  if (t < 3.2) {
+    // the panic: hands to the helmet, shaking, then the knees go
+    const k = seg(1.6, 1.85), tr = (Math.random() - .5) * .06;
+    damp(R.ra.rotation, 'x', -2.5, 10, dt); damp(R.ra.rotation, 'z', .55, 10, dt); damp(R.la.rotation, 'x', -2.5, 10, dt); damp(R.la.rotation, 'z', -.55, 10, dt);
+    R.rl.rotation.x = 1.3 * k; R.ll.rotation.x = 1.15 * k; inner.position.y = -.58 * k;
+    inner.rotation.x = .3 + .25 * k + tr; inner.rotation.z = tr;
+    if (k >= 1) once('knees', () => { sfx.thud(); fb.shake = .35; });
+    once('gasp', () => sfx.gasp(1.4)); if (t > 1 && !fb.said.g2) { fb.said.g2 = 1; sfx.gasp(1.8); }
+    if (O) O.root.rotation.y = angLerp(O.root.rotation.y, Math.atan2(p.x - O.root.position.x, p.z - O.root.position.z), Math.min(1, dt * 3));
+    const f = H.rot, fx = Math.sin(f), fz = Math.cos(f), push = seg(0, 3.2);
+    camera.position.set(p.x + fx * (2.1 - push * .8) + fz * .55, H.y + .75 - .2 * k, p.z + fz * (2.1 - push * .8) - fx * .55);
+    camera.lookAt(p.x, H.y + 1.5 - .55 * k, p.z);
+    blur = push * 2 + fb.beat; sat = 1 - push * .5; red = push * .3 + fb.beat * .2; lid = Math.max(0, Math.sin(t * 5)) * .25 * push;
+  } else if (t < 4.6) {
+    // James on the pier, his hand coming out of his coat
+    if (J) { J.root.visible = true; J.root.rotation.z = 0; fbPut(J.root, 0, 30); fbFace(J.root, 0, 23); J.raise = 1.25; J.headTilt = .05; }
+    once('james', () => { showNarr('JAMES BROWN', 'This is where we part company.'); sfx.loadClips('betrayalVoices').then(c => c && sfx.playNarr(c[JB_BETRAYAL.length - 1], 1.2)); });
+    fbCam(0, 3.15, 23.6, 0, 3.2, 30); blur = .8; sat = .12; red = .05;
+  } else if (t < 5.8) {
+    // and over the side, into the sea
+    const k = seg(4.6, 5.5);
+    if (J) { J.root.visible = true; const [ax, az] = fbW(0, 30), [bx, bz] = fbW(-5.5, 30); J.root.position.set(lerp(ax, bx, k), 1.6 + Math.sin(k * Math.PI) - k * 3.2, lerp(az, bz, k)); J.root.rotation.z = k * 1.5; }
+    if (k >= 1) once('splash', () => { const [bx, bz] = fbW(-5.5, 30); burst(bx, -1.5, bz, 50, 6, .75, .88, 1, 1.2, 1.4, 4); sfx.hit('ice'); fb.shake = .3; });
+    fbCam(-10, 4.2, 23, -4, .8, 30, .12); blur = .9; sat = .1;
+  } else {
+    if (J) { J.root.rotation.z = 0; J.raise = .1; }
+  }
+  // ---- Croxian Mascar: the heart of it ----
+  if (t >= 5.8 && t < 15.2 && C) {
+    C.root.visible = true;
+    const atkHit = (k, at) => { if (!fb.hits[k] && t > at) { fb.hits[k] = 1; sfx.swing(); sfx.thud(); fb.shake = .7; fb.red = 1; flashC = '#7a0000'; } };
+    if (t < 7.0) { // he steps off the ferry and looks straight at you
+      const k = seg(5.8, 7); fbPut(C.root, lerp(9.5, 6.5, k), 30); fbFace(C.root, 0, 24); C.mode = 'walk'; C.t += dt;
+      once('name', () => { sfx.loadClips('croxPre').then(c => c && sfx.playNarr(c[3], 1.3)); showNarr('CROXIAN MASCAR', CROX_PRE[3]); });
+      fbCam(1.5, 1.5, 27.5, lerp(9.5, 6.5, k), 3.3, 30, -.08);
+    } else if (t < 8.6) { // down the gangway and at you, fast
+      const k = seg(7, 8.6); fbPut(C.root, lerp(6.5, 0, smooth(0, .6, k)), lerp(30, 25.2, k)); fbFace(C.root, 0, 23.5); C.mode = k < .8 ? 'walk' : 'attack'; if (k >= .8 && !fb.said.a1) { fb.said.a1 = 1; C.t = .3; }
+      C.t += dt * 1.6; // he moves quicker than anyone should
+      fbCam(0, 2.2, 23.5, 0, 2.6, 27); camera.lookAt(C.root.position.x, C.root.position.y + 1.4, C.root.position.z);
+      atkHit('h1', 8.35);
+    } else if (t < 10.0) { // the scythe, again and again
+      fbPut(C.root, 0, 25.4); fbFace(C.root, 0, 23.5); C.mode = 'attack'; C.t += dt * .9;
+      fbCam(-1.2, 1.3, 23.4, 0, 2.5, 25.4, .22); atkHit('h2', 8.95); atkHit('h3', 9.75);
+      once('b1', () => croxClips().then(c => bark(CROX_BARKS[0], 1400, c && c[0])));
+    } else if (t < 11.6) { // he leaps
+      const k = seg(10.2, 11.2); fbPut(C.root, 0, lerp(29, 24.6, k), Math.sin(k * Math.PI) * 4.2); fbFace(C.root, 0, 23.5); C.mode = 'idle';
+      if (k >= 1) once('land', () => { sfx.thud(); fb.shake = 1; const [x, z] = fbW(0, 24.6); burst(x, 1.8, z, 60, 7, .9, .95, 1, .9, 1.2, 1.5); fb.red = 1; });
+      once('b2', () => croxClips().then(c => bark(CROX_BARKS[2], 1600, c && c[2])));
+      fbCam(1.6, 2.05, 21.6, 0, 3.2 + Math.sin(k * Math.PI) * 2.5, 25, -.15);
+    } else if (t < 13.2) { // close: the face, the scythe coming up, slowed down
+      fbPut(C.root, 0, 24.7); fbFace(C.root, 0, 23.5); C.mode = 'attack'; C.t += dt * .35;
+      once('close', () => croxClips().then(c => bark(CROX_TOO_CLOSE, 1600, c && c[7])));
+      const k = seg(11.6, 13.2); fbCam(.3, 3.3, 22.9 + k * .45, 0, 3.3, 24.7, .05 * Math.sin(t * 9));
+    } else if (t < 14.4) { // the last swing, straight at you
+      fbPut(C.root, 0, 24.3); fbFace(C.root, 0, 23.5); C.mode = 'attack'; if (!fb.said.last) { fb.said.last = 1; C.t = .35; } C.t += dt * 1.3;
+      fbCam(0, 3.05, 23.2, 0, 3.1, 24.3); atkHit('h4', 13.75);
+    } else { // strobing red and black
+      fbPut(C.root, 0, 24.3); C.mode = 'attack'; C.t += dt;
+      fbCam(0, 3.05, 23.2, 0, 3.1, 24.3, .3);
+      flash = Math.max(flash, (Math.sin(t * 40) > 0 ? .9 : 0)); flashC = Math.sin(t * 17) > 0 ? '#7a0000' : '#000';
+    }
+    animRig(C, 0); // his clock is driven above, faster or slower per shot
+    blur = .6 + fb.beat * .8; sat = .22; red = .35 + fb.beat * .25 + (fb.red || 0) * .6;
+    fb.red = Math.max(0, (fb.red || 0) - dt * 3);
+    if (fb.red > .5) { flash = Math.max(flash, fb.red * .55); flashC = '#7a0000'; }
+  }
+  if (t >= 15.2 && t < 18.2) {
+    // black; ringing; a voice somewhere far off
+    flash = 1; flashC = '#000'; hideNarr();
+    once('hey', () => { if (C) C.root.visible = false; setTimeout(() => showNarr('ORION MASCAR', 'Hey. HEY!'), 900); });
+  }
+  if (t >= 18.2 && !fb.said.end) {
+    fb.said.end = 1; hideNarr(); endFlashback(); return;
+  }
+  ciFx(blur, red, 0, lid, sat); fbFlash(flash, flashC);
+  if (J && J.root.visible) jamesTick(dt);
+}
+function endFlashback() {
+  const p = player.position, H = fb.home;
+  if (fb.C) { fb.C.root.visible = false; if (fb.C.root.parent) fb.C.root.parent.remove(fb.C.root); }
+  if (fb.J) { fb.J.root.visible = false; fb.J.root.rotation.z = 0; }
+  fbFlash(0); ciFx(0, 0, 0, 0, 1); $('#ferryCut').classList.remove('on', 'letter', 'black');
+  sfx.drone(0); sfx.ring(0);
+  // back on the pier: on your knees, Orion right in front of you
+  p.set(H.x, H.y, H.z); player.rotation.y = H.rot; player.visible = true;
+  resetRig(); inner.rotation.set(0, 0, 0); inner.position.set(0, 0, 0);
+  const O = world.orion;
+  if (O) { O.root.visible = true; O.root.position.set(p.x + Math.sin(H.rot) * 1.15, H.y, p.z + Math.cos(H.rot) * 1.15); O.root.rotation.y = H.rot + Math.PI; O.mode = 'idle'; }
+  fb.on = false; state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta();
+  setCh2({ antFlashback: true });
+  openDialog('ORION MASCAR', FLASH_ORION, false, () => { notice('The ferry terminal', 'ANTARCTICA', 3000); });
 }
 const CALL_SEQ = [
   ['ORION MASCAR', ['Hold on. That’s my phone.', 'Hello? Slow down, slow down. I can’t understand you. Who is this?']],
@@ -10176,6 +10325,7 @@ function loop() {
   if (state === 'dream') { tickDialog(dt); updateDream(dt); sfx.music(0); renderer.render(dScene, camera); return; }
   if (state === 'farmCut') { farmCutTick(dt); tickDialog(dt); renderer.render(fhc.scene, camera); return; }
   if (state === 'ch2intro') { updateCh2Intro(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); renderer.render(afScene, camera); return; }
+  if (state === 'flashback') { flashTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'ferryTrip') { ferryTripTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'ferryCut') { updateFerryCut(dt); updateAnim(dt); worldActionPose(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh' || state === 'sleeping' || state === 'wcut') {
