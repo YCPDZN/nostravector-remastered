@@ -306,4 +306,37 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   - Malana (Am-Grek's birthplace, Malana Prime system)
   - Steca (where Shakhak beat Javek)
 - Gravity values for the Sol worlds are the real ones. The look of the lore worlds (jungle, desert, airless rock, volcanic) is a placeholder until their appearance is decided.
-- **Playing adventures** (choose who you play as, land on the world, objectives from your acts, no XP) is the next step.
+
+### Adventures: build a world, then play it as anyone
+Open an adventure in **Custom creations → Adventures**. The editor has a new **World** section with **Build world** and **Play**. Adventures are separate from the story. They never give XP, never touch your wanderer's save, and never change a planet anywhere else: sculpting and placing belong to that adventure alone, and every playthrough starts fresh. (The old "XP reward" slider is gone.)
+
+**World studio (Build world).** You build on a 200 × 200 m patch of the adventure's planet. The ground uses the planet's own colours, sky, water level and roughness, airless worlds get a black starry sky, and gas and ice giants give you a **cloud city** deck ringed with towers above a sea of cloud.
+- **Landscape:** Raise, Lower, Smooth and Flatten brushes, with adjustable size (2–24 m) and strength. Reset landscape (tap twice) undoes all sculpting.
+- **Place:**
+  - Start point
+  - Cast member: pick one from the adventure's cast; placing them again moves them.
+  - Creature: any species you made, or a plain critter, hostile or peaceful.
+  - Props: rock, tree, crate, crystal, ruined pillar, beacon, tower.
+  - Collectibles
+  - Act markers: one per act; reach and explore acts head for them.
+- **Erase** removes the nearest object.
+- **Controls:** left click/drag uses the tool, right drag turns the camera, the wheel zooms, WASD moves the camera.
+- **Test play** plays your unsaved world and drops you back in the studio. **Save** stores the world inside the adventure.
+
+**Play.** Choose who to play as:
+- your current wanderer
+- the Project BC and Sevirrus cast
+- your uploaded characters
+- any story companion whose Nostrapedia file you've opened
+
+Controls: WASD to move, Shift to sprint, Space to jump (higher in low gravity), F or a click to attack, E to talk, drag to turn the camera, Esc to leave. The camera follows you third-person.
+- **Talking:** cast members say their line when you press E near them. Enemy cast and hostile creatures chase and attack you, with damage set by the adventure's difficulty. You regenerate health out of combat. Fall off a cloud city and you're back at the start.
+- **Objectives** come from your acts, in order. Each act opens with its title and story text.
+  - **Reach:** step onto its marker.
+  - **Explore:** spend a few seconds near its marker.
+  - **Talk:** talk to the named cast member, or to anyone if no target is set.
+  - **Collect:** pick up N collectibles.
+  - **Defeat:** the named cast member, or N creatures.
+  - **Survive:** 10 seconds × the amount.
+- Finishing every act shows **Adventure complete**. Losing all your health shows **You were defeated**. Either way you can play again from scratch.
+- Keyboard and mouse for now; touch controls for adventures come later.

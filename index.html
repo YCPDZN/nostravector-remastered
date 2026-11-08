@@ -8616,7 +8616,12 @@ function advForm(a) {
   add({ k: 'summary', t: 'area', l: 'Summary', soft: true });
   add({ k: 'planet', t: 'select', l: 'Planet', o: planetOptions });
   add({ k: 'difficulty', t: 'chips', l: 'Difficulty', o: [['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard'], ['brutal', 'Brutal']], soft: true });
-  add({ k: 'reward', t: 'range', l: 'XP reward', min: 50, max: 2000, step: 50, soft: true });
+  // build the world and play it (adventures never give XP)
+  const go = document.createElement('div'); go.className = 'cc-sec';
+  const W = a.world || {}, placed = (W.objs || []).length, sculpted = Object.keys(W.g || {}).length;
+  go.innerHTML = `<h4>World <small>${placed} placed · ${sculpted ? 'landscape changed' : 'natural landscape'}</small></h4><div class="cc-row"><button class="btn small" data-w="studio"><span>Build world</span></button><button class="btn small primary" data-w="play"><span>Play</span></button></div><p class="cc-note">Sculpt the land and place your cast, creatures, props and act markers, then play it as anyone. Nothing carries over: no XP, and the planet stays untouched everywhere else.</p>`;
+  go.querySelectorAll('[data-w]').forEach(b => b.addEventListener('click', () => { sfx.click(); advOpen(a, b.dataset.w); }));
+  wrap.appendChild(go);
   // cast
   const castBox = document.createElement('div'); castBox.className = 'cc-sec'; wrap.appendChild(castBox);
   const renderCast = () => {
@@ -9574,6 +9579,7 @@ function loop() {
     if (state !== 'loadingCh') { updateAnim(dt); if (ex.mode === 'world') worldActionPose(dt); else { syncHeld(); hideSuitGear(); } jamesTick(dt); updateParticles(dt); exploreCamera(dt); if (ex.mode === 'world') updateWorldScene(dt); }
     sfx.music(0); renderer.render(ex.mode === 'world' ? wScene : aScene, camera); return;
   }
+  if (state === 'advStudio' || state === 'advPlay') { advTick(dt); sfx.music(.6); renderer.render(adv.scene, camera); return; }
   if (state === 'cc' || state === 'pedia') { ccTick(dt); sfx.music(.85); renderer.render(ccScene, ccCam); return; }
   if (state === 'title') updateWander(dt);
   menuTick(dt);
@@ -9603,6 +9609,523 @@ try {
 } catch { setupModel(fallbackAstronaut()); ready(); }
 renderer.setAnimationLoop(loop);
 
+/* ============ ADVENTURES: build a world, then play it as anyone (Spore Galactic Adventures style) ============
+   Everything lives inside the adventure: terrain you sculpt, what you place, and what happens when you play.
+   Playing never gives XP, never touches your wanderer's save, and never changes the planet anywhere else. */
+const ADV_SIZE = 200, ADV_N = 100, ADV_CELL = ADV_SIZE / ADV_N; // sculpt grid: 101 x 101 points, 2 m apart
+const ADV_PROPS = { rock: 'Rock', tree: 'Tree', crate: 'Crate', crystal: 'Crystal', pillar: 'Ruined pillar', beacon: 'Beacon', tower: 'Tower' };
+const ADV_DMG = { easy: 4, normal: 7, hard: 11, brutal: 16 };
+const adv = { scene: null, a: null, P: null, mode: null, G: null, keys: new Set(), cam: { yaw: .6, pitch: .55, dist: 60, tx: 0, tz: 0 }, tool: 'raise', brush: { r: 8, s: 1 }, sel: {}, ents: [], dirty: false, hero: null, drag: null, test: false };
+const advEl = (() => {
+  const css = document.createElement('style');
+  css.textContent = `
+#adv{position:fixed;inset:0;z-index:30;pointer-events:none;font-family:Inter,system-ui,sans-serif;color:#e6e9f0}
+#adv.hidden{display:none}
+#adv .ap{pointer-events:auto;background:rgba(8,12,18,.82);border:1px solid rgba(230,233,240,.14);border-radius:8px;backdrop-filter:blur(6px)}
+#advTop{position:absolute;left:16px;top:14px;padding:12px 14px;max-width:340px}
+#advTop small{display:block;font-size:10px;letter-spacing:.2em;color:#9aa0a8;text-transform:uppercase}
+#advTop b{display:block;font-size:15px;letter-spacing:.08em;margin:3px 0 8px}
+.adv-act{font-size:12px;color:#9aa0a8;padding:3px 0 3px 18px;position:relative}
+.adv-act:before{content:'';position:absolute;left:2px;top:7px;width:8px;height:8px;border:1px solid #9aa0a8;border-radius:2px}
+.adv-act.on{color:#ffc94a}.adv-act.on:before{border-color:#ffc94a}
+.adv-act.done{color:#7fe0a0;text-decoration:line-through}.adv-act.done:before{background:#7fe0a0;border-color:#7fe0a0}
+#advHp{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);width:260px;height:8px;border-radius:5px;background:rgba(0,0,0,.5);overflow:hidden;pointer-events:none}
+#advHp i{display:block;height:100%;background:linear-gradient(90deg,#ff5a4e,#ff9f86);transition:width .2s}
+#advPrompt{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);padding:7px 12px;font-size:13px;display:none}
+#advPrompt kbd{background:#e6e9f0;color:#0b0f15;border-radius:3px;padding:1px 6px;margin-right:8px;font-weight:700}
+#advDlg{position:absolute;left:50%;bottom:70px;transform:translateX(-50%);width:min(640px,90vw);padding:14px 18px;display:none;cursor:pointer}
+#advDlg small{font-size:10px;letter-spacing:.2em;color:#ffc94a;text-transform:uppercase}#advDlg p{margin:6px 0 0;font-size:15px;line-height:1.45}
+#advStory{position:absolute;left:50%;top:18%;transform:translateX(-50%);width:min(560px,88vw);padding:18px 22px;display:none;text-align:center;cursor:pointer}
+#advStory small{font-size:10px;letter-spacing:.24em;color:#ffc94a;text-transform:uppercase}#advStory b{display:block;font-size:20px;letter-spacing:.1em;margin:6px 0}#advStory p{margin:0;font-size:14px;color:#cfd6e6;line-height:1.5}
+#advMsg{position:absolute;left:50%;top:14px;transform:translateX(-50%);font-size:12px;letter-spacing:.06em;padding:6px 12px;display:none}
+#advTools{position:absolute;right:14px;top:14px;width:250px;padding:12px;max-height:calc(100vh - 28px);overflow:auto}
+#advTools h5{margin:10px 0 6px;font-size:10px;letter-spacing:.2em;color:#9aa0a8;text-transform:uppercase}
+#advTools .tg{display:flex;flex-wrap:wrap;gap:5px}
+#advTools button{font:inherit;font-size:12px;color:#e6e9f0;background:rgba(230,233,240,.08);border:1px solid rgba(230,233,240,.16);border-radius:5px;padding:6px 8px;cursor:pointer}
+#advTools button.on{background:#ffc94a;color:#0b0f15;border-color:#ffc94a}
+#advTools label{display:block;font-size:11px;color:#9aa0a8;margin-top:6px}#advTools input[type=range]{width:100%}
+#advTools select{width:100%;font:inherit;font-size:12px;background:#0f1520;color:#e6e9f0;border:1px solid rgba(230,233,240,.2);border-radius:4px;padding:4px;margin-top:4px}
+#advTools .row{display:flex;gap:6px;margin-top:12px}#advTools .row button{flex:1;padding:8px}
+#advTools .pri{background:#e6e9f0;color:#0b0f15}
+#advHelp{position:absolute;left:16px;bottom:14px;font-size:11px;color:#9aa0a8;padding:8px 10px;max-width:420px;line-height:1.5}
+#advPick,#advEnd{position:absolute;inset:0;display:none;place-items:center;background:rgba(4,6,10,.72);pointer-events:auto}
+#advPick .ap,#advEnd .ap{width:min(560px,92vw);max-height:80vh;overflow:auto;padding:18px 20px}
+#advPick h3,#advEnd h3{margin:0 0 4px;letter-spacing:.12em}#advPick p,#advEnd p{color:#9aa0a8;font-size:13px;margin:0 0 12px}
+#advPick .sub{font-size:10px;letter-spacing:.2em;color:#9aa0a8;text-transform:uppercase;margin:12px 0 6px}
+#advPick button.who{display:block;width:100%;text-align:left;font:inherit;color:#e6e9f0;background:rgba(230,233,240,.06);border:1px solid rgba(230,233,240,.12);border-radius:6px;padding:9px 12px;margin:4px 0;cursor:pointer}
+#advPick button.who small{display:block;color:#9aa0a8;font-size:11px}
+#advPick button.who:hover{border-color:#ffc94a}
+#advEnd .row{display:flex;gap:8px;margin-top:10px}#advEnd .row button,#advPick .row button{flex:1;font:inherit;padding:10px;border-radius:6px;border:1px solid rgba(230,233,240,.2);background:rgba(230,233,240,.08);color:#e6e9f0;cursor:pointer}
+#advEnd .row button.pri{background:#e6e9f0;color:#0b0f15}`;
+  document.head.appendChild(css);
+  const d = document.createElement('div'); d.id = 'adv'; d.className = 'hidden';
+  d.innerHTML = `<div id="advTop" class="ap"></div><div id="advHp"><i></i></div><div id="advPrompt" class="ap"></div>
+    <div id="advDlg" class="ap"><small></small><p></p></div><div id="advStory" class="ap"><small></small><b></b><p></p></div>
+    <div id="advMsg" class="ap"></div><div id="advTools" class="ap"></div><div id="advHelp" class="ap"></div>
+    <div id="advPick"><div class="ap"></div></div><div id="advEnd"><div class="ap"></div></div>`;
+  document.body.appendChild(d);
+  return id => d.querySelector(id);
+})();
+let advMsgT = 0;
+function advMsg(t, col = '#e6e9f0') { const m = advEl('#advMsg'); m.textContent = t; m.style.color = col; m.style.display = 'block'; clearTimeout(advMsgT); advMsgT = setTimeout(() => { m.style.display = 'none'; }, 2600); }
+
+// ---- the ground: the planet's own noise, plus whatever you sculpted ----
+function advWorldOf(a) { if (!a.world) a.world = { g: {}, objs: [], start: { x: 0, z: 0 } }; return a.world; }
+function advBase(x, z) {
+  const P = adv.P;
+  if (P.type === 'gas') return Math.hypot(x, z) < 72 ? 0 : -60; // a cloud-city deck, and a long drop into the clouds
+  const sd = P.seed | 0, f = .006 + P.rough * .01;
+  let h = (f3(x * f, 0, z * f, sd, 4) - .5) * (6 + P.mount * 34);
+  h += (f3(x * f * 4, 3, z * f * 4, sd + 9, 3) - .5) * (1 + P.mount * 3);
+  return h;
+}
+function advSculpt(x, z) {
+  const G = adv.G, fx = (x + ADV_SIZE / 2) / ADV_CELL, fz = (z + ADV_SIZE / 2) / ADV_CELL;
+  const ix = clamp(Math.floor(fx), 0, ADV_N - 1), iz = clamp(Math.floor(fz), 0, ADV_N - 1), tx = clamp(fx - ix, 0, 1), tz = clamp(fz - iz, 0, 1), W = ADV_N + 1;
+  const a = G[iz * W + ix], b = G[iz * W + ix + 1], c = G[(iz + 1) * W + ix], d = G[(iz + 1) * W + ix + 1];
+  return lerp(lerp(a, b, tx), lerp(c, d, tx), tz);
+}
+const advH = (x, z) => advBase(x, z) + advSculpt(x, z);
+const advWaterY = () => adv.P.type !== 'gas' && adv.P.sea > .05 ? lerp(-14, 6, adv.P.sea) : -999;
+function advTerrainColors() {
+  const T = adv.terrain, pos = T.geometry.attributes.position, col = T.geometry.attributes.color, P = adv.P, wy = advWaterY();
+  const C1 = new THREE.Color(P.type === 'gas' ? '#7a8088' : P.c1), C2 = new THREE.Color(P.type === 'gas' ? '#a8b0b8' : P.c2), C3 = new THREE.Color(P.type === 'gas' ? '#d8dde2' : P.c3), tc = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i), t = clamp((y + 6) / 26, 0, 1);
+    tc.copy(C1).lerp(C2, smooth(.15, .6, t)).lerp(C3, smooth(.62, .95, t));
+    if (y < wy + .6) tc.lerp(new THREE.Color(P.c2), .5);
+    col.setXYZ(i, tc.r, tc.g, tc.b);
+  }
+  col.needsUpdate = true;
+}
+function advRebuildTerrain(x0, z0, r) {
+  const T = adv.terrain, pos = T.geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    if (r != null && (Math.abs(x - x0) > r + 3 || Math.abs(z - z0) > r + 3)) continue;
+    pos.setY(i, advH(x, z));
+  }
+  pos.needsUpdate = true; T.geometry.computeVertexNormals(); T.geometry.computeBoundingSphere(); advTerrainColors();
+}
+function advBuildScene() {
+  const P = adv.P, S = new THREE.Scene();
+  const airless = P.atmoK < .08, sky = airless ? new THREE.Color(0x05070c) : new THREE.Color(P.atmo).multiplyScalar(P.type === 'gas' ? .85 : .7);
+  S.background = sky; S.fog = new THREE.Fog(sky, airless ? 160 : 70, airless ? 420 : 240);
+  S.add(new THREE.HemisphereLight(airless ? 0x8890a0 : new THREE.Color(P.atmo).getHex(), 0x2a2420, airless ? .55 : .9));
+  const sun = new THREE.DirectionalLight(0xfff2dc, 2.4); sun.position.set(60, 90, 40); sun.castShadow = true;
+  Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, far: 260 }); sun.shadow.mapSize.set(2048, 2048); S.add(sun); S.add(sun.target); adv.sun = sun;
+  // stars for thin skies
+  if (airless || P.type === 'ice') {
+    const g = new THREE.BufferGeometry(), n = 900, arr = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { const u = Math.random() * 2 - 1, t = Math.random() * 6.28, r = 380; arr[i * 3] = Math.sqrt(1 - u * u) * Math.cos(t) * r; arr[i * 3 + 1] = Math.abs(u) * r; arr[i * 3 + 2] = Math.sqrt(1 - u * u) * Math.sin(t) * r; }
+    g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+    S.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 1.4, sizeAttenuation: false, fog: false })));
+  }
+  const geo = new THREE.PlaneGeometry(ADV_SIZE, ADV_SIZE, ADV_N * 2, ADV_N * 2); geo.rotateX(-Math.PI / 2);
+  geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 3), 3));
+  adv.terrain = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .92, metalness: P.type === 'gas' ? .4 : 0, flatShading: false }));
+  adv.terrain.receiveShadow = true; S.add(adv.terrain);
+  adv.scene = S; advRebuildTerrain();
+  const wy = advWaterY();
+  if (wy > -900) { const w = new THREE.Mesh(new THREE.PlaneGeometry(ADV_SIZE * 3, ADV_SIZE * 3), new THREE.MeshStandardMaterial({ color: P.water, transparent: true, opacity: .82, roughness: .2, metalness: .2 })); w.rotation.x = -Math.PI / 2; w.position.y = wy; S.add(w); }
+  if (P.type === 'gas') {
+    // the cloud sea below, and the city's own skyline round the edge of the deck
+    const cl = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), new THREE.MeshStandardMaterial({ color: new THREE.Color(P.c2), emissive: new THREE.Color(P.c1), emissiveIntensity: .25, roughness: 1 })); cl.rotation.x = -Math.PI / 2; cl.position.y = -28; S.add(cl);
+    const m = new THREE.MeshStandardMaterial({ color: 0xc8d0d8, metalness: .6, roughness: .35 }), gl = new THREE.MeshStandardMaterial({ color: 0x9fd8ff, emissive: 0x3a7aaa, emissiveIntensity: .8 });
+    for (let i = 0; i < 18; i++) {
+      const a = i / 18 * Math.PI * 2, r = 62 + (i % 3) * 3, h = 10 + ((i * 37) % 22);
+      const t = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.2, h, 10), m); t.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r); t.castShadow = true; S.add(t);
+      const top = new THREE.Mesh(new THREE.SphereGeometry(3, 12, 8), gl); top.position.set(t.position.x, h + 1, t.position.z); S.add(top);
+    }
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(72, .5, 6, 64), m); rim.rotation.x = Math.PI / 2; rim.position.y = .3; S.add(rim);
+  }
+  adv.entRoot = new THREE.Group(); S.add(adv.entRoot);
+}
+// ---- things you can place ----
+function advPropMesh(t) {
+  const g = new THREE.Group(), P = adv.P, M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .85 }, o));
+  const add = (geo, m, y = 0) => { const o = new THREE.Mesh(geo, m); o.position.y = y; o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+  if (t === 'rock') add(new THREE.DodecahedronGeometry(1.2, 0), M(new THREE.Color(P.c3 || '#888').lerp(new THREE.Color(0x777777), .6)), .6).scale.set(1, .7, 1.1);
+  else if (t === 'tree') { add(new THREE.CylinderGeometry(.18, .26, 3, 7), M(0x5a3f26), 1.5); add(new THREE.ConeGeometry(1.4, 3.4, 9), M(new THREE.Color(P.c1 || '#2f6b3a')), 4.2); }
+  else if (t === 'crate') add(new THREE.BoxGeometry(1.1, 1.1, 1.1), M(0x8a6a45), .55);
+  else if (t === 'crystal') add(new THREE.OctahedronGeometry(.8, 0), M(0x7fd8ff, { emissive: 0x2a8acc, emissiveIntensity: 1, roughness: .2 }), 1).scale.y = 1.8;
+  else if (t === 'pillar') { add(new THREE.CylinderGeometry(.5, .6, 4, 10), M(0xc8bea8), 2); add(new THREE.BoxGeometry(1.5, .4, 1.5), M(0xb8ae98), 4.2); }
+  else if (t === 'beacon') { add(new THREE.CylinderGeometry(.08, .1, 5, 6), M(0x8a8f99, { metalness: .6 }), 2.5); add(new THREE.SphereGeometry(.3, 12, 8), M(0xff6b5e, { emissive: 0xff3b2f, emissiveIntensity: 1.6 }), 5.1); }
+  else if (t === 'tower') { add(new THREE.CylinderGeometry(1.6, 2.2, 9, 10), M(0xc8d0d8, { metalness: .6, roughness: .35 }), 4.5); add(new THREE.SphereGeometry(1.8, 12, 8), M(0x9fd8ff, { emissive: 0x3a7aaa, emissiveIntensity: .8 }), 9.6); }
+  else if (t === 'item') { const o = add(new THREE.IcosahedronGeometry(.35, 1), M(0xffc94a, { emissive: 0xffa020, emissiveIntensity: 1.4, roughness: .3 }), 1); g.userData.spin = o; }
+  else if (t === 'start') { add(new THREE.CylinderGeometry(1.2, 1.2, .08, 24), M(0x7fe0a0, { emissive: 0x2a8a4a, emissiveIntensity: .8 }), .05); add(new THREE.ConeGeometry(.4, .9, 4), M(0x7fe0a0), 1.6).rotation.x = Math.PI; }
+  else if (t === 'marker') { add(new THREE.CylinderGeometry(1.6, 1.6, .06, 28), M(0xffc94a, { emissive: 0xffa020, emissiveIntensity: .6, transparent: true, opacity: .7 }), .04); add(new THREE.CylinderGeometry(.06, .06, 4, 6), M(0xffc94a, { emissive: 0xffa020, emissiveIntensity: 1 }), 2); }
+  return g;
+}
+// cast members and creatures: a rigged character, one of your species, or a plain humanoid
+async function advCharModel(spec, h = 1.9) {
+  if (spec && spec.startsWith('char:')) { const ch = charById(spec.slice(5)); if (ch) { const R = await loadCharRig(ch, ch.height || h); return { root: R.root, R }; } }
+  const sp = ccData.species.find(s => s.id === spec);
+  if (sp) { const m = buildSpecies(sp); return { root: m, sp: m }; }
+  const preset = SP_NEW(); Object.assign(preset, { legs: 2, legLen: .85, bodyLen: .7, girth: .26, arms: 2, neck: .08, head: .17, snout: 0, eyes: 2, eyeSize: .03, ears: 'round', tail: 0, pattern: 'plain' });
+  const m = buildSpecies(preset); return { root: m, sp: m };
+}
+async function advSpawnObj(o, play) {
+  let ent = { o, kind: o.k, x: o.x, z: o.z, rot: o.r || 0, home: [o.x, o.z], hp: 0, maxhp: 0, hostile: false, dead: 0, cd: 0, t: 0 };
+  if (o.k === 'cast') {
+    const c = adv.a.cast[o.ci]; if (!c) return null;
+    const m = await advCharModel(c.species); Object.assign(ent, m, { name: c.name || 'Stranger', line: c.line || '', role: c.role, hostile: c.role === 'enemy', hp: c.role === 'enemy' ? 60 : 40 });
+  } else if (o.k === 'creature') {
+    const m = await advCharModel(o.sp || ''); Object.assign(ent, m, { name: (ccData.species.find(s => s.id === o.sp) || { name: 'Creature' }).name, hostile: o.hostile !== false, hp: 30 });
+  } else { ent.root = advPropMesh(o.k === 'prop' ? o.t : o.k); ent.name = o.k === 'prop' ? ADV_PROPS[o.t] : o.k; }
+  ent.maxhp = ent.hp;
+  if (!play && (o.k === 'marker')) ent.label = o.act;
+  ent.root.position.set(o.x, advH(o.x, o.z), o.z); ent.root.rotation.y = ent.rot;
+  if (o.k === 'marker' || o.k === 'start') ent.root.visible = !play || o.k === 'marker';
+  adv.entRoot.add(ent.root); adv.ents.push(ent); return ent;
+}
+async function advSpawnAll(play) {
+  for (const e of adv.ents) adv.entRoot.remove(e.root);
+  adv.ents = [];
+  const W = advWorldOf(adv.a);
+  await advSpawnObj({ k: 'start', x: W.start.x, z: W.start.z }, play);
+  for (const o of W.objs) await advSpawnObj(o, play);
+}
+
+// ---- opening the studio / starting play ----
+async function advOpen(a, mode) {
+  adv.a = JSON.parse(JSON.stringify(a)); adv.src = a; adv.P = planetById(a.planet); adv.mode = mode; adv.dirty = false;
+  const W = advWorldOf(adv.a);
+  adv.G = new Float32Array((ADV_N + 1) * (ADV_N + 1)); for (const k in W.g) adv.G[+k] = W.g[k];
+  advBuildScene();
+  show(ccUI.root, false); show(ui.title, false); $('#adv').classList.remove('hidden');
+  if (mode === 'studio') await advStudio(); else advPick();
+}
+function advClose() {
+  adv.mode = null; state = 'cc'; $('#adv').classList.add('hidden');
+  for (const id of ['#advPick', '#advEnd']) advEl(id).style.display = 'none';
+  show(ccUI.root, true); ccOpenEditor(cc.cur && cc.cur.id === adv.src.id ? cc.cur : adv.src);
+  adv.scene = null; adv.ents = []; adv.hero = null;
+}
+// ---- STUDIO ----
+async function advStudio() {
+  state = 'advStudio'; adv.mode = 'studio'; adv.test = false;
+  advEl('#advTop').style.display = 'none'; advEl('#advHp').style.display = 'none'; advEl('#advPrompt').style.display = 'none';
+  advEl('#advTools').style.display = 'block'; advEl('#advHelp').style.display = 'block';
+  advEl('#advHelp').innerHTML = '<b>Left click / drag</b> use the tool · <b>Right drag</b> turn the camera · <b>Wheel</b> zoom · <b>WASD</b> move the camera · <b>Esc</b> leave';
+  await advSpawnAll(false);
+  adv.cam.tx = advWorldOf(adv.a).start.x; adv.cam.tz = advWorldOf(adv.a).start.z; adv.cam.dist = 60;
+  advToolsUI();
+}
+function advToolsUI() {
+  const a = adv.a, T = advEl('#advTools'), sel = adv.sel;
+  const tb = (id, n) => `<button data-tool="${id}" class="${adv.tool === id ? 'on' : ''}">${n}</button>`;
+  const opts = (arr, cur) => arr.map(([v, n]) => `<option value="${ccEsc(v)}"${v === cur ? ' selected' : ''}>${ccEsc(n)}</option>`).join('');
+  let extra = '';
+  if (['raise', 'lower', 'smooth', 'flatten'].includes(adv.tool)) extra = `<label>Brush size · ${adv.brush.r} m</label><input type="range" min="2" max="24" step="1" value="${adv.brush.r}" data-b="r"><label>Strength · ${adv.brush.s.toFixed(1)}</label><input type="range" min=".2" max="3" step=".1" value="${adv.brush.s}" data-b="s">`;
+  if (adv.tool === 'cast') extra = a.cast.length ? `<label>Who</label><select data-s="ci">${opts(a.cast.map((c, i) => [String(i), `${c.name || 'Character'} · ${c.role}`]), String(sel.ci || 0))}</select><label style="margin-top:6px">Placing them again moves them.</label>` : '<label>Add characters to the cast in the adventure editor first.</label>';
+  if (adv.tool === 'creature') extra = `<label>Species</label><select data-s="sp">${opts([['', 'Plain critter'], ...ccData.species.map(s => [s.id, s.name])], sel.sp || '')}</select><label>Behaviour</label><select data-s="hostile">${opts([['1', 'Hostile · attacks you'], ['0', 'Peaceful']], sel.hostile || '1')}</select>`;
+  if (adv.tool === 'prop') extra = `<label>Prop</label><select data-s="t">${opts(Object.entries(ADV_PROPS), sel.t || 'rock')}</select>`;
+  if (adv.tool === 'marker') extra = `<label>For act</label><select data-s="act">${opts(a.acts.map((t, i) => [String(i), `${i + 1}. ${t.title || 'Act'} · ${t.goal}`]), String(sel.act || 0))}</select><label>Reach and explore acts need a marker. Placing it again moves it.</label>`;
+  if (adv.tool === 'item') extra = '<label>Collectibles count toward “Collect items” acts.</label>';
+  T.innerHTML = `<b style="letter-spacing:.1em">${ccEsc(a.name)}</b><div style="font-size:11px;color:#9aa0a8">${ccEsc(adv.P.name)} · world studio</div>
+    <h5>Landscape</h5><div class="tg">${tb('raise', 'Raise')}${tb('lower', 'Lower')}${tb('smooth', 'Smooth')}${tb('flatten', 'Flatten')}</div>
+    <h5>Place</h5><div class="tg">${tb('start', 'Start point')}${tb('cast', 'Cast member')}${tb('creature', 'Creature')}${tb('prop', 'Prop')}${tb('item', 'Collectible')}${tb('marker', 'Act marker')}</div>
+    <h5>Edit</h5><div class="tg">${tb('erase', 'Erase')}<button data-do="reset">Reset landscape</button></div>${extra}
+    <div class="row"><button data-do="test">Test play</button><button class="pri" data-do="save">Save${adv.dirty ? ' •' : ''}</button></div><div class="row"><button data-do="exit">Back to editor</button></div>`;
+  T.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click', () => { adv.tool = b.dataset.tool; sfx.click(); advToolsUI(); }));
+  T.querySelectorAll('[data-b]').forEach(i => i.addEventListener('input', () => { adv.brush[i.dataset.b] = +i.value; advToolsUI(); }));
+  T.querySelectorAll('[data-s]').forEach(i => i.addEventListener('change', () => { adv.sel[i.dataset.s] = i.value; }));
+  T.querySelectorAll('[data-do]').forEach(b => b.addEventListener('click', () => advDo(b.dataset.do)));
+}
+function advStoreWorld() {
+  const W = advWorldOf(adv.a), g = {};
+  for (let i = 0; i < adv.G.length; i++) if (Math.abs(adv.G[i]) > .02) g[i] = Math.round(adv.G[i] * 100) / 100;
+  W.g = g;
+}
+function advDo(what) {
+  sfx.click();
+  if (what === 'save') {
+    advStoreWorld();
+    const arr = ccData.adventures, copy = JSON.parse(JSON.stringify(adv.a)), i = arr.findIndex(x => x.id === copy.id);
+    copy.updated = Date.now(); if (i >= 0) arr[i] = copy; else arr.push(copy);
+    ccStore(); adv.src = copy; if (cc.cur && cc.cur.id === copy.id) cc.cur = JSON.parse(JSON.stringify(copy));
+    adv.dirty = false; advToolsUI(); advMsg('Saved', '#7fe0a0'); sfx.chime(); return;
+  }
+  if (what === 'exit') { if (adv.dirty && adv.arm !== 'exit') { adv.arm = 'exit'; advMsg('Unsaved changes · press Back again to discard them', '#ffb36e'); return; } adv.arm = null; advClose(); return; }
+  if (what === 'reset') { if (adv.arm !== 'reset') { adv.arm = 'reset'; advMsg('Press Reset again to flatten every change to the landscape', '#ffb36e'); return; } adv.arm = null; adv.G.fill(0); advRebuildTerrain(); advRefit(); adv.dirty = true; advToolsUI(); return; }
+  if (what === 'test') { advStoreWorld(); adv.test = true; advPick(); }
+}
+function advRefit() { for (const e of adv.ents) e.root.position.y = advH(e.x, e.z); }
+function advPointer(e) {
+  const r = renderer.domElement.getBoundingClientRect(), v = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  const rc = new THREE.Raycaster(); rc.setFromCamera(v, camera);
+  const hit = rc.intersectObject(adv.terrain, false)[0]; return hit ? hit.point : null;
+}
+function advBrush(p, dt) {
+  const r = adv.brush.r, s = adv.brush.s * dt * 10, W = ADV_N + 1, tool = adv.tool;
+  const i0 = clamp(Math.floor((p.x - r + ADV_SIZE / 2) / ADV_CELL), 0, ADV_N), i1 = clamp(Math.ceil((p.x + r + ADV_SIZE / 2) / ADV_CELL), 0, ADV_N);
+  const j0 = clamp(Math.floor((p.z - r + ADV_SIZE / 2) / ADV_CELL), 0, ADV_N), j1 = clamp(Math.ceil((p.z + r + ADV_SIZE / 2) / ADV_CELL), 0, ADV_N);
+  const target = advH(p.x, p.z);
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    const x = -ADV_SIZE / 2 + i * ADV_CELL, z = -ADV_SIZE / 2 + j * ADV_CELL, d = Math.hypot(x - p.x, z - p.z); if (d > r) continue;
+    const f = smooth(r, r * .25, d), k = j * W + i;
+    if (tool === 'raise') adv.G[k] += s * f;
+    else if (tool === 'lower') adv.G[k] -= s * f;
+    else if (tool === 'flatten') adv.G[k] += (target - (advBase(x, z) + adv.G[k])) * Math.min(1, f * dt * 4);
+    else if (tool === 'smooth') { let n = 0, sum = 0; for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ii = i + a, jj = j + b; if (ii < 0 || jj < 0 || ii > ADV_N || jj > ADV_N) continue; sum += adv.G[jj * W + ii] + advBase(-ADV_SIZE / 2 + ii * ADV_CELL, -ADV_SIZE / 2 + jj * ADV_CELL); n++; } adv.G[k] += (sum / n - (advBase(x, z) + adv.G[k])) * Math.min(1, f * dt * 5); }
+    adv.G[k] = clamp(adv.G[k], -40, 60);
+  }
+  advRebuildTerrain(p.x, p.z, r); advRefit(); adv.dirty = true;
+}
+async function advPlace(p) {
+  const W = advWorldOf(adv.a), tool = adv.tool, sel = adv.sel, x = Math.round(p.x * 10) / 10, z = Math.round(p.z * 10) / 10;
+  if (Math.abs(x) > ADV_SIZE / 2 - 2 || Math.abs(z) > ADV_SIZE / 2 - 2) return;
+  if (tool === 'erase') {
+    let best = -1, bd = 3.5; W.objs.forEach((o, i) => { const d = Math.hypot(o.x - x, o.z - z); if (d < bd) { bd = d; best = i; } });
+    if (best < 0) return; W.objs.splice(best, 1);
+  } else if (tool === 'start') W.start = { x, z };
+  else if (tool === 'cast') { if (!adv.a.cast.length) return; const ci = +(sel.ci || 0); W.objs = W.objs.filter(o => !(o.k === 'cast' && o.ci === ci)); W.objs.push({ k: 'cast', ci, x, z, r: Math.random() * 6.28 }); }
+  else if (tool === 'creature') W.objs.push({ k: 'creature', sp: sel.sp || '', hostile: (sel.hostile || '1') === '1', x, z, r: Math.random() * 6.28 });
+  else if (tool === 'prop') W.objs.push({ k: 'prop', t: sel.t || 'rock', x, z, r: Math.random() * 6.28 });
+  else if (tool === 'item') W.objs.push({ k: 'item', x, z });
+  else if (tool === 'marker') { if (!adv.a.acts.length) return; const act = +(sel.act || 0); W.objs = W.objs.filter(o => !(o.k === 'marker' && o.act === act)); W.objs.push({ k: 'marker', act, x, z }); }
+  else return;
+  sfx.click(); adv.dirty = true; await advSpawnAll(false); advToolsUI();
+}
+
+// ---- PLAY: choose who you are ----
+function advPick() {
+  const box = advEl('#advPick'), list = [];
+  if (wanderer && roster.length) list.push(['me', `${wanderer.name} · you`, 'Your wanderer, as they look now']);
+  for (const c of CHAR_BUILTIN) list.push(['char:' + c.id, c.name, `${c.game} · ${c.title}`]);
+  for (const c of ccData.characters) list.push(['char:' + c.id, c.name, 'Your upload']);
+  for (const L of companionsNow().filter(L => !pdEntryLocked(L, 'companions') && L.tag)) list.push(['comp:' + L.id, L.name, `Companion · ${L.title}`]);
+  box.querySelector('.ap').innerHTML = `<h3>PLAY AS</h3><p>Anyone can star in your adventure. Nothing here gives XP or changes your save, and the world resets every time you play.</p>` +
+    list.map(([v, n, s]) => `<button class="who" data-v="${ccEsc(v)}">${ccEsc(n)}<small>${ccEsc(s)}</small></button>`).join('') +
+    `<div class="row"><button data-x="1">Cancel</button></div>`;
+  box.style.display = 'grid';
+  box.querySelectorAll('[data-v]').forEach(b => b.addEventListener('click', () => { sfx.click(); box.style.display = 'none'; advPlay(b.dataset.v); }));
+  box.querySelector('[data-x]').addEventListener('click', () => { sfx.click(); box.style.display = 'none'; if (adv.test) { adv.test = false; return; } advClose(); });
+}
+async function advHeroModel(who) {
+  if (who === 'me') { const R = autoRig(SkeletonUtils.clone(inner), (SPECIES[spOf(wanderer)] && SPECIES[spOf(wanderer)].height) || 1.85); armRig(R, 'none'); return R; }
+  if (who.startsWith('char:')) { const ch = charById(who.slice(5)); return loadCharRig(ch, ch.height || 2); }
+  const L = COMPANIONS.find(c => c.id === who.slice(5)), el = document.getElementById(L.tag);
+  const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  const sc = await parseGlb(u8.buffer); if (L.mod === 'kizna') feminiseRobot(sc);
+  const R = autoRig(SkeletonUtils.clone(sc), L.h || 1.9); armRig(R, 'none'); return R;
+}
+async function advPlay(who) {
+  adv.lastWho = who; advMsg('Landing…');
+  if (!adv.test) advStoreWorld();
+  await advSpawnAll(true);
+  let R = null; try { R = await advHeroModel(who); } catch (e) { console.warn('hero', e); }
+  if (!R) { advMsg('That character could not be loaded', '#ff8f86'); advPick(); return; }
+  R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  const W = advWorldOf(adv.a);
+  adv.hero = { R, x: W.start.x, z: W.start.z, y: advH(W.start.x, W.start.z), vy: 0, rot: 0, hp: 100, hurtT: 0, atkT: 0, ground: true };
+  adv.scene.add(R.root);
+  Object.assign(adv, { act: 0, actT: 0, kills: 0, got: 0, talked: {}, over: false, surviveT: 0, exploreT: 0 });
+  adv.cam.yaw = 0; adv.cam.pitch = .38; adv.cam.dist = 8;
+  state = 'advPlay'; adv.mode = 'play';
+  advEl('#advTools').style.display = 'none'; advEl('#advTop').style.display = 'block'; advEl('#advHp').style.display = 'block';
+  advEl('#advHelp').style.display = 'block'; advEl('#advHelp').innerHTML = '<b>WASD</b> move · <b>Shift</b> sprint · <b>Space</b> jump · <b>F / click</b> attack · <b>E</b> talk · <b>Drag</b> turn the camera · <b>Esc</b> leave';
+  advEndHide(); advStartAct();
+}
+function advEndHide() { advEl('#advEnd').style.display = 'none'; }
+function advActs() { return adv.a.acts.length ? adv.a.acts : [{ title: 'Explore', goal: 'explore', target: 'Anywhere', count: 1, text: '' }]; }
+function advTargetName(t) { return (t.target || '').trim().toLowerCase(); }
+function advStartAct() {
+  const acts = advActs(), t = acts[adv.act];
+  adv.actT = 0; adv.surviveT = 0; adv.exploreT = 0; adv.actKills0 = adv.kills; adv.actGot0 = adv.got;
+  advTopUI();
+  if (!t) return;
+  const S = advEl('#advStory'); S.querySelector('small').textContent = `Act ${adv.act + 1} of ${acts.length}`; S.querySelector('b').textContent = (t.title || 'Act').toUpperCase(); S.querySelector('p').textContent = t.text || advGoalText(t);
+  S.style.display = 'block'; clearTimeout(adv.storyT); adv.storyT = setTimeout(() => { S.style.display = 'none'; }, 5200);
+}
+function advGoalText(t) {
+  const n = Math.max(1, t.count | 0);
+  return { reach: `Reach ${t.target || 'the marker'}`, explore: `Explore ${t.target || 'the area'}`, talk: `Talk to ${t.target || 'someone'}`, collect: `Collect ${n} ${t.target || 'items'}`, defeat: advCastByName(t) ? `Defeat ${t.target}` : `Defeat ${n} ${t.target || 'creatures'}`, survive: `Survive for ${Math.max(10, n * 10)} seconds` }[t.goal] || t.target;
+}
+function advCastByName(t) { const n = advTargetName(t); return n ? adv.ents.find(e => e.kind === 'cast' && (e.name || '').toLowerCase() === n) : null; }
+function advTopUI() {
+  const acts = advActs();
+  advEl('#advTop').innerHTML = `<small>${ccEsc(adv.P.name)} · adventure</small><b>${ccEsc(adv.a.name)}</b>` + acts.map((t, i) => {
+    const cur = i === adv.act; let extra = '';
+    if (cur && t.goal === 'collect') extra = ` · ${adv.got - adv.actGot0}/${Math.max(1, t.count | 0)}`;
+    if (cur && t.goal === 'defeat' && !advCastByName(t)) extra = ` · ${adv.kills - adv.actKills0}/${Math.max(1, t.count | 0)}`;
+    if (cur && t.goal === 'survive') extra = ` · ${Math.max(0, Math.ceil(Math.max(10, (t.count | 0) * 10) - adv.surviveT))} s`;
+    return `<div class="adv-act${i < adv.act ? ' done' : cur ? ' on' : ''}">${ccEsc(advGoalText(t))}${extra}</div>`;
+  }).join('');
+}
+function advMarkerFor(i) { return adv.ents.find(e => e.kind === 'marker' && e.o.act === i); }
+function advActDone() {
+  sfx.chime(); adv.act++;
+  if (adv.act >= advActs().length) { advFinish(true); return; }
+  advStartAct();
+}
+function advFinish(won) {
+  adv.over = true; advTopUI();
+  const box = advEl('#advEnd');
+  box.querySelector('.ap').innerHTML = won
+    ? `<h3>ADVENTURE COMPLETE</h3><p>${ccEsc(adv.a.name)} on ${ccEsc(adv.P.name)}. Adventures are just for fun: no XP, and nothing carries over to your story.</p><div class="row"><button class="pri" data-r="again">Play again</button><button data-r="exit">${adv.test ? 'Back to studio' : 'Exit'}</button></div>`
+    : `<h3>YOU WERE DEFEATED</h3><p>The adventure resets when you try again.</p><div class="row"><button class="pri" data-r="again">Try again</button><button data-r="exit">${adv.test ? 'Back to studio' : 'Exit'}</button></div>`;
+  box.style.display = 'grid';
+  box.querySelector('[data-r="again"]').addEventListener('click', () => { sfx.click(); advEndHide(); advRestart(); });
+  box.querySelector('[data-r="exit"]').addEventListener('click', () => { sfx.click(); advEndHide(); advLeavePlay(); });
+}
+async function advRestart() { if (adv.hero) adv.scene.remove(adv.hero.R.root); const who = adv.lastWho; adv.hero = null; await advPlay(who); }
+function advLeavePlay() {
+  if (adv.hero) adv.scene.remove(adv.hero.R.root); adv.hero = null;
+  advEl('#advDlg').style.display = 'none'; advEl('#advStory').style.display = 'none'; advEl('#advPrompt').style.display = 'none';
+  if (adv.test) advStudio(); else advClose();
+}
+// ---- play tick ----
+function advNearestTalk() {
+  const H = adv.hero; let best = null, bd = 3.2;
+  for (const e of adv.ents) if (e.kind === 'cast' && !e.dead && !e.hostile) { const d = Math.hypot(e.x - H.x, e.z - H.z); if (d < bd) { bd = d; best = e; } }
+  return best;
+}
+function advTalk(e) {
+  const D = advEl('#advDlg'); D.querySelector('small').textContent = e.name; D.querySelector('p').textContent = e.line || '…';
+  D.style.display = 'block'; adv.dlg = e; sfx.click();
+  adv.talked[(e.name || '').toLowerCase()] = true;
+}
+function advAttack() {
+  const H = adv.hero; if (!H || H.atkT > 0 || adv.over) return;
+  H.atkT = .55; H.R.mode = 'attack'; sfx.swing && sfx.swing();
+  const fx = Math.sin(H.rot), fz = Math.cos(H.rot);
+  for (const e of adv.ents) {
+    if (e.dead || !(e.kind === 'cast' || e.kind === 'creature')) continue;
+    const dx = e.x - H.x, dz = e.z - H.z, d = Math.hypot(dx, dz);
+    if (d > 2.6 || (dx * fx + dz * fz) / Math.max(d, .01) < .2) continue;
+    e.hp -= 20; e.hurtT = .25; e.hostile = true; sfx.hit && sfx.hit('crate');
+    if (e.hp <= 0) { e.dead = 1; e.t = 0; adv.kills++; if (e.kind === 'cast') adv.talked['defeated:' + (e.name || '').toLowerCase()] = true; }
+  }
+}
+function advHurt(n) {
+  const H = adv.hero; if (!H || adv.over) return;
+  H.hp -= n; H.hurtT = 5; sfx.thud && sfx.thud();
+  if (H.hp <= 0) { H.hp = 0; advFinish(false); }
+}
+function advPlayTick(dt) {
+  const H = adv.hero; if (!H) return;
+  const P = adv.P, k = adv.keys, g = 9.8 * clamp(P.gravity, .12, 3);
+  // movement relative to the camera
+  if (!adv.over && !adv.dlg) {
+    let mx = 0, mz = 0; if (k.has('KeyW')) mz -= 1; if (k.has('KeyS')) mz += 1; if (k.has('KeyA')) mx -= 1; if (k.has('KeyD')) mx += 1;
+    const l = Math.hypot(mx, mz);
+    if (l) {
+      const yaw = adv.cam.yaw, sp = (k.has('ShiftLeft') || k.has('ShiftRight') ? 8.5 : 5) * (H.y < advWaterY() - .8 ? .5 : 1);
+      const dx = (mx * Math.cos(yaw) + mz * Math.sin(yaw)) / l, dz = (-mx * Math.sin(yaw) + mz * Math.cos(yaw)) / l;
+      let nx = H.x + dx * sp * dt, nz = H.z + dz * sp * dt;
+      const lim = ADV_SIZE / 2 - 1; nx = clamp(nx, -lim, lim); nz = clamp(nz, -lim, lim);
+      // can't walk straight up a cliff
+      if (advH(nx, nz) - H.y < 1.2 || !H.ground) { H.x = nx; H.z = nz; }
+      H.rot = angLerp(H.rot, Math.atan2(dx, dz), Math.min(1, dt * 10));
+      if (H.atkT <= 0) H.R.mode = 'walk';
+    } else if (H.atkT <= 0) H.R.mode = 'idle';
+    if (k.has('Space') && H.ground) { H.vy = 5.2 * Math.sqrt(9.8 / g) ** .5; H.ground = false; }
+  } else if (H.atkT <= 0) H.R.mode = 'idle';
+  H.vy -= g * dt; H.y += H.vy * dt;
+  const gy = advH(H.x, H.z); if (H.y <= gy) { H.y = gy; H.vy = 0; H.ground = true; }
+  if (H.y < -40) { const W = advWorldOf(adv.a); H.x = W.start.x; H.z = W.start.z; H.y = advH(H.x, H.z) + 2; H.vy = 0; advHurt(15); advMsg('You fell · back to the start', '#ffb36e'); }
+  H.atkT = Math.max(0, H.atkT - dt); H.hurtT = Math.max(0, H.hurtT - dt); if (H.hurtT <= 0 && H.hp < 100 && !adv.over) H.hp = Math.min(100, H.hp + dt * 3);
+  H.R.root.position.set(H.x, H.y, H.z); H.R.root.rotation.y = H.rot; animRig(H.R, dt);
+  advEl('#advHp i').style.width = `${H.hp}%`;
+  // the cast and the creatures
+  const dmg = ADV_DMG[adv.a.difficulty] || 7;
+  for (const e of adv.ents) {
+    if (e.kind === 'item') { if (e.root.userData.spin) e.root.userData.spin.rotation.y += dt * 2; if (!e.got && Math.hypot(e.x - H.x, e.z - H.z) < 1.6) { e.got = true; e.root.visible = false; adv.got++; sfx.chime(); advMsg(`Collected · ${adv.got}`, '#ffc94a'); } continue; }
+    if (e.kind !== 'cast' && e.kind !== 'creature') continue;
+    e.t += dt;
+    if (e.dead) { e.root.rotation.z = Math.min(Math.PI / 2, e.t * 3); if (e.t > 2) e.root.visible = false; continue; }
+    const dx = H.x - e.x, dz = H.z - e.z, d = Math.hypot(dx, dz); let moving = false;
+    if (e.hostile && d < 18 && !adv.over) {
+      if (d > 1.8) { const sp = 3.4 * dt; e.x += dx / d * sp; e.z += dz / d * sp; moving = true; }
+      e.cd -= dt; if (d < 2.1 && e.cd <= 0) { e.cd = 1.4; advHurt(dmg); if (e.R) { e.R.mode = 'attack'; e.atk = .5; } }
+      e.rot = angLerp(e.rot, Math.atan2(dx, dz), Math.min(1, dt * 6));
+    } else if (e.kind === 'creature') {
+      if (!e.tgt || (e.wait -= dt) <= 0) { e.tgt = [e.home[0] + rand(-8, 8), e.home[1] + rand(-8, 8)]; e.wait = rand(3, 8); }
+      const tx = e.tgt[0] - e.x, tz = e.tgt[1] - e.z, tl = Math.hypot(tx, tz);
+      if (tl > .5) { e.x += tx / tl * 1.4 * dt; e.z += tz / tl * 1.4 * dt; e.rot = angLerp(e.rot, Math.atan2(tx, tz), Math.min(1, dt * 4)); moving = true; }
+    } else if (d < 6) e.rot = angLerp(e.rot, Math.atan2(dx, dz), Math.min(1, dt * 3));
+    e.root.position.set(e.x, advH(e.x, e.z), e.z); e.root.rotation.y = e.rot;
+    e.hurtT = Math.max(0, (e.hurtT || 0) - dt); e.root.scale.setScalar(e.hurtT > 0 ? 1.06 : 1);
+    if (e.R) { e.atk = Math.max(0, (e.atk || 0) - dt); e.R.mode = e.atk > 0 ? 'attack' : moving ? 'walk' : 'idle'; animRig(e.R, dt); }
+    else if (e.sp) animSpecies(e.sp, time, moving);
+  }
+  // talk prompt
+  const near = !adv.over && !adv.dlg ? advNearestTalk() : null, pr = advEl('#advPrompt');
+  if (near) { pr.innerHTML = `<kbd>E</kbd>Talk to ${ccEsc(near.name)}`; pr.style.display = 'block'; } else pr.style.display = 'none';
+  adv.near = near;
+  if (adv.dlg && Math.hypot(adv.dlg.x - H.x, adv.dlg.z - H.z) > 5) { advEl('#advDlg').style.display = 'none'; adv.dlg = null; }
+  // objectives
+  if (!adv.over) {
+    const t = advActs()[adv.act];
+    if (t) {
+      const n = Math.max(1, t.count | 0), m = advMarkerFor(adv.act), name = advTargetName(t);
+      let done = false;
+      if (t.goal === 'reach') done = m ? Math.hypot(m.x - H.x, m.z - H.z) < 3.5 : adv.actT > 2;
+      else if (t.goal === 'explore') { if (!m || Math.hypot(m.x - H.x, m.z - H.z) < 12) adv.exploreT += dt; done = adv.exploreT > 3; }
+      else if (t.goal === 'talk') done = name ? !!adv.talked[name] : Object.keys(adv.talked).some(x => !x.startsWith('defeated:'));
+      else if (t.goal === 'collect') { const avail = adv.ents.filter(e => e.kind === 'item').length; done = adv.got - adv.actGot0 >= Math.min(n, Math.max(1, avail - adv.actGot0)) || (!avail && adv.actT > 2); }
+      else if (t.goal === 'defeat') { const c = advCastByName(t); done = c ? !!c.dead : adv.kills - adv.actKills0 >= n || (!adv.ents.some(e => e.hostile && !e.dead) && adv.actT > 2 && adv.kills - adv.actKills0 === 0 && !adv.ents.some(e => e.kind === 'creature' || e.kind === 'cast')); }
+      else if (t.goal === 'survive') { adv.surviveT += dt; done = adv.surviveT >= Math.max(10, n * 10); }
+      adv.actT += dt;
+      if ((adv.uiT = (adv.uiT || 0) - dt) <= 0) { adv.uiT = .25; advTopUI(); }
+      if (done) advActDone();
+    }
+  }
+}
+function advCamera(dt) {
+  const C = adv.cam;
+  if (adv.mode === 'studio') {
+    const k = adv.keys, sp = (C.dist * .9 + 10) * dt; let mx = 0, mz = 0;
+    if (k.has('KeyW')) mz -= 1; if (k.has('KeyS')) mz += 1; if (k.has('KeyA')) mx -= 1; if (k.has('KeyD')) mx += 1;
+    C.tx = clamp(C.tx + (mx * Math.cos(C.yaw) + mz * Math.sin(C.yaw)) * sp, -ADV_SIZE / 2, ADV_SIZE / 2); C.tz = clamp(C.tz + (-mx * Math.sin(C.yaw) + mz * Math.cos(C.yaw)) * sp, -ADV_SIZE / 2, ADV_SIZE / 2);
+  } else if (adv.hero) { C.tx = adv.hero.x; C.tz = adv.hero.z; }
+  const ty = adv.mode === 'play' && adv.hero ? adv.hero.y + 1.5 : advH(C.tx, C.tz);
+  const cx = C.tx + Math.sin(C.yaw) * Math.cos(C.pitch) * C.dist, cz = C.tz + Math.cos(C.yaw) * Math.cos(C.pitch) * C.dist;
+  let cy = ty + Math.sin(C.pitch) * C.dist; cy = Math.max(cy, advH(cx, cz) + .6);
+  camera.position.lerp(tmpV.set(cx, cy, cz), Math.min(1, dt * 10)); camera.lookAt(C.tx, ty, C.tz);
+  if (adv.sun) { adv.sun.position.set(C.tx + 60, 90, C.tz + 40); adv.sun.target.position.set(C.tx, 0, C.tz); }
+}
+function advTick(dt) {
+  if (!adv.scene) return;
+  if (adv.mode === 'play') advPlayTick(dt);
+  else if (adv.drag && adv.drag.paint && adv.drag.p && ['raise', 'lower', 'smooth', 'flatten'].includes(adv.tool)) advBrush(adv.drag.p, dt);
+  advCamera(dt);
+}
+// ---- input ----
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (state !== 'advStudio' && state !== 'advPlay') return;
+  const paint = state === 'advStudio' && e.button === 0;
+  adv.drag = { x: e.clientX, y: e.clientY, paint, moved: 0, p: paint ? advPointer(e) : null, id: e.pointerId };
+  try { renderer.domElement.setPointerCapture(e.pointerId); } catch { /* fine */ }
+  if (paint && !['raise', 'lower', 'smooth', 'flatten'].includes(adv.tool)) { const p = adv.drag.p; if (p) advPlace(p); }
+});
+renderer.domElement.addEventListener('pointermove', e => {
+  if ((state !== 'advStudio' && state !== 'advPlay') || !adv.drag || adv.drag.id !== e.pointerId) return;
+  const dx = e.clientX - adv.drag.x, dy = e.clientY - adv.drag.y; adv.drag.x = e.clientX; adv.drag.y = e.clientY; adv.drag.moved += Math.abs(dx) + Math.abs(dy);
+  if (adv.drag.paint) { adv.drag.p = advPointer(e); return; }
+  adv.cam.yaw -= dx * .006; adv.cam.pitch = clamp(adv.cam.pitch + dy * .004, .08, 1.45);
+});
+renderer.domElement.addEventListener('pointerup', e => {
+  if (state === 'advPlay' && adv.drag && adv.drag.moved < 6 && e.button === 0) advAttack();
+  adv.drag = null;
+});
+renderer.domElement.addEventListener('contextmenu', e => { if (state === 'advStudio' || state === 'advPlay') e.preventDefault(); });
+renderer.domElement.addEventListener('wheel', e => { if (state !== 'advStudio' && state !== 'advPlay') return; adv.cam.dist = clamp(adv.cam.dist * (1 + e.deltaY * .001), state === 'advPlay' ? 3 : 8, state === 'advPlay' ? 18 : 170); }, { passive: true });
+addEventListener('keydown', e => {
+  if (state !== 'advStudio' && state !== 'advPlay') return;
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
+  adv.keys.add(e.code); if (e.code === 'Space') e.preventDefault();
+  if (state === 'advPlay') {
+    if (e.code === 'KeyF') advAttack();
+    if (e.code === 'KeyE') { if (adv.dlg) { advEl('#advDlg').style.display = 'none'; adv.dlg = null; } else if (adv.near) advTalk(adv.near); }
+    if (e.code === 'Escape') { if (adv.dlg) { advEl('#advDlg').style.display = 'none'; adv.dlg = null; } else advLeavePlay(); }
+  } else if (e.code === 'Escape') advDo('exit');
+});
+addEventListener('keyup', e => adv.keys.delete(e.code));
+advEl('#advDlg').addEventListener('click', () => { advEl('#advDlg').style.display = 'none'; adv.dlg = null; });
+advEl('#advStory').addEventListener('click', () => { advEl('#advStory').style.display = 'none'; });
 </script>
 </body>
 </html>
