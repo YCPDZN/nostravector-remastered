@@ -344,7 +344,7 @@ body.touch .touch-ui{display:block}
 #xhud.cutting.noskip #xSkip{display:none}
 #cfHud{position:fixed;inset:0;z-index:33;pointer-events:none;display:none;font-family:'Lexend Exa',sans-serif;color:#fff}
 #cfHud.on{display:block}
-#cfHud .bars{position:absolute;top:18px;left:50%;transform:translateX(-50%);width:min(94vw,1000px);display:flex;align-items:flex-start;gap:14px}
+#cfHud .bars{position:absolute;top:max(18px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(94vw,1000px);display:flex;flex-direction:row;align-items:flex-start;gap:14px;margin:0}
 #cfHud .side{flex:1;display:flex;flex-direction:column;gap:5px}
 #cfHud .side.d{align-items:flex-end}
 #cfHud .side b{font-weight:700;font-size:clamp(11px,1.4vw,15px);letter-spacing:.18em;text-shadow:0 2px 0 #000,0 0 12px rgba(0,0,0,.8)}
@@ -377,7 +377,15 @@ body.touch .touch-ui{display:block}
 #cfHud .pad button{all:unset;width:62px;height:62px;border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:700;letter-spacing:.12em;background:rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.7)}
 #cfHud .pad .rg{opacity:.4}#cfHud .pad .rg.full{opacity:1;border-color:#ffcc00;color:#ffcc00}
 #cfHud.touch .stick{display:block;position:absolute;left:16px;bottom:16px;width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.4);touch-action:none}
-#cfHud .stick i{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px;border-radius:50%;background:rgba(255,255,255,.5);border:0;transform:none}
+#cfHud .stick i{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px;border-radius:50%;background:rgba(255,255,255,.5);border:0;transform:none;overflow:visible}
+#cfHud.touch .pad{right:max(16px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom))}
+#cfHud.touch .stick{left:max(16px,env(safe-area-inset-left));bottom:max(16px,env(safe-area-inset-bottom))}
+#cfHud .pad button[data-b="punch"]{width:76px;height:76px;font-size:10px;background:rgba(255,140,0,.32);border-color:#ffb35a}
+#cfHud .pad button:active{background:rgba(255,255,255,.3)}
+#cfHud.touch .hype{bottom:auto;top:calc(max(18px,env(safe-area-inset-top)) + 64px);width:min(62vw,560px)}
+#cfHud.touch .hype span{font-size:clamp(13px,2.3vw,22px)}
+#cfHud.touch .combo{top:auto;bottom:170px}
+@media (max-height:500px){#cfHud .bars{top:max(8px,env(safe-area-inset-top))}#cfHud i{height:12px;border-width:1.5px}#cfHud i.rage{height:7px}#cfHud .side b{font-size:10px}#cfHud .vs{font-size:16px;padding-top:4px}#cfHud .pop{top:26%}#cfHud.touch .hype{top:calc(max(8px,env(safe-area-inset-top)) + 52px)}#cfHud .pad button{width:54px;height:54px}#cfHud .pad button[data-b="punch"]{width:66px;height:66px}#cfHud.touch .stick{width:112px;height:112px}}
 
 #xhud.cutting .x-obj,#xhud.cutting .x-menu,#xhud.cutting .hotbar,#xhud.cutting .touch-ui,#xhud.cutting .x-prompt,#xhud.cutting .x-hint,#xhud.cutting .loot{opacity:0;pointer-events:none}
 #xhud.cutting .x-dlg{bottom:calc(9vh + 18px)}
@@ -8136,11 +8144,12 @@ function fightHud(on) {
     document.body.appendChild(cfHud);
     const pad = cfHud.querySelector('.pad');
     pad.addEventListener('pointerdown', e => { const b = e.target.closest('button'); if (!b) return; e.preventDefault(); if (b.dataset.b === 'block') cf.block = true; else fightInput(b.dataset.b); });
-    pad.addEventListener('pointerup', e => { const b = e.target.closest('button'); if (b && b.dataset.b === 'block') cf.block = false; });
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave', 'pointerout']) pad.addEventListener(ev, e => { const b = e.target.closest('button'); if (b && b.dataset.b === 'block') cf.block = false; });
     const st = cfHud.querySelector('.stick');
-    st.addEventListener('pointerdown', e => { st.setPointerCapture(e.pointerId); cf.touch = { x: e.clientX, y: e.clientY, dx: 0, dy: 0 }; });
-    st.addEventListener('pointermove', e => { if (cf.touch) { cf.touch.dx = clamp((e.clientX - cf.touch.x) / 50, -1, 1); cf.touch.dy = clamp((e.clientY - cf.touch.y) / 50, -1, 1); } });
-    st.addEventListener('pointerup', () => { cf.touch = null; }); st.addEventListener('pointercancel', () => { cf.touch = null; });
+    st.addEventListener('pointerdown', e => { try { st.setPointerCapture(e.pointerId); } catch (_) {} cf.touch = { x: e.clientX, y: e.clientY, dx: 0, dy: 0 }; });
+    const knob = st.querySelector('i'), lift = () => { cf.touch = null; knob.style.transform = ''; };
+    st.addEventListener('pointermove', e => { if (cf.touch) { cf.touch.dx = clamp((e.clientX - cf.touch.x) / 50, -1, 1); cf.touch.dy = clamp((e.clientY - cf.touch.y) / 50, -1, 1); knob.style.transform = `translate(${(cf.touch.dx * 38).toFixed(0)}px,${(cf.touch.dy * 38).toFixed(0)}px)`; } });
+    st.addEventListener('pointerup', lift); st.addEventListener('pointercancel', lift);
   }
   cfHud.classList.toggle('on', !!on); cfHud.classList.toggle('touch', document.body.classList.contains('touch'));
 }

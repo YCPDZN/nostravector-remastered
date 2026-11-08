@@ -260,7 +260,7 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   - **Nico** (her own model, `assets/models/companions/nico_lady_luck.glb`) stands by the bed. She still looks heavily pregnant, as a new mother does; that's built from her model at runtime. Beside her, her newborn son sleeps in a gently rocking cradle.
   - The baby was born just after she called, and he hasn't made a sound. She has already named him **Orion**, after the stars of Orion's Belt her grandmother showed her, which is a coincidence that catches Orion off guard.
   - The scene is ten fully voiced lines (CH2FARM1–10). Camera shots switch between over Orion's shoulder, over Nico's and a close-up of the cradle. Orion and Nico both lip-sync.
-- **Next objective:** Nico's husband went into town for supplies yesterday and hasn't come back. The objectives are **Reach Ad-Nostra, the harbour town** (gold marker at the east gate), then **Find Nico’s husband in Ad-Nostra** (see below).
+- **Next objective:** Nico's husband, Daniel Brown, went into town for supplies yesterday and hasn't come back. The objectives are **Reach Ad-Nostra, the harbour town** (gold marker at the east gate), then the hunt for Daniel (see *Daniel Brown and The Salt Lantern* below).
 - Nico joins as a companion after Chapter II, in her normal (not pregnant) model. Her model is already loaded and ready for that.
 - **Nico's Nostrapedia file** (Companions) opens the moment you meet her inside the farmhouse; until then it's redacted ("Unlocks in Chapter II"). It shows her in her normal model.
   - **Facts:** born 2000 AD, cryogenically frozen in 2030 AD and woken in 2123 AD, home is a farmhouse east of town in Africa, her son Orion was born in 2125 AD, and her alignment is Neutral Good (a placeholder until her alignment is decided).
@@ -424,3 +424,24 @@ The flashback uses the voice lines James and Croxian already have. Orion's two r
   - Loading a Chapter II save, or pressing Continue, always restarted you at Orion's porch, because your saved position was never passed on.
   - The position from the last slot you loaded could also hang around and override where you'd actually got to since.
 - Chapter II saves made before the ferry existed didn't record which region you were in. They're treated as Africa, where they could only have been.
+
+### Chapter II: Daniel Brown and The Salt Lantern
+Daniel Brown is Nico's husband, and no relation to James.
+- **The trail (three clues):**
+  - The **Gate Warden** saw him come in yesterday morning with his cart and never leave.
+  - The **Shopkeeper** sold him seed, lamp oil and a tin of formula ("said his wife was due any day").
+  - The **Old Man** in the square saw him pushing the cart toward the harbour.
+  - You can ask them in any order. The objective reads *Find Daniel Brown in Ad-Nostra · clues n/3*, and each new clue shows in the loot feed. Other townsfolk still have something to say about him, but only these three count.
+- **The Harbour Clerk** gives nothing away until you have all three clues (a gold marker then points to the harbour office). Once you do, he says Daniel never boarded a boat, and his cart has been outside The Salt Lantern since last night. The marker moves to the cantina door, and the objective becomes *Find Daniel Brown in The Salt Lantern*. The cantina owner is cagey: "I pour the drinks, friend. I don't keep track of who drinks them."
+- **The Salt Lantern** now has a walk-in ground floor: a bar with shelves of bottles and stools, three tables with chairs, and hanging lamps. Daniel's cart (seed sacks and a tin of formula) is parked by the door. Shop awnings no longer block the doorways underneath them.
+- **The scene:** walk in and Daniel is in the corner, kissing a woman who isn't Nico, with the regulars around the walls. Orion: "Daniel?" Daniel: "Orion?! Wait. Wait, this isn't what it looks like." Orion: "Your wife is lying in that farmhouse with your newborn son in her arms… And you are here." Then he goes for him.
+- **The fight: you play as Orion.** A brawler in the packed cantina:
+  - **Moves:** a three-hit combo (jab, cross, hook), an uppercut that can put Daniel down, block, a grab where Orion hauls Daniel overhead and slams him into the boards, and a **RAGE** finisher when the meter is full (a spinning lift and slam in slow motion).
+  - **Daniel** closes in, throws jabs, crosses and telegraphed haymakers, blocks when he sees a punch coming, and gets knocked down and back up. Hits draw blood on the floor.
+  - **HUD:** health bars (Orion 140, Daniel 160), the RAGE meter, combo counters, and big pop-up text (*FIGHT!*, *RAGE READY*, *K.O.!*).
+  - **Controls:** WASD / arrows to move, J or left click to punch, K or right click for the uppercut, L / E to grab, hold Shift / Space to block, F / Q for RAGE. On phones, a thumbstick on the left and PUNCH, UPPER, GRAB, BLOCK and RAGE buttons on the right, laid out for small landscape screens and away from notches and rounded corners.
+  - **The crowd** cheers from the walls, and **MC Irie**, a Jamaican hype man in red, stands on the bar pumping his fist and calling the fight in patois: big hits, combos, slams, knockdowns, Orion getting hurt, RAGE, and the K.O. The woman shouts "Get off him! Somebody help!"
+  - If Daniel knocks Orion out, MC Irie calls "Run it back!" and the fight restarts.
+- **After the K.O.:** a slow-motion orbit round Daniel on the floor, then Orion: "That's for Nico." / "Come on. He can explain the rest to her himself when he wakes up." The woman and the crowd are gone. Daniel is left lying where Orion put him, and the objective ticks off (`ch2.husbandFound`).
+- **Performance:** while you're in the cantina scene, the savanna outside (which the walls hide) and the street townsfolk aren't drawn. This cuts each frame from about 3.2 million triangles to about 0.2 million, so the fight runs smoothly on phones. The townsfolk's merged meshes are also culled again when off screen, everywhere in town.
+- **Voice:** all these lines are text only for now. Their recording ids are in the code (`CH2CANTORION1–3`, `CH2CANTDANIEL1`, `CH2CANTWINORION1–2`, `CH2HYPE1–18`).
