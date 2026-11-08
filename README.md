@@ -270,3 +270,7 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
 - The marker moves with them and has a pointer showing which way they're facing. It turns with the map just like your own arrow, and sits on the rim when they're out of view.
 - On the big map their name is written under the marker.
 - Before, Orion had no marker of his own at all.
+- **Ready for future companions:** markers come from your party, not a hard-coded list.
+  - Every story companion still to join has its own colour reserved: Khazglar, Charon, Kizna, Nyrexia, Croxian, Malia, James (Terra Imperia), Josiah II and Tyrotaronus.
+  - **Custom companions** (your own uploaded characters, or the Project BC and Sevirrus cast) get a steady colour of their own and their first name, as soon as they're in your party.
+  - A new companion's marker appears once its model is registered with `registerCompanionRig(id, () => root)` (also `window.nvRegisterCompanion`).

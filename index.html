@@ -5671,14 +5671,41 @@ function questTarget() {
   if (c.campDone && !c.stormTalk && companionOn() && james.ready && james.root.parent === wScene) return { x: james.root.position.x, z: james.root.position.z, label: 'Speak to James Brown' };
   return null;
 }
+/* ---- companion map markers ----
+   Story companions use PARTY + their rig below; any companion added later (story or custom-made) only needs
+   registerCompanionRig(id, () => root) once its model is in the world, and its marker appears automatically. */
+const COMP_RIGS = {};
+function registerCompanionRig(id, getRoot) { COMP_RIGS[id] = getRoot; }
+window.nvRegisterCompanion = registerCompanionRig;
+function compRoot(id) {
+  if (id === 'james') return companionOn() && james.ready ? james.root : null;
+  if (id === 'orion') return orionJoined() && world.orion ? world.orion.root : null;
+  try { return COMP_RIGS[id] ? COMP_RIGS[id]() : null; } catch { return null; }
+}
+const COMP_COLS = { james: '#7fe0a0', orion: '#ffb36e', khazglar: '#d6b27a', charon: '#9fb4ff', kizna: '#f3a6d6', nyrexia: '#b893ff', croxian: '#ff7a6e', malia: '#e6e9f0', 'james-ti': '#e0c160', josiah2: '#7fd8ff', tyrotaronus: '#c4cad6' };
+function compColor(id) {
+  if (COMP_COLS[id]) return COMP_COLS[id];
+  let h = 0; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; // custom companions get a steady colour of their own
+  return `hsl(${h % 360},70%,66%)`;
+}
+function compName(id) {
+  if (PARTY[id]) return PARTY[id].name;
+  const c = (ccData.characters || []).find(o => o.id === id) || CHAR_BUILTIN.find(o => o.id === id);
+  const n = (c && c.name) || String(id);
+  return n.split(' ')[0][0].toUpperCase() + n.split(' ')[0].slice(1).toLowerCase();
+}
+// story companions in your party, plus any custom or imported characters you've brought along
+const mapCompanions = () => [...new Set([...(wanderer ? partyNow() : []), ...((wanderer && wanderer.party) || []).filter(id => !PARTY[id])])];
 function mapMarkers() {
   const m = [{ x: 0, z: 0, kind: 'station' }];
   for (const o of world.placed) if (o.data.t === 'beacon') m.push({ x: o.data.x, z: o.data.z, kind: 'beacon' });
   for (const t of tpNetwork()) if (t.area === curArea()) m.push({ x: t.x, z: t.z, kind: 'tele' });
   for (const mc of merchantsHere()) if (mc.px != null) m.push({ x: mc.px, z: mc.pz, kind: 'merchant' });
-  // every companion with you: a live marker that moves with them and points the way they face
-  if (companionOn() && james.ready && james.root.parent === wScene && james.root.visible) m.push({ x: james.root.position.x, z: james.root.position.z, rot: james.root.rotation.y, kind: 'comp', col: MK.james, label: 'James' });
-  if (orionJoined() && world.orion && world.orion.root.parent === wScene && world.orion.root.visible) m.push({ x: world.orion.root.position.x, z: world.orion.root.position.z, rot: world.orion.root.rotation.y, kind: 'comp', col: MK.orion, label: 'Orion' });
+  // every companion with you, story or custom: a live marker that moves with them and points the way they face
+  for (const id of mapCompanions()) {
+    const r = compRoot(id); if (!r || r.parent !== wScene || !r.visible) continue;
+    m.push({ x: r.position.x, z: r.position.z, rot: r.rotation.y, kind: 'comp', col: compColor(id), label: compName(id) });
+  }
   for (const c of fauna.list) if (!c.dead) m.push({ x: c.x, z: c.z, kind: c.D.passive || (c.D.neutral && c.state !== 'hunt') ? 'penguin' : 'enemy' });
   const q = questTarget(); if (q) m.push(Object.assign({ kind: 'quest' }, q));
   return m;
