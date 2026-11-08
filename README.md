@@ -339,4 +339,11 @@ Controls: WASD to move, Shift to sprint, Space to jump (higher in low gravity), 
   - **Defeat:** the named cast member, or N creatures.
   - **Survive:** 10 seconds × the amount.
 - Finishing every act shows **Adventure complete**. Losing all your health shows **You were defeated**. Either way you can play again from scratch.
-- Keyboard and mouse for now; touch controls for adventures come later.
+- **On phones and tablets:**
+  - **Play:** a left stick moves you, with TALK, JUMP, SPRINT (toggle) and ATTACK buttons on the right. Drag the screen to turn the camera, pinch to zoom, and use ✕ to leave.
+  - **Studio:** the tools become a bottom sheet you can hide (Hide ▾ / Tools ▴). One finger uses the tool, a second finger turns the camera and pinches to zoom, and **Move camera** lets one finger turn the view.
+
+### Mobile pass
+- Adventures now have full touch controls, in both play and the world studio (see above), with layouts sized for phones.
+- The Alignment screen fits phones better: a smaller chart and model, the companion list scrolls, and the "press L" hint is hidden on touch screens. Open it from the pause menu.
+- Everything else added recently already works by touch: companion orders, Share food and Intimidate (companion panel), the farmhouse door (TALK button), conversations (tap to continue), the map (tap the minimap), the Nostrapedia, Custom creations and the built-in worlds.

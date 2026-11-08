@@ -582,7 +582,8 @@ button.bm-c.no{opacity:.45}
 #alignScr{z-index:27}
 .al-panel{max-width:900px;align-items:stretch;text-align:left}
 .al-wrap{display:grid;grid-template-columns:400px 1fr;gap:28px;width:100%;max-height:min(62vh,560px)}
-@media (max-width:720px){ .al-wrap{grid-template-columns:1fr;max-height:66vh;overflow-y:auto} }
+@media (max-width:720px){ .al-wrap{grid-template-columns:1fr;max-height:68vh;overflow-y:auto;gap:16px} .al-chart.big{height:220px} .al-model{height:220px} .al-note{font-size:11px;margin-top:8px} .al-panel .h1{font-size:28px} }
+body.touch .al-key{display:none}
 .al-me{display:flex;flex-direction:column;gap:16px;align-items:flex-start}
 .al-me-t{display:flex;flex-direction:column;gap:6px}
 .al-me-t small{font-size:11px;letter-spacing:.2em;color:#9aa0a8;text-transform:uppercase}
@@ -844,7 +845,7 @@ button.bm-c.no{opacity:.45}
 <!-- Alignment -->
 <section class="screen dim hidden" id="alignScr">
   <div class="panel al-panel">
-    <div class="eyebrow">Alignment · press L</div>
+    <div class="eyebrow">Alignment<span class="al-key"> · press L</span></div>
     <h2 class="h1">ALIGNMENT</h2>
     <div class="al-wrap">
       <div class="al-me" id="alMe"></div>
@@ -9656,13 +9657,34 @@ const advEl = (() => {
 #advPick button.who small{display:block;color:#9aa0a8;font-size:11px}
 #advPick button.who:hover{border-color:#ffc94a}
 #advEnd .row{display:flex;gap:8px;margin-top:10px}#advEnd .row button,#advPick .row button{flex:1;font:inherit;padding:10px;border-radius:6px;border:1px solid rgba(230,233,240,.2);background:rgba(230,233,240,.08);color:#e6e9f0;cursor:pointer}
-#advEnd .row button.pri{background:#e6e9f0;color:#0b0f15}`;
+#advEnd .row button.pri{background:#e6e9f0;color:#0b0f15}
+#advTouch{display:none}
+#advExit{position:absolute;right:12px;top:12px;width:40px;height:40px;border-radius:50%;font:600 16px/1 Inter,system-ui,sans-serif;color:#e6e9f0;display:none;cursor:pointer}
+#advTools.min > :not(.hd){display:none}
+#advTools .hd{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+#advTools .hd button{padding:4px 9px}
+body.touch #advTouch.on{display:block}
+#advJoy{position:absolute;left:22px;bottom:30px;width:128px;height:128px;border-radius:50%;background:rgba(230,233,240,.08);border:1px solid rgba(230,233,240,.22);pointer-events:auto;touch-action:none}
+#advJoy i{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:rgba(230,233,240,.35)}
+#advBtns{position:absolute;right:16px;bottom:26px;display:grid;grid-template-columns:repeat(2,74px);gap:10px;pointer-events:auto}
+#advBtns button{height:62px;border-radius:50%;border:1px solid rgba(230,233,240,.3);background:rgba(8,12,18,.6);color:#e6e9f0;font:600 11px/1 Inter,system-ui,sans-serif;letter-spacing:.08em;touch-action:none}
+#advBtns button.on{background:#ffc94a;color:#0b0f15}
+#advCamT{display:none}
+body.touch #advCamT{display:inline-block}
+@media (max-width:760px){
+  #advTop{left:8px;top:8px;max-width:58vw;padding:8px 10px}#advTop b{font-size:13px;margin-bottom:4px}.adv-act{font-size:11px}
+  #advTools{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:42vh}
+  #advHelp{display:none!important}
+  #advDlg{bottom:180px}#advPrompt{bottom:170px}#advHp{bottom:12px;width:44vw}
+  body.touch #advHp{bottom:174px}
+}`;
   document.head.appendChild(css);
   const d = document.createElement('div'); d.id = 'adv'; d.className = 'hidden';
   d.innerHTML = `<div id="advTop" class="ap"></div><div id="advHp"><i></i></div><div id="advPrompt" class="ap"></div>
     <div id="advDlg" class="ap"><small></small><p></p></div><div id="advStory" class="ap"><small></small><b></b><p></p></div>
     <div id="advMsg" class="ap"></div><div id="advTools" class="ap"></div><div id="advHelp" class="ap"></div>
-    <div id="advPick"><div class="ap"></div></div><div id="advEnd"><div class="ap"></div></div>`;
+    <div id="advPick"><div class="ap"></div></div><div id="advEnd"><div class="ap"></div></div>
+    <button id="advExit" class="ap" title="Leave">✕</button><div id="advTouch"><div id="advJoy"><i></i></div><div id="advBtns"><button data-t="talk">TALK</button><button data-t="jump">JUMP</button><button data-t="sprint">SPRINT</button><button data-t="atk">ATTACK</button></div></div>`;
   document.body.appendChild(d);
   return id => d.querySelector(id);
 })();
@@ -9797,6 +9819,7 @@ async function advOpen(a, mode) {
   if (mode === 'studio') await advStudio(); else advPick();
 }
 function advClose() {
+  advEl('#advTouch').classList.remove('on'); advEl('#advExit').style.display = 'none';
   adv.mode = null; state = 'cc'; $('#adv').classList.add('hidden');
   for (const id of ['#advPick', '#advEnd']) advEl(id).style.display = 'none';
   show(ccUI.root, true); ccOpenEditor(cc.cur && cc.cur.id === adv.src.id ? cc.cur : adv.src);
@@ -9806,7 +9829,7 @@ function advClose() {
 async function advStudio() {
   state = 'advStudio'; adv.mode = 'studio'; adv.test = false;
   advEl('#advTop').style.display = 'none'; advEl('#advHp').style.display = 'none'; advEl('#advPrompt').style.display = 'none';
-  advEl('#advTools').style.display = 'block'; advEl('#advHelp').style.display = 'block';
+  advEl('#advTools').style.display = 'block'; advEl('#advHelp').style.display = coarse ? 'none' : 'block';
   advEl('#advHelp').innerHTML = '<b>Left click / drag</b> use the tool · <b>Right drag</b> turn the camera · <b>Wheel</b> zoom · <b>WASD</b> move the camera · <b>Esc</b> leave';
   await advSpawnAll(false);
   adv.cam.tx = advWorldOf(adv.a).start.x; adv.cam.tz = advWorldOf(adv.a).start.z; adv.cam.dist = 60;
@@ -9823,10 +9846,10 @@ function advToolsUI() {
   if (adv.tool === 'prop') extra = `<label>Prop</label><select data-s="t">${opts(Object.entries(ADV_PROPS), sel.t || 'rock')}</select>`;
   if (adv.tool === 'marker') extra = `<label>For act</label><select data-s="act">${opts(a.acts.map((t, i) => [String(i), `${i + 1}. ${t.title || 'Act'} · ${t.goal}`]), String(sel.act || 0))}</select><label>Reach and explore acts need a marker. Placing it again moves it.</label>`;
   if (adv.tool === 'item') extra = '<label>Collectibles count toward “Collect items” acts.</label>';
-  T.innerHTML = `<b style="letter-spacing:.1em">${ccEsc(a.name)}</b><div style="font-size:11px;color:#9aa0a8">${ccEsc(adv.P.name)} · world studio</div>
+  T.innerHTML = `<div class="hd"><div><b style="letter-spacing:.1em">${ccEsc(a.name)}</b><div style="font-size:11px;color:#9aa0a8">${ccEsc(adv.P.name)} · world studio</div></div><button data-do="min">${T.classList.contains('min') ? 'Tools ▴' : 'Hide ▾'}</button></div>
     <h5>Landscape</h5><div class="tg">${tb('raise', 'Raise')}${tb('lower', 'Lower')}${tb('smooth', 'Smooth')}${tb('flatten', 'Flatten')}</div>
     <h5>Place</h5><div class="tg">${tb('start', 'Start point')}${tb('cast', 'Cast member')}${tb('creature', 'Creature')}${tb('prop', 'Prop')}${tb('item', 'Collectible')}${tb('marker', 'Act marker')}</div>
-    <h5>Edit</h5><div class="tg">${tb('erase', 'Erase')}<button data-do="reset">Reset landscape</button></div>${extra}
+    <h5>Edit</h5><div class="tg">${tb('erase', 'Erase')}<button data-do="reset">Reset landscape</button><button id="advCamT" data-tool="camera" class="${adv.tool === 'camera' ? 'on' : ''}">Move camera</button></div>${extra}
     <div class="row"><button data-do="test">Test play</button><button class="pri" data-do="save">Save${adv.dirty ? ' •' : ''}</button></div><div class="row"><button data-do="exit">Back to editor</button></div>`;
   T.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click', () => { adv.tool = b.dataset.tool; sfx.click(); advToolsUI(); }));
   T.querySelectorAll('[data-b]').forEach(i => i.addEventListener('input', () => { adv.brush[i.dataset.b] = +i.value; advToolsUI(); }));
@@ -9840,6 +9863,7 @@ function advStoreWorld() {
 }
 function advDo(what) {
   sfx.click();
+  if (what === 'min') { advEl('#advTools').classList.toggle('min'); advToolsUI(); return; }
   if (what === 'save') {
     advStoreWorld();
     const arr = ccData.adventures, copy = JSON.parse(JSON.stringify(adv.a)), i = arr.findIndex(x => x.id === copy.id);
@@ -9925,7 +9949,8 @@ async function advPlay(who) {
   adv.cam.yaw = 0; adv.cam.pitch = .38; adv.cam.dist = 8;
   state = 'advPlay'; adv.mode = 'play';
   advEl('#advTools').style.display = 'none'; advEl('#advTop').style.display = 'block'; advEl('#advHp').style.display = 'block';
-  advEl('#advHelp').style.display = 'block'; advEl('#advHelp').innerHTML = '<b>WASD</b> move · <b>Shift</b> sprint · <b>Space</b> jump · <b>F / click</b> attack · <b>E</b> talk · <b>Drag</b> turn the camera · <b>Esc</b> leave';
+  advEl('#advHelp').style.display = coarse ? 'none' : 'block'; advEl('#advHelp').innerHTML = '<b>WASD</b> move · <b>Shift</b> sprint · <b>Space</b> jump · <b>F / click</b> attack · <b>E</b> talk · <b>Drag</b> turn the camera · <b>Esc</b> leave';
+  advEl('#advTouch').classList.add('on'); advEl('#advExit').style.display = 'block';
   advEndHide(); advStartAct();
 }
 function advEndHide() { advEl('#advEnd').style.display = 'none'; }
@@ -9972,6 +9997,7 @@ function advFinish(won) {
 }
 async function advRestart() { if (adv.hero) adv.scene.remove(adv.hero.R.root); const who = adv.lastWho; adv.hero = null; await advPlay(who); }
 function advLeavePlay() {
+  advEl('#advTouch').classList.remove('on'); advEl('#advExit').style.display = 'none';
   if (adv.hero) adv.scene.remove(adv.hero.R.root); adv.hero = null;
   advEl('#advDlg').style.display = 'none'; advEl('#advStory').style.display = 'none'; advEl('#advPrompt').style.display = 'none';
   if (adv.test) advStudio(); else advClose();
@@ -10010,9 +10036,10 @@ function advPlayTick(dt) {
   // movement relative to the camera
   if (!adv.over && !adv.dlg) {
     let mx = 0, mz = 0; if (k.has('KeyW')) mz -= 1; if (k.has('KeyS')) mz += 1; if (k.has('KeyA')) mx -= 1; if (k.has('KeyD')) mx += 1;
+    if (!mx && !mz && Math.hypot(adv.joy.x, adv.joy.y) > .15) { mx = adv.joy.x; mz = adv.joy.y; }
     const l = Math.hypot(mx, mz);
     if (l) {
-      const yaw = adv.cam.yaw, sp = (k.has('ShiftLeft') || k.has('ShiftRight') ? 8.5 : 5) * (H.y < advWaterY() - .8 ? .5 : 1);
+      const yaw = adv.cam.yaw, sp = (k.has('ShiftLeft') || k.has('ShiftRight') || adv.sprint ? 8.5 : 5) * (H.y < advWaterY() - .8 ? .5 : 1);
       const dx = (mx * Math.cos(yaw) + mz * Math.sin(yaw)) / l, dz = (-mx * Math.sin(yaw) + mz * Math.cos(yaw)) / l;
       let nx = H.x + dx * sp * dt, nz = H.z + dz * sp * dt;
       const lim = ADV_SIZE / 2 - 1; nx = clamp(nx, -lim, lim); nz = clamp(nz, -lim, lim);
@@ -10096,7 +10123,7 @@ function advTick(dt) {
 // ---- input ----
 renderer.domElement.addEventListener('pointerdown', e => {
   if (state !== 'advStudio' && state !== 'advPlay') return;
-  const paint = state === 'advStudio' && e.button === 0;
+  const paint = state === 'advStudio' && e.button === 0 && adv.tool !== 'camera' && advTouches.size < 2;
   adv.drag = { x: e.clientX, y: e.clientY, paint, moved: 0, p: paint ? advPointer(e) : null, id: e.pointerId };
   try { renderer.domElement.setPointerCapture(e.pointerId); } catch { /* fine */ }
   if (paint && !['raise', 'lower', 'smooth', 'flatten'].includes(adv.tool)) { const p = adv.drag.p; if (p) advPlace(p); }
@@ -10108,7 +10135,7 @@ renderer.domElement.addEventListener('pointermove', e => {
   adv.cam.yaw -= dx * .006; adv.cam.pitch = clamp(adv.cam.pitch + dy * .004, .08, 1.45);
 });
 renderer.domElement.addEventListener('pointerup', e => {
-  if (state === 'advPlay' && adv.drag && adv.drag.moved < 6 && e.button === 0) advAttack();
+  if (state === 'advPlay' && adv.drag && adv.drag.moved < 6 && e.button === 0 && e.pointerType !== 'touch') advAttack();
   adv.drag = null;
 });
 renderer.domElement.addEventListener('contextmenu', e => { if (state === 'advStudio' || state === 'advPlay') e.preventDefault(); });
@@ -10125,7 +10152,42 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => adv.keys.delete(e.code));
 advEl('#advDlg').addEventListener('click', () => { advEl('#advDlg').style.display = 'none'; adv.dlg = null; });
+// ---- touch: a stick and four buttons to play; in the studio one finger uses the tool, two fingers turn and zoom ----
+adv.joy = { x: 0, y: 0, id: null };
+(() => {
+  const J = advEl('#advJoy'), K = J.querySelector('i');
+  const set = e => { const r = J.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2; let dx = (e.clientX - cx) / (r.width / 2), dy = (e.clientY - cy) / (r.height / 2); const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } adv.joy.x = dx; adv.joy.y = dy; K.style.transform = `translate(${dx * 36}px,${dy * 36}px)`; };
+  J.addEventListener('pointerdown', e => { adv.joy.id = e.pointerId; try { J.setPointerCapture(e.pointerId); } catch { /* fine */ } set(e); e.preventDefault(); });
+  J.addEventListener('pointermove', e => { if (adv.joy.id === e.pointerId) set(e); });
+  const end = e => { if (adv.joy.id !== e.pointerId) return; adv.joy.id = null; adv.joy.x = adv.joy.y = 0; K.style.transform = ''; };
+  J.addEventListener('pointerup', end); J.addEventListener('pointercancel', end);
+  advEl('#advBtns').querySelectorAll('button').forEach(b => b.addEventListener('pointerdown', e => {
+    e.preventDefault(); const t = b.dataset.t;
+    if (t === 'atk') advAttack();
+    else if (t === 'jump') { adv.keys.add('Space'); setTimeout(() => adv.keys.delete('Space'), 120); }
+    else if (t === 'sprint') { adv.sprint = !adv.sprint; b.classList.toggle('on', adv.sprint); }
+    else if (t === 'talk') { if (adv.dlg) { advEl('#advDlg').style.display = 'none'; adv.dlg = null; } else if (adv.near) advTalk(adv.near); }
+  }));
+})();
+const advTouches = new Map();
+renderer.domElement.addEventListener('pointerdown', e => {
+  if ((state !== 'advStudio' && state !== 'advPlay') || e.pointerType !== 'touch') return;
+  advTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (advTouches.size >= 2 && adv.drag) { adv.drag.paint = false; adv.drag.two = true; } // a second finger: camera, not tool
+}, true);
+renderer.domElement.addEventListener('pointermove', e => {
+  if ((state !== 'advStudio' && state !== 'advPlay') || !advTouches.has(e.pointerId)) return;
+  const prev = advTouches.get(e.pointerId);
+  if (advTouches.size >= 2) {
+    const pts = [...advTouches.values()], other = pts.find(p => p !== prev), d0 = Math.hypot(prev.x - other.x, prev.y - other.y), d1 = Math.hypot(e.clientX - other.x, e.clientY - other.y);
+    if (d0 > 0 && d1 > 0) adv.cam.dist = clamp(adv.cam.dist * d0 / d1, state === 'advPlay' ? 3 : 8, state === 'advPlay' ? 18 : 170);
+  }
+  advTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+}, true);
+const advTouchEnd = e => advTouches.delete(e.pointerId);
+renderer.domElement.addEventListener('pointerup', advTouchEnd, true); renderer.domElement.addEventListener('pointercancel', advTouchEnd, true);
 advEl('#advStory').addEventListener('click', () => { advEl('#advStory').style.display = 'none'; });
+advEl('#advExit').addEventListener('click', () => { sfx.click(); if (state === 'advPlay') advLeavePlay(); });
 </script>
 </body>
 </html>
