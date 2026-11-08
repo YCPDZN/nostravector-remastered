@@ -1092,7 +1092,7 @@ body.touch .al-key{display:none}
 <script type="application/json" id="orionFind"></script><script src="data/orionFind.js"></script>
 <script type="application/json" id="narrCh2"></script><script src="data/narrCh2.js"></script>
 <script type="application/json" id="orionWake"></script><script src="data/orionWake.js"></script>
-<script type="application/json" id="orionCmd"></script><script src="data/orionCmd.js"></script><script type="application/json" id="callVoices"></script><script src="data/callVoices.js"></script><script type="application/json" id="doorVoices"></script><script src="data/doorVoices.js"></script><script type="application/octet-stream" id="nicoGlb"></script><script src="data/nicoGlb.js"></script><script type="application/json" id="farmVoices"></script><script src="data/farmVoices.js"></script><script type="application/json" id="antOrionVoices"></script><script src="data/antOrionVoices.js"></script><script type="application/json" id="antOrionFlashVoices"></script><script src="data/antOrionFlashVoices.js"></script><script type="application/json" id="cantinaFightMusic"></script><script src="data/cantinaFightMusic.js"></script><script type="application/json" id="arrestVoices"></script><script src="data/arrestVoices.js"></script><script type="application/json" id="cantinaVoices"></script><script src="data/cantinaVoices.js"></script><script type="application/json" id="hypeVoices"></script><script src="data/hypeVoices.js"></script>
+<script type="application/json" id="orionCmd"></script><script src="data/orionCmd.js"></script><script type="application/json" id="callVoices"></script><script src="data/callVoices.js"></script><script type="application/json" id="doorVoices"></script><script src="data/doorVoices.js"></script><script type="application/octet-stream" id="nicoGlb"></script><script src="data/nicoGlb.js"></script><script type="application/json" id="farmVoices"></script><script src="data/farmVoices.js"></script><script type="application/json" id="antOrionVoices"></script><script src="data/antOrionVoices.js"></script><script type="application/json" id="antOrionFlashVoices"></script><script src="data/antOrionFlashVoices.js"></script><script type="application/json" id="cantinaFightMusic"></script><script src="data/cantinaFightMusic.js"></script><script type="application/json" id="lonOrionVoices"></script><script src="data/lonOrionVoices.js"></script><script type="application/json" id="arrestVoices"></script><script src="data/arrestVoices.js"></script><script type="application/json" id="cantinaVoices"></script><script src="data/cantinaVoices.js"></script><script type="application/json" id="hypeVoices"></script><script src="data/hypeVoices.js"></script>
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -7861,6 +7861,7 @@ async function startFlashback(where) {
   if (world.orion) { const R = world.orion.root; R.visible = true; R.position.set(p.x - Math.sin(D.rot) * 1.8 + Math.cos(D.rot) * 1.2, D.y, p.z - Math.cos(D.rot) * 1.8 - Math.sin(D.rot) * 1.2); R.rotation.y = D.rot; world.orion.mode = 'idle'; }
   const [J, C, bv, cp, cf, lines, replies] = await Promise.all([ensureJames().then(() => james.ready ? james : null).catch(() => null), loadCroxian(), sfx.loadClips('betrayalVoices'), sfx.loadClips('croxPre'), croxClips(), sfx.loadClips('antOrionFlashVoices'), sfx.loadClips('antOrionVoices')]);
   fb.lines = lines || []; fb.replies = replies || [];
+  fb.alt = fb.lon ? (await sfx.loadClips('lonOrionVoices').catch(() => null)) || [] : []; // CH2ORIONALTVISION1–6, the New London lines
   fb.clip = { james: bv && bv[JB_BETRAYAL.length - 1], name: cp && cp[3], b0: cf && cf[0], b2: cf && cf[2], close: cf && cf[7], hey: fb.lines[6] };
   fb.T = fbTimeline();
   fb.J = J; fb.C = C;
@@ -8021,13 +8022,13 @@ function endFlashback() {
   fb.on = false; state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta();
   setCh2({ antFlashback: true, flashWhere: fb.lon ? 'london' : 'antarctica' });
   const L = fb.lon, after = () => { if (L) { notice('Parliament Square', 'NEW LONDON', 3000); renderTasks(); } else notice('The ferry terminal', 'ANTARCTICA', 3000); };
-  // in New London the lines that name the pier and the ice change; those have no recording yet (CH2LONORION1–6), the rest reuse his Antarctica takes
-  const vo = (list, idx) => idx.map(i => i == null ? undefined : list[i]), FL = fb.lines || [], RP = fb.replies || [];
+  // in New London the lines that name the pier and the ice change; those are CH2ORIONALTVISION1–6 (lonOrionVoices), the rest reuse his Antarctica takes
+  const AL = fb.alt || [], vo = (list, idx) => idx.map(i => typeof i === 'string' ? AL[+i.slice(1) - 1] : i == null ? undefined : list[i]), FL = fb.lines || [], RP = fb.replies || [];
   openDialog('ORION MASCAR', L ? FLASH_ORION_LON : FLASH_ORION, false, () => openChoice('ORION MASCAR', [ // voiced: CH2ORIONANTARCTICA1–6
     // voiced: CH2ANTORIONGOOD1–3 and CH2ANTORIONBAD1–4 (antOrionVoices: the three GOOD lines, then the four BAD)
-    { text: 'Got it.', onPick: () => { influence('orion', 10); setCh2({ antChoice: 'calm' }); openDialog('ORION MASCAR', L ? FLASH_ORION_CALM_LON : FLASH_ORION_CALM, false, after, L ? vo(RP, [0, 1, null]) : RP.slice(0, 3)); } },
-    { text: 'I will find Croxian. And when I do…', onPick: () => { influence('orion', -20); setCh2({ antChoice: 'vengeance' }); openDialog('ORION MASCAR', L ? FLASH_ORION_VENGEANCE_LON : FLASH_ORION_VENGEANCE, false, after, L ? vo(RP, [3, null, 5, null]) : RP.slice(3, 7)); } }
-  ]), L ? vo(FL, [0, null, null, 3, 4, null]) : FL.slice(0, 6));
+    { text: 'Got it.', onPick: () => { influence('orion', 10); setCh2({ antChoice: 'calm' }); openDialog('ORION MASCAR', L ? FLASH_ORION_CALM_LON : FLASH_ORION_CALM, false, after, L ? vo(RP, [0, 1, 'a4']) : RP.slice(0, 3)); } },
+    { text: 'I will find Croxian. And when I do…', onPick: () => { influence('orion', -20); setCh2({ antChoice: 'vengeance' }); openDialog('ORION MASCAR', L ? FLASH_ORION_VENGEANCE_LON : FLASH_ORION_VENGEANCE, false, after, L ? vo(RP, [3, 'a5', 5, 'a6']) : RP.slice(3, 7)); } }
+  ]), L ? vo(FL, [0, 'a1', 'a2', 3, 4, 'a3']) : FL.slice(0, 6));
 }
 /* ---- Chapter II: Daniel Brown (no relation to James) and The Salt Lantern ----
    Three townsfolk put you on his trail (the gate warden, the shopkeeper, the old man in the square); then the harbour clerk
