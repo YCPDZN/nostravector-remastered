@@ -396,9 +396,9 @@ The human suit is modelled with its arms held about 34° out from the body, and 
 - **Saving** in Antarctica (outside or inside the station) brings a Chapter II wanderer back there on Continue or Load.
 
 ### Chapter II: back on the pier (the flashback)
-The first time you step off the ferry in Antarctica with Orion, it all comes back. It plays once per wanderer, about 18 seconds, letterboxed:
+The first time you step off the ferry in Antarctica with Orion, it all comes back. It plays once per wanderer and is letterboxed. It runs about 46 seconds, because its timing is built from the voice recordings, so every line plays and is subtitled to its last word:
 1. **Panic:** on the pier where James betrayed you, your wanderer grabs their helmet, shakes and drops to their knees. Their heart races, their breathing goes ragged, and the picture blurs and drains of colour while Orion stares.
-2. **Flashes of Chapter I,** in near-black-and-white with white-flash cuts: James Brown at the gangway, his hand coming out of his coat ("This is where we part company", his own voice), then James going over the side into the sea.
+2. **Flashes of Chapter I,** in near-black-and-white with white-flash cuts: James Brown at the gangway, his hand coming out of his coat, saying the whole of his last speech in his own voice ("This is where we part company… You should have learned to fear the man who kept telling you there was nothing to fear"). The shot changes angle every few seconds. As soon as he finishes, he goes over the side into the sea.
 3. **Croxian Mascar, the heart of it:**
    - He steps off the ferry ("My name is Croxian Mascar…", his own voice).
    - He comes down the gangway at you far too fast, and his scythe swings again and again. Each hit lands with a red flash, a hard shake and a thud.
@@ -413,7 +413,7 @@ The first time you step off the ferry in Antarctica with Orion, it all comes bac
    - The choice is saved as `ch2.antChoice` (`calm` or `vengeance`) for later chapters. Influence shows in Orion's alignment panel and in the loot feed (*Orion · influence +10*).
    - Dialogue choices are new to the game. Any conversation can now offer them with `openChoice(speaker, options)`, and `influence(companion, amount)` changes one companion's influence directly.
 
-**Flashback subtitles:** James's, Croxian's and Orion's words appear one at a time in time with their voices, in big uppercase text that shakes with the heartbeat and has a split-colour glow. James's are icy blue-white, and a long speech scrolls so the newest words stay on screen. Croxian's are blood red, shudder hardest, and now and then a word (sometimes his own name) glitches into symbols. Orion's are amber. They replace the normal subtitle bar for this scene only.
+**Flashback subtitles:** James's, Croxian's and Orion's words appear one at a time in time with their voices, in big uppercase text that shakes with the heartbeat and has a split-colour glow. Each line is shown in full: it's split into sentence pages (14 words at most), the words build up as they're spoken (timed by word length), and a page only turns once every word on it has been said. James's words are icy blue-white. Croxian's are blood red, shudder hardest, and now and then a word (sometimes his own name) glitches into symbols. Orion's are amber. They replace the normal subtitle bar for this scene only.
 
 The flashback uses the voice lines James and Croxian already have. Orion's two replies are voiced and lip-synced: CH2ANTORIONGOOD1–3 for "Got it." and CH2ANTORIONBAD1–4 for the Croxian reply. They're packed as `data/antOrionVoices.js`, with the sources in `assets/audio/orion_ch2_antarctica/`. His six lines before the choice are voiced too: CH2ORIONANTARCTICA1–6 (and 0 for the far-off "Hey. HEY!"), packed as `data/antOrionFlashVoices.js`, with the sources in the same folder. The flag is `ch2.antFlashback`.
 - **Fix:** the Chapter I super blizzard can never start again once you've escaped Antarctica.

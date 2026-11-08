@@ -7666,20 +7666,44 @@ const FLASH_ORION_VENGEANCE = [
 const fb = { t: 0, on: false };
 // the flashback's subtitles: big, shaking, word by word in time with the voice
 let fbSubEl = null;
+// pages of whole sentences (at most 14 words; a long sentence is split evenly) so every word gets its time on screen
+function fbPages(words) {
+  const sents = []; let cur = [];
+  words.forEach((w, i) => { cur.push(i); if (/[.!?…][”’"]?$/.test(w)) { sents.push(cur); cur = []; } });
+  if (cur.length) sents.push(cur);
+  const pages = []; let pg = [];
+  for (const sn of sents) {
+    const parts = sn.length > 14 ? Math.ceil(sn.length / 12) : 1, size = Math.ceil(sn.length / parts);
+    for (let k = 0; k < sn.length; k += size) {
+      const chunk = sn.slice(k, k + size);
+      if (pg.length && (parts > 1 || pg.length + chunk.length > 14)) { pages.push(pg); pg = []; }
+      pg = pg.concat(chunk);
+      if (parts > 1) { pages.push(pg); pg = []; }
+    }
+  }
+  if (pg.length) pages.push(pg);
+  return pages.map(q => [q[0], q[q.length - 1] + 1]);
+}
 function fbSay(who, text, clip, vol = 1.25, far = false) {
   if (!fbSubEl) { fbSubEl = document.createElement('div'); fbSubEl.id = 'fbSub'; fbSubEl.innerHTML = '<span class="w"></span><span class="t"></span>'; document.body.appendChild(fbSubEl); }
   const words = text.split(/\s+/), dur = clip ? clip.duration : words.length * .34;
-  fb.sub = { who, words, start: performance.now(), dur, n: 0, kind: /JAMES/.test(who) ? 'james' : /ORION/.test(who) ? 'orion' : 'crox' };
+  // each word's share of the line is its length plus a little for the gap after it
+  const wt = words.map(w => w.replace(/[^\w’']/g, '').length + 1.6 + (/[.!?…,;:—]$/.test(w) ? 2.2 : 0)), starts = []; let acc = 0;
+  for (const w of wt) { starts.push(acc); acc += w; }
+  fb.sub = { who, words, starts, total: acc, pages: fbPages(words), start: performance.now(), dur, n: 0, kind: /JAMES/.test(who) ? 'james' : /ORION/.test(who) ? 'orion' : 'crox' };
   fbSubEl.className = 'on ' + fb.sub.kind; fbSubEl.querySelector('.w').textContent = who; fbSubEl.querySelector('.t').innerHTML = '';
   if (clip) (far ? sfx.playFar(clip, vol) : sfx.playNarr(clip, vol)).then(() => { if (fb.sub && fb.sub.words === words) fb.sub.done = performance.now(); });
+  else setTimeout(() => { if (fb.sub && fb.sub.words === words) fb.sub.done = performance.now(); }, dur * 1000);
 }
 function fbSubHide() { fb.sub = null; if (fbSubEl) fbSubEl.className = ''; }
 const FB_GLITCH = '#$%&@!?/\\<>█▓▒░';
 function fbSubTick() {
   const S = fb.sub; if (!S || !fbSubEl) return;
-  if (S.done && performance.now() - S.done > 700) { fbSubHide(); return; }
-  const el = (performance.now() - S.start) / 1000, n = clamp(Math.ceil(el / Math.max(.3, S.dur) * S.words.length * 1.06), 1, S.words.length);
-  const from = Math.max(0, n - (S.kind === 'james' ? 9 : 12)); // a long speech scrolls; the newest words stay on screen
+  if (S.done && performance.now() - S.done > 900) { fbSubHide(); return; }
+  // how far through the line the voice is, and so how many words have been said
+  const spoken = S.done ? S.total : (performance.now() - S.start) / 1000 / Math.max(.3, S.dur) * S.total * 1.02;
+  let n = 0; while (n < S.words.length && S.starts[n] <= spoken) n++; n = Math.max(1, n);
+  const pg = S.pages.find(q => n - 1 >= q[0] && n - 1 < q[1]) || S.pages[S.pages.length - 1], from = pg[0]; // the whole sentence being said, built up word by word
   const t = fbSubEl.querySelector('.t');
   if (n !== S.n || from !== S.from) {
     S.n = n; S.from = from;
@@ -7701,14 +7725,16 @@ function fbFlash(a, c = '#fff') {
   fbFlashEl.style.background = c; fbFlashEl.style.opacity = a.toFixed(3);
 }
 async function startFlashback() {
-  Object.assign(fb, { t: 0, on: true, beatT: 0, beat: 0, shake: 0, cut: -1, hits: {}, said: {} });
+  Object.assign(fb, { t: 0, on: true, beatT: 0, beat: 0, shake: 0, cut: -1, hits: {}, said: {}, T: null, clip: null });
   const D = antFerryDock(); fb.home = { x: D.x, z: D.z, y: D.y, rot: D.rot };
   const p = player.position; p.set(D.x, D.y, D.z); player.rotation.y = D.rot; player.visible = true;
   resetRig(); inner.rotation.set(0, 0, 0); inner.position.set(0, 0, 0);
   // Orion just behind you, still finding his feet on the boards
   if (world.orion) { const R = world.orion.root; R.visible = true; R.position.set(p.x - Math.sin(D.rot) * 1.8 + Math.cos(D.rot) * 1.2, D.y, p.z - Math.cos(D.rot) * 1.8 - Math.sin(D.rot) * 1.2); R.rotation.y = D.rot; world.orion.mode = 'idle'; }
-  const [J, C, , , , lines, replies] = await Promise.all([ensureJames().then(() => james.ready ? james : null).catch(() => null), loadCroxian(), sfx.loadClips('betrayalVoices'), sfx.loadClips('croxPre'), croxClips(), sfx.loadClips('antOrionFlashVoices'), sfx.loadClips('antOrionVoices')]);
+  const [J, C, bv, cp, cf, lines, replies] = await Promise.all([ensureJames().then(() => james.ready ? james : null).catch(() => null), loadCroxian(), sfx.loadClips('betrayalVoices'), sfx.loadClips('croxPre'), croxClips(), sfx.loadClips('antOrionFlashVoices'), sfx.loadClips('antOrionVoices')]);
   fb.lines = lines || []; fb.replies = replies || [];
+  fb.clip = { james: bv && bv[JB_BETRAYAL.length - 1], name: cp && cp[3], b0: cf && cf[0], b2: cf && cf[2], close: cf && cf[7], hey: fb.lines[6] };
+  fb.T = fbTimeline();
   fb.J = J; fb.C = C;
   if (C) { wScene.add(C.root); C.root.visible = false; }
   if (J) { wScene.add(J.root); J.root.visible = false; }
@@ -7724,23 +7750,42 @@ function fbCam(lx, ly, lz, tx, ty, tz, roll = 0) {
   camera.position.set(cx + (Math.random() - .5) * s, ly + (Math.random() - .5) * s, cz + (Math.random() - .5) * s);
   camera.up.set(Math.sin(roll), Math.cos(roll), 0); camera.lookAt(ax, ty, az); camera.up.set(0, 1, 0);
 }
+// the flashback's timeline is built from the voice lines, so every line plays (and is subtitled) to its last word
+function fbTimeline() {
+  const d = b => b ? b.duration : 0, K = fb.clip || {}, T = {};
+  T.j0 = 3.2;                                           // James, hand in his coat, his whole last speech
+  T.f0 = T.j0 + Math.max(1.4, d(K.james) + .45);        // over the side
+  T.c0 = T.f0 + 1.3;                                    // Croxian off the ferry: "My name is Croxian Mascar…"
+  T.c1 = T.c0 + Math.max(1.3, d(K.name) + .4);          // down the gangway at you
+  T.c2 = T.c1 + 1.6;                                    // the scythe, again and again: "Run, wanderer…"
+  T.c3 = T.c2 + Math.max(1.5, d(K.b0) + .35);           // the leap: "The ice keeps whatever I give it."
+  T.c4 = T.c3 + Math.max(1.7, d(K.b2) + .35);           // the close-up: "Too close."
+  T.c5 = T.c4 + Math.max(1.6, d(K.close) + .6);         // the last swing
+  T.c6 = T.c5 + 1.2;                                    // red and black
+  T.b0 = T.c6 + .8;                                     // black, ringing, "Hey. HEY!"
+  T.hey = T.b0 + .9;
+  T.end = T.hey + Math.max(2.1, d(K.hey) + .9);
+  return T;
+}
 function flashTick(dt) {
-  fb.t += dt; const t = fb.t, p = player.position, H = fb.home, R = rig, O = world.orion, J = fb.J, C = fb.C;
+  fb.t += dt; const t = fb.t, p = player.position, H = fb.home, R = rig, O = world.orion, J = fb.J, C = fb.C, T = fb.T || (fb.T = fbTimeline()), K = fb.clip || {};
   const seg = (a, b) => clamp((t - a) / (b - a), 0, 1), once = (k, fn) => { if (!fb.said[k]) { fb.said[k] = 1; fn(); } };
-  // the heart: racing through the panic, hammering through Croxian, then the ringing
-  const bpm = t < 3.2 ? 110 + t * 18 : t < 15.2 ? 170 : 0;
-  fb.beatT -= dt; if (bpm && fb.beatT <= 0) { fb.beatT = 60 / bpm; sfx.heart(t < 3.2 ? .8 : 1); fb.beat = 1; }
+  // the heart: racing through the panic, hammering through the memories, then the ringing
+  const bpm = t < T.j0 ? 110 + t * 18 : t < T.c0 ? 150 : t < T.b0 ? 175 : 0;
+  fb.beatT -= dt; if (bpm && fb.beatT <= 0) { fb.beatT = 60 / bpm; sfx.heart(t < T.j0 ? .8 : 1); fb.beat = 1; }
   fb.beat = Math.max(0, fb.beat - dt * 5); fb.shake = Math.max(0, fb.shake - dt * 2.2);
-  sfx.drone(t < 15.2 ? .5 + seg(0, 15) * .5 : 0); sfx.ring(t > 15.2 && t < 18.2 ? 1 - seg(16.6, 18.2) : 0);
+  sfx.drone(t < T.b0 ? .5 + seg(0, T.b0) * .5 : 0); sfx.ring(t > T.b0 && t < T.end ? 1 - seg(T.end - 1.6, T.end) : 0);
   let blur = 0, red = 0, sat = 1, lid = 0, flash = 0, flashC = '#fff';
-  const cutAt = [3.2, 4.6, 5.8, 7.0, 8.6, 10.0, 11.6, 13.2, 14.4, 15.2];
-  for (const c of cutAt) flash = Math.max(flash, Math.max(0, 1 - Math.abs(t - c) / .09));
+  // James's speech is long, so his shot changes angle every few seconds (soft cuts); everything else hard-cuts
+  const jAngles = Math.max(1, Math.round((T.f0 - T.j0) / 4.2)), jCuts = []; for (let i = 1; i < jAngles; i++) jCuts.push(T.j0 + (T.f0 - T.j0) * i / jAngles);
+  const cutAt = [T.j0, ...jCuts, T.f0, T.c0, T.c1, T.c2, T.c3, T.c4, T.c5, T.b0];
+  for (const c of cutAt) flash = Math.max(flash, Math.max(0, 1 - Math.abs(t - c) / .09) * (jCuts.includes(c) ? .6 : 1));
   const cut = cutAt.filter(c => t >= c).length;
-  if (cut !== fb.cut) { fb.cut = cut; if (cut > 0 && cut < 10) { sfx.whoosh(); fb.shake = Math.max(fb.shake, .12); } }
-  const showPresent = t < 3.2 || t >= 18.2;
+  if (cut !== fb.cut) { fb.cut = cut; if (cut > 0 && cut < cutAt.length) { sfx.whoosh(); fb.shake = Math.max(fb.shake, .12); } }
+  const showPresent = t < T.j0 || t >= T.end;
   player.visible = showPresent; if (O) O.root.visible = showPresent;
   if (J) J.root.visible = false; if (C) C.root.visible = false;
-  if (t < 3.2) {
+  if (t < T.j0) {
     // the panic: hands to the helmet, shaking, then the knees go
     const k = seg(1.6, 1.85), tr = (Math.random() - .5) * .06;
     damp(R.ra.rotation, 'x', -2.5, 10, dt); damp(R.ra.rotation, 'z', .55, 10, dt); damp(R.la.rotation, 'x', -2.5, 10, dt); damp(R.la.rotation, 'z', -.55, 10, dt);
@@ -7749,18 +7794,22 @@ function flashTick(dt) {
     if (k >= 1) once('knees', () => { sfx.thud(); fb.shake = .35; });
     once('gasp', () => sfx.gasp(1.4)); if (t > 1 && !fb.said.g2) { fb.said.g2 = 1; sfx.gasp(1.8); }
     if (O) O.root.rotation.y = angLerp(O.root.rotation.y, Math.atan2(p.x - O.root.position.x, p.z - O.root.position.z), Math.min(1, dt * 3));
-    const f = H.rot, fx = Math.sin(f), fz = Math.cos(f), push = seg(0, 3.2);
+    const f = H.rot, fx = Math.sin(f), fz = Math.cos(f), push = seg(0, T.j0);
     camera.position.set(p.x + fx * (2.1 - push * .8) + fz * .55, H.y + .75 - .2 * k, p.z + fz * (2.1 - push * .8) - fx * .55);
     camera.lookAt(p.x, H.y + 1.5 - .55 * k, p.z);
     blur = push * 2 + fb.beat; sat = 1 - push * .5; red = push * .3 + fb.beat * .2; lid = Math.max(0, Math.sin(t * 5)) * .25 * push;
-  } else if (t < 4.6) {
-    // James on the pier, his hand coming out of his coat
+  } else if (t < T.f0) {
+    // James on the pier, his hand coming out of his coat, saying every word of it
     if (J) { J.root.visible = true; J.root.rotation.z = 0; fbPut(J.root, 0, 30); fbFace(J.root, 0, 23); J.raise = 1.25; J.headTilt = .05; }
-    once('james', () => sfx.loadClips('betrayalVoices').then(c => fbSay('JAMES BROWN', JB_BETRAYAL[JB_BETRAYAL.length - 1], c && c[JB_BETRAYAL.length - 1], 1.2)));
-    fbCam(0, 3.15, 23.6, 0, 3.2, 30); blur = .8; sat = .12; red = .05;
-  } else if (t < 5.8) {
+    once('james', () => fbSay('JAMES BROWN', JB_BETRAYAL[JB_BETRAYAL.length - 1], K.james, 1.2));
+    const a = Math.min(jAngles - 1, Math.floor(seg(T.j0, T.f0) * jAngles)), k = (seg(T.j0, T.f0) * jAngles) % 1;
+    if (a % 3 === 0) fbCam(0, 3.15, 23.6 + k * .9, 0, 3.2, 30);                        // your eyes, edging closer
+    else if (a % 3 === 1) fbCam(-2.4, 2.2, 26.4 + k * .4, 0, 3.3, 30, .1);             // low, from the side, tilted
+    else fbCam(1.1, 3.4, 28.3 - k * .3, 0, 3.35, 30, -.05);                            // close on his face
+    blur = .8 + fb.beat * .3; sat = .12; red = .05;
+  } else if (t < T.c0) {
     // and over the side, into the sea
-    const k = seg(4.6, 5.5);
+    const k = seg(T.f0, T.f0 + .9);
     if (J) { J.root.visible = true; const [ax, az] = fbW(0, 30), [bx, bz] = fbW(-5.5, 30); J.root.position.set(lerp(ax, bx, k), 1.6 + Math.sin(k * Math.PI) - k * 3.2, lerp(az, bz, k)); J.root.rotation.z = k * 1.5; }
     if (k >= 1) once('splash', () => { const [bx, bz] = fbW(-5.5, 30); burst(bx, -1.5, bz, 50, 6, .75, .88, 1, 1.2, 1.4, 4); sfx.hit('ice'); fb.shake = .3; });
     fbCam(-10, 4.2, 23, -4, .8, 30, .12); blur = .9; sat = .1;
@@ -7768,34 +7817,36 @@ function flashTick(dt) {
     if (J) { J.root.rotation.z = 0; J.raise = .1; }
   }
   // ---- Croxian Mascar: the heart of it ----
-  if (t >= 5.8 && t < 15.2 && C) {
+  if (t >= T.c0 && t < T.b0 && C) {
     C.root.visible = true;
     const atkHit = (k, at) => { if (!fb.hits[k] && t > at) { fb.hits[k] = 1; sfx.swing(); sfx.thud(); fb.shake = .7; fb.red = 1; flashC = '#7a0000'; } };
-    if (t < 7.0) { // he steps off the ferry and looks straight at you
-      const k = seg(5.8, 7); fbPut(C.root, lerp(9.5, 6.5, k), 30); fbFace(C.root, 0, 24); C.mode = 'walk'; C.t += dt;
-      once('name', () => sfx.loadClips('croxPre').then(c => fbSay('CROXIAN MASCAR', CROX_PRE[3], c && c[3], 1.35)));
-      fbCam(1.5, 1.5, 27.5, lerp(9.5, 6.5, k), 3.3, 30, -.08);
-    } else if (t < 8.6) { // down the gangway and at you, fast
-      const k = seg(7, 8.6); fbPut(C.root, lerp(6.5, 0, smooth(0, .6, k)), lerp(30, 25.2, k)); fbFace(C.root, 0, 23.5); C.mode = k < .8 ? 'walk' : 'attack'; if (k >= .8 && !fb.said.a1) { fb.said.a1 = 1; C.t = .3; }
+    if (t < T.c1) { // he steps off the ferry, then stands at the gangway and tells you his name, staring straight at you
+      const k = seg(T.c0, Math.min(T.c1, T.c0 + 3)), s = seg(T.c0, T.c1);
+      fbPut(C.root, lerp(9.5, 5.6, k), 30); fbFace(C.root, 0, 24); C.mode = k < 1 ? 'walk' : 'idle'; C.t += dt;
+      once('name', () => fbSay('CROXIAN MASCAR', CROX_PRE[3], K.name, 1.35));
+      fbCam(1.5 - s * .6, 1.9 + s * .5, 27.5 - s * .5, lerp(9.5, 5.6, k), 3.3, 30, -.08 + s * .05);
+    } else if (t < T.c2) { // down the gangway and at you, fast
+      const k = seg(T.c1, T.c2); fbPut(C.root, lerp(5.6, 0, smooth(0, .6, k)), lerp(30, 25.2, k)); fbFace(C.root, 0, 23.5); C.mode = k < .8 ? 'walk' : 'attack'; if (k >= .8 && !fb.said.a1) { fb.said.a1 = 1; C.t = .3; }
       C.t += dt * 1.6; // he moves quicker than anyone should
       fbCam(0, 2.2, 23.5, 0, 2.6, 27); camera.lookAt(C.root.position.x, C.root.position.y + 1.4, C.root.position.z);
-      atkHit('h1', 8.35);
-    } else if (t < 10.0) { // the scythe, again and again
+      atkHit('h1', T.c1 + 1.35);
+    } else if (t < T.c3) { // the scythe, again and again
       fbPut(C.root, 0, 25.4); fbFace(C.root, 0, 23.5); C.mode = 'attack'; C.t += dt * .9;
-      fbCam(-1.2, 1.3, 23.4, 0, 2.5, 25.4, .22); atkHit('h2', 8.95); atkHit('h3', 9.75);
-      once('b1', () => croxClips().then(c => fbSay('CROXIAN MASCAR', CROX_BARKS[0], c && c[0], 1.4)));
-    } else if (t < 11.6) { // he leaps
-      const k = seg(10.2, 11.2); fbPut(C.root, 0, lerp(29, 24.6, k), Math.sin(k * Math.PI) * 4.2); fbFace(C.root, 0, 23.5); C.mode = 'idle';
+      once('b1', () => fbSay('CROXIAN MASCAR', CROX_BARKS[0], K.b0, 1.4));
+      fbCam(-1.2, 1.9, 23.4, 0, 2.5, 25.4, .22);
+      for (let i = 0, at = T.c2 + .35; at < T.c3 - .2; i++, at += .85) atkHit('h2' + i, at);
+    } else if (t < T.c4) { // he leaps
+      const k = seg(T.c3 + .2, Math.min(T.c4, T.c3 + 1.2)); fbPut(C.root, 0, lerp(29, 24.6, k), Math.sin(k * Math.PI) * 4.2); fbFace(C.root, 0, 23.5); C.mode = 'idle';
       if (k >= 1) once('land', () => { sfx.thud(); fb.shake = 1; const [x, z] = fbW(0, 24.6); burst(x, 1.8, z, 60, 7, .9, .95, 1, .9, 1.2, 1.5); fb.red = 1; });
-      once('b2', () => croxClips().then(c => fbSay('CROXIAN MASCAR', CROX_BARKS[2], c && c[2], 1.4)));
+      once('b2', () => fbSay('CROXIAN MASCAR', CROX_BARKS[2], K.b2, 1.4));
       fbCam(1.6, 2.05, 21.6, 0, 3.2 + Math.sin(k * Math.PI) * 2.5, 25, -.15);
-    } else if (t < 13.2) { // close: the face, the scythe coming up, slowed down
+    } else if (t < T.c5) { // close: the face, the scythe coming up, slowed down
       fbPut(C.root, 0, 24.7); fbFace(C.root, 0, 23.5); C.mode = 'attack'; C.t += dt * .35;
-      once('close', () => croxClips().then(c => fbSay('CROXIAN MASCAR', CROX_TOO_CLOSE, c && c[7], 1.5)));
-      const k = seg(11.6, 13.2); fbCam(.3, 3.3, 22.9 + k * .45, 0, 3.3, 24.7, .05 * Math.sin(t * 9));
-    } else if (t < 14.4) { // the last swing, straight at you
+      once('close', () => fbSay('CROXIAN MASCAR', CROX_TOO_CLOSE, K.close, 1.5));
+      const k = seg(T.c4, T.c5); fbCam(.3, 3.3, 22.9 + k * .45, 0, 3.3, 24.7, .05 * Math.sin(t * 9));
+    } else if (t < T.c6) { // the last swing, straight at you
       fbPut(C.root, 0, 24.3); fbFace(C.root, 0, 23.5); C.mode = 'attack'; if (!fb.said.last) { fb.said.last = 1; C.t = .35; } C.t += dt * 1.3;
-      fbCam(0, 3.05, 23.2, 0, 3.1, 24.3); atkHit('h4', 13.75);
+      fbCam(0, 3.05, 23.2, 0, 3.1, 24.3); atkHit('h4', T.c5 + .55);
     } else { // strobing red and black
       fbPut(C.root, 0, 24.3); C.mode = 'attack'; C.t += dt;
       fbCam(0, 3.05, 23.2, 0, 3.1, 24.3, .3);
@@ -7806,13 +7857,13 @@ function flashTick(dt) {
     fb.red = Math.max(0, (fb.red || 0) - dt * 3);
     if (fb.red > .5) { flash = Math.max(flash, fb.red * .55); flashC = '#7a0000'; }
   }
-  if (t >= 15.2 && t < 18.2) {
+  if (t >= T.b0 && t < T.end) {
     // black; ringing; a voice somewhere far off
     flash = 1; flashC = '#000';
-    once('black', () => { fbSubHide(); sfx.stopNarr(); if (C) C.root.visible = false; });
-    if (t > 16.1) once('hey', () => fbSay('ORION MASCAR', 'Hey. HEY!', fb.lines && fb.lines[6], 1.6, true)); // CH2ORIONANTARCTICA0, from far away
+    once('black', () => { if (C) C.root.visible = false; });
+    if (t > T.hey) once('hey', () => fbSay('ORION MASCAR', 'Hey. HEY!', K.hey, 1.6, true)); // CH2ORIONANTARCTICA0, from far away
   }
-  if (t >= 18.2 && !fb.said.end) {
+  if (t >= T.end && !fb.said.end) {
     fb.said.end = 1; fbSubHide(); endFlashback(); return;
   }
   ciFx(blur, red, 0, lid, sat); fbFlash(flash, flashC); fbSubTick();
