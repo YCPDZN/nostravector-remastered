@@ -285,3 +285,25 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   - Every story companion still to join has its own colour reserved: Khazglar, Charon, Kizna, Nyrexia, Croxian, Malia, James (Terra Imperia), Josiah II and Tyrotaronus.
   - **Custom companions** (your own uploaded characters, or the Project BC and Sevirrus cast) get a steady colour of their own and their first name, as soon as they're in your party.
   - A new companion's marker appears once its model is registered with `registerCompanionRig(id, () => root)` (also `window.nvRegisterCompanion`).
+
+### Built-in worlds for your own adventures
+**Custom creations → Planets** now lists 40 built-in worlds under your own, in four groups. Open any of them to see its type, gravity, climate, life, whether you can land, a short description and a spinning 3D preview. They are read-only. All of them can be picked as an **adventure's planet** or a **species' homeworld**. The main story doesn't use them; Chapter III comes separately.
+- **Sol · planets:** Earth, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune. The four giants have rings, and they're described as having no surface, so in an adventure you explore their **cloud cities**.
+- **Sol · dwarf planets:** Ceres, Pluto, Haumea, Makemake, and Eris (the Erisian homeworld).
+- **Sol · moons:**
+  - Earth: the Moon
+  - Mars: Phobos, Deimos
+  - Jupiter: Io, Europa, Ganymede, Callisto
+  - Saturn: Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Iapetus
+  - Uranus: Miranda, Ariel, Umbriel, Titania, Oberon
+  - Neptune: Triton
+  - Pluto: Charon (home of the robot Charon)
+  - Eris: Dysnomia
+- **Beyond Sol · worlds of the lore:**
+  - Janira Prime (Chompy homeworld)
+  - Aridaxx (Chompy capital, city of Alphinos)
+  - Carax (the airless fortress world in the galactic core, with its full history)
+  - Malana (Am-Grek's birthplace, Malana Prime system)
+  - Steca (where Shakhak beat Javek)
+- Gravity values for the Sol worlds are the real ones. The look of the lore worlds (jungle, desert, airless rock, volcanic) is a placeholder until their appearance is decided.
+- **Playing adventures** (choose who you play as, land on the world, objectives from your acts, no XP) is the next step.
