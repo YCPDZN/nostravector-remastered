@@ -642,7 +642,7 @@ Moments after escaping Earth, out over the planet, the wanderer has another epis
 
 | Species | The nightmare |
 |---|---|
-| Chompy | **Sevirrus itself**: the game before this one plays its own cutscenes, in its own dark and brutal style. They show the Carax massacre and Jakal's address, the siege of Aridaxx, the assassination of Jakal and Damix, the Emperor coming apart, Jazmak, and the end in irons. Nostravector's subtitles, title cards and Skip button replace Sevirrus's own. |
+| Chompy | **Sevirrus's cutscenes**: the game before this one plays its own cutscenes, in its own dark and brutal style. They show the Carax massacre and Jakal's address, the siege of Aridaxx, the assassination of Jakal and Damix, the Emperor coming apart, Jazmak, and the end in irons. Nostravector's subtitles, title cards and Skip button replace Sevirrus's own. |
 | Erisian | A future that hasn't happened yet: **Alexia Erisconos overthrows her sister Vishara** in the Citadel el Eriscons. |
 | Human | **Chapter II replayed**, with its own recordings: the farm, the cantina, the arrest, Hawthorne, the trial and the escape. |
 | Am-Grek | A **prophecy** of what's coming, told without a single name: a man falling, a black banner, ships darkening the sky and an empire of glass. |
@@ -650,15 +650,16 @@ Moments after escaping Earth, out over the planet, the wanderer has another epis
 Then Orion and Nico bring them back. **Skip** jumps past the memories, then past the wake-up.
 
 - **Skipping the Chompy nightmare:** **Skip** moves on to the next Sevirrus scene. Press it twice quickly to skip them all.
-- **Where Sevirrus lives:** the Sevirrus game is in the `nightmare` folder (`nightmare/sevirrus.html`, with its models, music and tools), an unaltered copy of the original. Opened on its own, it is still the full Sevirrus game.
-- **Playing from a file:** when Nostravector is opened straight from a file (`file://`), the browser won't let it reach that page, so the same page loads from `data/sevGame.js`.
-- **Fallback:** if Sevirrus can't load, the staged Chompy memories play instead.
+- **What was taken from Sevirrus:** only its cutscenes, with no gameplay, menus or saves. Their code sits at the bottom of `index.html` (`#sevCinePage`).
+- **Assets:** the 9 models, the score and the 69 voice lines those cutscenes use are in `data/sevCine.js` (18 MB).
+- **The Sevirrus game file:** `sevirrus.html` is not needed.
+- **Fallback:** if the cutscenes can't load, the staged Chompy memories play instead.
 
-- **New data:**
+- **Data for the fallback:**
   - `data/sevVoices.js`: 15 Sevirrus lines.
   - `data/sevCarax.js`: the music.
   - `data/sevDamix.js`, `data/sevJakal.js` and `data/sevSettler.js`: Damix Chompjak, Jakal Chompjak XVI and the Carax settlers, all with their Sevirrus models.
-- **Loading:** these packs load only when the Chompy nightmare plays.
+- **Loading:** these packs, and `data/sevCine.js`, load only when the Chompy nightmare plays.
 - **Lines still to record:**
   - Erisian: `CH3NMERIS1–8`.
   - Grek: `CH3NMGREK1–6`.
