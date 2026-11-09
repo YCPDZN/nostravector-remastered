@@ -592,7 +592,11 @@ Open **Diplomacy** from the pause menu, on foot or in space, or from the galaxy 
 - **Casus belli:**
   - **Annihilation:** destroy them. Every world they held becomes your colony.
   - **Vassalisation:** they become your puppet. You choose their leader (their own, or one of your companions, who then leaves your crew to rule) and can rename them. Puppets can be renamed later or released.
-  - **Restoration:** for 3,000 units, an annihilated empire returns as the **[Species] Restoration** (Chompy Restoration, Grek Restoration and so on) and takes back the worlds you took from it.
+  - **Subjugation:** like Annihilation, every world they held becomes your colony, but the **[Species] Resistance** rises from the ashes.
+    - Its fighters jump you in their old space, roughly half the times you're attacked there, and your colonies there are marked *resistance active*.
+    - Declare **War · Crush the resistance** (+6 per fighter shot down) to break it.
+  - **Tribute:** like Vassalisation, but they keep their own leader and name and **pay you tribute**: 60–600 units, scaling with their worlds, every 5 minutes of play. You can end the tribute whenever you like.
+  - **Restoration:** for 3,000 units, an annihilated empire (or one whose resistance you crushed) returns as the **[Species] Restoration** (Chompy Restoration, Grek Restoration and so on) and takes back the worlds you took from it.
 - **Colonies:** land on an unclaimed world and colonise it for 500 units. Worlds taken in an Annihilation are colonies too. Appoint a **governor** to each: one of your companions, or anyone you name. Governors never rebel and never complain.
 - **Lending companions:** offer a companion to another faction and they serve it until you call them home. If you go to war with that faction, they fly in its fleet as a named ace (150 health). Shoot their ship down and they eject and rejoin your crew. Win the war and they come home too. Companions never die.
 - **Crew:** bring the **Project BC** characters (Josiah Richards, Peter Chambers, Gareth Williams, Kevin Murderhorn), **Lord Sevirrus**, or any character you've created aboard as companions. They follow you, fight with their own weapons, mine, and take the same five orders as Orion and James (1 Mine · 2 Explore · 3 Base · 4 Wander · 5 Follow, or the companion panel). Send them home whenever you like.
