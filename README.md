@@ -574,3 +574,26 @@ After the escape from New London, **Chapter III · Sol** begins in your ship, ju
   - Catharsis space is hostile: Catharsis ships attack there, as they do in Sol, and there are no Catharsis traders.
   - The galaxy map, system descriptions, planet factions and traders all switch with the chapter of the wanderer you're playing.
 
+## Diplomacy (Chapters III–V)
+Open **Diplomacy** from the pause menu, on foot or in space, or from the galaxy map. You can rename your own realm; the default is *The Wanderer's Dominion*.
+- **Factions and leaders:**
+  - **The Chompy Empire:** Emperor Hak Chompjak V.
+  - **The Order of Archamus:** Archamus, in Chapter III only. In Chapters IV and V the Order is folded into the **Grek Empire**, co-led by **Archamus and Am-Grek**, and Archiostal and Malana Prime fly Grek colours.
+  - **The Grek Empire:** Am-Grek in Chapter III.
+  - **The Catharsis:** Lord Zark. In Chapter IV he's a story boss, so the Catharsis can't be warred on or defeated.
+  - **The Erisian Empire:** Vishara Erisconos. Alexia Erisconos takes over once her mid-Chapter III coup happens, and Vishara returns in Chapters IV and V.
+  - **Human Federation of Sol:** President Darius Ancin.
+  - **Terra Imperia:** Thomas Hawthorne, in Chapter III only. Terra Imperia now holds **Mercury and Venus**.
+- **War:** declare on any story faction. In Chapters III and IV you're warned first that it's not recommended because it can break quests. Win at 100 war score:
+  - **+6** for each of their ships shot down. Their navy guards their space while you're at war, in their own colours.
+  - **+15** for each world you occupy: land, stay within about 25 m of your ship, and hold for 30 seconds. Their capital gives **+25**.
+  - You can make peace at any time, and occupied worlds go back.
+  - Traders on their worlds won't deal with you during the war.
+- **Casus belli:**
+  - **Annihilation:** destroy them. Every world they held becomes your colony.
+  - **Vassalisation:** they become your puppet. You choose their leader (their own, or one of your companions, who then leaves your crew to rule) and can rename them. Puppets can be renamed later or released.
+  - **Restoration:** for 3,000 units, an annihilated empire returns as the **[Species] Restoration** (Chompy Restoration, Grek Restoration and so on) and takes back the worlds you took from it.
+- **Colonies:** land on an unclaimed world and colonise it for 500 units. Worlds taken in an Annihilation are colonies too. Appoint a **governor** to each: one of your companions, or anyone you name. Governors never rebel and never complain.
+- **Lending companions:** offer a companion to another faction and they serve it until you call them home. If you go to war with that faction, they fly in its fleet as a named ace (150 health). Shoot their ship down and they eject and rejoin your crew. Win the war and they come home too. Companions never die.
+- **Crew:** bring the **Project BC** characters (Josiah Richards, Peter Chambers, Gareth Williams, Kevin Murderhorn), **Lord Sevirrus**, or any character you've created aboard as companions. They follow you, fight with their own weapons, mine, and take the same five orders as Orion and James (1 Mine · 2 Explore · 3 Base · 4 Wander · 5 Follow, or the companion panel). Send them home whenever you like.
+
