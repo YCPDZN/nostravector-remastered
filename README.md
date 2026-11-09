@@ -554,7 +554,7 @@ After the escape from New London, **Chapter III · Sol** begins in your ship, ju
 - **Dogfights, No Man's Sky style.** Out in space, away from planets, you'll sometimes be jumped. This starts after your first landing, roughly every minute or two when the dice say so. An alarm sounds, the combat music starts, and red markers lock onto each hostile, with name, distance and health bar. Hostiles off screen or behind you show as red dots on the screen edge.
   - **Pirates** attack across the galaxy, less often in Chompy Empire space, where the Emperor's patrols keep the peace.
   - **Terra Imperia interceptors** hunt you in Sol, in black and crimson: Hawthorne hasn't given up.
-  - **From Chapter IV**, with Hawthorne gone over to the Catharsis, Sol's attackers are **Catharsis ships** instead of Terra Imperia. They look nothing like a built ship: black shards with a cold violet core and curled spines that fire violet bolts. They're tougher (85 health) and a little faster, and pay more when destroyed.
+  - **In Chapter IV**, with Hawthorne gone over to the Catharsis, Sol's attackers are **Catharsis ships** instead of Terra Imperia. In Chapter V they're gone too, and only pirates are left. They look nothing like a built ship: black shards with a cold violet core and curled spines that fire violet bolts. They're tougher (85 health) and a little faster, and pay more when destroyed.
 - **Your guns:** twin photon cannons. Fire with **Space**, **F** or the **left mouse button**, or the **FIRE** button on phones. When you point near a target, the crosshair turns red and your shots lead it a little.
 - **Shields and hull:** hits drain your shields first, and shields recharge after 4 seconds without being hit. Once they're down, the hull takes damage and the screen flashes red. The hull doesn't recharge in space; it's patched up when you land.
 - **The enemy** fly attack runs: they lead their shots, break away when they get close, and turn back for another pass.
@@ -572,6 +572,11 @@ After the escape from New London, **Chapter III · Sol** begins in your ship, ju
   - The **Catharsis breaks free of the Grek Empire** and takes every Grek world but one. All 48 systems are theirs, and **Carax is their capital**.
   - **Malana** is the last Grek world.
   - Catharsis space is hostile: Catharsis ships attack there, as they do in Sol, and there are no Catharsis traders.
+- **Chapter V:**
+  - **The Catharsis no longer exists.** It was destroyed at the siege of Carax, at the end of Chapter IV.
+  - Its 48 systems are **Grek space again**, and **Carax is the Grek capital** once more. Malana is just another Grek world, and the old Catharsis worlds have Grek traders.
+  - No Catharsis ships attack anywhere; Sol and the core have only pirates.
+  - The Catharsis drops out of Diplomacy. Any war you had with it ends, and a companion you'd lent to it comes home.
   - The galaxy map, system descriptions, planet factions and traders all switch with the chapter of the wanderer you're playing.
 
 ## Diplomacy (Chapters III–V)
@@ -580,7 +585,7 @@ Open **Diplomacy** from the pause menu, on foot or in space, or from the galaxy 
   - **The Chompy Empire:** Emperor Hak Chompjak V.
   - **The Order of Archamus:** Archamus, in Chapter III only. In Chapters IV and V the Order is folded into the **Grek Empire**, co-led by **Archamus and Am-Grek**, and Archiostal and Malana Prime fly Grek colours.
   - **The Grek Empire:** Am-Grek in Chapter III.
-  - **The Catharsis:** Lord Zark. In Chapter IV he's a story boss, so the Catharsis can't be warred on or defeated.
+  - **The Catharsis:** Lord Zark, in Chapters III and IV. In Chapter IV he's a story boss, so the Catharsis can't be warred on or defeated. In Chapter V the Catharsis is gone, destroyed at the siege of Carax.
   - **The Erisian Empire:** Vishara Erisconos. Alexia Erisconos takes over once her mid-Chapter III coup happens, and Vishara returns in Chapters IV and V.
   - **Human Federation of Sol:** President Darius Ancin.
   - **Terra Imperia:** Thomas Hawthorne, in Chapter III only. Terra Imperia now holds **Mercury and Venus**.
