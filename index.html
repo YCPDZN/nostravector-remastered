@@ -4865,10 +4865,13 @@ const ITEMS = {
   wood: { name: 'Wood', kind: 'res', color: '#a0703f' },
   obsidian: { name: 'Obsidian', kind: 'res', color: '#6a5a82' },
   metal: { name: 'Metal plate', kind: 'res', color: '#aab4bf', desc: 'Scrap hammered flat and refined. Builds metal pieces and teleporters.', cost: { scrap: 3 }, bench: true },
+  hyper1: { name: 'Hyperdrive Mk I', kind: 'ship', desc: 'Retunes your ship’s hyperdrive: each jump reaches 6,000 light-years instead of 3,000. Enough to cross the gap into the galactic core.', cost: { metal: 4, crystal: 3, warpcell: 1 } },
+  hyper2: { name: 'Hyperdrive Mk II', kind: 'ship', desc: 'Upgrades Mk I (it is used up): each jump reaches 12,000 light-years.', cost: { hyper1: 1, metal: 8, crystal: 6, obsidian: 4 } },
+  hyper3: { name: 'Hyperdrive Mk III', kind: 'ship', desc: 'Upgrades Mk II (it is used up): each jump reaches 25,000 light-years.', cost: { hyper2: 1, metal: 12, crystal: 10, obsidian: 8 } },
   warpcell: { name: 'Warp cell', kind: 'res', color: '#a58bff', desc: 'Antimatter held in a crystal lattice. Your ship burns one for every jump between star systems on the galaxy map.', cost: { metal: 2, crystal: 2, scrap: 2 } }
 };
 const RES_IDS = ['stone', 'ice', 'wood', 'scrap', 'metal', 'obsidian', 'crystal', 'cloth', 'blubber', 'feather', 'meat', 'warpcell'];
-const CRAFT_IDS = ['metal', 'warpcell', 'pick', 'opick', 'medkit', 'ration', 'roast', 'lining', 'lamp', 'wall', 'heater', 'beacon'];
+const CRAFT_IDS = ['metal', 'warpcell', 'hyper1', 'hyper2', 'hyper3', 'pick', 'opick', 'medkit', 'ration', 'roast', 'lining', 'lamp', 'wall', 'heater', 'beacon'];
 const LOOT = {
   rock: () => [['stone', 2 + (Math.random() < .5)], Math.random() < .2 && ['scrap', 1]],
   ice: () => [['ice', 2], Math.random() < .3 && ['crystal', 1]],
@@ -4891,7 +4894,7 @@ function wsState(area = curArea()) {
 const have = id => invState().bag[id] | 0;
 function giveItem(id, n) {
   const inv = invState(); inv.bag[id] = (inv.bag[id] | 0) + n;
-  if (ITEMS[id].kind !== 'res' && !inv.bar.includes(id)) { const i = inv.bar.indexOf(null); if (i >= 0) inv.bar[i] = id; }
+  if (ITEMS[id].kind !== 'res' && ITEMS[id].kind !== 'ship' && !inv.bar.includes(id)) { const i = inv.bar.indexOf(null); if (i >= 0) inv.bar[i] = id; }
   saveRoster(); renderHotbar();
 }
 function takeItem(id, n) {
@@ -4917,14 +4920,14 @@ function renderHotbar() {
 function selectSlot(i) { const inv = invState(); inv.sel = i; renderHotbar(); sfx.blip(); }
 $('#hotbar').addEventListener('click', e => { const b = e.target.closest('button'); if (b) selectSlot(+b.dataset.i); });
 // ---- inventory & crafting screen ----
-function canCraft(id) { const it = ITEMS[id]; if (it.kind === 'tool' && have(id)) return false; if (it.bench && !benchNear()) return false; return Object.entries(it.cost).every(([r, n]) => have(r) >= n); }
+function canCraft(id) { const it = ITEMS[id]; if (it.kind === 'tool' && have(id)) return false; if (it.kind === 'ship' && driveTier() >= +id.slice(-1)) return false; if (it.bench && !benchNear()) return false; return Object.entries(it.cost).every(([r, n]) => have(r) >= n); }
 function renderInv() {
   $('#invRes').innerHTML = `<div class="res-row"><b style="--c:#ffc94a"></b><span>Units</span><em>${units()}</em></div>` + RES_IDS.map(id => `<div class="res-row${have(id) ? '' : ' zero'}"><b style="--c:${ITEMS[id].color}"></b><span>${ITEMS[id].name}</span><em>${have(id)}</em></div>`).join('');
   const gear = CRAFT_IDS.filter(id => have(id) && ITEMS[id].kind !== 'res');
   $('#invGear').innerHTML = gear.length ? gear.map(id => `<div class="res-row"><b style="--c:var(--ink)"></b><span>${ITEMS[id].name}</span><em>${ITEMS[id].kind === 'tool' ? '✓' : have(id)}</em></div>`).join('') : '<div class="res-row zero"><span>Nothing crafted yet</span></div>';
   $('#invCraft').innerHTML = CRAFT_IDS.map(id => {
-    const it = ITEMS[id], owned = it.kind === 'tool' && have(id);
-    const kind = { tool: 'Tool', place: 'Placeable', use: 'Consumable', res: 'Material' }[it.kind] + (it.bench ? (benchNear() ? ' · table ✓' : ' · needs crafting table') : '');
+    const it = ITEMS[id], owned = (it.kind === 'tool' && have(id)) || (it.kind === 'ship' && driveTier() >= +id.slice(-1));
+    const kind = { tool: 'Tool', place: 'Placeable', use: 'Consumable', res: 'Material', ship: 'Ship upgrade' }[it.kind] + (it.bench ? (benchNear() ? ' · table ✓' : ' · needs crafting table') : '');
     const cost = Object.entries(it.cost).map(([r, n]) => `<span class="${have(r) >= n ? 'ok' : 'no'}">${n} ${ITEMS[r].name}</span>`).join('');
     return `<div class="recipe"><h4>${it.name}<small>${kind}</small></h4><p>${it.desc}</p><div class="cost">${cost}<button class="btn small" data-c="${id}"${canCraft(id) ? '' : ' disabled'}><span>${owned ? 'Owned' : 'Craft'}</span></button></div></div>`;
   }).join('');
@@ -9829,8 +9832,16 @@ const bodyById = id => ALL_BODIES.find(P => P.id === id);
 const curSys = () => sysById(SPC.sys);
 const curBodies = () => curSys().bodies;
 const galDist = (A, B) => Math.round(Math.hypot(A.map.x - B.map.x, A.map.y - B.map.y) * 50000); // light-years (the disc is ~100,000 across)
-const LY_PER_CELL = 10000; // one warp cell carries you up to 10,000 light-years; longer jumps burn more (Sol to Steca Prime: 4)
+/* As in No Man's Sky you can't jump anywhere you like: the hyperdrive reaches only so far per jump (3,000 ly to start), so you
+   hop star to star. From Sol, 3,000 ly reaches about a hundred systems along our arm but never the core: Sagittarius A*
+   (Carax), Steca Prime and Janira Proxima wait until you've built Hyperdrive Mk I (6,000 ly; the core is 7 hops away), and
+   Mk II (12,000 ly) reaches every system. Fuel: one warp cell per 2,500 ly of each jump. */
+const LY_PER_CELL = 2500;
+const DRIVE_LY = [3000, 6000, 12000, 25000];
+const driveTier = () => have('hyper3') ? 3 : have('hyper2') ? 2 : have('hyper1') ? 1 : 0;
+const driveRange = () => DRIVE_LY[driveTier()];
 const warpCost = (A, B) => A === B ? 0 : Math.max(1, Math.ceil(galDist(A, B) / LY_PER_CELL));
+const inRange = (A, B) => galDist(A, B) <= driveRange();
 const cellsTxt = n => `${n} cell${n === 1 ? '' : 's'}`;
 const planetH = (P, d) => PKIND[P.kind].h(d, P) * (P.amp || (P.amp = P.kind === 'earth' ? 1 : clamp(P.r / 2600, .3, .8))); // smaller worlds, gentler relief
 const planetSea = P => P.sea ? 0 : null;
@@ -10217,9 +10228,10 @@ function galPanel() {
   const kind = P => P.kind === 'station' ? 'Station' : P.kind === 'gas' ? 'No surface' : P.parent ? 'Moon · landable' : 'Landable';
   let btn;
   if (here) btn = `<button class="btn gp-warp" disabled><span>You are here</span></button>`;
+  else if (!inRange(curSys(), S)) btn = `<button class="btn gp-warp" disabled><span>Out of hyperdrive range</span></button><div class="gp-why">Your hyperdrive reaches ${driveRange().toLocaleString()} ly per jump · hop through nearer systems${driveTier() < 3 ? `, or craft ${ITEMS['hyper' + (driveTier() + 1)].name} (${DRIVE_LY[driveTier() + 1].toLocaleString()} ly)` : ''}</div>`;
   else if (n < cost) btn = `<button class="btn gp-warp" disabled><span>Warp · ${cellsTxt(cost)}</span></button><div class="gp-why">${n ? `You have ${cellsTxt(n)} · need ${cost - n} more` : 'No warp cells'} · craft them from 2 metal plates · 2 frost crystals · 2 scrap metal each</div>`;
   else btn = `<button class="btn gp-warp" data-warp="${S.id}"><span>Warp · ${cellsTxt(cost)} (${n - cost} left after)</span></button>`;
-  $('#galPanel').innerHTML = `<h3>${S.name.toUpperCase()}</h3><div class="gp-sub">${S.star.type} · ${S.faction}${here ? '' : ` · ${galDist(curSys(), S).toLocaleString()} ly · ${cellsTxt(cost)}`}${seen ? ' · visited' : ''}</div><p>${S.desc}</p>
+  $('#galPanel').innerHTML = `<h3>${S.name.toUpperCase()}</h3><div class="gp-sub">${S.star.type} · ${S.faction}${here ? '' : ` · ${galDist(curSys(), S).toLocaleString()} ly · ${inRange(curSys(), S) ? cellsTxt(cost) : 'out of range'}`}${seen ? ' · visited' : ''}</div><p>${S.desc}</p>
     <ul>${S.bodies.map(P => `<li><span>${P.name}</span><small>${P.faction.split(' · ')[0]} · ${kind(P)}</small></li>`).join('')}</ul>${btn}`;
   $('#galPanel').classList.remove('hidden');
 }
@@ -10231,14 +10243,14 @@ function galDraw(dt) {
   g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#010104'; g.fillRect(0, 0, W, H);
   g.save(); g.translate(W / 2 - GAL.pan.x * k, H / 2 - GAL.pan.y * k); g.scale(1, GAL.tilt); g.rotate(GAL.rot); g.drawImage(GAL.img, -k, -k, k * 2, k * 2); g.restore();
   const cur = curSys(), pc = galXY(cur), sel = GAL.sel && sysById(GAL.sel);
-  { const reach = have('warpcell') * LY_PER_CELL / 50000 * k; // how far your warp cells can take you
+  { const reach = Math.min(driveRange(), have('warpcell') * LY_PER_CELL) / 50000 * k; // how far one jump can take you (drive range, or less if you're short of cells)
     if (reach > 0) { g.save(); g.setLineDash([3, 5]); g.strokeStyle = 'rgba(165,139,255,.55)'; g.fillStyle = 'rgba(165,139,255,.05)'; g.lineWidth = 1; g.beginPath(); g.ellipse(pc.x, pc.y, reach, reach * GAL.tilt, 0, 0, 7); g.fill(); g.stroke(); g.restore();
-      g.font = '500 8px ' + getComputedStyle(document.body).getPropertyValue('--display'); g.fillStyle = 'rgba(199,180,255,.8)'; g.textAlign = 'center'; g.fillText(`WARP RANGE · ${(have('warpcell') * LY_PER_CELL).toLocaleString()} LY`, pc.x, pc.y - reach * GAL.tilt - 6); } }
+      g.font = '500 8px ' + getComputedStyle(document.body).getPropertyValue('--display'); g.fillStyle = 'rgba(199,180,255,.8)'; g.textAlign = 'center'; g.fillText(`JUMP RANGE · ${Math.min(driveRange(), have('warpcell') * LY_PER_CELL).toLocaleString()} LY`, pc.x, pc.y - reach * GAL.tilt - 6); } }
   if (sel && sel !== cur) { // the jump
     const ps = galXY(sel); g.setLineDash([6, 6]); g.lineDashOffset = -t * 20; g.strokeStyle = 'rgba(199,180,255,.85)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(pc.x, pc.y); g.lineTo(ps.x, ps.y); g.stroke(); g.setLineDash([]);
     g.font = '500 9px ' + getComputedStyle(document.body).getPropertyValue('--display'); g.fillStyle = '#d8ccff'; g.textAlign = 'center';
-    const wc = warpCost(cur, sel); g.fillStyle = wc > have('warpcell') ? '#ff9f8f' : '#d8ccff';
-    g.fillText(`${galDist(cur, sel).toLocaleString()} LY · ${wc} WARP CELL${wc === 1 ? '' : 'S'}`, (pc.x + ps.x) / 2, (pc.y + ps.y) / 2 - 8);
+    const wc = warpCost(cur, sel), far = !inRange(cur, sel); g.fillStyle = far || wc > have('warpcell') ? '#ff9f8f' : '#d8ccff';
+    g.fillText(far ? `${galDist(cur, sel).toLocaleString()} LY · OUT OF RANGE` : `${galDist(cur, sel).toLocaleString()} LY · ${wc} WARP CELL${wc === 1 ? '' : 'S'}`, (pc.x + ps.x) / 2, (pc.y + ps.y) / 2 - 8);
   }
   const vis = (wanderer.ch3 && wanderer.ch3.visited) || [], font = getComputedStyle(document.body).getPropertyValue('--display');
   for (const S of SYSTEMS) { // faction territory, a soft wash behind each claimed system
@@ -10272,7 +10284,7 @@ function warpTunnel() {
   SPC.scene.add(L); return SPC.tun = L;
 }
 function galWarp(id) {
-  const S = sysById(id), cost = warpCost(curSys(), S); if (S.id === SPC.sys || have('warpcell') < cost) return;
+  const S = sysById(id), cost = warpCost(curSys(), S); if (S.id === SPC.sys || have('warpcell') < cost || !inRange(curSys(), S)) return;
   takeItem('warpcell', cost); galClose(); sfx.warp();
   SPC.warp = { t: 0, to: S.id, col: new THREE.Color(S.star.kind === 'hole' ? '#ffb070' : S.star.col) };
   const tn = warpTunnel(); tn.visible = true; tn.userData.v = 0;
