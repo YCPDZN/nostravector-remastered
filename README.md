@@ -531,3 +531,22 @@ After the escape from New London, **Chapter III · Sol** begins in your ship, ju
 - **Warp cells (fuel):** a jump burns one cell per **2,500 ly**, so most hops cost 1–2. The map's ring shows your **jump range**: your drive's reach, or less if you're short of cells. The jump line shows the cost, or turns red with *Out of range*. The panel explains what's stopping you: out of range (hop through nearer systems, or craft the next drive), or how many more cells you need. You start Chapter III with **5**. Craft more from the inventory: **2 metal plates, 2 frost crystals, 2 scrap metal** each.
 - **Objectives:** after your first landing the task is *Warp to another star system*, then *Explore the galaxy*. Saves remember which system you're in, the systems you've visited, and the world you're standing on.
 - **Fix:** loading a save straight onto a planet no longer shows the Antarctic sky in place of the planet's own.
+
+## Chapter III · Mining and traders (stage 3)
+- **Mining on every rocky world.** Deposits are scattered across the ground around where you land, and what's there depends on the world. Hit them (click / F, or the attack button) as you would in Antarctica:
+  - **Rocks**, tinted to the planet, give stone and sometimes scrap.
+  - **Metal ore** (dark boulders studded with gold-coloured metal) gives scrap metal, sometimes a ready-made metal plate. Volcanic worlds have the most.
+  - **Crystal clusters** glow in the planet's own colour and give frost crystals, which go into warp cells and hyperdrives. Icy worlds have the most.
+  - **Ice spires** grow on icy worlds and give ice.
+  - **Obsidian** is on volcanic and toxic worlds (and rarely on barren ones). It needs an ice pick.
+  - **Trees** grow in groves on lush worlds, with round crowns in the planet's own green, and give wood.
+  - **Crashed supply pods** are half-buried and glowing. They give scrap, cloth and crystal, and about a third of the time a **warp cell**.
+  - What you mine stays mined, separately on each planet.
+- **Your ship's fabricator** counts as a crafting table within about 16 m of the ship. That means metal plates, warp cells and hyperdrive upgrades can all be crafted on any planet.
+- **Traders.** Some worlds have a trader's stall near your landing spot, and you're told when you land. The minimap marks it and the galaxy map lists "trader" beside the world.
+  - **Who trades where:** Chompy traders on Chompy worlds, Grek traders on Grek and Order of Archamus worlds. Erisians, the galaxy's wandering merchants, trade on Earth, on Eris and on about a quarter of uncharted worlds.
+  - **Where they are:** every hand-made inhabited world has one, as do most generated Chompy worlds, about 620 worlds in all.
+  - **What they sell:** warp cells, frost crystals, metal plates, obsidian, scrap and med kits.
+  - **What they buy:** your ore, crystals and the rest. Warp cells can now be sold too.
+  - **Prices** differ from world to world. Where a trader sells dear, they also buy cheap.
+

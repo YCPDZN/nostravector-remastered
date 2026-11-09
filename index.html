@@ -4877,7 +4877,11 @@ const LOOT = {
   ice: () => [['ice', 2], Math.random() < .3 && ['crystal', 1]],
   obsidian: () => [['obsidian', 1 + (Math.random() < .4)], Math.random() < .3 && ['stone', 1]],
   tree: () => [['wood', 2 + Math.floor(Math.random() * 3)], Math.random() < .25 && ['wood', 1]],
-  crate: () => [['wood', 1 + (Math.random() < .6)], ['scrap', 2 + (Math.random() < .5)], ['cloth', 1 + (Math.random() < .5)], Math.random() < .25 && ['crystal', 1]]
+  crate: () => [['wood', 1 + (Math.random() < .6)], ['scrap', 2 + (Math.random() < .5)], ['cloth', 1 + (Math.random() < .5)], Math.random() < .25 && ['crystal', 1]],
+  // planets (Chapter III)
+  ore: () => [['scrap', 2 + (Math.random() < .5)], Math.random() < .3 && ['metal', 1]],
+  crystal: () => [['crystal', 1 + (Math.random() < .6)], Math.random() < .2 && ['ice', 1]],
+  pod: () => [['scrap', 2], ['cloth', 1 + (Math.random() < .5)], ['crystal', 1], Math.random() < .35 && ['warpcell', 1]]
 };
 function invState() {
   if (!wanderer.inv) { wanderer.inv = { bag: {}, bar: [null, null, null, null, null, null], sel: 0, hp: 100 }; const c = curChar(); if (c) c.inv = wanderer.inv; }
@@ -5299,7 +5303,7 @@ function dismantle(b) {
   for (const [r, n] of Object.entries(pieceCost(b.data.k, b.data.m))) giveItem(r, n);
   lootMsg(`Dismantled ${pieceName(b.data)}`, '#e6e9f0'); sfx.click(); stormProgress();
 }
-const benchNear = () => ex.mode === 'station' || (ex.mode === 'world' && world.build.some(b => b.data.k === 'bench' && Math.hypot(b.data.x - player.position.x, b.data.z - player.position.z) < 5));
+const benchNear = () => ex.mode === 'station' || (ex.mode === 'world' && isPl() && Math.hypot(player.position.x, player.position.z - 2) < 16) || (ex.mode === 'world' && world.build.some(b => b.data.k === 'bench' && Math.hypot(b.data.x - player.position.x, b.data.z - player.position.z) < 5));
 // ---- placement: pieces snap to a 3 m grid and to the heights of what you've already built ----
 function levelNear(x, z, y) {
   let best = null, bd = .9;
@@ -5426,16 +5430,18 @@ const MERCHANTS = {
     buy: { wood: 8, metal: 40, obsidian: 60, crystal: 28, scrap: 10, medkit: 55, ration: 20 }
   }]
 };
-const SELL = { stone: 2, ice: 1, scrap: 5, crystal: 12, cloth: 6, blubber: 4, feather: 3, wood: 4, metal: 18, obsidian: 22 };
+const SELL = { stone: 2, ice: 1, scrap: 5, crystal: 12, cloth: 6, blubber: 4, feather: 3, wood: 4, metal: 18, obsidian: 22, warpcell: 60 };
+const sellPrice = id => Math.max(1, Math.round(SELL[id] * ((ex.shop && ex.shop.sellMult) || 1)));
 const merchantsHere = () => MERCHANTS[curArea()] || [];
 function setupMerchants() {
   for (const m of merchantsHere()) {
     if (m.seed !== world.seed) {
       m.seed = world.seed; m.px = m.x; m.pz = m.z;
-      for (let i = 0; i < 40 && lakeAmt(m.px, m.pz) > .15; i++) { const a = i * 2.4, d = 4 + i * 1.5; m.px = m.x + Math.cos(a) * d; m.pz = m.z + Math.sin(a) * d; }
+      const wet = (x, z) => lakeAmt(x, z) > .15 || (isPl() && plSeaY() != null && wHeight(x, z) < plSeaY() + .8);
+      for (let i = 0; i < 60 && wet(m.px, m.pz); i++) { const a = i * 2.4, d = 4 + i * 1.5; m.px = m.x + Math.cos(a) * d; m.pz = m.z + Math.sin(a) * d; }
     }
     if (!m.stall) {
-      const g = new THREE.Group(), cloth = new THREE.MeshStandardMaterial({ color: 0x5b6475, roughness: .9, side: THREE.DoubleSide }), trim = new THREE.MeshStandardMaterial({ color: 0xeda8d4, roughness: .7 });
+      const g = new THREE.Group(), cloth = new THREE.MeshStandardMaterial({ color: m.cloth || 0x5b6475, roughness: .9, side: THREE.DoubleSide }), trim = new THREE.MeshStandardMaterial({ color: m.trim || 0xeda8d4, roughness: .7 });
       const can = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.3, 6, 1, true), cloth); can.position.y = 3.1; g.add(can);
       for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + .5, pole = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 2.6, 6), trim); pole.position.set(Math.cos(a) * 2.1, 1.3, Math.sin(a) * 2.1); g.add(pole); }
       const crate = new THREE.Mesh(new THREE.BoxGeometry(1.4, .8, .7), wCrateMat); crate.position.set(0, .4, 1); g.add(crate);
@@ -5443,11 +5449,11 @@ function setupMerchants() {
       const lan = glowSprite(0xeda8d4, 3.2, .6); lan.position.set(-.9, 2.3, .9); g.add(lan);
       g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       wScene.add(g); m.stall = g;
-      const el = document.getElementById('sp_erisian');
+      const sp = m.sp || 'erisian', el = document.getElementById('sp_' + sp);
       if (el) {
         const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-        parseGlb(u8.buffer).then(sc => { const R = autoRig(sc, 1.96); armRig(R, 'none'); R.root.position.set(0, 0, -.2); g.add(R.root); m.rig = R; }).catch(() => null);
+        parseGlb(u8.buffer).then(sc => { const R = autoRig(sc, (SPECIES[sp] && SPECIES[sp].height) || 1.96); armRig(R, 'none'); R.root.position.set(0, 0, -.2); g.add(R.root); m.rig = R; }).catch(() => null);
       }
     }
     m.stall.position.set(m.px, wHeight(m.px, m.pz), m.pz);
@@ -5469,14 +5475,14 @@ function openShop(m) {
 function renderShop() {
   const m = ex.shop; if (!m) return;
   $('#shopUnits').textContent = units();
-  $('#shopSell').innerHTML = Object.keys(SELL).map(id => `<div class="res-row shop${have(id) ? '' : ' zero'}"><b style="--c:${ITEMS[id].color}"></b><span>${ITEMS[id].name}<small>${SELL[id]} u each</small></span><em>${have(id)}</em><button class="mini" data-s="${id}" data-n="1"${have(id) ? '' : ' disabled'}>Sell 1</button><button class="mini" data-s="${id}" data-n="all"${have(id) ? '' : ' disabled'}>All</button></div>`).join('');
+  $('#shopSell').innerHTML = Object.keys(SELL).map(id => `<div class="res-row shop${have(id) ? '' : ' zero'}"><b style="--c:${ITEMS[id].color}"></b><span>${ITEMS[id].name}<small>${sellPrice(id)} u each</small></span><em>${have(id)}</em><button class="mini" data-s="${id}" data-n="1"${have(id) ? '' : ' disabled'}>Sell 1</button><button class="mini" data-s="${id}" data-n="all"${have(id) ? '' : ' disabled'}>All</button></div>`).join('');
   $('#shopBuy').innerHTML = Object.entries(m.buy).map(([id, pr]) => `<div class="res-row shop"><b style="--c:${ITEMS[id].color || 'var(--ink)'}"></b><span>${ITEMS[id].name}<small>${pr} u</small></span><em>${have(id)}</em><button class="mini" data-b="${id}"${units() >= pr ? '' : ' disabled'}>Buy</button></div>`).join('');
 }
 $('#shop').addEventListener('click', e => {
   const b = e.target.closest('button.mini'); if (!b || b.disabled || !ex.shop) return;
   if (b.dataset.s) {
     const id = b.dataset.s, n = b.dataset.n === 'all' ? have(id) : 1; if (!n) return;
-    takeItem(id, n); addUnits(n * SELL[id]); sfx.blip(); lootMsg(`Sold ${n} ${ITEMS[id].name} · +${n * SELL[id]} units`, '#ffc94a');
+    const pr = sellPrice(id); takeItem(id, n); addUnits(n * pr); sfx.blip(); lootMsg(`Sold ${n} ${ITEMS[id].name} · +${n * pr} units`, '#ffc94a');
   } else if (b.dataset.b) {
     const id = b.dataset.b, pr = ex.shop.buy[id]; if (units() < pr) return;
     addUnits(-pr); giveItem(id, 1); sfx.chime(); lootMsg(`Bought ${ITEMS[id].name}`, '#ffc94a');
@@ -5617,14 +5623,14 @@ function strike() {
   if (!best) return;
   if (best.type === 'obsidian' && selItem() !== 'pick' && selItem() !== 'opick') { best.shake = .15; sfx.hit('rock'); lootMsg('Too hard to break by hand · select an ice pick', '#ff8f86'); return; }
   best.hp -= dmg; best.shake = .25;
-  const col = best.type === 'tree' ? [.45, .3, .18] : best.type === 'obsidian' ? [.3, .22, .42] : best.type === 'rock' ? [.55, .57, .62] : best.type === 'ice' ? [.75, .9, 1] : [.8, .45, .25];
+  const col = best.type === 'tree' ? [.45, .3, .18] : best.type === 'obsidian' ? [.3, .22, .42] : best.type === 'rock' ? [.55, .57, .62] : best.type === 'ice' ? [.75, .9, 1] : best.type === 'ore' ? [.85, .66, .35] : best.type === 'crystal' ? (c => [c.r, c.g, c.b])(world.planet ? plMats().cry.color : new THREE.Color('#7fd8ff')) : best.type === 'pod' ? [.85, .87, .9] : [.8, .45, .25];
   burst(best.x - fx_ * best.r * .6, best.y, best.z - fz * best.r * .6, 14, 3.5, col[0], col[1], col[2], .7, .8, 1);
-  sfx.hit(best.type === 'tree' ? 'crate' : best.type);
+  sfx.hit(best.type === 'tree' || best.type === 'pod' ? 'crate' : best.type === 'crystal' ? 'ice' : best.type === 'ore' ? 'rock' : best.type);
   if (best.hp <= 0) {
     best.dead = true;
     for (const m of best.meshes) m.parent && m.parent.remove(m);
     wsState().mined[best.key] = 1; saveRoster();
-    gainXP({ rock: 12, ice: 10, crate: 15, obsidian: 22, tree: 14 }[best.type] || 10);
+    gainXP({ rock: 12, ice: 10, crate: 15, obsidian: 22, tree: 14, ore: 16, crystal: 18, pod: 20 }[best.type] || 10);
     burst(best.x, best.y, best.z, 30, 5, col[0], col[1], col[2], 1, 1, 2);
     for (const drop of LOOT[best.type]()) if (drop) { giveItem(drop[0], drop[1]); lootMsg(`+${drop[1]} ${ITEMS[drop[0]].name}`, ITEMS[drop[0]].color); }
     sfx.thud();
@@ -6979,6 +6985,10 @@ function makeTree(a, b) {
     const f = k => (i * k + a + b) % 1;
     tube(r * .26, h * (.26 + .14 * f(.71)), top * (.42 + .5 * f(.37)), .75 + .55 * f(.53), i / nb * Math.PI * 2 + b * 3, 0);
   }
+  if (isPl()) { // a lush planet's trees: a round crown in the world's own green
+    const W = world.planet; if (!W.leaf) W.leaf = new THREE.MeshStandardMaterial({ color: W.P.c.forest.clone().lerp(W.P.c.low, .45).multiplyScalar(1.25), roughness: .9, flatShading: true });
+    for (let i = 0; i < 3; i++) { const cp = new THREE.Mesh(hdW.canopyGeo || (hdW.canopyGeo = new THREE.SphereGeometry(1, 10, 6)), W.leaf); cp.userData.shared = true; const k = 1.4 + ((a * 7 + i * .37) % 1) * 1.1; cp.scale.set(k, k * .8, k); cp.position.set(Math.cos(i * 2.1 + b) * .9, top * (.95 + i * .08), Math.sin(i * 2.1 + b) * .9); cp.castShadow = true; g.add(cp); }
+  }
   if (curArea() === 'africa') {
     // flat-topped acacia crown
     if (!hdW.leaf) hdW.leaf = new THREE.MeshStandardMaterial({ color: 0x6d7636, roughness: .9, flatShading: true });
@@ -7007,7 +7017,8 @@ function buildChunk(cx, cz) {
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   const mesh = new THREE.Mesh(g, wTerrainMat); mesh.position.set(ox, 0, oz); mesh.receiveShadow = true;
   const grp = new THREE.Group(); grp.add(mesh);
-  if (curArea() === 'europe' || isPl()) { wScene.add(grp); return grp; } // a city (or, for now, a planet): no rocks, trees or caches
+  if (isPl()) { plScatter(cx, cz, ox, oz, grp); wScene.add(grp); return grp; } // a planet: its own deposits
+  if (curArea() === 'europe') { wScene.add(grp); return grp; } // a city: no rocks, trees or caches
   // gatherable rocks, ice spires and supply caches
   const mined = wsState().mined, nodes = [];
   const nearJames = (x, z) => Math.hypot(x - FERRY.x, z - FERRY.z) < 230 || (world.jamesAt && (x - world.jamesAt.x) ** 2 + (z - world.jamesAt.z) ** 2 < 36) || (world.meetAt && (x - world.meetAt[0]) ** 2 + (z - world.meetAt[1]) ** 2 < 49);
@@ -7082,6 +7093,81 @@ function buildChunk(cx, cz) {
   grp.userData.nodes = nodes;
   wScene.add(grp);
   return grp;
+}
+/* ---- mining on planets (Chapter III): every world has rocks (stone), metal ore (scrap, sometimes a refined plate) and
+   crystals (frost crystals, for warp cells and hyperdrives). Icy worlds add ice spires, volcanic and toxic ones obsidian, lush
+   ones trees, and now and then a crashed supply pod holds a spare warp cell. What you dig up stays dug up (per planet). ---- */
+const CRY_COLS = ['#7fd8ff', '#c08aff', '#7fffb8', '#ffd36a', '#ff8ab0', '#9ab8ff'];
+function planetRes(P) {
+  if (P.res) return P.res;
+  const lum = P.c && P.c.low ? (P.c.low.r + P.c.low.g + P.c.low.b) / 3 : .3, lava = !!P.seaGlow, lush = P.kind === 'earth', icy = P.kind === 'rock' && lum > .45;
+  return P.res = { rock: 3.2, ore: lava ? 2.4 : 1.5, crystal: icy ? 2 : 1.3, ice: icy ? 2.2 : 0, obsidian: lava || P.kind === 'venus' ? 1.4 : P.kind === 'rock' ? .3 : 0, tree: lush ? 1 : 0, pod: .16 };
+}
+function plMats() {
+  const W = world.planet, P = W.P; if (W.mats) return W.mats;
+  const rockC = P.c.rock.clone().lerp(P.c.mid || P.c.low, .35);
+  const rock = hdW.rockMat ? hdW.rockMat.clone() : new THREE.MeshStandardMaterial({ roughness: .95, flatShading: true }); rock.color = rockC;
+  const oreRock = rock.clone(); oreRock.color = rockC.clone().multiplyScalar(.55);
+  const cc = new THREE.Color(CRY_COLS[P.seed % CRY_COLS.length]);
+  return W.mats = { rock, oreRock,
+    ore: new THREE.MeshStandardMaterial({ color: 0xd8a85a, roughness: .25, metalness: .9, emissive: 0x3a2408, emissiveIntensity: .5, flatShading: true }),
+    cry: new THREE.MeshStandardMaterial({ color: cc, roughness: .1, metalness: .1, emissive: cc, emissiveIntensity: .55, transparent: true, opacity: .9, flatShading: true }),
+    pod: new THREE.MeshStandardMaterial({ color: 0xd9dee6, roughness: .45, metalness: .6 }), podGlow: new THREE.MeshBasicMaterial({ color: 0xffb35e }) };
+}
+function plScatter(cx, cz, ox, oz, grp) {
+  const W = world.planet, R = planetRes(W.P), M = plMats(), mined = wsState().mined, nodes = [], CH = world.CH, sy = plSeaY();
+  const ok = (x, z) => Math.hypot(x, z) > 30 && !(sy != null && wHeight(x, z) < sy + .4) && !worldBlocked(x, z, true);
+  const spot = (salt, i) => [ox + (wHash(cx, cz, salt + i * 2) - .5) * CH, oz + (wHash(cx, cz, salt + 1 + i * 2) - .5) * CH];
+  const count = (w, salt) => Math.floor(wHash(cx, cz, salt) * w * 1.6);
+  const add = (key, type, x, z, y, r, hp, meshes) => { for (const m of meshes) { m.castShadow = true; m.receiveShadow = true; grp.add(m); } nodes.push({ key, type, x, z, y, r, hp, meshes }); };
+  const boulder = (mat, x, z, s, salt) => { const y = wHeight(x, z); let m; if (hdW.rockGeo) { m = new THREE.Mesh(hdW.rockGeo, mat); m.scale.set(s * 1.1, s * (.7 + wHash(cx, cz, salt) * .5), s * 1.1); m.position.set(x, y - s * .15, z); } else { m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), mat); m.scale.y = .7; m.position.set(x, y - s * .2, z); } m.userData.shared = !!hdW.rockGeo; m.rotation.set(0, wHash(cx, cz, salt + 1) * 6, (wHash(cx, cz, salt + 2) - .5) * .4); return m; };
+  for (let i = 0, n = count(R.rock, 600); i < n; i++) { // rocks: stone
+    const key = `pr${cx}_${cz}_${i}`, [x, z] = spot(610, i); if (mined[key] || !ok(x, z)) continue;
+    const s = 1 + wHash(cx, cz, 630 + i) * 3; add(key, 'rock', x, z, wHeight(x, z) + s * .4, s * .85, 3 + Math.round(s), [boulder(M.rock, x, z, s, 640 + i * 3)]);
+  }
+  for (let i = 0, n = count(R.ore, 700); i < n; i++) { // ore: a dark boulder shot through with metal
+    const key = `po${cx}_${cz}_${i}`, [x, z] = spot(710, i); if (mined[key] || !ok(x, z)) continue;
+    const s = 1.1 + wHash(cx, cz, 730 + i) * 1.4, y = wHeight(x, z), ms = [boulder(M.oreRock, x, z, s, 740 + i * 3)];
+    for (let k = 0; k < 4; k++) { const v = new THREE.Mesh(new THREE.OctahedronGeometry(s * (.22 + wHash(cx, cz, 760 + i * 4 + k) * .18), 0), M.ore), a = k * 1.7 + i; v.position.set(x + Math.cos(a) * s * .55, y + s * (.25 + k * .12), z + Math.sin(a) * s * .55); v.rotation.set(a, a * 2, 0); ms.push(v); }
+    add(key, 'ore', x, z, y + s * .4, s * .9, 4 + Math.round(s), ms);
+  }
+  for (let i = 0, n = count(R.crystal, 800); i < n; i++) { // crystals: a glowing cluster
+    const key = `pc${cx}_${cz}_${i}`, [x, z] = spot(810, i); if (mined[key] || !ok(x, z)) continue;
+    const y = wHeight(x, z), ms = [];
+    for (let k = 0; k < 5; k++) { const h = .7 + wHash(cx, cz, 830 + i * 5 + k) * 1.3, c = new THREE.Mesh(new THREE.OctahedronGeometry(.32, 0), M.cry), a = k * 1.26 + i; c.scale.set(1, h * 1.8, 1); c.position.set(x + Math.cos(a) * .35 * (k > 0), y + h * .45, z + Math.sin(a) * .35 * (k > 0)); c.rotation.set(Math.cos(a) * .35 * (k > 0), a, Math.sin(a) * .35 * (k > 0)); ms.push(c); }
+    add(key, 'crystal', x, z, y + .8, .8, 3, ms);
+  }
+  for (let i = 0, n = count(R.ice, 900); i < n; i++) { // ice spires
+    const key = `pi${cx}_${cz}_${i}`, [x, z] = spot(910, i); if (mined[key] || !ok(x, z)) continue;
+    const h = 2 + wHash(cx, cz, 930 + i) * 4, sp = new THREE.Mesh(new THREE.ConeGeometry(.35 + h * .08, h, 5), wIceMat);
+    sp.position.set(x, wHeight(x, z) + h * .45, z); sp.rotation.set((wHash(cx, cz, 940 + i) - .5) * .5, wHash(cx, cz, 950 + i) * 6, 0);
+    add(key, 'ice', x, z, wHeight(x, z) + 1, .5 + h * .06, 2, [sp]);
+  }
+  for (let i = 0, n = count(R.obsidian, 1000); i < n; i++) { // volcanic glass: needs a pick
+    const key = `pb${cx}_${cz}_${i}`, [x, z] = spot(1010, i); if (mined[key] || !ok(x, z)) continue;
+    const y = wHeight(x, z), sz = .6 + wHash(cx, cz, 1030 + i) * .5, ob = new THREE.Mesh(new THREE.OctahedronGeometry(sz, 0), wObsMat);
+    ob.position.set(x, y + sz * .7, z); ob.scale.set(1, 1.5, .8); ob.rotation.set(.2, wHash(cx, cz, 1040 + i) * 6, .15);
+    add(key, 'obsidian', x, z, y + sz * .8, sz * .8, 5, [ob]);
+  }
+  if (R.tree && hdW.barkGeo && wHash(cx, cz, 1100) > .45) { // a grove
+    const gx = ox + (wHash(cx, cz, 1101) - .5) * CH * .6, gz = oz + (wHash(cx, cz, 1102) - .5) * CH * .6, n = 2 + Math.floor(wHash(cx, cz, 1103) * 6);
+    for (let i = 0; i < n; i++) {
+      const key = `pt${cx}_${cz}_${i}`, x = gx + (wHash(cx, cz, 1110 + i) - .5) * 16, z = gz + (wHash(cx, cz, 1120 + i) - .5) * 16; if (mined[key] || !ok(x, z)) continue;
+      const y = wHeight(x, z); if (Math.abs(wHeight(x + 1, z) - y) > .8 || Math.abs(wHeight(x, z + 1) - y) > .8) continue;
+      const t = makeTree(wHash(cx, cz, 1130 + i), wHash(cx, cz, 1140 + i)); t.position.set(x, y - .1, z); t.rotation.y = wHash(cx, cz, 1150 + i) * 6;
+      grp.add(t); nodes.push({ key, type: 'tree', x, z, y: y + 1.2, r: t.userData.r, hp: 5, meshes: [t] });
+    }
+  }
+  if (wHash(cx, cz, 1200) < R.pod) { // a crashed supply pod, half buried
+    const key = `pp${cx}_${cz}`, x = ox + (wHash(cx, cz, 1201) - .5) * CH * .7, z = oz + (wHash(cx, cz, 1202) - .5) * CH * .7;
+    if (!mined[key] && ok(x, z)) {
+      const y = wHeight(x, z), c = new THREE.Group(), body = new THREE.Mesh(new THREE.CapsuleGeometry(.55, 1.3, 6, 12), M.pod); body.rotation.z = 1.2; c.add(body);
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(.12, 8, 6), M.podGlow); lamp.position.set(-.3, .45, .4); c.add(lamp);
+      const glow = glowSprite(0xffb35e, 2.4, .7); glow.position.copy(lamp.position); c.add(glow);
+      c.position.set(x, y + .25, z); c.rotation.y = wHash(cx, cz, 1203) * 6; add(key, 'pod', x, z, y + .5, .9, 4, [c]);
+    }
+  }
+  grp.userData.nodes = nodes;
 }
 function updateChunks(budget) {
   const { CH, R } = world, p = player.position, pcx = Math.round(p.x / CH), pcz = Math.round(p.z / CH);
@@ -10225,7 +10311,7 @@ function galClose(silent) {
 function galPanel() {
   const S = sysById(GAL.sel), here = S.id === SPC.sys, n = have('warpcell'), W3 = wanderer.ch3 || {}, seen = (W3.visited || []).includes(S.id);
   const cost = warpCost(curSys(), S);
-  const kind = P => P.kind === 'station' ? 'Station' : P.kind === 'gas' ? 'No surface' : P.parent ? 'Moon · landable' : 'Landable';
+  const kind = P => (P.kind === 'station' ? 'Station' : P.kind === 'gas' ? 'No surface' : P.parent ? 'Moon · landable' : 'Landable') + (P.land && planetTraders(P).length ? ' · trader' : '');
   let btn;
   if (here) btn = `<button class="btn gp-warp" disabled><span>You are here</span></button>`;
   else if (!inRange(curSys(), S)) btn = `<button class="btn gp-warp" disabled><span>Out of hyperdrive range</span></button><div class="gp-why">Your hyperdrive reaches ${driveRange().toLocaleString()} ly per jump · hop through nearer systems${driveTier() < 3 ? `, or craft ${ITEMS['hyper' + (driveTier() + 1)].name} (${DRIVE_LY[driveTier() + 1].toLocaleString()} ly)` : ''}</div>`;
@@ -10353,6 +10439,7 @@ async function landOn(P, dir, place) {
   AREA_INFO[key] = { planet: P.name, name: P.name, space: true, stationTp: { x: 1e5, z: 1e5, name: '' } };
   AREA_FOG[key] = new THREE.Color(P.fog).getHex();
   world.area = key; world.builtArea = null; // a new landing spot: the ground is laid out afresh around it
+  MERCHANTS[key] = planetTraders(P); for (const m of MERCHANTS[key]) m.seed = null; // its stall finds dry ground near the new spot
   const pl = place || { mode: 'explore', area: 'world', where: key, x: 6, z: 5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI };
   enterWorld(pl); await placeOrion().catch(() => null);
   // your ship, set down on the ground
@@ -10374,6 +10461,7 @@ function shipLandTick(dt) {
     for (const f of S.userData.flames) f.visible = false;
     state = 'explore'; player.visible = true; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks();
     const P = world.planet.P; notice(P.faction, P.name.toUpperCase(), 3400);
+    if (merchantsHere().length) setTimeout(() => lootMsg(`A ${merchantsHere()[0].who.toLowerCase()} has a stall near your ship`, '#eda8d4'), 1800);
   }
 }
 // back to space from the ground
@@ -10423,6 +10511,30 @@ function planetLook() {
   wScene.background = W.sky;
   if (world.plSea) { wScene.remove(world.plSea); world.plSea = null; }
   const sy = plSeaY(); if (sy != null) { const m = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), new THREE.MeshStandardMaterial(Object.assign({ color: P.sea, roughness: .2, metalness: .15, transparent: true, opacity: .9 }, P.seaGlow ? { emissive: P.sea, emissiveIntensity: .8, opacity: 1, transparent: false } : {}))); m.rotation.x = -Math.PI / 2; m.position.y = sy; wScene.add(m); world.plSea = m; }
+}
+
+/* ---- traders on planets: a stall near where you land. Chompy worlds have Chompy traders, Grek and Order worlds Grek ones;
+   Erisians, the galaxy's wandering merchants, trade on Earth, on Eris and on a quarter of the uncharted worlds. Every hand-made
+   inhabited world has one, as do most generated Chompy worlds. Prices vary from world to world. ---- */
+const TRADER_KIT = {
+  chompy: { label: 'Chompy trader', cloth: 0x4a2f6a, trim: 0x69b8ea, lines: ['The Emperor’s peace makes for good trade. Buy, sell, and keep the peace.', 'Every Chompy world remembers the civil war. That is why our stores are always full.', 'Warp cells from the forges of Aridaxx. Mind the fingers: they bite back if you drop them.', 'Three hundred years I have kept this stall. Haggle if you like. I have time.'] },
+  grek: { label: 'Grek trader', cloth: 0x3f5a3a, trim: 0xc5a87c, lines: ['Archamus teaches that a fair price is a kind of prayer.', 'The Order keeps Archiostal’s gardens. I keep its accounts.', 'Slowly, traveller. A good trade is like a good tree: it is not hurried.'] },
+  erisian: { label: 'Erisian trader', cloth: 0x5b6475, trim: 0xeda8d4, lines: ['Erisians have traded between the stars since before your sun had a name for itself. Today, we trade with you.', 'Units for crystal, units for ore. The galaxy is wide, but the prices are fair.', 'I have walked a hundred worlds with this pack. This one is not the worst.', 'You are far from home, wanderer. So am I. That is good for business.'] }
+};
+function planetTraders(P) {
+  if (P.traders) return P.traders;
+  const f = P.faction || '', S = sysById(P.sys), r = k => ((Math.imul(P.seed + k * 977, 2654435761) >>> 0) % 10000) / 10000;
+  let sp = null;
+  if (/Grek|Archamus/.test(f)) sp = 'grek';
+  else if (/Erisian|Human Federation/.test(f)) sp = 'erisian';
+  else if (/Chompy/.test(f)) sp = 'chompy';
+  const want = sp ? (!S.gen && !P.parent ? 1 : !S.gen ? .5 : .7) : .25;
+  if (!P.land || r(1) >= want) return P.traders = [];
+  sp = sp || 'erisian';
+  const K = TRADER_KIT[sp], m = .82 + r(2) * .45, pr = n => Math.round(n * m);
+  const buy = { warpcell: pr(150), crystal: pr(30), metal: pr(45), obsidian: pr(60), scrap: pr(12), medkit: pr(60) };
+  if (sp === 'grek') buy.wood = pr(9);
+  return P.traders = [{ id: 'tr-' + P.id, who: K.label, sp, cloth: K.cloth, trim: K.trim, x: -16, z: 22, lines: K.lines, buy, sellMult: +(1.25 - (m - .82)).toFixed(2) }];
 }
 
 const CALL_SEQ = [
