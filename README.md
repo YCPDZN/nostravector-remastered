@@ -574,7 +574,9 @@ After the escape from New London, **Chapter III · Sol** begins in your ship, ju
   - Catharsis space is hostile: Catharsis ships attack there, as they do in Sol, and there are no Catharsis traders.
 - **Chapter V:**
   - **The Catharsis no longer exists.** It was destroyed at the siege of Carax, at the end of Chapter IV.
-  - Its 48 systems are **Grek space again**, and **Carax is the Grek capital** once more. Malana is just another Grek world, and the old Catharsis worlds have Grek traders.
+  - **Its land is yours.** You defeated the Catharsis there, so all 48 systems it held (about 150 worlds, Carax and Sagittarius A\* included) become your realm's colonies, marked *won at the siege of Carax*, ready for governors in Diplomacy. Your own space has fewer pirates.
+  - **Thomas Hawthorne is dead.** He died at the siege of Carax with the Catharsis. His Nostrapedia entry and the *Siege of Carax* lore event now say so.
+  - The Grek Empire is back to Malana Prime (Malana and Archiostal).
   - No Catharsis ships attack anywhere; Sol and the core have only pirates.
   - The Catharsis drops out of Diplomacy. Any war you had with it ends, and a companion you'd lent to it comes home.
   - The galaxy map, system descriptions, planet factions and traders all switch with the chapter of the wanderer you're playing.
@@ -585,7 +587,7 @@ Open **Diplomacy** from the pause menu, on foot or in space, or from the galaxy 
   - **The Chompy Empire:** Emperor Hak Chompjak V.
   - **The Order of Archamus:** Archamus, in Chapter III only. In Chapters IV and V the Order is folded into the **Grek Empire**, co-led by **Archamus and Am-Grek**, and Archiostal and Malana Prime fly Grek colours.
   - **The Grek Empire:** Am-Grek in Chapter III.
-  - **The Catharsis:** Lord Zark, in Chapters III and IV. In Chapter IV he's a story boss, so the Catharsis can't be warred on or defeated. In Chapter V the Catharsis is gone, destroyed at the siege of Carax.
+  - **The Catharsis:** Lord Zark, in Chapters III and IV. In Chapter IV he's a story boss, so the Catharsis can't be warred on or defeated. In Chapter V the Catharsis is gone, destroyed at the siege of Carax, and its land is yours.
   - **The Erisian Empire:** Vishara Erisconos. Alexia Erisconos takes over once her mid-Chapter III coup happens, and Vishara returns in Chapters IV and V.
   - **Human Federation of Sol:** President Darius Ancin.
   - **Terra Imperia:** Thomas Hawthorne, in Chapter III only. Terra Imperia now holds **Mercury and Venus**.
