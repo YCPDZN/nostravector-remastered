@@ -652,7 +652,7 @@ Then Orion and Nico bring them back. **Skip** jumps past the memories, then past
 - **New data:**
   - `data/sevVoices.js`: 15 Sevirrus lines.
   - `data/sevCarax.js`: the music.
-  - `data/sevJakal.js` and `data/sevSettler.js`: Jakal Chompjak XVI and the Carax settlers.
+  - `data/sevDamix.js`, `data/sevJakal.js` and `data/sevSettler.js`: Damix Chompjak, Jakal Chompjak XVI and the Carax settlers, all with their Sevirrus models.
 - **Loading:** these packs load only when the Chompy nightmare plays.
 - **Lines still to record:**
   - Erisian: `CH3NMERIS1–8`.
