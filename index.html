@@ -11922,12 +11922,12 @@ function nmEnd() {
 }
 // ---- the Chompy nightmare: Sevirrus's cutscenes ----
 // A fast montage of Sevirrus, the game before this one, in its own dark, brutal style, cut together like the nightmare on the ice:
-// the Carax massacre, the siege of Aridaxx, the assassination, the Emperor coming apart, and the cell beneath Alphinos.
+// the Carax massacre, the siege of Aridaxx, the assassination, and the Emperor coming apart (it ends on "I am NOT WEAK!").
 // Only the cutscenes were taken from Sevirrus (no gameplay, menus or saves): their code is the page in #sevCinePage at the
 // bottom of this file, and the models, score and voice lines they use are in data/sevCine.js. The page runs in a frame of its own
 // (so its names never clash with ours), with Nostravector's subtitles, cards and Skip over it. It answers through window.__menu.
 // If it can't load, the Chompy nightmare falls back to the staged memories above.
-const SEV_START = { intro: M => { M.prime(); return M.playIntro(); }, siege: M => M.playChapter2(), assa: M => M.playChapter3(), ch5: M => M.playChapter5(), end: M => M._endStart() };
+const SEV_START = { intro: M => { M.prime(); return M.playIntro(); }, siege: M => M.playChapter2(), assa: M => M.playChapter3(), ch5: M => M.playChapter5() };
 // the clips: [scene, from, to] in that scene's own seconds, with a cut between each
 const SEV_CLIPS = [
   ['intro', 5, 13.6], // "Turn back, prince." "Everyone kneels."
@@ -11939,8 +11939,7 @@ const SEV_CLIPS = [
   ['assa', 39.95, 49], // "…I loved you." The Emperor dies
   ['assa', 53.2, 56.4], // "Long live the Emperor."
   ['ch5', 22.2, 31.5], // "WHO TOLD YOU TO LOOK AT ME?!"
-  ['ch5', 72, 78.3], // "I am NOT WEAK!"
-  ['end', 61.5, 999] // the cell beneath Alphinos
+  ['ch5', 72, 79.8] // "I am NOT WEAK!" and it ends there
 ];
 async function sevOpen() {
   const tpl = document.getElementById('sevCinePage'); if (!tpl) return false;
@@ -11958,7 +11957,7 @@ async function sevOpen() {
   document.getElementById('sevCine').textContent = ''; // the page has it now; phones are short of memory (it reloads if ever needed again)
   for (let n = 0; n < 240; n++) { // its 3D side sets up a moment after the page loads
     let M = null; try { M = f.contentWindow.__menu; } catch { return false; }
-    if (M && M.playIntro && M.playChapter5 && M._endStart) {
+    if (M && M.playIntro && M.playChapter5 && M._seek) {
       const W = f.contentWindow; M._doc = f.contentDocument;
       W.AudioContext = W.webkitAudioContext = function () { return sfx.sevCtx(); }; // its sound runs on ours (see sfx.sevCtx)
       NM.sevM = M; return true;
@@ -16567,7 +16566,6 @@ function endCine() {
   if (!cine) return;
   if (cine.siege) { endSiege(false); return; }
   if (cine.assa) { endAssassination(false); return; }
-  if (cine.end) { finishEnding(); return; }
   if (cine.ch5) { endCh5Intro(true); return; }
   speak(null);
   const L = cine.battle;
@@ -16604,7 +16602,6 @@ function execPose(T) {
   return sampleTrack([[IMPACT[4] + HOLD, 'strikeLow'], [AFT + 1.4, 'menace']], T);
 }
 function cineUpdate(dt, time) {
-  if (cine.end) { endingUpdate(dt, time); return; }
   if (cine.ch5) { ch5Update(dt, time); return; }
   if (cine.assa) { assaUpdate(dt, time); return; }
   if (cine.siege) { siegeUpdate(dt, time); return; }
@@ -17562,18 +17559,9 @@ function assaCamera(T, A, dt) {
   rimL.intensity = 14; rimL.position.set(sp.x - 2, 3, sp.z - 2.5);
   cineSpot.intensity = 10; cineSpot.position.set(0, 6, -2); cineTarget.position.copy(J.mover.position);
 }
-let arixalTpl = null, anizTpl = null, hanaxaTpl = null, jazmakTpl = null, nvHakTpl = null;
 {
   const p = id => Uint8Array.from(atob(document.getElementById(id).textContent.trim()), c => c.charCodeAt(0)).buffer;
-  new GLTFLoader().parse(p('glbArixal'), '', g => { arixalTpl = g.scene; }, () => {});
-  new GLTFLoader().parse(p('glbAniz'), '', g => { anizTpl = g.scene; }, () => {});
-  new GLTFLoader().parse(p('glbHanaxa'), '', g => { hanaxaTpl = g.scene; }, () => {});
 }
-const SIDE = {
-  A: { rgb: '90,208,255', hex: 0x5ad0ff, cls: 'a', tag: 'ally', flag: 0x2a7ac0, em: 0x0a2a44, tint: 0xb8dcff, lead: 'Arixal Chompjak', army: 'Arixal Chompjak’s army', label: 'Allied' },
-  E: { rgb: '255,48,72', hex: 0xff3048, cls: 'e', tag: 'foe', flag: 0x8a0c1c, em: 0x2a0408, tint: 0xffb0b8, lead: 'Sevirrus', army: 'Sevirrus’s army', label: 'Enemy' },
-  T: { rgb: '255,210,58', hex: 0xffd23a, cls: 't', tag: 'third', flag: 0xb08a18, em: 0x3a2a04, tint: 0xfff0b0, lead: 'Jazmak Chompjak', army: 'Jazmak Chompjak’s army', label: 'Third party' },
-};
 Object.assign(POSES, {
   sitEdge: { rootY: -0.36, spine: [0.32, 0, 0], neck: [0.2, 0, 0], head: [0.25, 0, 0], hipL: [-1.45, 0, 0.12], kneeL: [1.3, 0, 0], hipR: [-1.45, 0, -0.12], kneeR: [1.35, 0, 0], shoulderL: [-0.75, 0, -0.15], elbowL: [-0.9, 0, 0], shoulderR: [-0.75, 0, 0.15], elbowR: [-0.9, 0, 0] },
   guardKneel: { rootY: -0.47, spine: [0.35, 0, 0], neck: [0.2, 0, 0], head: [0.25, 0, 0], hipL: [-1.2, 0, 0.06], kneeL: [1.3, 0, 0], hipR: [0, 0, -0.06], kneeR: [1.62, 0, 0], ankleR: [0.3, 0, 0], shoulderR: [-0.3, 0, -0.1], elbowR: [-1.2, 0, 0] },
@@ -17820,149 +17808,11 @@ Object.assign(POSES, {
   jzLaugh: { spine: [-0.14, 0, 0], neck: [-0.12, 0, 0], head: [-0.22, 0, 0], shoulderL: [0.05, 0, 0.2], elbowL: [-0.4, 0, 0], shoulderR: [0.05, 0, -0.2], elbowR: [-0.4, 0, 0] },
   jzFist: { spine: [-0.08, 0, 0], neck: [-0.1, 0, 0], head: [-0.12, 0, 0], shoulderR: [-2.9, 0, -0.25], elbowR: [-0.35, 0, 0], wristR: [0, 0, 0], shoulderL: [-0.1, 0, 0.15], elbowL: [-0.3, 0, 0] },
 });
-const END_LINES = [
-  [4.2, 5.4, 'Go on, then. Look at me. This is what the Emperor of Aridaxx comes to.', 112],
-  [10.4, 4.0, 'You want to know why. All of you want to know why.', 113],
-  [15.6, 5.6, 'The Cult of Zark. They found me years ago. They called me their Prince.', 114, 'hak'],
-  [22.2, 7.2, 'Every word I spoke was theirs. Carax. My father. Damix. They told me what to do, and I did it.', 115, 'hak'],
-  [30.4, 5.8, 'I’m not asking you to forgive me. I don’t deserve it, and I wouldn’t want it.', 116, 'hak'],
-  [37.2, 6.0, 'Let me do the time. Lock me in the deepest cell in Alphinos. I won’t fight you.', 117, 'hak'],
-  [44.4, 7.2, 'And when I come out… I will find the Cult of Zark, and I will stop them. Every last one.', 118, 'hak'],
-];
-const END_CLIP = [5.64, 4.44, 5.88, 6.35, 5.49, 6.03, 7.47];
-const ENDL = [], ENDW = [[0, 0]];
-{ let oP = 0, nP = 0; END_LINES.forEach((l, i) => { const s0 = nP + (l[0] - oP), d = END_CLIP[i] + 0.3; ENDL.push({ s: s0, d }); ENDW.push([l[0], s0], [l[0] + l[1], s0 + d]); oP = l[0] + l[1]; nP = s0 + d; }); ENDW.push([73, nP + (73 - oP)]); }
-function endOld(t) { for (let i = 1; i < ENDW.length; i++) { const [o0, n0] = ENDW[i - 1], [o1, n1] = ENDW[i]; if (t <= n1) return n1 > n0 ? o0 + (o1 - o0) * (t - n0) / (n1 - n0) : o1; } const [o, n] = ENDW[ENDW.length - 1]; return o + (t - n); }
-const ENDT = { LEAD: 53, OUT: 60.5, CARD1: 62, CARD2: 67, END: 73 };
 Object.assign(POSES, {
   cuffs: { shoulderL: [-0.3, -0.6, -0.6], elbowL: [-0.6, 0, 0], shoulderR: [-0.3, 0.6, 0.6], elbowR: [-0.6, 0, 0] },
   armHold: { shoulderL: [-0.35, 0, 0.12], elbowL: [-0.55, 0, 0], shoulderR: [-0.35, 0, -0.12], elbowR: [-0.55, 0, 0] },
   coverMouth: { shoulderR: [-1.6, 0, 0.35], elbowR: [-2.2, 0, 0], head: [0.15, 0, 0] },
 });
-function startEnding(stats) {
-  if (cine || !sev || !jakalTpl || !chompyTpl || !arixalTpl) return false;
-  cine = { end: { t: 0, line: -1, stats }, t: 0, fired: new Set() };
-  const E = cine.end;
-  if (!hall) hall = buildHall();
-  hall.g.visible = true; hall.jmover.visible = false; hall.extras.forEach(o => { o.visible = false; });
-  // the throne he broke is still broken
-  hall.throne.visible = false; hall.throneCrown.visible = true; hall.throneCrown.position.set(-1.1, 0.66, -1.3); hall.throneCrown.rotation.set(Math.PI / 2, 0, 0.4);
-  const tm = hall.throne.material;
-  E.tLow = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.5, 0.5), tm); E.tLow.position.set(0, 1.35, -3.2);
-  E.tTop = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.7, 0.5), tm); E.tTop.position.set(0.6, 0.85, -2.1); E.tTop.rotation.set(-1.4, 0, 0.3);
-  scene.add(E.tLow, E.tTop);
-  // Sevirrus on his knees, no crown, no blade, his wrists in irons
-  rig.visible = true; rig.rotation.order = 'YXZ'; rig.position.set(0, 0, 2.2); rig.rotation.set(0, 0, 0); setBlade(false); sev.gait = makeGait(rig);
-  const iron = new THREE.MeshStandardMaterial({ color: 0x8a8c94, metalness: 0.9, roughness: 0.35 });
-  E.cuffs = [sev.j.wristL, sev.j.wristR].map(w => { const c = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.014, 8, 20), iron); c.rotation.x = Math.PI / 2; c.position.set(0, -0.03, 0); w.add(c); return c; });
-  E.chain = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 1, 6), iron); scene.add(E.chain);
-  // Arixal over him with the crown in his hand; Hanaxa and Aniz watching; Arixal's soldiers holding him
-  const ax = rigClone(arixalTpl); ax.mover.position.set(0, 0, 4.7); ax.mover.rotation.y = Math.PI; scene.add(ax.mover); ax.sword = giveDamixSword(ax.j); E.ax = ax;
-  E.crown = makeCrown(); ax.j.wristL.add(E.crown); E.crown.position.set(0, -0.14, 0.08); E.crown.rotation.set(0.3, 0, 0);
-  const hx = rigClone(hanaxaTpl); hx.mover.position.set(-2.3, 0, 4.1); hx.mover.rotation.y = Math.PI * 0.72; scene.add(hx.mover); E.hx = hx;
-  const az = rigClone(anizTpl); az.mover.position.set(-2.95, 0, 3.55); az.mover.rotation.y = Math.PI * 0.68; scene.add(az.mover); E.az = az;
-  const mats = factionMats('A');
-  E.guards = [[-0.75, 1.6], [0.75, 1.6], [-3.6, 1.2], [3.6, 1.2], [-3.6, 5.5], [3.6, 5.5]].map(([x, z], i) => {
-    const g = rigClone(chompyTpl); let k = 0; g.mover.traverse(o => { if (o.isMesh) o.material = mats[k++ % mats.length]; });
-    g.mover.position.set(x, 0, z); g.mover.rotation.y = i < 2 ? 0 : x < 0 ? Math.PI / 2 : -Math.PI / 2; g.gait = makeGait(g.mover); g.home = g.mover.position.clone(); scene.add(g.mover); return g; });
-  floor.visible = ring1.visible = ring2.visible = ticks.visible = false; dust.visible = false; blackHole.visible = stars.visible = false; setPlanet(false);
-  [hemi, key, under, rimL, rimR, cineSpot, bhLight].forEach(l => { l.userData.was = l.intensity; l.intensity = 0; });
-  scene.fog.color.set(0x0c0812); scene.fog.density = 0.035; camera.far = 120; camera.updateProjectionMatrix();
-  eyeMats.forEach(m => { m.emissiveIntensity = 0.4; });
-  document.body.classList.add('cine'); cineEls.skip.hidden = false; cineEls.skip.focus();
-  return true;
-}
-function finishEnding() {
-  const E = cine && cine.end; if (!E) return;
-  cine = null;
-  E.cuffs.forEach(c => c.removeFromParent()); scene.remove(E.chain, E.tLow, E.tTop, E.ax.mover, E.hx.mover, E.az.mover); E.guards.forEach(g => scene.remove(g.mover)); E.crown.removeFromParent();
-  hall.throne.visible = true; hall.throneCrown.visible = true; hall.throneCrown.position.set(0, 3.9, -3.15); hall.throneCrown.rotation.set(0, 0, 0);
-  hall.g.visible = false; hall.jmover.visible = true; hall.extras.forEach(o => { o.visible = true; });
-  [hemi, key, under, rimL, rimR, cineSpot].forEach(l => { if (l.userData.was !== undefined) l.intensity = l.userData.was; });
-  key.position.set(0.9, 4.2, 2.6); keyTarget.position.set(0, 1.2, 0); key.color.set(0xffffff); cineSpot.color.set(0xffffff);
-  scene.fog.color.set(0x0f0819); scene.fog.density = baseFog; camera.far = 60; camera.fov = 32; camera.updateProjectionMatrix();
-  floor.visible = ring1.visible = ring2.visible = ticks.visible = true; dust.visible = true;
-  rig.position.set(0, 0, 0); rig.rotation.set(0, 0, 0); rig.rotation.order = 'XYZ'; applyPose(sev.j, POSES.stand); eyeMats.forEach(m => { m.emissiveIntensity = 0; });
-  subsEl.style.opacity = 0; subsEl.className = 'subs'; subsWho.classList.remove('flip'); cineEls.black.style.opacity = 0; cineEls.card.style.opacity = 0; cineEls.skip.hidden = true;
-  document.body.classList.remove('cine'); M.voice && M.voice.stop(); speak(null);
-  // the game is won: offer a save, then back to the menu
-  M.onEndEnd && M.onEndEnd(true);
-}
-function endingUpdate(dt, time) {
-  const E = cine.end, Tn = (E.t += dt), T = endOld(Tn);
-  [hemi, key, under, rimL, rimR, cineSpot, bhLight].forEach(l => { l.intensity = 0; });
-  hemi.intensity = 0.45; hall.lights.forEach((f, i) => { f.intensity = 8 + Math.sin(time * 7 + i * 2) * 1.5 + Math.random(); });
-  key.color.set(0xffd8b0); key.intensity = 14; key.position.set(2.5, 6, 6); keyTarget.position.set(0, 1, 2.5);
-  cineSpot.color.set(0xc8d8ff); cineSpot.intensity = 9; cineSpot.position.set(0, 7, 3.2); cineTarget.position.copy(rig.position).setY(0.8);
-  // Sevirrus: knelt in irons; at the last line he lifts his head; then they take him out
-  const lead = ss(ENDT.LEAD, ENDT.LEAD + 1.4, T);
-  // he looks up at Arixal, bows his head through the worst of it, and lifts it again for the vow
-  const bow = ss(21.6, 22.6, T) * (1 - ss(35.8, 36.8, T)), up = (1 - bow) * (1 + 0.25 * ss(44.4, 46, T));
-  let pose = addPose(mk(POSES.kneel, POSES.cuffs), { spine: [Math.sin(time * 1.4) * 0.015 - 0.12 * up, 0, 0], neck: [-0.25 * up, 0, 0], head: [-0.6 * up + 0.1 * bow, 0, 0] });
-  if (lead > 0) {
-    rig.position.z = 2.2 + Math.max(0, T - ENDT.LEAD - 1.4) * 1.1;
-    pose = mixPose(pose, addPose(mk(POSES.stand, POSES.cuffs), T > ENDT.LEAD + 1.4 ? stepGait(sev.gait, dt) : {}), lead);
-  }
-  applyPose(sev.j, pose);
-  const calm = E.line >= 0 && END_LINES[E.line][4] === 'hak';
-  eyeMats.forEach(m => { m.emissiveIntensity = T > 47 && T < 51.5 ? 1.2 : calm ? 0.08 : 0.4; });   // one last flicker when he swears to end them
-  // the chain between his wrists
-  sev.j.wristL.getWorldPosition(tmpA); sev.j.wristR.getWorldPosition(tmpB);
-  E.chain.position.lerpVectors(tmpA, tmpB, 0.5); E.chain.position.y -= 0.03; E.chain.scale.y = Math.max(0.02, tmpA.distanceTo(tmpB)); E.chain.lookAt(tmpB.x, tmpB.y - 0.03, tmpB.z); E.chain.rotateX(Math.PI / 2);
-  // the others
-  applyPose(E.ax.j, addPose(POSES.stand, { spine: [Math.sin(time * 1.2) * 0.012, 0, 0], head: [0.12, 0, 0] }));
-  applyPose(E.hx.j, T > 23 && T < 30 ? mixPose('stand', 'coverMouth', ss(23, 24, T) * (1 - ss(29, 30, T))) : POSES.stand);
-  applyPose(E.az.j, addPose(POSES.stand, { head: [T > 44 ? 0.3 * ss(44, 46, T) : 0, T > 26 && T < 31 ? -0.5 : 0, 0] }));
-  E.guards.forEach((g, i) => {
-    if (i < 2 && lead > 0) { g.mover.position.z = g.home.z + Math.max(0, T - ENDT.LEAD - 1.4) * 1.1; applyPose(g.j, addPose(POSES.armHold, T > ENDT.LEAD + 1.4 ? stepGait(g.gait, dt) : {})); }
-    else applyPose(g.j, i < 2 ? POSES.armHold : POSES.rifleRest);
-  });
-  // subtitles: Sevirrus, until he tells the truth; then Hak Chompjak V
-  const li = ENDL.findIndex(l => Tn >= l.s && Tn < l.s + l.d);
-  if (li !== E.line) { E.line = li; if (li >= 0 && !(E.skipped && E.skipped.has(li))) {
-    const [, , line, vo, alt] = END_LINES[li], name = alt === 'hak' ? HAK_NAME : 'Sevirrus';
-    if (E.name && name !== E.name) E.flip = { from: E.name, to: name, t: 0 };
-    E.name = name; subsWho.textContent = name; subsLine.textContent = line; subsEl.className = 'subs' + (alt === 'hak' ? ' hak' : '');
-    if (vo !== undefined) M.voice && M.voice.play(vo); } }
-  if (E.flip) { E.flip.t += dt; const f = E.flip, done = f.t > 0.75; subsWho.textContent = done ? f.to : (Math.floor(f.t / 0.07) % 3 === 0 ? f.to : f.from); subsWho.classList.toggle('flip', !done); subsEl.classList.toggle('hak', done ? f.to === HAK_NAME : subsWho.textContent === HAK_NAME); if (done) E.flip = null; }
-  const showing = li >= 0 && !(E.skipped && E.skipped.has(li));
-  subsEl.style.opacity = showing ? 1 : 0;
-  speak(showing ? 'sev' : null, showing && !(M.voice && M.voice.has && M.voice.has(END_LINES[li][3])));
-  // fades and the last cards
-  let black = T < 1.8 ? 1 - T / 1.8 : 0; if (T > ENDT.OUT) black = Math.min(1, (T - ENDT.OUT) / 1.4);
-  cineEls.black.style.opacity = black; cineEls.red.style.opacity = 0;
-  let card = '', cls = 'cine-card';
-  if (T > 0.6 && T < 3.6) card = 'ALPHINOS<small>1800 AD · The throne hall, after the siege</small>';
-  if (T > ENDT.CARD1 && T < ENDT.CARD2 - 0.4) card = 'Hak Chompjak V was locked in the deepest cell beneath Alphinos.<small>Twenty-six years later, the door opened.</small>';
-  if (T > ENDT.CARD2 && T < ENDT.END - 0.6) { card = '1826 AD<small>He kept his word. The Cult of Zark is next.</small>'; cls = 'cine-card title'; }
-  if (card && cineEls.card.dataset.html !== card) { cineEls.card.dataset.html = card; cineEls.card.innerHTML = card; cineEls.card.className = cls; }
-  cineEls.card.style.opacity = card ? 1 : 0;
-  // camera
-  sev.j.head.getWorldPosition(tmpA); const sh = tmpA.clone();
-  let cp, cl, fov = 36;
-  if (T < 4.2) { const k = ss(0, 4.2, T); cp = V(lerp(5, 3.6, k), lerp(3.4, 2.4, k), lerp(7.5, 6.2, k)); cl = V(0, 1, 3); fov = 42; }
-  else if (T < 10.4) { cp = V(sh.x + 0.35, sh.y + 0.1, sh.z + 1.45); cl = V(sh.x, sh.y + 0.04, sh.z); fov = 32; }
-  else if (T < 15.6) { cp = V(0.55, 1.95, 5.6); cl = V(sh.x, sh.y - 0.1, sh.z); fov = 34; }
-  else if (T < 22.2) { const k = ss(15.6, 22, T); cp = V(sh.x - 0.15, sh.y + 0.02, sh.z + lerp(1.4, 0.95, k)); cl = sh; fov = 32; }
-  else if (T < 26.4) { cp = V(sh.x - 0.4, sh.y + 0.05, sh.z + 1.1); cl = sh; fov = 32; }
-  else if (T < 30.4) { cp = V(-0.6, 1.6, 2.6); cl = V(-2.6, 1.5, 3.8); fov = 38; }
-  else if (T < 37.2) { cp = V(2.2, 1.2, 2.6); cl = V(sh.x, sh.y, sh.z + 0.4); fov = 36; }
-  else if (T < 44.4) { cp = V(sh.x + 0.3, sh.y + 0.14, sh.z + 1.35); cl = V(sh.x, sh.y + 0.12, sh.z); fov = 32; }
-  else if (T < ENDT.LEAD) { const k = ss(44.4, 51.5, T); cp = V(sh.x, sh.y + 0.2, sh.z + lerp(1.5, 0.95, k)); cl = V(sh.x, sh.y + 0.2, sh.z); fov = 30; }
-  else { cp = V(1.4, 1.7, 9.2); cl = V(rig.position.x, 1.1, rig.position.z); fov = 40; }
-  camera.position.copy(cp); camera.lookAt(cl); if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = fov; camera.updateProjectionMatrix(); }
-  if (T >= ENDT.END) finishEnding();
-}
-M._endStart = () => startEnding('test');
-const c4Mat = {};
-function factionMats(side) {
-  if (c4Mat[side]) return c4Mat[side];
-  const list = []; chompyTpl.traverse(o => { if (o.isMesh) list.push(o.material); });
-  c4Mat[side] = list.map(m => { const c = m.clone(); c.color = new THREE.Color(SIDE[side].tint); return c; });
-  // Jazmak's men in his own gold: the base colours are flattened to yellows so they never read as Sevirrus's red
-  if (side === 'T') { const gold = [0xc9a227, 0x8a6a14, 0xe8c85a, 0x5a4410]; c4Mat.T.forEach((m, i) => { m.vertexColors = false; m.color.set(gold[i % gold.length]); m.needsUpdate = true; }); }
-  return c4Mat[side];
-}
 Object.assign(POSES, {
   handsBack: { spine: [-0.06, 0, 0], neck: [-0.04, 0, 0], shoulderL: [0.45, 0, 0.35], elbowL: [0, 0, -1.5], wristL: [0, 0, -0.3], shoulderR: [0.45, 0, -0.35], elbowR: [0, 0, 1.5], wristR: [0, 0, 0.3] },
   throwOut: mk(STANCE, { spine: [0.3, -0.35, 0], shoulderR: [-1.55, 0, -0.1], elbowR: [-0.05, 0, 0], wristR: [0.2, 0, 0], shoulderL: [-0.2, 0, 0.5], elbowL: [-0.4, 0, 0] }),
@@ -18023,14 +17873,13 @@ function loop() {
 }
 loop();
 // ---- for Nostravector's montage: where the scene is, and a jump to a moment in it (silent while it runs ahead) ----
-M._t = () => !cine ? null : cine.siege ? cine.siege.t : cine.assa ? cine.assa.t : cine.ch5 ? cine.ch5.t : cine.end ? cine.end.t : cine.speech ? 1000 + cine.speech.t : cine.t;
+M._t = () => !cine ? null : cine.siege ? cine.siege.t : cine.assa ? cine.assa.t : cine.ch5 ? cine.ch5.t : cine.speech ? 1000 + cine.speech.t : cine.t;
 M._seek = t => {
   if (!cine) return null; M.mute = true; let n = 0;
   try {
     if (cine.siege) while (cine && cine.siege && cine.siege.t < t && n++ < 9000) siegeUpdate(1 / 30, cine.siege.t);
     else if (cine.assa) while (cine && cine.assa && cine.assa.t < t && n++ < 9000) assaUpdate(1 / 30, cine.assa.t);
     else if (cine.ch5) while (cine && cine.ch5 && cine.ch5.t < t && n++ < 9000) ch5Update(1 / 30, cine.ch5.t);
-    else if (cine.end) while (cine && cine.end && cine.end.t < t && n++ < 9000) endingUpdate(1 / 30, cine.end.t);
     else { cine.free = true; while (cine && !cine.speech && cine.t < t && n++ < 9000) cineUpdate(1 / 30, cine.t); if (cine) { cine.free = false; if (cine.t >= 4.5) M.music.play(cine.t - 4.5); } }
   } finally { M.mute = false; }
   return M._t();

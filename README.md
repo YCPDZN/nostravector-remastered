@@ -642,7 +642,7 @@ Moments after escaping Earth, out over the planet, the wanderer has another epis
 
 | Species | The nightmare |
 |---|---|
-| Chompy | **Sevirrus's cutscenes**: a fast montage of the game before this one, in its own dark and brutal style, cut together like the nightmare on the ice. It shows the Carax massacre, the siege of Aridaxx, the assassination of Damix and Jakal, the Emperor coming apart, and the cell beneath Alphinos. Nostravector's subtitles, title cards and Skip button replace Sevirrus's own. |
+| Chompy | **Sevirrus's cutscenes**: a fast montage of the game before this one, in its own dark and brutal style, cut together like the nightmare on the ice. It shows the Carax massacre, the siege of Aridaxx, the assassination of Damix and Jakal, and the Emperor coming apart, ending on "I am NOT WEAK!". Nostravector's subtitles, title cards and Skip button replace Sevirrus's own. |
 | Erisian | A future that hasn't happened yet: **Alexia Erisconos overthrows her sister Vishara** in the Citadel el Eriscons. |
 | Human | **Chapter II replayed**, with its own recordings: the farm, the cantina, the arrest, Hawthorne, the trial and the escape. |
 | Am-Grek | A **prophecy** of what's coming, told without a single name: a man falling, a black banner, ships darkening the sky and an empire of glass. |
@@ -651,7 +651,7 @@ Then Orion and Nico bring them back. **Skip** jumps past the memories, then past
 
 - **Skipping the Chompy nightmare:** **Skip** cuts to the next clip. Press it twice quickly to skip them all.
 - **What was taken from Sevirrus:** only its cutscenes, with no gameplay, menus or saves. Their code sits at the bottom of `index.html` (`#sevCinePage`).
-- **Assets:** the 8 models, the score and the 63 voice lines those cutscenes use are in `data/sevCine.js` (16 MB).
+- **Assets:** the 5 models, the score and the 56 voice lines those cutscenes use are in `data/sevCine.js` (13 MB).
 - **The Sevirrus game file:** `sevirrus.html` is not needed.
 - **Fallback:** if the cutscenes can't load, the staged Chompy memories play instead.
 
