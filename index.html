@@ -9791,15 +9791,6 @@ function escapeEndTick(dt) {
     setTimeout(() => { el.classList.remove('title'); beginChapter3(); }, 3600);
   }
 }
-function showEscapedCard() {
-  state = 'ch2soon'; show(ui.xhud, false);
-  const P = ui.tbc.querySelector('.panel');
-  P.querySelector('.eyebrow').textContent = 'You escaped New London';
-  P.querySelector('h2').innerHTML = 'CHAPTER III<br>SOL';
-  P.querySelector('.brief').textContent = 'To be continued';
-  ui.tbc.dataset.from = 'ch2'; $('#tbcKeep span').textContent = 'Save your progress'; $('#tbcBtn span').textContent = 'Return to the title';
-  show(ui.tbc, true);
-}
 
 /* ---- lip sync for everyone who speaks: Hawthorne, Darius, Nico, Malia, the HFOS guards, Croxian (his mask's eyes flare),
    and Orion through the trial and the escape. Each model gives us what it has: a jaw joint, a Jaw mesh to hinge, a lower lip,
@@ -10085,7 +10076,6 @@ function applyChapterFactions() {
 }
 const bodyById = id => ALL_BODIES.find(P => P.id === id);
 const curSys = () => sysById(SPC.sys);
-const curBodies = () => curSys().bodies;
 const galDist = (A, B) => Math.round(Math.hypot(A.map.x - B.map.x, A.map.y - B.map.y) * 50000); // light-years (the disc is ~100,000 across)
 /* As in No Man's Sky you can't jump anywhere you like: the hyperdrive reaches only so far per jump (3,000 ly to start), so you
    hop star to star. From Sol, 3,000 ly reaches about a hundred systems along our arm but never the core: Sagittarius A*
@@ -10099,7 +10089,6 @@ const warpCost = (A, B) => A === B ? 0 : Math.max(1, Math.ceil(galDist(A, B) / L
 const inRange = (A, B) => galDist(A, B) <= driveRange();
 const cellsTxt = n => `${n} cell${n === 1 ? '' : 's'}`;
 const planetH = (P, d) => PKIND[P.kind].h(d, P) * (P.amp || (P.amp = P.kind === 'earth' ? 1 : clamp(P.r / 2600, .3, .8))); // smaller worlds, gentler relief
-const planetSea = P => P.sea ? 0 : null;
 // ---- the planet meshes: a cube-sphere, displaced, coloured by height; three levels of detail ----
 function cubeSphere(P, N) {
   const faces = [[[1, 0, 0], [0, 0, -1], [0, 1, 0]], [[-1, 0, 0], [0, 0, 1], [0, 1, 0]], [[0, 1, 0], [1, 0, 0], [0, 0, -1]], [[0, -1, 0], [1, 0, 0], [0, 0, 1]], [[0, 0, 1], [1, 0, 0], [0, 1, 0]], [[0, 0, -1], [-1, 0, 0], [0, 1, 0]]];
@@ -10842,7 +10831,6 @@ const dipFacsNow = () => DIP_FAC.filter(F => F.ch.includes(dipCh()));
 const dipFacOf = f => DIP_FAC.find(F => F.ch.includes(dipCh()) && F.match(f || ''));
 const dipWar = id => dip().wars[id];
 const dipRes = id => (dip().res[id] || {}).st || null;
-const dipLentTo = id => dip().lent[id] || null;
 const dipFacName = F => { const r = dip().res[F.id]; return r && r.st === 'subjugated' && r.resist ? `The ${F.species} Resistance` : r && r.name ? r.name : F.name; };
 const govName = g => !g ? null : g.startsWith('comp:') ? compName(g.slice(5)) : g.slice(5);
 const titleName = n => String(n).toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
@@ -11470,7 +11458,6 @@ function landingTick(dt) {
   const L = SPC.landing; L.t += dt;
   if (L.t > .55 && !L.done) { L.done = true; landOn(L.P, L.dir); }
 }
-const PLANET_LAND = { n: 0 };
 function planetAreaKey(P) { return 'pl:' + P.id; }
 async function landOn(P, dir, place) {
   spaceOff(); state = 'loadingCh';
@@ -11669,8 +11656,8 @@ function planetTraders(P) {
 /* ---- Chapter III: the nightmare in space ----
    Straight after the escape, out over Earth, the wanderer has another episode, like the ones on the ice and in Westminster.
    What they see depends on who they are:
-     Chompy  · Sevirrus, the game before this one: the Carax massacre, the siege, Damix's death and Jakal's, the madness and
-               Zark (copied from the Sevirrus files, with their recordings, over "Fields of Carax")
+     Chompy  · a fast montage of Sevirrus, the game before this one, played by its own cutscene code (see sevOpen below);
+               if that can't load, staged memories of it (with recordings copied from the Sevirrus files, over "Fields of Carax")
      Erisian · a future that hasn't happened: Alexia Erisconos overthrows her sister Vishara in the Citadel el Eriscons
      Human   · Chapter II all over again (with its own recordings)
      Grek    · a prophecy of what's coming, without a single name
@@ -16602,7 +16589,6 @@ function endCine() {
   M.onIntroEnd && M.onIntroEnd();
 }
 M.playIntro = startCine;
-M._cineTo = t => { let n = 0; while (cine && !cine.speech && cine.t < t && n++ < 4000) cineUpdate(1 / 30, cine.t); return cine ? cine.t : null; };
 cineEls.skip.addEventListener('click', endCine);
 addEventListener('keydown', e => { if (cine && e.key === 'Escape') endCine(); });
 function once(k, T, atT, fn) { if (T >= atT && !cine.fired.has(k)) { cine.fired.add(k); fn(); } }
@@ -16712,7 +16698,6 @@ let game = null, crime = null;
 const keys = new Set();
 addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
 const G = id => document.getElementById(id);
-let bast = null;
 let damixTpl = null, chompyTpl = null;
 {
   const p = id => Uint8Array.from(atob(document.getElementById(id).textContent.trim()), c => c.charCodeAt(0)).buffer;
@@ -16977,7 +16962,6 @@ function endSiege(finished) {
   M.song && M.song.stop(); M.onSiegeEnd && M.onSiegeEnd(!!finished);
 }
 M.playChapter2 = startSiege;
-M._siegeTo = t => { let n = 0; while (cine && cine.siege && cine.siege.t < t && n++ < 4000) siegeUpdate(1 / 30, cine.siege.t); return cine && cine.siege ? cine.siege.t : null; };
 function sevPlace(T, S) {
   const P = V(0, 0, 0); let face = null;
   const walkIn = (a, b, za, zb) => { const k = THREE.MathUtils.clamp((T - a) / (b - a), 0, 1); return lerp(za, zb, k); };
@@ -17320,12 +17304,6 @@ function giveDamixSword(j) {
   const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.018, 0.14, 8), new THREE.MeshStandardMaterial({ color: 0x1a2030, roughness: 0.6 })); s.add(hilt);
   return s;
 }
-M._game = () => game;
-M._sevMats = () => { const out = []; rig.traverse(o => { if (o.isMesh) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => out.push([o.name, m.name, m.color && m.color.getHexString(), m.emissive && m.emissive.getHexString(), !!m.vertexColors, !!m.map])); } }); return out; };
-M._wristGap = (pose) => { rig.visible = true; applyPose(sev.j, pose); rig.updateMatrixWorld(true); const a = new THREE.Vector3(), b = new THREE.Vector3(), h = new THREE.Vector3(); sev.j.wristL.getWorldPosition(a); sev.j.wristR.getWorldPosition(b); sev.j.spine.getWorldPosition(h); return { gap: +a.distanceTo(b).toFixed(3), fwd: +(((a.z + b.z) / 2) - h.z).toFixed(3), y: +(((a.y + b.y) / 2) - h.y).toFixed(3) }; };
-M._unit = id => game && game.units.find(u => u.id === id);
-M._poses = POSES;
-M._fit = f => { fit = lastFit = f; fitT = 0; fitNext = 99; };
 const AS = {
   THUD: [5.6, 6.9], BURST: 8.4, STOP: 14.2,
   CHARGE: 18.5, CLASH: [19.7, 20.35, 20.95], DISARM: 21.6, STAB: 22.5, RIP: 24.7, DECAP: 25.7,
@@ -17584,7 +17562,6 @@ function assaCamera(T, A, dt) {
   rimL.intensity = 14; rimL.position.set(sp.x - 2, 3, sp.z - 2.5);
   cineSpot.intensity = 10; cineSpot.position.set(0, 6, -2); cineTarget.position.copy(J.mover.position);
 }
-M._assaTo = t => { let n = 0; while (cine && cine.assa && cine.assa.t < t && n++ < 4000) assaUpdate(1 / 30, cine.assa.t); return cine && cine.assa ? cine.assa.t : null; };
 let arixalTpl = null, anizTpl = null, hanaxaTpl = null, jazmakTpl = null, nvHakTpl = null;
 {
   const p = id => Uint8Array.from(atob(document.getElementById(id).textContent.trim()), c => c.charCodeAt(0)).buffer;
@@ -17843,9 +17820,6 @@ Object.assign(POSES, {
   jzLaugh: { spine: [-0.14, 0, 0], neck: [-0.12, 0, 0], head: [-0.22, 0, 0], shoulderL: [0.05, 0, 0.2], elbowL: [-0.4, 0, 0], shoulderR: [0.05, 0, -0.2], elbowR: [-0.4, 0, 0] },
   jzFist: { spine: [-0.08, 0, 0], neck: [-0.1, 0, 0], head: [-0.12, 0, 0], shoulderR: [-2.9, 0, -0.25], elbowR: [-0.35, 0, 0], wristR: [0, 0, 0], shoulderL: [-0.1, 0, 0.15], elbowL: [-0.3, 0, 0] },
 });
-M._zk = () => game && game.boss;
-M._viewPriest = a => { const P = game.boss, pp = P.g.position; P.g.rotation.y = 0; P.glow.intensity = 0; bast.lights.forEach(l => { l.intensity = 0; }); hemi.color.set(0xffffff); hemi.groundColor.set(0x404040); hemi.intensity = 2.2; key.intensity = 30; key.position.set(pp.x + 2, 5, pp.z + 5); keyTarget.position.set(pp.x, 1, pp.z); rimL.intensity = 0; rimR.intensity = 0; camera.fov = 40; camera.updateProjectionMatrix(); camera.position.set(pp.x + Math.sin(a) * 5.5, 1.6, pp.z + Math.cos(a) * 5.5); camera.lookAt(pp.x, 1.25, pp.z); renderer.render(scene, camera); };
-M._zkSkipIntro = () => { if (game && game.phase === 'zark') { game.intro = 99; } };
 const END_LINES = [
   [4.2, 5.4, 'Go on, then. Look at me. This is what the Emperor of Aridaxx comes to.', 112],
   [10.4, 4.0, 'You want to know why. All of you want to know why.', 113],
@@ -17980,9 +17954,6 @@ function endingUpdate(dt, time) {
   if (T >= ENDT.END) finishEnding();
 }
 M._endStart = () => startEnding('test');
-M._endTo = t => { let n = 0; while (cine && cine.end && endOld(cine.end.t) < t && n++ < 8000) endingUpdate(1 / 30, cine.end.t); return cine && cine.end ? cine.end.t : null; };
-M._c5Crown = () => { const c = cine && cine.ch5 && cine.ch5.crown; if (!c) return null; const w = c.getWorldPosition(new THREE.Vector3()); return { parent: c.parent && (c.parent.name || c.parent.type), w: [w.x, w.y, w.z].map(v => +v.toFixed(2)), vis: c.visible }; };
-M._c5To = t => { let n = 0; while (cine && cine.ch5 && c5Old(cine.ch5.t) < t && n++ < 8000) ch5Update(1 / 30, cine.ch5.t); return cine && cine.ch5 ? cine.ch5.t : null; };
 const c4Mat = {};
 function factionMats(side) {
   if (c4Mat[side]) return c4Mat[side];
@@ -17997,7 +17968,6 @@ Object.assign(POSES, {
   throwOut: mk(STANCE, { spine: [0.3, -0.35, 0], shoulderR: [-1.55, 0, -0.1], elbowR: [-0.05, 0, 0], wristR: [0.2, 0, 0], shoulderL: [-0.2, 0, 0.5], elbowL: [-0.4, 0, 0] }),
   holdCrown: { spine: [0.05, 0, 0], shoulderL: [-1.15, 0, 0.05], elbowL: [-1.05, 0, 0], wristL: [-0.2, 0, 0] },
 });
-let lastFit = null, bladeGone = false;
 let frame = { y: 1.15, dist: 5.2, side: -0.55 };
 let baseDpr = 1, dynScale = 1, frameAvg = 1 / 60, adaptT = 0, shadowsSet = false;
 function resize() {
@@ -18017,7 +17987,6 @@ function setShadows(on) {
   renderer.shadowMap.enabled = on; key.castShadow = on;
   scene.traverse(o => { if (o.isMaterial) return; if (o.material) o.material.needsUpdate = true; });
 }
-M.setQuality = () => { shadowsSet = false; resize(); };
 addEventListener('resize', resize);
 resize();
 const clock = new THREE.Clock();
