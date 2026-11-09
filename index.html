@@ -2126,8 +2126,16 @@ const sfx = (() => {
     const g = ctx.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
     s.connect(lp); lp.connect(g); g.connect(master); s.start(t); s.stop(t + dur);
   }
+  let sevBus = null;
   return {
     init,
+    // an audio context for the Sevirrus cutscenes (played in a frame): it is this one, so their sound starts without a tap of its own and
+    // follows the mute; everything they send to 'destination' goes through the master volume
+    sevCtx() {
+      init(); if (!ctx) return null;
+      if (!sevBus) { sevBus = ctx.createGain(); sevBus.gain.value = 1.6; sevBus.connect(master); }
+      return new Proxy(ctx, { get(t, k) { if (k === 'destination') return sevBus; const v = t[k]; return typeof v === 'function' ? v.bind(t) : v; } });
+    },
     setMuted(m) { if (master) master.gain.value = m ? 0 : .5; },
     setMusic(on) { if (musicBus) musicBus.gain.setTargetAtTime(on ? 1 : 0, ctx.currentTime, .15); },
     phone() { for (let i = 0; i < 2; i++) { tone(1175, 1175, .16, 'square', .045, i * .42); tone(988, 988, .16, 'square', .045, i * .42 + .19); } },
@@ -7003,7 +7011,7 @@ function endMeeting() {
   meet.active = false;
 }
 function skipMeeting() {
-  if (state === 'nightmare' && NM.on) { if (NM.phase === 'mem') nmWake(); else if (NM.phase === 'wake') { closeDialog(); nmEnd(); } return; } // Skip: out of the memories, then past the wake-up
+  if (state === 'nightmare' && NM.on) { if (NM.phase === 'sev') { const now = performance.now(); sevSkip(now - (NM.skipAt || 0) < 700); NM.skipAt = now; return; } if (NM.phase === 'mem') nmWake(); else if (NM.phase === 'wake') { closeDialog(); nmEnd(); } return; } // Skip: out of the memories, then past the wake-up
   if (state === 'trial' && trial.on && !trial.skipped) { trial.skipped = true; closeDialog(); endTrial(); return; }
   if (!meet.active) return;
   meet.skip = true;
@@ -11810,7 +11818,10 @@ async function startNightmare() {
   NM.phase = 'panic'; NM.t = 0; NM.bi = -1; NM.ready = false; NM.script = NM_SCRIPTS[NM.race];
   state = 'nightmare'; SPC.keys.clear(); for (const k in SPC.btn) SPC.btn[k] = false; const hud = $('#spaceHud'); if (hud) hud.classList.add('hidden');
   sfx.gasp(1.4);
-  nmStage(); nmCast(NM.race).then(() => { NM.ready = true; }).catch(() => { NM.ready = true; });
+  nmStage(); NM.sevM = null;
+  const cast = () => nmCast(NM.race).then(() => { NM.ready = true; }).catch(() => { NM.ready = true; });
+  if (NM.race === 'chompy') sevOpen().catch(() => false).then(ok => { if (ok) NM.ready = true; else { sevClose(); cast(); } }); // Sevirrus itself, or the staged memories if it won't load
+  else cast();
 }
 function nmBeat(i) {
   const B = NM.script.beats[i], A = NM.actors; NM.bi = i; NM.bt = 0; NM.li = -1; NM.lineEnd = 0; NM.walk = {}; NM.shatterT = null; NM.shards = null; NM.flag = null; NM.burn = null;
@@ -11841,6 +11852,7 @@ function nmFx(f) {
 }
 function nightmareTick(dt) {
   dt = Math.min(dt, .05); NM.t += dt; const t = NM.t;
+  if (NM.phase === 'sev') { sevTick(dt); return; }
   fbSubTick();
   NM.flashA = Math.max(0, (NM.flashA || 0) - dt * 2.4); fbFlash(NM.flashA, fbFlashEl ? fbFlashEl.style.background : '#fff');
   if (NM.phase === 'panic') { // still in the ship: the shaking starts, the heart pounds, the view bleeds
@@ -11848,6 +11860,7 @@ function nightmareTick(dt) {
     renderer.domElement.style.filter = `saturate(${1 - k * .7}) contrast(${1 + k * .3}) blur(${(k * 1.5).toFixed(2)}px)`;
     spaceViewOnly(dt); const s = k * .6; camera.position.x += (Math.random() - .5) * s; camera.position.y += (Math.random() - .5) * s;
     renderer.render(SPC.scene, camera);
+    if (t > 2.6 && NM.ready && NM.sevM) { sevStart(); return; }
     if (t > 2.6 && NM.ready) {
       NM.phase = 'mem'; NM.saveCam = { near: camera.near, far: camera.far, fov: camera.fov }; camera.near = .1; camera.far = 700; camera.fov = 55; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
       renderer.domElement.style.filter = NM.script.tint; if (NM.vo.music) sfx.playSong(NM.vo.music, .5); nmBeat(0);
@@ -11919,6 +11932,99 @@ function nmEnd() {
   const hud = $('#spaceHud'); if (hud) hud.classList.remove('hidden');
   state = 'space'; SPC.camInit = false; clock.getDelta();
   spaceMsg('Fly with W/S and A/D (or the stick and THRUST) · descend onto any rocky planet to land');
+}
+// ---- the Chompy nightmare: Sevirrus itself ----
+// The Sevirrus game (sevirrus/sevirrus.html, an unaltered copy) plays its own cutscenes in a frame, in its own dark, brutal style:
+// the Carax massacre, the siege of Aridaxx, the assassination, the Emperor coming apart, Jazmak, and the end in irons.
+// Its menus, subtitles, cards and buttons are hidden, and Nostravector's take their place. It runs through window.__menu, which
+// the game itself provides. Opened from a file (file://) the frame couldn't be reached, so the same page comes from data/sevGame.js.
+// If it can't load, the Chompy nightmare falls back to the staged memories above.
+const SEV_SCENES = [
+  M => { const c = M._doc.querySelector('.ch-card[data-ch="0"]'); if (c) c.click(); }, // the prologue (its card also wakes its audio)
+  M => M.playChapter2(), // Chapter II: the siege of Aridaxx
+  M => M.playChapter3(), // Chapter III: the assassination
+  M => M.playChapter5(), // Chapter V: the Emperor comes apart, then Jazmak
+  M => M._endStart() // the end: the crown, the irons
+];
+const SEV_HIDE = '.ui,#pswarn,#subs,#skip,#skipCastle,#cineCard,.ghud,.gwrap,.panel-wrap,.loading,#loading,.c4load,.cine-bars,#holdCover,.status{display:none!important}';
+async function sevOpen() {
+  const box = document.createElement('div'); box.id = 'sevBox';
+  box.style.cssText = 'position:fixed;inset:0;z-index:11;background:#000;pointer-events:none;opacity:0;transition:opacity .6s';
+  const f = document.createElement('iframe'); f.title = 'Sevirrus';
+  f.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;opacity:0;transition:opacity .45s;pointer-events:none';
+  f.setAttribute('allow', 'autoplay; fullscreen'); box.appendChild(f); document.body.appendChild(box); NM.sevBox = box; NM.sevFrame = f;
+  const loaded = new Promise(res => f.addEventListener('load', res, { once: true }));
+  if (location.protocol === 'file:') {
+    if (!await loadDataScript('sevGame', 'glb')) return false;
+    f.srcdoc = document.getElementById('sevGame').textContent;
+  } else f.src = 'sevirrus/sevirrus.html';
+  await loaded;
+  for (let n = 0; n < 240; n++) { // its 3D side sets up a moment after the page loads
+    let M = null; try { M = f.contentWindow.__menu; } catch { return false; }
+    if (M && M.playIntro && M.playChapter5 && M._endStart) {
+      const W = f.contentWindow, d = f.contentDocument; M._doc = d;
+      const st = d.createElement('style'); st.textContent = SEV_HIDE; d.head.appendChild(st);
+      const pw = d.getElementById('pswarn'); if (pw) pw.hidden = true;
+      W.AudioContext = W.webkitAudioContext = function () { return sfx.sevCtx(); }; // its sound runs on ours (see sfx.sevCtx)
+      NM.sevM = M; return true;
+    }
+    await new Promise(r => setTimeout(r, 250));
+  }
+  return false;
+}
+function sevCine(M) { try { return M._cineTo(-1) !== null; } catch { return false; } } // a cutscene is running (asks without moving it on)
+function sevStart() {
+  NM.phase = 'sev'; NM.sev = { i: 0, st: 'start', t: 0, tries: 0, card: '', sub: '' };
+  renderer.domElement.style.filter = ''; NM.sevBox.style.opacity = 1; sfx.drone(0);
+  show(ui.xhud, true); ui.xhud.classList.add('cutting');
+}
+function sevTick(dt) {
+  const S = NM.sev, M = NM.sevM, d = M._doc; S.t += dt; fbSubTick();
+  NM.flashA = Math.max(0, (NM.flashA || 0) - dt * 2.4); fbFlash(NM.flashA, '#ff3a1a');
+  if (S.st === 'start') { // start the next scene, trying again while it finishes loading
+    if (sevCine(M)) { S.st = 'play'; S.t = 0; return; }
+    if (S.t > .4) { S.t = 0; if (++S.tries > 90) { S.st = 'after'; return; } try { SEV_SCENES[S.i](M); } catch (e) { console.warn(e); } }
+  } else if (S.st === 'play') {
+    if (!sevCine(M)) { S.st = 'after'; S.t = 0; }
+  } else if (S.st === 'after') { // between scenes: whatever the game moves on to by itself (a mission, a battle screen) is put away
+    if (S.t > .3) {
+      try {
+        if (M._game && M._game()) M.quitChapter(true);
+        const pre = d.getElementById('c4Pre'), ld = d.getElementById('c4Load');
+        if (d.body.classList.contains('c4screen') && !(ld && ld.hidden && pre && !pre.hidden)) return; // the battle screen is still loading
+        if (pre) pre.hidden = true; d.body.classList.remove('c4screen');
+        M.music.stop(); M.voice.stop(); M.song.stop();
+      } catch (e) { console.warn(e); }
+      if (S.t > 1) { if (++S.i >= SEV_SCENES.length) { sevClose(); nmWake(); return; } S.st = 'start'; S.t = 0; S.tries = 0; fbFlash(.9, '#ff3a1a'); NM.flashA = .9; sfx.thud(); }
+    }
+  }
+  NM.sevFrame.style.opacity = S.st === 'play' ? 1 : 0;
+  // its subtitles, in ours
+  const se = d.getElementById('subs'), on = S.st === 'play' && se && parseFloat(se.style.opacity || 0) > .5;
+  const who = on ? se.querySelector('.who').textContent : '', line = on ? se.querySelector('.line').textContent.trim() : '';
+  if (line && line !== S.sub) {
+    S.sub = line; fbSay(who.toUpperCase(), line, null);
+    const kind = /SEVIRRUS|^HAK|EMPEROR HAK/i.test(who) ? 'crox' : 'sev'; fb.sub.kind = kind; fbSubEl.className = 'on ' + kind;
+  } else if (!line && S.sub) { S.sub = ''; fbSubHide(); }
+  if (fb.sub && line) fb.sub.done = 0; // stays up while it's being said
+  // its title cards, in ours
+  const ce = d.getElementById('cineCard'), cOn = S.st === 'play' && ce && parseFloat(ce.style.opacity || 0) > .5, html = cOn ? ce.innerHTML : '';
+  if (html !== S.card) {
+    S.card = html; const card = $('#xCard');
+    if (html) { const sm = ce.querySelector('small'); $('#xCardS').textContent = sm ? sm.textContent : ''; $('#xCardB').textContent = [...ce.childNodes].filter(n => n.nodeType === 3 || (n.nodeName !== 'SMALL')).map(n => n.textContent).join(' ').trim(); card.classList.add('on'); }
+    else card.classList.remove('on');
+  }
+}
+function sevSkip(all) {
+  const S = NM.sev; if (!S) return;
+  if (all) { S.i = SEV_SCENES.length - 1; }
+  if (S.st === 'play') { try { NM.sevM._doc.getElementById('skip').click(); } catch {} }
+  else if (all) { S.st = 'after'; S.t = 0; }
+}
+function sevClose() {
+  const M = NM.sevM; if (M) { try { M.music.stop(); M.voice.stop(); M.song.stop(); if (M._game && M._game()) M.quitChapter(true); } catch {} }
+  if (NM.sevBox) NM.sevBox.remove(); NM.sevBox = NM.sevFrame = NM.sevM = null; NM.sev = null;
+  fbSubHide(); const c = $('#xCard'); if (c) c.classList.remove('on');
 }
 
 const CALL_SEQ = [
