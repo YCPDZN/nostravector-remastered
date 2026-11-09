@@ -504,4 +504,19 @@ After the escape from New London, **Chapter III · Sol** begins in your ship, ju
 - **Flying:** W/S thrust, A/D turn, ↑/↓ or drag to pitch, Shift for the **pulse drive** (crosses the system in seconds, off near planets). On phones: a stick, plus THRUST / PULSE / BRAKE buttons.
 - **Seamless landing:** fly down onto any rocky planet (Mercury, Venus, Earth, the Moon, Mars). Below about 420 m you hit the air and the ship sets down. Then walk the surface with Orion, on the same terrain you saw from orbit. Walk back to the ship and press FLY to take off. Gas giants have no surface.
 - Saves remember space (position and heading) and the planet you're on.
-- **Next stages:** the galaxy map and nine more systems (Sagittarius A* with Carax (Grek), Eris (Erisians), Steca Prime with Aridaxx and Steca (Chompy), Janira Proxima with Janira Prime (Chompy Empire), plus five others), the warp animation, warp cells (start with 5, craft more), mining and traders.
+- **Next stages:** mining and traders.
+
+## Chapter III · The galaxy map and the warp (stage 2)
+- **Galaxy map:** press **M** in space (or tap **GALAXY MAP**). It shows the spiral disc at a tilt with all ten systems on it. Drag to pan, scroll, pinch or use + / − to zoom, and tap a system to read about it: its star, faction, worlds and distance in light-years. Your system has a spinning marker, the one you've picked gets brackets and a dashed jump line, and systems you haven't visited have a faint ring.
+- **Ten systems:**
+  - **Sol:** now with **Eris**, the Erisians' frozen homeworld, and its moon **Dysnomia** beyond Neptune.
+  - **Malana Prime** (the Grek): Malana, where Am-Grek was born, the forest world Archiostal, and a gas giant.
+  - **Sagittarius A\*:** the black hole at the galaxy's core, with an accretion disc and photon ring. **Carax** circles it.
+  - **Steca Prime** (Chompy Empire): Aridaxx, the capital, volcanic Steca with lava seas, and a ringed gas giant.
+  - **Janira Proxima** (Chompy Empire): a red dwarf with Janira Prime.
+  - **Five uncharted systems:** Thalassa Reach (an ocean world), Cinder Vey (lava world Vey and its moon Ash), Nadir (a dying red sun and frozen worlds), Ossian Drift (a blue giant, a desert world and a ringed giant) and Halcyon (green Verdance and its moon Lull).
+  - Every rocky world and moon can be landed on, and each star has its own colour and light.
+- **Warp:** pick a system and press **WARP**. The drive spools up, the stars stretch into a tunnel tinted towards the star you're heading for, there's a white-out, and you drop out beside the system's main world. You can't fly into stars or the black hole.
+- **Warp cells:** each jump burns one. You start Chapter III with **5**. Craft more from the inventory: **2 metal plates, 2 frost crystals, 2 scrap metal** each.
+- **Objectives:** after your first landing the task is *Warp to another star system*, then *Explore the galaxy*. Saves remember which system you're in, the systems you've visited, and the world you're standing on.
+- **Fix:** loading a save straight onto a planet no longer shows the Antarctic sky in place of the planet's own.
