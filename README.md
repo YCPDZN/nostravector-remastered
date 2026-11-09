@@ -486,6 +486,7 @@ Orion has known him since the war and gets the last word either way. Afterwards 
 - **The trial (CH2TRIAL1–22):** President **Darius Ancin** and **Thomas Hawthorne** judge you, and the verdict is **guilty**. Then **Nico** bursts in. She exposes Hawthorne's spy (the woman with Daniel) and Terra Imperia hiring James Brown, then Croxian Mascar, to kill you. Orion speaks about the paranoia ("Croxian. Croxian. CROXIAN!"), and Hawthorne flies into a rage.
 - **The escape:** you run from the Palace to a Federation ship in Parliament Square, with Orion and Nico.
   - **Hawthorne** chases you. He is level 55, has no health bar, can't be hurt, and smashes you if he catches you.
+  - The whole escape is scored by **Wonders of Laniakea** (combat version), and it keeps playing when he summons his generals.
   - On the way he summons **Croxian Mascar** and **Malia de Toro** (level 20 each, with health bars). Croxian can't kill you in one blow here.
   - **Nico** (level 30, two pistols) beats them easily, with Orion backing her up.
   - Board the ship and it takes off, followed by "Escaped New London" and a Chapter II to-be-continued screen. If you die, the escape restarts from the Palace door.
@@ -649,6 +650,7 @@ Moments after escaping Earth, out over the planet, the wanderer has another epis
 
 Then Orion and Nico bring them back. **Skip** jumps past the memories, then past the wake-up.
 
+- **Music for the Chompy nightmare:** **Wonders of Laniakea** (combat version) plays across the whole montage, in place of Sevirrus's own score. That score isn't loaded at all now, which saves about 27 MB of memory on phones; the battle keeps time by its own clock. The staged fallback uses it too, with Fields of Carax only if it can't be decoded.
 - **Skipping the Chompy nightmare:** **Skip** cuts to the next clip. Press it twice quickly to skip them all.
 - **What was taken from Sevirrus:** only its cutscenes, with no gameplay, menus or saves. Their code sits at the bottom of `index.html` (`#sevCinePage`).
 - **Assets:** the 5 models, the score and the 56 voice lines those cutscenes use are in `data/sevCine.js` (13 MB).

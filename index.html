@@ -2180,6 +2180,18 @@ const sfx = (() => {
       g.gain.setTargetAtTime(.8, t, .5);
       fadeOut(combatSrc, 1.4); combatSrc = { s, g };
     },
+    // a combat theme's decoded buffer, for scenes that play it as a song of their own (the Chompy nightmare)
+    combatBuf(idx) {
+      if (!ctx || idx < 0) return Promise.resolve(null);
+      if (!combatCache[idx]) combatCache[idx] = new Promise(res => {
+        try {
+          const bin = atob(document.getElementById('cm' + (idx + 1)).textContent.trim()), u8 = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+          const pr = ctx.decodeAudioData(u8.buffer, res, () => res(null)); if (pr && pr.catch) pr.catch(() => res(null));
+        } catch { res(null); }
+      });
+      return combatCache[idx];
+    },
     get combatTrack() { return combatOn ? combatIdx : -1; },
     menuTrack(id) { menuWant = id; if (ctx) startMenu(id); },
     area(level, set = 'ax') {
@@ -9643,7 +9655,7 @@ async function startEscape() {
   const H = trial.actors.haw || await hawthorneRig(); esc.H = { R: H, x: 15.5, z: 70, st: 'out', t: 0, cd: 1.5 };
   if (H) { if (H.root.parent) H.root.parent.remove(H.root); world.london.add(H.root); H.root.visible = false; H.root.position.set(15.5, 0, 70); H.root.rotation.set(0, 0, 0); }
   state = 'explore'; show(ui.xhud, true); ui.xhud.classList.remove('cutting'); clock.getDelta(); resize();
-  sfx.combat(true, COMBAT_TRACKS.indexOf('Predator II'));
+  sfx.combat(true, COMBAT_TRACKS.indexOf('Wonders of Laniakea (Combat)')); // Hawthorne's chase
   notice('Escape New London', 'RUN TO THE SHIP', 3200); say(ESC.go); renderTasks(); escBars();
 }
 function escMove(o, tx, tz, sp, dt) { // straight at it, sliding along anything in the way
@@ -9664,7 +9676,7 @@ async function escSummon() {
     esc.foes.push({ R, name, x, z, hp: 180, max: 180, dmg, st: 'chase', cd: 1.4 + i, t: 0, hurtT: 0 });
   });
   sfx.whoosh(); sfx.thud(); ex.shake = .5; notice('Hawthorne summons his generals', 'CROXIAN MASCAR · MALIA DE TORO', 3600);
-  sfx.combat(true, COMBAT_TRACKS.indexOf('Predator IV')); // Croxian's theme
+  // Laniakea keeps playing through the generals' fight (no switch to Croxian's theme here)
   setTimeout(() => say(ESC.crox, 2600), 2700); setTimeout(() => say(ESC.son, 3000), 5600); setTimeout(() => say(ESC.nico, 2600), 8800);
   esc.phase = 'fight'; escBars();
 }
@@ -11779,7 +11791,7 @@ async function nmCast(race) {
     add('sev', sev); add('jakal', jakal); add('priest', priest); add('damix', damix); st.forEach((R, i) => add('s' + (i + 1), R));
     for (const k of ['g1', 'g2']) add(k, await townModel('chompy').then(src => src ? autoRig(dressTownsfolk(src, { sp: 'chompy', c: [0x5a2a22, 0x8a6a3a] }), 1.75) : null));
     NM.vo.sev = await sfx.loadClips('sevVoices').catch(() => null) || [];
-    NM.vo.music = (await sfx.loadClips('sevCarax').catch(() => null) || [])[0];
+    NM.vo.music = await sfx.combatBuf(COMBAT_TRACKS.indexOf('Wonders of Laniakea (Combat)')) || (await sfx.loadClips('sevCarax').catch(() => null) || [])[0];
   } else if (race === 'erisian') {
     const [vis, alx] = await Promise.all([glbRig('leader_erisian', 1.9), glbRig('tiAlexia', 1.85, 'sword')]); add('vishara', vis); add('alexia', alx);
     for (const k of ['g1', 'g2']) add(k, await townModel('erisian').then(src => src ? (R => (armRig(R, 'sword'), R))(autoRig(dressTownsfolk(src, { sp: 'erisian', c: [0x2a1840, 0xb070ff] }), 1.85)) : null));
@@ -11945,6 +11957,7 @@ async function sevOpen() {
   const tpl = document.getElementById('sevCinePage'); if (!tpl) return false;
   if (!await loadDataScript('sevCine', 'glb')) return false;
   let A; try { A = JSON.parse(document.getElementById('sevCine').textContent); } catch { return false; }
+  delete A.score; // Wonders of Laniakea scores the montage, so Sevirrus's own score is never decoded (~27 MB less on phones); the battle keeps time by its own clock
   const tags = Object.entries(A).map(([k, v]) => `<script type="application/octet-stream" id="${k}">${v}</` + `script>`).join('\n');
   const page = tpl.textContent.replace(/<\\\/script/gi, '</' + 'script').replace(/<\\!--/g, '<!' + '--').replace('@@ASSETS@@', () => tags);
   const box = document.createElement('div'); box.id = 'sevBox';
@@ -11960,6 +11973,7 @@ async function sevOpen() {
     if (M && M.playIntro && M.playChapter5 && M._seek) {
       const W = f.contentWindow; M._doc = f.contentDocument;
       W.AudioContext = W.webkitAudioContext = function () { return sfx.sevCtx(); }; // its sound runs on ours (see sfx.sevCtx)
+      M.noScore = true; // Wonders of Laniakea scores it instead (see sevStart)
       NM.sevM = M; return true;
     }
     await new Promise(r => setTimeout(r, 250));
@@ -11970,6 +11984,7 @@ function sevAlive(M) { try { return M._t() !== null; } catch { return false; } }
 function sevStart() {
   NM.phase = 'sev'; NM.sev = { i: 0, st: 'start', t: 0, tries: 0, scene: null, card: '', sub: '' };
   renderer.domElement.style.filter = ''; NM.sevBox.style.opacity = 1; NM.sevFrame.style.transition = 'none'; sfx.drone(.35);
+  sfx.combatBuf(COMBAT_TRACKS.indexOf('Wonders of Laniakea (Combat)')).then(b => { if (NM.sev && b) sfx.playSong(b, .6); }); // the nightmare's score
   show(ui.xhud, true); ui.xhud.classList.add('cutting');
 }
 function sevEndScene(M) { try { if (sevAlive(M)) M._doc.getElementById('skip').click(); M.music.stop(); M.voice.stop(); } catch (e) { console.warn(e); } }
@@ -12018,7 +12033,7 @@ function sevSkip(all) { // Skip: on to the next clip; twice quickly: out of it
 }
 function sevClose() {
   const M = NM.sevM; if (M) { try { sevEndScene(M); M.song.stop(); } catch {} }
-  sfx.drone(0);
+  sfx.drone(0); sfx.stopSong(1.5);
   if (NM.sevBox) NM.sevBox.remove(); NM.sevBox = NM.sevFrame = NM.sevM = null; NM.sev = null;
   fbSubHide(); const c = $('#xCard'); if (c) c.classList.remove('on');
 }
@@ -15446,7 +15461,7 @@ body.cine .fx-flash { animation: none !important; opacity: 0 !important; }
     play(offset = 0) {
       if (!musicOn || !actx || !scoreBuf) return;
       this.stop();
-      const g = actx.createGain(); g.gain.value = 0.9; g.connect(actx.destination); musicGain = g;
+      const g = actx.createGain(); g.gain.value = 0.9; g.connect(window.__menu.noScore ? (window.__menu._hush || (window.__menu._hush = (() => { const z = actx.createGain(); z.gain.value = 0; z.connect(actx.destination); return z; })())) : actx.destination); musicGain = g;
       scoreSrc = actx.createBufferSource(); scoreSrc.buffer = scoreBuf; scoreSrc.connect(g);
       scoreSrc.start(0, Math.max(0, offset)); scoreSrc._g = g; scoreSrc._t0 = actx.currentTime - Math.max(0, offset);
     },
