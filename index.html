@@ -641,9 +641,22 @@ button.bm-c.no{opacity:.45}
   .sh-btns button{width:78px;height:54px;border-radius:12px;border:1px solid var(--line);background:rgba(7,10,17,.45);color:var(--ink);font-family:var(--display);font-size:9px;letter-spacing:.14em;touch-action:none}
   .sh-btns button.on{background:rgba(159,230,255,.25);border-color:var(--ice)}
   .sh-speed{bottom:calc(var(--sb) + 200px);width:150px}.sh-speed span{font-size:15px}
+  .sh-def{bottom:calc(var(--sb) + 268px);width:150px}
+  .sh-btns button[data-b="fire"]{border-color:rgba(255,106,90,.6);color:#ffb3a8}.sh-btns button[data-b="fire"].on{background:rgba(255,90,74,.3)}
 }
 @media (max-width:720px) and (orientation:portrait){ .sh-top{top:calc(var(--st) + 64px);width:80vw} }
-@media (pointer:coarse) and (orientation:landscape) and (max-height:520px){ .sh-stick{bottom:calc(var(--sb) + 24px);width:104px;height:104px} .sh-speed{left:calc(var(--sl) + 150px);bottom:calc(var(--sb) + 20px)} .sh-btns{flex-direction:row;gap:10px} .sh-btns button{width:70px;height:48px} .sh-obj{display:none} }
+@media (pointer:coarse) and (orientation:landscape) and (max-height:520px){ .sh-stick{bottom:calc(var(--sb) + 24px);width:104px;height:104px} .sh-speed{left:calc(var(--sl) + 150px);bottom:calc(var(--sb) + 20px)} .sh-btns{flex-direction:row;gap:10px} .sh-btns button{width:70px;height:48px} .sh-obj{display:none} .sh-def{left:calc(var(--sl) + 150px);bottom:calc(var(--sb) + 96px)} }
+.sh-def{position:absolute;left:calc(var(--sl) + 22px);bottom:calc(var(--sb) + 112px);width:200px;display:flex;flex-direction:column;gap:6px}
+.sh-def div{display:flex;align-items:center;gap:8px}.sh-def b{font-weight:500;font-size:7.5px;letter-spacing:.3em;color:var(--mute);width:52px}
+.sh-def span{flex:1;height:4px;background:rgba(255,255,255,.1);transform:skewX(-14deg);overflow:hidden}.sh-def span i{display:block;height:100%;width:100%;transition:width .15s}
+#shShield{background:linear-gradient(90deg,#3f8fff,#9fd8ff)}#shHull{background:linear-gradient(90deg,#d8a040,#ffe0a0)}.sh-def.low #shHull{background:#ff5a4a}
+.sh-cross{position:absolute;left:50%;top:44%;width:26px;height:26px;margin:-13px 0 0 -13px;border:1px solid rgba(159,230,255,.45);border-radius:50%;opacity:0;transition:opacity .3s}
+.sh-cross::after{content:'';position:absolute;left:50%;top:50%;width:3px;height:3px;margin:-1.5px;background:#cfeeff;border-radius:50%}.sh-cross.on{opacity:1}.sh-cross.lock{border-color:#ff6a5a}
+.sh-foe{position:absolute;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.sh-foe i{display:block;width:22px;height:22px;margin:0 auto;border:1px solid #ff6a5a;transform:rotate(45deg)}.sh-foe.lock i{width:30px;height:30px;border-width:2px;box-shadow:0 0 10px rgba(255,90,74,.6)}
+.sh-foe span{display:block;margin-top:8px;font-size:7.5px;letter-spacing:.24em;color:#ffb3a8;text-shadow:0 0 6px #000;white-space:nowrap}
+.sh-foe em{display:block;width:40px;height:3px;margin:4px auto 0;background:rgba(255,255,255,.15)}.sh-foe em u{display:block;height:100%;background:#ff6a5a}
+.sh-foe.edge i{border-radius:50%;width:12px;height:12px;background:rgba(255,90,74,.5)}
 .sh-cells{display:block;font-style:normal;font-size:8px;letter-spacing:.3em;color:#c7b4ff;margin-top:6px}
 .sh-map{position:absolute;top:calc(var(--st) + 14px);right:calc(var(--sr) + 72px);height:40px;padding:0 12px;pointer-events:auto;background:rgba(7,10,17,.5);border:1px solid var(--line);color:var(--ink);font-family:var(--display);font-size:9px;letter-spacing:.24em;cursor:pointer}
 .sh-mk.star i{border-color:#ffd88a;border-radius:50%;transform:none}
@@ -2201,7 +2214,11 @@ const sfx = (() => {
     shot() { noise(.09, 5200, 900, .16); tone(220, 70, .08, 'square', .04); },
     swing() { noise(.18, 3000, 600, .08); },
     hit(t) { if (t === 'ice') { tone(1500, 900, .12, 'triangle', .08); noise(.12, 6000, 2000, .08); } else if (t === 'crate') { tone(160, 90, .12, 'square', .07); noise(.1, 1500, 300, .12); } else { noise(.16, 1200, 200, .22); tone(110, 70, .1, 'sine', .15); } },
-    alarm() { tone(988, 988, .07, 'square', .022); tone(740, 740, .07, 'square', .018, .13); }
+    alarm() { tone(988, 988, .07, 'square', .022); tone(740, 740, .07, 'square', .018, .13); },
+    laser(v = 1) { tone(1400, 380, .09, 'sawtooth', .022 * v); noise(.05, 7000, 2500, .03 * v); },
+    zap() { tone(520, 160, .12, 'square', .03); },
+    shieldHit() { tone(300, 900, .1, 'triangle', .05); noise(.08, 4000, 1500, .06); },
+    boom(v = 1) { noise(.9, 900, 40, .5 * v); tone(80, 28, .7, 'sine', .4 * v); }
   };
 })();
 
@@ -10095,14 +10112,16 @@ function spaceHud() {
   let el = $('#spaceHud'); if (el) return el;
   el = document.createElement('div'); el.id = 'spaceHud'; el.className = 'space-hud hidden';
   el.innerHTML = `<div class="sh-top"><b id="shTarget">SOL</b><small id="shSub"></small></div>
+    <div class="sh-def" id="shDef"><div><b>SHIELD</b><span><i id="shShield"></i></span></div><div><b>HULL</b><span><i id="shHull"></i></span></div></div>
+    <div class="sh-cross" id="shCross"></div><div class="sh-foes" id="shFoes"></div>
     <div class="sh-speed"><i id="shSpeedBar"></i><span id="shSpeed">0 m/s</span><em id="shMode">IMPULSE</em><em class="sh-cells" id="shCells"></em></div>
     <div class="sh-obj" id="shObj"></div>
     <div class="sh-prompt" id="shPrompt"></div>
     <div class="sh-marks" id="shMarks"></div>
-    <div class="sh-keys">W / S thrust · A / D turn · ↑ / ↓ or drag to pitch · SHIFT pulse drive · M galaxy map · ESC menu</div>
+    <div class="sh-keys">W / S thrust · A / D turn · ↑ / ↓ or drag to pitch · SHIFT pulse drive · SPACE / F / click fire · M galaxy map · ESC menu</div>
     <button class="sh-menu" id="shMenu">☰</button><button class="sh-map" id="shMap"><span>GALAXY </span>MAP</button>
     <div class="sh-stick" id="shStick"><div class="sh-knob" id="shKnob"></div></div>
-    <div class="sh-btns"><button data-b="thrust">THRUST</button><button data-b="pulse">PULSE</button><button data-b="brake">BRAKE</button></div>
+    <div class="sh-btns"><button data-b="fire">FIRE</button><button data-b="thrust">THRUST</button><button data-b="pulse">PULSE</button><button data-b="brake">BRAKE</button></div>
     <div class="sh-flash" id="shFlash"></div>
     <div class="sh-warp" id="shWarp"><b id="shWarpTxt"></b></div>`;
   document.body.appendChild(el);
@@ -10121,9 +10140,9 @@ function spaceHud() {
 }
 addEventListener('keydown', e => { if (state !== 'space') return; if (GAL.open) { if (e.code === 'Escape' || e.code === 'KeyM') { e.preventDefault(); galClose(); } return; } if (SPC.warp) return; if (e.code === 'KeyM') { galOpen(); return; } if (e.code === 'Escape' || e.code === 'KeyP') { spacePause(true); return; } if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault(); SPC.keys.add(e.code); });
 addEventListener('keyup', e => SPC.keys.delete(e.code));
-canvas.addEventListener('pointerdown', e => { if (state !== 'space' || e.pointerType !== 'mouse') return; SPC.drag = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener('pointerdown', e => { if (state !== 'space' || e.pointerType !== 'mouse') return; SPC.drag = { x: e.clientX, y: e.clientY }; if (e.button === 0) SPC.mouseFire = true; });
 addEventListener('pointermove', e => { if (state !== 'space' || !SPC.drag) return; SPC.dragDX = (SPC.dragDX || 0) + (e.clientX - SPC.drag.x); SPC.dragDY = (SPC.dragDY || 0) + (e.clientY - SPC.drag.y); SPC.drag.x = e.clientX; SPC.drag.y = e.clientY; });
-addEventListener('pointerup', () => { SPC.drag = null; });
+addEventListener('pointerup', () => { SPC.drag = null; SPC.mouseFire = false; });
 function spacePause(on) {
   if (on && state === 'space' && !SPC.warp && !GAL.open) { state = 'xpaused'; SPC.paused = true; SPC.keys.clear(); refreshDirty(); $('#xPauseChap').textContent = liveChapterLabel(); show(ui.xpause, true); }
 }
@@ -10140,6 +10159,7 @@ function spaceOn(place) {
   if (place && place.fromPlanet) { const P = bodyById(place.fromPlanet); if (P) setSystem(P.sys); if (P) { const n = place.dir ? tmpVs.fromArray(place.dir) : tmpVs.set(0, 1, 0); SPC.pos.copy(P.pos).addScaledVector(n, P.r + planetH(P, n) + 520); const f = tmpVs2.set(0, 1, 0).cross(n); if (f.lengthSq() < .01) f.set(1, 0, 0); f.normalize(); const m = new THREE.Matrix4().lookAt(new THREE.Vector3(), f.clone().negate().addScaledVector(n, -.35), n); SPC.q.setFromRotationMatrix(m); } }
   if (!place) { setSystem('sol'); arrivalPose(SPC.sys); } // just off Earth, on its sunlit side, the planet filling the view below you
   SPC.vel = 60; SPC.thr = .3; SPC.camInit = false; clock.getDelta();
+  scClear(); SC.shield = 100; SC.nextT = (SPC.t || 0) + 50 + Math.random() * 50;
   wanderer.place = currentPlace(); const c = curChar(); if (c) c.place = wanderer.place;
 }
 // where you come out in a system: off its home world, on the sunlit side, the world filling the view below you
@@ -10192,8 +10212,8 @@ function spaceTick(dt) {
   if (K.has('KeyS') || B.brake) SPC.thr = Math.max(0, SPC.thr - dt * 1.1);
   const [P, alt0] = nearestBody(); SPC.near = P;
   const fwd = (SPC.fwd || (SPC.fwd = new THREE.Vector3())).set(0, 0, -1).applyQuaternion(SPC.q), up = (SPC.up || (SPC.up = new THREE.Vector3())).set(0, 1, 0).applyQuaternion(SPC.q);
-  const wantPulse = (K.has('ShiftLeft') || K.has('ShiftRight') || B.pulse), canPulse = alt0 > P.r * .9 + 1500;
-  if (wantPulse && !canPulse && time - (SPC.pulseMsgT || -9) > 2.5) { SPC.pulseMsgT = time; spaceMsg('Too close to ' + P.name + ' for the pulse drive'); }
+  const jam = scJammed(), wantPulse = (K.has('ShiftLeft') || K.has('ShiftRight') || B.pulse), canPulse = alt0 > P.r * .9 + 1500 && !jam;
+  if (wantPulse && !canPulse && time - (SPC.pulseMsgT || -9) > 2.5) { SPC.pulseMsgT = time; spaceMsg(jam ? 'Pulse drive jammed · hostiles nearby' : 'Too close to ' + P.name + ' for the pulse drive'); }
   SPC.pulse = lerp(SPC.pulse, wantPulse && canPulse ? 1 : 0, Math.min(1, dt * (wantPulse && canPulse ? .9 : 3)));
   const target = SPC.thr * 240 + SPC.pulse * 9000;
   SPC.vel = lerp(SPC.vel, target, Math.min(1, dt * (target > SPC.vel ? 1.2 : 2.2)));
@@ -10221,6 +10241,7 @@ function spaceTick(dt) {
   SPC.stars.position.copy(camera.position);
   // light from the Sun onto whatever you're near
   SPC.sunL.position.set(0, 0, 0); SPC.sunL.target.position.copy(P.pos); SPC.sunL.target.updateMatrixWorld();
+  scTick(dt, fwd, up, alt);
   spaceHudTick(P, alt, fwd);
 }
 let spaceMsgT = 0;
@@ -10314,6 +10335,7 @@ function galPanel() {
   const kind = P => (P.kind === 'station' ? 'Station' : P.kind === 'gas' ? 'No surface' : P.parent ? 'Moon · landable' : 'Landable') + (P.land && planetTraders(P).length ? ' · trader' : '');
   let btn;
   if (here) btn = `<button class="btn gp-warp" disabled><span>You are here</span></button>`;
+  else if (SC.foes.length) btn = `<button class="btn gp-warp" disabled><span>Can't warp in combat</span></button><div class="gp-why">The hyperdrive won't spool up under fire · destroy them, outrun them, or drop into a planet's atmosphere</div>`;
   else if (!inRange(curSys(), S)) btn = `<button class="btn gp-warp" disabled><span>Out of hyperdrive range</span></button><div class="gp-why">Your hyperdrive reaches ${driveRange().toLocaleString()} ly per jump · hop through nearer systems${driveTier() < 3 ? `, or craft ${ITEMS['hyper' + (driveTier() + 1)].name} (${DRIVE_LY[driveTier() + 1].toLocaleString()} ly)` : ''}</div>`;
   else if (n < cost) btn = `<button class="btn gp-warp" disabled><span>Warp · ${cellsTxt(cost)}</span></button><div class="gp-why">${n ? `You have ${cellsTxt(n)} · need ${cost - n} more` : 'No warp cells'} · craft them from 2 metal plates · 2 frost crystals · 2 scrap metal each</div>`;
   else btn = `<button class="btn gp-warp" data-warp="${S.id}"><span>Warp · ${cellsTxt(cost)} (${n - cost} left after)</span></button>`;
@@ -10370,7 +10392,7 @@ function warpTunnel() {
   SPC.scene.add(L); return SPC.tun = L;
 }
 function galWarp(id) {
-  const S = sysById(id), cost = warpCost(curSys(), S); if (S.id === SPC.sys || have('warpcell') < cost || !inRange(curSys(), S)) return;
+  const S = sysById(id), cost = warpCost(curSys(), S); if (S.id === SPC.sys || have('warpcell') < cost || !inRange(curSys(), S) || SC.foes.length) return;
   takeItem('warpcell', cost); galClose(); sfx.warp();
   SPC.warp = { t: 0, to: S.id, col: new THREE.Color(S.star.kind === 'hole' ? '#ffb070' : S.star.col) };
   const tn = warpTunnel(); tn.visible = true; tn.userData.v = 0;
@@ -10420,8 +10442,160 @@ function warpTick(dt) {
     spaceMsg(first ? `${S.name} · ${S.bodies.filter(P => P.land).length} world${S.bodies.filter(P => P.land).length === 1 ? '' : 's'} to land on` : `Back in ${S.name}`);
   }
 }
+/* ============ space combat ============
+   No Man's Sky style dogfights. Out in space, away from planets, pirates jump you now and then (Terra Imperia's interceptors
+   in Sol: Hawthorne's hunt goes on). Twin photon cannons (SPACE / F / left mouse / FIRE) with a little aim assist on the
+   target you're pointing at; shields soak hits and recharge after a few seconds clear, the hull doesn't (it's patched up when
+   you land). Hostiles jam the pulse drive and the hyperdrive, so fight, outrun them (6 km), or dive into an atmosphere. Lose
+   the hull and the ship is towed back to the system's main world, minus a quarter of your units. */
+const SC = { foes: [], bolts: [], booms: [], shield: 100, hull: 100, hitT: -9, nextT: 60, cool: 0, gun: 0, shake: 0, lock: null };
+const SCV = { a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), d: new THREE.Vector3(), q: new THREE.Quaternion() };
+const scJammed = () => SC.foes.some(f => f.pos.distanceTo(SPC.pos) < 3500);
+function makeFighter(ti) {
+  const g = new THREE.Group(), M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .45, metalness: .6 }, o));
+  const hull = M(ti ? 0x16161c : 0x45444a), acc = M(ti ? 0xb01c24 : 0xd9772a, { emissive: ti ? 0x3a0508 : 0x2a1404, emissiveIntensity: .6 });
+  const body = new THREE.Mesh(new THREE.ConeGeometry(1.6, 9, 6), hull); body.rotation.x = -Math.PI / 2; g.add(body);
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(11, .3, 3.2), hull); wing.position.z = 1.8; g.add(wing);
+  for (const sx of [-1, 1]) { const fin = new THREE.Mesh(new THREE.BoxGeometry(.3, 2.6, 2.4), acc); fin.position.set(sx * 5.4, .9, 2.2); g.add(fin); }
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(11.1, .32, .7), acc); stripe.position.z = .8; g.add(stripe);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: SC.glowT || (SC.glowT = starGlowTex(['rgba(255,255,255,1)', 'rgba(255,150,90,.6)', 'rgba(255,80,30,0)'])), color: ti ? 0xff4a4a : 0xffa04a, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  glow.scale.set(5, 5, 1); glow.position.z = 4.6; g.add(glow);
+  return g;
+}
+function scKind() {
+  const S = curSys();
+  if (S.id === 'sol') return { who: 'Terra Imperia', ti: true, chance: .65 };
+  if (S.faction === 'The Chompy Empire') return { who: 'Pirates', chance: .25 }; // the Emperor's patrols keep his space quieter
+  return { who: 'Pirates', chance: .55 };
+}
+function scSpawn() {
+  const K = scKind(), W3 = wanderer.ch3 || {}, n = 2 + Math.floor(Math.random() * (W3.warped ? 3 : 2));
+  const fwd = SCV.a.set(0, 0, -1).applyQuaternion(SPC.q);
+  for (let i = 0; i < n; i++) {
+    const dir = SCV.b.set(Math.random() - .5, (Math.random() - .5) * .5, Math.random() - .5).normalize().addScaledVector(fwd, .9).normalize();
+    const pos = SPC.pos.clone().addScaledVector(dir, 2300 + Math.random() * 600), m = makeFighter(K.ti);
+    const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(pos, SPC.pos, SCV.c.set(0, 1, 0)));
+    m.position.copy(pos); m.quaternion.copy(q); SPC.scene.add(m);
+    SC.foes.push({ m, pos, q, hp: K.ti ? 70 : 55, max: K.ti ? 70 : 55, speed: 205 + Math.random() * 45, cd: 1.5 + Math.random() * 2, burst: 0, mode: 'attack', modeT: 0, brk: new THREE.Vector3(), name: K.ti ? 'TERRA IMPERIA' : 'PIRATE', ti: !!K.ti });
+  }
+  sfx.alarm(); setTimeout(() => sfx.alarm(), 300); combatPulse();
+  spaceMsg(K.ti ? `Terra Imperia interceptors · ${n} ships · Hawthorne hasn't given up` : `Pirates incoming · ${n} ships`);
+}
+function scClear() {
+  for (const f of SC.foes) SPC.scene && SPC.scene.remove(f.m);
+  for (const b of SC.bolts) SPC.scene && SPC.scene.remove(b.m);
+  SC.foes = []; SC.bolts = []; SC.lock = null;
+}
+const BOLT_GEO = new THREE.CylinderGeometry(.55, .55, 26, 6).rotateX(Math.PI / 2);
+function scBolt(from, dir, speed, friendly) {
+  const m = new THREE.Mesh(BOLT_GEO, SC['boltM' + friendly] || (SC['boltM' + friendly] = new THREE.MeshBasicMaterial({ color: friendly ? 0x8ff0ff : 0xff5a3a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })));
+  m.position.copy(from); m.quaternion.setFromUnitVectors(SCV.d.set(0, 0, 1), dir); SPC.scene.add(m);
+  SC.bolts.push({ m, pos: from.clone(), prev: from.clone(), vel: dir.clone().multiplyScalar(speed), life: friendly ? 1.6 : 2.2, friendly });
+}
+function segDist3(a, b, c) { const ab = SCV.c.subVectors(b, a), t = clamp(SCV.d.subVectors(c, a).dot(ab) / Math.max(1e-6, ab.lengthSq()), 0, 1); return SCV.d.copy(a).addScaledVector(ab, t).distanceTo(c); }
+function scBoom(pos, size = 1) {
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: SC.boomT || (SC.boomT = starGlowTex(['rgba(255,250,230,1)', 'rgba(255,170,80,.8)', 'rgba(255,60,20,0)'])), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  sp.position.copy(pos); SPC.scene.add(sp); SC.booms.push({ sp, t: 0, size });
+}
+function scHurtPlayer(n) {
+  SC.hitT = time; SC.shake = Math.max(SC.shake, .5); combatPulse();
+  if (SC.shield > 0) { SC.shield = Math.max(0, SC.shield - n); sfx.shieldHit(); if (!SC.shield) spaceMsg('Shields down'); return; }
+  SC.hull = Math.max(0, SC.hull - n); sfx.zap();
+  const f = $('#shFlash'); f.style.transition = 'none'; f.style.background = 'rgba(255,40,30,.28)'; f.classList.add('on'); requestAnimationFrame(() => { f.style.transition = 'opacity .5s'; f.classList.remove('on'); });
+  if (SC.hull <= 0) scShipDown();
+}
+function scShipDown() {
+  scBoom(SPC.pos, 2.4); sfx.boom(1.4); scClear();
+  const lost = Math.floor(units() * .25); if (lost) addUnits(-lost);
+  const S = curSys(); SC.hull = 100; SC.shield = 100; SC.nextT = SPC.t + 90 + Math.random() * 60;
+  const f = $('#shFlash'); f.style.transition = 'none'; f.style.background = '#000'; f.classList.add('on');
+  setTimeout(() => { arrivalPose(S.id, 3.4); SPC.vel = 40; SPC.thr = .2; SPC.camInit = false; f.style.transition = 'opacity 1.4s'; f.classList.remove('on');
+    spaceMsg(`Your ship was crippled · towed back to ${bodyById(S.home).name}${lost ? ` · ${lost} units lost` : ''}`); }, 900);
+}
+function scKill(f) {
+  scBoom(f.pos, 1.3); sfx.boom(); SPC.scene.remove(f.m); SC.foes = SC.foes.filter(o => o !== f); if (SC.lock === f) SC.lock = null;
+  const u = 40 + Math.floor(Math.random() * 50) + (f.ti ? 20 : 0); addUnits(u); gainXP(60);
+  const drops = [['scrap', 1 + Math.floor(Math.random() * 3)], Math.random() < .5 && ['crystal', 1], Math.random() < .15 && ['warpcell', 1]].filter(Boolean);
+  for (const [id, n] of drops) giveItem(id, n);
+  const W3 = wanderer.ch3; if (W3) { W3.kills = (W3.kills | 0) + 1; const c = curChar(); if (c) c.ch3 = W3; }
+  spaceMsg(`${f.name === 'PIRATE' ? 'Pirate' : 'Interceptor'} destroyed · +${u} units${drops.map(([id, n]) => ` · +${n} ${ITEMS[id].name}`).join('')}${SC.foes.length ? '' : ' · all hostiles down'}`);
+}
+function scTick(dt, fwd, up, alt) {
+  // encounters
+  const W3 = wanderer.ch3 || {};
+  if (!SC.foes.length && SPC.t > SC.nextT) {
+    SC.nextT = SPC.t + 45 + Math.random() * 75;
+    if (W3.landed && alt > 2500 && Math.random() < scKind().chance) scSpawn();
+  }
+  // shields come back after 4 s clear
+  if (time - SC.hitT > 4 && SC.shield < 100) SC.shield = Math.min(100, SC.shield + 22 * dt);
+  // your guns
+  SC.cool -= dt;
+  const firing = SPC.keys.has('Space') || SPC.keys.has('KeyF') || SPC.btn.fire || SPC.mouseFire;
+  let lock = null, la = .42;
+  for (const f of SC.foes) { const to = SCV.a.subVectors(f.pos, SPC.pos), d = to.length(), an = fwd.angleTo(to); if (d < 2600 && an < la) { la = an; lock = f; } }
+  SC.lock = lock;
+  if (firing && SC.cool <= 0) {
+    SC.cool = .11; SC.gun ^= 1;
+    const from = SCV.b.set(SC.gun ? 8.8 : -8.8, .2, -6).applyQuaternion(SPC.q).add(SPC.pos), dir = SCV.c.copy(fwd);
+    if (lock && la < .14) { const d = lock.pos.distanceTo(SPC.pos), lead = SCV.d.set(0, 0, -1).applyQuaternion(lock.q).multiplyScalar(lock.speed * d / 1700).add(lock.pos); dir.subVectors(lead, from).normalize(); }
+    scBolt(from.clone(), dir.clone(), 1700 + SPC.vel, true); sfx.laser(.8);
+  }
+  // the hostiles
+  const pv = SCV.d.copy(fwd).multiplyScalar(SPC.vel);
+  for (const f of [...SC.foes]) {
+    const to = new THREE.Vector3().subVectors(SPC.pos, f.pos), d = to.length(), ffwd = new THREE.Vector3(0, 0, -1).applyQuaternion(f.q);
+    let want;
+    if (f.mode === 'attack') { want = SPC.pos.clone().addScaledVector(pv, d / 950).sub(f.pos).normalize(); if (d < 230) { f.mode = 'break'; f.modeT = 1.8 + Math.random() * 1.6; f.brk.copy(ffwd).add(new THREE.Vector3(Math.random() - .5, Math.random() - .5, Math.random() - .5).multiplyScalar(1.6)).normalize(); } }
+    else { want = f.brk; f.modeT -= dt; if ((f.modeT <= 0 && d > 520) || d > 2200) f.mode = 'attack'; }
+    for (const P of SPC.bodies) { const dp = new THREE.Vector3().subVectors(f.pos, P.pos), dd = dp.length(); if (dd < P.r * 1.25 + 400) want = want.clone().addScaledVector(dp.divideScalar(dd), 2).normalize(); } // keep clear of planets
+    const ang = ffwd.angleTo(want);
+    if (ang > 1e-4) { const ax = new THREE.Vector3().crossVectors(ffwd, want); if (ax.lengthSq() > 1e-8) f.q.premultiply(SCV.q.setFromAxisAngle(ax.normalize(), Math.min(ang, 1.5 * dt))); }
+    f.q.normalize(); ffwd.set(0, 0, -1).applyQuaternion(f.q);
+    f.pos.addScaledVector(ffwd, f.speed * dt);
+    f.m.position.copy(f.pos); f.m.quaternion.copy(f.q);
+    f.cd -= dt;
+    if (f.mode === 'attack' && d < 1150 && ffwd.angleTo(to) < .2 && f.cd <= 0) {
+      f.burst++; f.cd = f.burst % 3 ? .2 : 1.3 + Math.random() * 1.2;
+      // they lead you, with a little scatter: about one shot in three finds a ship flying straight
+      const bs = 950 + f.speed, muzzle = f.pos.clone().addScaledVector(ffwd, 6), aim = SPC.pos.clone().addScaledVector(pv, d / bs).sub(muzzle).normalize();
+      aim.add(new THREE.Vector3((Math.random() - .5), (Math.random() - .5), (Math.random() - .5)).multiplyScalar(.035)).normalize();
+      scBolt(muzzle, aim, bs, false); if (d < 900) sfx.laser(.35);
+    }
+  }
+  if (SC.foes.length && SC.foes.every(f => f.pos.distanceTo(SPC.pos) > 6000)) { scClear(); spaceMsg('You lost them'); }
+  if (SC.foes.length) combatPulse();
+  // bolts
+  for (const b of [...SC.bolts]) {
+    b.prev.copy(b.pos); b.pos.addScaledVector(b.vel, dt); b.m.position.copy(b.pos); b.life -= dt;
+    let hit = false;
+    if (b.friendly) { for (const f of SC.foes) if (segDist3(b.prev, b.pos, f.pos) < 9) { f.hp -= 11; hit = true; scBoom(b.pos, .25); if (f.hp <= 0) scKill(f); else { f.mode = f.mode === 'attack' && Math.random() < .25 ? 'break' : f.mode; f.modeT = 1.2; } break; } }
+    else if (segDist3(b.prev, b.pos, SPC.pos) < 10) { hit = true; scHurtPlayer(SC.shield > 0 ? 7 : 6); }
+    if (hit || b.life <= 0) { SPC.scene.remove(b.m); SC.bolts.splice(SC.bolts.indexOf(b), 1); }
+  }
+  // explosions
+  for (const e of [...SC.booms]) { e.t += dt; const k = e.t / .9, sc = (14 + k * 70) * e.size; e.sp.scale.set(sc, sc, 1); e.sp.material.opacity = 1 - k; if (k >= 1) { SPC.scene.remove(e.sp); SC.booms.splice(SC.booms.indexOf(e), 1); } }
+  // shake when hit
+  if (SC.shake > 0) { SC.shake = Math.max(0, SC.shake - dt * 1.6); const s = SC.shake * 3; camera.position.add(SCV.a.set((Math.random() - .5) * s, (Math.random() - .5) * s, (Math.random() - .5) * s)); }
+  scHud();
+}
+function scHud() {
+  const def = $('#shDef'); if (!def) return;
+  $('#shShield').style.width = SC.shield + '%'; $('#shHull').style.width = SC.hull + '%'; def.classList.toggle('low', SC.hull < 30);
+  const cr = $('#shCross'); cr.classList.toggle('on', SC.foes.length > 0); cr.classList.toggle('lock', !!SC.lock);
+  let h = ''; const W = innerWidth, H = innerHeight;
+  for (const f of SC.foes) {
+    const v = SCV.a.copy(f.pos).project(camera), d = f.pos.distanceTo(SPC.pos); let x = (v.x * .5 + .5) * W, y = (-v.y * .5 + .5) * H, edge = false;
+    if (v.z > 1) { x = W - x; y = H - y; edge = true; } // behind you: mirror it to the edge
+    if (edge || x < 20 || x > W - 20 || y < 20 || y > H - 20) { edge = true; const cx = W / 2, cy = H / 2, dx = x - cx, dy = y - cy, k = Math.min((W / 2 - 30) / Math.abs(dx || 1), (H / 2 - 30) / Math.abs(dy || 1)); x = cx + dx * k; y = cy + dy * k; }
+    h += `<div class="sh-foe${f === SC.lock ? ' lock' : ''}${edge ? ' edge' : ''}" style="left:${x | 0}px;top:${y | 0}px"><i></i>${edge ? '' : `<span>${f.name} · ${d > 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'}</span><em><u style="width:${(f.hp / f.max * 100) | 0}%"></u></em>`}</div>`;
+  }
+  $('#shFoes').innerHTML = h;
+}
 // ---- landing: down through the air, the ground takes over, the ship settles, and out you get ----
 function startLanding(P, dir) {
+  if (SC.foes.length) spaceMsg('Into the atmosphere · they break off');
+  scClear(); SC.hull = 100; SC.shield = 100; // the ship patches itself up on the ground
   SPC.landing = { P, dir, t: 0 };
   const f = $('#shFlash'); f.style.background = P.atmo || '#888'; f.classList.add('on'); // a flash of the planet's sky as you hit its air
   sfx.whoosh();

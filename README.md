@@ -550,3 +550,14 @@ After the escape from New London, **Chapter III · Sol** begins in your ship, ju
   - **What they buy:** your ore, crystals and the rest. Warp cells can now be sold too.
   - **Prices** differ from world to world. Where a trader sells dear, they also buy cheap.
 
+## Chapter III · Space combat (stage 4)
+- **Dogfights, No Man's Sky style.** Out in space, away from planets, you'll sometimes be jumped. This starts after your first landing, roughly every minute or two when the dice say so. An alarm sounds, the combat music starts, and red markers lock onto each hostile, with name, distance and health bar. Hostiles off screen or behind you show as red dots on the screen edge.
+  - **Pirates** attack across the galaxy, less often in Chompy Empire space, where the Emperor's patrols keep the peace.
+  - **Terra Imperia interceptors** hunt you in Sol, in black and crimson: Hawthorne hasn't given up.
+- **Your guns:** twin photon cannons. Fire with **Space**, **F** or the **left mouse button**, or the **FIRE** button on phones. When you point near a target, the crosshair turns red and your shots lead it a little.
+- **Shields and hull:** hits drain your shields first, and shields recharge after 4 seconds without being hit. Once they're down, the hull takes damage and the screen flashes red. The hull doesn't recharge in space; it's patched up when you land.
+- **The enemy** fly attack runs: they lead their shots, break away when they get close, and turn back for another pass.
+- **Rewards:** each kill pays 40–110 units, XP, scrap metal, sometimes a frost crystal, and now and then a warp cell. Kills are counted in your save.
+- **Getting away:** hostiles jam the pulse drive and the hyperdrive (no warping in combat). You can fight, outrun them (beyond 6 km they give up), or dive into a planet's atmosphere, where they break off.
+- **Losing:** if your hull is destroyed, the ship is towed back to the system's main world with shields and hull restored, minus a quarter of your units.
+
