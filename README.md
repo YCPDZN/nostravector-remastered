@@ -642,16 +642,16 @@ Moments after escaping Earth, out over the planet, the wanderer has another epis
 
 | Species | The nightmare |
 |---|---|
-| Chompy | **Sevirrus's cutscenes**: the game before this one plays its own cutscenes, in its own dark and brutal style. They show the Carax massacre and Jakal's address, the siege of Aridaxx, the assassination of Jakal and Damix, the Emperor coming apart, Jazmak, and the end in irons. Nostravector's subtitles, title cards and Skip button replace Sevirrus's own. |
+| Chompy | **Sevirrus's cutscenes**: a fast montage of the game before this one, in its own dark and brutal style, cut together like the nightmare on the ice. It shows the Carax massacre, the siege of Aridaxx, the assassination of Damix and Jakal, the Emperor coming apart, and the cell beneath Alphinos. Nostravector's subtitles, title cards and Skip button replace Sevirrus's own. |
 | Erisian | A future that hasn't happened yet: **Alexia Erisconos overthrows her sister Vishara** in the Citadel el Eriscons. |
 | Human | **Chapter II replayed**, with its own recordings: the farm, the cantina, the arrest, Hawthorne, the trial and the escape. |
 | Am-Grek | A **prophecy** of what's coming, told without a single name: a man falling, a black banner, ships darkening the sky and an empire of glass. |
 
 Then Orion and Nico bring them back. **Skip** jumps past the memories, then past the wake-up.
 
-- **Skipping the Chompy nightmare:** **Skip** moves on to the next Sevirrus scene. Press it twice quickly to skip them all.
+- **Skipping the Chompy nightmare:** **Skip** cuts to the next clip. Press it twice quickly to skip them all.
 - **What was taken from Sevirrus:** only its cutscenes, with no gameplay, menus or saves. Their code sits at the bottom of `index.html` (`#sevCinePage`).
-- **Assets:** the 9 models, the score and the 69 voice lines those cutscenes use are in `data/sevCine.js` (18 MB).
+- **Assets:** the 8 models, the score and the 63 voice lines those cutscenes use are in `data/sevCine.js` (16 MB).
 - **The Sevirrus game file:** `sevirrus.html` is not needed.
 - **Fallback:** if the cutscenes can't load, the staged Chompy memories play instead.
 
