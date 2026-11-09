@@ -216,7 +216,7 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
 3. **The Murder of Jakal Chompjak XVI** (before 1790 AD). Sevirrus killed his cousin Damix Chompjak, then his own father, and seized the empire.
 4. **The Siege of Carax** (1800 AD). While Sevirrus was pinned down on Aridaxx by his uncle Jazmak and by Arixal, Hanaxa and Aniz Chompjak, Am-Grek's Grek took Carax. Arixal defeated both Jazmak and Sevirrus and put Hanaxa on the throne.
 5. **Sevirrus' Redemption** (1826 AD). After 26 years in prison, the Chompy Empire released Hak (once Sevirrus). He returned to Carax and defeated the High Priest of Destruction, breaking the Cult of Zark.
-6. **The Siege of Carax: the Catharsis** (Chapter V). Redacted until Chapter V, the second siege you witness after the final boss of Chapter IV. At the top of Carax's five-floor bastion, the same summit where Hak was blinded in 1826, the Chompy Empire, Archamus, the Erisian Empire, the Grek and the Human Federation of Sol defeat **Lord Zark**. On the stage, an 8.5 m Lord Zark towers over the six who beat him: Archamus, Vishara, Hak, your own wanderer as they look now, Am-Grek and Darius.
+6. **The Siege of Carax: the Catharsis** (Chapter V). Redacted until Chapter V, the second siege you witness after the final boss of Chapter IV. Carax is the Catharsis capital by then, and the allies (the Chompy Empire, Archamus, the Erisian Empire, the Grek and the Human Federation of Sol, with you among them) attack it. At the top of its five-floor bastion, the same summit where Hak was blinded in 1826, they defeat **Lord Zark**; the Catharsis is destroyed, Hawthorne dies, and its worlds pass to you. On the stage, an 8.5 m Lord Zark towers over the six who beat him: Archamus, Vishara, Hak, your own wanderer as they look now, Am-Grek and Darius.
 
 ### Lord Sevirrus: red eyes and the neck snap
 - **Red eyes:** Sevirrus's irises are now blood red with a faint glow and near-black pupils, everywhere his model appears: the Nostrapedia (Ancient figures and Lore events) and the character viewer.
@@ -504,4 +504,107 @@ After the escape from New London, **Chapter III · Sol** begins in your ship, ju
 - **Flying:** W/S thrust, A/D turn, ↑/↓ or drag to pitch, Shift for the **pulse drive** (crosses the system in seconds, off near planets). On phones: a stick, plus THRUST / PULSE / BRAKE buttons.
 - **Seamless landing:** fly down onto any rocky planet (Mercury, Venus, Earth, the Moon, Mars). Below about 420 m you hit the air and the ship sets down. Then walk the surface with Orion, on the same terrain you saw from orbit. Walk back to the ship and press FLY to take off. Gas giants have no surface.
 - Saves remember space (position and heading) and the planet you're on.
-- **Next stages:** the galaxy map and nine more systems (Sagittarius A* with Carax (Grek), Eris (Erisians), Steca Prime with Aridaxx and Steca (Chompy), Janira Proxima with Janira Prime (Chompy Empire), plus five others), the warp animation, warp cells (start with 5, craft more), mining and traders.
+- **Next stages:** mining and traders.
+
+## Chapter III · The galaxy map and the warp (stage 2)
+- **Galaxy map:** press **M** in space (or tap **GALAXY MAP**). It shows the spiral disc at a tilt with all **500** systems on it. Drag to pan, scroll, pinch or use + / − to zoom, and tap a system to read about it: its star, faction, worlds and distance in light-years. Your system has a spinning marker, the one you've picked gets brackets and a dashed jump line, and systems you haven't visited have a faint ring. Faction space is tinted (Chompy Empire orange, the Order of Archamus gold, the Federation blue). The generated systems are small dots until you zoom in, get their glow as you get closer, and are all named once you're zoomed right in (zoom goes much further now). The top of the map counts how many you've visited.
+- **Ten hand-made systems:**
+  - **Sol:** now with **Eris**, the Erisians' frozen homeworld, and its moon **Dysnomia** beyond Neptune.
+  - **Malana Prime** (the Order of Archamus): **Archiostal**, the Grek garden station, a slowly turning ring of forest under glass that orbits Malana (docking comes later); Malana, where Am-Grek was born; and a gas giant.
+  - **Sagittarius A\*:** the black hole at the galaxy's core, with an accretion disc and photon ring. **Carax** circles it.
+  - **Steca Prime** (Chompy Empire), in the galactic core a short jump from Sagittarius A\*: Aridaxx, the capital, volcanic Steca with lava seas, and a ringed gas giant.
+  - **Janira Proxima** (Chompy Empire): a red dwarf with Janira Prime.
+  - **Five uncharted systems:** Thalassa Reach (an ocean world), Cinder Vey (lava world Vey and its moon Ash), Nadir (a dying red sun and frozen worlds), Ossian Drift (a blue giant, a desert world and a ringed giant) and Halcyon (green Verdance and its moon Lull).
+  - Every rocky world and moon can be landed on, and each star has its own colour and light.
+- **490 more systems**, generated from a fixed seed, so the galaxy is the same on every device and in every save. The first 90 are unchanged from before, so saves made in them still work:
+  - **Stars:** red, orange, yellow and white dwarfs, white stars, and blue and orange giants, each with a spectral class.
+  - **Worlds:** 1 to 5 each, from lush and ocean worlds to arid, lava, toxic, frozen and barren ones, plus gas and ice giants (some ringed) and moons. Hot worlds sit close to their star and giants further out.
+  - **Factions:** the 114 systems around Steca Prime and Janira Proxima belong to the Chompy Empire; the rest are unclaimed.
+- **Lore:** the **Erisian Empire is a puppet state of the Chompy Empire**, and the **Order of Archamus** controls Archiostal and holds the **Grek Empire as its puppet state**. The Nostrapedia (Vishara, Hak Chompjak V, Am-Grek and Archamus), the species lore and the galaxy map all say so.
+- **Warp:** pick a system and press **WARP**. The drive spools up, the stars stretch into a tunnel tinted towards the star you're heading for, there's a white-out, and you drop out beside the system's main world. You can't fly into stars or the black hole.
+- **Hyperdrive range (as in No Man's Sky):** you can't jump anywhere you like. Each jump reaches only as far as your hyperdrive, so you hop from star to star.
+  - **Starting drive, 3,000 ly:** reaches about a hundred systems along Sol's arm, but never the core. Sagittarius A\* and Carax, Steca Prime and Janira Proxima are all out of reach at the start.
+  - **Hyperdrive Mk I, 6,000 ly:** opens the core (Sagittarius A\* is 7 hops from Sol). Costs 4 metal plates, 3 frost crystals and 1 warp cell.
+  - **Mk II, 12,000 ly:** reaches all 500 systems. Costs the Mk I plus 8 metal plates, 6 frost crystals and 4 obsidian.
+  - **Mk III, 25,000 ly:** costs the Mk II plus 12 metal plates, 10 frost crystals and 8 obsidian.
+  - Upgrades are crafted in the inventory as **ship upgrades**. Each one replaces the last and doesn't take a hotbar slot.
+- **Warp cells (fuel):** a jump burns one cell per **2,500 ly**, so most hops cost 1–2. The map's ring shows your **jump range**: your drive's reach, or less if you're short of cells. The jump line shows the cost, or turns red with *Out of range*. The panel explains what's stopping you: out of range (hop through nearer systems, or craft the next drive), or how many more cells you need. You start Chapter III with **5**. Craft more from the inventory: **2 metal plates, 2 frost crystals, 2 scrap metal** each.
+- **Objectives:** after your first landing the task is *Warp to another star system*, then *Explore the galaxy*. Saves remember which system you're in, the systems you've visited, and the world you're standing on.
+- **Fix:** loading a save straight onto a planet no longer shows the Antarctic sky in place of the planet's own.
+
+## Chapter III · Mining and traders (stage 3)
+- **Mining on every rocky world.** Deposits are scattered across the ground around where you land, and what's there depends on the world. Hit them (click / F, or the attack button) as you would in Antarctica:
+  - **Rocks**, tinted to the planet, give stone and sometimes scrap.
+  - **Metal ore** (dark boulders studded with gold-coloured metal) gives scrap metal, sometimes a ready-made metal plate. Volcanic worlds have the most.
+  - **Crystal clusters** glow in the planet's own colour and give frost crystals, which go into warp cells and hyperdrives. Icy worlds have the most.
+  - **Ice spires** grow on icy worlds and give ice.
+  - **Obsidian** is on volcanic and toxic worlds (and rarely on barren ones). It needs an ice pick.
+  - **Trees** grow in groves on lush worlds, with round crowns in the planet's own green, and give wood.
+  - **Crashed supply pods** are half-buried and glowing. They give scrap, cloth and crystal, and about a third of the time a **warp cell**.
+  - What you mine stays mined, separately on each planet.
+- **Your ship's fabricator** counts as a crafting table within about 16 m of the ship. That means metal plates, warp cells and hyperdrive upgrades can all be crafted on any planet.
+- **Traders.** Some worlds have a trader's stall near your landing spot, and you're told when you land. The minimap marks it and the galaxy map lists "trader" beside the world.
+  - **Who trades where:** Chompy traders on Chompy worlds, Grek traders on Grek and Order of Archamus worlds. Erisians, the galaxy's wandering merchants, trade on Earth, on Eris and on about a quarter of uncharted worlds.
+  - **Where they are:** every hand-made inhabited world has one, as do most generated Chompy worlds, about 620 worlds in all.
+  - **What they sell:** warp cells, frost crystals, metal plates, obsidian, scrap and med kits.
+  - **What they buy:** your ore, crystals and the rest. Warp cells can now be sold too.
+  - **Prices** differ from world to world. Where a trader sells dear, they also buy cheap.
+
+## Chapter III · Space combat (stage 4)
+- **Dogfights, No Man's Sky style.** Out in space, away from planets, you'll sometimes be jumped. This starts after your first landing, roughly every minute or two when the dice say so. An alarm sounds, the combat music starts, and red markers lock onto each hostile, with name, distance and health bar. Hostiles off screen or behind you show as red dots on the screen edge.
+  - **Pirates** attack across the galaxy, less often in Chompy Empire space, where the Emperor's patrols keep the peace.
+  - **Terra Imperia interceptors** hunt you in Sol, in black and crimson: Hawthorne hasn't given up.
+  - **In Chapter IV**, with Hawthorne gone over to the Catharsis, Sol's attackers are **Catharsis ships** instead of Terra Imperia. In Chapter V they're gone too, and only pirates are left. They look nothing like a built ship: black shards with a cold violet core and curled spines that fire violet bolts. They're tougher (85 health) and a little faster, and pay more when destroyed.
+- **Your guns:** twin photon cannons. Fire with **Space**, **F** or the **left mouse button**, or the **FIRE** button on phones. When you point near a target, the crosshair turns red and your shots lead it a little.
+- **Shields and hull:** hits drain your shields first, and shields recharge after 4 seconds without being hit. Once they're down, the hull takes damage and the screen flashes red. The hull doesn't recharge in space; it's patched up when you land.
+- **The enemy** fly attack runs: they lead their shots, break away when they get close, and turn back for another pass.
+- **Rewards:** each kill pays 40–110 units, XP, scrap metal, sometimes a frost crystal, and now and then a warp cell. Kills are counted in your save.
+- **Getting away:** hostiles jam the pulse drive and the hyperdrive (no warping in combat). You can fight, outrun them (beyond 6 km they give up), or dive into a planet's atmosphere, where they break off.
+- **Losing:** if your hull is destroyed, the ship is towed back to the system's main world with shields and hull restored, minus a quarter of your units.
+
+## The core: the Grek Empire and the Catharsis
+- **Chapter III:**
+  - The **Grek Empire** holds Sagittarius A\* and Carax, its capital, plus a ring of 39 systems around the core (green on the galaxy map, with Grek traders).
+  - Closer in, right round the black hole, are 8 **Catharsis** systems, violet on the map. The Catharsis is a **puppet state of the Grek Empire** (Am-Grek subjugated them; his Nostrapedia entry now says so).
+  - In Chapter III the Catharsis is **neutral**. Their ships patrol their systems, marked *Catharsis · neutral*, and never attack. Pirates mostly stay out of their space.
+  - Their worlds have **Catharsis traders**: tall robed figures with violet eyes and a hood of spines.
+- **Chapter IV:**
+  - The **Catharsis breaks free of the Grek Empire** and takes every Grek world but one. All 48 systems are theirs, and **Carax is their capital**.
+  - **Malana** is the last Grek world.
+  - Catharsis space is hostile: Catharsis ships attack there, as they do in Sol, and there are no Catharsis traders.
+- **Chapter V:**
+  - **The Catharsis no longer exists.** It was destroyed at the siege of Carax, at the end of Chapter IV.
+  - **Its land is yours.** You defeated the Catharsis there, so all 48 systems it held (about 150 worlds, Carax and Sagittarius A\* included) become your realm's colonies, marked *won at the siege of Carax*, ready for governors in Diplomacy. Your own space has fewer pirates.
+  - **Thomas Hawthorne is dead.** He died at the siege of Carax with the Catharsis. His Nostrapedia entry and the *Siege of Carax* lore event now say so.
+  - The Grek Empire is back to Malana Prime (Malana and Archiostal).
+  - No Catharsis ships attack anywhere; Sol and the core have only pirates.
+  - The Catharsis drops out of Diplomacy. Any war you had with it ends, and a companion you'd lent to it comes home.
+  - The galaxy map, system descriptions, planet factions and traders all switch with the chapter of the wanderer you're playing.
+
+## Diplomacy (Chapters III–V)
+Open **Diplomacy** from the pause menu, on foot or in space, or from the galaxy map. You can rename your own realm; the default is *The Wanderer's Dominion*.
+- **Factions and leaders:**
+  - **The Chompy Empire:** Emperor Hak Chompjak V.
+  - **The Order of Archamus:** Archamus, in Chapter III only. In Chapters IV and V the Order is folded into the **Grek Empire**, co-led by **Archamus and Am-Grek**, and Archiostal and Malana Prime fly Grek colours.
+  - **The Grek Empire:** Am-Grek in Chapter III.
+  - **The Catharsis:** Lord Zark, in Chapters III and IV. In Chapter IV he's a story boss, so the Catharsis can't be warred on or defeated. In Chapter V the Catharsis is gone, destroyed at the siege of Carax, and its land is yours.
+  - **The Erisian Empire:** Vishara Erisconos. Alexia Erisconos takes over once her mid-Chapter III coup happens, and Vishara returns in Chapters IV and V.
+  - **Human Federation of Sol:** President Darius Ancin.
+  - **Terra Imperia:** Thomas Hawthorne, in Chapter III only. Terra Imperia now holds **Mercury and Venus**.
+- **War:** declare on any story faction. In Chapters III and IV you're warned first that it's not recommended because it can break quests. Win at 100 war score:
+  - **+6** for each of their ships shot down. Their navy guards their space while you're at war, in their own colours.
+  - **+15** for each world you occupy: land, stay within about 25 m of your ship, and hold for 30 seconds. Their capital gives **+25**.
+  - You can make peace at any time, and occupied worlds go back.
+  - Traders on their worlds won't deal with you during the war.
+- **Casus belli:**
+  - **Annihilation:** destroy them. Every world they held becomes your colony.
+  - **Vassalisation:** they become your puppet. You choose their leader (their own, or one of your companions, who then leaves your crew to rule) and can rename them. Puppets can be renamed later or released.
+  - **Subjugation:** like Annihilation, every world they held becomes your colony, but the **[Species] Resistance** rises from the ashes.
+    - Its fighters jump you in their old space, roughly half the times you're attacked there, and your colonies there are marked *resistance active*.
+    - Declare **War · Crush the resistance** (+6 per fighter shot down) to break it.
+  - **Tribute:** like Vassalisation, but they keep their own leader and name and **pay you tribute**: 60–600 units, scaling with their worlds, every 5 minutes of play. You can end the tribute whenever you like.
+  - **Restoration:** for 3,000 units, an annihilated empire (or one whose resistance you crushed) returns as the **[Species] Restoration** (Chompy Restoration, Grek Restoration and so on) and takes back the worlds you took from it.
+- **Colonies:** land on an unclaimed world and colonise it for 500 units. Worlds taken in an Annihilation are colonies too. Appoint a **governor** to each: one of your companions, or anyone you name. Governors never rebel and never complain.
+- **Lending companions:** offer a companion to another faction and they serve it until you call them home. If you go to war with that faction, they fly in its fleet as a named ace (150 health). Shoot their ship down and they eject and rejoin your crew. Win the war and they come home too. Companions never die.
+- **Crew:** bring the **Project BC** characters (Josiah Richards, Peter Chambers, Gareth Williams, Kevin Murderhorn), **Lord Sevirrus**, or any character you've created aboard as companions. They follow you, fight with their own weapons, mine, and take the same five orders as Orion and James (1 Mine · 2 Explore · 3 Base · 4 Wander · 5 Follow, or the companion panel). Send them home whenever you like.
+
