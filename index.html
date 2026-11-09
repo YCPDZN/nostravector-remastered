@@ -773,6 +773,20 @@ button.bm-c.no{opacity:.45}
 
 #alignScr{z-index:27}
 #dipScr{z-index:32}
+#sqScr{z-index:33}#sqDlg{z-index:36}
+.sq-panel{max-width:620px;width:min(620px,94vw);max-height:calc(100dvh - var(--st) - var(--sb) - 60px);overflow:auto}
+.sq-choices{display:flex;flex-direction:column;gap:10px;width:100%}
+.sq-choices .btn{width:100%;flex-direction:column;height:auto;padding:12px 16px;gap:6px}
+.sq-choices .btn small{display:block;margin-top:6px;font-family:var(--text);font-size:8.5px;letter-spacing:.22em;color:var(--mute);text-transform:uppercase}
+.sq-choices .btn small.good{color:#7fe3ff}.sq-choices .btn small.evil{color:#ff8f86}
+.sq-al{display:flex;align-items:center;gap:10px;width:100%;font-size:8px;letter-spacing:.3em;color:var(--mute)}
+.sq-al i{flex:1;height:6px;position:relative;background:linear-gradient(90deg,#ff5a4a,#3a3f4a 50%,#4ab8ff)}
+.sq-al u{position:absolute;top:-4px;width:3px;height:14px;background:#fff;margin-left:-1px;box-shadow:0 0 6px #fff}
+.sq-note{font-size:10px;color:#c9cfda;margin:0;text-align:center}
+.sq-obj{color:#ffe6a8!important;font-size:9.5px!important;letter-spacing:.06em}
+.x-task.sq-task span{color:#ffe6a8}
+.shop-jobs{width:100%;text-align:left}
+#shop .panel{max-height:calc(100dvh - var(--st) - var(--sb) - 60px);overflow:auto;-webkit-overflow-scrolling:touch}
 .dip-panel{max-width:980px;width:min(980px,94vw);align-items:stretch;text-align:left;max-height:calc(100dvh - var(--st) - var(--sb) - 60px);gap:12px}
 .dip-tabs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:10px 0 12px}
 .dip-body{flex:1 1 auto;min-height:0;max-height:min(58vh,560px);overflow:auto;padding-right:6px;-webkit-overflow-scrolling:touch}
@@ -1038,6 +1052,7 @@ body.touch .al-key{display:none}
       <button class="btn small" id="xDelete"><span>Delete save</span></button>
       <button class="btn small" id="xAlign"><span>Alignment</span></button>
       <button class="btn small hidden" id="xDiplo"><span>Diplomacy</span></button>
+      <button class="btn small hidden" id="xQuests"><span>Side quests</span></button>
       <button class="btn small" id="xOptions"><span>Options</span></button>
       <button class="btn small" id="xQuit"><span>Main menu</span></button>
     </div>
@@ -1112,6 +1127,7 @@ body.touch .al-key{display:none}
       <div><div class="inv-h">Sell</div><div id="shopSell"></div></div>
       <div><div class="inv-h">Buy</div><div id="shopBuy"></div></div>
     </div>
+    <div class="shop-jobs" id="shopJobsWrap"><div class="inv-h">Jobs</div><div id="shopJobs"></div></div>
     <button class="btn small" id="shopClose" style="align-self:center"><span>Close</span></button>
   </div>
 </section>
@@ -4519,6 +4535,7 @@ function renderTasks() {
   if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? campTasks(p, task) : '');
   if (curArea() === 'africa' || ((wanderer.chapter | 0) >= 2 && p.escaped)) h = ch2Tasks(task); // Chapter II's objectives follow you, even back to Antarctica
   if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
+  if ((wanderer.chapter | 0) >= 3) { const tq = sqTracked(); if (tq) h += `<div class="x-task sq-task"><i></i><span>${tq}</span></div>`; } // the side quest you're tracking
   xUI.tasks.innerHTML = h;
   $('#xChap').textContent = liveChapterLabel().toUpperCase();
 }
@@ -4905,7 +4922,7 @@ function sceneLocked() {
 }
 function pauseExplore(on) {
   if (on && state === 'explore' && sceneLocked()) { if (time - (ex.lockMsgT || -9) > 2) { ex.lockMsgT = time; lootMsg('You can’t pause during a scene', '#cfd6e6'); } return; }
-  if (on && state === 'explore') { state = 'xpaused'; ex.keys.clear(); if (ex.dlg) { sfx.stopVoice(); closeDialog(); } refreshDirty(); $('#xPauseChap').textContent = liveChapterLabel(); $('#xDiplo').classList.toggle('hidden', (wanderer.chapter | 0) < 3); ui.xpause.classList.remove('opts'); refreshOpts(); show(ui.xpause, true); } // the chapter and place you're actually in
+  if (on && state === 'explore') { state = 'xpaused'; ex.keys.clear(); if (ex.dlg) { sfx.stopVoice(); closeDialog(); } refreshDirty(); $('#xPauseChap').textContent = liveChapterLabel(); $('#xDiplo').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xQuests').classList.toggle('hidden', (wanderer.chapter | 0) < 3); ui.xpause.classList.remove('opts'); refreshOpts(); show(ui.xpause, true); } // the chapter and place you're actually in
   else if (!on && state === 'xpaused') { state = SPC.paused ? 'space' : 'explore'; SPC.paused = false; show(ui.xpause, false); clock.getDelta(); }
 }
 $('#xMenuBtn').addEventListener('click', () => { sfx.click(); pauseExplore(true); });
@@ -5192,6 +5209,7 @@ function openAlign(on) {
 $('#alignClose').addEventListener('click', () => { if (state === 'explore') closeModals(); else show($('#alignScr'), false); sfx.click(); });
 $('#xAlign').addEventListener('click', () => openAlign(true));
 $('#xDiplo').addEventListener('click', () => dipOpen(true));
+$('#xQuests').addEventListener('click', () => sqOpen(true));
 $('#dipClose').addEventListener('click', () => dipOpen(false));
 $('#dipTabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (!b) return; DIPV.tab = b.dataset.t; DIPV.confirm = null; sfx.click(); dipRender(); });
 $('#dipBody').addEventListener('click', dipClick); $('#dipBody').addEventListener('change', dipChange);
@@ -5567,6 +5585,7 @@ function renderShop() {
   const m = ex.shop; if (!m) return;
   $('#shopUnits').textContent = units();
   $('#shopSell').innerHTML = Object.keys(SELL).map(id => `<div class="res-row shop${have(id) ? '' : ' zero'}"><b style="--c:${ITEMS[id].color}"></b><span>${ITEMS[id].name}<small>${sellPrice(id)} u each</small></span><em>${have(id)}</em><button class="mini" data-s="${id}" data-n="1"${have(id) ? '' : ' disabled'}>Sell 1</button><button class="mini" data-s="${id}" data-n="all"${have(id) ? '' : ' disabled'}>All</button></div>`).join('');
+  const jw = $('#shopJobsWrap'), jh = sqShopHtml(m); jw.style.display = jh ? '' : 'none'; $('#shopJobs').innerHTML = jh;
   $('#shopBuy').innerHTML = Object.entries(m.buy).map(([id, pr]) => `<div class="res-row shop"><b style="--c:${ITEMS[id].color || 'var(--ink)'}"></b><span>${ITEMS[id].name}<small>${pr} u</small></span><em>${have(id)}</em><button class="mini" data-b="${id}"${units() >= pr ? '' : ' disabled'}>Buy</button></div>`).join('');
 }
 $('#shop').addEventListener('click', e => {
@@ -5579,6 +5598,11 @@ $('#shop').addEventListener('click', e => {
     addUnits(-pr); giveItem(id, 1); sfx.chime(); lootMsg(`Bought ${ITEMS[id].name}`, '#ffc94a');
   }
   renderShop();
+});
+$('#shopJobs').addEventListener('click', e => {
+  const a = e.target.closest('[data-sqa]'), h = e.target.closest('[data-sqh]'); if (!ex.shop) return;
+  if (a && !a.disabled) { sqAccept(a.dataset.sqa, ex.shop); renderShop(); }
+  if (h) sqFinish(h.dataset.sqh);
 });
 $('#shopClose').addEventListener('click', () => { openModal('#shop', false); ex.shop = null; });
 // ---- teleporters: every pad you build joins one network, like the station's ----
@@ -10246,7 +10270,7 @@ canvas.addEventListener('pointerdown', e => { if (state !== 'space' || e.pointer
 addEventListener('pointermove', e => { if (state !== 'space' || !SPC.drag) return; SPC.dragDX = (SPC.dragDX || 0) + (e.clientX - SPC.drag.x); SPC.dragDY = (SPC.dragDY || 0) + (e.clientY - SPC.drag.y); SPC.drag.x = e.clientX; SPC.drag.y = e.clientY; });
 addEventListener('pointerup', () => { SPC.drag = null; SPC.mouseFire = false; });
 function spacePause(on) {
-  if (on && state === 'space' && !SPC.warp && !GAL.open) { state = 'xpaused'; SPC.paused = true; SPC.keys.clear(); refreshDirty(); $('#xPauseChap').textContent = liveChapterLabel(); $('#xDiplo').classList.toggle('hidden', (wanderer.chapter | 0) < 3); show(ui.xpause, true); }
+  if (on && state === 'space' && !SPC.warp && !GAL.open) { state = 'xpaused'; SPC.paused = true; SPC.keys.clear(); refreshDirty(); $('#xPauseChap').textContent = liveChapterLabel(); $('#xDiplo').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xQuests').classList.toggle('hidden', (wanderer.chapter | 0) < 3); show(ui.xpause, true); }
 }
 // ---- entering and leaving space ----
 const tmpQs = new THREE.Quaternion(), tmpVs = new THREE.Vector3(), tmpVs2 = new THREE.Vector3();
@@ -10354,7 +10378,7 @@ function spaceHudTick(P, alt, fwd) {
   $('#shSpeedBar').style.width = `${clamp(SPC.thr * 100, 2, 100)}%`; $('#shMode').textContent = SPC.pulse > .3 ? 'PULSE DRIVE' : 'IMPULSE';
   $('#shTarget').textContent = P.name.toUpperCase();
   $('#shSub').textContent = alt < 20000 ? `${P.faction} · altitude ${alt > 1000 ? (alt / 1000).toFixed(1) + ' km' : Math.round(alt) + ' m'}${P.land ? (alt < 2500 ? ' · descend to land' : '') : ''}` : `${P.faction} · ${(alt / 1000).toFixed(1)} km`;
-  $('#shObj').innerHTML = `<div class="x-task"><i></i><span>${ch3Goal()}</span></div>`;
+  const tq = sqTracked(); $('#shObj').innerHTML = `<div class="x-task"><i></i><span>${ch3Goal()}</span></div>${tq ? `<div class="x-task sq-task"><i></i><span>${tq}</span></div>` : ''}`;
   $('#shCells').textContent = `◆ ${have('warpcell')} warp cell${have('warpcell') === 1 ? '' : 's'}`;
   // markers on every planet, No Man's Sky style
   const box = $('#shMarks'), W = innerWidth, H = innerHeight; let h = '';
@@ -10442,7 +10466,8 @@ function galPanel() {
   else if (!inRange(curSys(), S)) btn = `<button class="btn gp-warp" disabled><span>Out of hyperdrive range</span></button><div class="gp-why">Your hyperdrive reaches ${driveRange().toLocaleString()} ly per jump · hop through nearer systems${driveTier() < 3 ? `, or craft ${ITEMS['hyper' + (driveTier() + 1)].name} (${DRIVE_LY[driveTier() + 1].toLocaleString()} ly)` : ''}</div>`;
   else if (n < cost) btn = `<button class="btn gp-warp" disabled><span>Warp · ${cellsTxt(cost)}</span></button><div class="gp-why">${n ? `You have ${cellsTxt(n)} · need ${cost - n} more` : 'No warp cells'} · craft them from 2 metal plates · 2 frost crystals · 2 scrap metal each</div>`;
   else btn = `<button class="btn gp-warp" data-warp="${S.id}"><span>Warp · ${cellsTxt(cost)} (${n - cost} left after)</span></button>`;
-  $('#galPanel').innerHTML = `<h3>${S.name.toUpperCase()}</h3><div class="gp-sub">${S.star.type} · ${S.faction}${here ? '' : ` · ${galDist(curSys(), S).toLocaleString()} ly · ${inRange(curSys(), S) ? cellsTxt(cost) : 'out of range'}`}${seen ? ' · visited' : ''}</div><p>${S.desc}</p>
+  const qHere = Object.entries((wanderer.sq || {}).act || {}).filter(([id, A]) => sqById(id) && sqSysOf(sqById(id), A) === S.id).map(([id]) => sqById(id).t);
+  $('#galPanel').innerHTML = `${qHere.length ? `<div class="gp-sub" style="color:#ffd36a">◆ Side quest: ${qHere.join(' · ')}</div>` : ''}<h3>${S.name.toUpperCase()}</h3><div class="gp-sub">${S.star.type} · ${S.faction}${here ? '' : ` · ${galDist(curSys(), S).toLocaleString()} ly · ${inRange(curSys(), S) ? cellsTxt(cost) : 'out of range'}`}${seen ? ' · visited' : ''}</div><p>${S.desc}</p>
     <ul>${S.bodies.map(P => `<li><span>${P.name}</span><small>${P.faction.split(' · ')[0]} · ${kind(P)}</small></li>`).join('')}</ul><div class="gp-act">${btn}</div>`;
   $('#galPanel').classList.remove('hidden');
 }
@@ -10470,6 +10495,7 @@ function galDraw(dt) {
     const gr = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr); gr.addColorStop(0, fc + '30'); gr.addColorStop(1, fc + '00'); g.fillStyle = gr; g.beginPath(); g.arc(p.x, p.y, rr, 0, 7); g.fill();
   }
   const allLabels = GAL.zoom >= 5.5;
+  const qsys = new Set(Object.entries((wanderer.sq || {}).act || {}).map(([id, A]) => { const q = sqById(id); return q ? sqSysOf(q, A) : null; }).filter(Boolean));
   for (const S of SYSTEMS) {
     const p = galXY(S); if (p.x < -80 || p.x > W + 80 || p.y < -80 || p.y > H + 80) continue;
     const hole = S.star.kind === 'hole', gr0 = S.gen ? 10 : 16;
@@ -10477,9 +10503,10 @@ function galDraw(dt) {
     g.fillStyle = hole ? '#000' : S.star.col; g.beginPath(); g.arc(p.x, p.y, hole ? 4.5 : S.gen ? (GAL.zoom < 1.6 ? 1.5 : 2.4) : 3.6, 0, 7); g.fill();
     if (hole) { g.strokeStyle = '#ffcf8a'; g.lineWidth = 1.2; g.beginPath(); g.ellipse(p.x, p.y, 9, 3.4, -.2, 0, 7); g.stroke(); }
     if (!vis.includes(S.id) && (!S.gen || allLabels)) { g.strokeStyle = 'rgba(207,238,255,.35)'; g.lineWidth = 1; g.beginPath(); g.arc(p.x, p.y, 7, 0, 7); g.stroke(); }
+    if (qsys.has(S.id)) { g.save(); g.translate(p.x, p.y); g.rotate(Math.PI / 4); g.strokeStyle = '#ffd36a'; g.lineWidth = 1.6; g.strokeRect(-12, -12, 24, 24); g.restore(); } // a side quest ends here
     if (S === cur) { g.save(); g.translate(p.x, p.y); g.rotate(t * .8); g.strokeStyle = '#9fe6ff'; g.lineWidth = 1.4; g.strokeRect(-9, -9, 18, 18); g.restore(); }
     if (S === sel) { const r = 14 + Math.sin(t * 4) * 1.5; g.strokeStyle = '#c7b4ff'; g.lineWidth = 1.6; for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { g.beginPath(); g.moveTo(p.x + sx * r, p.y + sy * (r - 6)); g.lineTo(p.x + sx * r, p.y + sy * r); g.lineTo(p.x + sx * (r - 6), p.y + sy * r); g.stroke(); } }
-    if (S.gen && !allLabels && S !== sel && S !== cur && !vis.includes(S.id)) continue; // the generated systems are named once you zoom in
+    if (S.gen && !allLabels && S !== sel && S !== cur && !vis.includes(S.id) && !qsys.has(S.id)) continue; // the generated systems are named once you zoom in (or if a quest ends there)
     g.textAlign = 'left'; g.font = `500 ${S.gen ? 9 : 10}px ${font}`; g.fillStyle = S === sel ? '#efe8ff' : '#cfeeff'; g.fillText(S.name.toUpperCase(), p.x + 14, p.y - 2);
     if (GAL.zoom >= 1.4 || S === cur || S === sel) { g.font = `400 7.5px ${font}`; g.fillStyle = 'rgba(200,210,230,.6)'; g.fillText((S === cur ? 'YOU ARE HERE · ' : '') + S.faction.split(' · ')[0].toUpperCase(), p.x + 14, p.y + 9); }
   }
@@ -10539,7 +10566,7 @@ function warpTick(dt) {
     SPC.warp = null; tn.visible = false; SPC.vel = 180; SPC.thr = .4;
     const S = curSys(), W3 = wanderer.ch3, first = !(W3.visited || []).includes(S.id);
     if (first) W3.visited = [...(W3.visited || []), S.id];
-    W3.warped = true; wanderer.place = currentPlace(); const c = curChar(); if (c) { c.ch3 = W3; c.place = wanderer.place; } saveRoster();
+    W3.warped = true; sqOnArrive(S); wanderer.place = currentPlace(); const c = curChar(); if (c) { c.ch3 = W3; c.place = wanderer.place; } saveRoster();
     const wb = $('#shWarp'); $('#shWarpTxt').innerHTML = `${S.name.toUpperCase()}<br><small>${S.star.type} · ${S.faction}</small>`; wb.classList.add('card');
     clearTimeout(SPC.cardT); SPC.cardT = setTimeout(() => wb.classList.remove('on', 'card'), 3600);
     spaceMsg(first ? `${S.name} · ${S.bodies.filter(P => P.land).length} world${S.bodies.filter(P => P.land).length === 1 ? '' : 's'} to land on` : `Back in ${S.name}`);
@@ -11068,6 +11095,241 @@ function dipChange(e) {
   else if (a === 'setName' && DIPV.settle) DIPV.settle.name = t.value;
 }
 
+/* ============ side quests (Chapters III–V) ============
+   Over a hundred jobs, offered at the trader stalls on the planets (two at each stall, by who runs it: Erisian, Chompy,
+   Grek, Catharsis (Chapter III only), Earth's people on the Federation's worlds, or anyone). Each is one of:
+     mine:item:n   bring n of something you can dig up (handed in where you took the job)
+     hunt:n        shoot down n hostile ships anywhere, then come back
+     deliver       carry something to a world in a nearby system (it ends when you land there)
+     visit         survey a nearby system (it ends when you drop out of warp there)
+     pay           settle it at the stall
+   Most end in a choice. The kind one nudges you towards hero, the cruel one towards villain, a few points at a time:
+   you need a great many of these to reach 100 either way.
+   Row: [id, who offers it, title, giver, the ask, objective, choices: [label, alignment, units, what happens]] */
+const SQ_ROWS = [
+  // ---- Erisian merchants and bodyguards ----
+  ['e01', 'erisian', 'The Snapped Harness', 'Senna Varel, pedlar', 'My pack-frame snapped on the last world. Scrap metal would mend it, if anyone would sell it to an Erisian at a fair price.', 'mine:scrap:6', [['Give her the scrap', 3, 110, 'She bows, the old way, and gives you what she can.'], ['Charge her double', -2, 260, 'She pays without a word. Erisians remember.']]],
+  ['e02', 'erisian', 'Letters for the Houses', 'Ivenna Tor, courier', 'A bundle of letters for a merchant house, sealed with wax older than your species. Deliver them.', 'deliver', [['Deliver them unopened', 3, 180, 'The house steward thanks you by name. That is rare.'], ['Read them first and sell what you learn', -3, 330, 'Someone pays well for secrets. Someone else will pay for it later.']]],
+  ['e03', 'erisian', 'The Escort’s Debt', 'Corran Veyl, sworn guard', 'Pirates killed the escort of the child I guard. Thin their numbers so the road is safe again.', 'hunt:3', [['Take the agreed fee', 2, 240, 'He grips your arm. A bodyguard’s thanks.'], ['Demand the dead escort’s wages too', -2, 380, 'He pays. His eyes say what he thinks of you.']]],
+  ['e04', 'erisian', 'Choir Crystals', 'Mother Ahlis, songkeeper', 'The old songs are sung through frost crystal. Ours cracked in the cold between worlds.', 'mine:crystal:4', [['Bring them as a gift', 3, 90, 'She sings a single line for you. You feel it in your teeth.'], ['Sell them at the market rate', 0, 220, 'A fair trade, fairly made.']]],
+  ['e05', 'erisian', 'A Matriarch’s Census', 'Clerk Ysar', 'The Matriarch wishes to know what lies in a nearby system. Survey it and report.', 'visit', [['Report truthfully', 2, 200, 'The clerk writes every word down twice.'], ['Invent a richer system and sell the lie', -3, 340, 'Somewhere an expedition is being planned on your fiction.']]],
+  ['e06', 'erisian', 'The Lost Pendant', 'Telva Morn', 'My mother’s pendant was stolen by a pirate crew. They fly near here. Bring it back.', 'hunt:2', [['Return the pendant', 3, 160, 'She holds it to her chest and says nothing for a long time.'], ['Keep the pendant and sell it', -4, 420, 'It fetches a fine price. You don’t look at it as you sell it.']]],
+  ['e07', 'erisian', 'Ice for the Long Road', 'Hessa Quill, caravan master', 'My caravan crosses dry worlds. We need ice, and lots of it.', 'mine:ice:8', [['Sell it at a fair price', 1, 200, 'The caravan leaves at dawn, with water enough.'], ['Wait until they’re desperate, then name your price', -3, 420, 'They pay. Two of them are children.']]],
+  ['e08', 'erisian', 'A Debt Collector’s Errand', 'Vosk Aren', 'A man owes my house. He hides on a world nearby. Deliver this notice.', 'deliver', [['Deliver it politely', 0, 170, 'The man reads it, nods, and begins packing.'], ['Deliver it with threats of your own', -3, 300, 'He pays twice over, once to the house and once to you.'], ['Warn him and let him slip away', 2, 60, 'He thanks you. The house will not.']]],
+  ['e09', 'erisian', 'An Offering for Lianna', 'Pilgrim Oseth', 'Lianna Erisconos died a billion years ago. We still leave obsidian for her. Help me make my offering.', 'mine:obsidian:2', [['Give the obsidian freely', 3, 80, 'She lays it down and says your name to the dead.'], ['Sell it to her', 0, 160, 'Faith has a price, today.']]],
+  ['e10', 'erisian', 'The Sworn Shield', 'Captain Ilra Venn', 'My charge is a scholar of House Ondra. Pirates hunt her. Hunt them first.', 'hunt:4', [['Accept her thanks and the fee', 2, 320, 'House Ondra will remember the name of the wanderer.'], ['Sell the scholar’s route to the pirates afterwards', -5, 520, 'The pirates pay well. You never learn what happened to her.']]],
+  ['e11', 'erisian', 'Wax and Seal', 'Archivist Nemre', 'Carry these archive copies to a library on another world. They must arrive dry.', 'deliver', [['Deliver them', 2, 190, 'The librarian counts every page and finds none missing.'], ['Sell the rarest pages on the way', -3, 340, 'The library will never know what it lost. You will.']]],
+  ['e12', 'erisian', 'The Merchant’s Wager', 'Dalen Ferro', 'I bet a rival that a wanderer could survey a far system and be back before the market closed. Prove me right.', 'visit', [['Split the winnings', 1, 260, 'He laughs and pays you more than half.'], ['Take all of it', -2, 400, 'He pays. He bets on someone else next time.']]],
+  ['e13', 'erisian', 'Cloth for the Cold', 'Weaver Aunee', 'My looms stand idle. Bring cloth from the supply pods you find, and I’ll make coats for the poor quarter.', 'mine:cloth:3', [['Donate it to the coats', 3, 60, 'The poor quarter will be warm this winter.'], ['Sell it to her at full price', 0, 150, 'A fair trade.']]],
+  ['e14', 'erisian', 'The Quiet Bodyguard', 'Seren Hale', 'My ward wants a stone from a real alien world. Bring me plain stone. It’s for a child.', 'mine:stone:5', [['Give it with a smile', 2, 70, 'She promises to tell the child who brought it.'], ['Charge for “rare alien stone”', -2, 200, 'It’s the same stone you could find anywhere. She knows. She pays.']]],
+  ['e15', 'erisian', 'A Message to Eris', 'Envoy Tarhe', 'The great houses must hear of trouble out here. Carry my report to the next system.', 'deliver', [['Carry it faithfully', 2, 200, 'The report arrives. The houses act.'], ['Alter it to suit a rival house who pays you', -4, 380, 'The houses act, on the wrong information.']]],
+  ['e16', 'erisian', 'Patience Has a Price', 'Old Moran', 'Pirates took my savings. I don’t want them back. I want them stopped.', 'hunt:3', [['Refuse payment', 3, 0, 'He presses a small carved charm into your hand anyway.'], ['Take every unit he has left', -3, 260, 'He empties his purse. It is very light.']]],
+  ['e17', 'erisian', 'The Stargazer’s Map', 'Astronomer Vessa', 'My charts are a century old. Survey a nearby system so I can correct them.', 'visit', [['Share your findings', 2, 210, 'Your name goes in the corner of her new chart.'], ['Sell the findings to a mining company instead', -2, 330, 'The mining company moves in before her charts are dry.']]],
+  ['e18', 'erisian', 'Metal for the Shrine', 'Keeper Lunn', 'The shrine’s bell is cracked. A metal plate could patch it until the smiths come.', 'mine:metal:1', [['Give it for the bell', 2, 90, 'The bell rings at dusk. It sounds like it remembers.'], ['Sell it to him', 0, 160, 'The bell rings, a little flat.']]],
+  ['e19', 'erisian', 'A Sister’s Request', 'Nyara Sel', 'My sister serves a house on another world. Take her this, and tell her I’m well.', 'deliver', [['Deliver it and the message', 3, 140, 'Her sister weeps, then laughs, then weeps again.'], ['Keep the parcel', -3, 280, 'There was jewellery inside. Her sister never hears from her.']]],
+  ['e20', 'erisian', 'Obsidian Arrowheads', 'Hunter Coll', 'I hunt with old bows. Obsidian makes the best arrowheads.', 'mine:obsidian:2', [['Sell it fairly', 1, 160, 'He knaps one on the spot and grins.'], ['Pass off cheap glass as obsidian', -2, 260, 'He’ll find out at the first shot.']]],
+  ['e21', 'erisian', 'The Unpaid Caravan', 'Hessa Quill, caravan master', 'Our guards deserted. Clear the pirates off the route and I’ll pay what I can.', 'hunt:5', [['Accept what she can pay', 2, 380, 'The caravan moves again.'], ['Hold the caravan hostage for more', -4, 600, 'It moves again, poorer, and without love for you.']]],
+  ['e22', 'erisian', 'Survey for the Exiles', 'Teren Vahl', 'My people were driven from their world. Find us a nearby system that might take us.', 'visit', [['Tell them the truth of what you find', 3, 120, 'They start packing, hopeful.'], ['Sell the location of the exiles to whoever drove them out', -5, 500, 'You don’t ask what happens next.']]],
+  ['e23', 'erisian', 'A House Funeral', 'Steward Morva', 'A guard of our house fell. Help with the funeral costs.', 'pay:200', [['Pay for the funeral', 3, -200, 'The guard is buried with honour. The house notes your name.'], ['Offer nothing', 0, 0, 'The steward nods. Nothing more is said.'], ['Steal from the collection plate', -4, 150, 'Nobody sees. You see.']]],
+  ['e24', 'erisian', 'Blood Feud', 'Kaela Dorn', 'A rival house’s courier is carrying papers that will ruin mine. Intercept them in the next system.', 'visit', [['Refuse to touch the papers, just watch', 1, 150, 'You tell her what you saw, and nothing more.'], ['Steal the papers for her', -3, 380, 'The rival house falls. Its servants go hungry.']]],
+  // ---- the Chompy Empire ----
+  ['c01', 'chompy', 'The Emperor’s Forges', 'Forgemaster Grukk', 'The forges of Aridaxx are hungry. Feed them scrap metal and the Emperor will be pleased.', 'mine:scrap:8', [['Sell at the imperial price', 1, 220, 'An imperial stamp goes on your name.'], ['Sneak in slag to pad the weight', -2, 340, 'The forges choke. Someone else will be blamed.']]],
+  ['c02', 'chompy', 'Three Hundred Years', 'Old Vashk', 'I remember the civil war. I lost my brother to Sevirrus’s loyalists. Carry his medal to his grave on another world.', 'deliver', [['Lay the medal on the grave', 4, 120, 'You stand there a while. It feels right.'], ['Sell the medal to a collector', -4, 400, 'Collectors pay well for civil war medals.']]],
+  ['c03', 'chompy', 'Patrol Duty', 'Sergeant Brakka', 'The patrols are stretched thin. Shoot down pirates and the Empire pays.', 'hunt:4', [['Collect the bounty', 1, 320, 'The sergeant stamps your bounty card.'], ['Claim kills that weren’t yours', -2, 460, 'The real pilots go unpaid.']]],
+  ['c04', 'chompy', 'Spice Run', 'Merchant Teekal', 'Spice for a feast on another world. Don’t let it get damp.', 'deliver', [['Deliver it', 1, 200, 'The feast is a fine one. You’re invited.'], ['Sell half and cut the rest with dust', -3, 360, 'Half the guests are ill by morning.']]],
+  ['c05', 'chompy', 'Crystal Teeth', 'Jeweller Moshk', 'Chompy nobles wear crystal on their tusks. Bring me frost crystal.', 'mine:crystal:5', [['Sell fairly', 0, 240, 'Fair trade.'], ['Give a little extra for her apprentices to practise on', 2, 180, 'Her apprentices cheer.']]],
+  ['c06', 'chompy', 'The Deserter', 'Captain Ghazz', 'A soldier deserted his post and fled to a nearby system. Bring word of where he hides.', 'visit', [['Report you found nothing', 2, 100, 'Somewhere, a frightened young soldier sleeps safe tonight.'], ['Report exactly where he is', -3, 340, 'The Empire is not gentle with deserters.']]],
+  ['c07', 'chompy', 'Obsidian Oaths', 'Oathkeeper Rhul', 'Janira Prime remembers every oath sworn. We carve them in obsidian. Bring me some.', 'mine:obsidian:3', [['Give it for the oath-stones', 3, 120, 'Your own name is carved in a corner, small.'], ['Sell it at a profiteer’s price', -2, 320, 'The oath-stones are carved. Rhul does not carve your name.']]],
+  ['c08', 'chompy', 'The Grob’s Ghost', 'Engineer Kesh', 'Old Grob machines still drift near here. Survey the next system for wreckage.', 'visit', [['Report it all to the Empire', 1, 240, 'Engineers fly out to make the wrecks safe.'], ['Sell the wreck locations to scavengers', -2, 360, 'The scavengers strip them. One wakes up.']]],
+  ['c09', 'chompy', 'Bread for Alphinos', 'Baker Muun', 'The poor quarter of Alphinos needs wood for the ovens.', 'mine:wood:6', [['Donate it', 3, 60, 'The ovens are lit before dawn.'], ['Sell it to the bakers at full price', 0, 180, 'The bread costs a little more this week.']]],
+  ['c10', 'chompy', 'A Prince’s Letter', 'Courtier Ylsa', 'A letter from a young prince to a girl on another world. Discretion, please.', 'deliver', [['Deliver it discreetly', 2, 220, 'She reads it twice and blushes.'], ['Blackmail the prince with it', -4, 480, 'He pays. He’ll be emperor one day.']]],
+  ['c11', 'chompy', 'Pirate Bounties', 'Bounty Clerk Throm', 'Five pirates, five bounties. Simple.', 'hunt:5', [['Collect', 1, 420, 'Simple.'], ['Collect, then sell the bounty list to the pirates', -3, 620, 'Not so simple for the next hunter.']]],
+  ['c12', 'chompy', 'The Healer’s Cloth', 'Healer Ossa', 'I bind wounds with clean cloth. I have none left.', 'mine:cloth:4', [['Give it to her', 3, 70, 'She is binding wounds within the hour.'], ['Charge her dear for it', -2, 240, 'She pays with money meant for medicine.']]],
+  ['c13', 'chompy', 'The Imperial Census', 'Census Taker Drav', 'The Emperor counts every world in his sight. Survey one for us.', 'visit', [['Count truly', 1, 220, 'The census grows by one world.'], ['Hide a world from the census for a bribe', -2, 340, 'A family avoids the tax. Someone else pays more.']]],
+  ['c14', 'chompy', 'Memorial Ice', 'Widow Kral', 'On Aridaxx we carve ice for the dead and let it melt at dusk. Bring me ice.', 'mine:ice:5', [['Bring it, and stay for dusk', 3, 90, 'It melts. She holds your hand.'], ['Sell it and leave', 0, 160, 'You don’t see it melt.']]],
+  ['c15', 'chompy', 'Smugglers’ Run', 'Fence Grizz', 'A crate for a friend in another system. Don’t open it. Don’t ask.', 'deliver', [['Deliver it and hand the crate to the patrol instead', 3, 120, 'The patrol finds weapons bound for Sevirrus’s old loyalists.'], ['Deliver it and ask no questions', -3, 400, 'Weapons. You didn’t ask.']]],
+  ['c16', 'chompy', 'The Old Loyalists', 'Inquisitor Vahr', 'Sevirrus’s last loyalists fly pirate colours now. Hunt them.', 'hunt:4', [['Hunt them and bring them in', 2, 340, 'Justice, of a kind.'], ['Hunt them and loot their families’ homes too', -4, 560, 'Their families did nothing.']]],
+  ['c17', 'chompy', 'Stone for the Wall', 'Mason Grul', 'The town wall is crumbling. Stone, please.', 'mine:stone:8', [['Sell fairly', 1, 180, 'The wall goes up.'], ['Sell rotten stone', -2, 260, 'The wall goes up. For now.']]],
+  ['c18', 'chompy', 'The Emperor’s Gift', 'Herald Pakk', 'Hak Chompjak V sends a gift to a loyal world nearby. Escort it there.', 'deliver', [['Deliver it whole', 2, 260, 'The world cheers the Emperor’s name, and yours after it.'], ['Skim a little off the top', -3, 420, 'The world cheers. It’s a smaller cheer.']]],
+  ['c19', 'chompy', 'Lost Hatchling', 'Mother Tisk', 'My hatchling stowed away on a freighter to the next system. Find her.', 'visit', [['Bring her home', 4, 100, 'Mother Tisk holds the hatchling so tightly she squeaks.'], ['Ask for a ransom first', -4, 360, 'She pays it all. Every unit she had.']]],
+  ['c20', 'chompy', 'The Scrap Tax', 'Tax Collector Murn', 'Taxes are due. I need help collecting.', 'pay:150', [['Pay the poor family’s tax yourself', 3, -150, 'The family never learns who paid.'], ['Collect it for him', 0, 120, 'The family pays. They have little left.'], ['Collect double and pocket the rest', -4, 300, 'The family has nothing left.']]],
+  ['c21', 'chompy', 'Glass for the Temple', 'Priestess Arix', 'The temple windows are obsidian. One shattered in the quake.', 'mine:obsidian:2', [['Give it', 3, 80, 'Light comes through the new window at noon.'], ['Sell it', 0, 170, 'Light comes through. It cost her.']]],
+  ['c22', 'chompy', 'A Duel Postponed', 'Duellist Krag', 'Carry my apology to my rival in the next system. I’d rather not die this week.', 'deliver', [['Deliver the apology', 2, 180, 'The duel is called off. Both live.'], ['Swap it for an insult', -3, 260, 'The duel happens. One of them dies.']]],
+  ['c23', 'chompy', 'The Veterans’ Fund', 'Corporal Dush', 'Veterans of the civil war are old and poor now. Help the fund.', 'pay:250', [['Give generously', 4, -250, 'An old soldier eats well tonight.'], ['Give nothing', 0, 0, 'The corporal moves on.'], ['Take from the fund', -5, 200, 'The old soldiers go without.']]],
+  ['c24', 'chompy', 'Survey of Steca', 'Geologist Varn', 'Steca shakes more every year. Survey a nearby system for a safer world.', 'visit', [['Find them a safe world', 2, 230, 'The first families move this year.'], ['Point them at a dangerous one that a friend wants cleared', -4, 420, 'Your friend gets the safe world.']]],
+  // ---- the Grek (and the Order of Archamus) ----
+  ['g01', 'grek', 'Seeds for Archiostal', 'Gardener Hoom', 'The gardens of Archiostal are always hungry for new soil. Bring stone, ground fine.', 'mine:stone:6', [['Give it to the gardens', 3, 80, 'Something new will grow there this season.'], ['Sell it at a trader’s price', 0, 170, 'The gardens grow.']]],
+  ['g02', 'grek', 'A Prayer Carried', 'Brother Ulm', 'Carry this prayer-scroll to a shrine in the next system. Slowly. Carefully.', 'deliver', [['Carry it with care', 3, 150, 'The shrine keeper reads it aloud. It is about you.'], ['Sell the scroll to a collector', -3, 320, 'The shrine keeper waits for a scroll that never comes.']]],
+  ['g03', 'grek', 'Archamus’s Will', 'Priest Varo', 'The Order asks you to clear pirates from the pilgrim road.', 'hunt:3', [['Do it for the pilgrims', 2, 250, 'Pilgrims reach Archiostal safely.'], ['Do it, then tax the pilgrims for your trouble', -3, 420, 'Fewer pilgrims come next year.']]],
+  ['g04', 'grek', 'Timber for the Canopy', 'Forester Gunn', 'The canopy of Archiostal needs new supports. Wood, please.', 'mine:wood:8', [['Give it', 2, 140, 'The canopy holds.'], ['Sell it dear', -1, 300, 'The canopy holds. The Order is poorer.']]],
+  ['g05', 'grek', 'The Hierarch’s Survey', 'Scribe Orr', 'Am-Grek wishes to know a nearby system. Survey it.', 'visit', [['Report it all', 1, 220, 'The scribe writes slowly. Everything.'], ['Hide what you found and sell it elsewhere', -2, 340, 'The scribe’s report is short.']]],
+  ['g06', 'grek', 'Ice for the Rivers', 'Waterkeeper Bel', 'The rivers of Archiostal run low. Bring ice to melt into them.', 'mine:ice:6', [['Give it to the rivers', 3, 90, 'The rivers run higher by morning.'], ['Sell it', 0, 200, 'The rivers run, a little higher.']]],
+  ['g07', 'grek', 'Slowly, Carefully', 'Elder Throom', 'An old friend on another world is dying. Take him this carved stone from me.', 'deliver', [['Deliver it in time', 4, 120, 'He holds it, smiles, and is gone by evening.'], ['Sell the carving', -4, 300, 'He waits for a gift that never comes.']]],
+  ['g08', 'grek', 'The Catharsis Question', 'Inquisitor Mehr', 'Something stirs near the core. Survey a nearby system for signs of the Catharsis.', 'visit', [['Report honestly', 1, 240, 'The Order notes it gravely.'], ['Exaggerate the threat to frighten them into paying more', -2, 360, 'The Order pays. They sleep less.']]],
+  ['g09', 'grek', 'Tusks and Crystal', 'Carver Domm', 'I carve crystal for Grek priests. Bring me some.', 'mine:crystal:4', [['Sell fairly', 0, 220, 'Fair trade.'], ['Give it for a carving for the temple', 2, 140, 'A new carving stands in the temple.']]],
+  ['g10', 'grek', 'Bounty of the Order', 'Brother-Captain Hask', 'Pirates raided a shrine. Archamus asks for justice.', 'hunt:4', [['Bring justice', 2, 340, 'The shrine is repaired.'], ['Bring justice and loot the shrine’s offerings yourself', -5, 560, 'The shrine is repaired. Its treasures are not.']]],
+  ['g11', 'grek', 'The Lost Pilgrim', 'Mother Ula', 'My son went on pilgrimage and did not write. He was last seen in the next system.', 'visit', [['Find him and send him home', 3, 120, 'He writes to her the very next day.'], ['Tell her he’s dead, for a fee from his creditors', -5, 400, 'She mourns a son who is still alive.']]],
+  ['g12', 'grek', 'Obsidian for the Bastion', 'Warden Kurr', 'Carax’s bastion is ancient. We patch it with obsidian.', 'mine:obsidian:3', [['Give it', 2, 150, 'The bastion stands a little stronger.'], ['Sell it', 0, 260, 'The bastion stands.']]],
+  ['g13', 'grek', 'A Gift for Malana', 'Pilgrim Sorr', 'Malana is where Am-Grek was born. Carry an offering to a shrine there, or the nearest one.', 'deliver', [['Carry it faithfully', 3, 150, 'The shrine accepts it.'], ['Keep it', -3, 300, 'A small, cold feeling.']]],
+  ['g14', 'grek', 'The Garden’s Debt', 'Gardener Hoom', 'Pests eat the garden. A donation for the gardeners’ tools.', 'pay:150', [['Donate', 3, -150, 'New tools, new shoots.'], ['Refuse', 0, 0, 'Hoom understands.'], ['Sell the gardeners rusted tools at a markup', -3, 180, 'The pests win this season.']]],
+  ['g15', 'grek', 'Scrap for the Hierarch', 'Quartermaster Grenn', 'Carax needs scrap metal for repairs.', 'mine:scrap:7', [['Sell fairly', 1, 200, 'Carax is mended.'], ['Pad the crates with stone', -2, 300, 'Carax is mended badly.']]],
+  ['g16', 'grek', 'The Silent Monk', 'Brother Ast', 'I took a vow of silence. Deliver my last spoken words to my brother in the next system.', 'deliver', [['Deliver them', 3, 140, 'His brother sits down hard, and laughs, and cries.'], ['Change the words', -3, 220, 'His brother never forgives him.']]],
+  ['g17', 'grek', 'Pirate Purge', 'Brother-Captain Hask', 'Six pirates. The Order pays for each.', 'hunt:6', [['Collect', 2, 520, 'The road is quiet.'], ['Let one escape to sell your services to the next victim', -3, 640, 'The road is quiet. For now.']]],
+  ['g18', 'grek', 'The Order’s Library', 'Archivist Pell', 'Survey a nearby system for the Order’s star-library.', 'visit', [['Share it with the library', 2, 230, 'The library grows.'], ['Sell it to the highest bidder', -2, 340, 'The library waits.']]],
+  ['g19', 'grek', 'Feast of Archamus', 'Cook Bram', 'The feast needs wood for the ovens, and a great deal of it.', 'mine:wood:5', [['Donate it to the feast', 3, 80, 'You are given the first plate.'], ['Sell it', 0, 160, 'The feast is fine.']]],
+  ['g20', 'grek', 'The Hermit’s Request', 'Hermit Varr', 'I want nothing. But the orphans in the next system want much. Take them this.', 'deliver', [['Deliver it to the orphans', 4, 100, 'The orphans eat. The hermit smiles, once.'], ['Keep it for yourself', -4, 320, 'The orphans don’t.']]],
+  // ---- the Catharsis (Chapter III, while they're neutral) ----
+  ['k01', 'catharsis', 'Patient Things', 'A Catharsis trader', 'We are patient. We want obsidian. Do not ask what for.', 'mine:obsidian:3', [['Sell it, and ask nothing', -1, 300, 'It thanks you in a voice like a held breath.'], ['Refuse, and warn the Grek about it', 3, 80, 'The Grek listen. The trader watches you go.']]],
+  ['k02', 'catharsis', 'A Message in the Dark', 'A Catharsis envoy', 'Carry a sealed message to a nearby system. You will not be able to open it.', 'deliver', [['Deliver it', -2, 360, 'Something far away begins to move.'], ['Hand it to the Grek instead', 3, 120, 'The Grek priests go very quiet.']]],
+  ['k03', 'catharsis', 'Counting Stars', 'A Catharsis cartographer', 'Survey a system near here. We are counting. We will tell you why later.', 'visit', [['Survey and report', -2, 320, 'It counts. It is pleased.'], ['Report false numbers', 2, 100, 'It counts wrong. You hope that matters.']]],
+  ['k04', 'catharsis', 'Crystal Hunger', 'A Catharsis trader', 'We want frost crystal. We pay very well.', 'mine:crystal:6', [['Sell it', -1, 420, 'It pays exactly what it promised.'], ['Sell it, then tell the Grek what they bought', 2, 260, 'The Grek watch the Catharsis more closely after that.']]],
+  ['k05', 'catharsis', 'The Grek’s Leash', 'A Catharsis voice', 'The Grek hold our leash. Pirates bother our space too. Clear them.', 'hunt:3', [['Clear them', 0, 300, 'It thanks you. Its thanks feel heavy.'], ['Clear them, and ask what the Catharsis will do when the leash breaks', 1, 300, 'It doesn’t answer. You wish it had.']]],
+  ['k06', 'catharsis', 'A Small Experiment', 'A Catharsis researcher', 'Bring us ice from a living world. Living ice. It is for an experiment.', 'mine:ice:6', [['Bring it', -2, 380, 'You never learn what the experiment was.'], ['Bring it, poisoned so it fails', 3, 120, 'The experiment fails. Something is very angry.']]],
+  ['k07', 'catharsis', 'Waiting', 'A Catharsis watcher', 'Survey a Grek system. Tell us where their ships sleep.', 'visit', [['Tell them', -4, 520, 'The Catharsis remembers where the Grek ships sleep.'], ['Lie', 3, 120, 'The Catharsis looks at you a long time.']]],
+  ['k08', 'catharsis', 'The Price of Silence', 'A Catharsis trader', 'You have seen things near the core. Accept a gift, and forget them.', 'pay:0', [['Take the gift and stay quiet', -3, 400, 'You stay quiet.'], ['Refuse the gift', 2, 0, 'It does not offer twice.']]],
+  ['k09', 'catharsis', 'Scrap for Shells', 'A Catharsis smith', 'Our shells need metal. Scrap will do.', 'mine:scrap:8', [['Sell it', -1, 320, 'Its shell grows by a hand’s width.'], ['Refuse', 1, 0, 'It returns to its forge without a word.']]],
+  ['k10', 'catharsis', 'A Name for Later', 'A Catharsis voice', 'Tell us the name of a friend of yours. Any friend. We only want to know.', 'pay:0', [['Give them a name', -4, 300, 'It writes the name down. Slowly.'], ['Refuse', 3, 0, 'It seems almost pleased.']]],
+  // ---- Earth's people (the Federation's worlds of Sol) ----
+  ['h01', 'sol', 'Rebuilding Hackney', 'Sam Okafor, foreman', 'The war flattened half of East London thirty years ago. We’re still rebuilding. Stone, please.', 'mine:stone:8', [['Donate it', 3, 80, 'A new school opens that autumn.'], ['Sell it at the going rate', 0, 200, 'A new school opens, a little smaller.']]],
+  ['h02', 'sol', 'A Letter to Mars', 'Priya Nair', 'My son works on Mars and doesn’t call. Take him this. Tell him to call his mother.', 'deliver', [['Deliver it, and the message', 3, 150, 'He calls her that night.'], ['Sell the parcel', -3, 260, 'He never knows she wrote.']]],
+  ['h03', 'sol', 'Terra Imperia’s Spies', 'Federation Officer Kowalski', 'Hawthorne’s people fly unmarked ships. Bring some down.', 'hunt:3', [['Report the kills to the Federation', 2, 280, 'The Federation is grateful.'], ['Sell the wreckage to Terra Imperia’s buyers', -3, 460, 'Terra Imperia rebuilds its ships.']]],
+  ['h04', 'sol', 'Scrap for the Spaceport', 'Engineer Dahl', 'The rebuilt spaceports run on scrap and hope. Bring the scrap.', 'mine:scrap:6', [['Sell fairly', 1, 180, 'A launch goes up on time.'], ['Sell scrap stripped from a hospital', -4, 380, 'A launch goes up. A ward goes dark.']]],
+  ['h05', 'sol', 'The First Survey', 'Dr Amara Lewis', 'Humanity is new to the stars. Survey a system for us, and tell us what’s out there.', 'visit', [['Report everything', 2, 240, 'Your report is read aloud in Parliament.'], ['Sell the report to a private company first', -2, 400, 'The company gets there first.']]],
+  ['h06', 'sol', 'Veterans of the Third War', 'Margaret Hale', 'Old soldiers of the Third World War live poor and forgotten. A donation?', 'pay:200', [['Donate', 4, -200, 'An old soldier gets new boots.'], ['Decline', 0, 0, 'She thanks you anyway.'], ['Take her collection box', -5, 180, 'Nobody stops you. That’s the worst part.']]],
+  ['h07', 'sol', 'Ice for the Reservoir', 'Water Board Clerk', 'The reservoirs are low after a dry summer. Ice from off-world helps.', 'mine:ice:6', [['Sell fairly', 1, 180, 'The taps run.'], ['Sell it only to the rich districts', -3, 320, 'The taps run, for some.']]],
+  ['h08', 'sol', 'A Moonlit Errand', 'Leo Brandt', 'My girlfriend works on the Moon. I want to propose. Take her this ring.', 'deliver', [['Deliver the ring', 3, 120, 'She says yes, on a video call, in tears.'], ['Pawn the ring', -4, 360, 'She never knows he asked.']]],
+  ['h09', 'sol', 'The Federation’s Census', 'Clerk Hughes', 'Darius wants to know who’s out there. Survey a nearby system.', 'visit', [['Report it', 1, 220, 'Darius reads it personally.'], ['Report it to Terra Imperia as well, for their money', -4, 460, 'Terra Imperia reads it too.']]],
+  ['h10', 'sol', 'Medicine Run', 'Nurse Adeyemi', 'Medicine for a clinic in a nearby system. People are waiting.', 'deliver', [['Deliver it fast', 4, 160, 'People live who might not have.'], ['Sell it on the black market', -5, 520, 'People don’t.']]],
+  ['h11', 'sol', 'Wood for the Winter', 'Community Hall', 'Heating oil is expensive. Wood keeps the hall warm for the elderly.', 'mine:wood:6', [['Donate it', 3, 60, 'The elderly play cards in the warm.'], ['Sell it', 0, 180, 'The hall is warm, briefly.']]],
+  ['h12', 'sol', 'Pirates on the Mars Run', 'Captain Reyes', 'Pirates raid the Mars supply run. Shoot them down.', 'hunt:4', [['Collect the bounty', 2, 340, 'The Mars run is safe.'], ['Take a cut from the pirates to look away', -4, 520, 'The Mars run is raided again next week.']]],
+  ['h13', 'sol', 'Khazglar’s Request', 'A courier from Olympus Mons', 'The hermit of Olympus Mons wants crystal for his telescope. He pays in stories.', 'mine:crystal:3', [['Bring it to him', 3, 60, 'He tells you a story that takes all night. It’s worth it.'], ['Sell it to a museum instead', -1, 260, 'The hermit waits for crystal that doesn’t come.']]],
+  ['h14', 'sol', 'The Erisian Bodyguard', 'Lord Ashworth', 'My Erisian guard needs a message carried to her house on another world. I owe her that.', 'deliver', [['Carry it', 2, 180, 'Her house thanks you.'], ['Read it and blackmail the lord', -4, 420, 'He pays, and never trusts an Erisian again.']]],
+  ['h15', 'sol', 'The Orphanage Roof', 'Sister Mary-Clare', 'Our roof leaks. A metal plate would patch it.', 'mine:metal:2', [['Donate them', 4, 60, 'The children sleep dry.'], ['Sell them', 0, 180, 'The roof is patched.']]],
+  // ---- anyone, anywhere ----
+  ['a01', 'any', 'The Stranded Pilot', 'Pilot Jorek', 'My ship is dead in this system. I need scrap to fix the drive.', 'mine:scrap:5', [['Give him the scrap', 3, 80, 'His engine coughs into life.'], ['Charge him everything he has', -3, 280, 'He leaves broke. At least he leaves.']]],
+  ['a02', 'any', 'A Lost Cargo', 'Hauler Mae', 'Pirates took my cargo. Shoot them down and keep a share.', 'hunt:3', [['Return her cargo, take your share', 2, 260, 'Mae can pay her crew this month.'], ['Keep all of it', -3, 460, 'Mae can’t pay her crew.']]],
+  ['a03', 'any', 'A Long Way Home', 'Refugee Elan', 'I was taken from a nearby world as a child. Take this note home for me.', 'deliver', [['Deliver it', 4, 100, 'Someone there has been waiting forty years.'], ['Throw it away', -3, 0, 'Nobody is waiting anymore.']]],
+  ['a04', 'any', 'Uncharted', 'Explorer Kith', 'There’s a system near here no one has mapped. Map it.', 'visit', [['Share the map freely', 2, 220, 'Every pilot out here uses your map now.'], ['Sell it to one buyer only', -1, 340, 'One pilot uses your map.']]],
+  ['a05', 'any', 'The Sick Child', 'Father Oduya', 'My daughter is sick. The medicine costs more than I have.', 'pay:250', [['Pay for the medicine', 5, -250, 'She is well within the month.'], ['Decline', 0, 0, 'He understands. He doesn’t sleep.'], ['Offer a loan at a cruel rate', -4, 150, 'He’ll be paying you for years.']]],
+  ['a06', 'any', 'Ore for the Colony', 'Colony Chief Nara', 'Our new colony needs ore to build. Bring scrap.', 'mine:scrap:8', [['Sell at cost', 2, 160, 'The colony grows.'], ['Sell at a gouger’s price', -2, 380, 'The colony grows slowly.']]],
+  ['a07', 'any', 'Pirate Nest', 'Retired Captain Holt', 'Too old to fight. Not too old to pay. Clear out the pirates around here.', 'hunt:5', [['Take his pay', 1, 420, 'Holt raises a glass to you.'], ['Take his pay and his pension', -4, 600, 'Holt doesn’t raise anything.']]],
+  ['a08', 'any', 'Crystal Fever', 'Prospector Zell', 'I’m sure there’s crystal here. Bring some and prove me right.', 'mine:crystal:5', [['Sell fairly', 0, 260, 'Zell whoops.'], ['Tell him there’s none and keep it', -2, 360, 'Zell leaves, beaten.']]],
+  ['a09', 'any', 'The Message Drone', 'Signals Officer Pim', 'Our message drone broke. Carry the signal to the next system.', 'deliver', [['Carry it', 1, 200, 'The signal gets through.'], ['Sell the signal codes', -3, 380, 'Someone else is listening now.']]],
+  ['a10', 'any', 'Wildlife Survey', 'Biologist Yara', 'Survey a nearby system’s worlds for life.', 'visit', [['Report it', 1, 210, 'Yara writes three papers about it.'], ['Report it to poachers first', -4, 440, 'Yara finds the worlds empty.']]],
+  ['a11', 'any', 'A Gambler’s Debt', 'Card Sharp Dex', 'Win me back my stake: survey a system on a bet.', 'visit', [['Take a fair cut', 1, 240, 'Dex buys you a drink.'], ['Bet against him in secret', -2, 380, 'Dex loses everything.']]],
+  ['a12', 'any', 'Firewood for the Camp', 'Camp Cook Ama', 'Our camp is cold. Wood?', 'mine:wood:5', [['Give it', 2, 80, 'The camp sings tonight.'], ['Sell it', 0, 160, 'The camp is warm.']]],
+  ['a13', 'any', 'The Thief’s Offer', 'A hooded figure', 'Carry a stolen crate to the next system. I pay double what an honest courier does.', 'deliver', [['Deliver it to the authorities instead', 3, 100, 'The thief is caught. The owner thanks you.'], ['Deliver it as asked', -3, 420, 'Easy money. Dirty money.']]],
+  ['a14', 'any', 'Mercy Flight', 'Medic Lorne', 'A crew is hurt in the next system. Take them med kits.', 'deliver', [['Deliver them', 4, 140, 'The crew lives.'], ['Sell the kits to the crew at a markup', -4, 380, 'The crew lives, in debt.']]],
+  ['a15', 'any', 'Ice Run', 'Freighter Captain Bo', 'My water tanks cracked. Ice, quickly.', 'mine:ice:5', [['Sell fairly', 1, 160, 'Bo’s crew drinks.'], ['Triple the price', -3, 380, 'Bo’s crew drinks, poor.']]],
+  ['a16', 'any', 'A Hermit’s Peace', 'Hermit Sola', 'Pirates harass my little world. Make them stop.', 'hunt:2', [['Refuse payment', 3, 0, 'She gives you a carved bird.'], ['Charge her', 0, 200, 'She pays.']]],
+  ['a17', 'any', 'Stone for a Grave', 'Gravedigger Hask', 'A stranger died here. Nobody knew him. Bring stone for a cairn.', 'mine:stone:4', [['Build the cairn yourself', 3, 40, 'The stranger rests under stone you carried.'], ['Sell him the stone', 0, 120, 'The cairn is built.']]],
+  ['a18', 'any', 'The Informant', 'Nervous Clerk', 'I know where a pirate base is. Pay me, and I’ll tell you.', 'pay:100', [['Pay and pass it on to the patrols', 2, -100, 'The base is raided.'], ['Decline', 0, 0, 'The clerk shrugs.'], ['Sell him out to the pirates', -4, 300, 'The clerk is never seen again.']]],
+  ['a19', 'any', 'A Song for the Lost', 'Singer Kaia', 'My band’s ship vanished in the next system. Go and see what happened.', 'visit', [['Bring her the truth', 2, 160, 'She writes a song about them. It’s beautiful.'], ['Sell the wreck before she knows', -3, 360, 'She never finds out.']]],
+  ['a20', 'any', 'Obsidian Blades', 'Bladesmith Ro', 'Obsidian makes the sharpest blades. Bring me some.', 'mine:obsidian:2', [['Sell fairly', 0, 220, 'Ro makes a fine knife.'], ['Sell it for a gang’s weapons order', -3, 380, 'The gang is well armed now.']]],
+  ['a21', 'any', 'Bounty on the Butcher', 'Marshal Teague', 'A pirate called the Butcher raids this space. Shoot down his crew.', 'hunt:4', [['Bring them in', 2, 360, 'The Butcher’s crew is no more.'], ['Join the Butcher for a cut', -5, 600, 'The Butcher raids with your help now.']]],
+  ['a22', 'any', 'The Colony Fund', 'Colonist Ada', 'Our colony needs seed money. Anything helps.', 'pay:150', [['Give', 3, -150, 'The first harvest comes in.'], ['Decline', 0, 0, 'Ada nods.'], ['Promise money and never send it', -2, 0, 'Ada waits.']]],
+  ['a23', 'any', 'Water for the Hungry', 'Soup Kitchen Volunteer', 'We feed whoever comes, but the soup needs clean water. Ice, if you have it.', 'mine:ice:4', [['Donate it', 3, 40, 'A long line eats tonight.'], ['Sell it', 0, 120, 'They eat.']]],
+  ['a24', 'any', 'A Courier’s Honour', 'Courier Guild Master', 'A test for the guild: deliver this blank parcel to the next system, unopened.', 'deliver', [['Deliver it unopened', 2, 200, 'You pass. The guild trusts you.'], ['Open it', -2, 120, 'It was empty. So is the guild’s trust.']]],
+  ['a25', 'any', 'The Wreck of the Persephone', 'Salvager Morrow', 'A liner went down in the next system. Survey it.', 'visit', [['Report survivors to the rescue fleet', 4, 150, 'Twelve people are pulled out alive.'], ['Loot the wreck and leave the survivors', -5, 520, 'Nobody else comes.']]],
+  ['a26', 'any', 'Cloth for Bandages', 'Field Medic Ivo', 'Cloth for bandages. People are bleeding.', 'mine:cloth:3', [['Donate', 3, 50, 'The bleeding stops.'], ['Sell', 0, 140, 'The bleeding stops, for those who could pay.']]]
+];
+const SQ = SQ_ROWS.map(([id, at, t, g, d, o, c]) => { const [k, a, b] = o.split(':'); return { id, at, t, g, d, k, item: k === 'mine' ? a : null, n: k === 'mine' ? +b : k === 'hunt' || k === 'pay' ? +(a || 0) : 0, c }; });
+const sqById = id => SQ.find(q => q.id === id);
+const SQ_MAX = 6;
+function sqs() { const w = wanderer; if (!w.sq) w.sq = { act: {}, done: {}, track: null }; w.sq.act = w.sq.act || {}; w.sq.done = w.sq.done || {}; return w.sq; }
+function sqSave() { const c = curChar(); if (c) c.sq = wanderer.sq; saveRoster(); renderTasks(); }
+const sqKills = () => ((wanderer.ch3 || {}).kills | 0);
+const sqPlanetName = id => { const P = bodyById(id); return P ? `${P.name} (${sysById(P.sys).name})` : '?'; };
+function sqEligible(q, m) {
+  if (q.at === 'catharsis' && (wanderer.chapter | 0) >= 4) return false; // only while they're neutral
+  if (q.at === 'any') return true;
+  if (q.at === 'sol') { const P = bodyById(m.pid); return !!P && /^Human Federation/.test(P.baseFac || P.faction || ''); }
+  return q.at === m.sp;
+}
+function sqOffers(m) { // two jobs per stall (three on the Federation's worlds), the same ones every visit until taken
+  const S = sqs(), hs = s => { let h = 0; for (const ch of s) h = (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0; return h; };
+  return SQ.filter(q => !S.act[q.id] && !S.done[q.id] && sqEligible(q, m)).sort((a, b) => hs(a.id + m.pid) - hs(b.id + m.pid)).slice(0, /^Human Federation/.test((bodyById(m.pid) || {}).baseFac || '') ? 3 : 2);
+}
+function sqTarget(k) { // a nearby system (one jump if possible) for a delivery or a survey
+  const cur = curSys(), near = SYSTEMS.filter(S => S !== cur && bodyById(S.home) && bodyById(S.home).land).map(S => [galDist(cur, S), S]).sort((a, b) => a[0] - b[0]);
+  const pool = near.filter(x => x[0] <= driveRange()).slice(0, 5); const pickFrom = pool.length ? pool : near.slice(0, 3);
+  const S = pickFrom[Math.floor(Math.random() * pickFrom.length)][1];
+  return k === 'deliver' ? S.home : S.id;
+}
+function sqGoal(q, A) {
+  const at = sqPlanetName(A.at);
+  if (q.k === 'mine') return `Bring ${q.n} ${ITEMS[q.item].name} to ${at} · ${Math.min(have(q.item), q.n)}/${q.n}`;
+  if (q.k === 'hunt') return `Shoot down ${q.n} hostile ships, then return to ${at} · ${Math.min(sqKills() - A.k0, q.n)}/${q.n}`;
+  if (q.k === 'deliver') return `Deliver to ${sqPlanetName(A.t)} · ${galDist(curSys(), sysById(bodyById(A.t).sys)).toLocaleString()} ly away`;
+  if (q.k === 'visit') return `Survey ${sysById(A.t).name} · ${galDist(curSys(), sysById(A.t)).toLocaleString()} ly away`;
+  return `Settle it at ${at}`;
+}
+const sqReady = (q, A) => q.k === 'mine' ? have(q.item) >= q.n : q.k === 'hunt' ? sqKills() - A.k0 >= q.n : q.k === 'pay';
+const sqSysOf = (q, A) => q.k === 'deliver' ? bodyById(A.t).sys : q.k === 'visit' ? A.t : bodyById(A.at).sys; // where it ends
+function sqAccept(id, m) {
+  const S = sqs(), q = sqById(id); if (!q || S.act[id] || Object.keys(S.act).length >= SQ_MAX) return;
+  S.act[id] = { at: m.pid, k0: sqKills(), t: q.k === 'deliver' || q.k === 'visit' ? sqTarget(q.k) : null };
+  if (!S.track) S.track = id; sqSave(); sfx.chime(); lootMsg(`Side quest · ${q.t}`, '#ffd36a');
+}
+function sqAbandon(id) { const S = sqs(); delete S.act[id]; if (S.track === id) S.track = Object.keys(S.act)[0] || null; sqSave(); }
+const sqTracked = () => { const S = wanderer && wanderer.sq; if (!S || !S.track || !S.act[S.track]) return null; const q = sqById(S.track); return q ? `${q.t}: ${sqGoal(q, S.act[S.track])}` : null; };
+// ---- the ending: one choice, a few points of alignment ----
+function sqFinish(id) {
+  const q = sqById(id), A = sqs().act[id]; if (!q || !A) return;
+  let el = $('#sqDlg');
+  if (!el) { el = document.createElement('section'); el.id = 'sqDlg'; el.className = 'screen dim'; document.body.appendChild(el);
+    el.addEventListener('click', e => { const b = e.target.closest('[data-sqc]'); if (b && !b.disabled) sqChoose(el.dataset.q, +b.dataset.sqc); }); }
+  el.dataset.q = id; SPC.keys.clear(); ex.keys.clear();
+  el.innerHTML = `<div class="panel sq-panel"><div class="eyebrow">Side quest · ${q.g}</div><h2 class="h1">${q.t.toUpperCase()}</h2><p class="brief">${q.d}</p>
+    <div class="sq-choices">${q.c.map(([label, al, u], i) => { const cant = u < 0 && units() < -u; return `<button class="btn" data-sqc="${i}"${cant ? ' disabled' : ''}><span>${label}<small class="${al > 0 ? 'good' : al < 0 ? 'evil' : ''}">${al ? `${al > 0 ? 'Heroic +' : 'Villainous −'}${Math.abs(al)}` : 'No alignment'}${u ? ` · ${u > 0 ? '+' : '−'}${Math.abs(u)} units` : ''}${cant ? ' · not enough units' : ''}</small></span></button>`; }).join('')}</div></div>`;
+  show(el, true); sfx.click();
+}
+function sqChoose(id, i) {
+  const S = sqs(), q = sqById(id); if (!q || !S.act[id]) return;
+  const [label, al, u, out] = q.c[i];
+  if (q.k === 'mine') takeItem(q.item, q.n);
+  if (u) addUnits(u);
+  delete S.act[id]; S.done[id] = i; if (S.track === id) S.track = Object.keys(S.act)[0] || null;
+  gainXP(50 + Math.abs(al) * 10, q.t); if (al) alignAct(al, q.t);
+  sqSave(); show($('#sqDlg'), false);
+  lootMsg(`${q.t} · ${out}`, '#ffd36a'); if (state === 'space') spaceMsg(out);
+  if (ex.shop) renderShop();
+}
+// endings that trigger on arrival
+function sqOnLand(P) { for (const [id, A] of Object.entries((wanderer.sq || {}).act || {})) { const q = sqById(id); if (q && q.k === 'deliver' && A.t === P.id) { setTimeout(() => sqFinish(id), 2200); return; } } }
+function sqOnArrive(S) { for (const [id, A] of Object.entries((wanderer.sq || {}).act || {})) { const q = sqById(id); if (q && q.k === 'visit' && A.t === S.id) { setTimeout(() => sqFinish(id), 2600); return; } } }
+// ---- jobs at the stall ----
+function sqShopHtml(m) {
+  if (!m.pid || (wanderer.chapter | 0) < 3) return '';
+  const S = sqs(), mine = Object.entries(S.act).filter(([, A]) => A.at === m.pid), offers = sqOffers(m), full = Object.keys(S.act).length >= SQ_MAX;
+  let h = '';
+  for (const [id, A] of mine) { const q = sqById(id); if (q.k === 'deliver' || q.k === 'visit') continue; const r = sqReady(q, A);
+    h += `<div class="dip-card" style="--fc:#ffd36a"><h4>${q.t.toUpperCase()}<small>${r ? 'Ready to hand in' : 'In progress'}</small></h4><p>${sqGoal(q, A)}</p>${r ? `<button class="btn small primary" data-sqh="${id}"><span>Hand in</span></button>` : ''}</div>`; }
+  for (const q of offers) h += `<div class="dip-card" style="--fc:#c7b4ff"><h4>${q.t.toUpperCase()}<small>${q.g}</small></h4><p>${q.d}</p><p class="sq-obj">${q.k === 'mine' ? `Bring ${q.n} ${ITEMS[q.item].name}` : q.k === 'hunt' ? `Shoot down ${q.n} hostile ships` : q.k === 'deliver' ? 'Deliver to a world in a nearby system' : q.k === 'visit' ? 'Survey a nearby system' : 'Settle it here'} · ${q.c.length > 1 ? 'ends in a choice' : 'one ending'}</p><button class="btn small" data-sqa="${q.id}"${full ? ' disabled' : ''}><span>${full ? `Quest log full (${SQ_MAX})` : 'Accept'}</span></button></div>`;
+  return h || '<div class="dip-card"><p>No work here right now.</p></div>';
+}
+// ---- the journal ----
+function sqOpen(on) {
+  let el = $('#sqScr');
+  if (!el) { el = document.createElement('section'); el.id = 'sqScr'; el.className = 'screen dim hidden'; document.body.appendChild(el);
+    el.addEventListener('click', e => { const b = e.target.closest('[data-sqj]'); if (!b) return; const [a, id] = b.dataset.sqj.split(':');
+      if (a === 'close') { sqOpen(false); return; } if (a === 'track') { sqs().track = id; sqSave(); } if (a === 'drop') sqAbandon(id); if (a === 'turnin') { sqFinish(id); return; } sfx.click(); sqRenderJournal(); }); }
+  show(el, on); sfx.click(); if (on) sqRenderJournal();
+}
+function sqRenderJournal() {
+  const S = sqs(), al = alState().p, done = Object.keys(S.done).length, act = Object.entries(S.act);
+  const here = isPl() && world.planet ? world.planet.P.id : null;
+  let h = `<div class="panel dip-panel"><div class="eyebrow">${done} of ${SQ.length} side quests done</div><h2 class="h1">SIDE QUESTS</h2>
+    <div class="sq-al"><span>VILLAIN</span><i><u style="left:${(al + 100) / 2}%"></u></i><span>HERO</span></div><p class="sq-note">Alignment ${al > 0 ? '+' : ''}${Math.round(al)} · ${alRank(al)}. Each quest's choice moves it a few points. It takes a great many to reach 100 either way.</p><div class="dip-body">`;
+  if (!act.length) h += `<div class="dip-card"><p>No side quests yet. Traders on the planets offer work: look under Jobs at any stall.</p></div>`;
+  for (const [id, A] of act) { const q = sqById(id), ready = sqReady(q, A), canHere = ready && (q.k === 'pay' || A.at === here);
+    h += `<div class="dip-card" style="--fc:${S.track === id ? '#ffd36a' : '#c7b4ff'}"><h4>${q.t.toUpperCase()}<small>${q.g}${S.track === id ? ' · tracked' : ''}</small></h4><p>${q.d}</p><p class="sq-obj">${sqGoal(q, A)}${ready && !canHere ? ' · ready: hand it in at the stall' : ''}</p><div class="dip-row">${S.track === id ? '' : `<button class="btn small" data-sqj="track:${id}"><span>Track</span></button>`}${canHere ? `<button class="btn small primary" data-sqj="turnin:${id}"><span>Hand in</span></button>` : ''}<button class="btn small" data-sqj="drop:${id}"><span>Abandon</span></button></div></div>`; }
+  const recent = Object.keys(S.done).slice(-8).reverse();
+  if (recent.length) h += `<div class="dip-card" style="--fc:#7fe0a0"><h4>RECENTLY DONE</h4>${recent.map(id => { const q = sqById(id), c = q && q.c[S.done[id]]; return q ? `<p>${q.t} · <i>${c ? c[0] : ''}</i></p>` : ''; }).join('')}</div>`;
+  h += `</div><div class="row"><button class="btn primary" data-sqj="close"><span>Back</span></button></div></div>`;
+  $('#sqScr').innerHTML = h;
+}
+
 // ---- landing: down through the air, the ground takes over, the ship settles, and out you get ----
 function startLanding(P, dir) {
   if (SC.foes.length) spaceMsg('Into the atmosphere · they break off');
@@ -11099,7 +11361,7 @@ async function landOn(P, dir, place) {
   for (const f of world.landShip.userData.flames) f.visible = false;
   const W3 = wanderer.ch3 = Object.assign({}, wanderer.ch3, { landed: true, lastPlanet: P.id }); const c = curChar(); if (c) c.ch3 = W3; saveRoster();
   const f = $('#shFlash'); if (f) f.classList.remove('on');
-  if (place) { state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks(); notice(P.faction, P.name.toUpperCase(), 3200); return; }
+  if (place) { state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks(); notice(P.faction, P.name.toUpperCase(), 3200); sqOnLand(P); return; }
   // the ship comes down out of the sky onto the spot
   SPC.descent = { t: 0 }; state = 'shipLand'; show(ui.xhud, false); player.visible = false; for (const fl of world.landShip.userData.flames) fl.visible = true;
 }
@@ -11111,7 +11373,7 @@ function shipLandTick(dt) {
   if (D.t > 3.6) {
     for (const f of S.userData.flames) f.visible = false;
     state = 'explore'; player.visible = true; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks();
-    const P = world.planet.P; notice(P.faction, P.name.toUpperCase(), 3400);
+    const P = world.planet.P; notice(P.faction, P.name.toUpperCase(), 3400); sqOnLand(P);
     if (merchantsHere().length) setTimeout(() => lootMsg(`A ${merchantsHere()[0].who.toLowerCase()} has a stall near your ship`, '#eda8d4'), 1800);
   }
 }
@@ -11189,7 +11451,7 @@ function planetTraders(P) {
   const K = TRADER_KIT[sp], m = .82 + r(2) * .45, pr = n => Math.round(n * m);
   const buy = { warpcell: pr(150), crystal: pr(30), metal: pr(45), obsidian: pr(60), scrap: pr(12), medkit: pr(60) };
   if (sp === 'grek') buy.wood = pr(9);
-  return P.traders = [{ id: 'tr-' + P.id, who: K.label, sp, cloth: K.cloth, trim: K.trim, x: -16, z: 22, lines: K.lines, buy, sellMult: +(1.25 - (m - .82)).toFixed(2) }];
+  return P.traders = [{ id: 'tr-' + P.id, pid: P.id, who: K.label, sp, cloth: K.cloth, trim: K.trim, x: -16, z: 22, lines: K.lines, buy, sellMult: +(1.25 - (m - .82)).toFixed(2) }];
 }
 
 const CALL_SEQ = [

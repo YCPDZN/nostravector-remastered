@@ -608,3 +608,25 @@ Open **Diplomacy** from the pause menu, on foot or in space, or from the galaxy 
 - **Lending companions:** offer a companion to another faction and they serve it until you call them home. If you go to war with that faction, they fly in its fleet as a named ace (150 health). Shoot their ship down and they eject and rejoin your crew. Win the war and they come home too. Companions never die.
 - **Crew:** bring the **Project BC** characters (Josiah Richards, Peter Chambers, Gareth Williams, Kevin Murderhorn), **Lord Sevirrus**, or any character you've created aboard as companions. They follow you, fight with their own weapons, mine, and take the same five orders as Orion and James (1 Mine · 2 Explore · 3 Base · 4 Wander · 5 Follow, or the companion panel). Send them home whenever you like.
 
+## Side quests (Chapters III–V)
+**119 hand-written side quests**, so the galaxy isn't empty. Each trader stall on the planets lists work under **Jobs**: two offers per stall (three on the Federation's worlds), chosen by who runs it:
+
+| Offered by | Quests |
+|---|---|
+| Erisian merchants and bodyguards | 24 |
+| The Chompy Empire | 24 |
+| The Grek and the Order of Archamus | 20 |
+| The Catharsis (Chapter III only, while it's neutral) | 10 |
+| Earth's people, on the Federation's worlds of Sol | 15 |
+| Anyone, anywhere | 26 |
+
+- **Objectives:**
+  - Bring materials you can mine (stone, scrap, crystal, ice, obsidian, wood, cloth, metal plates).
+  - Shoot down a number of hostile ships.
+  - Deliver something to a world in a nearby system. The quest ends when you land there.
+  - Survey a nearby system. It ends when you drop out of warp there.
+  - Settle a debt, donation or bribe at the stall.
+  - Materials and bounties are handed in at the stall where you took the job.
+- **Choices and alignment:** most quests end in a choice. The kind option moves you towards **hero** and the cruel one towards **villain**, by only **2 to 5 points**, and some choices are neutral. Reaching **100** either way takes dozens of quests down the same path. Your companions react to every choice, as with other good and evil deeds. Rewards are units and XP, and the cruel choice usually pays more.
+- **Quest log:** **Side quests** in the pause menu shows up to 6 active quests with their progress, lets you track or abandon them, lists what you've finished, and shows your alignment between villain and hero. The tracked quest appears under your objectives, on foot and in space, and the galaxy map marks every system where one of your quests ends with a gold diamond.
+
