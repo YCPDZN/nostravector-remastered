@@ -9769,7 +9769,7 @@ const SYSTEMS = [
     ] }
 ];
 
-/* ---- 90 more systems, generated from a fixed seed, so the galaxy is the same on every device and in every save. They sit on
+/* ---- 490 more systems, generated from a fixed seed (the first 90 came first and are unchanged), so the galaxy is the same on every device and in every save. They sit on
    the spiral arms drawn on the galaxy map; those near Steca Prime and Janira Proxima belong to the Chompy Empire. ---- */
 (function genGalaxy() {
   let sd = 20261109; const R = () => (sd = (sd * 48271) % 2147483647) / 2147483647, pick = a => a[Math.floor(R() * a.length)], G = () => (R() + R() + R() - 1.5) / 1.5;
@@ -9794,10 +9794,10 @@ const SYSTEMS = [
     if (type === 'gas') { const gh = R() < .3 ? 190 + R() * 40 : h; return Object.assign(P, { kind: 'gas', r: 4500 + R() * 5200, bands: Array.from({ length: 3 + Math.floor(R() * 3) }, () => hsl(gh + G() * 18, 25 + R() * 35, 45 + R() * 35)), rings: R() < .35, spot: R() < .2, atmo: hsl(gh, 60, 82), faction: R() < .35 && gh > 180 && gh < 240 ? 'Ice giant · no surface' : 'Gas giant · no surface' }); }
     const bh = R() < .5 ? 30 : 220; return Object.assign(P, { kind: 'rock', c: { low: hsl(bh, 8 + R() * 10, 32 + R() * 15), mid: hsl(bh, 8, 55 + R() * 15), rock: hsl(bh, 8, 22) }, atmo: null, sky: ['#030305', '#0e0e12'], fog: '#18181c' }); // barren
   };
-  for (let n = 0; n < 90; n++) {
-    let x, y, tries = 0;
+  for (let n = 0; n < 490; n++) {
+    let x, y, tries = 0; const gap = n < 90 ? .05 : .028; // the later systems pack in closer
     do { const arm = Math.floor(R() * 4), major = arm < 2, t = .1 + Math.pow(R(), .8) * .85, a = arm * Math.PI / 2 + (major ? 0 : .35) + Math.log(t * 9 + 1) * 2.25 + G() * (.22 + .25 * (1 - t)), rr = t * .96 + G() * .05; x = Math.cos(a) * rr; y = Math.sin(a) * rr; }
-    while (SYSTEMS.some(S => Math.hypot(S.map.x - x, S.map.y - y) < .05) && ++tries < 80);
+    while (SYSTEMS.some(S => Math.hypot(S.map.x - x, S.map.y - y) < gap) && ++tries < 80);
     let name; do name = pick(A) + pick(B) + pick(SUF); while (used.has(name)); used.add(name);
     const base = name.replace(/ \w+$/, m => SUF.includes(m) ? '' : m), id = 'g' + (n + 1), st = starOf();
     const chompy = Math.hypot(x + .09, y + .07) < .3 || Math.hypot(x + .5, y + .12) < .22, fac = chompy ? 'The Chompy Empire' : UNCLAIMED;
@@ -10173,18 +10173,18 @@ function galEl() {
     <div class="gal-panel hidden" id="galPanel"></div><div class="gal-hint">${SYSTEMS.length} systems · zoom in to name them all · drag to pan · tap a system · M or ESC to close</div>`;
   document.body.appendChild(el);
   el.querySelector('#galX').addEventListener('click', () => { sfx.click(); galClose(); });
-  for (const b of el.querySelectorAll('.gal-zoom button')) b.addEventListener('click', () => { GAL.zoom = clamp(GAL.zoom * +b.dataset.z, .7, 7); sfx.blip(); });
+  for (const b of el.querySelectorAll('.gal-zoom button')) b.addEventListener('click', () => { GAL.zoom = clamp(GAL.zoom * +b.dataset.z, .7, 11); sfx.blip(); });
   const cv = el.querySelector('#galCv');
   cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); GAL.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); GAL.moved = 0; GAL.pinch = 0; GAL.panTo = null; });
   cv.addEventListener('pointermove', e => {
     const p = GAL.ptrs.get(e.pointerId); if (!p) return;
     if (GAL.ptrs.size === 1) { const k = galScale(); GAL.pan.x -= (e.clientX - p.x) / k; GAL.pan.y -= (e.clientY - p.y) / k; GAL.moved += Math.abs(e.clientX - p.x) + Math.abs(e.clientY - p.y); }
     p.x = e.clientX; p.y = e.clientY;
-    if (GAL.ptrs.size === 2) { const [a, b] = [...GAL.ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (GAL.pinch) GAL.zoom = clamp(GAL.zoom * d / GAL.pinch, .7, 7); GAL.pinch = d; GAL.moved = 99; }
+    if (GAL.ptrs.size === 2) { const [a, b] = [...GAL.ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (GAL.pinch) GAL.zoom = clamp(GAL.zoom * d / GAL.pinch, .7, 11); GAL.pinch = d; GAL.moved = 99; }
   });
   const up = e => { if (!GAL.ptrs.has(e.pointerId)) return; GAL.ptrs.delete(e.pointerId); if (!GAL.ptrs.size && GAL.moved < 8) galPick(e.clientX, e.clientY); if (GAL.ptrs.size < 2) GAL.pinch = 0; };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', e => GAL.ptrs.delete(e.pointerId));
-  cv.addEventListener('wheel', e => { e.preventDefault(); GAL.zoom = clamp(GAL.zoom * (e.deltaY > 0 ? .9 : 1.11), .7, 7); }, { passive: false });
+  cv.addEventListener('wheel', e => { e.preventDefault(); GAL.zoom = clamp(GAL.zoom * (e.deltaY > 0 ? .9 : 1.11), .7, 11); }, { passive: false });
   el.querySelector('#galPanel').addEventListener('click', e => { const b = e.target.closest('[data-warp]'); if (b && !b.disabled) galWarp(b.dataset.warp); });
   return el;
 }
@@ -10234,16 +10234,16 @@ function galDraw(dt) {
   }
   const vis = (wanderer.ch3 && wanderer.ch3.visited) || [], font = getComputedStyle(document.body).getPropertyValue('--display');
   for (const S of SYSTEMS) { // faction territory, a soft wash behind each claimed system
-    const fc = FAC_COL[S.faction]; if (!fc) continue; const p = galXY(S), rr = 26 + 14 * GAL.zoom;
+    const fc = FAC_COL[S.faction]; if (!fc) continue; const p = galXY(S), rr = (S.gen ? 16 : 26) + (S.gen ? 8 : 14) * GAL.zoom;
     if (p.x < -rr || p.x > W + rr || p.y < -rr || p.y > H + rr) continue;
     const gr = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr); gr.addColorStop(0, fc + '30'); gr.addColorStop(1, fc + '00'); g.fillStyle = gr; g.beginPath(); g.arc(p.x, p.y, rr, 0, 7); g.fill();
   }
-  const allLabels = GAL.zoom >= 4;
+  const allLabels = GAL.zoom >= 5.5;
   for (const S of SYSTEMS) {
     const p = galXY(S); if (p.x < -80 || p.x > W + 80 || p.y < -80 || p.y > H + 80) continue;
-    const hole = S.star.kind === 'hole', gr0 = S.gen ? 10 : 16, glow = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, gr0);
-    glow.addColorStop(0, hole ? 'rgba(255,190,120,.9)' : S.star.col); glow.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = glow; g.beginPath(); g.arc(p.x, p.y, gr0, 0, 7); g.fill();
-    g.fillStyle = hole ? '#000' : S.star.col; g.beginPath(); g.arc(p.x, p.y, hole ? 4.5 : S.gen ? 2.4 : 3.6, 0, 7); g.fill();
+    const hole = S.star.kind === 'hole', gr0 = S.gen ? 10 : 16;
+    if (!S.gen || GAL.zoom >= 2.2 || S === sel || S === cur) { const glow = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, gr0); glow.addColorStop(0, hole ? 'rgba(255,190,120,.9)' : S.star.col); glow.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = glow; g.beginPath(); g.arc(p.x, p.y, gr0, 0, 7); g.fill(); }
+    g.fillStyle = hole ? '#000' : S.star.col; g.beginPath(); g.arc(p.x, p.y, hole ? 4.5 : S.gen ? (GAL.zoom < 1.6 ? 1.5 : 2.4) : 3.6, 0, 7); g.fill();
     if (hole) { g.strokeStyle = '#ffcf8a'; g.lineWidth = 1.2; g.beginPath(); g.ellipse(p.x, p.y, 9, 3.4, -.2, 0, 7); g.stroke(); }
     if (!vis.includes(S.id) && (!S.gen || allLabels)) { g.strokeStyle = 'rgba(207,238,255,.35)'; g.lineWidth = 1; g.beginPath(); g.arc(p.x, p.y, 7, 0, 7); g.stroke(); }
     if (S === cur) { g.save(); g.translate(p.x, p.y); g.rotate(t * .8); g.strokeStyle = '#9fe6ff'; g.lineWidth = 1.4; g.strokeRect(-9, -9, 18, 18); g.restore(); }

@@ -507,7 +507,7 @@ After the escape from New London, **Chapter III · Sol** begins in your ship, ju
 - **Next stages:** mining and traders.
 
 ## Chapter III · The galaxy map and the warp (stage 2)
-- **Galaxy map:** press **M** in space (or tap **GALAXY MAP**). It shows the spiral disc at a tilt with all **100** systems on it. Drag to pan, scroll, pinch or use + / − to zoom, and tap a system to read about it: its star, faction, worlds and distance in light-years. Your system has a spinning marker, the one you've picked gets brackets and a dashed jump line, and systems you haven't visited have a faint ring. Faction space is tinted (Chompy Empire orange, the Order of Archamus gold, the Federation blue). The generated systems are dots until you zoom in close, then all their names appear. The top of the map counts how many you've visited.
+- **Galaxy map:** press **M** in space (or tap **GALAXY MAP**). It shows the spiral disc at a tilt with all **500** systems on it. Drag to pan, scroll, pinch or use + / − to zoom, and tap a system to read about it: its star, faction, worlds and distance in light-years. Your system has a spinning marker, the one you've picked gets brackets and a dashed jump line, and systems you haven't visited have a faint ring. Faction space is tinted (Chompy Empire orange, the Order of Archamus gold, the Federation blue). The generated systems are small dots until you zoom in, get their glow as you get closer, and are all named once you're zoomed right in (zoom goes much further now). The top of the map counts how many you've visited.
 - **Ten hand-made systems:**
   - **Sol:** now with **Eris**, the Erisians' frozen homeworld, and its moon **Dysnomia** beyond Neptune.
   - **Malana Prime** (the Order of Archamus): **Archiostal**, the Grek garden station, a slowly turning ring of forest under glass that orbits Malana (docking comes later); Malana, where Am-Grek was born; and a gas giant.
@@ -516,10 +516,10 @@ After the escape from New London, **Chapter III · Sol** begins in your ship, ju
   - **Janira Proxima** (Chompy Empire): a red dwarf with Janira Prime.
   - **Five uncharted systems:** Thalassa Reach (an ocean world), Cinder Vey (lava world Vey and its moon Ash), Nadir (a dying red sun and frozen worlds), Ossian Drift (a blue giant, a desert world and a ringed giant) and Halcyon (green Verdance and its moon Lull).
   - Every rocky world and moon can be landed on, and each star has its own colour and light.
-- **90 more systems**, generated from a fixed seed, so the galaxy is the same on every device and in every save:
+- **490 more systems**, generated from a fixed seed, so the galaxy is the same on every device and in every save. The first 90 are unchanged from before, so saves made in them still work:
   - **Stars:** red, orange, yellow and white dwarfs, white stars, and blue and orange giants, each with a spectral class.
   - **Worlds:** 1 to 5 each, from lush and ocean worlds to arid, lava, toxic, frozen and barren ones, plus gas and ice giants (some ringed) and moons. Hot worlds sit close to their star and giants further out.
-  - **Factions:** the 23 systems around Steca Prime and Janira Proxima belong to the Chompy Empire; the rest are unclaimed.
+  - **Factions:** the 114 systems around Steca Prime and Janira Proxima belong to the Chompy Empire; the rest are unclaimed.
 - **Lore:** the **Erisian Empire is a puppet state of the Chompy Empire**, and the **Order of Archamus** controls Archiostal and holds the **Grek Empire as its puppet state**. The Nostrapedia (Vishara, Hak Chompjak V, Am-Grek and Archamus), the species lore and the galaxy map all say so.
 - **Warp:** pick a system and press **WARP**. The drive spools up, the stars stretch into a tunnel tinted towards the star you're heading for, there's a white-out, and you drop out beside the system's main world. You can't fly into stars or the black hole.
 - **Warp cells:** each jump burns one. You start Chapter III with **5**. Craft more from the inventory: **2 metal plates, 2 frost crystals, 2 scrap metal** each.
