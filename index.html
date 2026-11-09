@@ -773,7 +773,7 @@ button.bm-c.no{opacity:.45}
 
 #alignScr{z-index:27}
 #dipScr{z-index:32}
-#sqScr{z-index:33}#sqDlg{z-index:36}
+#sqScr{z-index:33}#sqDlg,#sqGiv{z-index:36}
 .sq-panel{max-width:620px;width:min(620px,94vw);max-height:calc(100dvh - var(--st) - var(--sb) - 60px);overflow:auto}
 .sq-choices{display:flex;flex-direction:column;gap:10px;width:100%}
 .sq-choices .btn{width:100%;flex-direction:column;height:auto;padding:12px 16px;gap:6px}
@@ -4705,6 +4705,8 @@ async function interact() {
     pickUpPlaced(n.ref);
   } else if (n.id === 'dismantle') {
     dismantle(n.ref);
+  } else if (n.id === 'qgiver') {
+    giverTalk(n.ref);
   } else if (n.id === 'merchant') {
     openShop(n.ref);
   } else if (n.id === 'tele') {
@@ -5533,6 +5535,15 @@ const MERCHANTS = {
 const SELL = { stone: 2, ice: 1, scrap: 5, crystal: 12, cloth: 6, blubber: 4, feather: 3, wood: 4, metal: 18, obsidian: 22, warpcell: 60 };
 const sellPrice = id => Math.max(1, Math.round(SELL[id] * ((ex.shop && ex.shop.sellMult) || 1)));
 const merchantsHere = () => MERCHANTS[curArea()] || [];
+function makeCathFigure() { // a tall robed shape with violet eyes and a hood of spines (the Catharsis has no rigged model)
+        const robe = new THREE.MeshStandardMaterial({ color: 0x0e0a16, roughness: .6, metalness: .3, flatShading: true }), eyeM = new THREE.MeshBasicMaterial({ color: 0xc9a2ff }), f = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.ConeGeometry(.55, 2.1, 7), robe); body.position.y = 1.05; f.add(body);
+        const hood = new THREE.Mesh(new THREE.ConeGeometry(.32, .8, 7), robe); hood.position.y = 2.35; f.add(hood);
+        for (const sx of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(.045, 6, 5), eyeM); e.position.set(sx * .1, 2.22, .24); f.add(e); }
+        for (let i = 0; i < 4; i++) { const sp2 = new THREE.Mesh(new THREE.ConeGeometry(.05, .7, 4), robe), a = i / 3 * 1.4 - .7; sp2.position.set(Math.sin(a) * .35, 2.1, -.25); sp2.rotation.set(-.6, 0, a); f.add(sp2); }
+        const gl = glowSprite(0x9a5cff, 1.4, .5); gl.position.set(0, 2.22, .3); f.add(gl);
+        f.traverse(o => { if (o.isMesh) o.castShadow = true; }); return f;
+}
 function setupMerchants() {
   for (const m of merchantsHere()) {
     if (m.seed !== world.seed) {
@@ -5550,15 +5561,7 @@ function setupMerchants() {
       g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       wScene.add(g); m.stall = g;
       const sp = m.sp || 'erisian', el = sp === 'catharsis' ? null : document.getElementById('sp_' + sp);
-      if (sp === 'catharsis') {
-        const robe = new THREE.MeshStandardMaterial({ color: 0x0e0a16, roughness: .6, metalness: .3, flatShading: true }), eyeM = new THREE.MeshBasicMaterial({ color: 0xc9a2ff }), f = new THREE.Group();
-        const body = new THREE.Mesh(new THREE.ConeGeometry(.55, 2.1, 7), robe); body.position.y = 1.05; f.add(body);
-        const hood = new THREE.Mesh(new THREE.ConeGeometry(.32, .8, 7), robe); hood.position.y = 2.35; f.add(hood);
-        for (const sx of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(.045, 6, 5), eyeM); e.position.set(sx * .1, 2.22, .24); f.add(e); }
-        for (let i = 0; i < 4; i++) { const sp2 = new THREE.Mesh(new THREE.ConeGeometry(.05, .7, 4), robe), a = i / 3 * 1.4 - .7; sp2.position.set(Math.sin(a) * .35, 2.1, -.25); sp2.rotation.set(-.6, 0, a); f.add(sp2); }
-        const gl = glowSprite(0x9a5cff, 1.4, .5); gl.position.set(0, 2.22, .3); f.add(gl);
-        f.traverse(o => { if (o.isMesh) o.castShadow = true; }); f.position.set(0, 0, -.2); g.add(f);
-      }
+      if (sp === 'catharsis') { const f = makeCathFigure(); f.position.set(0, 0, -.2); g.add(f); }
       if (el) {
         const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
@@ -5775,7 +5778,7 @@ function updateSurvival(dt) {
   const hb = $('#heatBar'), hv = suitHeat(); hb.firstChild.style.transform = `scaleX(${hv / 100})`; hb.classList.toggle('on', hv < 99.5 || (ch1().stormTalk && !ch1().stormOver)); hb.classList.toggle('low', hv < 30);
   const jb = $('#jetBar'); jb.firstChild.style.transform = `scaleX(${(ex.jet == null ? 100 : ex.jet) / 100})`; jb.classList.toggle('on', ex.jet != null && ex.jet < 99.5); jb.classList.toggle('low', ex.jet < 15);
   // placement preview, teleporter rings, merchants
-  updateBuildGhost(); tickMerchants(dt);
+  updateBuildGhost(); tickMerchants(dt); giversTick(dt);
   for (const b of world.build) if (b.mesh.userData.spin) b.mesh.userData.spin.rotation.z += dt * 1.5;
   if (world.stationTp) world.stationTp.userData.spin.rotation.z += dt * 1.5;
   const it = selItem();
@@ -11321,13 +11324,108 @@ function sqRenderJournal() {
   const here = isPl() && world.planet ? world.planet.P.id : null;
   let h = `<div class="panel dip-panel"><div class="eyebrow">${done} of ${SQ.length} side quests done</div><h2 class="h1">SIDE QUESTS</h2>
     <div class="sq-al"><span>VILLAIN</span><i><u style="left:${(al + 100) / 2}%"></u></i><span>HERO</span></div><p class="sq-note">Alignment ${al > 0 ? '+' : ''}${Math.round(al)} · ${alRank(al)}. Each quest's choice moves it a few points. It takes a great many to reach 100 either way.</p><div class="dip-body">`;
-  if (!act.length) h += `<div class="dip-card"><p>No side quests yet. Traders on the planets offer work: look under Jobs at any stall.</p></div>`;
+  if (!act.length) h += `<div class="dip-card"><p>No side quests yet. Talk to the people standing by the trader stalls on the planets, or look under Jobs at any stall. In Chapter V the leaders themselves have work for you.</p></div>`;
   for (const [id, A] of act) { const q = sqById(id), ready = sqReady(q, A), canHere = ready && (q.k === 'pay' || A.at === here);
     h += `<div class="dip-card" style="--fc:${S.track === id ? '#ffd36a' : '#c7b4ff'}"><h4>${q.t.toUpperCase()}<small>${q.g}${S.track === id ? ' · tracked' : ''}</small></h4><p>${q.d}</p><p class="sq-obj">${sqGoal(q, A)}${ready && !canHere ? ' · ready: hand it in at the stall' : ''}</p><div class="dip-row">${S.track === id ? '' : `<button class="btn small" data-sqj="track:${id}"><span>Track</span></button>`}${canHere ? `<button class="btn small primary" data-sqj="turnin:${id}"><span>Hand in</span></button>` : ''}<button class="btn small" data-sqj="drop:${id}"><span>Abandon</span></button></div></div>`; }
   const recent = Object.keys(S.done).slice(-8).reverse();
   if (recent.length) h += `<div class="dip-card" style="--fc:#7fe0a0"><h4>RECENTLY DONE</h4>${recent.map(id => { const q = sqById(id), c = q && q.c[S.done[id]]; return q ? `<p>${q.t} · <i>${c ? c[0] : ''}</i></p>` : ''; }).join('')}</div>`;
   h += `</div><div class="row"><button class="btn primary" data-sqj="close"><span>Back</span></button></div></div>`;
   $('#sqScr').innerHTML = h;
+}
+
+/* ---- Chapter V: the leaders themselves give quests (unless you're at war with them, or their faction is gone) ---- */
+const SQ_LEADER_ROWS = [
+  ['L-hak1', 'leader:hak', 'The Emperor’s Peace', 'Emperor Hak Chompjak V', 'The war is over, and my empire is tired. Pirates prey on the convoys bringing grain to the poor worlds. Clear them, wanderer.', 'hunt:6', [['Clear them for the poor worlds', 5, 400, 'The convoys get through. The Emperor bows his head to you.'], ['Clear them, then sell the convoy routes', -5, 700, 'The convoys get through this time. Next time they won’t.']]],
+  ['L-hak2', 'leader:hak', 'A Blind Man’s Gift', 'Emperor Hak Chompjak V', 'I was blind for three hundred years. There is a healer on another world who restores sight to children. Take her this, from me.', 'deliver', [['Deliver it', 5, 300, 'A hundred children will see their mothers’ faces.'], ['Keep it', -6, 800, 'It was a fortune. The children stay in the dark.']]],
+  ['L-hak3', 'leader:hak', 'Obsidian for the Fallen', 'Emperor Hak Chompjak V', 'Carax cost us dearly. I am carving the names of the fallen in obsidian. Help me finish.', 'mine:obsidian:6', [['Help carve the names', 5, 200, 'The Emperor carves the last name himself, and weeps.'], ['Sell him the obsidian at a profiteer’s price', -4, 600, 'He pays without looking at you.']]],
+  ['L-vis1', 'leader:vishara', 'A Billion Years of Patience', 'Vishara Erisconos, Matriarch of Eris', 'I have outlived every empire I have known. Survey a system for me: I want to see something new before I sleep.', 'visit', [['Tell her honestly what you saw', 4, 300, 'She listens with her eyes closed, and smiles for the first time in an age.'], ['Embellish it to flatter her', -2, 450, 'She knows. She always knows. She lets it pass.']]],
+  ['L-vis2', 'leader:vishara', 'The Houses’ Feud', 'Vishara Erisconos, Matriarch of Eris', 'Two great houses have feuded for ten thousand years. I have written a peace. Carry it to the house that holds out.', 'deliver', [['Carry the peace', 5, 350, 'Ten thousand years end with a signature.'], ['Sell the treaty’s terms to the other house first', -5, 700, 'The feud runs another ten thousand years.']]],
+  ['L-vis3', 'leader:vishara', 'A Debt to the Chompjaks', 'Vishara Erisconos, Matriarch of Eris', 'Eris owes the house of Chompjak more than it can pay. A gift of crystal, from me to the Emperor, is a start.', 'mine:crystal:8', [['Give it in her name', 4, 250, 'The Emperor sends his thanks to Eris, and to you.'], ['Sell it to her at a premium', -3, 600, 'The gift arrives, smaller than she meant.']]],
+  ['L-dar1', 'leader:darius', 'Rebuilding Sol', 'President Darius Ancin', 'Hawthorne is gone. The Federation has to rebuild what he broke. Metal plates for the shipyards, please.', 'mine:metal:4', [['Donate them to the shipyards', 5, 200, 'The first new ship is named after you.'], ['Sell them at war prices', -3, 600, 'Darius pays. The shipyards build one ship fewer.']]],
+  ['L-dar2', 'leader:darius', 'Terra Imperia’s Remnants', 'President Darius Ancin', 'Some of Hawthorne’s people still fly. Bring them down, or bring them home. I don’t care which, as long as it’s over.', 'hunt:5', [['Bring them in alive where you can', 5, 400, 'Most of them are just tired. Darius pardons them.'], ['Leave no survivors', -5, 500, 'It’s over. It didn’t have to be like that.']]],
+  ['L-dar3', 'leader:darius', 'A Speech for the Dead', 'President Darius Ancin', 'I am giving a speech for everyone we lost at Carax. Carry copies to the worlds that fought beside us.', 'deliver', [['Carry it faithfully', 4, 300, 'His words are read aloud on worlds he’ll never see.'], ['Rewrite it to make yourself the hero', -4, 400, 'The worlds hear about you. Not about the dead.']]],
+  ['L-arc1', 'leader:archamus', 'The Prime Good’s Errand', 'Archamus, the Prime Good', 'There is a system where something of my father’s lingers. Survey it. Do not stay long.', 'visit', [['Report it, and stay away', 5, 300, 'Archamus thanks you. You feel lighter, somehow.'], ['Linger, and take what you find there', -6, 900, 'You bring something back with you. It whispers.']]],
+  ['L-arc2', 'leader:archamus', 'Gardens Without the Order', 'Archamus, the Prime Good', 'The Order is folded into the Grek now, and the gardens of Archiostal have fewer hands. Wood for the canopy.', 'mine:wood:8', [['Give it to the gardens', 4, 200, 'The canopy holds another century.'], ['Sell it to them dear', -3, 500, 'The canopy holds. Archamus says nothing.']]],
+  ['L-arc3', 'leader:archamus', 'Mercy', 'Archamus, the Prime Good', 'Some of the Catharsis’s servants survived Carax. They are frightened, and they are hunted. Help me feed them.', 'pay:400', [['Pay for their food', 6, -400, 'Archamus asks for nothing more. That is how you know it mattered.'], ['Refuse', 0, 0, 'He understands. He is patient.'], ['Report where they hide to their hunters', -6, 500, 'The hunters find them.']]],
+  ['L-amg1', 'leader:amgrek', 'The Hierarch’s Pilgrimage', 'Am-Grek, High Hierarch', 'I was born on Malana. I have not seen my mother’s grave in four hundred years. Carry an offering for me.', 'deliver', [['Carry it slowly, carefully', 5, 300, 'The offering lies on the grave. Am-Grek is quiet for a long time.'], ['Sell it', -5, 700, 'The grave stays bare.']]],
+  ['L-amg2', 'leader:amgrek', 'The Stain on a Righteous Life', 'Am-Grek, High Hierarch', 'I subjugated the Catharsis, and it came back to destroy us. Help me make amends: stone for a memorial to all who died.', 'mine:stone:12', [['Build the memorial with him', 5, 200, 'Am-Grek carves the first stone himself.'], ['Sell him the stone at a markup', -3, 500, 'The memorial is built. It is smaller than he wanted.']]],
+  ['L-amg3', 'leader:amgrek', 'Archamus’s Law', 'Am-Grek, High Hierarch', 'Pirates raid Grek pilgrims. Archamus’s law is clear. Enforce it.', 'hunt:5', [['Enforce it, and spare those who surrender', 4, 400, 'The pilgrims are safe, and the law was merciful.'], ['Enforce it without mercy', -3, 500, 'The pilgrims are safe. The law was not kind.']]]
+];
+for (const [id, at, t, g, d, o, c] of SQ_LEADER_ROWS) { const [k, a, b] = o.split(':'); SQ.push({ id, at, t, g, d, k, item: k === 'mine' ? a : null, n: k === 'mine' ? +b : k === 'hunt' || k === 'pay' ? +(a || 0) : 0, c, leader: at.slice(7) }); }
+const SQ_LEADERS = [
+  { id: 'hak', name: 'EMPEROR HAK CHOMPJAK V', fac: 'chompy', world: 'aridaxx', model: 'leader_chompy', h: 2.05 },
+  { id: 'vishara', name: 'VISHARA ERISCONOS', fac: 'erisian', world: 'eris', model: 'leader_erisian', h: 2.0 },
+  { id: 'darius', name: 'PRESIDENT DARIUS ANCIN', fac: 'hfos', world: 'earth', model: 'leader_human', h: 1.86 },
+  { id: 'archamus', name: 'ARCHAMUS', fac: 'grek', world: 'malana', model: 'prime', h: 3.1 },
+  { id: 'amgrek', name: 'AM-GREK, HIGH HIERARCH', fac: 'grek', world: 'malana', model: 'sp_grek', h: 2.2 }
+];
+const leaderFree = L => (wanderer.chapter | 0) >= 5 && !dipWar(L.fac) && !['destroyed', 'subjugated'].includes(dipRes(L.fac));
+const leaderNext = L => SQ.find(q => q.leader === L.id && !sqs().done[q.id]);
+/* ---- quest givers: the people behind the jobs stand near the stall, and the Chapter V leaders on their worlds ---- */
+const GIVERS = { list: [], area: null, busy: false };
+const giverSpecies = (q, m) => q.at === 'sol' ? 'human' : ['erisian', 'chompy', 'grek', 'catharsis'].includes(q.at) ? q.at : (() => { let h = 0; for (const ch of q.id) h += ch.charCodeAt(0); return ['human', 'erisian', 'chompy', 'grek'][h % 4]; })();
+async function giverRig(sp, h, name) {
+  if (sp === 'catharsis') { const g = new THREE.Group(); g.add(makeCathFigure()); return { root: g, static: true }; }
+  if (sp === 'human') { let k = 0; for (const ch of name) k += ch.charCodeAt(0); const cols = [[0x3a4a5e, 0x2a2a30], [0x6a4a2e, 0x34302a], [0x2e5a4a, 0x22262a], [0x7a2e2e, 0x2a2a2a], [0x4a4a6a, 0x30303a]]; return humanRig({ name, c: cols[k % cols.length], skin: k % 6, female: k % 2 === 0 }); }
+  const src = await townModel(sp); if (!src) return null;
+  let k = 0; for (const ch of name) k += ch.charCodeAt(0);
+  const pal = { erisian: [[0x5b6475, 0xeda8d4], [0x3e4656, 0xb8c8e8], [0x6a5a74, 0xf0d0e8]], chompy: [[0x4a2f6a, 0x69b8ea], [0x6a3a2a, 0xe8b860], [0x2f4a6a, 0x9ad0ff]], grek: [[0x5a6a52, 0xc5a87c], [0x6a5a42, 0xd8c08a], [0x4a5a62, 0xa8c8b8]] }[sp] || [[0x555555, 0xaaaaaa]];
+  const R = autoRig(dressTownsfolk(src, { sp, name, c: pal[k % pal.length] }), SPECIES[sp].height * .98); armRig(R, 'none'); try { bakeRig(R); } catch (e) {} return R;
+}
+async function leaderRig(L) {
+  if (L.model === 'prime') { const p = PEDIA_PRIMES.find(o => o.tag === 'prArchamus'); const h = SkeletonUtils.clone(await loadPrime(p)); const g = new THREE.Group(); g.add(h); const gl = glowSprite(0xffd88a, 3.4, .45); gl.position.y = 2.4; g.add(gl); return { root: g, static: true }; }
+  const src = L.model === 'sp_grek' ? await townModel('grek') : await embGlb(L.model); if (!src) return null;
+  const R = autoRig(SkeletonUtils.clone(src), L.h); armRig(R, 'none'); try { bakeRig(R); } catch (e) {} return R;
+}
+async function placeGivers() {
+  for (const G of GIVERS.list) if (G.R && G.R.root.parent) G.R.root.parent.remove(G.R.root);
+  GIVERS.list = []; GIVERS.area = curArea();
+  if (!isPl() || (wanderer.chapter | 0) < 3) return;
+  const P = world.planet.P, m = merchantsHere()[0], S = sqs(), area = GIVERS.area, want = [];
+  if (m) { // the people whose jobs are posted here, and anyone waiting for you to hand one in
+    const here = [...sqOffers(m), ...Object.entries(S.act).filter(([, A]) => A.at === P.id).map(([id]) => sqById(id)).filter(q => q && !q.leader && q.k !== 'deliver' && q.k !== 'visit')];
+    here.forEach((q, i) => { const a = .9 + i * 1.05; want.push({ q: q.id, name: q.g.split(',')[0].toUpperCase(), sp: giverSpecies(q, m), x: m.px + Math.cos(a) * 5.5, z: m.pz + Math.sin(a) * 5.5 }); });
+  }
+  SQ_LEADERS.filter(L => L.world === P.id && leaderFree(L)).forEach((L, i) => want.push({ leader: L.id, name: L.name, x: 14 + i * 3.4, z: 16 - i * 1.2 }));
+  for (const w of want) {
+    try {
+      const R = w.leader ? await leaderRig(SQ_LEADERS.find(L => L.id === w.leader)) : await giverRig(w.sp, 1.8, w.name);
+      if (!R || GIVERS.area !== area || curArea() !== area) continue;
+      let x = w.x, z = w.z; for (let i = 0; i < 30 && plSeaY() != null && wHeight(x, z) < plSeaY() + .6; i++) { x += 3; z -= 2; }
+      R.root.position.set(x, wHeight(x, z), z); R.root.rotation.y = Math.atan2(-x, 6 - z); wScene.add(R.root);
+      GIVERS.list.push(Object.assign(w, { R, x, z }));
+    } catch (e) { console.warn('quest giver failed', w.name, e); }
+  }
+}
+function giversTick(dt) {
+  if (!GIVERS.list.length) return;
+  if (GIVERS.area !== curArea()) { for (const G of GIVERS.list) if (G.R.root.parent) G.R.root.parent.remove(G.R.root); GIVERS.list = []; return; }
+  const p = player.position;
+  for (const G of GIVERS.list) {
+    const d = Math.hypot(p.x - G.x, p.z - G.z);
+    if (d < 10) G.R.root.rotation.y = angLerp(G.R.root.rotation.y, Math.atan2(p.x - G.x, p.z - G.z), Math.min(1, dt * 3));
+    if (!G.R.static) { try { G.R.mode = 'idle'; animRig(G.R, dt); } catch (e) { G.R.static = true; } }
+  }
+}
+function giverNear(p) { for (const G of GIVERS.list) if (Math.hypot(G.x - p.x, G.z - p.z) < 2.8) return G; return null; }
+function giverTalk(G) {
+  const S = sqs(), L = G.leader && SQ_LEADERS.find(o => o.id === G.leader), q = L ? (Object.keys(S.act).map(sqById).find(o => o && o.leader === L.id) || leaderNext(L)) : S.done[G.q] ? null : sqById(G.q);
+  let el = $('#sqGiv');
+  if (!el) { el = document.createElement('section'); el.id = 'sqGiv'; el.className = 'screen dim'; document.body.appendChild(el);
+    el.addEventListener('click', e => { const b = e.target.closest('[data-sqg]'); if (!b || b.disabled) return; const [a, id] = b.dataset.sqg.split(':');
+      show(el, false);
+      if (a === 'accept') sqAccept(id, { pid: world.planet.P.id });
+      if (a === 'turnin') sqFinish(id); }); }
+  const name = L ? L.name : G.name;
+  if (!q) { el.innerHTML = `<div class="panel sq-panel"><div class="eyebrow">${name}</div><p class="brief">${L ? 'You have done everything I asked of you, wanderer. Go well.' : 'Thank you again.'}</p><div class="sq-choices"><button class="btn primary" data-sqg="close"><span>Farewell</span></button></div></div>`; show(el, true); return; }
+  const A = S.act[q.id], ready = A && sqReady(q, A), full = Object.keys(S.act).length >= SQ_MAX;
+  const btns = !A ? `<button class="btn primary" data-sqg="accept:${q.id}"${full ? ' disabled' : ''}><span>${full ? `Quest log full (${SQ_MAX})` : 'Accept'}</span></button><button class="btn" data-sqg="close"><span>Not now</span></button>`
+    : ready && A.at === world.planet.P.id ? `<button class="btn primary" data-sqg="turnin:${q.id}"><span>Hand it in</span></button><button class="btn" data-sqg="close"><span>Not yet</span></button>`
+    : `<button class="btn primary" data-sqg="close"><span>I’m on it</span></button>`;
+  el.innerHTML = `<div class="panel sq-panel"><div class="eyebrow">${L ? 'Chapter V · ' : ''}${q.g}</div><h2 class="h1">${q.t.toUpperCase()}</h2><p class="brief">${A ? (ready ? 'You have it? Good.' : `“${q.d}”`) : `“${q.d}”`}</p>
+    <p class="sq-obj" style="text-align:center">${A ? sqGoal(q, A) : q.k === 'mine' ? `Bring ${q.n} ${ITEMS[q.item].name}` : q.k === 'hunt' ? `Shoot down ${q.n} hostile ships` : q.k === 'deliver' ? 'Deliver to a world in a nearby system' : q.k === 'visit' ? 'Survey a nearby system' : 'Settle it here'}</p>
+    <div class="sq-choices">${btns}</div></div>`;
+  show(el, true); sfx.click(); ex.keys.clear();
 }
 
 // ---- landing: down through the air, the ground takes over, the ship settles, and out you get ----
@@ -11354,7 +11452,7 @@ async function landOn(P, dir, place) {
   const nt = planetTraders(P); for (const m of MERCHANTS[key] || []) if (!nt.includes(m) && m.stall) { wScene.remove(m.stall); m.stall = null; } // a stall whose world changed hands goes
   MERCHANTS[key] = nt; for (const m of MERCHANTS[key]) m.seed = null; // its stall finds dry ground near the new spot
   const pl = place || { mode: 'explore', area: 'world', where: key, x: 6, z: 5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI };
-  enterWorld(pl); await placeOrion().catch(() => null);
+  enterWorld(pl); await placeOrion().catch(() => null); placeGivers().catch(() => null);
   // your ship, set down on the ground
   if (!world.landShip) world.landShip = makeShip();
   wScene.add(world.landShip); world.landShip.position.set(0, wHeight(0, 0) + 1.7, 0); world.landShip.rotation.set(0, 0, 0); world.landShip.visible = true;
@@ -12065,6 +12163,7 @@ function updateWorldMode(dt) {
     let bd = 2.6;
     for (const b of world.build) { const dd = Math.hypot(b.data.x - p.x, b.data.z - p.z); if (dd < bd && Math.abs(b.data.y - p.y) < 3.2) { bd = dd; ex.near = { id: 'dismantle', ref: b, label: pieceName(b.data) }; } }
   }
+  if (!ex.near && isPl()) { const G = giverNear(p); if (G) ex.near = { id: 'qgiver', ref: G, label: titleName(G.name) }; } // quest givers
   if (!ex.near) for (const m of merchantsHere()) if (m.px != null && Math.hypot(m.px - p.x, m.pz - p.z) < 3) ex.near = { id: 'merchant', ref: m, label: m.who };
   if (!ex.near) {
     const net = tpNetwork().filter(t => t.area === curArea());
@@ -12090,7 +12189,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { ship: ['Take off · your ship', 'FLY'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
+    const PR = { ship: ['Take off · your ship', 'FLY'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
