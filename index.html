@@ -9829,6 +9829,9 @@ const bodyById = id => ALL_BODIES.find(P => P.id === id);
 const curSys = () => sysById(SPC.sys);
 const curBodies = () => curSys().bodies;
 const galDist = (A, B) => Math.round(Math.hypot(A.map.x - B.map.x, A.map.y - B.map.y) * 50000); // light-years (the disc is ~100,000 across)
+const LY_PER_CELL = 10000; // one warp cell carries you up to 10,000 light-years; longer jumps burn more (Sol to Steca Prime: 4)
+const warpCost = (A, B) => A === B ? 0 : Math.max(1, Math.ceil(galDist(A, B) / LY_PER_CELL));
+const cellsTxt = n => `${n} cell${n === 1 ? '' : 's'}`;
 const planetH = (P, d) => PKIND[P.kind].h(d, P) * (P.amp || (P.amp = P.kind === 'earth' ? 1 : clamp(P.r / 2600, .3, .8))); // smaller worlds, gentler relief
 const planetSea = P => P.sea ? 0 : null;
 // ---- the planet meshes: a cube-sphere, displaced, coloured by height; three levels of detail ----
@@ -10210,12 +10213,13 @@ function galClose(silent) {
 }
 function galPanel() {
   const S = sysById(GAL.sel), here = S.id === SPC.sys, n = have('warpcell'), W3 = wanderer.ch3 || {}, seen = (W3.visited || []).includes(S.id);
+  const cost = warpCost(curSys(), S);
   const kind = P => P.kind === 'station' ? 'Station' : P.kind === 'gas' ? 'No surface' : P.parent ? 'Moon · landable' : 'Landable';
   let btn;
   if (here) btn = `<button class="btn gp-warp" disabled><span>You are here</span></button>`;
-  else if (!n) btn = `<button class="btn gp-warp" disabled><span>Warp · no cells</span></button><div class="gp-why">Craft a warp cell: 2 metal plates · 2 frost crystals · 2 scrap metal</div>`;
-  else btn = `<button class="btn gp-warp" data-warp="${S.id}"><span>Warp · 1 cell (${n} left)</span></button>`;
-  $('#galPanel').innerHTML = `<h3>${S.name.toUpperCase()}</h3><div class="gp-sub">${S.star.type} · ${S.faction}${here ? '' : ` · ${galDist(curSys(), S).toLocaleString()} ly`}${seen ? ' · visited' : ''}</div><p>${S.desc}</p>
+  else if (n < cost) btn = `<button class="btn gp-warp" disabled><span>Warp · ${cellsTxt(cost)}</span></button><div class="gp-why">${n ? `You have ${cellsTxt(n)} · need ${cost - n} more` : 'No warp cells'} · craft them from 2 metal plates · 2 frost crystals · 2 scrap metal each</div>`;
+  else btn = `<button class="btn gp-warp" data-warp="${S.id}"><span>Warp · ${cellsTxt(cost)} (${n - cost} left after)</span></button>`;
+  $('#galPanel').innerHTML = `<h3>${S.name.toUpperCase()}</h3><div class="gp-sub">${S.star.type} · ${S.faction}${here ? '' : ` · ${galDist(curSys(), S).toLocaleString()} ly · ${cellsTxt(cost)}`}${seen ? ' · visited' : ''}</div><p>${S.desc}</p>
     <ul>${S.bodies.map(P => `<li><span>${P.name}</span><small>${P.faction.split(' · ')[0]} · ${kind(P)}</small></li>`).join('')}</ul>${btn}`;
   $('#galPanel').classList.remove('hidden');
 }
@@ -10227,10 +10231,14 @@ function galDraw(dt) {
   g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#010104'; g.fillRect(0, 0, W, H);
   g.save(); g.translate(W / 2 - GAL.pan.x * k, H / 2 - GAL.pan.y * k); g.scale(1, GAL.tilt); g.rotate(GAL.rot); g.drawImage(GAL.img, -k, -k, k * 2, k * 2); g.restore();
   const cur = curSys(), pc = galXY(cur), sel = GAL.sel && sysById(GAL.sel);
+  { const reach = have('warpcell') * LY_PER_CELL / 50000 * k; // how far your warp cells can take you
+    if (reach > 0) { g.save(); g.setLineDash([3, 5]); g.strokeStyle = 'rgba(165,139,255,.55)'; g.fillStyle = 'rgba(165,139,255,.05)'; g.lineWidth = 1; g.beginPath(); g.ellipse(pc.x, pc.y, reach, reach * GAL.tilt, 0, 0, 7); g.fill(); g.stroke(); g.restore();
+      g.font = '500 8px ' + getComputedStyle(document.body).getPropertyValue('--display'); g.fillStyle = 'rgba(199,180,255,.8)'; g.textAlign = 'center'; g.fillText(`WARP RANGE · ${(have('warpcell') * LY_PER_CELL).toLocaleString()} LY`, pc.x, pc.y - reach * GAL.tilt - 6); } }
   if (sel && sel !== cur) { // the jump
     const ps = galXY(sel); g.setLineDash([6, 6]); g.lineDashOffset = -t * 20; g.strokeStyle = 'rgba(199,180,255,.85)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(pc.x, pc.y); g.lineTo(ps.x, ps.y); g.stroke(); g.setLineDash([]);
     g.font = '500 9px ' + getComputedStyle(document.body).getPropertyValue('--display'); g.fillStyle = '#d8ccff'; g.textAlign = 'center';
-    g.fillText(`${galDist(cur, sel).toLocaleString()} LY · 1 WARP CELL`, (pc.x + ps.x) / 2, (pc.y + ps.y) / 2 - 8);
+    const wc = warpCost(cur, sel); g.fillStyle = wc > have('warpcell') ? '#ff9f8f' : '#d8ccff';
+    g.fillText(`${galDist(cur, sel).toLocaleString()} LY · ${wc} WARP CELL${wc === 1 ? '' : 'S'}`, (pc.x + ps.x) / 2, (pc.y + ps.y) / 2 - 8);
   }
   const vis = (wanderer.ch3 && wanderer.ch3.visited) || [], font = getComputedStyle(document.body).getPropertyValue('--display');
   for (const S of SYSTEMS) { // faction territory, a soft wash behind each claimed system
@@ -10264,8 +10272,8 @@ function warpTunnel() {
   SPC.scene.add(L); return SPC.tun = L;
 }
 function galWarp(id) {
-  const S = sysById(id); if (S.id === SPC.sys || !have('warpcell')) return;
-  takeItem('warpcell', 1); galClose(); sfx.warp();
+  const S = sysById(id), cost = warpCost(curSys(), S); if (S.id === SPC.sys || have('warpcell') < cost) return;
+  takeItem('warpcell', cost); galClose(); sfx.warp();
   SPC.warp = { t: 0, to: S.id, col: new THREE.Color(S.star.kind === 'hole' ? '#ffb070' : S.star.col) };
   const tn = warpTunnel(); tn.visible = true; tn.userData.v = 0;
   $('#shMarks').innerHTML = ''; $('#shTarget').textContent = 'IN WARP'; $('#shSub').textContent = `${galDist(curSys(), S).toLocaleString()} light-years to ${S.name}`;
