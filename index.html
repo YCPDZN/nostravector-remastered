@@ -5778,7 +5778,7 @@ function updateSurvival(dt) {
   const hb = $('#heatBar'), hv = suitHeat(); hb.firstChild.style.transform = `scaleX(${hv / 100})`; hb.classList.toggle('on', hv < 99.5 || (ch1().stormTalk && !ch1().stormOver)); hb.classList.toggle('low', hv < 30);
   const jb = $('#jetBar'); jb.firstChild.style.transform = `scaleX(${(ex.jet == null ? 100 : ex.jet) / 100})`; jb.classList.toggle('on', ex.jet != null && ex.jet < 99.5); jb.classList.toggle('low', ex.jet < 15);
   // placement preview, teleporter rings, merchants
-  updateBuildGhost(); tickMerchants(dt); giversTick(dt);
+  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt);
   for (const b of world.build) if (b.mesh.userData.spin) b.mesh.userData.spin.rotation.z += dt * 1.5;
   if (world.stationTp) world.stationTp.userData.spin.rotation.z += dt * 1.5;
   const it = selItem();
@@ -7235,7 +7235,7 @@ function plMats() {
 }
 function plScatter(cx, cz, ox, oz, grp) {
   const W = world.planet, R = planetRes(W.P), M = plMats(), mined = wsState().mined, nodes = [], CH = world.CH, sy = plSeaY();
-  const ok = (x, z) => Math.hypot(x, z) > 30 && !(sy != null && wHeight(x, z) < sy + .4) && !worldBlocked(x, z, true);
+  const Cc = W.city, ok = (x, z) => Math.hypot(x, z) > 30 && !(sy != null && wHeight(x, z) < sy + .4) && !worldBlocked(x, z, true) && !(Cc && Math.hypot(x - Cc.cx, z - Cc.cz) < Cc.R + 25);
   const spot = (salt, i) => [ox + (wHash(cx, cz, salt + i * 2) - .5) * CH, oz + (wHash(cx, cz, salt + 1 + i * 2) - .5) * CH];
   const count = (w, salt) => Math.floor(wHash(cx, cz, salt) * w * 1.6);
   const add = (key, type, x, z, y, r, hp, meshes) => { for (const m of meshes) { m.castShadow = true; m.receiveShadow = true; grp.add(m); } nodes.push({ key, type, x, z, y, r, hp, meshes }); };
@@ -7268,7 +7268,7 @@ function plScatter(cx, cz, ox, oz, grp) {
     ob.position.set(x, y + sz * .7, z); ob.scale.set(1, 1.5, .8); ob.rotation.set(.2, wHash(cx, cz, 1040 + i) * 6, .15);
     add(key, 'obsidian', x, z, y + sz * .8, sz * .8, 5, [ob]);
   }
-  if (R.tree && hdW.barkGeo && wHash(cx, cz, 1100) > .62) { // a grove
+  if (R.tree && hdW.barkGeo && wHash(cx, cz, 1100) > .62 - (W.P.groves || 0)) { // a grove
     const gx = ox + (wHash(cx, cz, 1101) - .5) * CH * .6, gz = oz + (wHash(cx, cz, 1102) - .5) * CH * .6, n = 2 + Math.floor(wHash(cx, cz, 1103) * 6);
     for (let i = 0; i < n; i++) {
       const key = `pt${cx}_${cz}_${i}`, x = gx + (wHash(cx, cz, 1110 + i) - .5) * 16, z = gz + (wHash(cx, cz, 1120 + i) - .5) * 16; if (mined[key] || !ok(x, z)) continue;
@@ -7409,7 +7409,7 @@ function buildWorld(seed) {
 }
   }
 function worldBlocked(x, z, stationOnly, y = player.position.y) {
-  if (isPl()) { if (Math.abs(x) < 3.6 && z > -12.5 && z < 8) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2) return true; } // your ship, and deep water
+  if (isPl()) { if (Math.abs(x) < 3.6 && z > -12.5 && z < 8) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2) return true; if (cityBlocked(x, z)) return true; } // your ship, deep water and the towers of a capital
   else if (curArea() !== 'europe' && Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true; // the station / Orion's house
   if (curArea() === 'europe' && londonBlocked(x, z)) return true;
   if (curArea() === 'africa' && Math.abs(x - FARM.x) < 5.3 && Math.abs(z - FARM.z) < 3.8) return true;
@@ -9933,7 +9933,7 @@ const SYSTEMS = [
     faction: 'The Chompy Empire', map: { x: -.09, y: -.07 }, home: 'aridaxx',
     desc: 'The Chompy Empire’s heartland, in the galactic core a short jump from Sagittarius A*. Aridaxx is its true capital, home to Alphinos; on nearby Steca, Shakhak Chompjak broke the Grob Robotic Collective.',
     bodies: [
-      { id: 'aridaxx', name: 'Aridaxx', kind: 'desert', r: 2300, orbit: 58000, ang: .8, seed: 127, c: { low: '#b8803e', mid: '#dcae6a', rock: '#7a4a26', snow: '#f4e8d0' }, atmo: '#ffc888', clouds: '#fff0dc', cloudCover: .25, sky: ['#c08a4a', '#f4d8a8'], fog: '#e2b880', faction: 'The Chompy Empire · Alphinos, the capital' },
+      { id: 'aridaxx', name: 'Aridaxx', kind: 'desert', r: 2300, orbit: 58000, ang: .8, seed: 127, c: { low: '#4a2a6a', mid: '#7a4aa8', rock: '#2e1a46', snow: '#dccaf2' }, atmo: '#c890ff', clouds: '#f0e2ff', cloudCover: .25, sky: ['#3e2470', '#c8a0f0'], fog: '#9a78c8', faction: 'The Chompy Empire · Alphinos, the capital' }, // purple dunes
       { id: 'steca', name: 'Steca', kind: 'desert', r: 1700, orbit: 78000, ang: 2.6, seed: 131, c: { low: '#2a2220', mid: '#4a3a32', rock: '#18120f', snow: '#5a4a40' }, sea: '#ff5a1a', seaGlow: true, seaH: -16, atmo: '#ff7a3a', sky: ['#2a0e08', '#8a3a1a'], fog: '#5a2a1a', faction: 'The Chompy Empire' },
       { id: 'steca-g', name: 'Steca IV', kind: 'gas', r: 8200, orbit: 140000, ang: 4.4, seed: 137, bands: ['#d8a878', '#b8784a', '#f0d0a8', '#9a5a34'], rings: true, atmo: '#ffcfa0', faction: 'Gas giant · no surface' }
     ] },
@@ -9941,7 +9941,7 @@ const SYSTEMS = [
     faction: 'The Chompy Empire', map: { x: -.5, y: -.12 }, home: 'janira',
     desc: 'A red dwarf deep in Chompy space. Janira Prime, one of the empire’s homeworlds, is where Hak Chompjak and Lord Sevirrus were born in 1750 AD.',
     bodies: [
-      { id: 'janira', name: 'Janira Prime', kind: 'earth', r: 2400, orbit: 40000, ang: 5.0, seed: 139, landBias: .07, c: { sand: '#b89a6a', low: '#3f7a1e', forest: '#1f4a10', rock: '#5a4a3a', snow: '#e8e2d8' }, sea: '#1f4a6a', atmo: '#e8b890', clouds: '#fff2e2', cloudCover: .65, sky: ['#8a5a3a', '#e8c098'], fog: '#c89a72', faction: 'The Chompy Empire · homeworld' }
+      { id: 'janira', name: 'Janira Prime', kind: 'earth', r: 2400, orbit: 40000, ang: 5.0, seed: 139, landBias: .07, c: { sand: '#9a7ab0', low: '#5a3a8a', forest: '#3a1f62', rock: '#4a3a5a', snow: '#ece2f6' }, sea: '#2a3a7a', atmo: '#c8a0ff', clouds: '#f6eaff', cloudCover: .65, sky: ['#4e3080', '#d8b8f0'], fog: '#a888c8', faction: 'The Chompy Empire · homeworld, Karribassa the capital' } // purple jungle
     ] },
   { id: 'thalassa', name: 'Thalassa Reach', star: { kind: 'star', name: 'Thalassa', r: 3600, col: '#e8f2ff', glow: ['rgba(236,244,255,1)', 'rgba(170,200,255,.5)', 'rgba(110,150,255,0)'], light: '#eef4ff', type: 'White star · A5V' },
     faction: UNCLAIMED, map: { x: .48, y: .1 }, home: 'thalassa',
@@ -10045,6 +10045,9 @@ const SYSTEMS = [
   }
 })();
 const ALL_BODIES = SYSTEMS.flatMap(S => S.bodies.map(P => (P.sys = S.id, P)));
+// inside Archiostal: you dock with the station and walk its gardens (forests and rivers under an artificial sky)
+ALL_BODIES.push({ id: 'archiostal-gardens', name: 'Archiostal', dock: 'archiostal', sys: 'malana', kind: 'earth', r: 2400, amp: .32, seed: 108, landBias: .12, groves: .25,
+  c: { sand: '#c8d0a0', low: '#4f8a3a', forest: '#2a6a2a', rock: '#7a8a70', snow: '#eef4e8' }, sea: '#2a7a8a', atmo: null, sky: ['#a8dcc8', '#f4fff0'], fog: '#cfe8d8', faction: 'The Order of Archamus · garden station of the Grek' });
 ALL_BODIES.forEach(P => { if (P.c) for (const k in P.c) P.c[k] = C3(P.c[k]); P.land = P.kind !== 'gas' && P.kind !== 'station'; });
 const sysById = id => SYSTEMS.find(S => S.id === id) || SYSTEMS[0];
 // Chapter III and Chapter IV hold the same galaxy under different flags: swap them to suit the wanderer you're playing
@@ -10058,6 +10061,7 @@ function applyChapterFactions() {
     for (const P of S.bodies) { if (P.fac4) P.faction = pick(P); if (!P.fac0) P.fac0 = P.faction; P.baseFac = P.fac4 ? P.faction : P.fac0; P.faction = P.baseFac; P.traders = null; }
   }
   try { dipOverlay(); } catch (e) { console.error(e); } // your colonies, puppets and restorations (Diplomacy)
+  const Gd = bodyById('archiostal-gardens'), St = bodyById('archiostal'); if (Gd && St) { Gd.faction = St.faction; Gd.baseFac = St.baseFac || St.faction; Gd.traders = null; } // the gardens fly the station's flag
 }
 const bodyById = id => ALL_BODIES.find(P => P.id === id);
 const curSys = () => sysById(SPC.sys);
@@ -10285,7 +10289,9 @@ function spaceOn(place) {
   SPC.saveNear = SPC.saveFar = null; camera.near = 1; camera.far = 1.4e6; camera.updateProjectionMatrix();
   ch3Init();
   if (place && place.sp) { setSystem(place.sys || 'sol'); SPC.pos.fromArray(place.sp); SPC.q.fromArray(place.sq || [0, 0, 0, 1]); }
-  if (place && place.fromPlanet) { const P = bodyById(place.fromPlanet); if (P) setSystem(P.sys); if (P) { const n = place.dir ? tmpVs.fromArray(place.dir) : tmpVs.set(0, 1, 0); SPC.pos.copy(P.pos).addScaledVector(n, P.r + planetH(P, n) + 520); const f = tmpVs2.set(0, 1, 0).cross(n); if (f.lengthSq() < .01) f.set(1, 0, 0); f.normalize(); const m = new THREE.Matrix4().lookAt(new THREE.Vector3(), f.clone().negate().addScaledVector(n, -.35), n); SPC.q.setFromRotationMatrix(m); } }
+  if (place && place.fromPlanet) { const P = bodyById(place.fromPlanet); if (P) setSystem(P.sys);
+    if (P && P.dock) { const St = bodyById(P.dock); SPC.pos.copy(St.pos).add(tmpVs.set(0, St.r * .5, St.r * 2.4)); SPC.q.setFromRotationMatrix(new THREE.Matrix4().lookAt(SPC.pos, tmpVs2.copy(SPC.pos).add(tmpVs.set(0, 0, 1)), new THREE.Vector3(0, 1, 0))); } // undocking: out and away from the station
+    else if (P) { const n = place.dir ? tmpVs.fromArray(place.dir) : tmpVs.set(0, 1, 0); SPC.pos.copy(P.pos).addScaledVector(n, P.r + planetH(P, n) + 520); const f = tmpVs2.set(0, 1, 0).cross(n); if (f.lengthSq() < .01) f.set(1, 0, 0); f.normalize(); const m = new THREE.Matrix4().lookAt(new THREE.Vector3(), f.clone().negate().addScaledVector(n, -.35), n); SPC.q.setFromRotationMatrix(m); } }
   if (!place) { setSystem('sol'); arrivalPose(SPC.sys); } // just off Earth, on its sunlit side, the planet filling the view below you
   SPC.vel = 60; SPC.thr = .3; SPC.camInit = false; clock.getDelta();
   scClear(); SC.shield = 100; SC.nextT = (SPC.t || 0) + 50 + Math.random() * 50;
@@ -10350,6 +10356,7 @@ function spaceTick(dt) {
   // planets: you can't fly into the ground; gas giants push you back out; low enough over solid ground and you're landing
   const dirP = new THREE.Vector3().subVectors(SPC.pos, P.pos), dist = dirP.length(); dirP.divideScalar(dist);
   const ground = P.r + (P.land ? planetH(P, dirP) : 0), alt = dist - ground; SPC.alt = alt;
+  if (P.kind === 'station' && alt < 600 && bodyById(P.id + '-gardens')) { spaceMsg(`Docking with ${P.name}`); startLanding(bodyById(P.id + '-gardens'), new THREE.Vector3(0, 1, 0)); return; } // dock and walk the station
   const keepOff = P.kind === 'station' ? P.r * .5 : 900;
   if (!P.land && alt < keepOff) { SPC.pos.copy(P.pos).addScaledVector(dirP, ground + keepOff); SPC.vel *= .5; if (time - (SPC.gasMsgT || -9) > 3) { SPC.gasMsgT = time; spaceMsg(P.kind === 'station' ? `${P.name} · ${P.faction.split(' · ')[0]} · docking comes in a later update` : `${P.name}'s atmosphere is too dense to fly into · no surface`); } }
   if (P.land && alt < 420) { startLanding(P, dirP.clone()); return; }
@@ -10462,7 +10469,7 @@ function galClose(silent) {
 function galPanel() {
   const S = sysById(GAL.sel), here = S.id === SPC.sys, n = have('warpcell'), W3 = wanderer.ch3 || {}, seen = (W3.visited || []).includes(S.id);
   const cost = warpCost(curSys(), S);
-  const kind = P => (P.kind === 'station' ? 'Station' : P.kind === 'gas' ? 'No surface' : P.parent ? 'Moon · landable' : 'Landable') + (P.land && planetTraders(P).length ? ' · trader' : '');
+  const kind = P => (P.kind === 'station' ? 'Station · fly in to dock' : P.kind === 'gas' ? 'No surface' : P.parent ? 'Moon · landable' : 'Landable') + (P.land && planetTraders(P).length ? ' · trader' : '');
   let btn;
   if (here) btn = `<button class="btn gp-warp" disabled><span>You are here</span></button>`;
   else if (SC.foes.length) btn = `<button class="btn gp-warp" disabled><span>Can't warp in combat</span></button><div class="gp-why">The hyperdrive won't spool up under fire · destroy them, outrun them, or drop into a planet's atmosphere</div>`;
@@ -11357,8 +11364,8 @@ const SQ_LEADERS = [
   { id: 'hak', name: 'EMPEROR HAK CHOMPJAK V', fac: 'chompy', world: 'aridaxx', model: 'leader_chompy', h: 2.05 },
   { id: 'vishara', name: 'VISHARA ERISCONOS', fac: 'erisian', world: 'eris', model: 'leader_erisian', h: 2.0 },
   { id: 'darius', name: 'PRESIDENT DARIUS ANCIN', fac: 'hfos', world: 'earth', model: 'leader_human', h: 1.86 },
-  { id: 'archamus', name: 'ARCHAMUS', fac: 'grek', world: 'malana', model: 'prime', h: 3.1 },
-  { id: 'amgrek', name: 'AM-GREK, HIGH HIERARCH', fac: 'grek', world: 'malana', model: 'sp_grek', h: 2.2 }
+  { id: 'archamus', name: 'ARCHAMUS', fac: 'grek', world: 'archiostal-gardens', model: 'prime', h: 3.1 },
+  { id: 'amgrek', name: 'AM-GREK, HIGH HIERARCH', fac: 'grek', world: 'archiostal-gardens', model: 'sp_grek', h: 2.2 }
 ];
 const leaderFree = L => (wanderer.chapter | 0) >= 5 && !dipWar(L.fac) && !['destroyed', 'subjugated'].includes(dipRes(L.fac));
 const leaderNext = L => SQ.find(q => q.leader === L.id && !sqs().done[q.id]);
@@ -11447,13 +11454,14 @@ async function landOn(P, dir, place) {
   spaceOff(); state = 'loadingCh';
   const key = planetAreaKey(P), D = dir.clone().normalize(), E = new THREE.Vector3(0, 1, 0).cross(D); if (E.lengthSq() < .01) E.set(1, 0, 0); E.normalize(); const N = new THREE.Vector3().crossVectors(D, E).normalize();
   world.planet = { P, D, E, N, h0: planetH(P, D) };
+  cityPlan(world.planet); // Alphinos on Aridaxx, Karribassa on Janira Prime
   AREA_INFO[key] = { planet: P.name, name: P.name, space: true, stationTp: { x: 1e5, z: 1e5, name: '' } };
   AREA_FOG[key] = new THREE.Color(P.fog).getHex();
   world.area = key; world.builtArea = null; // a new landing spot: the ground is laid out afresh around it
   const nt = planetTraders(P); for (const m of MERCHANTS[key] || []) if (!nt.includes(m) && m.stall) { wScene.remove(m.stall); m.stall = null; } // a stall whose world changed hands goes
   MERCHANTS[key] = nt; for (const m of MERCHANTS[key]) m.seed = null; // its stall finds dry ground near the new spot
   const pl = place || { mode: 'explore', area: 'world', where: key, x: 6, z: 5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI };
-  enterWorld(pl); await placeOrion().catch(() => null); placeGivers().catch(() => null);
+  enterWorld(pl); buildCity(); await placeOrion().catch(() => null); placeGivers().catch(() => null);
   // your ship, set down on the ground
   if (!world.landShip) world.landShip = makeShip();
   wScene.add(world.landShip); world.landShip.position.set(0, wHeight(0, 0) + 1.7, 0); world.landShip.rotation.set(0, 0, 0); world.landShip.visible = true;
@@ -11513,9 +11521,91 @@ function beginChapter3() { // straight after the escape
 }
 
 // ---- the ground on a planet: the planet's own terrain, laid out on the flat around where you landed ----
+/* ---- the Chompy capitals: Alphinos on Aridaxx (the empire's true capital) and Karribassa on Janira Prime. You land at their
+   spaceports: the city rises just beyond your ship. Alphinos is ten times the size of Karribassa (ten times the ground,
+   ten times the towers). Built from instanced meshes, so even Alphinos's seven hundred towers draw cheaply. ---- */
+const CAPITALS = {
+  aridaxx: { name: 'Alphinos', R: 380, grid: 34, maxH: 330, spire: 540, seed: 71, note: 'Alphinos · capital of the Chompy Empire' },
+  janira: { name: 'Karribassa', R: 120, grid: 26, maxH: 150, spire: 200, seed: 33, note: 'Karribassa · capital of Janira Prime' }
+};
+function cityPlan(W) {
+  const K = CAPITALS[W.P.id]; W.city = null; if (!K) return;
+  const C = { K, R: K.R, cx: 0, cz: -(K.R + 60), y: 0 };
+  W.city = null; const raw = planetH(W.P, plDir(C.cx, C.cz)) - W.h0; C.y = W.P.sea ? Math.max(raw, (W.P.seaH || 0) - W.h0 + 3) : raw;
+  W.city = C;
+}
+function cityTex() { // lit windows on a dark violet curtain wall
+  if (world.cityTex) return world.cityTex;
+  return world.cityTex = canvasTex(64, 512, (g, w, h) => {
+    g.fillStyle = '#140c22'; g.fillRect(0, 0, w, h); let sd = 5; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    for (let y = 0; y < 128; y++) for (let x = 0; x < 8; x++) { if (r() < .42) continue; const c = r(); g.fillStyle = c < .55 ? 'rgba(140,220,255,.95)' : c < .85 ? 'rgba(210,170,255,.95)' : 'rgba(255,210,140,.95)'; g.fillRect(x * 8 + 2, y * 4 + 1, 4, 2); }
+  });
+}
+function buildCity() {
+  if (world.cityG) { wScene.remove(world.cityG); world.cityG.traverse(o => { if (o.geometry && !o.userData.shared) o.geometry.dispose(); }); world.cityG = null; }
+  const W = world.planet, C = W && W.city; if (!C) return;
+  const K = C.K, g = new THREE.Group(); let sd = K.seed * 7919 + 1; const r = () => (sd = (sd * 48271) % 2147483647) / 2147483647;
+  const tex = cityTex(), wall = new THREE.MeshStandardMaterial({ color: 0x8a6ab8, map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: .85, roughness: .35, metalness: .55 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0x2a1a48, roughness: .15, metalness: .9, emissive: 0x3a2a7a, emissiveIntensity: .35 });
+  const trim = new THREE.MeshBasicMaterial({ color: 0x69e0ff }), tipM = new THREE.MeshBasicMaterial({ color: 0xff6ad8 });
+  const towers = [], cyls = [], spires = [], rings = [], beacons = []; C.cells = new Map();
+  const add = (list, x, y, z, sx, sy, sz, ry = 0) => list.push([x, y, z, sx, sy, sz, ry]);
+  // the street grid: towers on every block, tallest towards the middle
+  for (let gx = -K.R; gx <= K.R; gx += K.grid) for (let gz = -K.R; gz <= K.R; gz += K.grid) {
+    const d = Math.hypot(gx, gz); if (d > K.R || d < K.grid * 1.1) continue;
+    const n = 1 + (r() < .45 ? 1 : 0) + (r() < .15 ? 1 : 0);
+    for (let i = 0; i < n; i++) {
+      const fw = 7 + r() * (n > 1 ? 7 : 12), x = C.cx + gx + (r() - .5) * (K.grid - fw - 8), z = C.cz + gz + (r() - .5) * (K.grid - fw - 8);
+      const H = 22 + Math.pow(1 - d / K.R, 1.4) * K.maxH * (.45 + r() * .55) + r() * 20, kind = r(), y = C.y - 1;
+      if (kind < .62) { add(towers, x, y + H / 2, z, fw, H, fw * (.7 + r() * .5), r() < .5 ? 0 : Math.PI / 4); if (r() < .5) add(towers, x, y + H + H * .08, z, fw * .6, H * .16, fw * .6); }
+      else { add(cyls, x, y + H / 2, z, fw, H, fw); if (r() < .6) add(rings, x, y + H * (.55 + r() * .35), z, fw * .62, fw * .62, 1); }
+      if (H > K.maxH * .45) { add(spires, x, y + H + H * .12 + 6, z, fw * .25, H * .22 + 10, fw * .25); add(beacons, x, y + H + H * .25 + 12, z, 1.2, 1.2, 1.2); }
+      const key = `${Math.round((x - C.cx) / 12)},${Math.round((z - C.cz) / 12)}`; (C.cells.get(key) || C.cells.set(key, []).get(key)).push([x, z, fw / 2 + .6]);
+    }
+  }
+  const inst = (geo, mat, list, shadow = true) => {
+    if (!list.length) return; const m = new THREE.InstancedMesh(geo, mat, list.length), M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), Y = new THREE.Vector3(0, 1, 0);
+    list.forEach(([x, y, z, sx, sy, sz, ry], i) => m.setMatrixAt(i, M4.compose(new THREE.Vector3(x, y, z), Q.setFromAxisAngle(Y, ry || 0), new THREE.Vector3(sx, sy, sz))));
+    m.castShadow = shadow; m.receiveShadow = true; m.frustumCulled = false; g.add(m);
+  };
+  inst(new THREE.BoxGeometry(1, 1, 1), wall, towers); inst(new THREE.CylinderGeometry(.5, .5, 1, 14), wall, cyls);
+  inst(new THREE.ConeGeometry(.5, 1, 8), glass, spires); inst(new THREE.TorusGeometry(1, .07, 6, 24).rotateX(Math.PI / 2), trim, rings, false); inst(new THREE.SphereGeometry(.5, 8, 6), tipM, beacons, false);
+  // the great spire at the heart: the Imperial palace in Alphinos, the Hall of Oaths in Karribassa
+  const sx = C.cx, sz = C.cz, sy = C.y - 1, tiers = 6;
+  for (let t = 0; t < tiers; t++) { const k = 1 - t / tiers, h = K.spire / tiers, rr = (K.R > 200 ? 34 : 14) * k + 4; const seg = new THREE.Mesh(new THREE.CylinderGeometry(rr * .82, rr, h, 10), wall); seg.position.set(sx, sy + h * (t + .5), sz); seg.castShadow = true; g.add(seg); const band = new THREE.Mesh(new THREE.TorusGeometry(rr * 1.02, rr * .03 + .3, 6, 30).rotateX(Math.PI / 2), trim); band.position.set(sx, sy + h * (t + 1), sz); g.add(band); }
+  const crown = new THREE.Mesh(new THREE.ConeGeometry(K.R > 200 ? 9 : 4, K.spire * .22, 8), glass); crown.position.set(sx, sy + K.spire * 1.11, sz); g.add(crown);
+  const star = glowSprite(0xff8ae8, K.R > 200 ? 60 : 24, .9); star.position.set(sx, sy + K.spire * 1.23, sz); g.add(star);
+  (C.cells.get('0,0') || C.cells.set('0,0', []).get('0,0')).push([sx, sz, (K.R > 200 ? 38 : 18)]);
+  // paved streets under it all
+  const pave = canvasTex(256, 256, (c2, w) => { c2.fillStyle = '#231a33'; c2.fillRect(0, 0, w, w); c2.strokeStyle = 'rgba(105,224,255,.35)'; c2.lineWidth = 2; for (let i = 0; i <= 8; i++) { c2.beginPath(); c2.moveTo(i * 32, 0); c2.lineTo(i * 32, w); c2.stroke(); c2.beginPath(); c2.moveTo(0, i * 32); c2.lineTo(w, i * 32); c2.stroke(); } });
+  pave.wrapS = pave.wrapT = THREE.RepeatWrapping; pave.repeat.set(K.R / 34, K.R / 34);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(K.R + 25, 64), new THREE.MeshStandardMaterial({ map: pave, roughness: .8, metalness: .2 })); floor.rotation.x = -Math.PI / 2; floor.position.set(C.cx, C.y + .06, C.cz); floor.receiveShadow = true; g.add(floor);
+  // air traffic between the towers
+  const nCars = K.R > 200 ? 90 : 24, cars = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, .6, 3.4), new THREE.MeshBasicMaterial({ color: 0xffe2a8 }), nCars); cars.frustumCulled = false; g.add(cars);
+  C.cars = { m: cars, list: Array.from({ length: nCars }, () => ({ r: K.grid * 1.5 + r() * (K.R - K.grid * 1.5), a: r() * 6.28, h: 30 + r() * K.maxH * .6, w: (.05 + r() * .08) * (r() < .5 ? 1 : -1) * (120 / K.R) })) };
+  wScene.add(g); world.cityG = g;
+  setTimeout(() => lootMsg(K.note, '#d6b8ff'), 2600);
+}
+function cityTick(dt) {
+  const C = world.planet && isPl() && world.planet.city; if (!C || !C.cars || !world.cityG) return;
+  const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), Y = new THREE.Vector3(0, 1, 0), S = new THREE.Vector3(1, 1, 1), V = new THREE.Vector3();
+  C.cars.list.forEach((c, i) => { c.a += c.w * dt; V.set(C.cx + Math.cos(c.a) * c.r, C.y + c.h, C.cz + Math.sin(c.a) * c.r); C.cars.m.setMatrixAt(i, M4.compose(V, Q.setFromAxisAngle(Y, -c.a + (c.w > 0 ? 0 : Math.PI)), S)); });
+  C.cars.m.instanceMatrix.needsUpdate = true;
+}
+function cityBlocked(x, z) {
+  const C = world.planet && world.planet.city; if (!C || !C.cells) return false;
+  const ix = Math.round((x - C.cx) / 12), iz = Math.round((z - C.cz) / 12);
+  for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) { const L = C.cells.get(`${ix + a},${iz + b}`); if (L) for (const [tx, tz, hw] of L) if (Math.abs(x - tx) < hw && Math.abs(z - tz) < hw) return true; }
+  if (Math.hypot(x - C.cx, z - C.cz) < (C.K.R > 200 ? 38 : 18)) return true;
+  return false;
+}
 const isPl = () => String(world.area || '').startsWith('pl:') && !!world.planet;
 function plDir(x, z) { const W = world.planet, R = W.P.r; return new THREE.Vector3().copy(W.D).multiplyScalar(R).addScaledVector(W.E, x).addScaledVector(W.N, z).normalize(); }
-function planetGroundH(x, z) { const W = world.planet; return planetH(W.P, plDir(x, z)) - W.h0; }
+function planetGroundH(x, z) {
+  const W = world.planet; let h = planetH(W.P, plDir(x, z)) - W.h0;
+  const C = W.city; if (C) { const d = Math.hypot(x - C.cx, z - C.cz), k = smooth(C.R + 90, C.R + 15, d); if (k > 0) h = lerp(h, C.y, k); } // a capital city sits on level ground
+  return h;
+}
 const plSeaY = () => { const W = world.planet; return W && W.P.sea ? -W.h0 + (W.P.seaH || 0) + .4 : null; };
 function planetLook() {
   const W = world.planet, P = W.P;
