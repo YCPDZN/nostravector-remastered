@@ -650,7 +650,7 @@ Moments after escaping Earth, out over the planet, the wanderer has another epis
 Then Orion and Nico bring them back. **Skip** jumps past the memories, then past the wake-up.
 
 - **Skipping the Chompy nightmare:** **Skip** moves on to the next Sevirrus scene. Press it twice quickly to skip them all.
-- **Where Sevirrus lives:** the Sevirrus game is in `sevirrus/sevirrus.html`, an unaltered copy of the original. Opened on its own, it is still the full Sevirrus game.
+- **Where Sevirrus lives:** the Sevirrus game is in the `nightmare` folder (`nightmare/sevirrus.html`, with its models, music and tools), an unaltered copy of the original. Opened on its own, it is still the full Sevirrus game.
 - **Playing from a file:** when Nostravector is opened straight from a file (`file://`), the browser won't let it reach that page, so the same page loads from `data/sevGame.js`.
 - **Fallback:** if Sevirrus can't load, the staged Chompy memories play instead.
 
