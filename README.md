@@ -629,10 +629,10 @@ Open **Diplomacy** from the pause menu, on foot or in space, or from the galaxy 
   - Materials and bounties are handed in at the stall where you took the job.
 - **Choices and alignment:** most quests end in a choice. The kind option moves you towards **hero** and the cruel one towards **villain**, by only **2 to 5 points**, and some choices are neutral. Reaching **100** either way takes dozens of quests down the same path. Your companions react to every choice, as with other good and evil deeds. Rewards are units and XP, and the cruel choice usually pays more.
 - **Quest givers:** the people behind the jobs stand by the trader stalls, as Erisians, Chompies, Grek, robed Catharsis figures or humans in work clothes. Walk up, press **E** (TALK on phones) and they offer their job in their own words, or take it back when you've done it. The stall's Jobs list offers the same work.
-- **Chapter V leaders:** five leaders give quests in person, three each (15 more, worth 3–6 alignment points). They won't if you're at war with their faction, or if it's been destroyed or subjugated.
+- **Chapter V leaders:** five leaders give quests in person, three each (15 more, worth 3–6 alignment points), **one at a time from each leader**: finish Hak's current quest before he gives you his next. They won't if you're at war with their faction, or if it's been destroyed or subjugated.
   - **Emperor Hak Chompjak V** on Aridaxx.
   - **Vishara Erisconos** on Eris.
   - **President Darius Ancin** on Earth.
   - **Archamus** and **Am-Grek** on Malana.
-- **Quest log:** **Side quests** in the pause menu shows up to 6 active quests with their progress, lets you track or abandon them, lists what you've finished, and shows your alignment between villain and hero. The tracked quest appears under your objectives, on foot and in space, and the galaxy map marks every system where one of your quests ends with a gold diamond.
+- **Quest log:** **Side quests** in the pause menu shows your active quests (**only 5 at a time**) with their progress, lets you track or abandon them, lists what you've finished, and shows your alignment between villain and hero. The tracked quest appears under your objectives, on foot and in space, and the galaxy map marks every system where one of your quests ends with a gold diamond.
 

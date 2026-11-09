@@ -11238,7 +11238,7 @@ const SQ_ROWS = [
 ];
 const SQ = SQ_ROWS.map(([id, at, t, g, d, o, c]) => { const [k, a, b] = o.split(':'); return { id, at, t, g, d, k, item: k === 'mine' ? a : null, n: k === 'mine' ? +b : k === 'hunt' || k === 'pay' ? +(a || 0) : 0, c }; });
 const sqById = id => SQ.find(q => q.id === id);
-const SQ_MAX = 6;
+const SQ_MAX = 5; // only five side quests at once
 function sqs() { const w = wanderer; if (!w.sq) w.sq = { act: {}, done: {}, track: null }; w.sq.act = w.sq.act || {}; w.sq.done = w.sq.done || {}; return w.sq; }
 function sqSave() { const c = curChar(); if (c) c.sq = wanderer.sq; saveRoster(); renderTasks(); }
 const sqKills = () => ((wanderer.ch3 || {}).kills | 0);
@@ -11271,6 +11271,7 @@ const sqReady = (q, A) => q.k === 'mine' ? have(q.item) >= q.n : q.k === 'hunt' 
 const sqSysOf = (q, A) => q.k === 'deliver' ? bodyById(A.t).sys : q.k === 'visit' ? A.t : bodyById(A.at).sys; // where it ends
 function sqAccept(id, m) {
   const S = sqs(), q = sqById(id); if (!q || S.act[id] || Object.keys(S.act).length >= SQ_MAX) return;
+  if (q.leader && Object.keys(S.act).some(o => (sqById(o) || {}).leader === q.leader)) return; // one quest at a time from each leader
   S.act[id] = { at: m.pid, k0: sqKills(), t: q.k === 'deliver' || q.k === 'visit' ? sqTarget(q.k) : null };
   if (!S.track) S.track = id; sqSave(); sfx.chime(); lootMsg(`Side quest · ${q.t}`, '#ffd36a');
 }
