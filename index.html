@@ -401,6 +401,9 @@ body.touch .touch-ui{display:block}
 #fbSub.james{color:#dfe9ff;--g1:rgba(80,170,255,.75);--g2:rgba(255,255,255,.35)}
 #fbSub.crox{color:#ff2b2b;--g1:rgba(255,0,0,.85);--g2:rgba(0,0,0,.9)}
 #fbSub.orion{color:#ffcf8a;--g1:rgba(255,150,40,.7);--g2:rgba(0,0,0,.8)}
+#fbSub.sev{color:#ffd27a;--g1:rgba(255,40,0,.85);--g2:rgba(0,0,0,.9)}
+#fbSub.eris{color:#e6ccff;--g1:rgba(170,80,255,.8);--g2:rgba(0,0,0,.85)}
+#fbSub.grek{color:#c8ffd8;--g1:rgba(40,255,140,.7);--g2:rgba(0,0,0,.9)}
 #fbSub .t{text-shadow:-3px 0 var(--g1),3px 0 rgba(0,230,255,.45),0 0 26px var(--g1),0 2px 0 var(--g2),0 0 3px rgba(0,0,0,.9);-webkit-text-stroke:1px rgba(0,0,0,.55)}
 #fbSub .w{text-shadow:0 0 6px rgba(0,0,0,.95),0 0 14px var(--g1)}
 .x-dlg.choice .tap{display:none}
@@ -7000,6 +7003,7 @@ function endMeeting() {
   meet.active = false;
 }
 function skipMeeting() {
+  if (state === 'nightmare' && NM.on) { if (NM.phase === 'mem') nmWake(); else if (NM.phase === 'wake') { closeDialog(); nmEnd(); } return; } // Skip: out of the memories, then past the wake-up
   if (state === 'trial' && trial.on && !trial.skipped) { trial.skipped = true; closeDialog(); endTrial(); return; }
   if (!meet.active) return;
   meet.skip = true;
@@ -10304,6 +10308,8 @@ function spaceOn(place) {
   SPC.vel = 60; SPC.thr = .3; SPC.camInit = false; clock.getDelta();
   scClear(); SC.shield = 100; SC.nextT = (SPC.t || 0) + 50 + Math.random() * 50;
   wanderer.place = currentPlace(); const c = curChar(); if (c) c.place = wanderer.place;
+  // the start of Chapter III: out over Earth, the nightmare comes (once)
+  if (!place && wanderer.ch3 && !wanderer.ch3.nightmare && !NM.on) setTimeout(() => { if (state === 'space' && !NM.on) startNightmare(); }, 3500);
 }
 // where you come out in a system: off its home world, on the sunlit side, the world filling the view below you
 function arrivalPose(id, k = 2.5) {
@@ -11650,6 +11656,269 @@ function planetTraders(P) {
   const buy = { warpcell: pr(150), crystal: pr(30), metal: pr(45), obsidian: pr(60), scrap: pr(12), medkit: pr(60) };
   if (sp === 'grek') buy.wood = pr(9);
   return P.traders = [{ id: 'tr-' + P.id, pid: P.id, who: K.label, sp, cloth: K.cloth, trim: K.trim, x: -16, z: 22, lines: K.lines, buy, sellMult: +(1.25 - (m - .82)).toFixed(2) }];
+}
+
+/* ---- Chapter III: the nightmare in space ----
+   Straight after the escape, out over Earth, the wanderer has another episode, like the ones on the ice and in Westminster.
+   What they see depends on who they are:
+     Chompy  · Sevirrus, the game before this one: the Carax massacre, the siege, Damix's death and Jakal's, the madness and
+               Zark (copied from the Sevirrus files, with their recordings, over "Fields of Carax")
+     Erisian · a future that hasn't happened: Alexia Erisconos overthrows her sister Vishara in the Citadel el Eriscons
+     Human   · Chapter II all over again (with its own recordings)
+     Grek    · a prophecy of what's coming, without a single name
+   Then Orion and Nico bring them back. It happens once (ch3.nightmare). */
+const NM = { on: false, t: 0, phase: null, bi: -1, scene: null, props: null, actors: {}, cam: new THREE.Vector3(), look: new THREE.Vector3(), q: [], vo: {}, race: 'human' };
+function loadDataScript(id, kind) { // fetch a data/<id>.js pack only when it's needed
+  return new Promise(res => {
+    if (document.getElementById(id) && document.getElementById(id).textContent.length > 100) return res(true);
+    if (!document.getElementById(id)) { const j = document.createElement('script'); j.type = kind === 'glb' ? 'application/octet-stream' : 'application/json'; j.id = id; document.body.appendChild(j); }
+    const sc = document.createElement('script'); sc.src = `data/${id}.js`; sc.onload = () => res(true); sc.onerror = () => res(false); document.body.appendChild(sc);
+  });
+}
+async function glbRig(id, h, weapon, lazy) { if (lazy) await loadDataScript(id, 'glb'); const src = await embGlb(id); if (!src) return null; const R = autoRig(SkeletonUtils.clone(src), h); armRig(R, weapon || 'none'); return R; }
+// ---- the stage: a dark place the memories play out in ----
+function nmStage() {
+  if (NM.scene) return NM.scene;
+  const S = NM.scene = new THREE.Scene(); S.fog = new THREE.FogExp2(0x1a0606, .045); S.background = new THREE.Color(0x060202);
+  const g = new THREE.Mesh(new THREE.CircleGeometry(80, 64), new THREE.MeshStandardMaterial({ color: 0x1c1412, roughness: .9 })); g.rotation.x = -Math.PI / 2; g.receiveShadow = true; S.add(g); NM.ground = g;
+  NM.hemi = new THREE.HemisphereLight(0x704040, 0x100606, 1.05); S.add(NM.hemi);
+  NM.key = new THREE.SpotLight(0xffd0b0, 140, 45, .75, .6, 1.1); NM.key.position.set(2, 12, 6); S.add(NM.key, NM.key.target);
+  NM.rim = new THREE.DirectionalLight(0xff3020, 1.6); NM.rim.position.set(-4, 5, -10); S.add(NM.rim);
+  NM.props = new THREE.Group(); S.add(NM.props);
+  return S;
+}
+function nmSet(kind) {
+  const P = NM.props, S = NM.scene; while (P.children.length) P.remove(P.children[0]);
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .8 }, o));
+  const box = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); P.add(o); return o; };
+  const look = { fog: 0x1a0606, dens: .045, bg: 0x060202, ground: 0x1c1412, hemi: 0x704040, rim: 0xff3020, key: 0xffd0b0 };
+  if (kind === 'carax') { // the fields of Carax under Sagittarius A*
+    Object.assign(look, { fog: 0x2a1408, dens: .03, bg: 0x0a0503, ground: 0x3a2412, hemi: 0x8a5a30, rim: 0xff6a20 });
+    const bh = new THREE.Mesh(new THREE.SphereGeometry(9, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000, fog: false })); bh.position.set(0, 26, -60); P.add(bh);
+    const disc = new THREE.Mesh(new THREE.TorusGeometry(14, 2.6, 8, 64), new THREE.MeshBasicMaterial({ color: 0xff9a40, transparent: true, opacity: .85, fog: false })); disc.position.copy(bh.position); disc.rotation.x = 1.25; P.add(disc);
+    for (let i = 0; i < 6; i++) box(3 + i % 2, 2.4, 3, M(0x2a1a10), -14 + i * 5.5, 1.2, -12 - (i % 3) * 3); // the settlers' homes
+  } else if (kind === 'throne') { // the throne hall of Alphinos
+    Object.assign(look, { fog: 0x1a0808, dens: .035, ground: 0x2a1010, hemi: 0x7a3a2a, rim: 0xffb040 });
+    const stone = M(0x3a302a), gold = M(0xd8a63a, { metalness: .8, roughness: .3 }), red = M(0x6a0a0a);
+    for (let z = -14; z <= 8; z += 4.4) for (const s of [-1, 1]) box(1.3, 10, 1.3, stone, s * 5, 5, z);
+    box(3.2, .5, 24, red, 0, .02, -2); box(6, 1.2, 3, stone, 0, .6, -14); box(1.8, 3.6, 1.2, gold, 0, 3, -15);
+  } else if (kind === 'citadel') { // the Citadel el Eriscons
+    Object.assign(look, { fog: 0x140820, dens: .035, bg: 0x05020a, ground: 0x1a1028, hemi: 0x6040a0, rim: 0xb070ff, key: 0xe0d0ff });
+    const cry = M(0x2a1840, { emissive: 0x7a3aff, emissiveIntensity: .7, roughness: .2, metalness: .3 });
+    for (let z = -14; z <= 8; z += 4.4) for (const s of [-1, 1]) { const c = new THREE.Mesh(new THREE.ConeGeometry(.9, 11, 6), cry); c.position.set(s * 5, 5.5, z); P.add(c); }
+    box(5, 1, 3, M(0x24183a), 0, .5, -14); const th = new THREE.Mesh(new THREE.OctahedronGeometry(1.6), cry); th.position.set(0, 3.2, -15); th.scale.y = 1.8; P.add(th);
+  } else if (kind === 'stars') { // a world on fire
+    Object.assign(look, { fog: 0x05080a, dens: .006, bg: 0x010203, ground: 0x050505, hemi: 0x305040, rim: 0xff5a20 });
+    const pl = new THREE.Mesh(new THREE.SphereGeometry(10, 48, 32), M(0x3a1a0a, { emissive: 0xff3a0a, emissiveIntensity: .6 })); pl.position.set(0, 9, -30); P.add(pl); NM.burn = pl;
+    const n = 1500, pos = new Float32Array(n * 3); for (let i = 0; i < n * 3; i++) pos[i] = (Math.random() - .5) * 300; const st = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(pos, 3)), new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, color: 0xcfe0ff, fog: false })); P.add(st);
+  } else if (kind === 'glass') { // an empire of glass
+    Object.assign(look, { fog: 0x081414, dens: .03, ground: 0x0a1414, hemi: 0x40807a, rim: 0x7fffe0 });
+    const gl = M(0x9ff0ff, { transparent: true, opacity: .35, roughness: .05, metalness: .1, emissive: 0x2a8a8a, emissiveIntensity: .4 });
+    NM.shards = []; for (let i = 0; i < 14; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(1.2, 6 + (i % 4) * 2, 1.2), gl); const a = i / 14 * Math.PI * 2; c.position.set(Math.cos(a) * 7, 3 + (i % 4), Math.sin(a) * 7 - 3); c.userData.v = new THREE.Vector3(Math.cos(a), 1.5 + Math.random(), Math.sin(a)).multiplyScalar(2 + Math.random() * 2); P.add(c); NM.shards.push(c); }
+  } else if (kind === 'banner') { // a black banner, and the ships
+    Object.assign(look, { fog: 0x5a2a24, dens: .012, bg: 0x6a3028, ground: 0x2a1614, hemi: 0x8a5a50, rim: 0xff5a3a });
+    const glow = new THREE.Mesh(new THREE.PlaneGeometry(400, 40), new THREE.MeshBasicMaterial({ color: 0xff8a50, transparent: true, opacity: .55, fog: false })); glow.position.set(0, 6, -70); P.add(glow); // a burning horizon behind the silhouettes
+    const sky = new THREE.Mesh(new THREE.PlaneGeometry(400, 120), new THREE.MeshBasicMaterial({ color: 0x8a3a2a, fog: false })); sky.position.set(0, 50, -80); P.add(sky);
+    box(.25, 12, .25, M(0x111111), 0, 6, -8); const flag = box(4.6, 3, .08, M(0x050505, { side: THREE.DoubleSide }), 2.4, 10.3, -8); NM.flag = flag;
+    for (let i = 0; i < 9; i++) { const s = makeShip(); s.traverse(o => { if (o.isMesh && !o.material.blending) o.material = new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: .6, metalness: .5 }); }); s.scale.setScalar(.22); s.position.set(-12 + (i % 5) * 6, 14 + (i % 3) * 2.5, -26 - Math.floor(i / 5) * 6); P.add(s); }
+  }
+  S.fog.color.set(look.fog); S.fog.density = look.dens; S.background.set(look.bg); NM.ground.material.color.set(look.ground); NM.hemi.color.set(look.hemi); NM.rim.color.set(look.rim); NM.key.color.set(look.key);
+}
+// ---- the scripts ----
+// a beat: the set, who stands where ([x, z, facing, pose]), the camera (from → to, looking at), the lines ([who, text, clip, id]) and what happens
+// ([n, effect, actor, target]: fired once line n has been said; n = -1 fires as the memory opens)
+const SEV = i => ['sev', i]; // a clip from the Sevirrus recordings (sevVoices)
+const NM_SCRIPTS = {
+  chompy: { tint: 'sepia(.55) saturate(1.6) hue-rotate(-18deg) contrast(1.15)', music: 'sevCarax', kind: 'sev', beats: [
+    { set: 'carax', actors: { sev: [0, -1.2, 0, 'idle'], s1: [-1.7, 2, Math.PI, 'kneel'], s2: [0, 2.5, Math.PI, 'kneel'], s3: [1.7, 2, Math.PI, 'kneel'] }, cam: [[-5, 1.2, 7], [-2.5, 1.6, 5]], at: [0, 1.4, 0],
+      lines: [['SEVIRRUS', 'Everyone kneels. Some of them just need help.', SEV(0)], ['SEVIRRUS', 'Stay with me. I want you to hear your people scream.', SEV(1)], ['SEVIRRUS', 'Pity. You were the fun one.', SEV(2)]], fx: [[1, 'strike', 'sev', 's2']] },
+    { set: 'throne', actors: { jakal: [0, -11, 0, 'idle'] }, cam: [[0, 2.4, -3], [0, 1.9, -6.5]], at: [0, 2.2, -11], lines: [['JAKAL CHOMPJAK XVI', 'Hear me, Sevirrus, wherever you hide. You have no throne, no name, and no house. And when I find you, I will look you in the eye… and I will not look away.', SEV(14)]] },
+    { set: 'throne', actors: { sev: [0, 4, Math.PI, 'idle'], damix: [0, -2, 0, 'idle'], g1: [-1.5, 6, Math.PI, 'down'], g2: [1.4, 7, Math.PI, 'down'] }, cam: [[3.5, 1.5, 8], [2.4, 1.8, 6]], at: [0, 1.5, 0],
+      lines: [['SEVIRRUS', 'Bring me the head of Jakal Chompjak XVI.', SEV(3)], ['DAMIX CHOMPJAK', 'Look at you, Hak. Still the little prince, playing monster in the dark.', SEV(4)]] },
+    { set: 'throne', actors: { jakal: [0, -11.5, 0, 'idle'], damix: [-.9, -9.5, 0, 'idle'], sev: [0, -7, Math.PI, 'idle'] }, cam: [[-4, 1.7, -5], [-3, 1.7, -7]], at: [0, 1.6, -9.5],
+      lines: [['JAKAL CHOMPJAK XVI', 'Hak. Put it down. You are still my son.', SEV(5)], ['DAMIX CHOMPJAK', 'You will not touch him!', SEV(6)], ['SEVIRRUS', 'Stay down, cousin.', SEV(7)], ['JAKAL CHOMPJAK XVI', 'DAMIX!', SEV(8)], ['JAKAL CHOMPJAK XVI', '…I loved you.', SEV(9)], ['SEVIRRUS', 'I know. That’s why it had to be you.', SEV(10)], ['SEVIRRUS', 'Long live the Emperor.', SEV(11)]],
+      fx: [[1, 'strike', 'sev', 'damix'], [5, 'strike', 'sev', 'jakal'], [6, 'raise', 'sev']] },
+    { set: 'throne', actors: { sev: [0, -13, 0, 'kneel'] }, cam: [[1.6, 1.2, -9], [.8, 1.1, -10.5]], at: [0, 1, -13], lines: [['SEVIRRUS', 'I took my father’s head. I took Damix’s heart. And Arixal rode away from me… whole.', SEV(12)]] },
+    { set: 'carax', actors: { priest: [0, -2, 0, 'idle'], sev: [0, 1.5, Math.PI, 'kneel'] }, cam: [[3, 1.3, 4.5], [2, 1.6, 3]], at: [0, 1.8, -2], lines: [['HIGH PRIEST OF DESTRUCTION', 'The Prince of Zark comes home. Kneel, and we will crown you again.', SEV(13)]] }
+  ] },
+  erisian: { tint: 'saturate(1.3) hue-rotate(40deg) contrast(1.12) brightness(.95)', kind: 'eris', beats: [
+    { set: 'citadel', actors: { vishara: [0, -12.5, 0, 'idle'], g1: [-2.6, -9.5, Math.PI / 2, 'idle'], g2: [2.6, -9.5, -Math.PI / 2, 'idle'], alexia: [0, 6, Math.PI, 'walk'] }, cam: [[0, 3.5, 10], [0, 2.2, 4]], at: [0, 2, -10],
+      lines: [['THE VISION', 'Citadel el Eriscons. Not yet. But soon.', null, 'CH3NMERIS1'], ['VISHARA ERISCONOS', 'Alexia. You were banished from this Citadel. Guards!', null, 'CH3NMERIS2'], ['ALEXIA ERISCONOS', 'Your guards answer to me now, sister. They have for a long time.', null, 'CH3NMERIS3']], fx: [[-1, 'walkTo', 'alexia', [0, -7]], [2, 'turn', 'g1', 'vishara'], [2, 'turn', 'g2', 'vishara']] },
+    { set: 'citadel', actors: { vishara: [0, -12.5, 0, 'idle'], alexia: [0, -8.5, Math.PI, 'idle'], g1: [-1.4, -11.6, .6, 'idle'], g2: [1.4, -11.6, -.6, 'idle'] }, cam: [[-3, 1.8, -6], [-2.2, 1.8, -8]], at: [0, 1.9, -11],
+      lines: [['VISHARA ERISCONOS', 'Everything you are, I gave you. The name. The Citadel. Eris itself.', null, 'CH3NMERIS4'], ['ALEXIA ERISCONOS', 'You gave me a cage, and called it a crown.', null, 'CH3NMERIS5'], ['VISHARA ERISCONOS', 'Eris will never kneel to you.', null, 'CH3NMERIS6'], ['ALEXIA ERISCONOS', 'Eris already has. Take her below. The Citadel has a new Matriarch.', null, 'CH3NMERIS7']], fx: [[3, 'strike', 'alexia', 'vishara']] },
+    { set: 'citadel', actors: { alexia: [0, -13, 0, 'idle'], vishara: [-1.2, -10.5, 0, 'kneel'] }, cam: [[0, 1.8, -8.5], [0, 1.75, -10]], at: [0, 1.75, -13], lines: [['ALEXIA ERISCONOS', 'And you, wanderer. When I’m finished with her… I’ll come for you.', null, 'CH3NMERIS8']] }
+  ] },
+  human: { tint: 'saturate(.35) contrast(1.25) sepia(.25) hue-rotate(-20deg)', kind: 'crox', beats: [
+    { set: 'void', actors: { nico: [0, -1, 0, 'idle'] }, cam: [[1.4, 1.5, 2.6], [.9, 1.55, 1.8]], at: [0, 1.5, -1], lines: [['NICO', 'My husband went into town yesterday for supplies. He should have been back by now.', ['farm', 8]]] },
+    { set: 'void', actors: { daniel: [-.25, -1.5, .9, 'hug'], woman: [.25, -1.2, -2.3, 'hug'], orion: [1.2, 2, Math.PI + .3, 'idle'] }, cam: [[3, 1.5, 3], [2.4, 1.6, 2]], at: [0, 1.4, -1],
+      lines: [['ORION MASCAR', 'Your wife is lying in that farmhouse with your newborn son in her arms.', ['cant', 2]], ['ORION MASCAR', 'And you are here.', ['cant', 3]]], fx: [[1, 'strike', 'orion', 'daniel']] },
+    { set: 'void', actors: { h1: [-.9, -2, 0, 'aim'], h2: [.9, -2.2, 0, 'aim'] }, cam: [[0, 1.6, 2], [0, 1.6, 1.2]], at: [0, 1.6, -2], lines: [['HFOS OFFICER', 'Federation Guard! Nobody move!', ['arrest', 0]]] },
+    { set: 'void', actors: { haw: [0, -1.6, 0, 'idle'] }, cam: [[.6, 1.75, 1.2], [.3, 1.72, .4]], at: [0, 1.7, -1.6], lines: [['THOMAS HAWTHORNE', 'Do stay where my guards can see you, though. For your own safety.', ['haw', 6]]] },
+    { set: 'throne', actors: { darius: [0, -12, 0, 'idle'], haw: [-1.5, -6, .4, 'idle'] }, cam: [[1.5, 2, -1], [1, 1.9, -2.5]], at: [-.5, 1.8, -8],
+      lines: [['DARIUS ANCIN', 'Very well. On the charge of assault, this House finds you both… guilty.', ['trial', 6]], ['THOMAS HAWTHORNE', 'ENOUGH!', ['trial', 18]]], fx: [[0, 'rage', 'haw']] },
+    { set: 'void', actors: { crox: [0, -6, 0, 'walk'], haw: [2.5, -9, -.3, 'idle'] }, cam: [[0, 1.6, 2], [0, 1.6, 1.4]], at: [0, 1.7, -4], lines: [['CROXIAN MASCAR', 'Hello again, wanderer.', ['esc', 2]], ['THOMAS HAWTHORNE', 'Run, then! There is nowhere in this galaxy the Federation cannot reach you!', ['esc', 8]]], fx: [[-1, 'walkTo', 'crox', [0, -.8]]] }
+  ] },
+  grek: { tint: 'saturate(1.2) hue-rotate(80deg) contrast(1.2) brightness(.9)', kind: 'grek', beats: [
+    { set: 'stars', actors: {}, cam: [[0, 3, 12], [0, 4, 6]], at: [0, 8, -30], lines: [['A VOICE IN THE DARK', 'Hear it, child of the ice. The stars are already burning.', null, 'CH3NMGREK1']] },
+    { set: 'void', actors: { man: [0, -2, 0, 'idle'] }, sil: true, cam: [[2.5, 1.4, 2.5], [1.6, 1.4, 1.4]], at: [0, 1.4, -2], lines: [['A VOICE IN THE DARK', 'A man who carries a federation on his back will fall. And no one will catch him.', null, 'CH3NMGREK2']], fx: [[-1, 'fall', 'man']] },
+    { set: 'banner', actors: {}, cam: [[-6, 2, 8], [-4, 3, 4]], at: [0, 9, -12], lines: [['A VOICE IN THE DARK', 'A black banner will rise where the golden one was torn down, and ships beyond counting will darken the sky.', null, 'CH3NMGREK3']] },
+    { set: 'glass', actors: {}, cam: [[0, 4, 12], [0, 3, 8]], at: [0, 3, -3], lines: [['A VOICE IN THE DARK', 'An empire of glass will break, and its land will be given to one who never asked for it.', null, 'CH3NMGREK4']], fx: [[-1, 'shatter']] },
+    { set: 'carax', actors: {}, cam: [[0, 2, 10], [0, 6, 4]], at: [0, 20, -60], lines: [['A VOICE IN THE DARK', 'The red world at the heart of the stars will burn beneath the boots of its friends.', null, 'CH3NMGREK5']] },
+    { set: 'stars', actors: { you: [0, 0, Math.PI, 'idle'] }, sil: true, cam: [[0, 1.3, 4], [0, 4, 9]], at: [0, 1.3, 0], lines: [['A VOICE IN THE DARK', 'And at the end of it all, you will stand alone at the centre of everything… and you will choose.', null, 'CH3NMGREK6']] }
+  ] }
+};
+// Orion and Nico bring you back: the first line is Orion's from the ice; the rest are new (CH3NMWAKE…)
+const NM_WAKE = {
+  chompy: [['NICO', 'You were screaming a name. Sevirrus.', 'CH3NMWAKECH1'], ['ORION MASCAR', 'Sevirrus? That’s a name out of the history books.', 'CH3NMWAKECH2'], ['NICO', 'Not to the Chompy. To them it’s still an open wound.', 'CH3NMWAKECH3'], ['ORION MASCAR', 'Breathe. Whatever you saw, it was over long before you were born.', 'CH3NMWAKECH4']],
+  erisian: [['ORION MASCAR', 'You were shouting at someone. Alexia.', 'CH3NMWAKEER1'], ['NICO', 'Alexia Erisconos? The Matriarch’s own sister?', 'CH3NMWAKEER2'], ['ORION MASCAR', 'Whatever you saw hasn’t happened. Let’s keep it that way.', 'CH3NMWAKEER3']],
+  human: [['ORION MASCAR', 'It’s the cantina again, isn’t it? The trial. Hawthorne.', 'CH3NMWAKEHU1'], ['NICO', 'Look at me. It’s over. We got out. All three of us.', 'CH3NMWAKEHU2'], ['ORION MASCAR', 'He can’t reach us up here. Not today.', 'CH3NMWAKEHU3']],
+  grek: [['ORION MASCAR', 'You were talking in riddles. A man falling. A black banner. An empire of glass.', 'CH3NMWAKEGR1'], ['NICO', 'The Grek say their dreams come true.', 'CH3NMWAKEGR2'], ['ORION MASCAR', 'Then let’s hope this one’s wrong.', 'CH3NMWAKEGR3']]
+};
+// ---- the cast ----
+async function nmCast(race) {
+  const A = {}, add = (k, R) => { if (R) { if (!R.gear) armRig(R, 'none'); R.root.visible = false; NM.scene.add(R.root); A[k] = R; } };
+  if (race === 'chompy') {
+    await Promise.all([loadDataScript('sevVoices'), loadDataScript('sevCarax')]);
+    const [sev, jakal, priest, damix, ...st] = await Promise.all([glbRig('chSevirrus', 1.85, 'sword'), glbRig('sevJakal', 1.95, 'none', true), glbRig('prArchamus', 1.95, 'none'),
+      townModel('chompy').then(src => src ? (R => (armRig(R, 'sword'), R))(autoRig(dressTownsfolk(src, { sp: 'chompy', c: [0x3a2a5a, 0xd8a63a] }), 1.8)) : null), glbRig('sevSettler', 1.7, 'none', true), glbRig('sevSettler', 1.66, 'none', true), glbRig('sevSettler', 1.72, 'none', true)]);
+    add('sev', sev); add('jakal', jakal); add('priest', priest); add('damix', damix); st.forEach((R, i) => add('s' + (i + 1), R));
+    for (const k of ['g1', 'g2']) add(k, await townModel('chompy').then(src => src ? autoRig(dressTownsfolk(src, { sp: 'chompy', c: [0x5a2a22, 0x8a6a3a] }), 1.75) : null));
+    NM.vo.sev = await sfx.loadClips('sevVoices').catch(() => null) || [];
+    NM.vo.music = (await sfx.loadClips('sevCarax').catch(() => null) || [])[0];
+  } else if (race === 'erisian') {
+    const [vis, alx] = await Promise.all([glbRig('leader_erisian', 1.9), glbRig('tiAlexia', 1.85, 'sword')]); add('vishara', vis); add('alexia', alx);
+    for (const k of ['g1', 'g2']) add(k, await townModel('erisian').then(src => src ? (R => (armRig(R, 'sword'), R))(autoRig(dressTownsfolk(src, { sp: 'erisian', c: [0x2a1840, 0xb070ff] }), 1.85)) : null));
+  } else if (race === 'human') {
+    const [nico, orion, haw, dar, crox] = await Promise.all([nicoRig().then(R => R && (R.root.parent && R.root.parent.remove(R.root), R)), glbRig('cpOrion', 1.8, 'none'), hawthorneRig(), dariusRig(), loadCroxian()]);
+    add('nico', nico); add('orion', orion); add('haw', haw); add('darius', dar); if (crox) { if (crox.root.parent) crox.root.parent.remove(crox.root); add('crox', crox); }
+    add('daniel', await humanRig({ name: 'DANIEL BROWN', c: [0x6a7a4b, 0x4a3a2a], skin: 4 })); add('woman', await humanRig({ name: 'WOMAN', c: [0x8f2f5a, 0x2b2f36], skin: 2, female: true }));
+    for (const k of ['h1', 'h2']) add(k, await hfosGuard(0, 0, 0, NM.scene));
+    const [farm, cantV, arrest, hawV, trialV, escV] = await Promise.all(['farmVoices', 'cantinaVoices', 'arrestVoices', 'hawVoices', 'trialVoices', 'escapeVoices'].map(id => sfx.loadClips(id).catch(() => null)));
+    Object.assign(NM.vo, { farm: farm || [], cant: cantV || [], arrest: arrest || [], haw: hawV || [], trial: trialV || [], esc: escV || [] });
+  } else {
+    add('man', await hawthorneRig()); add('you', await humanRig({ name: 'YOU', c: [0x2b2f36, 0x2b2f36], skin: 1 }));
+  }
+  for (const R of Object.values(A)) { R.root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); }
+  NM.actors = A;
+}
+function nmSilhouette(R, on) { // the prophecy shows shapes, never faces
+  R.root.traverse(o => { if (!o.isMesh) return; if (on) { if (!o.userData.realMat) o.userData.realMat = o.material; o.material = NM.silMat || (NM.silMat = new THREE.MeshBasicMaterial({ color: 0x000000 })); } else if (o.userData.realMat) o.material = o.userData.realMat; });
+}
+// ---- running it ----
+async function startNightmare() {
+  if (NM.on) return; NM.on = true; NM.race = ['chompy', 'erisian', 'human', 'grek'].includes(spOf(wanderer)) ? spOf(wanderer) : 'human';
+  NM.phase = 'panic'; NM.t = 0; NM.bi = -1; NM.ready = false; NM.script = NM_SCRIPTS[NM.race];
+  state = 'nightmare'; SPC.keys.clear(); for (const k in SPC.btn) SPC.btn[k] = false; const hud = $('#spaceHud'); if (hud) hud.classList.add('hidden');
+  sfx.gasp(1.4);
+  nmStage(); nmCast(NM.race).then(() => { NM.ready = true; }).catch(() => { NM.ready = true; });
+}
+function nmBeat(i) {
+  const B = NM.script.beats[i], A = NM.actors; NM.bi = i; NM.bt = 0; NM.li = -1; NM.lineEnd = 0; NM.walk = {}; NM.shatterT = null; NM.shards = null; NM.flag = null; NM.burn = null;
+  nmSet(B.set);
+  for (const [k, R] of Object.entries(A)) {
+    const s = B.actors[k]; R.root.visible = !!s; if (!s) continue;
+    R.root.position.set(s[0], 0, s[1]); R.root.rotation.set(0, s[2], 0); R.pose = s[3]; R.mode = s[3] === 'walk' ? 'walk' : 'idle'; R.downT = s[3] === 'down' ? 9 : -1; nmSilhouette(R, !!B.sil);
+  }
+  NM.cam.fromArray(B.cam[0]); NM.look.fromArray(B.at);
+  fbFlash(.9, NM.race === 'chompy' ? '#ff3a1a' : NM.race === 'erisian' ? '#c890ff' : NM.race === 'grek' ? '#7affb0' : '#ffffff'); sfx.thud(); NM.flashA = .9;
+}
+function nmClip(ref) { if (!ref) return null; const [k, i] = ref; return (NM.vo[k] || [])[i] || null; }
+function nmSay(L) {
+  const clip = nmClip(L[2]); fbSay(L[0], L[1], clip, 1.3);
+  const kind = /ORION/.test(L[0]) ? 'orion' : /NICO|HFOS|DARIUS/.test(L[0]) ? 'james' : NM.script.kind;
+  if (fb.sub) { fb.sub.kind = kind; fbSubEl.className = 'on ' + kind; }
+  return clip ? clip.duration : Math.max(1.6, L[1].split(/\s+/).length * .36);
+}
+function nmFx(f) {
+  const A = NM.actors, [, kind, a, b] = f, R = A[a];
+  if (kind === 'strike' && R) { R.mode = 'attack'; R.t = 0; setTimeout(() => { const T = A[b]; if (T) { T.downT = 0; } fbFlash(.85, '#ff0000'); NM.flashA = .85; sfx.swing(); sfx.thud(); NM.shake = .7; }, 450); }
+  if (kind === 'raise' && R) R.pose = 'raise';
+  if (kind === 'rage' && R) R.pose = 'rage';
+  if (kind === 'turn' && R && A[b]) { const P = A[b].root.position; R.root.rotation.y = Math.atan2(P.x - R.root.position.x, P.z - R.root.position.z); }
+  if (kind === 'walkTo' && R) { NM.walk[a] = b; R.mode = 'walk'; }
+  if (kind === 'fall' && R) R.downT = 0;
+  if (kind === 'shatter') NM.shatterT = 0;
+}
+function nightmareTick(dt) {
+  dt = Math.min(dt, .05); NM.t += dt; const t = NM.t;
+  fbSubTick();
+  NM.flashA = Math.max(0, (NM.flashA || 0) - dt * 2.4); fbFlash(NM.flashA, fbFlashEl ? fbFlashEl.style.background : '#fff');
+  if (NM.phase === 'panic') { // still in the ship: the shaking starts, the heart pounds, the view bleeds
+    const k = Math.min(1, t / 2.5); sfx.drone(.3 + k * .5); if ((NM.hb = (NM.hb || 0) + dt) > .55 - k * .2) { NM.hb = 0; sfx.heart(.6 + k * .5); }
+    renderer.domElement.style.filter = `saturate(${1 - k * .7}) contrast(${1 + k * .3}) blur(${(k * 1.5).toFixed(2)}px)`;
+    spaceViewOnly(dt); const s = k * .6; camera.position.x += (Math.random() - .5) * s; camera.position.y += (Math.random() - .5) * s;
+    renderer.render(SPC.scene, camera);
+    if (t > 2.6 && NM.ready) {
+      NM.phase = 'mem'; NM.saveCam = { near: camera.near, far: camera.far, fov: camera.fov }; camera.near = .1; camera.far = 700; camera.fov = 55; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
+      renderer.domElement.style.filter = NM.script.tint; if (NM.vo.music) sfx.playSong(NM.vo.music, .5); nmBeat(0);
+      show(ui.xhud, true); ui.xhud.classList.add('cutting'); // just the Skip button over the memories
+    }
+    return;
+  }
+  if (NM.phase === 'mem') {
+    const B = NM.script.beats[NM.bi], A = NM.actors; NM.bt += dt;
+    // the lines, one after another; effects keyed to them
+    if (NM.bt > .6 && NM.bt >= NM.lineEnd && NM.li < B.lines.length) {
+      NM.li++;
+      for (const f of (B.fx || [])) if (f[0] === NM.li - 1) nmFx(f); // what happens once the previous line is said (or, for -1, as it opens)
+      NM.lineEnd = NM.bt + (NM.li < B.lines.length ? nmSay(B.lines[NM.li]) + .45 : 1.1); // after the last line, a breath, then the next memory
+    }
+    if (NM.li >= B.lines.length && NM.bt >= NM.lineEnd) {
+      if (NM.bi + 1 < NM.script.beats.length) nmBeat(NM.bi + 1); else { nmWake(); return; }
+    }
+    // the actors
+    for (const [k, R] of Object.entries(A)) {
+      if (!R.root.visible) continue;
+      const w = NM.walk[k]; if (w) { const P = R.root.position, dx = w[0] - P.x, dz = w[1] - P.z, d = Math.hypot(dx, dz); if (d > .1) { P.x += dx / d * Math.min(d, 1.6 * dt); P.z += dz / d * Math.min(d, 1.6 * dt); R.root.rotation.y = Math.atan2(dx, dz); R.mode = 'walk'; } else { R.mode = 'idle'; delete NM.walk[k]; } }
+      if (R.mode === 'attack') { R.t = (R.t || 0) + dt; if (R.t > 1) R.mode = 'idle'; }
+      animRig(R, dt);
+      if (R.pose === 'kneel') { R.root.position.y = -.42; R.root.rotation.x = .12; R.ra.rotation.x = -.3; R.la.rotation.x = -.3; }
+      if (R.pose === 'aim') { R.ra.rotation.x = -1.45; R.la.rotation.x = -1.3; R.la.rotation.z = -.35; }
+      if (R.pose === 'hug') { R.ra.rotation.x = -1.15; R.la.rotation.x = -1.05; }
+      if (R.pose === 'raise') { R.ra.rotation.x = -2.8; }
+      if (R.pose === 'rage') { R.ra.rotation.x = -1.3 + Math.sin(t * 30) * .08; R.la.rotation.x = -1.3 - Math.sin(t * 30) * .08; }
+      if (R.downT >= 0) { R.downT += dt; const k2 = Math.min(1, R.downT / .5); R.root.rotation.x = -k2 * 1.45; R.root.position.y = k2 * .18; }
+    }
+    if (NM.flag) NM.flag.rotation.y = Math.sin(t * 2) * .15;
+    if (NM.burn) NM.burn.rotation.y += dt * .1;
+    if (NM.shatterT != null && NM.shards) { NM.shatterT += dt; if (NM.shatterT > 1.2) for (const c of NM.shards) { c.position.addScaledVector(c.userData.v, dt); c.userData.v.y -= 9.8 * dt * .3; c.rotation.x += dt * 2; c.rotation.z += dt * 1.4; } }
+    // the camera drifts along its path, shaking
+    const kk = smooth(0, Math.max(3, NM.lineEnd || 6), NM.bt), from = new THREE.Vector3().fromArray(B.cam[0]), to = new THREE.Vector3().fromArray(B.cam[1]);
+    NM.cam.copy(from.lerp(to, kk)); NM.shake = Math.max(0, (NM.shake || 0) - dt * 1.5); const s = .03 + NM.shake * .25;
+    camera.position.set(NM.cam.x + (Math.random() - .5) * s, NM.cam.y + (Math.random() - .5) * s, NM.cam.z); camera.lookAt(NM.look.fromArray(B.at));
+    if ((NM.hb = (NM.hb || 0) + dt) > .7) { NM.hb = 0; sfx.heart(.7); }
+    sfx.drone(.55);
+    renderer.render(NM.scene, camera);
+    return;
+  }
+  if (NM.phase === 'wake') { tickDialog(dt); SPC.camInit = false; spaceViewOnly(dt); renderer.render(SPC.scene, camera); }
+}
+function spaceViewOnly(dt) { // the ship hangs there while they talk you down
+  const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(SPC.q), up = new THREE.Vector3(0, 1, 0).applyQuaternion(SPC.q);
+  camera.position.copy(SPC.pos).addScaledVector(fwd, -36).addScaledVector(up, 9); camera.up.copy(up); camera.lookAt(SPC.pos.clone().addScaledVector(fwd, 40).addScaledVector(up, 6));
+  SPC.ship.position.copy(SPC.pos); SPC.ship.quaternion.copy(SPC.q); if (SPC.stars) SPC.stars.position.copy(camera.position);
+}
+async function nmWake() {
+  NM.phase = 'wake'; fbSubHide(); sfx.drone(0); if (NM.vo.music) sfx.stopSong(1.5);
+  if (NM.saveCam) { camera.near = NM.saveCam.near; camera.far = NM.saveCam.far; camera.fov = NM.saveCam.fov; camera.updateProjectionMatrix(); }
+  renderer.domElement.style.filter = ''; fbFlash(1, '#ffffff'); NM.flashA = 1; sfx.gasp(1.8);
+  for (const R of Object.values(NM.actors)) R.root.visible = false;
+  const fl = await sfx.loadClips('antOrionFlashVoices').catch(() => null); // Orion's "Hey! HEY!" from the ice
+  const lines = [['ORION MASCAR', 'Hey! HEY! Look at me! Snap out of it!'], ...NM_WAKE[NM.race]];
+  show(ui.xhud, true); ui.xhud.classList.add('cutting');
+  const run = i => {
+    if (i >= lines.length) { nmEnd(); return; }
+    const c = i === 0 && fl ? fl[0] : null;
+    openDialog(lines[i][0], [lines[i][1]], false, () => run(i + 1), c ? [c] : undefined);
+  };
+  setTimeout(() => run(0), 700);
+}
+function nmEnd() {
+  ui.xhud.classList.remove('cutting'); show(ui.xhud, false); NM.on = false; NM.phase = null;
+  wanderer.ch3 = Object.assign({}, wanderer.ch3, { nightmare: NM.race }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster();
+  const hud = $('#spaceHud'); if (hud) hud.classList.remove('hidden');
+  state = 'space'; SPC.camInit = false; clock.getDelta();
+  spaceMsg('Fly with W/S and A/D (or the stick and THRUST) · descend onto any rocky planet to land');
 }
 
 const CALL_SEQ = [
@@ -14258,6 +14527,7 @@ function loop() {
   if (state === 'ch2intro') { updateCh2Intro(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); renderer.render(afScene, camera); return; }
   if (state === 'travel') { updateParticles(dt); renderer.render(wScene, camera); return; }
   if (state === 'cantinaScene') { updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
+  if (state === 'nightmare') { nightmareTick(dt); sfx.music(0); return; }
   if (state === 'space') { spaceTick(dt); sfx.music(0); renderer.render(SPC.scene, camera); return; }
   if (state === 'xpaused' && SPC.paused) { sfx.music(0); renderer.render(SPC.scene, camera); return; }
   if (state === 'shipLand' || state === 'shipUp') { (state === 'shipLand' ? shipLandTick : shipUpTick)(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }

@@ -636,3 +636,25 @@ Open **Diplomacy** from the pause menu, on foot or in space, or from the galaxy 
   - **Archamus** and **Am-Grek** on Malana.
 - **Quest log:** **Side quests** in the pause menu shows your active quests (**only 5 at a time**) with their progress, lets you track or abandon them, lists what you've finished, and shows your alignment between villain and hero. The tracked quest appears under your objectives, on foot and in space, and the galaxy map marks every system where one of your quests ends with a gold diamond.
 
+
+## Chapter III: the nightmare in space
+Moments after escaping Earth, out over the planet, the wanderer has another episode, like the ones in Antarctica and New London. It happens once, and what they see depends on their species:
+
+| Species | The nightmare |
+|---|---|
+| Chompy | A summary of **Sevirrus**, the game before this one: the Carax massacre, the siege of Alphinos, Damix's death and Jakal's, over *Fields of Carax*. Its recordings and models are copied unchanged from the Sevirrus files. |
+| Erisian | A future that hasn't happened yet: **Alexia Erisconos overthrows her sister Vishara** in the Citadel el Eriscons. |
+| Human | **Chapter II replayed**, with its own recordings: the farm, the cantina, the arrest, Hawthorne, the trial and the escape. |
+| Am-Grek | A **prophecy** of what's coming, told without a single name: a man falling, a black banner, ships darkening the sky and an empire of glass. |
+
+Then Orion and Nico bring them back. **Skip** jumps past the memories, then past the wake-up.
+
+- **New data:**
+  - `data/sevVoices.js`: 15 Sevirrus lines.
+  - `data/sevCarax.js`: the music.
+  - `data/sevJakal.js` and `data/sevSettler.js`: Jakal Chompjak XVI and the Carax settlers.
+- **Loading:** these packs load only when the Chompy nightmare plays.
+- **Lines still to record:**
+  - Erisian: `CH3NMERIS1–8`.
+  - Grek: `CH3NMGREK1–6`.
+  - Wake-ups: `CH3NMWAKECH1–4`, `ER1–3`, `HU1–3` and `GR1–3`.
