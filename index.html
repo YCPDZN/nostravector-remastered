@@ -11563,7 +11563,8 @@ function buildCity() {
       const key = `${Math.round((x - C.cx) / 12)},${Math.round((z - C.cz) / 12)}`; (C.cells.get(key) || C.cells.set(key, []).get(key)).push([x, z, fw / 2 + .6]);
     }
   }
-  const inst = (geo, mat, list, shadow = true) => {
+  const phone = document.body.classList.contains('touch'); // phones: no tower shadows, lighter traffic
+  const inst = (geo, mat, list, shadow = !phone) => {
     if (!list.length) return; const m = new THREE.InstancedMesh(geo, mat, list.length), M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), Y = new THREE.Vector3(0, 1, 0);
     list.forEach(([x, y, z, sx, sy, sz, ry], i) => m.setMatrixAt(i, M4.compose(new THREE.Vector3(x, y, z), Q.setFromAxisAngle(Y, ry || 0), new THREE.Vector3(sx, sy, sz))));
     m.castShadow = shadow; m.receiveShadow = true; m.frustumCulled = false; g.add(m);
@@ -11572,7 +11573,7 @@ function buildCity() {
   inst(new THREE.ConeGeometry(.5, 1, 8), glass, spires); inst(new THREE.TorusGeometry(1, .07, 6, 24).rotateX(Math.PI / 2), trim, rings, false); inst(new THREE.SphereGeometry(.5, 8, 6), tipM, beacons, false);
   // the great spire at the heart: the Imperial palace in Alphinos, the Hall of Oaths in Karribassa
   const sx = C.cx, sz = C.cz, sy = C.y - 1, tiers = 6;
-  for (let t = 0; t < tiers; t++) { const k = 1 - t / tiers, h = K.spire / tiers, rr = (K.R > 200 ? 34 : 14) * k + 4; const seg = new THREE.Mesh(new THREE.CylinderGeometry(rr * .82, rr, h, 10), wall); seg.position.set(sx, sy + h * (t + .5), sz); seg.castShadow = true; g.add(seg); const band = new THREE.Mesh(new THREE.TorusGeometry(rr * 1.02, rr * .03 + .3, 6, 30).rotateX(Math.PI / 2), trim); band.position.set(sx, sy + h * (t + 1), sz); g.add(band); }
+  for (let t = 0; t < tiers; t++) { const k = 1 - t / tiers, h = K.spire / tiers, rr = (K.R > 200 ? 34 : 14) * k + 4; const seg = new THREE.Mesh(new THREE.CylinderGeometry(rr * .82, rr, h, 10), wall); seg.position.set(sx, sy + h * (t + .5), sz); seg.castShadow = !phone; g.add(seg); const band = new THREE.Mesh(new THREE.TorusGeometry(rr * 1.02, rr * .03 + .3, 6, 30).rotateX(Math.PI / 2), trim); band.position.set(sx, sy + h * (t + 1), sz); g.add(band); }
   const crown = new THREE.Mesh(new THREE.ConeGeometry(K.R > 200 ? 9 : 4, K.spire * .22, 8), glass); crown.position.set(sx, sy + K.spire * 1.11, sz); g.add(crown);
   const star = glowSprite(0xff8ae8, K.R > 200 ? 60 : 24, .9); star.position.set(sx, sy + K.spire * 1.23, sz); g.add(star);
   (C.cells.get('0,0') || C.cells.set('0,0', []).get('0,0')).push([sx, sz, (K.R > 200 ? 38 : 18)]);
@@ -11581,7 +11582,7 @@ function buildCity() {
   pave.wrapS = pave.wrapT = THREE.RepeatWrapping; pave.repeat.set(K.R / 34, K.R / 34);
   const floor = new THREE.Mesh(new THREE.CircleGeometry(K.R + 25, 64), new THREE.MeshStandardMaterial({ map: pave, roughness: .8, metalness: .2 })); floor.rotation.x = -Math.PI / 2; floor.position.set(C.cx, C.y + .06, C.cz); floor.receiveShadow = true; g.add(floor);
   // air traffic between the towers
-  const nCars = K.R > 200 ? 90 : 24, cars = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, .6, 3.4), new THREE.MeshBasicMaterial({ color: 0xffe2a8 }), nCars); cars.frustumCulled = false; g.add(cars);
+  const nCars = (K.R > 200 ? 90 : 24) >> (phone ? 1 : 0), cars = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, .6, 3.4), new THREE.MeshBasicMaterial({ color: 0xffe2a8 }), nCars); cars.frustumCulled = false; g.add(cars);
   C.cars = { m: cars, list: Array.from({ length: nCars }, () => ({ r: K.grid * 1.5 + r() * (K.R - K.grid * 1.5), a: r() * 6.28, h: 30 + r() * K.maxH * .6, w: (.05 + r() * .08) * (r() < .5 ? 1 : -1) * (120 / K.R) })) };
   wScene.add(g); world.cityG = g;
   setTimeout(() => lootMsg(K.note, '#d6b8ff'), 2600);
