@@ -10444,14 +10444,29 @@ function warpTick(dt) {
 }
 /* ============ space combat ============
    No Man's Sky style dogfights. Out in space, away from planets, pirates jump you now and then (Terra Imperia's interceptors
-   in Sol: Hawthorne's hunt goes on). Twin photon cannons (SPACE / F / left mouse / FIRE) with a little aim assist on the
+   in Sol: Hawthorne's hunt goes on; from Chapter IV, when Hawthorne has gone over to the Catharsis, it's Catharsis ships). Twin photon cannons (SPACE / F / left mouse / FIRE) with a little aim assist on the
    target you're pointing at; shields soak hits and recharge after a few seconds clear, the hull doesn't (it's patched up when
    you land). Hostiles jam the pulse drive and the hyperdrive, so fight, outrun them (6 km), or dive into an atmosphere. Lose
    the hull and the ship is towed back to the system's main world, minus a quarter of your units. */
 const SC = { foes: [], bolts: [], booms: [], shield: 100, hull: 100, hitT: -9, nextT: 60, cool: 0, gun: 0, shake: 0, lock: null };
 const SCV = { a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), d: new THREE.Vector3(), q: new THREE.Quaternion() };
 const scJammed = () => SC.foes.some(f => f.pos.distanceTo(SPC.pos) < 3500);
+function makeCathShip() { // the Catharsis: a black shard with a cold violet core and curled spines, nothing like a built ship
+  const g = new THREE.Group(), shell = new THREE.MeshStandardMaterial({ color: 0x0c0a12, roughness: .25, metalness: .8, emissive: 0x1a0830, emissiveIntensity: .5, flatShading: true });
+  const vein = new THREE.MeshStandardMaterial({ color: 0xb98aff, emissive: 0x8a4dff, emissiveIntensity: 1.4, roughness: .3 });
+  const core = new THREE.Mesh(new THREE.OctahedronGeometry(2.2, 0), shell); core.scale.set(1, .7, 3.4); g.add(core);
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(.7, 12, 8), vein); eye.position.z = -2.4; eye.scale.set(1, .6, 1); g.add(eye);
+  for (let i = 0; i < 6; i++) {
+    const a = i / 6 * Math.PI * 2, sp = new THREE.Mesh(new THREE.ConeGeometry(.35, 6.5, 5), shell);
+    sp.position.set(Math.cos(a) * 2.4, Math.sin(a) * 1.6, 2.4); sp.rotation.set(Math.PI / 2 + .55, 0, a - Math.PI / 2); sp.rotation.order = 'ZXY'; g.add(sp);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(.22, 6, 5), vein); tip.position.set(Math.cos(a) * 4.6, Math.sin(a) * 3.1, 4.6); g.add(tip);
+  }
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: SC.glowT || (SC.glowT = starGlowTex(['rgba(255,255,255,1)', 'rgba(255,150,90,.6)', 'rgba(255,80,30,0)'])), color: 0x9a5cff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  glow.scale.set(9, 9, 1); g.add(glow);
+  return g;
+}
 function makeFighter(ti) {
+  if (ti === 'cath') return makeCathShip();
   const g = new THREE.Group(), M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .45, metalness: .6 }, o));
   const hull = M(ti ? 0x16161c : 0x45444a), acc = M(ti ? 0xb01c24 : 0xd9772a, { emissive: ti ? 0x3a0508 : 0x2a1404, emissiveIntensity: .6 });
   const body = new THREE.Mesh(new THREE.ConeGeometry(1.6, 9, 6), hull); body.rotation.x = -Math.PI / 2; g.add(body);
@@ -10464,7 +10479,7 @@ function makeFighter(ti) {
 }
 function scKind() {
   const S = curSys();
-  if (S.id === 'sol') return { who: 'Terra Imperia', ti: true, chance: .65 };
+  if (S.id === 'sol') return (wanderer.chapter | 0) >= 4 ? { who: 'The Catharsis', cath: true, chance: .65 } : { who: 'Terra Imperia', ti: true, chance: .65 };
   if (S.faction === 'The Chompy Empire') return { who: 'Pirates', chance: .25 }; // the Emperor's patrols keep his space quieter
   return { who: 'Pirates', chance: .55 };
 }
@@ -10473,13 +10488,14 @@ function scSpawn() {
   const fwd = SCV.a.set(0, 0, -1).applyQuaternion(SPC.q);
   for (let i = 0; i < n; i++) {
     const dir = SCV.b.set(Math.random() - .5, (Math.random() - .5) * .5, Math.random() - .5).normalize().addScaledVector(fwd, .9).normalize();
-    const pos = SPC.pos.clone().addScaledVector(dir, 2300 + Math.random() * 600), m = makeFighter(K.ti);
+    const pos = SPC.pos.clone().addScaledVector(dir, 2300 + Math.random() * 600), m = makeFighter(K.cath ? 'cath' : K.ti);
     const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(pos, SPC.pos, SCV.c.set(0, 1, 0)));
     m.position.copy(pos); m.quaternion.copy(q); SPC.scene.add(m);
-    SC.foes.push({ m, pos, q, hp: K.ti ? 70 : 55, max: K.ti ? 70 : 55, speed: 205 + Math.random() * 45, cd: 1.5 + Math.random() * 2, burst: 0, mode: 'attack', modeT: 0, brk: new THREE.Vector3(), name: K.ti ? 'TERRA IMPERIA' : 'PIRATE', ti: !!K.ti });
+    const hp = K.cath ? 85 : K.ti ? 70 : 55;
+    SC.foes.push({ m, pos, q, hp, max: hp, speed: (K.cath ? 225 : 205) + Math.random() * 45, cd: 1.5 + Math.random() * 2, burst: 0, mode: 'attack', modeT: 0, brk: new THREE.Vector3(), name: K.cath ? 'CATHARSIS' : K.ti ? 'TERRA IMPERIA' : 'PIRATE', ti: !!K.ti, cath: !!K.cath });
   }
   sfx.alarm(); setTimeout(() => sfx.alarm(), 300); combatPulse();
-  spaceMsg(K.ti ? `Terra Imperia interceptors · ${n} ships · Hawthorne hasn't given up` : `Pirates incoming · ${n} ships`);
+  spaceMsg(K.cath ? `The Catharsis · ${n} ships · it is spreading, world by world` : K.ti ? `Terra Imperia interceptors · ${n} ships · Hawthorne hasn't given up` : `Pirates incoming · ${n} ships`);
 }
 function scClear() {
   for (const f of SC.foes) SPC.scene && SPC.scene.remove(f.m);
@@ -10487,8 +10503,8 @@ function scClear() {
   SC.foes = []; SC.bolts = []; SC.lock = null;
 }
 const BOLT_GEO = new THREE.CylinderGeometry(.55, .55, 26, 6).rotateX(Math.PI / 2);
-function scBolt(from, dir, speed, friendly) {
-  const m = new THREE.Mesh(BOLT_GEO, SC['boltM' + friendly] || (SC['boltM' + friendly] = new THREE.MeshBasicMaterial({ color: friendly ? 0x8ff0ff : 0xff5a3a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })));
+function scBolt(from, dir, speed, friendly, cath) {
+  const k = friendly ? 'f' : cath ? 'c' : 'e', m = new THREE.Mesh(BOLT_GEO, SC['boltM' + k] || (SC['boltM' + k] = new THREE.MeshBasicMaterial({ color: friendly ? 0x8ff0ff : cath ? 0xb070ff : 0xff5a3a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })));
   m.position.copy(from); m.quaternion.setFromUnitVectors(SCV.d.set(0, 0, 1), dir); SPC.scene.add(m);
   SC.bolts.push({ m, pos: from.clone(), prev: from.clone(), vel: dir.clone().multiplyScalar(speed), life: friendly ? 1.6 : 2.2, friendly });
 }
@@ -10514,11 +10530,11 @@ function scShipDown() {
 }
 function scKill(f) {
   scBoom(f.pos, 1.3); sfx.boom(); SPC.scene.remove(f.m); SC.foes = SC.foes.filter(o => o !== f); if (SC.lock === f) SC.lock = null;
-  const u = 40 + Math.floor(Math.random() * 50) + (f.ti ? 20 : 0); addUnits(u); gainXP(60);
+  const u = 40 + Math.floor(Math.random() * 50) + (f.cath ? 35 : f.ti ? 20 : 0); addUnits(u); gainXP(60);
   const drops = [['scrap', 1 + Math.floor(Math.random() * 3)], Math.random() < .5 && ['crystal', 1], Math.random() < .15 && ['warpcell', 1]].filter(Boolean);
   for (const [id, n] of drops) giveItem(id, n);
   const W3 = wanderer.ch3; if (W3) { W3.kills = (W3.kills | 0) + 1; const c = curChar(); if (c) c.ch3 = W3; }
-  spaceMsg(`${f.name === 'PIRATE' ? 'Pirate' : 'Interceptor'} destroyed · +${u} units${drops.map(([id, n]) => ` · +${n} ${ITEMS[id].name}`).join('')}${SC.foes.length ? '' : ' · all hostiles down'}`);
+  spaceMsg(`${f.cath ? 'Catharsis ship' : f.ti ? 'Interceptor' : 'Pirate'} destroyed · +${u} units${drops.map(([id, n]) => ` · +${n} ${ITEMS[id].name}`).join('')}${SC.foes.length ? '' : ' · all hostiles down'}`);
 }
 function scTick(dt, fwd, up, alt) {
   // encounters
@@ -10560,7 +10576,7 @@ function scTick(dt, fwd, up, alt) {
       // they lead you, with a little scatter: about one shot in three finds a ship flying straight
       const bs = 950 + f.speed, muzzle = f.pos.clone().addScaledVector(ffwd, 6), aim = SPC.pos.clone().addScaledVector(pv, d / bs).sub(muzzle).normalize();
       aim.add(new THREE.Vector3((Math.random() - .5), (Math.random() - .5), (Math.random() - .5)).multiplyScalar(.035)).normalize();
-      scBolt(muzzle, aim, bs, false); if (d < 900) sfx.laser(.35);
+      scBolt(muzzle, aim, bs, false, f.cath); if (d < 900) sfx.laser(.35);
     }
   }
   if (SC.foes.length && SC.foes.every(f => f.pos.distanceTo(SPC.pos) > 6000)) { scClear(); spaceMsg('You lost them'); }
