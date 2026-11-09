@@ -562,3 +562,15 @@ After the escape from New London, **Chapter III · Sol** begins in your ship, ju
 - **Getting away:** hostiles jam the pulse drive and the hyperdrive (no warping in combat). You can fight, outrun them (beyond 6 km they give up), or dive into a planet's atmosphere, where they break off.
 - **Losing:** if your hull is destroyed, the ship is towed back to the system's main world with shields and hull restored, minus a quarter of your units.
 
+## The core: the Grek Empire and the Catharsis
+- **Chapter III:**
+  - The **Grek Empire** holds Sagittarius A\* and Carax, its capital, plus a ring of 39 systems around the core (green on the galaxy map, with Grek traders).
+  - Closer in, right round the black hole, are 8 **Catharsis** systems, violet on the map. The Catharsis is a **puppet state of the Grek Empire** (Am-Grek subjugated them; his Nostrapedia entry now says so).
+  - In Chapter III the Catharsis is **neutral**. Their ships patrol their systems, marked *Catharsis · neutral*, and never attack. Pirates mostly stay out of their space.
+  - Their worlds have **Catharsis traders**: tall robed figures with violet eyes and a hood of spines.
+- **Chapter IV:**
+  - The **Catharsis breaks free of the Grek Empire** and takes every Grek world but one. All 48 systems are theirs, and **Carax is their capital**.
+  - **Malana** is the last Grek world.
+  - Catharsis space is hostile: Catharsis ships attack there, as they do in Sol, and there are no Catharsis traders.
+  - The galaxy map, system descriptions, planet factions and traders all switch with the chapter of the wanderer you're playing.
+

@@ -656,6 +656,7 @@ button.bm-c.no{opacity:.45}
 .sh-foe i{display:block;width:22px;height:22px;margin:0 auto;border:1px solid #ff6a5a;transform:rotate(45deg)}.sh-foe.lock i{width:30px;height:30px;border-width:2px;box-shadow:0 0 10px rgba(255,90,74,.6)}
 .sh-foe span{display:block;margin-top:8px;font-size:7.5px;letter-spacing:.24em;color:#ffb3a8;text-shadow:0 0 6px #000;white-space:nowrap}
 .sh-foe em{display:block;width:40px;height:3px;margin:4px auto 0;background:rgba(255,255,255,.15)}.sh-foe em u{display:block;height:100%;background:#ff6a5a}
+.sh-foe.neutral i{border-color:#b98aff;width:16px;height:16px}.sh-foe.neutral span{color:#d4bfff}
 .sh-foe.edge i{border-radius:50%;width:12px;height:12px;background:rgba(255,90,74,.5)}
 .sh-cells{display:block;font-style:normal;font-size:8px;letter-spacing:.3em;color:#c7b4ff;margin-top:6px}
 .sh-map{position:absolute;top:calc(var(--st) + 14px);right:calc(var(--sr) + 72px);height:40px;padding:0 12px;pointer-events:auto;background:rgba(7,10,17,.5);border:1px solid var(--line);color:var(--ink);font-family:var(--display);font-size:9px;letter-spacing:.24em;cursor:pointer}
@@ -5466,7 +5467,16 @@ function setupMerchants() {
       const lan = glowSprite(0xeda8d4, 3.2, .6); lan.position.set(-.9, 2.3, .9); g.add(lan);
       g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       wScene.add(g); m.stall = g;
-      const sp = m.sp || 'erisian', el = document.getElementById('sp_' + sp);
+      const sp = m.sp || 'erisian', el = sp === 'catharsis' ? null : document.getElementById('sp_' + sp);
+      if (sp === 'catharsis') {
+        const robe = new THREE.MeshStandardMaterial({ color: 0x0e0a16, roughness: .6, metalness: .3, flatShading: true }), eyeM = new THREE.MeshBasicMaterial({ color: 0xc9a2ff }), f = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.ConeGeometry(.55, 2.1, 7), robe); body.position.y = 1.05; f.add(body);
+        const hood = new THREE.Mesh(new THREE.ConeGeometry(.32, .8, 7), robe); hood.position.y = 2.35; f.add(hood);
+        for (const sx of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(.045, 6, 5), eyeM); e.position.set(sx * .1, 2.22, .24); f.add(e); }
+        for (let i = 0; i < 4; i++) { const sp2 = new THREE.Mesh(new THREE.ConeGeometry(.05, .7, 4), robe), a = i / 3 * 1.4 - .7; sp2.position.set(Math.sin(a) * .35, 2.1, -.25); sp2.rotation.set(-.6, 0, a); f.add(sp2); }
+        const gl = glowSprite(0x9a5cff, 1.4, .5); gl.position.set(0, 2.22, .3); f.add(gl);
+        f.traverse(o => { if (o.isMesh) o.castShadow = true; }); f.position.set(0, 0, -.2); g.add(f);
+      }
       if (el) {
         const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
@@ -9814,15 +9824,16 @@ const SYSTEMS = [
     faction: 'The Order of Archamus', map: { x: .27, y: .44 }, home: 'malana',
     desc: 'A near neighbour of Sol. The Order of Archamus controls Archiostal, the garden station where most of the Grek live, and holds the Grek Empire as its puppet state. Am-Grek, High Hierarch of the Grek, was born on Malana in 1700 AD.',
     bodies: [
-      { id: 'malana', name: 'Malana', kind: 'earth', r: 2200, orbit: 52000, ang: 1.2, seed: 101, landBias: .03, c: { sand: '#c8c08a', low: '#3f7a3a', forest: '#1f4a28', rock: '#5a6a52', snow: '#e8f0e8' }, sea: '#1d5a6e', atmo: '#9fe0c0', clouds: '#f4fff8', cloudCover: .5, sky: ['#3f8a8a', '#c4e8d8'], fog: '#a8d0c0', faction: 'The Grek · puppet of the Order of Archamus' },
+      { id: 'malana', name: 'Malana', kind: 'earth', r: 2200, orbit: 52000, ang: 1.2, seed: 101, landBias: .03, c: { sand: '#c8c08a', low: '#3f7a3a', forest: '#1f4a28', rock: '#5a6a52', snow: '#e8f0e8' }, sea: '#1d5a6e', atmo: '#9fe0c0', clouds: '#f4fff8', cloudCover: .5, sky: ['#3f8a8a', '#c4e8d8'], fog: '#a8d0c0', faction: 'The Grek · puppet of the Order of Archamus', fac3: 'The Grek · puppet of the Order of Archamus', fac4: 'The Grek · the last Grek world' },
       { id: 'archiostal', name: 'Archiostal', kind: 'station', r: 1100, parent: 'malana', orbit: 8200, ang: 2.4, seed: 107, faction: 'The Order of Archamus · garden station of the Grek' },
       { id: 'malana-g', name: 'Malana VI', kind: 'gas', r: 7000, orbit: 130000, ang: 5.6, seed: 109, bands: ['#c8b48a', '#a88a5e', '#e2d4b2', '#8a6a44'], atmo: '#e8d0a0', faction: 'Gas giant · no surface' }
     ] },
   { id: 'sgra', name: 'Sagittarius A*', star: { kind: 'hole', name: 'Sagittarius A*', r: 2600, col: '#000000', glow: ['rgba(255,214,160,.9)', 'rgba(255,140,60,.35)', 'rgba(120,40,20,0)'], light: '#ffd9b0', type: 'Supermassive black hole' },
-    faction: 'The Grek', map: { x: 0, y: 0 }, home: 'carax',
+    faction: 'The Grek Empire', fac3: 'The Grek Empire', fac4: 'The Catharsis', map: { x: 0, y: 0 }, home: 'carax',
+    desc4: 'The black hole at the heart of the galaxy. Carax circles it, and Carax is the Catharsis capital now: they broke free of the Grek Empire and took it, with every Grek world but Malana.',
     desc: 'The black hole at the heart of the galaxy. Carax, the airless fortress world that Am-Grek took from the Chompy Empire in 1800, circles it.',
     bodies: [
-      { id: 'carax', name: 'Carax', kind: 'rock', r: 1500, orbit: 60000, ang: 2.1, seed: 113, c: { low: '#3e3a3c', mid: '#5e585a', rock: '#262224' }, atmo: null, sky: ['#08040a', '#2a1410'], fog: '#2a1c18', faction: 'The Grek · capital of Am-Grek' }
+      { id: 'carax', name: 'Carax', kind: 'rock', r: 1500, orbit: 60000, ang: 2.1, seed: 113, c: { low: '#3e3a3c', mid: '#5e585a', rock: '#262224' }, atmo: null, sky: ['#08040a', '#2a1410'], fog: '#2a1c18', faction: 'The Grek Empire · capital of Am-Grek', fac3: 'The Grek Empire · capital of Am-Grek', fac4: 'The Catharsis · their capital, taken from the Grek' }
     ] },
   { id: 'steca', name: 'Steca Prime', star: { kind: 'star', name: 'Steca Prime', r: 4200, col: '#ffd9a0', glow: ['rgba(255,226,170,1)', 'rgba(255,170,90,.55)', 'rgba(255,120,40,0)'], light: '#ffe0b8', type: 'Orange giant · K1III' },
     faction: 'The Chompy Empire', map: { x: -.09, y: -.07 }, home: 'aridaxx',
@@ -9906,7 +9917,12 @@ const SYSTEMS = [
     while (SYSTEMS.some(S => Math.hypot(S.map.x - x, S.map.y - y) < gap) && ++tries < 80);
     let name; do name = pick(A) + pick(B) + pick(SUF); while (used.has(name)); used.add(name);
     const base = name.replace(/ \w+$/, m => SUF.includes(m) ? '' : m), id = 'g' + (n + 1), st = starOf();
-    const chompy = Math.hypot(x + .09, y + .07) < .3 || Math.hypot(x + .5, y + .12) < .22, fac = chompy ? 'The Chompy Empire' : UNCLAIMED;
+    // the core: the Catharsis right round Sagittarius A* (a Grek puppet in Chapter III), the Grek Empire in a ring beyond, the
+    // Chompy Empire around Steca Prime and Janira Proxima. In Chapter IV the Catharsis holds every one of the Grek systems.
+    const coreD = Math.hypot(x, y), stecaD = Math.hypot(x + .09, y + .07), janD = Math.hypot(x + .5, y + .12);
+    const cath = coreD < .14 && stecaD > .09, grek = !cath && coreD < .27 && stecaD > .17 && janD > .22;
+    const chompy = !cath && !grek && (stecaD < .3 || janD < .22);
+    const fac = cath ? 'The Catharsis · puppet of the Grek Empire' : grek ? 'The Grek Empire' : chompy ? 'The Chompy Empire' : UNCLAIMED, fac4 = cath || grek ? 'The Catharsis' : null;
     const cls = st[2] === 'D' ? 'DA' : `${st[2]}${Math.floor(R() * 9)}${/giant/.test(st[1]) ? 'III' : 'V'}`;
     const [r0, g0, b0] = st[4];
     const S = { id, name, gen: true, faction: fac, map: { x: +x.toFixed(3), y: +y.toFixed(3) }, bodies: [],
@@ -9924,13 +9940,27 @@ const SYSTEMS = [
     S.home = (S.bodies.find(P => P.kind !== 'gas' && !P.parent) || S.bodies.find(P => P.kind !== 'gas')).id;
     const parts = [rocky && `${NUM[rocky] || rocky} rocky world${rocky > 1 ? 's' : ''}`, gas && `${gas > 1 ? NUM[gas] + ' gas giants' : 'a gas giant'}`, moons && `${moons > 1 ? NUM[moons] + ' moons' : 'a moon'}`].filter(Boolean);
     const list = parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
-    S.desc = `${chompy ? 'A system of the Chompy Empire.' : 'Uncharted.'} ${/^[AEIOU]/.test(st[1]) ? 'An' : 'A'} ${st[1].toLowerCase()} with ${list}.`;
+    const tail = `${/^[AEIOU]/.test(st[1]) ? 'An' : 'A'} ${st[1].toLowerCase()} with ${list}.`;
+    S.desc = `${cath ? 'Catharsis space near the core, held for the Grek Empire.' : grek ? 'A system of the Grek Empire.' : chompy ? 'A system of the Chompy Empire.' : 'Uncharted.'} ${tail}`;
+    if (fac4) { // Chapter IV
+      S.fac3 = fac; S.fac4 = fac4; S.desc3 = S.desc; S.desc4 = `${cath ? 'Catharsis space, the heart of their new empire.' : 'Once the Grek Empire’s; the Catharsis took it.'} ${tail}`;
+      for (const P of S.bodies) if (P.faction === fac) { P.fac3 = fac; P.fac4 = fac4; }
+    }
     SYSTEMS.push(S);
   }
 })();
 const ALL_BODIES = SYSTEMS.flatMap(S => S.bodies.map(P => (P.sys = S.id, P)));
 ALL_BODIES.forEach(P => { if (P.c) for (const k in P.c) P.c[k] = C3(P.c[k]); P.land = P.kind !== 'gas' && P.kind !== 'station'; });
 const sysById = id => SYSTEMS.find(S => S.id === id) || SYSTEMS[0];
+// Chapter III and Chapter IV hold the same galaxy under different flags: swap them to suit the wanderer you're playing
+let FAC_CH = 0;
+function applyChapterFactions() {
+  const ch = (wanderer && (wanderer.chapter | 0) >= 4) ? 4 : 3; if (ch === FAC_CH) return; FAC_CH = ch;
+  for (const S of SYSTEMS) {
+    if (S.fac4) S.faction = ch >= 4 ? S.fac4 : S.fac3; if (S.desc4) { if (!S.desc3) S.desc3 = S.desc; S.desc = ch >= 4 ? S.desc4 : S.desc3; }
+    for (const P of S.bodies) { if (P.fac4) P.faction = ch >= 4 ? P.fac4 : P.fac3; P.traders = null; }
+  }
+}
 const bodyById = id => ALL_BODIES.find(P => P.id === id);
 const curSys = () => sysById(SPC.sys);
 const curBodies = () => curSys().bodies;
@@ -10091,6 +10121,7 @@ function setSystem(id) {
   SPC.sysG = S.g; S.g.visible = true; SPC.scene.add(S.g); SPC.bodies = S.bodies;
   SPC.sunL.color.set(S.star.light); SPC.sunL.intensity = S.star.kind === 'hole' ? 1.8 : 2.4;
   SPC.stars.rotation.set(S.map.y * 2.1, S.map.x * 3.3, .5 + S.map.x); // the sky shifts a little from system to system
+  if (SPC.ship) scNeutrals();
 }
 function makeShip() { // the Federation dropship from Parliament Square
   const g = new THREE.Group(), M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .4, metalness: .6 }, o));
@@ -10309,7 +10340,7 @@ function galEl() {
   el.querySelector('#galPanel').addEventListener('click', e => { const b = e.target.closest('[data-warp]'); if (b && !b.disabled) galWarp(b.dataset.warp); });
   return el;
 }
-const FAC_COL = { 'The Chompy Empire': '#ffb060', 'The Grek': '#7fe0a0', 'The Order of Archamus': '#ffd88a', 'Human Federation of Sol': '#7fb6ff' };
+const FAC_COL = { 'The Chompy Empire': '#ffb060', 'The Grek': '#7fe0a0', 'The Grek Empire': '#7fe0a0', 'The Catharsis': '#a070ff', 'The Order of Archamus': '#ffd88a', 'Human Federation of Sol': '#7fb6ff' };
 const galScale = () => Math.min(innerWidth, innerHeight) * .46 * GAL.zoom;
 function galQ(S) { const c = Math.cos(GAL.rot), s = Math.sin(GAL.rot), x = S.map.x * c - S.map.y * s, y = (S.map.x * s + S.map.y * c) * GAL.tilt; return { x, y }; }
 function galXY(S) { const q = galQ(S), k = galScale(); return { x: innerWidth / 2 + (q.x - GAL.pan.x) * k, y: innerHeight / 2 + (q.y - GAL.pan.y) * k }; }
@@ -10320,7 +10351,7 @@ function galPick(x, y) {
 }
 function galOpen() {
   if (state !== 'space' || SPC.warp || SPC.landing || GAL.open) return;
-  const el = galEl(); galImage(); GAL.open = true; SPC.keys.clear(); SPC.btn = {}; el.classList.remove('hidden'); $('#spaceHud').classList.add('hidden');
+  applyChapterFactions(); const el = galEl(); galImage(); GAL.open = true; SPC.keys.clear(); SPC.btn = {}; el.classList.remove('hidden'); $('#spaceHud').classList.add('hidden');
   if (!GAL.zoomed) { GAL.zoomed = true; GAL.zoom = innerWidth < 600 ? 2.3 : 1.6; }
   GAL.sel = GAL.sel && GAL.sel !== SPC.sys ? GAL.sel : SPC.sys; const q = galQ(sysById(GAL.sel)); GAL.pan.x = q.x; GAL.pan.y = q.y; GAL.panTo = null;
   $('#galSub').textContent = `You are in ${curSys().name} · ${((wanderer.ch3 && wanderer.ch3.visited) || []).length} of ${SYSTEMS.length} systems visited`; galPanel(); sfx.chime();
@@ -10362,7 +10393,7 @@ function galDraw(dt) {
   }
   const vis = (wanderer.ch3 && wanderer.ch3.visited) || [], font = getComputedStyle(document.body).getPropertyValue('--display');
   for (const S of SYSTEMS) { // faction territory, a soft wash behind each claimed system
-    const fc = FAC_COL[S.faction]; if (!fc) continue; const p = galXY(S), rr = (S.gen ? 16 : 26) + (S.gen ? 8 : 14) * GAL.zoom;
+    const fc = FAC_COL[S.faction.split(' · ')[0]]; if (!fc) continue; const p = galXY(S), rr = (S.gen ? 16 : 26) + (S.gen ? 8 : 14) * GAL.zoom;
     if (p.x < -rr || p.x > W + rr || p.y < -rr || p.y > H + rr) continue;
     const gr = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr); gr.addColorStop(0, fc + '30'); gr.addColorStop(1, fc + '00'); g.fillStyle = gr; g.beginPath(); g.arc(p.x, p.y, rr, 0, 7); g.fill();
   }
@@ -10448,7 +10479,7 @@ function warpTick(dt) {
    target you're pointing at; shields soak hits and recharge after a few seconds clear, the hull doesn't (it's patched up when
    you land). Hostiles jam the pulse drive and the hyperdrive, so fight, outrun them (6 km), or dive into an atmosphere. Lose
    the hull and the ship is towed back to the system's main world, minus a quarter of your units. */
-const SC = { foes: [], bolts: [], booms: [], shield: 100, hull: 100, hitT: -9, nextT: 60, cool: 0, gun: 0, shake: 0, lock: null };
+const SC = { foes: [], bolts: [], booms: [], neut: [], neutSys: null, shield: 100, hull: 100, hitT: -9, nextT: 60, cool: 0, gun: 0, shake: 0, lock: null };
 const SCV = { a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), d: new THREE.Vector3(), q: new THREE.Quaternion() };
 const scJammed = () => SC.foes.some(f => f.pos.distanceTo(SPC.pos) < 3500);
 function makeCathShip() { // the Catharsis: a black shard with a cold violet core and curled spines, nothing like a built ship
@@ -10481,6 +10512,8 @@ function scKind() {
   const S = curSys();
   if (S.id === 'sol') return (wanderer.chapter | 0) >= 4 ? { who: 'The Catharsis', cath: true, chance: .65 } : { who: 'Terra Imperia', ti: true, chance: .65 };
   if (S.faction === 'The Chompy Empire') return { who: 'Pirates', chance: .25 }; // the Emperor's patrols keep his space quieter
+  if (/^The Catharsis/.test(S.faction)) return (wanderer.chapter | 0) >= 4 ? { who: 'The Catharsis', cath: true, chance: .75 } : { who: 'Pirates', chance: .2 }; // neutral in III (and pirates keep their distance), the enemy in IV
+  if (/^The Grek/.test(S.faction)) return { who: 'Pirates', chance: .3 };
   return { who: 'Pirates', chance: .55 };
 }
 function scSpawn() {
@@ -10496,6 +10529,14 @@ function scSpawn() {
   }
   sfx.alarm(); setTimeout(() => sfx.alarm(), 300); combatPulse();
   spaceMsg(K.cath ? `The Catharsis · ${n} ships · it is spreading, world by world` : K.ti ? `Terra Imperia interceptors · ${n} ships · Hawthorne hasn't given up` : `Pirates incoming · ${n} ships`);
+}
+// neutral Catharsis ships patrolling their own systems in Chapter III: they ignore you, and you can't lock on to them
+function scNeutrals() {
+  const S = curSys(), want = /^The Catharsis/.test(S.faction) && (wanderer.chapter | 0) < 4 ? S.id : null;
+  if (SC.neutSys === want) return;
+  for (const n of SC.neut) SPC.scene.remove(n.m); SC.neut = []; SC.neutSys = want; if (!want) return;
+  const H = bodyById(S.home);
+  for (let i = 0; i < 4; i++) { const m = makeCathShip(); SPC.scene.add(m); SC.neut.push({ m, c: H.pos, r: H.r * (2.2 + i * .45), a: i * 1.6, w: (.045 + i * .008) * (i % 2 ? 1 : -1), tilt: (i - 1.5) * .22, pos: new THREE.Vector3() }); }
 }
 function scClear() {
   for (const f of SC.foes) SPC.scene && SPC.scene.remove(f.m);
@@ -10537,6 +10578,8 @@ function scKill(f) {
   spaceMsg(`${f.cath ? 'Catharsis ship' : f.ti ? 'Interceptor' : 'Pirate'} destroyed · +${u} units${drops.map(([id, n]) => ` · +${n} ${ITEMS[id].name}`).join('')}${SC.foes.length ? '' : ' · all hostiles down'}`);
 }
 function scTick(dt, fwd, up, alt) {
+  scNeutrals();
+  for (const n of SC.neut) { n.a += n.w * dt; const ca = Math.cos(n.a), sa = Math.sin(n.a); n.pos.set(n.c.x + ca * n.r, n.c.y + sa * n.r * n.tilt, n.c.z + sa * n.r); n.m.position.copy(n.pos); n.m.lookAt(n.c.x + Math.cos(n.a + n.w * .5) * n.r, n.c.y + Math.sin(n.a + n.w * .5) * n.r * n.tilt, n.c.z + Math.sin(n.a + n.w * .5) * n.r); n.m.rotateY(Math.PI); }
   // encounters
   const W3 = wanderer.ch3 || {};
   if (!SC.foes.length && SPC.t > SC.nextT) {
@@ -10606,6 +10649,11 @@ function scHud() {
     if (edge || x < 20 || x > W - 20 || y < 20 || y > H - 20) { edge = true; const cx = W / 2, cy = H / 2, dx = x - cx, dy = y - cy, k = Math.min((W / 2 - 30) / Math.abs(dx || 1), (H / 2 - 30) / Math.abs(dy || 1)); x = cx + dx * k; y = cy + dy * k; }
     h += `<div class="sh-foe${f === SC.lock ? ' lock' : ''}${edge ? ' edge' : ''}" style="left:${x | 0}px;top:${y | 0}px"><i></i>${edge ? '' : `<span>${f.name} · ${d > 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'}</span><em><u style="width:${(f.hp / f.max * 100) | 0}%"></u></em>`}</div>`;
   }
+  for (const n of SC.neut) {
+    const d = n.pos.distanceTo(SPC.pos); if (d > 4000) continue; const v = SCV.a.copy(n.pos).project(camera); if (v.z > 1) continue;
+    const x = (v.x * .5 + .5) * W, y = (-v.y * .5 + .5) * H; if (x < 0 || x > W || y < 0 || y > H) continue;
+    h += `<div class="sh-foe neutral" style="left:${x | 0}px;top:${y | 0}px"><i></i><span>CATHARSIS · NEUTRAL · ${d > 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'}</span></div>`;
+  }
   $('#shFoes').innerHTML = h;
 }
 // ---- landing: down through the air, the ground takes over, the ship settles, and out you get ----
@@ -10629,7 +10677,8 @@ async function landOn(P, dir, place) {
   AREA_INFO[key] = { planet: P.name, name: P.name, space: true, stationTp: { x: 1e5, z: 1e5, name: '' } };
   AREA_FOG[key] = new THREE.Color(P.fog).getHex();
   world.area = key; world.builtArea = null; // a new landing spot: the ground is laid out afresh around it
-  MERCHANTS[key] = planetTraders(P); for (const m of MERCHANTS[key]) m.seed = null; // its stall finds dry ground near the new spot
+  const nt = planetTraders(P); for (const m of MERCHANTS[key] || []) if (!nt.includes(m) && m.stall) { wScene.remove(m.stall); m.stall = null; } // a stall whose world changed hands goes
+  MERCHANTS[key] = nt; for (const m of MERCHANTS[key]) m.seed = null; // its stall finds dry ground near the new spot
   const pl = place || { mode: 'explore', area: 'world', where: key, x: 6, z: 5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI };
   enterWorld(pl); await placeOrion().catch(() => null);
   // your ship, set down on the ground
@@ -10672,7 +10721,7 @@ function shipUpTick(dt) {
 function rememberPlaceSafe() { try { rememberPlace(); } catch (e) {} }
 // ---- Chapter III begins: away from New London in the ship, out over Earth ----
 async function startChapter3(place) {
-  state = 'loadingCh'; sfx.init();
+  state = 'loadingCh'; sfx.init(); applyChapterFactions();
   await Promise.all([loadSpecies(spOf(wanderer)).catch(() => null), loadWorldHD()]); applyLook(wanderer);
   show(ui.title, false); show(ui.tbc, false); show(ui.xpause, false);
   ex.keys.clear(); ex.dlg = null; renderer.domElement.style.filter = '';
@@ -10709,13 +10758,15 @@ function planetLook() {
 const TRADER_KIT = {
   chompy: { label: 'Chompy trader', cloth: 0x4a2f6a, trim: 0x69b8ea, lines: ['The Emperor’s peace makes for good trade. Buy, sell, and keep the peace.', 'Every Chompy world remembers the civil war. That is why our stores are always full.', 'Warp cells from the forges of Aridaxx. Mind the fingers: they bite back if you drop them.', 'Three hundred years I have kept this stall. Haggle if you like. I have time.'] },
   grek: { label: 'Grek trader', cloth: 0x3f5a3a, trim: 0xc5a87c, lines: ['Archamus teaches that a fair price is a kind of prayer.', 'The Order keeps Archiostal’s gardens. I keep its accounts.', 'Slowly, traveller. A good trade is like a good tree: it is not hurried.'] },
+  catharsis: { label: 'Catharsis trader', cloth: 0x120c1c, trim: 0x9a5cff, lines: ['We are bound to the Grek, for now. Trade does not care who is bound.', 'You smell of the outer arms. Little world, little sun. Buy.', 'Am-Grek’s law holds us. It holds this stall too. Fair prices, by his law.', 'We are patient. We are many. Today, we only sell.'] },
   erisian: { label: 'Erisian trader', cloth: 0x5b6475, trim: 0xeda8d4, lines: ['Erisians have traded between the stars since before your sun had a name for itself. Today, we trade with you.', 'Units for crystal, units for ore. The galaxy is wide, but the prices are fair.', 'I have walked a hundred worlds with this pack. This one is not the worst.', 'You are far from home, wanderer. So am I. That is good for business.'] }
 };
 function planetTraders(P) {
   if (P.traders) return P.traders;
   const f = P.faction || '', S = sysById(P.sys), r = k => ((Math.imul(P.seed + k * 977, 2654435761) >>> 0) % 10000) / 10000;
   let sp = null;
-  if (/Grek|Archamus/.test(f)) sp = 'grek';
+  if (/^The Catharsis/.test(f)) { if ((wanderer.chapter | 0) >= 4) return P.traders = []; sp = 'catharsis'; } // neutral in Chapter III; at war in Chapter IV
+  else if (/Grek|Archamus/.test(f)) sp = 'grek';
   else if (/Erisian|Human Federation/.test(f)) sp = 'erisian';
   else if (/Chompy/.test(f)) sp = 'chompy';
   const want = sp ? (!S.gen && !P.parent ? 1 : !S.gen ? .5 : .7) : .25;
@@ -12712,12 +12763,12 @@ const PEDIA_LEADERS = [
       'The Federation’s soldiers wear blue and gold, and Darius is proud of what that armour stands for. Anyone wearing it in other colours does not speak for him.'
     ] },
   { sp: 'grek', name: 'AM-GREK', title: 'High Hierarch of the Grek',
-    facts: [['Species', 'Grek'], ['Born', '1700 AD'], ['Birthplace', 'Malana, in the Malana Prime system near Sol'], ['Capital', 'Carax, airless fortress world in the galactic core (taken in 1800 AD)'], ['Faith', 'Archamus, the Prime Good'], ['Realm', 'The Grek Empire, a puppet state of the Order of Archamus'], ['Overlord', 'The Order of Archamus, from Archiostal'], ['Head of state', 'Am-Grek, High Hierarch'], ['Head of government', 'Am-Grek, ruling from Carax'], ['Alignment', 'Lawful Neutral']],
+    facts: [['Species', 'Grek'], ['Born', '1700 AD'], ['Birthplace', 'Malana, in the Malana Prime system near Sol'], ['Capital', 'Carax, airless fortress world in the galactic core (taken in 1800 AD)'], ['Faith', 'Archamus, the Prime Good'], ['Realm', 'The Grek Empire, a puppet state of the Order of Archamus'], ['Overlord', 'The Order of Archamus, from Archiostal'], ['Puppet state', 'The Catharsis, near the galactic core'], ['Head of state', 'Am-Grek, High Hierarch'], ['Head of government', 'Am-Grek, ruling from Carax'], ['Alignment', 'Lawful Neutral']],
     align: 'Devout, disciplined and certain. Am-Grek follows Archamus’s law to the letter, and the subjugation of the Catharsis shows that his law is not always kind.',
     paras: [
       'Am-Grek was born in 1700 AD on Malana, in the Malana Prime system not far from Sol, the same system that is home to Archiostal, the Grek garden station. He grew up in a family of priests and was raised on the teachings of Archamus, the Prime Good, whose guidance the Grek seek before every great decision. He remains the most devout follower of Archamus alive.',
       'In 1800 AD, during the war against Sevirrus, Am-Grek led the Grek across the galaxy to capture Carax, an airless fortress world deep in the galactic core. He made it his capital and has ruled from it ever since, far from home, while most of his people still live among the forests of Archiostal back near Sol. Carax was also where the Cult of Zark was broken in 1826 AD, and Am-Grek guards it as sacred ground.',
-      'In another war he subjugated a species known only as the mysterious Catharsis. Little is known about them, and Am-Grek rarely speaks of it. His followers call it Archamus’s will; his critics call it the one stain on a righteous life.',
+      'In another war he subjugated a species known only as the mysterious Catharsis. Little is known about them, and Am-Grek rarely speaks of it. Today the Catharsis lives on near the galactic core as a puppet state of the Grek Empire: quiet, neutral, trading with anyone who comes, and waiting. His followers call it Archamus’s will; his critics call it the one stain on a righteous life.',
       'As High Hierarch he is both head of state and head of government of the Grek Empire, and the Grek follow him as they follow their faith: slowly, carefully and without question.',
       'Yet the Grek Empire is not its own master. It is a puppet state of the Order of Archamus, the priesthood that controls Archiostal, the garden station at the heart of Grek life. The Order speaks for Archamus, and the High Hierarch, devout to the bone, rules by its leave and does as it asks.'
     ] }
