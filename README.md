@@ -26,7 +26,7 @@ Open `index.html` in a modern browser, keeping the `data/` folder next to it. It
   - **Talking to them:** walk up and press E / tap WAVE: what they're up to, this place, tips, how the war is going (Chapter III on), buy a few materials (not from villains), **Real life…**, or bye.
   - **Real life… (out of character, villains too):**
     - *I'm stressed out:* they listen, reflect what you're dealing with (work, school, relationships, money, health, loneliness, everything at once, something else), and offer simple, widely used techniques: box breathing, 5-4-3-2-1 grounding, small things to try, sleep and worry tips, and who to talk to. They check in afterwards. They say plainly that they're a game character, not a therapist.
-    - *I'm not safe right now:* goes straight to emergency and crisis contacts (999 / 911 / 112, Samaritans 116 123 in the UK and Ireland, 988 in the US, findahelpline.com elsewhere).
+    - *I'm not safe right now:* they urge you to contact your local emergency services or speak to a crisis line (free, confidential, any time). No phone numbers are shown in game, so it stays immersive.
     - *Job advice:* general tips on finding a job, CVs, interviews, changing career, asking for a raise, burnout, trouble at work, starting out and losing a job, with a reminder to get advice for your own situation.
   - **In space (Chapter III on):** their ships fly around your system. Heroes and neutrals join your fights; a villain may eventually turn on you (space only).
   - **What you see:** nameplates (name, level, species, coloured by alignment), speech bubbles, and a small zone chat (bottom left; on phones above the controls, or under the objectives when held sideways; in space under the objective).
