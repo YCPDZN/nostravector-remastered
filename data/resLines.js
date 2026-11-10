@@ -216,3 +216,22 @@ jobs: {
   close: ['Good luck. You’ve got this.', 'Hope that helps a bit. Take it one step at a time.', 'Remember: general tips, so adapt them to where you live and what you do.', 'For advice tailored to you, a careers or employment advice service can help, often for free.', 'Back to the game whenever you’re ready.', 'Rooting for you, genuinely.']
 }
 });
+/* NOSTRAVECTOR · residents' dialogue pack (part 5: not knowing, and not understanding) */
+window.NV_RES_LINES = Object.assign(window.NV_RES_LINES || {}, {
+confused: {
+  hero: ['Sorry, I’m not sure what you mean.', 'Hmm, I didn’t quite catch that. Can you say it another way?', 'I want to help, but I’m lost. What do you mean?', 'You’ve got me stumped there, {player}.', 'I don’t follow, sorry! Ask me something else?', 'That one went right over my helmet.', 'I’m not sure I understand. Is it about this place, the war, or something else?', 'Could you rephrase that? My translator’s acting up.', 'Oh! I’m confused. Start again?', 'I don’t know what that means, but I’d like to.', 'Sorry {player}, I’m drawing a blank.', 'Maybe ask me in simpler words? I’m tired today.'],
+  neutral: ['huh?', 'no idea what you mean lol', 'come again?', 'wat', 'I don’t get it', 'you lost me', 'what are you on about', 'not sure what that means tbh', 'sorry, brain’s off', '???', 'is that a question?', 'try that again, slower'],
+  villain: ['Speak clearly or don’t speak at all.', 'Was that supposed to mean something?', 'I don’t understand you. I don’t care to.', 'Nonsense. Try again.', 'Are you malfunctioning?', 'What a waste of words.', 'I have no idea what you just said, and neither do you.', 'Is that your language or are you just bad at it?', 'Again, but intelligently this time.', 'I’m not here to decode your babbling.', 'Fascinating. Meaningless, but fascinating.', 'Use words I can work with.']
+},
+unknown: {
+  hero: ['Honestly? I don’t know. I just got here myself.', 'Good question. I wish I knew.', 'I’m not sure, sorry. Maybe ask someone who’s been here longer?', 'No idea, but I’ll find out and let you know.', 'I don’t know that one. Let’s figure it out together?', 'You know, I’ve never thought about that.', 'I’m still learning that myself, {player}.', 'That’s beyond me, sorry!', 'I don’t want to guess and get it wrong.', 'Hmm. Not a clue, honestly.'],
+  neutral: ['no clue', 'honestly no idea, I just got here', 'dunno', 'ask someone who’s been here longer', 'beats me', 'never really looked into it', 'idk, I just mine stuff', 'not my area', 'no idea, sorry', 'I’m new here too'],
+  villain: ['Why would I know that?', 'Not my problem.', 'I don’t know, and I don’t care.', 'Figure it out yourself.', 'Do I look like a guidebook?', 'No idea. Go away.', 'Ask someone who cares.', 'I don’t waste my time learning that.', 'Couldn’t tell you. Wouldn’t if I could.', 'Hm. No. Next.']
+},
+notBeen: ['Never been to {q}. Heard it’s something.', '{q}? I haven’t made it there yet.', 'Can’t say I know {q}. Is it far?', 'I’ve only heard stories about {q}.', '{q}... rings a bell, but I’ve never been.', 'Not been to {q}. Maybe one day.', '{q}? Out of my range, I think.', 'Somebody mentioned {q} once. That’s all I know.'],
+know: ['{q}? Been there. {line}', 'Oh, {q}. {line}', '{q}, yeah. {line}', 'I know {q}. {line}'],
+greet: { hero: ['Hey {player}! Ask me anything.', 'Hi! Good to see you.', 'Hello friend!'], neutral: ['hey', 'yo', 'sup'], villain: ['What.', 'Oh. You.', 'Make it quick.'] },
+thanks: { hero: ['Any time, {player}!', 'Happy to help!', 'Of course!'], neutral: ['np', 'sure', 'no worries'], villain: ['Don’t get used to it.', 'Whatever.', 'You owe me.'] },
+me: { hero: ['I’m {name}, a {species} from {home}. Level {lv}, and trying to do some good.'], neutral: ['{name}. {species}, from {home}. Level {lv}. That’s about it.'], villain: ['I’m {name}. Level {lv}. Remember it.'] },
+suggest: ['You could ask me about this place, the war, tips, a planet, or say how you’re feeling.', 'Try asking about a planet, a leader, trading, jobs, or tips.', 'I know about places, factions, bosses, jobs, and I’ll listen if things are hard.']
+});
