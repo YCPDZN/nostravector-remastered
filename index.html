@@ -459,6 +459,9 @@ body.touch .touch-ui{display:block}
 #fbSub .w{text-shadow:0 0 6px rgba(0,0,0,.95),0 0 14px var(--g1)}
 .x-dlg.choice .tap{display:none}
 .x-dlg .opts{display:flex;flex-direction:column;gap:8px;margin-top:2px}
+.x-dlg .res-ask input{all:unset;box-sizing:border-box;width:100%;display:block;margin:2px 0 10px;padding:12px 14px;border:1px solid rgba(143,227,255,.45);background:rgba(255,255,255,.05);font-family:var(--text);font-size:16px;line-height:1.4;color:var(--ink);cursor:text}
+.x-dlg .res-ask input::placeholder{color:rgba(230,233,240,.4)}
+.x-dlg .res-ask .opts{flex-direction:row}.x-dlg .res-ask .opt{flex:1}
 .x-dlg .opt{all:unset;box-sizing:border-box;display:flex;gap:14px;align-items:baseline;padding:10px 14px;border:1px solid rgba(230,233,240,.14);background:rgba(255,255,255,.03);font-weight:300;font-size:clamp(14px,1.9vw,17px);line-height:1.45;cursor:pointer;transition:background .15s,border-color .15s}
 .x-dlg .opt:hover,.x-dlg .opt:focus-visible{background:rgba(255,156,159,.1);border-color:rgba(255,156,159,.55)}
 .x-dlg .opt b{font-weight:500;font-size:10px;letter-spacing:.2em;color:#ff9c9f;min-width:14px}
@@ -14950,7 +14953,7 @@ function resTravel(c, now = resNow()) {
     let body = bodyById(A.body), t = A.t0, i = 0;
     for (let guard = 0; guard < 5000; guard++) {
       const dwell = (6 + resHash(`${c.id}|${A.t0}|d${i}`) * 8) * 60e3;
-      if (now < t + dwell) { v = { mode: 'at', body, until: t + dwell }; break; }
+      if (now < t + dwell) { v = { mode: 'at', body, since: t, until: t + dwell }; break; }
       t += dwell;
       const to = resNextBody(c, body, i, A.t0), warp = (1.5 + resHash(`${c.id}|${A.t0}|w${i}`) * 3) * 60e3;
       if (now < t + warp) { v = { mode: 'warp', from: body, to, k: (now - t) / warp, until: t + warp }; break; }
@@ -15209,10 +15212,11 @@ function resTalk(B) {
   const x = resCtx(B), V = B.al === 'villain', T = RL && RL.talk, back = () => resTalk(B);
   const opts = [
     { text: 'What are you up to?', onPick: () => resSayTo(B, [resFill(resPick(T ? T.doing[B.al] : ['Just exploring.']), x), `LV ${B.lv} · ${SPECIES[B.sp].label} · ${resAlName(B)}${resTravels() ? ` · home: ${resHomeBody(B.c).name}` : ''}`], back) },
-    { text: 'Tell me about this place', onPick: () => { const k = resExploreKeys(), w = RL && k.world && RL.explore.worlds[k.world]; resSayTo(B, [resFill(resPick(T ? T.place : ['Nice place.']), x), RL ? resFill(resPick(w || RL.explore.kinds[k.kind] || RL.talk.place), x) : null], back); } },
-    { text: 'Any tips?', onPick: () => resSayTo(B, T ? resPickN(T.tips, 2) : ['Save often.'], back) }
+    { text: 'Tell me about this place', onPick: () => { if (resUnsure(B, 'place')) return resSayTo(B, [resUnknownLine(B, x)], back); const k = resExploreKeys(), w = RL && k.world && RL.explore.worlds[k.world]; resSayTo(B, [resFill(resPick(T ? T.place : ['Nice place.']), x), RL ? resFill(resPick(w || RL.explore.kinds[k.kind] || RL.talk.place), x) : null], back); } },
+    { text: 'Any tips?', onPick: () => resSayTo(B, resUnsure(B, 'tips') ? [resUnknownLine(B, x)] : T ? resPickN(T.tips, 2) : ['Save often.'], back) },
+    { text: 'Ask something…', onPick: () => resAsk(B) }
   ];
-  if (effCh() >= 3) opts.push({ text: 'How’s the war?', onPick: () => { const W = resWarCtx(); if (W) { x.enemy = W.enemy; x.realm = W.realm; } const set = RL && W && RL.wars[W.kind]; resSayTo(B, [set ? resFill(resPick(Array.isArray(set) ? set : set[B.al]), x) : resFill(resPick(T ? T.war : ['Quiet, for now.']), x)], back); } });
+  if (effCh() >= 3) opts.push({ text: 'How’s the war?', onPick: () => { if (resUnsure(B, 'war')) return resSayTo(B, [resUnknownLine(B, x)], back); const W = resWarCtx(); if (W) { x.enemy = W.enemy; x.realm = W.realm; } const set = RL && W && RL.wars[W.kind]; resSayTo(B, [set ? resFill(resPick(Array.isArray(set) ? set : set[B.al]), x) : resFill(resPick(T ? T.war : ['Quiet, for now.']), x)], back); } });
   if (!V && ex.mode === 'world') { // a small trade
     const id = resPick(RES_TRADE_RES.filter(k => ITEMS[k])), n = 2 + Math.floor(Math.random() * 3), price = n * (B.al === 'hero' ? 8 : 12);
     opts.push({ text: `Buy ${n} ${ITEMS[id].name} · ${price} units`, onPick: () => {
@@ -15296,6 +15300,98 @@ function resJobTopic(B, k, used) {
     { text: 'Another topic', onPick: () => resJobs(B, 1) },
     { text: 'That’s all, thanks', onPick: () => resSayTo(B, resPickN(J.close, 2), () => { RES.talking = null; }, true) }
   ]), true);
+}
+
+/* ---- not knowing: sometimes they just don't have the answer. Newer, lower-level residents more often, and anyone who has
+   only just arrived somewhere knows little about it ---- */
+function resUnsure(B, kind) {
+  let p = B.lv < 20 ? .3 : B.lv > 80 ? .07 : .16;
+  if (kind === 'place' && resTravels()) { const T = resTravel(B.c); if (T.mode === 'at' && resNow() - (T.since || 0) < 150e3) p += .3; }
+  return Math.random() < p;
+}
+const resUnknownLine = (B, x) => resFill(resPick((RL && RL.unknown[B.al]) || ['no idea, honestly']), x);
+/* ---- ask them anything: you type, they work out what you mean from the words they know (places, leaders, factions, jobs,
+   feelings, trading...). If they can't make sense of it, they're confused, in their own way. Anything about not being safe
+   always goes straight to the support conversation, never to confusion. ---- */
+function resAsk(B) {
+  RES.talking = B;
+  ex.dlg = { who: resWho(B), lines: [''], i: 0, n: 0, acc: 0, choice: [], rate: .026, ask: true };
+  xUI.dlg.classList.remove('inspect', 'ready'); xUI.dlg.classList.add('on', 'choice'); xUI.who.textContent = 'ASK ' + String(B.c.name).toUpperCase();
+  xUI.line.innerHTML = '<form class="res-ask"><input type="text" maxlength="160" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" placeholder="Type anything…" aria-label="Your question"><div class="opts"><button type="submit" class="opt"><b>↵</b><span>Ask</span></button><button type="button" class="opt" data-back><b>‹</b><span>Back</span></button></div></form>';
+  ui.xhud.classList.add('talking'); vel.set(0, 0, 0);
+  const f = xUI.line.querySelector('form'), inp = f.querySelector('input');
+  const done = txt => { xUI.dlg.classList.remove('choice'); ex.dlg = null; xUI.line.textContent = ''; if (txt == null) resTalk(B); else resAnswer(B, txt); };
+  f.addEventListener('submit', e => { e.preventDefault(); const t = inp.value.trim(); if (!t) { inp.focus(); return; } sfx.click(); inp.blur(); done(t); });
+  f.querySelector('[data-back]').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); sfx.click(); done(null); });
+  inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); if (f.requestSubmit) f.requestSubmit(); else f.dispatchEvent(new Event('submit', { cancelable: true })); } else if (e.key === 'Escape') { e.preventDefault(); done(null); } });
+  f.addEventListener('click', e => e.stopPropagation()); // taps in here aren't "tap to continue"
+  setTimeout(() => inp.focus(), 60);
+}
+const RES_BOSS_WORDS = [[/zark/, 'zark'], [/croxian/, 'croxian'], [/hawthorne|terra imperia|imperarch/, 'hawthorne'], [/catharsis/, 'catharsis'], [/am.?grek|archamus|hierarch/, 'amgrek'], [/\bhak\b|chompjak|emperor/, 'hak'], [/sevirrus/, 'sevirrus'], [/\bboss/, 'fight']];
+function resPlaceIn(t) { // a world or system named in what you typed (longest name first, so "Malana Prime" beats "Malana")
+  const named = [...SYSTEMS.filter(S => !S.gen).map(S => ({ name: S.name, sys: S })), ...ALL_BODIES.filter(P => !P.dock && P.land && !sysById(P.sys).gen).map(P => ({ name: P.name, body: P })), { name: 'Antarctica', area: 'antarctica' }, { name: 'Africa', area: 'africa' }, { name: 'New London', area: 'europe' }, { name: 'Ad-Nostra', area: 'africa' }, { name: 'Archiostal', body: bodyById('archiostal-gardens'), dock: true }];
+  named.sort((a, b) => b.name.length - a.name.length);
+  return named.find(o => t.includes(' ' + o.name.toLowerCase().replace(/^the /, '').replace(/[^a-z0-9 -]/g, '') + ' ')) || null;
+}
+function resAnswer(B, raw) {
+  const t = ' ' + raw.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9à-ÿ -]/g, ' ').replace(/\s+/g, ' ') + ' ', has = re => re.test(t), x = resCtx(B);
+  const again = () => openChoice(resWho(B), [{ text: 'Ask something else', onPick: () => resAsk(B) }, { text: 'Back', onPick: () => resTalk(B) }]);
+  const say = (lines, then) => resSayTo(B, lines, then || again);
+  const pickAl = set => resFill(resPick((set && (set[B.al] || set.neutral)) || ['...']), x);
+  // 1. safety first: never confusion, never a joke
+  if (has(/suicid|kill (my ?self|me)|end (it all|my life|everything)|hurt (my ?self)|self ?harm|cut (my ?self)|not safe|want to die|wanna die|dont want to (live|be alive|be here|exist)|no reason to live|better off dead|take my (own )?life/)) return resCareSafety(B);
+  // 2. how you're feeling
+  if (has(/stress|anxi|depress|\bsad\b|overwhelm|panic|lonely|alone|cant cope|cannot cope|struggl|worried|worry|upset|crying|\bcry\b|exhaust|burn ?out|burnt out|mental health|feel (bad|awful|terrible|low|down|lost)|hopeless|scared|afraid/)) {
+    if (!RL) return resCare(B);
+    const k = has(/exam|school|uni\b|university|college|study|homework|coursework/) ? 'study' : has(/money|bills|debt|rent|broke|afford/) ? 'money' : has(/partner|girlfriend|boyfriend|wife|husband|family|mum|mom|dad|parent|friend|breakup|break up|divorce/) ? 'relationships' : has(/health|ill\b|sick|pain|doctor|hospital|diagnos/) ? 'health' : has(/lonely|alone|no friends/) ? 'lonely' : has(/work|job|boss|shift|office/) ? 'work' : 'everything';
+    return resSayTo(B, [resPick(RL.care.intro.filter(l => B.al === 'villain' || !/villain/i.test(l)))], () => resCareTopic(B, k), true);
+  }
+  // 3. real-world jobs
+  if (has(/\bjobs?\b|career|\bcv\b|resume|résumé|interview|salary|pay rise|\braise\b|promotion|hired|hiring|\bfired\b|laid off|redundan|unemploy|apprentice|internship|\bintern\b|graduate|coworker|co worker|colleague|my manager|my boss|workplace/)) {
+    if (!RL) return resJobs(B);
+    const k = has(/\bcv\b|resume|résumé/) ? 'cv' : has(/interview/) ? 'interview' : has(/salary|pay rise|\braise\b|paid more|promotion/) ? 'pay' : has(/\bfired\b|laid off|redundan|lost my job|unemploy/) ? 'lost' : has(/burn/) ? 'burnout' : has(/boss|manager|coworker|co worker|colleague|bull|harass/) ? 'conflict' : has(/first job|graduate|intern|apprentice|school leaver/) ? 'first' : has(/change|switch|new career/) ? 'change' : 'search';
+    return resJobTopic(B, k, []);
+  }
+  if (!RL) return say([resFill(resPick(['Give me a second, I’m still getting my bearings.', 'Ask me again in a moment?']), x)]);
+  // 4. leaders and bosses
+  const boss = RES_BOSS_WORDS.find(([re]) => has(re));
+  if (boss) return say([resUnsure(B, 'boss') ? resUnknownLine(B, x) : resFill(resPick(RL.bosses[boss[1]]), x)]);
+  // 5. a place, which they may or may not know
+  const pl = resPlaceIn(t);
+  if (pl) {
+    const H = resHomeBody(B.c), T = resTravels() ? resTravel(B.c) : null, here = T && T.mode === 'at' ? T.body : null;
+    const knows = (pl.body && (pl.body === H || pl.body === here)) || (pl.sys && pl.sys.id === H.sys) || resHash(B.id + '|' + pl.name) < .45 + B.lv / 300;
+    const q = pl.name;
+    if (!knows) return say([resFill(resPick(RL.notBeen), Object.assign(x, { q }))]);
+    const id = pl.area ? (pl.area === 'europe' ? 'earth' : null) : pl.body && !pl.dock ? pl.body.id : pl.sys ? pl.sys.home : null, kind = pl.area || (pl.dock ? 'gardens' : pl.body ? pl.body.kind : null);
+    const pool = (id && RL.explore.worlds[id]) || (kind && RL.explore.kinds[kind]) || RL.talk.place;
+    return say([resFill(resPick(RL.know), Object.assign(x, { q, line: resFill(resPick(pool), x) }))]);
+  }
+  // 6. species
+  const sp = ['chompy', 'erisian', 'grek', 'human'].find(k => has(new RegExp('\\b' + k)));
+  if (sp) return say([resFill(resPick(RL.species[sp]), x)]);
+  // 7. the war, factions and your realm
+  if (has(/\bwar\b|wars|fight|enem|diplomac|conquer|faction|empire|federation|resistance|colon|vassal|tribut|realm|peace/)) {
+    if (effCh() < 3) return say([resFill(resPick(RL.chapter[clamp(effCh(), 1, 5)]), x)]);
+    const W = resWarCtx(); if (W) { x.enemy = W.enemy; x.realm = W.realm; }
+    const set = W && RL.wars[W.kind]; return say([set ? resFill(resPick(Array.isArray(set) ? set : set[B.al]), x) : resFill(resPick(RL.talk.war), x)]);
+  }
+  // 8. tips, trading, them, what they're doing, greetings, thanks, goodbye
+  if (has(/\btips?\b|advice|how do i|how to|help me|what should i|hint|stuck/)) { // tips about what you asked, if they have any
+    if (resUnsure(B, 'tips')) return say([resUnknownLine(B, x)]);
+    const words = t.split(' ').filter(w => w.length > 3 && !/tips|advice|help|what|should|how|with|about|that|this|have|your|need|want|some|good|best/.test(w)).map(w => w.replace(/s$/, ''));
+    const hit = RL.talk.tips.filter(tip => words.some(w => tip.toLowerCase().includes(w)));
+    return say(hit.length ? resPickN(hit, 2) : resPickN(RL.talk.tips, 2));
+  }
+  if (has(/trade|\bbuy|\bsell|price|units|\bshop|stall|cheap|expensive|warp cell/)) return say([pickAl(RL.amb.trade)]);
+  if (has(/who are you|your name|what are you|where are you from|where you from|what level|your level|about you|yourself|how old/)) return say([resFill(resPick(RL.me[B.al]), Object.assign(x, { name: B.c.name }))]);
+  if (has(/what (are|r) (you|u) (doing|up to)|whatcha|busy/)) return say([pickAl(RL.talk.doing)]);
+  if (has(/^ (hi|hello|hey|yo|sup|hiya|howdy|greetings|morning|evening) /)) return say([pickAl(RL.greet)]);
+  if (has(/thank|thx|cheers|\bty\b/)) return say([pickAl(RL.thanks)]);
+  if (has(/\bbye\b|goodbye|cya|see you|see ya|later/)) { RES.talking = null; return resSayTo(B, [pickAl(RL.talk.farewell)]); }
+  if (has(/james|orion|chapter|story|storm|station|new london|ferry/)) return say([resFill(resPick(RL.chapter[clamp(effCh(), 1, 5)]), x)]);
+  // 9. no idea what you mean
+  return say([pickAl(RL.confused), resPick(RL.suggest)]);
 }
 
 // ---- each frame on the ground ----
