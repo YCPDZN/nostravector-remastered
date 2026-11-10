@@ -312,7 +312,8 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   - **Deck 1 · Cargo & engines:** the cargo bay, the ramp, a **crafting bench** (counts as a crafting table), a weapon rack and the reactor (check it for warp cells, drive and hull).
   - **Deck 2 · Crew deck:** bunks (**rest** to restore your health), the galley (cook), the mess table and a lounge. Companions you've dismissed wait here.
   - **Deck 3 · Bridge:** the great bow window, side stations, the **holo-table** (the galaxy map, in flight) and the **pilot's seat**: take off from the ground, or take the helm again in space.
-  - A **lift** joins the decks. Saving aboard saves where the ship is.
+  - A **lift** joins the decks.
+  - **Save anywhere:** in space, aboard or on the ground. A save made aboard is called *Aboard the Nostra · Venus · Bridge* (for example) and loads you back aboard, on the same deck, where you stood, in flight or landed. The chapter line reads *Chapter III · The Nostra · Venus* (or the system, in space); it used to show the HUD's placeholder, *Chapter I · Antarctica*.
 
 ### Dismissing companions
 - Once you have the Nostra (Chapter III on), the companion panel has **Dismiss · wait aboard the Nostra** (or key **8**). Each companion says their own goodbye (Orion: *"I'll wait aboard the Nostra. Put the kettle on when you get back…"*; Nico: *"I'll keep the Nostra warm. Try not to get yourself shot without me."*; anyone else has a line of their own), and goes to wait on the crew deck. Future companions just add their lines to `DISMISS_LINES`.

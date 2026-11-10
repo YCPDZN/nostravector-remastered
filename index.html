@@ -2206,7 +2206,8 @@ function chapterOf(c) {
   return { short: `Ch. ${CHN_ROMAN[n]}${area ? ' · ' + area : ''}`, full: `Chapter ${CHN_ROMAN[n]}${area ? ' · ' + area : ''}` };
 }
 function liveChapterLabel() {
-  const n = (wanderer && wanderer.chapter) | 0, far = ex.mode === 'space' ? (sysById(SPC.sys) || {}).name : ex.mode === 'world' && isPl() ? world.planet.P.name : null;
+  const shipAt = () => SHIPI.from === 'space' ? (sysById(SPC.sys) || {}).name : world.planet ? world.planet.P.name : null;
+  const n = (wanderer && wanderer.chapter) | 0, far = ex.mode === 'ship' ? ['The Nostra', shipAt()].filter(Boolean).join(' · ') : ex.mode === 'space' ? (sysById(SPC.sys) || {}).name : ex.mode === 'world' && isPl() ? world.planet.P.name : null;
   if (wanderer && wanderer.ch2 && wanderer.ch2.escapedLondon && n <= 3) return `Chapter III · ${far || 'Sol'}`;
   if (far) return `Chapter ${CHN_ROMAN[Math.max(1, n)]} · ${far}`;
   const area = ex.mode === 'world' ? AREA_INFO[curArea()].name : n >= 2 && curArea() === 'africa' ? 'Africa' : 'Antarctica';
@@ -11673,6 +11674,7 @@ function enterShip(from) {
   const d = from === 'space' ? 2 : 0; shipShowDeck(d);
   if (d === 0) { player.position.set(0, 0, 6.8); player.rotation.y = Math.PI; } else { player.position.set(0, 0, 3.4); player.rotation.y = Math.PI; }
   ex.yaw = player.rotation.y + Math.PI; ex.pitch = .2; ex.dist = Math.min(ex.dist || 4, 3.4); vel.set(0, 0, 0); ex.snap = true;
+  ui.xhud.classList.remove('cutting', 'cineonly', 'dreaming'); renderTasks();
   notice(from === 'space' ? 'Aboard · in flight' : 'Aboard', 'THE NOSTRA', 2400); sfx.whoosh(); renderHotbar();
 }
 function leaveShip(to) { // to: 'ground' (down the ramp), 'space' (back to the helm), or 'takeoff'
@@ -11683,7 +11685,7 @@ function leaveShip(to) { // to: 'ground' (down the ramp), 'space' (back to the h
   const z = 13.2; player.position.set(0, wHeight(0, z), z); player.rotation.y = 0; ex.yaw = Math.PI; ex.snap = true; vel.set(0, 0, 0);
   if (to === 'takeoff') { takeOff(); return; }
   if (world.landShip) setShipRig(world.landShip, 1, 1);
-  if (orionJoined()) placeOrion().catch(() => null); placeCrew().catch(() => null);
+  if (orionJoined()) placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
 }
 function updateShipMode(dt) {
   const p = player.position, d = ex.dlg; SHIPI.t += dt;
@@ -12395,9 +12397,14 @@ async function startChapter3(place) {
   const f = $('#fade'); f.style.transition = 'opacity 1.6s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 1700);
   if (place && place.where && String(place.where).startsWith('pl:')) {
     const P = bodyById(String(place.where).slice(3)); if (P) SPC.sys = P.sys; buildSpace(); if (P) setSystem(P.sys);
-    if (P && place.dir) { try { await landOn(P, new THREE.Vector3().fromArray(place.dir), place); } finally { SPC.booting = false; } return; }
+    if (P && place.dir) { try { await landOn(P, new THREE.Vector3().fromArray(place.dir), place); } finally { SPC.booting = false; } if (place.aboard) shipResume(place, 'ground'); return; }
   }
   spaceOn(place && place.where === 'space' ? place : null); SPC.booting = false;
+  if (place && place.aboard && place.where === 'space') shipResume(place, 'space');
+}
+function shipResume(pl, from) { // a save made aboard: back on the same deck, where you were standing
+  enterShip(from); shipShowDeck(clamp(pl.deck | 0, 0, 2));
+  if (pl.ax != null) player.position.set(+pl.ax, 0, +pl.az); ex.snap = true; renderTasks();
 }
 function beginChapter3() { // straight after the escape
   const el = $('#ferryCut'); el.classList.remove('letter'); el.classList.add('on', 'black');
@@ -13864,6 +13871,7 @@ function renderSlots() {
 }
 function slotWhere(pl, a) { // the line under a save: where you were standing (or flying)
   if (!pl || pl.mode !== 'explore') return 'Base';
+  if (pl.aboard) { const at = pl.where === 'space' || pl.area === 'space' ? (sysById(pl.sys) || {}).name : /^pl:/.test(pl.where || '') ? (bodyById(pl.where.slice(3)) || {}).name : null; return `Aboard the Nostra${at ? ' · ' + at : ''} · ${DECK_NAMES[pl.deck | 0]}`; }
   if (pl.where === 'space' || pl.area === 'space') { const S = sysById(pl.sys); return S ? `In space · ${S.name}` : 'In space'; }
   if (/^pl:/.test(pl.where || '')) { const P = bodyById(pl.where.slice(3)), S = P && sysById(P.sys); return P ? `On ${P.name}${S && S.name !== P.name ? ' · ' + S.name : ''}` : 'On a planet'; }
   if (pl.area !== 'world') return 'Station';
@@ -13876,7 +13884,7 @@ function openSlots(mode, from) {
 }
 function closeSlots() { show(slotUI.root, false); refreshMenu(); refreshDirty(); }
 function currentPlace() {
-  if (ex.mode === 'ship' && SHIPI.outside) return SHIPI.outside; // aboard: the ship's own spot (on the ground, or out in space)
+  if (ex.mode === 'ship' && SHIPI.outside) return Object.assign({}, SHIPI.outside, { aboard: true, deck: SHIPI.deck, ax: +player.position.x.toFixed(2), az: +player.position.z.toFixed(2) }); // aboard: where the ship is, and where you are inside her
   if (ex.mode === 'space') return { mode: 'explore', area: 'space', where: 'space', sys: SPC.sys, sp: SPC.pos.toArray().map(v => +v.toFixed(1)), sq: SPC.q.toArray().map(v => +v.toFixed(5)) };
   return ex.mode === 'world'
     ? Object.assign({ mode: 'explore', area: 'world', where: curArea(), x: +player.position.x.toFixed(2), z: +player.position.z.toFixed(2), y: +player.position.y.toFixed(2), rot: player.rotation.y, yaw: ex.yaw }, isPl() ? { dir: world.planet.D.toArray().map(v => +v.toFixed(6)) } : {})
