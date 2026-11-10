@@ -1300,7 +1300,7 @@ body.touch .al-key{display:none}
 <script type="application/octet-stream" id="hfosGlb"></script><script src="data/hfosGlb.js"></script>
 <div class="bigmap hidden" id="bigmap"><div class="bm-box">
   <button class="btn small bm-close" id="bmClose"><span>Close</span></button>
-  <h3>EARTH</h3><div class="bm-sub" id="bmSub">ANTARCTICA</div>
+  <h3 id="bmTitle">EARTH</h3><div class="bm-sub" id="bmSub">ANTARCTICA</div>
   <canvas id="bigmapC"></canvas>
   <div class="bm-leg"><span><i style="background:#ffffff"></i>You</span><span><i style="background:#9fe6ff"></i><b id="bmLegSt" style="font-weight:inherit">Station</b></span><span><i style="background:#ff6b5e"></i>Beacon</span><span><i style="background:#ffc94a"></i>Objective</span><span><i style="background:#7fe0a0"></i>James</span><span><i style="background:#ff4a3d"></i>Hostile</span><span><i style="background:#e8edf4"></i>Penguins</span></div>
 </div></div>
@@ -1674,7 +1674,7 @@ function setMenuLook(kind) {
 // James joins you in the main menu once he's your companion
 function menuCompanion() {
   if (!(state === 'title' || state === 'loading')) return;
-  menuOrion();
+  menuOrion(); menuNico();
   const want = companionOn() && !isCh4Menu();
   if (!want) { if (james.ready && james.root.parent === scene) james.root.visible = false; return; }
   ensureJames().then(() => {
@@ -1687,7 +1687,7 @@ function menuCompanion() {
   });
 }
 function menuTick(dt) {
-  menuOrionTick(dt);
+  menuOrionTick(dt); menuNicoTick(dt);
   if (aurora.visible) auroraTick();
   if (menuSnow.visible) snowTick(dt);
   const J = james;
@@ -2203,8 +2203,10 @@ function chapterOf(c) {
   return { short: `Ch. ${CHN_ROMAN[n]}${area ? ' · ' + area : ''}`, full: `Chapter ${CHN_ROMAN[n]}${area ? ' · ' + area : ''}` };
 }
 function liveChapterLabel() {
-  if (wanderer && wanderer.ch2 && wanderer.ch2.escapedLondon && (wanderer.chapter | 0) <= 3) return 'Chapter III · Sol';
-  const n = (wanderer && wanderer.chapter) | 0, area = ex.mode === 'world' ? AREA_INFO[curArea()].name : n >= 2 && curArea() === 'africa' ? 'Africa' : 'Antarctica';
+  const n = (wanderer && wanderer.chapter) | 0, far = ex.mode === 'space' ? (sysById(SPC.sys) || {}).name : ex.mode === 'world' && isPl() ? world.planet.P.name : null;
+  if (wanderer && wanderer.ch2 && wanderer.ch2.escapedLondon && n <= 3) return `Chapter III · ${far || 'Sol'}`;
+  if (far) return `Chapter ${CHN_ROMAN[Math.max(1, n)]} · ${far}`;
+  const area = ex.mode === 'world' ? AREA_INFO[curArea()].name : n >= 2 && curArea() === 'africa' ? 'Africa' : 'Antarctica';
   return `Chapter ${CHN_ROMAN[Math.max(1, n)]} · ${area}`;
 }
 function saveRoster() { dirty = true; } // marks unsaved changes; nothing is written until the player saves
@@ -2668,7 +2670,7 @@ function refreshMenu() {
   menuCompanion(); menuWhereUI();
   $('#memVal').textContent = dirty ? 'UNSAVED' : '';
   $('#mSaveVal').textContent = dirty ? 'UNSAVED' : '';
-  $('#contCh').textContent = has ? chapterOf(wanderer).short : '';
+  $('#contCh').textContent = has ? chapterOf(Object.assign({}, wanderer, { place: (resumePlace && resumePlace.who === activeId ? resumePlace : null) || wanderer.place })).short : ''; // where Continue will put you
   startBtn.classList.toggle('primary', has); newBtn.classList.toggle('primary', !has);
   [...document.querySelectorAll('#mMain .mi')].filter(b => b.style.display !== 'none').forEach((b, i) => { b.querySelector('i').textContent = pad(i + 1); });
 }
@@ -4908,6 +4910,10 @@ function notice(small, big, ms = 2800) {
   noticeT = setTimeout(() => xUI.card.classList.remove('on'), ms);
 }
 async function startChapter1(fromCutscene, place) {
+  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { // Chapter III: space, or the planet you were on (never back to Chapter I's station, whatever older flags say)
+    const own = place || (!fromCutscene && resumePlace && resumePlace.who === activeId ? resumePlace : null) || (wanderer.place && wanderer.place.mode === 'explore' ? wanderer.place : null);
+    resumePlace = null; startChapter3(own); return;
+  }
   if ((wanderer.chapter | 0) >= 2 && ch1().escaped && wanderer.ch2 && wanderer.ch2.introSeen) {
     const own = place || (!fromCutscene && resumePlace && resumePlace.who === activeId ? resumePlace : null) || (wanderer.place && wanderer.place.mode === 'explore' ? wanderer.place : null);
     resumePlace = null;
@@ -5085,6 +5091,7 @@ async function interact() {
   } else if (n.id === 'parliament') { lines(PARL_DOOR, () => { if (!wanderer.ch2.reportTried) { setCh2({ reportTried: true }); notice('New London', 'WAIT FOR THE COUNCIL', 3000); } });
   } else if (n.id === 'orion') {
     if (orionJoined()) { ex.cSel = 'orion'; refreshJamesUI(); toggleJamesMenu(); } else talkOrion();
+  } else if (n.id === 'nico') { ex.cSel = 'nico'; refreshJamesUI(); toggleJamesMenu();
   } else if (n.id === 'push') {
     pushJames();
   } else if (n.id === 'rover') {
@@ -5460,6 +5467,8 @@ function alOutfitSync(dt) {
   if (james.ready) alOutfit(james.root, alCompDarkK('james'), 'james');
   if (world.orion) alOutfit(world.orion.root, alCompDarkK('orion'), 'orion');
   if (menuOrionR) alOutfit(menuOrionR.root, alCompDarkK('orion'), 'orion');
+  if (menuNicoR) alOutfit(menuNicoR.root, alCompDarkK('nico'), 'nico');
+  if (CREW.nico && CREW.nico.R) alOutfit(CREW.nico.R.root, alCompDarkK('nico'), 'nico');
   const pk = alDarkK((wanderer.align && wanderer.align.p) || 0);
   if (alOutfitSync.pk !== pk) { alOutfitSync.pk = pk; applyLook(wanderer); }
 }
@@ -6028,10 +6037,11 @@ function teleportTo(t) {
   }, 480);
 }
 // ---- one companion command system for everyone in your party ----
-const PARTY = { james: { name: 'James', full: 'James Brown' }, orion: { name: 'Orion', full: 'Orion Mascar' } }; // Orion, Khazglar, Charon and the rest join here in later chapters
+const PARTY = { james: { name: 'James', full: 'James Brown' }, orion: { name: 'Orion', full: 'Orion Mascar' }, nico: { name: 'Nico', full: 'Nico', crew: true } }; // Khazglar, Charon and the rest join here in later chapters (Nico walks and fights through the crew system below)
 function partyNow() {
   const out = companionOn() ? ['james'] : [];
   if (orionJoined()) out.push('orion');
+  if (nicoJoined()) out.push('nico');
   for (const id of wanderer.party || []) if (PARTY[id] && !out.includes(id)) out.push(id);
   const lent = (wanderer.dip && wanderer.dip.lent) || {};
   return out.filter(id => !lent[id]); // companions lent to another faction (Diplomacy) are away
@@ -6040,7 +6050,7 @@ function partySel() { const p = partyNow(), s = ex.cSel; return s === 'all' && p
 function cmdCompanion(mode) {
   const sel = partySel(); if (!sel || !JCMDS.includes(mode)) return;
   const ids = sel === 'all' ? partyNow() : [sel];
-  for (const id of ids) { if (id === 'james') jamesCmd(mode, ids.length > 1 || sel !== 'james'); else if (id === 'orion') orionCmd(mode, ids.length > 1); else { (wanderer.cmds || (wanderer.cmds = {}))[id] = mode; const c = curChar(); if (c) c.cmds = wanderer.cmds; } }
+  for (const id of ids) { if (id === 'james') jamesCmd(mode, ids.length > 1 || sel !== 'james'); else if (id === 'orion') orionCmd(mode, ids.length > 1); else if (id === 'nico') nicoCmd(mode, ids.length > 1); else { (wanderer.cmds || (wanderer.cmds = {}))[id] = mode; const c = curChar(); if (c) c.cmds = wanderer.cmds; } }
   if (sel === 'all') { sfx.click(); lootMsg(`Everyone · ${jBarkSet()[mode]}`, '#7fe0a0'); saveRoster(); }
   toggleJamesMenu(false); refreshJamesUI();
 }
@@ -6579,7 +6589,7 @@ function earthCoords(x, z) {
 let mapAcc = 0;
 function updateMinimap(dt) {
   mapAcc += dt;
-  if (MAP.big) { $('#bmLegSt').textContent = curArea() === 'antarctica' ? 'Station' : 'Teleporter'; renderMap($('#bigmapC'), 320, false, 6, false); $('#bmSub').textContent = `${AREA_INFO[curArea()].name.toUpperCase()} · ${earthCoords(player.position.x, player.position.z)}`; return; }
+  if (MAP.big) { $('#bmLegSt').textContent = curArea() === 'antarctica' ? 'Station' : 'Teleporter'; renderMap($('#bigmapC'), 320, false, 6, false); const PL = isPl() ? world.planet.P : null; $('#bmTitle').textContent = (PL ? PL.name : AREA_INFO[curArea()].planet || 'Earth').toUpperCase(); $('#bmSub').textContent = PL ? `${((sysById(PL.sys) || {}).name || '').toUpperCase()} · ${PL.faction}` : `${AREA_INFO[curArea()].name.toUpperCase()} · ${earthCoords(player.position.x, player.position.z)}`; return; }
   if (mapAcc < 1 / 30) return; mapAcc = 0;
   renderMap($('#mmapC'), 110, true, 2, true);
   const q = questTarget(), p = player.position;
@@ -6647,7 +6657,7 @@ function refreshJamesUI() {
   if (!$('#jMode')) return;
   const p = partyNow(), sel = partySel() || 'james';
   const mode = sel === 'orion' ? orionC.mode : sel === 'james' || sel === 'all' ? comp.mode : (wanderer.cmds && wanderer.cmds[sel]) || 'follow';
-  $('#jWho').textContent = sel === 'all' ? 'EVERYONE' : sel === 'orion' ? `ORION · LV ${orionLevel()}` : (PARTY[sel] || PARTY.james).name.toUpperCase();
+  $('#jWho').textContent = sel === 'all' ? 'EVERYONE' : sel === 'orion' ? `ORION · LV ${orionLevel()}` : sel === 'nico' ? `NICO · LV ${nicoLevel()}` : (PARTY[sel] || PARTY.james).name.toUpperCase();
   $('#jMode').textContent = sel === 'orion' ? OLABEL[mode] || 'FOLLOWING' : sel === 'james' && comp.mode === 'base' && comp.arrived ? 'AT BASE' : JLABEL[mode] || 'FOLLOWING';
   for (const b of document.querySelectorAll('#jOpts button[data-m]')) b.classList.toggle('on', b.dataset.m === mode);
   const row = $('#jWhoRow'); row.style.display = p.length > 1 ? '' : 'none';
@@ -11288,11 +11298,47 @@ function dipHoldUI(text, k) {
   if (!el) { el = document.createElement('div'); el.id = 'xHold'; el.className = 'x-hold'; el.innerHTML = '<span></span><i><u></u></i>'; ui.xhud.appendChild(el); }
   el.classList.add('on'); el.querySelector('span').textContent = text; el.querySelector('u').style.width = `${clamp(k * 100, 0, 100) | 0}%`;
 }
+/* ---- Nico (Lady Luck): your companion from Chapter III on, with the same five orders as Orion and James ---- */
+const nicoJoined = () => !!(wanderer && ((wanderer.chapter | 0) >= 3 || (wanderer.ch2 && wanderer.ch2.escapedLondon)));
+function nicoLevel() { return clamp(29 + levelInfo((wanderer && wanderer.xp) || 0).level, 30, 100); } // level 30 in the escape, and rising with you
+const NBARK = {
+  mine: 'Fine, I’ll dig. Don’t get used to it.',
+  explore: 'I’ll take a look around. Luck’s on my side.',
+  base: 'I’ll wait by the ship. Shout if it gets loud.',
+  wander: 'I’ll stay close. Just stretching my legs.',
+  follow: 'Right with you. Both guns.'
+};
+function nicoCmd(mode, quiet) {
+  if (!JCMDS.includes(mode)) return;
+  (wanderer.cmds || (wanderer.cmds = {})).nico = mode; const c = curChar(); if (c) c.cmds = wanderer.cmds; saveRoster();
+  const C = CREW.nico; if (C) { C.wp = null; C.node = null; }
+  if (!quiet) { sfx.click(); lootMsg(`Nico · ${NBARK[mode]}`, compColor('nico')); }
+  refreshJamesUI();
+}
+let nicoSrcP = null;
+async function nicoCompanionRig() { // a rig of her own (the escape and the menu have theirs), with her two pistols
+  const el = document.getElementById('nicoGlb'); if (!el) throw new Error('no Nico model');
+  nicoSrcP = nicoSrcP || (async () => { const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return parseGlb(u8.buffer); })();
+  const R = autoRig(SkeletonUtils.clone(await nicoSrcP), 1.72); armRig(R, 'pistols'); R.gearKind = 'pistols'; return R;
+}
+function nicoGear(R, kind) { // pistols, or Orion's kind of obsidian pickaxe when she's mining
+  if (R.gearKind === kind) return; R.gearKind = kind;
+  for (const g of R.gear || []) if (g.parent) g.parent.remove(g);
+  if (kind === 'pistols') armRig(R, 'pistols');
+  else { armRig(R, 'none'); const sock = R.rh ? boneSocket(R.rh) : R.ra ? handSocket(R.ra) : null; if (sock) { const p = makeObsidianPickaxe(); sock.add(p); R.gear.push(p); } R.weapon = 'sword'; }
+}
+function compTracer(R, foe) { // a muzzle flash and a streak to the target, as Orion's rifle has
+  const o = R.root.position, a = R.root.rotation.y, fy = o.y + 1.3, mx = o.x + Math.sin(a) * .6, mz = o.z + Math.cos(a) * .6;
+  burst(mx, fy, mz, 6, 2, 1, .85, .5, .2, 0, 0);
+  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(mx, fy, mz), new THREE.Vector3(foe.x, foe.y + .6, foe.z)]);
+  const tr = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffd38a, transparent: true, opacity: .9 })); wScene.add(tr);
+  setTimeout(() => { wScene.remove(tr); g.dispose(); tr.material.dispose(); }, 60);
+}
 /* ---- crew: the imported Project BC / Sevirrus characters (and your own creations) as companions ---- */
 function syncCrewParty() {
   for (const id of (wanderer && wanderer.party) || []) if (!PARTY[id]) { const c = charById(id); if (c) PARTY[id] = { name: titleName(c.name.split(' ').slice(-1)[0] === 'SEVIRRUS' ? 'Sevirrus' : c.name.split(' ')[0]), full: titleName(c.name), imported: true }; }
 }
-const crewIds = () => partyNow().filter(id => PARTY[id] && PARTY[id].imported);
+const crewIds = () => partyNow().filter(id => PARTY[id] && (PARTY[id].imported || PARTY[id].crew));
 const CREW = {};
 async function placeCrew() {
   if (!wanderer || ex.mode !== 'world') return;
@@ -11300,7 +11346,7 @@ async function placeCrew() {
   for (const id of Object.keys(CREW)) if (!want.includes(id) && CREW[id].R) CREW[id].R.root.visible = false;
   for (const id of want) {
     const C = CREW[id] || (CREW[id] = { mode: 'follow', wp: null, wpT: 0, node: null, swingT: 0, atkT: 0, legs: 0 });
-    if (!C.R) { if (C.loading) continue; C.loading = true; try { C.R = await loadCharRig(charById(id), 1.85); C.R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); registerCompanionRig(id, () => C.R.root); } catch (e) { console.error('crew load failed', id, e); C.loading = false; continue; } C.loading = false; }
+    if (!C.R) { if (C.loading) continue; C.loading = true; try { C.R = id === 'nico' ? await nicoCompanionRig() : await loadCharRig(charById(id), 1.85); C.R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); registerCompanionRig(id, () => C.R.root); } catch (e) { console.error('crew load failed', id, e); C.loading = false; continue; } C.loading = false; }
     const R = C.R; if (R.root.parent !== wScene) wScene.add(R.root);
     if (!want.includes(id)) continue;
     const p = player.position, k = want.indexOf(id) + 1; R.root.visible = true; R.mode = 'idle';
@@ -11312,7 +11358,8 @@ function crewTick(dt) {
   const p = player.position, live = crewIds();
   for (const id of live) {
     const C = CREW[id]; if (!C || !C.R || !C.R.root.visible || C.R.root.parent !== wScene) continue;
-    const R = C.R, o = R.root.position, mode = (wanderer.cmds && wanderer.cmds[id]) || 'follow', name = PARTY[id].name, guns = R.weapon === 'rifle' || R.weapon === 'pistols';
+    const R = C.R, o = R.root.position, mode = (wanderer.cmds && wanderer.cmds[id]) || 'follow', name = PARTY[id].name, isN = id === 'nico', guns = isN || R.weapon === 'rifle' || R.weapon === 'pistols';
+    if (isN && !(mode === 'mine' || (mode === 'explore' && C.node))) nicoGear(R, 'pistols'); // her pistols are out unless she's digging
     if (state !== 'explore' || ex.dlg) { R.mode = 'idle'; animRig(R, dt); continue; }
     const walkTo = (x, z, stop, run) => {
       const dx = x - o.x, dz = z - o.z, d = Math.hypot(dx, dz); if (d <= stop) { R.mode = 'idle'; return true; }
@@ -11326,8 +11373,8 @@ function crewTick(dt) {
     if (foe) {
       const reach = guns ? 22 : 2.2;
       if (fd > reach) walkTo(foe.x, foe.z, reach * .9, true);
-      else { R.mode = 'attack'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(foe.x - o.x, foe.z - o.z), Math.min(1, dt * 6));
-        if (C.atkT <= 0) { C.atkT = guns ? .9 : 1.2; if (guns) { sfx.shot(); burst(o.x, o.y + 1.4, o.z, 6, 2, 1, .85, .5, .2, 0, 0); } else sfx.swing(); damageFauna(foe, 8 + levelInfo(wanderer.xp || 0).level * .4, true); } }
+      else { if (isN) nicoGear(R, 'pistols'); R.mode = 'attack'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(foe.x - o.x, foe.z - o.z), Math.min(1, dt * 6));
+        if (C.atkT <= 0) { C.atkT = isN ? .5 : guns ? .9 : 1.2; if (guns) { sfx.shot(); compTracer(R, foe); } else sfx.swing(); damageFauna(foe, isN ? 6 + nicoLevel() * .25 : 8 + levelInfo(wanderer.xp || 0).level * .4, true); } }
       animRig(R, dt); continue;
     }
     const dp = Math.hypot(p.x - o.x, p.z - o.z);
@@ -11343,6 +11390,7 @@ function crewTick(dt) {
     if (mode === 'mine' || (mode === 'explore' && C.node)) {
       if (!C.node || C.node.dead) C.node = orionNodeNear(o, mode === 'mine' ? 45 : 10);
       const n = C.node;
+      if (n && isN) nicoGear(R, 'pick');
       if (n && walkTo(n.x, n.z, (n.r || .8) + .9, true)) {
         R.mode = 'attack'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(n.x - o.x, n.z - o.z), Math.min(1, dt * 6));
         if ((C.swingT -= dt) <= 0) { C.swingT = 1.1; n.hp -= 1 + levelInfo(wanderer.xp || 0).level / 25; n.shake = .25; sfx.hit(n.type === 'tree' || n.type === 'pod' ? 'crate' : 'rock');
@@ -11367,7 +11415,7 @@ function dipOpen(on) {
 }
 function dipChars() { return [...CHAR_BUILTIN, ...((ccData && ccData.characters) || [])].filter(c => c && c.id); }
 function dipCompanionsAll() { // everyone who can be lent, appointed or recalled: story companions you've met and your crew
-  const out = []; if (orionJoined()) out.push('orion'); if (companionOn()) out.push('james');
+  const out = []; if (orionJoined()) out.push('orion'); if (nicoJoined()) out.push('nico'); if (companionOn()) out.push('james');
   for (const id of wanderer.party || []) if (!out.includes(id) && (PARTY[id] || charById(id))) out.push(id);
   return out;
 }
@@ -12009,7 +12057,7 @@ function planetTraders(P) {
    What they see depends on who they are:
      Chompy  · a fast montage of Sevirrus, the game before this one, played by its own cutscene code (see sevOpen below);
                if that can't load, staged memories of it (with recordings copied from the Sevirrus files, over "Fields of Carax")
-     Erisian · a future that hasn't happened: Alexia Erisconos overthrows her sister Vishara in the Citadel el Eriscons
+     Erisian · a future that hasn't happened: Alexia Erisconos overthrows her sister Vishara in the Citadel el Erisconos
      Human   · Chapter II all over again (with its own recordings)
      Grek    · a prophecy of what's coming, without a single name
    Then Orion and Nico bring them back. It happens once (ch3.nightmare). */
@@ -12048,7 +12096,7 @@ function nmSet(kind) {
     const stone = M(0x3a302a), gold = M(0xd8a63a, { metalness: .8, roughness: .3 }), red = M(0x6a0a0a);
     for (let z = -14; z <= 8; z += 4.4) for (const s of [-1, 1]) box(1.3, 10, 1.3, stone, s * 5, 5, z);
     box(3.2, .5, 24, red, 0, .02, -2); box(6, 1.2, 3, stone, 0, .6, -14); box(1.8, 3.6, 1.2, gold, 0, 3, -15);
-  } else if (kind === 'citadel') { // the Citadel el Eriscons
+  } else if (kind === 'citadel') { // the Citadel el Erisconos
     Object.assign(look, { fog: 0x140820, dens: .035, bg: 0x05020a, ground: 0x1a1028, hemi: 0x6040a0, rim: 0xb070ff, key: 0xe0d0ff });
     const cry = M(0x2a1840, { emissive: 0x7a3aff, emissiveIntensity: .7, roughness: .2, metalness: .3 });
     for (let z = -14; z <= 8; z += 4.4) for (const s of [-1, 1]) { const c = new THREE.Mesh(new THREE.ConeGeometry(.9, 11, 6), cry); c.position.set(s * 5, 5.5, z); P.add(c); }
@@ -12089,10 +12137,10 @@ const NM_SCRIPTS = {
   ] },
   erisian: { tint: 'saturate(1.3) hue-rotate(40deg) contrast(1.12) brightness(.95)', kind: 'eris', beats: [
     { set: 'citadel', actors: { vishara: [0, -12.5, 0, 'idle'], g1: [-2.6, -9.5, Math.PI / 2, 'idle'], g2: [2.6, -9.5, -Math.PI / 2, 'idle'], alexia: [0, 6, Math.PI, 'walk'] }, cam: [[0, 3.5, 10], [0, 2.2, 4]], at: [0, 2, -10],
-      lines: [['THE VISION', 'Citadel el Eriscons. Not yet. But soon.', null, 'CH3NMERIS1'], ['VISHARA ERISCONOS', 'Alexia. You were banished from this Citadel. Guards!', null, 'CH3NMERIS2'], ['ALEXIA ERISCONOS', 'Your guards answer to me now, sister. They have for a long time.', null, 'CH3NMERIS3']], fx: [[-1, 'walkTo', 'alexia', [0, -7]], [2, 'turn', 'g1', 'vishara'], [2, 'turn', 'g2', 'vishara']] },
+      lines: [['THE VISION', 'Citadel el Erisconos. Not yet. But soon.', ['eris', 0], 'CH3NMERIS1'], ['VISHARA ERISCONOS', 'Alexia. You were banished from this Citadel. Guards!', ['eris', 1], 'CH3NMERIS2'], ['ALEXIA ERISCONOS', 'Your guards answer to me now, sister. They have for a long time.', ['eris', 2], 'CH3NMERIS3']], fx: [[-1, 'walkTo', 'alexia', [0, -7]], [2, 'turn', 'g1', 'vishara'], [2, 'turn', 'g2', 'vishara']] },
     { set: 'citadel', actors: { vishara: [0, -12.5, 0, 'idle'], alexia: [0, -8.5, Math.PI, 'idle'], g1: [-1.4, -11.6, .6, 'idle'], g2: [1.4, -11.6, -.6, 'idle'] }, cam: [[-3, 1.8, -6], [-2.2, 1.8, -8]], at: [0, 1.9, -11],
-      lines: [['VISHARA ERISCONOS', 'Everything you are, I gave you. The name. The Citadel. Eris itself.', null, 'CH3NMERIS4'], ['ALEXIA ERISCONOS', 'You gave me a cage, and called it a crown.', null, 'CH3NMERIS5'], ['VISHARA ERISCONOS', 'Eris will never kneel to you.', null, 'CH3NMERIS6'], ['ALEXIA ERISCONOS', 'Eris already has. Take her below. The Citadel has a new Matriarch.', null, 'CH3NMERIS7']], fx: [[3, 'strike', 'alexia', 'vishara']] },
-    { set: 'citadel', actors: { alexia: [0, -13, 0, 'idle'], vishara: [-1.2, -10.5, 0, 'kneel'] }, cam: [[0, 1.8, -8.5], [0, 1.75, -10]], at: [0, 1.75, -13], lines: [['ALEXIA ERISCONOS', 'And you, wanderer. When I’m finished with her… I’ll come for you.', null, 'CH3NMERIS8']] }
+      lines: [['VISHARA ERISCONOS', 'Everything you are, I gave you. The name. The Citadel. Eris itself.', ['eris', 3], 'CH3NMERIS4'], ['ALEXIA ERISCONOS', 'You gave me a cage, and called it a crown.', ['eris', 4], 'CH3NMERIS5'], ['VISHARA ERISCONOS', 'Eris will never kneel to you.', ['eris', 5], 'CH3NMERIS6'], ['ALEXIA ERISCONOS', 'Eris already has. Take her below. The Citadel has a new Matriarch.', ['eris', 6], 'CH3NMERIS7']], fx: [[3, 'strike', 'alexia', 'vishara']] },
+    { set: 'citadel', actors: { alexia: [0, -13, 0, 'idle'], vishara: [-1.2, -10.5, 0, 'kneel'] }, cam: [[0, 1.8, -8.5], [0, 1.75, -10]], at: [0, 1.75, -13], lines: [['ALEXIA ERISCONOS', 'And you, wanderer. When I’m finished with her… I’ll come for you.', ['eris', 7], 'CH3NMERIS8']] }
   ] },
   human: { tint: 'saturate(.35) contrast(1.25) sepia(.25) hue-rotate(-20deg)', kind: 'crox', beats: [
     { set: 'void', actors: { nico: [0, -1, 0, 'idle'] }, cam: [[1.4, 1.5, 2.6], [.9, 1.55, 1.8]], at: [0, 1.5, -1], lines: [['NICO', 'My husband went into town yesterday for supplies. He should have been back by now.', ['farm', 8]]] },
@@ -12105,12 +12153,12 @@ const NM_SCRIPTS = {
     { set: 'void', actors: { crox: [0, -6, 0, 'walk'], haw: [2.5, -9, -.3, 'idle'] }, cam: [[0, 1.6, 2], [0, 1.6, 1.4]], at: [0, 1.7, -4], lines: [['CROXIAN MASCAR', 'Hello again, wanderer.', ['esc', 2]], ['THOMAS HAWTHORNE', 'Run, then! There is nowhere in this galaxy the Federation cannot reach you!', ['esc', 8]]], fx: [[-1, 'walkTo', 'crox', [0, -.8]]] }
   ] },
   grek: { tint: 'saturate(1.2) hue-rotate(80deg) contrast(1.2) brightness(.9)', kind: 'grek', beats: [
-    { set: 'stars', actors: {}, cam: [[0, 3, 12], [0, 4, 6]], at: [0, 8, -30], lines: [['A VOICE IN THE DARK', 'Hear it, child of the ice. The stars are already burning.', null, 'CH3NMGREK1']] },
-    { set: 'void', actors: { man: [0, -2, 0, 'idle'] }, sil: true, cam: [[2.5, 1.4, 2.5], [1.6, 1.4, 1.4]], at: [0, 1.4, -2], lines: [['A VOICE IN THE DARK', 'A man who carries a federation on his back will fall. And no one will catch him.', null, 'CH3NMGREK2']], fx: [[-1, 'fall', 'man']] },
-    { set: 'banner', actors: {}, cam: [[-6, 2, 8], [-4, 3, 4]], at: [0, 9, -12], lines: [['A VOICE IN THE DARK', 'A black banner will rise where the golden one was torn down, and ships beyond counting will darken the sky.', null, 'CH3NMGREK3']] },
-    { set: 'glass', actors: {}, cam: [[0, 4, 12], [0, 3, 8]], at: [0, 3, -3], lines: [['A VOICE IN THE DARK', 'An empire of glass will break, and its land will be given to one who never asked for it.', null, 'CH3NMGREK4']], fx: [[-1, 'shatter']] },
-    { set: 'carax', actors: {}, cam: [[0, 2, 10], [0, 6, 4]], at: [0, 20, -60], lines: [['A VOICE IN THE DARK', 'The red world at the heart of the stars will burn beneath the boots of its friends.', null, 'CH3NMGREK5']] },
-    { set: 'stars', actors: { you: [0, 0, Math.PI, 'idle'] }, sil: true, cam: [[0, 1.3, 4], [0, 4, 9]], at: [0, 1.3, 0], lines: [['A VOICE IN THE DARK', 'And at the end of it all, you will stand alone at the centre of everything… and you will choose.', null, 'CH3NMGREK6']] }
+    { set: 'stars', actors: {}, cam: [[0, 3, 12], [0, 4, 6]], at: [0, 8, -30], lines: [['A VOICE IN THE DARK', 'Hear it, child of the ice. The stars are already burning.', ['grek', 0], 'CH3NMGREK1']] },
+    { set: 'void', actors: { man: [0, -2, 0, 'idle'] }, sil: true, cam: [[2.5, 1.4, 2.5], [1.6, 1.4, 1.4]], at: [0, 1.4, -2], lines: [['A VOICE IN THE DARK', 'A man who carries a federation on his back will fall. And no one will catch him.', ['grek', 1], 'CH3NMGREK2']], fx: [[-1, 'fall', 'man']] },
+    { set: 'banner', actors: {}, cam: [[-6, 2, 8], [-4, 3, 4]], at: [0, 9, -12], lines: [['A VOICE IN THE DARK', 'A black banner will rise where the golden one was torn down, and ships beyond counting will darken the sky.', ['grek', 2], 'CH3NMGREK3']] },
+    { set: 'glass', actors: {}, cam: [[0, 4, 12], [0, 3, 8]], at: [0, 3, -3], lines: [['A VOICE IN THE DARK', 'An empire of glass will break, and its land will be given to one who never asked for it.', ['grek', 3], 'CH3NMGREK4']], fx: [[-1, 'shatter']] },
+    { set: 'carax', actors: {}, cam: [[0, 2, 10], [0, 6, 4]], at: [0, 20, -60], lines: [['A VOICE IN THE DARK', 'The red world at the heart of the stars will burn beneath the boots of its friends.', ['grek', 4], 'CH3NMGREK5']] },
+    { set: 'stars', actors: { you: [0, 0, Math.PI, 'idle'] }, sil: true, cam: [[0, 1.3, 4], [0, 4, 9]], at: [0, 1.3, 0], lines: [['A VOICE IN THE DARK', 'And at the end of it all, you will stand alone at the centre of everything… and you will choose.', ['grek', 5], 'CH3NMGREK6']] }
   ] }
 };
 // Orion and Nico bring you back: the first line is Orion's from the ice; the rest are new (CH3NMWAKE…)
@@ -12120,6 +12168,7 @@ const NM_WAKE = {
   human: [['ORION MASCAR', 'It’s the cantina again, isn’t it? The trial. Hawthorne.', 'CH3NMWAKEHU1'], ['NICO', 'Look at me. It’s over. We got out. All three of us.', 'CH3NMWAKEHU2'], ['ORION MASCAR', 'He can’t reach us up here. Not today.', 'CH3NMWAKEHU3']],
   grek: [['ORION MASCAR', 'You were talking in riddles. A man falling. A black banner. An empire of glass.', 'CH3NMWAKEGR1'], ['NICO', 'The Grek say their dreams come true.', 'CH3NMWAKEGR2'], ['ORION MASCAR', 'Then let’s hope this one’s wrong.', 'CH3NMWAKEGR3']]
 };
+const NM_WAKE_IDS = ['CH3NMWAKECH1', 'CH3NMWAKECH2', 'CH3NMWAKECH3', 'CH3NMWAKECH4', 'CH3NMWAKEER1', 'CH3NMWAKEER2', 'CH3NMWAKEER3', 'CH3NMWAKEHU1', 'CH3NMWAKEHU2', 'CH3NMWAKEHU3', 'CH3NMWAKEGR1', 'CH3NMWAKEGR2', 'CH3NMWAKEGR3']; // the order of data/nmWakeVoices.js
 // ---- the cast ----
 async function nmCast(race) {
   const A = {}, add = (k, R) => { if (R) { if (!R.gear) armRig(R, 'none'); R.root.visible = false; NM.scene.add(R.root); A[k] = R; } };
@@ -12133,6 +12182,7 @@ async function nmCast(race) {
     NM.vo.music = await sfx.combatBuf(COMBAT_TRACKS.indexOf('Wonders of Laniakea (Combat)')) || (await sfx.loadClips('sevCarax').catch(() => null) || [])[0];
   } else if (race === 'erisian') {
     const [vis, alx] = await Promise.all([glbRig('leader_erisian', 1.9), glbRig('tiAlexia', 1.85, 'sword')]); add('vishara', vis); add('alexia', alx);
+    await loadDataScript('nmErisVoices'); NM.vo.eris = await sfx.loadClips('nmErisVoices').catch(() => null) || []; // CH3NMERIS1–8 (an empty slot falls back to subtitles)
     for (const k of ['g1', 'g2']) add(k, await townModel('erisian').then(src => src ? (R => (armRig(R, 'sword'), R))(autoRig(dressTownsfolk(src, { sp: 'erisian', c: [0x2a1840, 0xb070ff] }), 1.85)) : null));
   } else if (race === 'human') {
     const [nico, orion, haw, dar, crox] = await Promise.all([nicoRig().then(R => R && (R.root.parent && R.root.parent.remove(R.root), R)), glbRig('cpOrion', 1.8, 'none'), hawthorneRig(), dariusRig(), loadCroxian()]);
@@ -12143,6 +12193,7 @@ async function nmCast(race) {
     Object.assign(NM.vo, { farm: farm || [], cant: cantV || [], arrest: arrest || [], haw: hawV || [], trial: trialV || [], esc: escV || [] });
   } else {
     add('man', await hawthorneRig()); add('you', await humanRig({ name: 'YOU', c: [0x2b2f36, 0x2b2f36], skin: 1 }));
+    await loadDataScript('nmGrekVoices'); NM.vo.grek = await sfx.loadClips('nmGrekVoices').catch(() => null) || []; // CH3NMGREK1–6
   }
   for (const R of Object.values(A)) { R.root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); }
   NM.actors = A;
@@ -12255,11 +12306,13 @@ async function nmWake() {
   renderer.domElement.style.filter = ''; fbFlash(1, '#ffffff'); NM.flashA = 1; sfx.gasp(1.8);
   for (const R of Object.values(NM.actors)) R.root.visible = false;
   const fl = await sfx.loadClips('antOrionFlashVoices').catch(() => null); // Orion's "Hey! HEY!" from the ice
+  const wv = await loadDataScript('nmWakeVoices').then(() => sfx.loadClips('nmWakeVoices')).catch(() => null) || []; // CH3NMWAKECH1–4, ER1–3, HU1–3, GR1–3, in that order
+  const wake = {}; NM_WAKE_IDS.forEach((id, i) => { if (wv[i]) wake[id] = wv[i]; });
   const lines = [['ORION MASCAR', 'Hey! HEY! Look at me! Snap out of it!'], ...NM_WAKE[NM.race]];
   show(ui.xhud, true); ui.xhud.classList.add('cutting');
   const run = i => {
     if (i >= lines.length) { nmEnd(); return; }
-    const c = i === 0 && fl ? fl[0] : null;
+    const c = i === 0 ? (fl ? fl[0] : null) : wake[lines[i][2]] || null;
     openDialog(lines[i][0], [lines[i][1]], false, () => run(i + 1), c ? [c] : undefined);
   };
   setTimeout(() => run(0), 700);
@@ -12282,11 +12335,12 @@ const SEV_START = { intro: M => { M.prime(); return M.playIntro(); }, siege: M =
 // the clips: [scene, from, to] in that scene's own seconds, with a cut between each
 const SEV_CLIPS = [
   ['intro', 5, 13.6], // "Turn back, prince." "Everyone kneels."
+  ['intro', 47.9, 54.5], // "Look at your hands. Empty. Like your homes will be by nightfall."
   ['intro', 88.8, 97.2], // the settlers
   ['siege', 12.6, 20.2], // the gate guards; "Look at him. Still surprised."
   ['siege', 37.6, 45], // "Bring me the head of Jakal Chompjak XVI."
   ['siege', 58.6, 62.2], // Damix: "Come and take him."
-  ['assa', 13.95, 27.6], // "Your son died the day you chose the throne over him." Damix falls
+  ['assa', 9.7, 27.6], // Jakal: "Hak. Put it down. You are still my son." "Your son died the day you chose the throne over him." Damix falls
   ['assa', 39.95, 49], // "…I loved you." The Emperor dies
   ['assa', 53.2, 56.4], // "Long live the Emperor."
   ['ch5', 22.2, 31.5], // "WHO TOLD YOU TO LOOK AT ME?!"
@@ -12801,6 +12855,30 @@ function menuOrionTick(dt) {
   R.root.position.y = height(R.root.position.x, R.root.position.z);
   animRig(R, dt);
 }
+// Nico stands with you on the main menu too, once she's joined you: on your right (or beyond James, if he's still with you)
+let menuNicoR = null, menuNicoLoad = null;
+const menuNicoSide = () => companionOn() ? [3.3, 1.1] : [1.7, .4]; // [to your right, behind you]
+function menuNico() {
+  const want = state === 'title' && nicoJoined() && !isCh4Menu();
+  if (!want) { if (menuNicoR) menuNicoR.root.visible = false; return; }
+  if (!menuNicoLoad) menuNicoLoad = nicoCompanionRig().then(R => { R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); menuNicoR = R; return R; }).catch(() => null);
+  menuNicoLoad.then(R => {
+    if (!R || state !== 'title' || !nicoJoined() || isCh4Menu()) return;
+    const p = player.position, a = player.rotation.y, fx = Math.sin(a), fz = Math.cos(a), [s, b] = menuNicoSide(), x = p.x + fz * s - fx * b, z = p.z - fx * s - fz * b;
+    scene.add(R.root); R.root.visible = true; R.root.position.set(x, height(x, z), z); R.root.rotation.y = a; R.mode = 'idle';
+  });
+}
+function menuNicoTick(dt) {
+  const R = menuNicoR; if (!R || !R.root.visible || R.root.parent !== scene) return;
+  if (state !== 'title') { R.root.visible = false; return; }
+  const p = player.position, a = player.rotation.y, fx = Math.sin(a), fz = Math.cos(a), [s, b] = menuNicoSide();
+  const tx = p.x + fz * s - fx * b, tz = p.z - fx * s - fz * b, dx = tx - R.root.position.x, dz = tz - R.root.position.z, d = Math.hypot(dx, dz);
+  if (R.menuWalk ? d < .3 : d > .95) R.menuWalk = !R.menuWalk; // the same steady walk as Orion's: no flicker between walking and standing
+  if (R.menuWalk) { const sp = clamp(d * 1.8, 1.1, 2.8); R.root.position.x += dx / d * Math.min(d, sp * dt); R.root.position.z += dz / d * Math.min(d, sp * dt); R.mode = 'walk'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 6)); }
+  else { R.mode = 'idle'; R.root.rotation.y = angLerp(R.root.rotation.y, a, Math.min(1, dt * 3)); }
+  R.root.position.y = height(R.root.position.x, R.root.position.z);
+  animRig(R, dt);
+}
 function talkOrion() {
   sfx.loadClips('orionWake').then(clips => {
     openDialog('ORION MASCAR', ORION_WAKE, false, () => {
@@ -12851,6 +12929,7 @@ function enterWorld(place) {
   }
   setupMerchants();
   placeCrew().catch(() => null);
+  if (orionJoined()) placeOrion().catch(() => null); // Orion comes with you wherever you arrive, however you got there
   updateChunks(99);
   rebuildPlaced(); rebuildBuild(); stopBuild();
   if (curArea() === 'antarctica') { placeBed(); placeRover(); buildFerry(); } applyAreaLook();
@@ -13004,6 +13083,7 @@ function updateWorldMode(dt) {
   if (!ex.near && isPl() && Math.hypot(p.x, p.z - 10) < 4.5) ex.near = { id: 'ship', label: 'Your ship' };
   if (!ex.near && curArea() === 'africa' && TOWN.npcs.length) { const tn = townNear(p); if (tn) ex.near = { id: 'townsfolk', ref: tn, label: tn.label }; }
   if (!ex.near && (curArea() === 'africa' || orionJoined()) && world.orion && world.orion.root.visible && Math.hypot(world.orion.root.position.x - p.x, world.orion.root.position.z - p.z) < 2.4) ex.near = { id: 'orion', label: 'Orion' };
+  if (!ex.near && CREW.nico && CREW.nico.R && CREW.nico.R.root.visible && CREW.nico.R.root.parent === wScene && partyNow().includes('nico') && Math.hypot(CREW.nico.R.root.position.x - p.x, CREW.nico.R.root.position.z - p.z) < 2.4) ex.near = { id: 'nico', label: 'Nico' };
   if (!ex.near && curArea() === 'antarctica' && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
   if (ex.vehicle) ex.near = { id: 'roverOut', label: 'Rover' };
   if (world.betrayal) ex.near = world.betrayal.phase === 'push' && james.root.visible && Math.hypot(james.root.position.x - p.x, james.root.position.z - p.z) < 2.6 ? { id: 'push', label: 'James Brown' } : null;
@@ -13015,7 +13095,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Take off · your ship', 'FLY'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
+    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Take off · your ship', 'FLY'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], nico: ['Give Nico orders', 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
@@ -13294,10 +13374,17 @@ function renderSlots() {
   slotUI.list.innerHTML = slots.map((sl, i) => {
     if (!sl) return `<button class="slot empty" data-i="${i}"${slotMode !== 'save' ? ' disabled' : ''}><b>SLOT ${i + 1}</b><span>Empty</span><small>${slotMode === 'save' ? 'Tap to save here' : 'No save'}</small></button>`;
     const r = Array.isArray(sl.roster) ? sl.roster : [], a = r.find(c => c.id === sl.activeId) || r[0] || {};
-    const sp = SPECIES[spOf(a)].label, ch = chapterOf(Object.assign({}, a, { place: sl.place && sl.place.mode === 'explore' ? sl.place : a.place })).short, where = sl.place && sl.place.mode === 'explore' ? (sl.place.area === 'world' ? (sl.place.where === 'europe' ? 'New London' : sl.place.where === 'africa' || (!sl.place.where && (a.chapter | 0) >= 2) ? 'African savanna' : 'Antarctic wilds') : 'Station') : 'Base';
+    const sp = SPECIES[spOf(a)].label, ch = chapterOf(Object.assign({}, a, { place: sl.place && sl.place.mode === 'explore' ? sl.place : a.place })).full, where = slotWhere(sl.place, a);
     const name = String(a.name || 'WANDERER').replace(/[<>&"]/g, '');
     return `<button class="slot${slotArm === i ? ' armed' : ''}" data-i="${i}"><b>SLOT ${i + 1}</b><span>${name} · ${sp} · ${ch}</span><small>${fmtWhen(sl.savedAt)} · ${r.length} wanderer${r.length === 1 ? '' : 's'} · ${where}</small></button>`;
   }).join('');
+}
+function slotWhere(pl, a) { // the line under a save: where you were standing (or flying)
+  if (!pl || pl.mode !== 'explore') return 'Base';
+  if (pl.where === 'space' || pl.area === 'space') { const S = sysById(pl.sys); return S ? `In space · ${S.name}` : 'In space'; }
+  if (/^pl:/.test(pl.where || '')) { const P = bodyById(pl.where.slice(3)), S = P && sysById(P.sys); return P ? `On ${P.name}${S && S.name !== P.name ? ' · ' + S.name : ''}` : 'On a planet'; }
+  if (pl.area !== 'world') return 'Station';
+  return pl.where === 'europe' ? 'New London' : pl.where === 'africa' || (!pl.where && (a.chapter | 0) >= 2) ? 'African savanna' : 'Antarctic wilds';
 }
 function openSlots(mode, from) {
   slotMode = mode; slotFrom = from; slotArm = -1;
@@ -13503,18 +13590,26 @@ function autoRig(src, targetH) {
         R.kind = 'auto';
         const H = targetH, half = Math.max(.05, (box.max.x - box.min.x) / 2);
         const piv = (x, y) => { const p = new THREE.Group(); p.position.copy(m.worldToLocal(new THREE.Vector3(x, y, 0))); m.add(p); p.updateMatrixWorld(true); return p; };
-        const loc = new THREE.Vector3();
-        const inv = new THREE.Matrix4().copy(m.matrixWorld).invert();
-        const P = { ra: piv(-half * .62, H * .79), la: piv(half * .62, H * .79), rl: piv(-half * .22, H * .48), ll: piv(half * .22, H * .48), head: piv(0, H * .83) };
-        for (const o of meshes) {
-          o.geometry.computeBoundingBox(); const c = o.geometry.boundingBox.getCenter(new THREE.Vector3()).applyMatrix4(o.matrixWorld);
-          loc.copy(c).applyMatrix4(inv);
-          let to = null;
-          if (c.y > H * .83) to = P.head;
-          else if (c.y < H * .46) to = c.x < 0 ? P.rl : P.ll;
-          else if (Math.abs(c.x) > half * .55) to = c.x < 0 ? P.ra : P.la;
-          if (to) to.attach(o);
-        }
+        // sort the parts first: by name where the name says what it is (hands, gloves and sleeves go with their arm, wherever
+        // they hang; capes, coat tails, hair and hips stay on the body), and by where they sit for everything else
+        const BODY = /cape|coat.?tail|coat.?edge|lapel|hair|lock|strand|fringe|flyaway|hips|pelvis|waist|belt|harness|skirt|pants/, ARM = /hand|finger|thumb|glove|palm|wrist|fore.?arm|lower.?arm|upper.?arm|sleeve|cuff|elbow|knuckle|shoulder|pauldron/;
+        const sorted = meshes.map(o => {
+          const bb = new THREE.Box3().setFromObject(o), c = bb.getCenter(new THREE.Vector3()), n = (o.name || '').replace(/[_.]/g, ' ').toLowerCase();
+          let to = c.y > H * .83 ? 'head' : c.y < H * .46 ? (c.x < 0 ? 'rl' : 'll') : Math.abs(c.x) > half * .55 ? (c.x < 0 ? 'ra' : 'la') : null;
+          if (BODY.test(n)) { if (to !== 'head') to = null; }
+          else if (ARM.test(n) && Math.abs(c.x) > H * .04 && c.y > H * .3) to = c.x < 0 ? 'ra' : 'la'; // (not a trouser cuff down by the boots)
+          return { o, to, bb, n };
+        });
+        // each shoulder pivots at the top of its upper arm (or of whatever makes up that arm), not at a guessed height
+        const shoulder = (side, fx) => {
+          const arm = sorted.filter(s => s.to === side), up = arm.filter(s => /upper.?arm/.test(s.n));
+          const use = up.length ? up : arm.filter(s => !/hand|finger|thumb|glove|palm|wrist/.test(s.n));
+          if (!use.length) return [fx * half * .62, H * .79];
+          const b = new THREE.Box3(); use.forEach(s => b.union(s.bb)); const top = up.length ? b.max.y : Math.min(b.max.y, H * .79);
+          return [(b.min.x + b.max.x) / 2, top - Math.min(.05, (b.max.y - b.min.y) * .12)];
+        };
+        const P = { ra: piv(...shoulder('ra', -1)), la: piv(...shoulder('la', 1)), rl: piv(-half * .22, H * .48), ll: piv(half * .22, H * .48), head: piv(0, H * .83) };
+        for (const s of sorted) if (s.to) P[s.to].attach(s.o);
         Object.assign(R, P); R.neck = P.head;
       }
     }
@@ -13551,7 +13646,8 @@ function animRig(R, dt) {
   let ra = 0, la = 0, raz = 0, laz = 0, raL = 0, laL = 0, tor = 0;
   if (walk) { const s = Math.sin(t * 6); S(R.rl, 'x', s * .5); S(R.ll, 'x', -s * .5); S(R.rk, 'x', Math.max(0, -s) * .6); S(R.lk, 'x', Math.max(0, s) * .6); ra = -s * .4; la = s * .4; }
   else { S(R.rl, 'x', 0); S(R.ll, 'x', 0); S(R.rk, 'x', 0); S(R.lk, 'x', 0); const b = Math.sin(t * 1.6); ra = b * .04; la = -b * .04; raz = -.04; laz = .04; }
-  if (guns && !atk) { ra = -.25; if (W === 'pistols') la = -.25; }
+  if (guns && !atk) { if (W === 'pistols') { ra = -.25; la = -.25; } else { ra = -.5; la = -.35; laz = R.ra && R.la ? wxSign(R) * .35 : .3; } }
+  if (W === 'rifle') for (const g of R.gear) g.rotation.x = atk ? 0 : -.55; // low ready: muzzle forward and down, clear of the ground
   for (const g of R.gear) if (g.userData.flash) g.userData.flash.material.opacity = 0;
   if (atk) {
     if (W === 'goldChains' || W === 'blackChains') {
@@ -19405,6 +19501,8 @@ M._seek = t => {
     else if (cine.ch5) while (cine && cine.ch5 && cine.ch5.t < t && n++ < 9000) ch5Update(1 / 30, cine.ch5.t);
     else { cine.free = true; while (cine && !cine.speech && cine.t < t && n++ < 9000) cineUpdate(1 / 30, cine.t); if (cine) { cine.free = false; if (cine.t >= 4.5) M.music.play(cine.t - 4.5); } }
   } finally { M.mute = false; }
+  // a line that began during the silent run-up is said now, from the top (otherwise it would only show as a subtitle)
+  if (cine) { const sc = cine.siege || cine.assa || cine.ch5; if (sc) sc.line = -2; else subsCur = -2; }
   return M._t();
 };
 
