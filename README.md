@@ -13,8 +13,9 @@ Open `index.html` in a modern browser, keeping the `data/` folder next to it. It
 ## What's in the game
 
 - **Main menu** with the wandering astronaut, Continue, New Game, Wanderers, Mission Brief and Settings.
+- **Up to 80 wanderers** per save (the Wanderers screen shows how many you have, e.g. 79/80). If the device runs out of save space, saving says so and keeps your previous save.
 - **Editing a wanderer** (Wanderers → Edit active) changes their name, identity and looks, but not their species: that is chosen once, when the playthrough begins. Start a new game to play another species.
-- **Residents: sending a wanderer into the world** (Wanderers → Send active into the world, tap twice): that wanderer leaves your playable list for good and lives on in the same save as a "player", like an MMO with bots instead of real people.
+- **Residents: sending a wanderer into the world** (Wanderers → Send into the world, tap twice): that wanderer leaves your playable list for good and lives on in the same save as a "player", like an MMO with bots instead of real people.
   - **Never playable again:** they can't be recruited, controlled or switched to. They stay on the Wanderers screen, greyed out, with where they were last seen. At least one wanderer always stays playable.
   - **Where they turn up:** in Chapters I–II, on Earth, coming and going every few minutes. From Chapter III they travel the galaxy on their own: a few minutes on one world, then a warp to the next (home, a major system, or somewhere nearby). It's a fixed schedule worked out from the clock, so the ground, space and the galaxy map always agree.
   - **Tracking them:** on the galaxy map, each resident is a marker (blue hero, white neutral, red villain) with their level and where they are; while warping, a dashed line shows the jump. **RESIDENTS** jumps to each in turn, and a system's panel lists who's there or arriving.
