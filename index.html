@@ -145,6 +145,9 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 .chip>span{display:inline-block;transform:skewX(14deg)}
 .chip:hover{border-color:var(--line)}
 .chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip:disabled{opacity:.3;cursor:not-allowed}
+.sp-lock{display:block;margin-top:8px;font-size:10px;letter-spacing:.08em;color:var(--mute)}
+.sp-lock[hidden]{display:none}
 .sws{display:flex;flex-wrap:wrap;gap:10px;padding-left:4px}
 .sw{width:30px;height:30px;background:var(--c);border:1px solid rgba(255,255,255,.2);transform:skewX(-14deg);cursor:pointer;padding:0;touch-action:manipulation;outline-offset:3px}
 .sw.on{outline:1.5px solid var(--ink)}
@@ -1030,7 +1033,7 @@ body.touch .al-key{display:none}
     <div class="panes">
       <div class="pane" data-pane="id">
         <div class="field"><label for="crName">Callsign</label><input id="crName" class="name-in" maxlength="14" placeholder="WANDERER" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
-        <div class="field"><label>Species</label><div class="chips" id="crSpecies"></div><div class="sp-card"><div class="sp-home" id="spHome"></div><div id="spDesc"></div></div></div>
+        <div class="field"><label>Species</label><div class="chips" id="crSpecies"></div><small class="sp-lock" id="spLock" hidden>Species is chosen once, when a playthrough begins. Start a new game to play another species.</small><div class="sp-card"><div class="sp-home" id="spHome"></div><div id="spDesc"></div></div></div>
         <div class="field"><label>Gender <em id="crPro"></em></label><div class="chips" id="crIdent"></div></div>
       </div>
       <div class="pane" data-pane="look">
@@ -3045,7 +3048,7 @@ function chips(el, list, key, onPick) {
 function buildCreateUI() {
   const sp = spOf(draft), pal = paletteFor(sp), human = sp === 'human';
   chips($('#crSpecies'), Object.entries(SPECIES).map(([k, v]) => [k, v.label]), 'species', v => {
-    if (v === spOf(draft)) return false;
+    if (v === spOf(draft) || crMode === 'edit') return false; // an existing wanderer keeps their species for the whole playthrough
     Object.assign(draft, speciesDefaults(v)); buildCreateUI(); return false;
   });
   chips($('#crIdent'), Object.entries(IDENT).map(([k, v]) => [k, v.label]), 'identity');
@@ -3061,6 +3064,8 @@ function buildCreateUI() {
   chips($('#crDesign'), DESIGNS, 'design');
   chips($('#crVisor'), Object.entries(VISORS).map(([k, v]) => [k, v[0]]), 'visor');
   $('#crName').value = draft.name === 'WANDERER' ? '' : draft.name;
+  const lock = crMode === 'edit'; $('#spLock').hidden = !lock;
+  for (const b of $('#crSpecies').children) b.disabled = lock && b.dataset.v !== sp;
   refreshCreate();
 }
 function refreshCreate() {
@@ -3132,7 +3137,7 @@ $('#crConfirm').addEventListener('click', () => {
   const name = (draft.name || '').trim() || 'WANDERER';
   if (crMode === 'edit' && crTarget) {
     const i = roster.findIndex(c => c.id === crTarget.id);
-    if (i >= 0) roster[i] = Object.assign({}, draft, { name, id: crTarget.id });
+    if (i >= 0) roster[i] = Object.assign({}, draft, { name, id: crTarget.id, species: crTarget.species }); // never a new species mid-playthrough
     setActive(crTarget.id);
     show(ui.create, false); toTitle(); goMenu('mRoster'); renderRoster();
     return;
