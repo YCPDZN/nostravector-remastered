@@ -761,6 +761,7 @@ button.bm-c.no{opacity:.45}
 }
 @media (max-width:720px), (max-height:520px){
   .gal .gal-dip{left:calc(var(--sl) + 20px);right:auto;top:calc(var(--st) + 58px);height:34px}
+  .gal .gal-res{left:calc(var(--sl) + 20px);right:auto;top:calc(var(--st) + 100px);height:34px}
   .dip-panel h2.h1{font-size:22px;margin:0}
   .dip-panel .eyebrow{font-size:8px}
   .dip-tabs{margin:2px 0 4px;gap:4px}.dip-tabs .tab{padding:8px 6px}
@@ -865,6 +866,7 @@ select.dip-in option{background:#0b0f18}
 .x-hold{position:absolute;left:50%;top:calc(var(--st) + 120px);transform:translateX(-50%);text-align:center;opacity:0;transition:opacity .3s;pointer-events:none;width:min(420px,80vw)}
 .x-hold.on{opacity:1}.x-hold span{display:block;font-family:var(--display);font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:#ffe6a8;text-shadow:0 0 8px #000}
 .x-hold i{display:block;height:4px;margin-top:8px;background:rgba(255,255,255,.15)}.x-hold u{display:block;height:100%;background:linear-gradient(90deg,#ff7a5a,#ffd36a)}
+.gal-res{position:absolute;top:calc(var(--st) + 14px);right:calc(var(--sr) + 196px);height:40px;padding:0 12px;background:rgba(7,10,17,.6);border:1px solid #8fe3ff66;color:#8fe3ff;font-family:var(--display);font-size:9px;letter-spacing:.24em;cursor:pointer}
 .gal-dip{position:absolute;top:calc(var(--st) + 14px);right:calc(var(--sr) + 72px);height:40px;padding:0 12px;background:rgba(7,10,17,.6);border:1px solid var(--line);color:var(--ink);font-family:var(--display);font-size:9px;letter-spacing:.24em;cursor:pointer}
 .al-panel{max-width:900px;align-items:stretch;text-align:left}
 .al-wrap{display:grid;grid-template-columns:400px 1fr;gap:28px;width:100%;max-height:min(62vh,560px)}
@@ -10710,11 +10712,12 @@ function galEl() {
   let el = $('#galMap'); if (el) return el;
   el = document.createElement('div'); el.id = 'galMap'; el.className = 'gal hidden';
   el.innerHTML = `<canvas id="galCv"></canvas><div class="gal-top"><b>GALAXY MAP</b><small id="galSub"></small></div>
-    <button class="gal-close" id="galX">✕</button><button class="gal-dip" id="galDip">DIPLOMACY</button><div class="gal-zoom"><button data-z="1.3">+</button><button data-z="0.77">−</button></div>
+    <button class="gal-close" id="galX">✕</button><button class="gal-dip" id="galDip">DIPLOMACY</button><button class="gal-res" id="galRes">RESIDENTS</button><div class="gal-zoom"><button data-z="1.3">+</button><button data-z="0.77">−</button></div>
     <div class="gal-panel hidden" id="galPanel"></div><div class="gal-hint">${SYSTEMS.length} systems · zoom in to name them all · drag to pan · tap a system · M or ESC to close</div>`;
   document.body.appendChild(el);
   el.querySelector('#galX').addEventListener('click', () => { sfx.click(); galClose(); });
   el.querySelector('#galDip').addEventListener('click', () => dipOpen(true));
+  el.querySelector('#galRes').addEventListener('click', () => resGalNext());
   for (const b of el.querySelectorAll('.gal-zoom button')) b.addEventListener('click', () => { GAL.zoom = clamp(GAL.zoom * +b.dataset.z, .7, 11); sfx.blip(); });
   const cv = el.querySelector('#galCv');
   cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); GAL.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); GAL.moved = 0; GAL.pinch = 0; GAL.panTo = null; });
@@ -10745,6 +10748,7 @@ function galOpen() {
   if (!GAL.zoomed) { GAL.zoomed = true; GAL.zoom = innerWidth < 600 ? 2.3 : 1.6; }
   GAL.sel = GAL.sel && GAL.sel !== SPC.sys ? GAL.sel : SPC.sys; const q = galQ(sysById(GAL.sel)); GAL.pan.x = q.x; GAL.pan.y = q.y; GAL.panTo = null;
   $('#galSub').textContent = `You are in ${curSys().name} · ${((wanderer.ch3 && wanderer.ch3.visited) || []).length} of ${SYSTEMS.length} systems visited`; galPanel(); sfx.chime();
+  $('#galRes').style.display = residents.length ? '' : 'none'; RES.galI = null;
 }
 function galClose(silent) {
   GAL.open = false; GAL.ptrs.clear(); const el = $('#galMap'); if (el) el.classList.add('hidden');
@@ -10761,7 +10765,7 @@ function galPanel() {
   else if (n < cost) btn = `<button class="btn gp-warp" disabled><span>Warp · ${cellsTxt(cost)}</span></button><div class="gp-why">${n ? `You have ${cellsTxt(n)} · need ${cost - n} more` : 'No warp cells'} · craft them from 2 metal plates · 2 frost crystals · 2 scrap metal each</div>`;
   else btn = `<button class="btn gp-warp" data-warp="${S.id}"><span>Warp · ${cellsTxt(cost)} (${n - cost} left after)</span></button>`;
   const qHere = Object.entries((wanderer.sq || {}).act || {}).filter(([id, A]) => sqById(id) && sqSysOf(sqById(id), A) === S.id).map(([id]) => sqById(id).t);
-  $('#galPanel').innerHTML = `${qHere.length ? `<div class="gp-sub" style="color:#ffd36a">◆ Side quest: ${qHere.join(' · ')}</div>` : ''}<h3>${S.name.toUpperCase()}</h3><div class="gp-sub">${S.star.type} · ${S.faction}${here ? '' : ` · ${galDist(curSys(), S).toLocaleString()} ly · ${inRange(curSys(), S) ? cellsTxt(cost) : 'out of range'}`}${seen ? ' · visited' : ''}</div><p>${S.desc}</p>
+  $('#galPanel').innerHTML = `${resGalHere(S)}${qHere.length ? `<div class="gp-sub" style="color:#ffd36a">◆ Side quest: ${qHere.join(' · ')}</div>` : ''}<h3>${S.name.toUpperCase()}</h3><div class="gp-sub">${S.star.type} · ${S.faction}${here ? '' : ` · ${galDist(curSys(), S).toLocaleString()} ly · ${inRange(curSys(), S) ? cellsTxt(cost) : 'out of range'}`}${seen ? ' · visited' : ''}</div><p>${S.desc}</p>
     <ul>${S.bodies.map(P => `<li><span>${P.name}</span><small>${P.faction.split(' · ')[0]} · ${kind(P)}</small></li>`).join('')}</ul><div class="gp-act">${btn}</div>`;
   $('#galPanel').classList.remove('hidden');
 }
@@ -10804,6 +10808,7 @@ function galDraw(dt) {
     g.textAlign = 'left'; g.font = `500 ${S.gen ? 9 : 10}px ${font}`; g.fillStyle = S === sel ? '#efe8ff' : '#cfeeff'; g.fillText(S.name.toUpperCase(), p.x + 14, p.y - 2);
     if (GAL.zoom >= 1.4 || S === cur || S === sel) { g.font = `400 7.5px ${font}`; g.fillStyle = 'rgba(200,210,230,.6)'; g.fillText((S === cur ? 'YOU ARE HERE · ' : '') + S.faction.split(' · ')[0].toUpperCase(), p.x + 14, p.y + 9); }
   }
+  try { resGalDraw(g, font); } catch (e) { console.error(e); } // residents, wherever their journeys have taken them
 }
 /* ---- warping: the drive spools up, the stars stretch into a tunnel, white-out, and you drop out beside a new world ---- */
 function warpTunnel() {
@@ -10987,7 +10992,7 @@ function scKill(f) {
   const W3 = wanderer.ch3; if (W3) { W3.kills = (W3.kills | 0) + 1; const c = curChar(); if (c) c.ch3 = W3; }
   if (f.ace) { delete dip().lent[f.ace]; dipSave(); setTimeout(() => spaceMsg(`${compName(f.ace)} ejects and is picked up · back in your crew, safe`), 1800); if (f.ace === 'orion') placeOrion().catch(() => null); }
   if (f.war) dipScore(f.war, f.ace ? 10 : 6, f.ace ? `${compName(f.ace)}'s ship down` : 'ship down');
-  if (f.bot) { const who = residents.find(c => c.id === f.bot); if (who) setTimeout(() => { RES.log.push({ who: who.name, al: 'villain', text: resPick(['gg. respawning', 'ugh, lag', 'lucky shot']), t: time }); resChatRender(); }, 1500); }
+  if (f.bot) { const who = residents.find(c => c.id === f.bot); if (who) setTimeout(() => resDie(who), 1200); }
   spaceMsg(`${f.bot ? titleName(f.name.split(' · ')[0]) + '’s ship' : f.ace ? compName(f.ace) + '’s ship' : f.cath ? 'Catharsis ship' : f.ti ? 'Interceptor' : f.war ? titleName(f.name) + ' ship' : 'Pirate'} destroyed · +${u} units${drops.map(([id, n]) => ` · +${n} ${ITEMS[id].name}`).join('')}${SC.foes.length ? '' : ' · all hostiles down'}`);
 }
 function scTick(dt, fwd, up, alt) {
@@ -14901,8 +14906,9 @@ const resNow = () => Date.now();
 function resHash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; }
 const resPick = a => a[Math.floor(Math.random() * a.length)];
 const resAl = c => { const v = (c.align && c.align.p) | 0; return v >= 34 ? 'hero' : v <= -34 ? 'villain' : 'neutral'; };
-// they keep playing while you're away: about a level every half hour since you sent them, up to 100
-function resLevel(c) { return Math.min(100, levelOf(c) + Math.floor(Math.max(0, resNow() - (c.sentAt || resNow())) / (30 * 60 * 1000))); }
+// they keep playing while you're away: about a level every half hour since you sent them, up to 110 (you stop at 100)
+const RES_MAX_LV = 110;
+function resLevel(c) { return Math.min(RES_MAX_LV, levelOf(c) + Math.floor(Math.max(0, resNow() - (c.sentAt || resNow())) / (30 * 60 * 1000))); }
 function resPlaceKey(c) {
   const p = c.place && c.place.mode === 'explore' ? c.place : null; if (!p) return null;
   if (p.where === 'space') { const S = sysById(p.sys); const P = S.bodies.find(b => b.land) || null; return P ? 'pl:' + P.id : null; }
@@ -14915,7 +14921,55 @@ function resHome(c) {
   if (k && k.startsWith('pl:')) return k;
   return 'pl:earth';
 }
+// ---- from Chapter III they travel the galaxy on their own: a fixed schedule worked out from the clock, so the ground,
+// space and the galaxy map always agree on where everyone is. Die, and you respawn on your species' home planet. ----
+const RES_HOME = { human: 'earth', chompy: 'aridaxx', erisian: 'eris', grek: 'malana' };
+const resHomeBody = c => bodyById(RES_HOME[spOf(c)] || 'earth') || bodyById('earth');
+const RES_CACHE = { hubs: null, nb: new Map(), land: new Map(), tc: new Map() };
+const resHubs = () => RES_CACHE.hubs || (RES_CACHE.hubs = SYSTEMS.filter(S => !S.gen));
+function resLandIn(sid) { let l = RES_CACHE.land.get(sid); if (!l) { l = ALL_BODIES.filter(b => b.sys === sid && b.land); RES_CACHE.land.set(sid, l); } return l; }
+function resNeighbours(S) { let l = RES_CACHE.nb.get(S.id); if (!l) { l = SYSTEMS.filter(o => o !== S && galDist(S, o) < 6000 && resLandIn(o.id).length); RES_CACHE.nb.set(S.id, l); } return l; }
+function resAnchor(c) {
+  if (!c.trv || !bodyById(c.trv.body)) { const k = resPlaceKey(c), P = k && k.startsWith('pl:') ? bodyById(k.slice(3)) : null; c.trv = { body: (P || resHomeBody(c)).id, t0: c.sentAt || resNow() }; }
+  return c.trv;
+}
+function resNextBody(c, from, i, t0) {
+  const r = resHash(`${c.id}|${t0}|n${i}`), r2 = resHash(`${c.id}|${t0}|b${i}`), H = resHomeBody(c);
+  if (r < .22 && from.id !== H.id) return H; // home for a while
+  let S = r < .7 ? resHubs()[Math.floor(r2 * resHubs().length)] : (n => n.length ? n[Math.floor(r2 * n.length)] : sysById(from.sys))(resNeighbours(sysById(from.sys)));
+  const bl = resLandIn(S.id); if (!bl.length) return H;
+  let P = bl[Math.floor(resHash(`${c.id}|${t0}|p${i}`) * bl.length)];
+  if (P.id === from.id) P = bl.length > 1 ? bl[(bl.indexOf(P) + 1) % bl.length] : H;
+  return P;
+}
+function resTravel(c, now = resNow()) {
+  const A = resAnchor(c), hit = RES_CACHE.tc.get(c.id); if (hit && now - hit.at < 1000 && hit.t0 === A.t0 && hit.b === A.body) return hit.v;
+  let v;
+  if (now < A.t0) v = { mode: 'respawn', body: bodyById(A.body), until: A.t0 };
+  else {
+    let body = bodyById(A.body), t = A.t0, i = 0;
+    for (let guard = 0; guard < 5000; guard++) {
+      const dwell = (6 + resHash(`${c.id}|${A.t0}|d${i}`) * 8) * 60e3;
+      if (now < t + dwell) { v = { mode: 'at', body, until: t + dwell }; break; }
+      t += dwell;
+      const to = resNextBody(c, body, i, A.t0), warp = (1.5 + resHash(`${c.id}|${A.t0}|w${i}`) * 3) * 60e3;
+      if (now < t + warp) { v = { mode: 'warp', from: body, to, k: (now - t) / warp, until: t + warp }; break; }
+      t += warp; body = to; i++;
+    }
+    if (!v) { c.trv = { body: body.id, t0: t }; v = { mode: 'at', body, until: t + 6e5 }; } // a very old save: start again from where the trail ends
+  }
+  RES_CACHE.tc.set(c.id, { at: now, v, t0: A.t0, b: A.body });
+  return v;
+}
+// shot down (in space): back home after a short wait, with a fresh ship
+function resDie(c) {
+  const H = resHomeBody(c); c.trv = { body: H.id, t0: resNow() + 90e3 }; c.deaths = (c.deaths | 0) + 1; RES_CACHE.tc.delete(c.id); saveRoster();
+  const al = resAl(c), pool = (RL && RL.amb.death[al]) || ['down! respawning at {home}', 'gg, back to {home}'];
+  RES.log.push({ who: c.name, al, text: resFill(resPick(pool), Object.assign(resCtx(null), { home: H.name })), t: time }); if (RES.log.length > 30) RES.log.shift(); resChatRender();
+}
+const resTravels = () => effCh() >= 3;
 function resWhereLabel(c) {
+  if (resTravels()) { const T = resTravel(c); return T.mode === 'at' ? `on ${T.body.name}` : T.mode === 'warp' ? `warping to ${T.to.name}` : `respawning on ${T.body.name}`; }
   const k = resPlaceKey(c); if (!k) return 'somewhere out there';
   if (k.startsWith('pl:')) { const P = bodyById(k.slice(3)); return P ? `last seen on ${P.name}` : 'somewhere out there'; }
   return `last seen in ${(AREA_INFO[k] && AREA_INFO[k].name) || 'Antarctica'}`;
@@ -14929,9 +14983,13 @@ function resHereChance(c, A) {
 }
 // ?residents=all brings every resident to wherever you are (to preview them); ?resdebug exposes their state for testing
 const RES_ALL = /[?&]residents=all/.test(window.location.search);
-if (/[?&]resdebug/.test(window.location.search)) { window.RES = RES; window.resFF = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; resTick(step); } }; window.resFFs = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; SPC.t = (SPC.t || 0) + step; resSpaceTick(step); } return { ships: RES.sp.map(S => S.c.name + ':' + S.al + ':' + Math.round(S.pos.distanceTo(SPC.pos)) + 'm'), foes: SC.foes.map(f => f.name), bolts: SC.bolts.filter(b => b.friendly).length }; }; window.SCdbg = SC; window.resState = () => ({ state, mode: ex.mode, scene: !!SPC.scene, p: player.position.toArray(), units: units(), near: ex.near && ex.near.id }); window.resGoSpace = p => startChapter3(p); }
+if (/[?&]resdebug/.test(window.location.search)) { window.RES = RES; window.resFF = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; resTick(step); } }; window.resFFs = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; SPC.t = (SPC.t || 0) + step; resSpaceTick(step); } return { ships: RES.sp.map(S => S.c.name + ':' + S.al + ':' + Math.round(S.pos.distanceTo(SPC.pos)) + 'm'), foes: SC.foes.map(f => f.name), bolts: SC.bolts.filter(b => b.friendly).length }; }; window.SCdbg = SC; window.resState = () => ({ state, mode: ex.mode, scene: !!SPC.scene, p: player.position.toArray(), units: units(), near: ex.near && ex.near.id }); window.resGoSpace = p => startChapter3(p); window.resT = () => residents.map(c => { const T = resTravel(c); return `${c.name}:${T.mode}:${(T.body || T.to).name}:${resLevel(c)}`; }); window.resKill = i => resDie(residents[i]); window.resRL = () => !!RL; }
 const resMax = () => document.body.classList.contains('touch') ? 3 : 6; // phones draw fewer of them, and without shadows
-const resPresent = (c, A) => RES_ALL || resHash(`${c.id}|${resSlot()}|${A}`) < resHereChance(c, A);
+function resPresent(c, A) {
+  if (RES_ALL) return true;
+  if (resTravels()) { const T = resTravel(c); return T.mode === 'at' && 'pl:' + T.body.id === A; } // they're here if their journey has them here
+  return resHash(`${c.id}|${resSlot()}|${A}`) < resHereChance(c, A);
+}
 // free roam only: nothing scripted is ever interrupted
 function resGroundOk() {
   if (!residents.length || ex.mode !== 'world' || !(state === 'explore' || state === 'xpaused')) return false;
@@ -15001,6 +15059,7 @@ const RES_LINES = {
     grek: ['the gardens on Archiostal are nicer', 'my beard is full of dust', 'Malana sends its regards']
   }
 };
+RES_LINES.travel = { hero: ['warping to {other}, see you there!'], neutral: ['warping to {other}'], villain: ['off to {other}. pray for them'] };
 const RES_PAIR = { // two of them, back and forth
   chat: [['{b} you on {place} too?', 'yeah grinding {res}'], ['{b}! long time', 'been busy. wars and stuff'], ['did you see {faction} on the map?', 'yeah wild'], ['how’s {player} doing?', 'still playing hero I think']],
   trade: [['wtb {res}?', 'sure, {n} for 30'], ['trade you {res} for scrap', 'deal'], ['got any {res}?', 'only {n}, take it']],
@@ -15017,14 +15076,54 @@ function resCtx(B, other) {
   const res = resPick(['Stone', 'Ice', 'Scrap metal', 'Frost crystal', 'Obsidian', 'Wood']);
   const otherPl = resPick(ALL_BODIES.filter(b => b.land && b.sys === (P ? P.sys : 'sol') && (!P || b.id !== P.id)).concat([bodyById('malana'), bodyById('aridaxx')]).filter(Boolean));
   const fac = facShort((P && P.faction) || S.faction) || 'the Federation';
-  return { place: P ? P.name : (AREA_INFO[A] && AREA_INFO[A].name) || 'here', other: otherPl ? otherPl.name : 'Malana', player: wanderer.name, b: other ? other.c.name : '', res, n: 2 + Math.floor(Math.random() * 6), lv: B ? B.lv : 1, sys: S.name, faction: fac, threat: (wanderer.chapter | 0) >= 4 ? 'Catharsis patrol' : 'pirates' };
+  const T = B && resTravels() ? resTravel(B.c) : null, nxt = T && T.mode === 'warp' ? T.to.name : null;
+  return { home: B ? resHomeBody(B.c).name : 'home', species: B ? SPECIES[B.sp].label : '', realm: effCh() >= 3 && wanderer.dip ? realmName() : 'the Federation', enemy: 'pirates', place: P ? P.name : (AREA_INFO[A] && AREA_INFO[A].name) || 'here', other: nxt || (otherPl ? otherPl.name : 'Malana'), player: wanderer.name, b: other ? other.c.name : '', res, n: 2 + Math.floor(Math.random() * 6), lv: B ? B.lv : 1, sys: S.name, faction: fac, threat: (wanderer.chapter | 0) >= 4 ? 'Catharsis patrol' : 'pirates' };
 }
 const resFill = (t, x) => t.replace(/\{(\w+)\}/g, (_, k) => x[k] != null ? x[k] : '');
+// the full dialogue pack (1,600+ lines) lives in data/resLines.js and loads the first time a resident is around
+let RL = null;
+function resLinesLoad() {
+  if (RL || RES.rlLoading) return; RES.rlLoading = true;
+  const sc = document.createElement('script'); sc.src = 'data/resLines.js';
+  sc.onload = () => { RL = window.NV_RES_LINES || null; }; sc.onerror = () => { RES.rlLoading = false; };
+  document.body.appendChild(sc);
+}
+const resPickN = (a, n) => [...a].sort(() => Math.random() - .5).slice(0, n);
+const RES_BOSS_BY_CH = { 1: ['fight'], 2: ['croxian', 'fight'], 3: ['hawthorne', 'catharsis', 'amgrek', 'hak', 'sevirrus', 'fight'], 4: ['zark', 'catharsis', 'fight', 'amgrek'], 5: ['hawthorne', 'zark', 'amgrek', 'hak', 'sevirrus', 'fight'] };
+function resExploreKeys() {
+  if (ex.mode !== 'world') return { kind: 'space', world: null };
+  const A = curArea(); if (!A.startsWith('pl:')) return { kind: A, world: A === 'europe' ? 'earth' : null };
+  const P = bodyById(A.slice(3)); if (!P) return { kind: 'rock', world: null };
+  return { kind: P.dock ? 'gardens' : P.kind, world: P.dock ? null : P.id };
+}
+// your wars (Diplomacy), as the residents see them
+function resWarCtx() {
+  if (effCh() < 3 || !wanderer.dip) return null;
+  try {
+    const D = dip(), realm = realmName(), F = id => DIP_FAC.find(f => f.id === id), nm = id => { const f = F(id); return f ? dipFacName(f) : id; };
+    const wars = Object.keys(D.wars); if (wars.length) return { kind: 'atWar', enemy: nm(resPick(wars)), realm };
+    const rs = Object.entries(D.res).filter(([id]) => F(id));
+    if (rs.length) { const [id, r] = resPick(rs), f = F(id); const k = r.st === 'vassal' ? 'vassal' : r.st === 'tributary' ? 'tributary' : r.st === 'subjugated' && r.resist ? (Math.random() < .5 ? 'resistance' : 'won') : 'won'; return { kind: k, enemy: k === 'resistance' ? f.species : (r.name || f.name), realm }; }
+    if (Object.keys(D.col).length) return { kind: 'colony', enemy: '', realm };
+    return { kind: 'peace', enemy: '', realm };
+  } catch (e) { return null; }
+}
+function resContextPool(B, x) {
+  const r = Math.random(), ch = clamp(effCh(), 1, 5);
+  if (r < .28) return RL.amb.wander[B.al];
+  if (r < .42) return RL.species[B.sp];
+  if (r < .62) { const k = resExploreKeys(), w = k.world && RL.explore.worlds[k.world]; return w && Math.random() < .5 ? w : RL.explore.kinds[k.kind] || RL.amb.wander[B.al]; }
+  if (r < .78) return RL.chapter[ch];
+  if (r < .87) return RL.bosses[resPick(RES_BOSS_BY_CH[ch])];
+  const W = resWarCtx(); if (W) { x.enemy = W.enemy; x.realm = W.realm; const set = RL.wars[W.kind]; return Array.isArray(set) ? set : set[B.al]; }
+  return RL.amb.wander[B.al];
+}
 function resLine(kind, B, other) {
-  const set = RES_LINES[kind]; if (!set) return null;
-  let pool = set[B.al] || set.neutral || []; if (!pool.length) return null;
-  if (kind === 'wander' && Math.random() < .3) pool = RES_LINES.species[B.sp] || pool;
-  return resFill(resPick(pool), resCtx(B, other));
+  const x = resCtx(B, other); let pool = null;
+  if (RL && kind === 'wander') pool = resContextPool(B, x);
+  if (!pool || !pool.length) { const set = (RL && RL.amb[kind]) || RES_LINES[kind]; if (!set) return null; pool = set[B.al] || set.neutral || set.hero || set.villain || []; if (!RL && kind === 'wander' && Math.random() < .3) pool = RES_LINES.species[B.sp] || pool; }
+  if (!pool || !pool.length) return null;
+  return resFill(resPick(pool), x);
 }
 function resSay(B, text) {
   if (!text) return;
@@ -15082,7 +15181,7 @@ function resSocial() {
 }
 function resPair(A, C, kind) {
   A.partner = C; C.partner = A;
-  const ctxA = resCtx(A, C), [la, lc] = resPick(RES_PAIR[kind]).map(t => resFill(t, ctxA));
+  const ctxA = resCtx(A, C), [la, lc] = resPick((RL && RL.pairs[kind]) || RES_PAIR[kind]).map(t => resFill(t, ctxA));
   const mid = { x: (A.x + C.x) / 2, z: (A.z + C.z) / 2 }, ang = Math.atan2(C.z - A.z, C.x - A.x), gap = kind === 'spar' ? 1.4 : 1.1;
   const spotA = resSafeSpot(mid.x - Math.cos(ang) * gap, mid.z - Math.sin(ang) * gap), spotC = resSafeSpot(mid.x + Math.cos(ang) * gap, mid.z + Math.sin(ang) * gap);
   const T = (to, extra) => Object.assign({ type: 'pair', kind, t: 0, to, dur: kind === 'dance' ? 7 : kind === 'spar' ? 6 : 5 }, extra || {});
@@ -15094,7 +15193,7 @@ function resPair(A, C, kind) {
 function resEndPair(B) {
   const P = B.partner, k = B.task && B.task.kind;
   if (P && P.partner === B && (k === 'spar' || k === 'race') && !B.task.done) {
-    const end = resFill(resPick(RES_PAIR[k === 'spar' ? 'sparEnd' : 'raceEnd'])[0], resCtx(B, P));
+    const ek = k === 'spar' ? 'sparEnd' : 'raceEnd', end = resFill(resPick((RL && RL.pairs[ek]) || RES_PAIR[ek])[0], resCtx(B, P));
     B.task.done = true; if (P.task) P.task.done = true; resSay(B, end);
   }
   if (P) { P.partner = null; P.task = null; } B.partner = null; B.task = null;
@@ -15102,21 +15201,101 @@ function resEndPair(B) {
 // the player can wave (and trade, and ask): they answer in their own words
 function resNear(p) { let best = null, bd = 2.8; for (const B of RES.bots) { if (!B.ready || !B.root.visible) continue; const d = Math.hypot(B.x - p.x, B.z - p.z); if (d < bd) { bd = d; best = B; } } return best; }
 const RES_TRADE_RES = ['stone', 'ice', 'scrap', 'crystal', 'cloth'];
+const resWho = (B, ooc) => String(B.c.name).toUpperCase() + (ooc ? ' · OUT OF CHARACTER' : '');
+const resAlName = B => B.al === 'hero' ? 'Enlightened Hero' : B.al === 'villain' ? 'Awakened Villain' : 'Neutral';
+function resSayTo(B, lines, then, ooc) { openDialog(resWho(B, ooc), lines.filter(Boolean), false, then || null); }
 function resTalk(B) {
-  B.task = { type: 'face', t: 0, dur: 6 }; B.em = 'wave'; B.emT = 2.2;
-  const H = B.al === 'hero', V = B.al === 'villain', x = resCtx(B);
+  resLinesLoad(); RES.talking = B; B.task = { type: 'face', t: 0, dur: 4 }; B.em = 'wave'; B.emT = 2.2;
+  const x = resCtx(B), V = B.al === 'villain', T = RL && RL.talk, back = () => resTalk(B);
   const opts = [
-    { text: 'Wave', onPick: () => { B.em = 'wave'; B.emT = 2.2; resSay(B, resLine('toPlayer', B)); } },
-    { text: 'What are you up to?', onPick: () => openDialog(B.c.name.toUpperCase(), [resFill(resPick(V ? ['None of your business.', 'Waiting for something worth my time. Still waiting.'] : H ? ['Helping where I can. {place} needs it.', 'Mining {res}, then off to {other}. Want anything?'] : ['Grinding {res}. Same as always.', 'Heading to {other} after this. Prices are better there.']), x), `LV ${B.lv} · ${SPECIES[B.sp].label} · ${B.al === 'hero' ? 'Enlightened Hero' : V ? 'Awakened Villain' : 'Neutral'}`]) }
+    { text: 'What are you up to?', onPick: () => resSayTo(B, [resFill(resPick(T ? T.doing[B.al] : ['Just exploring.']), x), `LV ${B.lv} · ${SPECIES[B.sp].label} · ${resAlName(B)}${resTravels() ? ` · home: ${resHomeBody(B.c).name}` : ''}`], back) },
+    { text: 'Tell me about this place', onPick: () => { const k = resExploreKeys(), w = RL && k.world && RL.explore.worlds[k.world]; resSayTo(B, [resFill(resPick(T ? T.place : ['Nice place.']), x), RL ? resFill(resPick(w || RL.explore.kinds[k.kind] || RL.talk.place), x) : null], back); } },
+    { text: 'Any tips?', onPick: () => resSayTo(B, T ? resPickN(T.tips, 2) : ['Save often.'], back) }
   ];
-  if (!V && ex.mode === 'world') { // a small trade, now and then
-    const id = resPick(RES_TRADE_RES.filter(k => ITEMS[k])), n = 2 + Math.floor(Math.random() * 3), price = n * (H ? 8 : 12);
+  if (effCh() >= 3) opts.push({ text: 'How’s the war?', onPick: () => { const W = resWarCtx(); if (W) { x.enemy = W.enemy; x.realm = W.realm; } const set = RL && W && RL.wars[W.kind]; resSayTo(B, [set ? resFill(resPick(Array.isArray(set) ? set : set[B.al]), x) : resFill(resPick(T ? T.war : ['Quiet, for now.']), x)], back); } });
+  if (!V && ex.mode === 'world') { // a small trade
+    const id = resPick(RES_TRADE_RES.filter(k => ITEMS[k])), n = 2 + Math.floor(Math.random() * 3), price = n * (B.al === 'hero' ? 8 : 12);
     opts.push({ text: `Buy ${n} ${ITEMS[id].name} · ${price} units`, onPick: () => {
       if (units() < price) { resSay(B, 'come back when you’ve got the units'); return; }
       addUnits(-price); giveItem(id, n); lootMsg(`+${n} ${ITEMS[id].name} · from ${B.c.name}`, ITEMS[id].color || '#9fe6b0'); resSay(B, resPick(['pleasure doing business', 'ty!', 'enjoy'])); } });
   }
-  opts.push({ text: 'Bye', onPick: () => { resSay(B, resPick(V ? ['finally', 'whatever'] : ['cya {player}!', 'o/']).replace('{player}', wanderer.name)); } });
-  openChoice(B.c.name.toUpperCase(), opts);
+  opts.push({ text: 'Real life…', onPick: () => resRealLife(B) });
+  opts.push({ text: 'Bye', onPick: () => { RES.talking = null; resSay(B, resFill(resPick(T ? T.farewell[B.al] : ['cya']), x)); } });
+  openChoice(String(B.c.name).toUpperCase(), opts);
+}
+/* ---- real life: stepping out of the game (villains too). They are not therapists or careers advisers: they listen, offer
+   simple, widely used techniques, and point to real people and services. "I'm not safe" always goes straight to crisis contacts. ---- */
+const RES_CARE_FALLBACK = ['I’m a game character, not a therapist, but I’m really glad you said something.', 'Talking to someone you trust, or a doctor, can make a real difference.', 'If you are in danger, call your local emergency number (999 in the UK, 911 in the US and Canada, 112 in Europe). In the UK or Ireland, Samaritans are free on 116 123. In the US, call or text 988. Anywhere else, findahelpline.com lists free crisis lines.'];
+function resRealLife(B) {
+  resLinesLoad();
+  openChoice(resWho(B, true), [
+    { text: 'I’m stressed out', onPick: () => resCare(B) },
+    { text: 'Job advice', onPick: () => resJobs(B) },
+    { text: 'Back to the game', onPick: () => resTalk(B) }
+  ]);
+}
+function resCare(B) {
+  const C = RL && RL.care; if (!C) { resSayTo(B, RES_CARE_FALLBACK, null, true); return; }
+  const intro = B.al === 'villain' ? C.intro.filter(l => /villain|act|character|game/i.test(l)) : C.intro.filter(l => !/villain/i.test(l));
+  resSayTo(B, [resPick(intro)], () => openChoice(resWho(B, true), [
+    { text: 'It’s something specific', onPick: () => resCareTopics(B) },
+    { text: 'Everything at once', onPick: () => resCareTopic(B, 'everything') },
+    { text: 'I’m not safe right now', onPick: () => resCareSafety(B) },
+    { text: 'Never mind', onPick: () => resSayTo(B, ['That’s ok. I’m here if you change your mind.'], null, true) }
+  ]), true);
+}
+function resCareTopics(B) {
+  const C = RL.care, ks = ['work', 'study', 'relationships', 'money', 'health', 'lonely', 'other'];
+  openChoice(resWho(B, true), ks.map(k => ({ text: C.topics[k].label, onPick: () => resCareTopic(B, k) })).concat([{ text: 'Back', onPick: () => resCare(B) }]));
+}
+function resCareTopic(B, k) { const T = RL.care.topics[k]; resSayTo(B, [resPick(T.validate), ...resPickN(T.ideas, 2)], () => resCareTools(B), true); }
+function resCareTools(B) {
+  const C = RL.care, then = () => resCareCheck(B);
+  openChoice(resWho(B, true), [
+    { text: 'A breathing exercise', onPick: () => resSayTo(B, C.tools.breathe, then, true) },
+    { text: 'A grounding exercise', onPick: () => resSayTo(B, C.tools.ground, then, true) },
+    { text: 'Small things to try', onPick: () => resSayTo(B, ['A few small things that might help:', ...resPickN(C.tools.small, 3)], then, true) },
+    { text: 'Trouble sleeping', onPick: () => resSayTo(B, resPickN(C.tools.sleep, 3), then, true) },
+    { text: 'I can’t stop worrying', onPick: () => resSayTo(B, C.tools.worry, then, true) },
+    { text: 'Who can I talk to?', onPick: () => resSayTo(B, resPickN(C.support, 4), then, true) },
+    { text: 'I’m done for now', onPick: () => resSayTo(B, [resPick(C.tools.kind), resPick(C.better)], () => { RES.talking = null; }, true) }
+  ]);
+}
+function resCareCheck(B) {
+  const C = RL.care;
+  openChoice(resWho(B, true), [
+    { text: 'A bit better', onPick: () => resSayTo(B, [resPick(C.better), resPick(C.tools.kind)], () => { RES.talking = null; }, true) },
+    { text: 'About the same', onPick: () => resSayTo(B, [resPick(C.same.filter(l => !/safe/.test(l))), resPick(C.support)], () => resCareTools(B), true) },
+    { text: 'Worse', onPick: () => resSayTo(B, [C.same[1], C.same[4]], () => openChoice(resWho(B, true), [
+      { text: 'I’m not safe right now', onPick: () => resCareSafety(B) },
+      { text: 'Try something else', onPick: () => resCareTools(B) },
+      { text: 'I’m done for now', onPick: () => resSayTo(B, [resPick(C.support), resPick(C.tools.kind)], () => { RES.talking = null; }, true) }
+    ]), true) },
+    { text: 'Try something else', onPick: () => resCareTools(B) }
+  ]);
+}
+function resCareSafety(B) {
+  const C = RL && RL.care, lines = C ? C.safety : RES_CARE_FALLBACK;
+  resSayTo(B, lines, () => openChoice(resWho(B, true), [
+    { text: 'Thank you', onPick: () => resSayTo(B, ['Please reach out to one of them now. You matter.'], () => { RES.talking = null; }, true) },
+    { text: 'Keep talking', onPick: () => resCareTools(B) }
+  ]), true);
+}
+function resJobs(B, page = 1) {
+  const J = RL && RL.jobs; if (!J) { resSayTo(B, ['Give me a moment, I’m still getting set up. Ask again in a few seconds.'], null, true); return; }
+  const go = k => () => resJobTopic(B, k, []), T = J.topics;
+  const show = () => openChoice(resWho(B, true), page === 1
+    ? [...['search', 'cv', 'interview', 'change'].map(k => ({ text: T[k].label, onPick: go(k) })), { text: 'More topics…', onPick: () => resJobs(B, 2) }, { text: 'Back to the game', onPick: () => resTalk(B) }]
+    : [...['pay', 'burnout', 'conflict', 'first', 'lost'].map(k => ({ text: T[k].label, onPick: go(k) })), { text: 'Back', onPick: () => resJobs(B, 1) }]);
+  if (page === 1 && !B.jobIntro) { B.jobIntro = true; resSayTo(B, [resPick(J.intro)], show, true); } else show();
+}
+function resJobTopic(B, k, used) {
+  const J = RL.jobs, left = J.topics[k].tips.filter(t => !used.includes(t)), now = resPickN(left.length >= 4 ? left : J.topics[k].tips, 4); used.push(...now);
+  resSayTo(B, [`${J.topics[k].label}:`, ...now], () => openChoice(resWho(B, true), [
+    { text: 'More tips on this', onPick: () => resJobTopic(B, k, used) },
+    { text: 'Another topic', onPick: () => resJobs(B, 1) },
+    { text: 'That’s all, thanks', onPick: () => resSayTo(B, resPickN(J.close, 2), () => { RES.talking = null; }, true) }
+  ]), true);
 }
 
 // ---- each frame on the ground ----
@@ -15124,11 +15303,14 @@ function resTick(dt) {
   if (RES.src !== residents || RES.srcN !== residents.length || RES.who !== activeId) { resClearGround(); resClearSpace(); RES.src = residents; RES.srcN = residents.length; RES.who = activeId; RES.log = []; }
   if (!resGroundOk()) { for (const B of RES.bots) B.root.visible = false; return; }
   const A = curArea(), p = player.position, paused = state !== 'explore';
-  if (RES.area !== A || RES.slot !== resSlot()) { // a new place, or a new hour: who's around now?
+  resLinesLoad();
+  if (RES.talking && !ex.dlg) RES.talking = null;
+  RES.chk = (RES.chk || 0) - dt;
+  if (RES.area !== A || RES.chk <= 0) { // a new place, or a few seconds on: who's around now?
     const fresh = RES.area !== A; if (fresh) resClearGround();
-    RES.area = A; RES.slot = resSlot();
+    RES.area = A; RES.chk = 5;
     const want = residents.filter(c => resPresent(c, A)).slice(0, resMax());
-    for (const B of RES.bots) if (!want.includes(B.c) && !B.leaving) { B.leaving = true; B.task = { type: 'leave', t: 0, dur: 4 }; resSay(B, resLine('leave', B)); }
+    for (const B of RES.bots) if (!want.includes(B.c) && !B.leaving && RES.talking !== B) { B.leaving = true; B.task = { type: 'leave', t: 0, dur: 4 }; const T = resTravels() ? resTravel(B.c) : null; resSay(B, resLine(T && T.mode === 'warp' ? 'travel' : 'leave', B)); }
     for (const c of want) if (!RES.bots.some(B => B.c === c)) resSpawn(c, !fresh && Math.random() < .5);
   }
   if (!paused) {
@@ -15183,7 +15365,7 @@ function resStep(B, dt, p) {
       break;
     }
     case 'follow': { const to = { x: p.x - Math.sin(player.rotation.y) * 2.6 + 1.2, z: p.z - Math.cos(player.rotation.y) * 2.6 }; resMoveTo(B, to, dt, dp > 7); if (dp < 3.5) resFace(B, p.x, p.z, dt); if (T.t > T.dur) { B.task = null; B.anchor = { x: B.x, z: B.z }; resSay(B, resPick(['ok I’m off, cya', 'thanks for the tour'])); } break; }
-    case 'face': resFace(B, p.x, p.z, dt); if (T.t > T.dur) B.task = null; break;
+    case 'face': resFace(B, p.x, p.z, dt); if (RES.talking === B && ex.dlg) T.t = 0; if (T.t > T.dur) B.task = null; break;
     case 'gather': if (!T.at) { if (resMoveTo(B, T.to, dt, true) || T.t > 12) { T.at = true; T.t = 0; } } else { B.em = T.em; B.emT = .1; if (T.t > T.dur) B.task = null; } break;
     case 'leave': B.em = 'wave'; B.emT = .1; if (T.t > T.dur) { resDespawn(B); return; } break;
     case 'pair': {
@@ -15233,18 +15415,28 @@ function resAnim(B, dt) {
 
 // ---- in space: their ships share the system with you (heroes help, villains may come for you) ----
 const RES_SHIP = { human: 'hfos', chompy: 'chompy', erisian: 'erisian', grek: 'grek' };
+function resSpaceShip(c, warpIn) {
+  const m = makeFighter(RES_SHIP[spOf(c)] || 'pirate'), a = Math.random() * 6.28, pos = SPC.pos.clone().add(new THREE.Vector3(Math.cos(a) * 2000, (Math.random() - .5) * 500, Math.sin(a) * 2000));
+  m.position.copy(pos); SPC.scene.add(m); if (warpIn) scBoom(pos, .6);
+  const S = { c, m, pos, q: new THREE.Quaternion(), al: resAl(c), a, r: 700 + Math.random() * 900, w: (.05 + Math.random() * .05) * (Math.random() < .5 ? 1 : -1), cd: 0, hp: 100, hostileAt: SPC.t + 25 + Math.random() * 40, said: false };
+  RES.sp.push(S); if (warpIn) resSpaceSay(S, resPick(['dropped out of warp, hi all', 'arrived in {sys}', 'o/ just warped in']).replace('{sys}', curSys().name));
+  return S;
+}
+function resSpaceWant(c) { if (RES_ALL) return true; const T = resTravel(c); return T.mode === 'at' && T.body.sys === SPC.sys; }
 function resSpaceTick(dt) {
   if (RES.src !== residents || RES.srcN !== residents.length || RES.who !== activeId) { resClearGround(); resClearSpace(); RES.src = residents; RES.srcN = residents.length; RES.who = activeId; RES.log = []; }
   if (!residents.length || !SPC.scene || (wanderer.chapter | 0) < 3) return;
-  if (RES.spSys !== SPC.sys || RES.spSlot !== resSlot()) {
-    for (const S of RES.sp) SPC.scene.remove(S.m); RES.sp = []; RES.spSys = SPC.sys; RES.spSlot = resSlot();
-    for (const c of residents) {
-      const home = resHome(c), hb = home.startsWith('pl:') && bodyById(home.slice(3)), here = hb && hb.sys === SPC.sys;
-      if ((!RES_ALL && resHash(`${c.id}|${resSlot()}|space:${SPC.sys}`) > (here ? .7 : .22)) || RES.sp.length >= 4) continue;
-      const m = makeFighter(RES_SHIP[spOf(c)] || 'pirate'), a = Math.random() * 6.28, pos = SPC.pos.clone().add(new THREE.Vector3(Math.cos(a) * 2200, (Math.random() - .5) * 500, Math.sin(a) * 2200));
-      m.position.copy(pos); SPC.scene.add(m);
-      RES.sp.push({ c, m, pos, q: new THREE.Quaternion(), al: resAl(c), a, r: 700 + Math.random() * 900, w: (.05 + Math.random() * .05) * (Math.random() < .5 ? 1 : -1), cd: 0, hostileAt: SPC.t + 25 + Math.random() * 40, said: false });
+  resLinesLoad();
+  RES.spChk = (RES.spChk || 0) - dt;
+  if (RES.spSys !== SPC.sys || RES.spChk <= 0) {
+    const fresh = RES.spSys !== SPC.sys; if (fresh) { for (const S of RES.sp) SPC.scene.remove(S.m); RES.sp = []; RES.spSys = SPC.sys; }
+    RES.spChk = 2;
+    const hostile = new Set(SC.foes.filter(f => f.bot).map(f => f.bot));
+    for (const S of [...RES.sp]) if (!resSpaceWant(S.c)) { // their journey takes them on: they warp out
+      const T = resTravel(S.c); scBoom(S.pos, .6); SPC.scene.remove(S.m); RES.sp = RES.sp.filter(o => o !== S);
+      resSpaceSay(S, resFill(resPick((RL && RL.amb.travel[S.al]) || RES_LINES.travel[S.al]), Object.assign(resCtx(null), { other: T.mode === 'warp' ? T.to.name : 'home', sys: T.mode === 'warp' ? sysById(T.to.sys).name : '' })));
     }
+    for (const c of residents) if (RES.sp.length < 4 && !hostile.has(c.id) && !RES.sp.some(S => S.c === c) && resSpaceWant(c)) resSpaceShip(c, !fresh);
   }
   const fwd = new THREE.Vector3();
   for (const S of [...RES.sp]) {
@@ -15259,17 +15451,29 @@ function resSpaceTick(dt) {
     S.pos.addScaledVector(fwd, sp * dt); S.m.position.copy(S.pos); S.m.quaternion.copy(S.q);
     if (S.pos.distanceTo(SPC.pos) > 9000) { const a = Math.random() * 6.28; S.pos.copy(SPC.pos).add(new THREE.Vector3(Math.cos(a) * 2500, 0, Math.sin(a) * 2500)); }
     S.cd -= dt;
+    if (foe) { // they take fire too: a long fight can cost them their ship
+      const near = SC.foes.filter(f => f.pos.distanceTo(S.pos) < 1400).length; S.hp -= dt * near * (.8 + Math.random() * .9);
+      if (S.hp <= 0) { scBoom(S.pos, 1.2); sfx.boom(.6); SPC.scene.remove(S.m); RES.sp = RES.sp.filter(o => o !== S); resDie(S.c); continue; }
+    }
     if (foe && S.cd <= 0 && fwd.angleTo(foe.pos.clone().sub(S.pos)) < .18 && foe.pos.distanceTo(S.pos) < 1500) {
       S.cd = .35 + Math.random() * .3; scBolt(S.pos.clone().addScaledVector(fwd, 8), foe.pos.clone().sub(S.pos).normalize(), 1700, true);
-      if (!S.said) { S.said = true; resSpaceSay(S, resPick(['on it {player}!', 'I got your back', 'engaging']).replace('{player}', wanderer.name)); }
+      if (!S.said) { S.said = true; resSpaceSay(S, resFill(resPick((RL && RL.amb.combat[S.al]) || ['on it {player}!', 'I got your back', 'engaging']), resCtx(null))); }
     }
     // a villain eventually turns on you: in space only, never on the ground
     if (S.al === 'villain' && !SC.foes.length && SPC.t > S.hostileAt && S.pos.distanceTo(SPC.pos) < 3500 && (wanderer.ch3 || {}).landed) {
       RES.sp = RES.sp.filter(o => o !== S); const lv = resLevel(S.c);
       SC.foes.push({ m: S.m, pos: S.pos, q: S.q, hp: 80 + lv, max: 80 + lv, speed: 235, cd: 1.5, burst: 0, mode: 'attack', modeT: 0, brk: new THREE.Vector3(), name: `${String(S.c.name).toUpperCase()} · LV ${lv}`, bot: S.c.id });
-      sfx.alarm(); combatPulse(); resSpaceSay(S, resPick(['lol free loot', 'nothing personal {player}', 'your ship looks expensive']).replace('{player}', wanderer.name));
+      sfx.alarm(); combatPulse(); resSpaceSay(S, resFill(resPick((RL && RL.amb.combat.villain) || ['lol free loot', 'nothing personal {player}']), resCtx(null)));
     }
   }
+  // now and then, someone flying nearby says something
+  RES.spTalk = (RES.spTalk || 30) - dt;
+  if (RES.spTalk <= 0 && RES.sp.length && !SC.foes.length) { RES.spTalk = 35 + Math.random() * 40; const S = resPick(RES.sp); if (RL) resSpaceSay(S, resFill(resPick(Math.random() < .5 ? RL.explore.kinds.space : RL.species[spOf(S.c)]), resCtx(null))); }
+}
+// where everyone is, for the galaxy map
+function resGalMarks() {
+  if (!residents.length || !resTravels()) return [];
+  return residents.map((c, i) => ({ c, i, T: resTravel(c), al: resAl(c), lv: resLevel(c) }));
 }
 function resSpaceSay(S, text) { RES.log.push({ who: S.c.name, al: S.al, text, t: time }); if (RES.log.length > 30) RES.log.shift(); resChatRender(); spaceMsg(`${S.c.name}: ${text}`); }
 function resClearSpace() { if (SPC.scene) for (const S of RES.sp) SPC.scene.remove(S.m); RES.sp = []; RES.spSys = null; }
@@ -15308,6 +15512,33 @@ function resUiTick() {
     h += `<div class="res-tag ship ${S.al}" style="left:${x | 0}px;top:${y | 0}px;--s:.85"><b>${String(S.c.name).replace(/[<>&"]/g, '')}</b><small>LV ${resLevel(S.c)} · ${d > 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'}</small></div>`;
   }
   RES.tags.innerHTML = h;
+}
+function resGalDraw(g, font) {
+  const marks = resGalMarks(); if (!marks.length) return;
+  const col = al => al === 'hero' ? '#8fe3ff' : al === 'villain' ? '#ff7a6e' : '#e9f2ff';
+  for (const M of marks) {
+    let p, label;
+    if (M.T.mode === 'warp') { // in hyperspace: a dashed line between the two systems, and where they are along it
+      const a = galXY(sysById(M.T.from.sys)), b = galXY(sysById(M.T.to.sys)); p = { x: lerp(a.x, b.x, M.T.k), y: lerp(a.y, b.y, M.T.k) };
+      g.save(); g.setLineDash([2, 4]); g.strokeStyle = col(M.al); g.globalAlpha = .55; g.lineWidth = 1; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke(); g.restore();
+      label = `WARPING TO ${M.T.to.name.toUpperCase()}`;
+    } else { const q = galXY(sysById(M.T.body.sys)), an = .6 + M.i * 1.3; p = { x: q.x + Math.cos(an) * 20, y: q.y + Math.sin(an) * 20 }; label = M.T.mode === 'respawn' ? `RESPAWNING ON ${M.T.body.name.toUpperCase()}` : `ON ${M.T.body.name.toUpperCase()}`; }
+    if (p.x < -60 || p.x > innerWidth + 60 || p.y < -60 || p.y > innerHeight + 60) continue;
+    g.save(); g.translate(p.x, p.y); g.rotate(Math.PI / 4); g.fillStyle = col(M.al); g.globalAlpha = M.T.mode === 'respawn' ? .45 : 1; g.fillRect(-3.5, -3.5, 7, 7); g.restore();
+    g.textAlign = 'left'; g.font = `600 9px ${font}`; g.fillStyle = col(M.al); g.fillText(`${String(M.c.name).toUpperCase()} · LV ${M.lv}`, p.x + 9, p.y + 1);
+    g.font = `400 7px ${font}`; g.fillStyle = 'rgba(220,230,245,.72)'; g.fillText(label, p.x + 9, p.y + 11);
+  }
+}
+// RESIDENTS on the galaxy map: jump to each one in turn
+function resGalNext() {
+  const marks = resGalMarks(); if (!marks.length) return;
+  RES.galI = ((RES.galI == null ? -1 : RES.galI) + 1) % marks.length; const M = marks[RES.galI];
+  const S = sysById(M.T.mode === 'warp' ? M.T.to.sys : M.T.body.sys); GAL.sel = S.id; GAL.panTo = galQ(S); sfx.blip(); galPanel();
+  $('#galSub').textContent = `Tracking ${M.c.name} · LV ${M.lv} · ${M.T.mode === 'warp' ? `warping to ${M.T.to.name}` : M.T.mode === 'respawn' ? `respawning on ${M.T.body.name}` : `on ${M.T.body.name}`}`;
+}
+function resGalHere(S) {
+  const here = resGalMarks().filter(M => (M.T.mode === 'warp' ? M.T.to.sys : M.T.body.sys) === S.id); if (!here.length) return '';
+  return `<div class="gp-sub" style="color:#8fe3ff">◆ Residents: ${here.map(M => `${String(M.c.name).replace(/[<>&"]/g, '')} (LV ${M.lv}, ${M.T.mode === 'warp' ? 'arriving' : M.T.mode === 'respawn' ? 'respawning' : M.T.body.name})`).join(' · ')}</div>`;
 }
 
 /* ============ loop ============ */
