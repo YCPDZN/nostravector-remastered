@@ -5131,7 +5131,7 @@ function tickDialog(dt) {
   if (d) d.lineT = (d.lineT || 0) + dt;
   if (d && d.n < d.lines[d.i].length) {
     d.acc += dt;
-    while (d.acc > d.rate && d.n < d.lines[d.i].length) { d.acc -= d.rate; d.n++; if (!(d.bufs && d.bufs[d.i]) && d.n % 3 === 0) sfx.blip(); }
+    while (d.acc > d.rate && d.n < d.lines[d.i].length) { d.acc -= d.rate; d.n++; if (!(d.bufs && d.bufs[d.i]) && !d.silent && d.n % 3 === 0) sfx.blip(); }
     xUI.line.textContent = d.lines[d.i].slice(0, d.n);
     if (d.n >= d.lines[d.i].length) xUI.dlg.classList.add('ready');
   } else if (d && d.auto) {
@@ -5148,7 +5148,7 @@ function updateExplore(dt) {
   const d = ex.dlg;
   if (d && false) {
     d.acc += dt;
-    while (d.acc > d.rate && d.n < d.lines[d.i].length) { d.acc -= d.rate; d.n++; if (!(d.bufs && d.bufs[d.i]) && d.n % 3 === 0) sfx.blip(); }
+    while (d.acc > d.rate && d.n < d.lines[d.i].length) { d.acc -= d.rate; d.n++; if (!(d.bufs && d.bufs[d.i]) && !d.silent && d.n % 3 === 0) sfx.blip(); }
     xUI.line.textContent = d.lines[d.i].slice(0, d.n);
     if (d.n >= d.lines[d.i].length) xUI.dlg.classList.add('ready');
   }
@@ -15287,7 +15287,7 @@ function resNear(p) { let best = null, bd = 2.8; for (const B of RES.bots) { if 
 const RES_TRADE_RES = ['stone', 'ice', 'scrap', 'crystal', 'cloth'];
 const resWho = (B, ooc) => String(B.c.name).toUpperCase() + (ooc ? ' · OUT OF CHARACTER' : '');
 const resAlName = B => B.al === 'hero' ? 'Enlightened Hero' : B.al === 'villain' ? 'Awakened Villain' : 'Neutral';
-function resSayTo(B, lines, then, ooc) { openDialog(resWho(B, ooc), lines.filter(Boolean).map(l => ooc ? l : resVoice(B.c, l)), false, then || null); } // out of character, they speak plainly
+function resSayTo(B, lines, then, ooc) { openDialog(resWho(B, ooc), lines.filter(Boolean).map(l => ooc ? l : resVoice(B.c, l)), false, then || null); if (ex.dlg) ex.dlg.silent = true; } // text only: no voice, no typing blips; out of character, they speak plainly
 function resTalk(B) {
   resLinesLoad(); RES.talking = B; B.task = { type: 'face', t: 0, dur: 4 }; B.em = 'wave'; B.emT = 2.2;
   const x = resCtx(B), V = B.al === 'villain', T = RL && RL.talk, back = () => resTalk(B);
@@ -15945,7 +15945,7 @@ function resPersonaSummary(c) {
   const bits = [...p.traits, ...p.styles.map(s => ({ formal: 'formal', slang: 'casual', pirate: 'talks like a pirate', poetic: 'poetic', terse: 'a person of few words', loud: 'loud' })[s])];
   return [bits.length ? bits.join(', ') : '', p.likes.length ? 'loves ' + p.likes.join(', ') : '', p.catch ? `catchphrase “${p.catch}”` : ''].filter(Boolean).join(' · ');
 }
-// how they talk: their own voice laid over any line
+// how they talk: their own speaking style laid over any line (written text only, never audio)
 function resVoice(c, text) {
   const p = c && resPersona(c); if (!p || !text || String(text).charAt(0) === '\u200b') return text; let s = String(text); const r = () => Math.random(); // \u200b marks plain info lines
   const st = p.styles, tr = p.traits;
