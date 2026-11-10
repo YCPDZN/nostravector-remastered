@@ -300,6 +300,15 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
 - Once he's joined you, Orion now comes into every world you arrive in, however you got there, just as Nico and your crew do.
 - **Only one Orion:** arriving somewhere asks for Orion twice in quick succession (entering the world, then the area's own setup). On a first visit both calls used to load him, leaving a second, frozen Orion standing in New London (and anywhere else this happened). Now every call shares the one load.
 
+### Music in space (Chapters III, IV before the time skip, and V)
+- Nine tracks play in a shuffled loop, never the same one twice in a row, while you fly and on every world you land on, carrying on unbroken through landings and take-offs: **Space Theme I–III, Vast Horizons, Wonders of the Galaxies, Inner Tranquility** and **Free Roam I–III**.
+- They play in Chapter III, in Chapter IV until the two-year time skip, and again in Chapter V. Combat music takes over in dogfights, as it does on the ground.
+- Each track is its own `data/spN.js` (sp1–sp9, in the order above; sources in `assets/audio/music_space/`), fetched only when it's about to play, with the next one loaded behind it, so the game's first load isn't any slower.
+
+### Fix: loading a save made in space
+- Loading a save from inside the game used to show the white Antarctic landscape for a moment before space appeared: in the second between leaving where you were and the save starting, the game treated you as standing in the Antarctic station. Now it's loading from that moment. A Chapter III save shows black, then goes straight to space (or the planet you saved on), and Continue from the main menu does the same.
+- In a session that had never visited Antarctica, that same moment could freeze the game. That's fixed too.
+
 ### Fix: companions on the main menu
 - Orion (and James, and any companion standing with you on the main menu) no longer flickers between walking and standing. He starts walking only once you're properly ahead, keeps a steady pace, and stops once he's caught up.
 
