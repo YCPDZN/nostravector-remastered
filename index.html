@@ -191,15 +191,17 @@ body.ch4 #title .wordmark{text-shadow:0 0 30px rgba(255,40,30,.55);animation:ch4
 body.ch4 #title .brand svg.mark{filter:brightness(.55) sepia(1) saturate(9) hue-rotate(-38deg) brightness(1.5) drop-shadow(0 0 14px rgba(255,40,30,.6))}
 body.ch4 #title .mi.primary span{text-shadow:0 0 14px rgba(255,40,30,.5)}
 body.ch4 #title .yearstamp{display:block;position:absolute;top:calc(var(--st) + 22px);right:calc(var(--sr) + 26px);font-family:var(--display);font-size:11px;letter-spacing:.5em;color:#ff5a4e;opacity:.85;text-shadow:0 0 12px rgba(255,40,30,.6)}
-body.ch4 #title .taunt{display:block;position:absolute;right:calc(var(--sr) + 6vw);bottom:calc(var(--sb) + 16vh);max-width:min(520px,44vw);text-align:right;pointer-events:none}
+body.ch4 #title .taunt{display:block;position:absolute;right:calc(var(--sr) + 6vw);bottom:calc(var(--sb) + max(16vh, 200px));max-width:min(520px,44vw);text-align:right;pointer-events:none}
 .taunt span{font-family:var(--display);font-weight:500;font-size:clamp(13px,1.6vw,20px);letter-spacing:.14em;line-height:1.6;color:#ff4a3d;text-transform:uppercase;
   text-shadow:0 0 18px rgba(255,30,20,.7),0 0 2px #ff8a80;transition:opacity 1.2s;animation:ch4jit 3.2s infinite steps(1)}
 .taunt.out span{opacity:0}
 @keyframes ch4flick{0%,92%,100%{opacity:1}93%{opacity:.55}94%{opacity:1}96%{opacity:.7}}
 @keyframes ch4jit{0%,96%,100%{transform:none}97%{transform:translateX(-2px) skewX(-6deg)}98%{transform:translateX(2px)}}
 @media (max-width:720px),(max-aspect-ratio:1/1){
-  body.ch4 #title .taunt{left:24px;right:24px;max-width:none;text-align:center;bottom:auto;top:calc(var(--st) + 30vh)}
-  .taunt span{font-size:12px}
+  body.ch4 #title .taunt{left:16px;right:16px;max-width:none;text-align:center;top:auto;bottom:calc(var(--sb) + 4px)}
+  body.ch4 #title .foot{visibility:hidden} /* the voice speaks where the footer was, clear of the menu and the location panel */
+  body.ch4 #title .yearstamp{top:calc(var(--st) + 12px);right:50%;transform:translateX(50%);font-size:9px}
+  .taunt span{font-size:11px;line-height:1.45}
   #title .yearstamp{top:calc(var(--st) + 12px);right:50%;transform:translateX(50%);font-size:9px}
   #title .m-where{position:static;align-items:center;text-align:center;max-width:100%;gap:2px;margin-top:12px}
   #title .m-where b{font-size:16px}
@@ -1632,23 +1634,33 @@ function menuWhere() {
   const area = p && p.area === 'station' ? 'Antarctica · the station' : (w && AREA_INFO[w] && AREA_INFO[w].name) || CH_HOME[ch] || 'Antarctica';
   return { kind: 'earth', title: 'Earth', sub: area, fac: ch >= 3 ? facShort(E && E.faction) : 'Human Federation of Sol', body: E };
 }
-// how you stand with whoever holds the place: your colony, at war, or what's left of them after one
-function menuStanding(W) {
-  if (effCh() < 3 || !W.body || !wanderer.dip) return '';
+// who holds the place right now: the chapter's flags (the Catharsis taking Grek space in Chapter IV, the Grek back in V),
+// then your Diplomacy on top (your colonies, conquests, occupations, renamed puppets, restored and tributary states)
+function menuHolder(W) {
+  const P = W.body && (W.body.land || W.body.kind === 'station') ? W.body : null, S = W.S || (P && sysById(P.sys));
+  const base = facShort(P ? P.faction : S ? S.faction : W.fac) || W.fac || '';
+  if (effCh() < 3 || !wanderer.dip) return base;
   try {
-    const D = dip(); if (D.col[W.body.id]) return 'Your world';
-    const F = dipFacOf(W.body.baseFac || W.body.faction); if (!F) return '';
-    if (D.wars[F.id]) return 'At war with you';
-    const st = dipRes(F.id); return st ? ({ subjugated: 'Subjugated by you', tributary: 'Pays you tribute', destroyed: '', vassal: 'Your vassal' }[st] || '') : '';
-  } catch (e) { return ''; }
+    const D = dip(), realm = realmName();
+    if (P && D.col[P.id]) { const C = D.col[P.id]; return `${realm} · ${C.gov ? 'governor ' + govName(C.gov) : 'your colony'}`; }
+    const F = dipFacOf((P && P.baseFac) || (S && S.baseFac) || ''); if (!F) return base;
+    const r = D.res[F.id] || {}, Wr = D.wars[F.id], name = r.name || dipFacName(F);
+    if (Wr && P && (Wr.held || []).includes(P.id)) return `${dipFacName(F)} · occupied by ${realm}`;
+    if (Wr) return `${dipFacName(F)} · at war with you`;
+    if (r.st === 'vassal') return `${name} · puppet of ${realm}`;
+    if (r.st === 'restored') return r.name || F.name;
+    if (r.st === 'tributary') return `${name} · tributary of ${realm}`;
+    if (r.st === 'destroyed' || r.st === 'subjugated') return realm + (r.st === 'subjugated' && r.resist ? ` · the ${F.species} Resistance fights on` : ' · conquered');
+    return dipFacName(F);
+  } catch (e) { return base; }
 }
 function menuWhereUI() {
   const el = $('#menuWhere'); if (!el) return;
   if (!roster.length || !wanderer || state !== 'title' && state !== 'loading') { el.hidden = true; return; }
-  const W = menuWhere(), al = (wanderer.align && wanderer.align.p) | 0, st = menuStanding(W);
+  const W = menuWhere(), al = (wanderer.align && wanderer.align.p) | 0;
   el.hidden = false;
   $('#mwSub').textContent = W.sub; $('#mwTitle').textContent = W.title;
-  $('#mwFac').textContent = (W.fac || '') + (st ? ` · ${st}` : '');
+  $('#mwFac').textContent = menuHolder(W);
   const a = $('#mwAl'); a.textContent = `${alRank(al)} · ${al > 0 ? '+' : ''}${al}`; a.style.color = alColor(al);
 }
 

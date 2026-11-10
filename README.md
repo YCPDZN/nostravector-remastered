@@ -121,7 +121,8 @@ Open `index.html` in a modern browser, keeping the `data/` folder next to it. It
   - **Chapters I–II, and Earth in any chapter:** Antarctica at polar night, with aurora and snowfall. Once James has joined you, he walks alongside your wanderer.
   - **Chapters III–V, aboard the ship:** your dropship cruising through the system you saved in, past the world you were nearest, with that system's star (or Sagittarius A*). In the blood-red Chapter IV menu, space is tinted red too.
   - **Chapters III–V, landed:** the ground takes the colours of the world you landed on (Archiostal's gardens when docked).
-  - **Corner panel:** the place (system or planet), who holds it in your chapter (including your Diplomacy: your colonies, wars, vassals and tributaries), and your alignment. Continue and the save slots name the system or world as well.
+  - **Corner panel:** the place (system or planet), who holds it now, and your alignment. Takeovers change the name: the Catharsis in Chapter IV's Grek space, the Grek again in Chapter V, and your own Diplomacy (your colonies and their governors, conquests, occupations, renamed puppets, restored states, tributaries, and wars). Continue and the save slots name the system or world as well.
+  - In the blood-red Chapter IV menu, the voice's taunts sit above the panel (on phones, along the bottom in place of the footer).
 - **Options:** in the pause menu (and Settings on the main menu) you can turn the music on or off separately from all sound. Both choices are remembered.
 - **Nostrapedia** (main menu): the in-game encyclopaedia. **Leaders** holds detailed files on the four species leaders. They are classified until Chapter III, except the leader of your wanderer's species, whose file opens once you have met them in your dream.
   **Companions** holds files on the people who travel with you. James Brown's file is open from Chapter I; the rest are redacted and open as the story continues (Chapter II, III or IV).
