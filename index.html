@@ -1959,7 +1959,25 @@ const DESIGN_REGIONS = { standard: [], pilot: ['fore', 'shin'], vanguard: ['tors
 const VISORS = { smoke: ['Smoke', '#1b2433', .5, .6], gold: ['Gold', '#c9a24a', .6, 1], ice: ['Ice', '#7cc0ee', .4, .4], clear: ['Clear', '#d6e8ff', .14, .2] };
 const DEFAULT_W = { species: 'human', beard: false, chapter: 0, name: 'WANDERER', identity: 'nb', skin: 2, hair: 'crop', hairColor: 1, suit: 0, accent: 1, design: 'standard', visor: 'smoke' };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-/* ---- save slots: progress is written ONLY when the player chooses Save ---- */
+/* ---- save slots: progress is written ONLY when the player chooses Save ----
+   Saves live in IndexedDB, which has room for hundreds of megabytes, so big rosters and long playthroughs always fit.
+   localStorage keeps a quick copy only while it fits (so the game starts instantly); when it doesn't, that copy is
+   removed rather than left stale, and the game reads the database as it starts. */
+const saveDB = (() => {
+  let p = null;
+  const open = () => p || (p = new Promise((res, rej) => { try { const r = window.indexedDB.open('nostravector-saves', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } }));
+  const tx = async (mode, fn) => { const db = await open(); return new Promise((res, rej) => { const t = db.transaction('kv', mode), rq = fn(t.objectStore('kv')); t.oncomplete = () => res(rq && rq.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); };
+  return { get: k => tx('readonly', st => st.get(k)), set: (k, v) => tx('readwrite', st => st.put(v, k)) };
+})();
+async function writeSlots() {
+  const at = Date.now(); let okDB = false;
+  try { await saveDB.set('slots', { at, slots: JSON.parse(JSON.stringify(slots)) }); okDB = true; } catch (e) { console.error(e); }
+  const okLS = store.set('nv_slots', slots);
+  if (!okLS) { try { localStorage.removeItem('nv_slots'); } catch (e) { /* nothing to remove */ } } // too big for the quick copy: the database holds it
+  store.set('nv_slotsAt', at);
+  if (okDB && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); // ask the browser not to clear it to free space
+  return okDB || okLS;
+}
 const SLOT_COUNT = 3;
 let slots = store.get('nv_slots', null);
 if (!Array.isArray(slots)) {
@@ -1988,6 +2006,19 @@ function loadSlotData(sl) {
   if (li >= 0) { loadSlotData(slots[li]); lastSlot = li; }
 }
 let wanderer = Object.assign({}, roster.find(c => c.id === activeId) || DEFAULT_W);
+// the database may hold a newer save than the quick copy (or the only copy, once saves outgrew it)
+const slotsReady = (async () => {
+  try {
+    const rec = await saveDB.get('slots');
+    if (!rec || !Array.isArray(rec.slots) || (rec.at || 0) < (store.get('nv_slotsAt', 0) || 0)) return;
+    if (JSON.stringify(rec.slots) === JSON.stringify(slots)) return;
+    if (state !== 'title' && state !== 'loading') return; // already playing: keep what's loaded
+    slots = rec.slots; while (slots.length < SLOT_COUNT) slots.push(null);
+    let li = -1; slots.forEach((sl, i) => { if (sl && (li < 0 || sl.savedAt > slots[li].savedAt)) li = i; });
+    if (li >= 0) { loadSlotData(slots[li]); lastSlot = li; wanderer = Object.assign({}, roster.find(c => c.id === activeId) || DEFAULT_W); applyLook(wanderer); }
+    refreshMenu();
+  } catch (e) { console.error(e); }
+})();
 
 /* ---- species ---- */
 const SPECIES = {
@@ -2154,7 +2185,7 @@ function headYFor(c) {
   return (info ? info.headY : 1.66) * (IDENT[c.identity] || IDENT.nb).h;
 }
 const lieYFor = c => (speciesInfo[spOf(c)] || {}).lieY || .26;
-const MAX_WANDERERS = 80;
+const MAX_WANDERERS = 100;
 const CHAPTERS = [{ short: 'Prologue', full: 'Prologue' }, { short: 'Ch. I · Antarctica', full: 'Chapter I · Antarctica' }];
 const CHN_ROMAN = ['Prologue', 'I', 'II', 'III', 'IV', 'V'], CH_HOME = ['', 'Antarctica', 'Africa'];
 // "Chapter II · Africa", but named after wherever you actually are (go back to Antarctica in Chapter II and it says so)
@@ -13217,6 +13248,7 @@ const fromB64 = b64 => { const bin = atob(b64), u = new Uint8Array(bin.length); 
 async function exportSaves() {
   const keys = {};
   for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('nv_')) keys[k] = localStorage.getItem(k); }
+  keys.nv_slots = JSON.stringify(slots); // the saves themselves (they may live only in the database)
   let models = [];
   try { models = ((await idb.all()) || []).map(r => Object.assign({}, r, { data: r.data ? toB64(r.data) : null })); } catch { models = []; }
   const file = JSON.stringify({ game: 'NOSTRAVECTOR', version: 1, exportedAt: new Date().toISOString(), keys, models });
@@ -13240,7 +13272,8 @@ $('#slotFile').addEventListener('change', async e => {
     if (!d || d.game !== 'NOSTRAVECTOR' || typeof d.keys !== 'object') throw new Error('not a save file');
     const old = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('nv_')) old.push(k); }
     for (const k of old) localStorage.removeItem(k);
-    for (const [k, v] of Object.entries(d.keys)) if (k.startsWith('nv_') && typeof v === 'string') localStorage.setItem(k, v);
+    for (const [k, v] of Object.entries(d.keys)) if (k.startsWith('nv_') && typeof v === 'string') { try { localStorage.setItem(k, v); } catch (e) { /* too big for the quick copy */ } }
+    if (typeof d.keys.nv_slots === 'string') { const at = Date.now(); await saveDB.set('slots', { at, slots: JSON.parse(d.keys.nv_slots) }); store.set('nv_slotsAt', at); }
     for (const m of d.models || []) if (m && m.id) await idb.put(Object.assign({}, m, { data: m.data ? fromB64(m.data) : null }));
     slotMsg('Saves imported. Reloading…'); sfx.chime();
     setTimeout(() => window.location.reload(), 900);
@@ -13276,13 +13309,14 @@ function rememberPlace() {
   const c = curChar(); if (c) c.place = p;
   return p;
 }
-function doSave(i) {
+async function doSave(i) {
   const place = slotFrom === 'explore' ? rememberPlace() : { mode: 'menu' };
   const prev = slots[i];
   slots[i] = { savedAt: Date.now(), roster: JSON.parse(JSON.stringify(roster)), activeId, place, residents: JSON.parse(JSON.stringify(residents)), resEmp: JSON.parse(JSON.stringify(resEmp)) };
-  if (!store.set('nv_slots', slots)) { // a big roster can fill the browser's save space: keep the old save and say so
+  slotMsg('Saving\u2026');
+  if (!(await writeSlots())) { // only if the browser refuses storage altogether (private mode, storage turned off)
     slots[i] = prev; slotArm = -1; renderSlots();
-    slotMsg('Not enough space on this device to save. Delete an old save slot or some wanderers, then try again.', true); return;
+    slotMsg('This browser isn\u2019t letting the game store saves (private browsing or storage turned off). Your progress is still here until you close the game.', true); return;
   }
   dirty = false; slotArm = -1; lastSlot = i;
   sfx.chime(); renderSlots(); refreshMenu(); refreshDirty();
@@ -13321,7 +13355,7 @@ slotUI.list.addEventListener('click', e => {
 });
 function doDelete(i) {
   slots[i] = null;
-  store.set('nv_slots', slots);
+  writeSlots();
   if (lastSlot === i) { lastSlot = -1; if (roster.length) dirty = true; }
   slotArm = -1; renderSlots(); refreshMenu(); refreshDirty();
   slotMsg(`Slot ${i + 1} deleted`);
