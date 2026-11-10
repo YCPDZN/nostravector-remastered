@@ -147,7 +147,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 .chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .chip:disabled{opacity:.3;cursor:not-allowed}
 /* ---------- residents: wanderers living on as "players" ---------- */
-#mRoster .resident{opacity:.5;cursor:default;pointer-events:none}
+#mRoster .resident{opacity:.6;cursor:pointer}
 #mRoster .sub-head{white-space:normal;overflow-wrap:anywhere}#rosterList .mi small{white-space:normal}#mRoster .mi span{white-space:normal;min-width:0} /* the count can wrap rather than widen the menu */
 #mRoster .res-head{margin-top:14px}
 #resTags{position:fixed;inset:0;pointer-events:none;z-index:4;overflow:hidden}
@@ -880,6 +880,10 @@ select.dip-in option{background:#0b0f18}
 .gal-res{position:absolute;top:calc(var(--st) + 14px);right:calc(var(--sr) + 196px);height:40px;padding:0 12px;background:rgba(7,10,17,.6);border:1px solid #8fe3ff66;color:#8fe3ff;font-family:var(--display);font-size:9px;letter-spacing:.24em;cursor:pointer}
 .gal-emp{position:absolute;top:calc(var(--st) + 14px);right:calc(var(--sr) + 318px);height:40px;padding:0 12px;background:rgba(7,10,17,.6);border:1px solid #ff8a6e66;color:#ffb09a;font-family:var(--display);font-size:9px;letter-spacing:.24em;cursor:pointer}
 .res-chat .war b{color:#ff9a7a}
+.rp-text{display:block;box-sizing:border-box;width:100%;margin:14px 0 6px;padding:12px;background:rgba(255,255,255,.05);border:1px solid rgba(143,227,255,.45);color:var(--ink);font-family:var(--text);font-size:16px;line-height:1.5;resize:vertical}
+.rp-read{font-size:11px;line-height:1.6;color:#8fe3ff;margin:10px 0 0}
+@media (max-width:720px),(max-height:520px){ #resPersona .rp-chips{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;scrollbar-width:thin} #resPersona .rp-chips button{flex:none} #resPersona .rp-text{min-height:96px} } /* phones: the ideas scroll sideways, so Send stays on screen */
+.res-tag.base b{font-size:9.5px;letter-spacing:.2em}
 .res-emp{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:calc(var(--st) + 12px) calc(var(--sr) + 12px) calc(var(--sb) + 12px) calc(var(--sl) + 12px);background:rgba(3,5,10,.72);backdrop-filter:blur(4px)}
 .res-emp.hidden{display:none}
 .re-box{width:min(680px,100%);max-height:100%;overflow:auto;-webkit-overflow-scrolling:touch;background:rgba(9,12,20,.96);border:1px solid var(--line);padding:18px 18px 22px}
@@ -3276,12 +3280,13 @@ function renderRoster() {
   // the wanderers you sent away: still here, living their own lives, never playable again
   if (residents.length) list.insertAdjacentHTML('beforeend', `<div class="sub-head res-head">Living in this world · never playable again</div>` + residents.map(c => {
     const where = resWhereLabel(c);
-    return `<div class="mi resident"><i>·</i><span><b class="swc" style="--c:${SUITC[c.suit] || SUITC[0]}"></b>${String(c.name).replace(/[<>&"]/g, '')}<small>LV ${resLevel(c)} · ${SPECIES[spOf(c)].label} · ${where}</small></span></div>`;
+    return `<div class="mi resident" data-res="${c.id}" role="button" tabindex="0"><i>·</i><span><b class="swc" style="--c:${SUITC[c.suit] || SUITC[0]}"></b>${String(c.name).replace(/[<>&"]/g, '')}<small>LV ${resLevel(c)} · ${SPECIES[spOf(c)].label} · ${where}</small></span></div>`;
   }).join(''));
 }
 let sendArmed = false;
 $('#rosterList').addEventListener('click', e => {
-  const b = e.target.closest('.mi'); if (!b || !b.dataset.id) return; // residents can't be picked
+  const r = e.target.closest('[data-res]'); if (r) { sfx.click(); const c = residents.find(o => o.id === r.dataset.res); if (c) resPersonaOpen(c); return; } // a resident: their personality
+  const b = e.target.closest('.mi'); if (!b || !b.dataset.id) return;
   sfx.click(); setActive(b.dataset.id); renderRoster(); refreshMenu();
 });
 const rosterBtn = $('#rosterBtn');
@@ -3294,13 +3299,15 @@ $('#rEdit').addEventListener('click', () => {
 $('#rSend').addEventListener('click', () => {
   if (roster.length < 2) return;
   sfx.click();
-  if (!sendArmed) { sendArmed = true; $('#rSend span').textContent = `Tap again · ${wanderer.name} leaves for good`; return; }
   const c = roster.find(x => x.id === activeId); if (!c) return;
-  residents.push(Object.assign(JSON.parse(JSON.stringify(c)), { sentAt: Date.now() }));
+  const draft = { name: c.name, persona: c.persona || null };
+  resPersonaOpen(draft, () => { // describe who they are, then they go
+  residents.push(Object.assign(JSON.parse(JSON.stringify(c)), { sentAt: Date.now(), persona: draft.persona }));
   roster = roster.filter(x => x.id !== c.id);
   setActive(roster[0].id); sfx.chime();
   renderRoster(); refreshMenu();
   const h = $('#mRoster .sub-head'); h.textContent = `${c.name} now lives in this world`; setTimeout(() => { h.textContent = `Wanderers ${roster.length}/${MAX_WANDERERS} · tap to switch`; }, 4000);
+  });
 });
 $('#rDel').addEventListener('click', () => {
   if (!roster.length) return;
@@ -7773,6 +7780,7 @@ function worldBlocked(x, z, stationOnly, y = player.position.y) {
   if (curArea() === 'africa' && Math.abs(x - FARM.x) < 5.3 && Math.abs(z - FARM.z) < 3.8) return true;
   if (curArea() === 'africa' && townSolid(x, z)) return true;
   for (const m of merchantsHere()) if (m.px != null && (x - m.px) ** 2 + (z - m.pz) ** 2 < 1.7) return true;
+  if (resBaseBlocked(x, z)) return true; // residents' bases
   if (stationOnly) return false;
   if (world.rover && world.rover.visible && !ex.vehicle && (x - world.rover.position.x) ** 2 + (z - world.rover.position.z) ** 2 < 2.4) return true;
   if (world.build && buildBlocked(x, z, y)) return true;
@@ -15054,7 +15062,7 @@ function resHereChance(c, A) {
 }
 // ?residents=all brings every resident to wherever you are (to preview them); ?resdebug exposes their state for testing
 const RES_ALL = /[?&]residents=all/.test(window.location.search);
-if (/[?&]resdebug/.test(window.location.search)) { window.RES = RES; window.resFF = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; resTick(step); } }; window.resFFs = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; SPC.t = (SPC.t || 0) + step; resSpaceTick(step); } return { ships: RES.sp.map(S => S.c.name + ':' + S.al + ':' + Math.round(S.pos.distanceTo(SPC.pos)) + 'm'), foes: SC.foes.map(f => f.name), bolts: SC.bolts.filter(b => b.friendly).length }; }; window.SCdbg = SC; window.resState = () => ({ state, mode: ex.mode, scene: !!SPC.scene, p: player.position.toArray(), units: units(), near: ex.near && ex.near.id }); window.resGoSpace = p => startChapter3(p); window.resT = () => residents.map(c => { const T = resTravel(c); return `${c.name}:${T.mode}:${(T.body || T.to).name}:${resLevel(c)}`; }); window.resKill = i => resDie(residents[i]); window.resRL = () => !!RL; window.resEmpDbg = () => resEmp; window.resEmpFF = n => { for (let i = 0; i < n; i++) { RES.empT = 0; resEmpTick(15); } return resEmp; }; window.resEmpOpenDbg = () => resEmpOpen(); }
+if (/[?&]resdebug/.test(window.location.search)) { window.RES = RES; window.resFF = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; resTick(step); } }; window.resFFs = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; SPC.t = (SPC.t || 0) + step; resSpaceTick(step); } return { ships: RES.sp.map(S => S.c.name + ':' + S.al + ':' + Math.round(S.pos.distanceTo(SPC.pos)) + 'm'), foes: SC.foes.map(f => f.name), bolts: SC.bolts.filter(b => b.friendly).length }; }; window.SCdbg = SC; window.resState = () => ({ state, mode: ex.mode, scene: !!SPC.scene, p: player.position.toArray(), units: units(), near: ex.near && ex.near.id }); window.resGoSpace = p => startChapter3(p); window.resT = () => residents.map(c => { const T = resTravel(c); return `${c.name}:${T.mode}:${(T.body || T.to).name}:${resLevel(c)}`; }); window.resKill = i => resDie(residents[i]); window.resRL = () => !!RL; window.resEmpDbg = () => resEmp; window.resEmpFF = n => { for (let i = 0; i < n; i++) { RES.empT = 0; resEmpTick(15); } return resEmp; }; window.resEmpOpenDbg = () => resEmpOpen(); window.resResDbg = () => residents; window.resBaseAt = (x, z) => resBaseBlocked(x, z); window.resTp = (x, z, ry) => { player.position.set(x, wHeight(x, z), z); if (ry != null) { player.rotation.y = ry; ex.yaw = ry + Math.PI; } ex.snap = true; }; window.resBaseSyncDbg = () => resBaseSync(); }
 const resMax = () => document.body.classList.contains('touch') ? 3 : 6; // phones draw fewer of them, and without shadows
 function resPresent(c, A) {
   if (RES_ALL) return true;
@@ -15148,7 +15156,7 @@ function resCtx(B, other) {
   const otherPl = resPick(ALL_BODIES.filter(b => b.land && b.sys === (P ? P.sys : 'sol') && (!P || b.id !== P.id)).concat([bodyById('malana'), bodyById('aridaxx')]).filter(Boolean));
   const fac = facShort((P && P.faction) || S.faction) || 'the Federation';
   const T = B && resTravels() ? resTravel(B.c) : null, nxt = T && T.mode === 'warp' ? T.to.name : null;
-  return { home: B ? resHomeBody(B.c).name : 'home', species: B ? SPECIES[B.sp].label : '', realm: effCh() >= 3 && wanderer.dip ? realmName() : 'the Federation', enemy: 'pirates', place: P ? P.name : (AREA_INFO[A] && AREA_INFO[A].name) || 'here', other: nxt || (otherPl ? otherPl.name : 'Malana'), player: wanderer.name, b: other ? other.c.name : '', res, n: 2 + Math.floor(Math.random() * 6), lv: B ? B.lv : 1, sys: S.name, faction: fac, threat: (wanderer.chapter | 0) >= 4 ? 'Catharsis patrol' : 'pirates' };
+  return { home: B ? resHomeBody(B.c).name : 'home', species: B ? SPECIES[B.sp].label : '', realm: effCh() >= 3 && wanderer.dip ? realmName() : 'the Federation', enemy: 'pirates', place: P ? P.name : (AREA_INFO[A] && AREA_INFO[A].name) || 'here', other: nxt || (otherPl ? otherPl.name : 'Malana'), player: wanderer.name, b: other ? other.c.name : (residents.find(o => !B || o.id !== B.id) || {}).name || 'anyone', res, n: 2 + Math.floor(Math.random() * 6), lv: B ? B.lv : 1, sys: S.name, faction: fac, threat: (wanderer.chapter | 0) >= 4 ? 'Catharsis patrol' : 'pirates' };
 }
 const resFill = (t, x) => t.replace(/\{(\w+)\}/g, (_, k) => x[k] != null ? x[k] : '');
 // the full dialogue pack (1,600+ lines) lives in data/resLines.js and loads the first time a resident is around
@@ -15197,7 +15205,7 @@ function resLine(kind, B, other) {
   return resFill(resPick(pool), x);
 }
 function resSay(B, text) {
-  if (!text) return;
+  if (!text) return; text = resVoice(B.c, text);
   B.say = text; B.sayT = 4.5;
   RES.log.push({ who: B.c.name, al: B.al, text, t: time }); if (RES.log.length > 30) RES.log.shift();
   resChatRender();
@@ -15214,8 +15222,10 @@ function resChoose(B) {
     ['toPlayer', dp < 40 ? (V ? 1.6 : H ? 1.4 : .8) : 0],
     ['follow', dp < 30 && !V ? .5 : 0],
     ['steal', V && dp < 30 && resNodes({ x: p.x, z: p.z }, 14).length ? 1.4 : 0],
-    ['jet', .5]
+    ['jet', .5],
+    ['build', resBuildWant(B)]
   ];
+  for (const o of opts) o[1] *= resPersonaWeight(B.c, o[0]); // their personality tilts the choice
   let sum = 0; for (const o of opts) sum += o[1]; let r = Math.random() * sum, pick = 'wander';
   for (const [k, w] of opts) { if ((r -= w) <= 0) { pick = k; break; } }
   const T = { type: pick, t: 0 };
@@ -15228,6 +15238,7 @@ function resChoose(B) {
   else if (pick === 'follow') { T.dur = 12 + Math.random() * 10; resSay(B, resPick(['following you {player}, lead the way', 'mind if I tag along?', 'where we going?']).replace('{player}', wanderer.name)); }
   else if (pick === 'steal') { const ns = resNodes({ x: p.x, z: p.z }, 14); const n = resPick(ns); T.node = n; T.to = { x: n.x + .9, z: n.z + .9 }; T.dur = 5; T.type = 'mine'; T.steal = true; }
   else if (pick === 'jet') { T.dur = 1.6; }
+  else if (pick === 'build') { const b = resBasesOf(B.c)[curArea()], site = b ? { x: b.x, z: b.z } : resBaseSite(B); if (!site) { T.type = 'idle'; T.dur = 2; } else { T.site = site; T.to = resSafeSpot(site.x + 4.5, site.z + 4.5); T.dur = 14 + Math.random() * 8; if (Math.random() < .5) resSay(B, b ? 'working on my base' : 'gonna build myself a camp here'); } }
   B.task = T;
 }
 const resBlocked = (x, z, y) => { try { return worldBlocked(x, z, true, y); } catch (e) { return false; } };
@@ -15276,12 +15287,12 @@ function resNear(p) { let best = null, bd = 2.8; for (const B of RES.bots) { if 
 const RES_TRADE_RES = ['stone', 'ice', 'scrap', 'crystal', 'cloth'];
 const resWho = (B, ooc) => String(B.c.name).toUpperCase() + (ooc ? ' · OUT OF CHARACTER' : '');
 const resAlName = B => B.al === 'hero' ? 'Enlightened Hero' : B.al === 'villain' ? 'Awakened Villain' : 'Neutral';
-function resSayTo(B, lines, then, ooc) { openDialog(resWho(B, ooc), lines.filter(Boolean), false, then || null); }
+function resSayTo(B, lines, then, ooc) { openDialog(resWho(B, ooc), lines.filter(Boolean).map(l => ooc ? l : resVoice(B.c, l)), false, then || null); } // out of character, they speak plainly
 function resTalk(B) {
   resLinesLoad(); RES.talking = B; B.task = { type: 'face', t: 0, dur: 4 }; B.em = 'wave'; B.emT = 2.2;
   const x = resCtx(B), V = B.al === 'villain', T = RL && RL.talk, back = () => resTalk(B);
   const opts = [
-    { text: 'What are you up to?', onPick: () => resSayTo(B, [resFill(resPick(T ? T.doing[B.al] : ['Just exploring.']), x), `LV ${B.lv} · ${SPECIES[B.sp].label} · ${resAlName(B)}${resTravels() ? ` · home: ${resHomeBody(B.c).name}` : ''}`], back) },
+    { text: 'What are you up to?', onPick: () => resSayTo(B, [resFill(resPick(T ? T.doing[B.al] : ['Just exploring.']), x), `\u200bLV ${B.lv} · ${SPECIES[B.sp].label} · ${resAlName(B)}${resTravels() ? ` · home: ${resHomeBody(B.c).name}` : ''}`, resPersonaSummary(B.c) ? '\u200bPersonality: ' + resPersonaSummary(B.c) : null], back) },
     { text: 'Tell me about this place', onPick: () => { if (resUnsure(B, 'place')) return resSayTo(B, [resUnknownLine(B, x)], back); const k = resExploreKeys(), w = RL && k.world && RL.explore.worlds[k.world]; resSayTo(B, [resFill(resPick(T ? T.place : ['Nice place.']), x), RL ? resFill(resPick(w || RL.explore.kinds[k.kind] || RL.talk.place), x) : null], back); } },
     { text: 'Any tips?', onPick: () => resSayTo(B, resUnsure(B, 'tips') ? [resUnknownLine(B, x)] : T ? resPickN(T.tips, 2) : ['Save often.'], back) },
     { text: 'Ask something…', onPick: () => resAsk(B) }
@@ -15294,6 +15305,7 @@ function resTalk(B) {
       addUnits(-price); giveItem(id, n); lootMsg(`+${n} ${ITEMS[id].name} · from ${B.c.name}`, ITEMS[id].color || '#9fe6b0'); resSay(B, resPick(['pleasure doing business', 'ty!', 'enjoy'])); } });
   }
   if (resEmpOf(B.id)) opts.push({ text: 'About your empire\u2026', onPick: () => { const e = resEmpOf(B.id), wars = resEmp.wars.filter(w => w.a === B.id || w.b === B.id); resSayTo(B, [resClean(`${e.name}. ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars.length ? `, at war with ${wars.map(w => (resEmpOf(w.a === B.id ? w.b : w.a) || {}).name).join(' and ')}` : ', at peace for now'}.`)], () => openChoice(resWho(B), [{ text: 'Open Resident Empires', onPick: () => { RES.talking = null; closeDialog(); resEmpOpen(); } }, { text: 'Demand you disband it', onPick: () => { resDisband(B.id); RES.talking = null; } }, { text: 'Back', onPick: back }])); } });
+  opts.push({ text: 'Roleplay\u2026', onPick: () => resRoleplay(B, 1) });
   opts.push({ text: 'Real life\u2026', onPick: () => resRealLife(B) });
   opts.push({ text: 'Bye', onPick: () => { RES.talking = null; resSay(B, resFill(resPick(T ? T.farewell[B.al] : ['cya']), x)); } });
   openChoice(String(B.c.name).toUpperCase(), opts);
@@ -15455,7 +15467,7 @@ function resAnswer(B, raw) {
     return say(hit.length ? resPickN(hit, 2) : resPickN(RL.talk.tips, 2));
   }
   if (has(/trade|\bbuy|\bsell|price|units|\bshop|stall|cheap|expensive|warp cell/)) return say([pickAl(RL.amb.trade)]);
-  if (has(/who are you|your name|what are you|where are you from|where you from|what level|your level|about you|yourself|how old/)) return say([resFill(resPick(RL.me[B.al]), Object.assign(x, { name: B.c.name }))]);
+  if (has(/who are you|your name|what are you|where are you from|where you from|what level|your level|about you|yourself|how old/)) return say([resFill(resPick(RL.me[B.al]), Object.assign(x, { name: B.c.name })), resPersonaSummary(B.c) ? `People say I\u2019m ${resPersonaSummary(B.c).replace(/ \u00b7 /g, '; ')}.` : null]);
   if (has(/what (are|r) (you|u) (doing|up to)|whatcha|busy/)) return say([pickAl(RL.talk.doing)]);
   if (has(/^ (hi|hello|hey|yo|sup|hiya|howdy|greetings|morning|evening) /)) return say([pickAl(RL.greet)]);
   if (has(/thank|thx|cheers|\bty\b/)) return say([pickAl(RL.thanks)]);
@@ -15468,6 +15480,7 @@ function resAnswer(B, raw) {
 // ---- each frame on the ground ----
 function resTick(dt) {
   if (RES.src !== residents || RES.srcN !== residents.length || RES.who !== activeId) { resClearGround(); resClearSpace(); RES.src = residents; RES.srcN = residents.length; RES.who = activeId; RES.log = []; }
+  if (ex.mode === 'world') resBaseSync(); // their bases stand whether or not they're around
   if (!resGroundOk()) { for (const B of RES.bots) B.root.visible = false; return; }
   const A = curArea(), p = player.position, paused = state !== 'explore';
   resLinesLoad(); resWarLoad();
@@ -15532,6 +15545,7 @@ function resStep(B, dt, p) {
       break;
     }
     case 'follow': { const to = { x: p.x - Math.sin(player.rotation.y) * 2.6 + 1.2, z: p.z - Math.cos(player.rotation.y) * 2.6 }; resMoveTo(B, to, dt, dp > 7); if (dp < 3.5) resFace(B, p.x, p.z, dt); if (T.t > T.dur) { B.task = null; B.anchor = { x: B.x, z: B.z }; resSay(B, resPick(['ok I’m off, cya', 'thanks for the tour'])); } break; }
+    case 'build': if (!T.at) { if (resMoveTo(B, T.to, dt, true) || T.t > 20) { T.at = true; T.t = 0; } } else { resFace(B, T.site.x, T.site.z, dt); B.em = 'mine'; B.emT = .1; if (Math.random() < dt * 4) emit(T.site.x + (Math.random() - .5) * 4, wHeight(T.site.x, T.site.z) + 1 + Math.random() * 2, T.site.z + (Math.random() - .5) * 4, 0, 1.5, 0, .9, .8, .6, .7); if (T.t > T.dur) { B.task = null; resBuildDone(B, T.site); } } break;
     case 'face': resFace(B, p.x, p.z, dt); if (RES.talking === B && ex.dlg) T.t = 0; if (T.t > T.dur) B.task = null; break;
     case 'gather': if (!T.at) { if (resMoveTo(B, T.to, dt, true) || T.t > 12) { T.at = true; T.t = 0; } } else { B.em = T.em; B.emT = .1; if (T.t > T.dur) B.task = null; } break;
     case 'leave': B.em = 'wave'; B.emT = .1; if (T.t > T.dur) { resDespawn(B); return; } break;
@@ -15675,6 +15689,7 @@ function resUiTick() {
     const sc = clamp(1.25 - d / 50, .6, 1);
     h += `<div class="res-tag ${B.al}" style="left:${x | 0}px;top:${y | 0}px;--s:${sc.toFixed(2)}">${B.sayT > 0 && d < 30 ? `<p>${resClean(B.say).replace(/[<>&]/g, '')}</p>` : ''}<b>${String(B.c.name).replace(/[<>&"]/g, '')}</b><small>LV ${B.lv} · ${SPECIES[B.sp].label}</small></div>`;
   }
+  if (ground && RES.baseG) for (const [id, g] of RES.baseG) { const c = residents.find(o => o.id === id); if (!c) continue; const d = Math.hypot(g.position.x - camera.position.x, g.position.z - camera.position.z); if (d > 55) continue; RES_V.set(g.position.x, g.position.y + 6.5, g.position.z).project(camera); if (RES_V.z > 1) continue; const x = (RES_V.x * .5 + .5) * W, y = (-RES_V.y * .5 + .5) * H; if (x < 0 || x > W || y < 0 || y > H) continue; const e = resEmpOf(id), b = c.bases[curArea()]; h += `<div class="res-tag base ${resAl(c)}" style="left:${x | 0}px;top:${y | 0}px;--s:.8"><b>${reEsc(c.name)}\u2019s ${b.tier >= 3 ? 'fortress' : b.tier === 2 ? 'house' : 'camp'}</b>${e ? `<small>${reEsc(e.name)}</small>` : ''}</div>`; }
   if (state === 'space') for (const S of RES.sp) {
     const d = S.pos.distanceTo(SPC.pos); if (d > 5000) continue; RES_V.copy(S.pos).project(camera); if (RES_V.z > 1) continue;
     const x = (RES_V.x * .5 + .5) * W, y = (-RES_V.y * .5 + .5) * H; if (x < 0 || x > W || y < 0 || y > H) continue;
@@ -15740,7 +15755,7 @@ function resFreeWorlds() {
   return RES.free.filter(P => !D[P.id] && !taken.has(P.id));
 }
 function resEmpLog(text) { resEmp.log.push({ t: resNow(), text }); if (resEmp.log.length > 40) resEmp.log.shift(); }
-function resWarSay(c, text, x) { if (!c || !text) return; RES.log.push({ who: c.name, al: resAl(c), text: resFill(text, x), t: time, war: true }); if (RES.log.length > 30) RES.log.shift(); resChatRender(); }
+function resWarSay(c, text, x) { if (!c || !text) return; RES.log.push({ who: c.name, al: resAl(c), text: resVoice(c, resFill(text, x)), t: time, war: true }); if (RES.log.length > 30) RES.log.shift(); resChatRender(); }
 function resWarCtx2(a, b, cb) { const A = resEmpOf(a), B = resEmpOf(b), ca = residents.find(c => c.id === a), cbr = residents.find(c => c.id === b); return { a: ca ? ca.name : '?', b: cbr ? cbr.name : '?', ea: A ? A.name : 'their empire', eb: B ? B.name : 'their empire', cb: cb ? CBS[cb].name.toUpperCase() : '', player: wanderer ? wanderer.name : 'you' }; }
 // which exchanges fit two alignments, and who says which half
 function resMatch(al1, al2) { const o = { hero: 'h', neutral: 'n', villain: 'v' }, a = o[al1], b = o[al2]; if (a === b) return { k: a + a, swap: false }; const ord = 'hnv'; return ord.indexOf(a) < ord.indexOf(b) ? { k: a + b, swap: false } : { k: b + a, swap: true }; }
@@ -15894,6 +15909,226 @@ function resGalEmpires(g, font) {
   }
 }
 const resEmpHere = S => Object.values(resEmp.emp).filter(e => e.col.some(id => { const P = bodyById(id); return P && P.sys === S.id; }));
+
+/* ============ personalities, roleplay and bases ============
+   You describe a resident's personality in your own words; the on-device AI reads it for traits (shy, funny, grumpy...),
+   things they love (mining, building, exploring...), how they talk (formal, slang, pirate, few words...) and a catchphrase
+   in quotes. That shapes what they say, what they choose to do, and how they react when you roleplay with them (safe for
+   work only: anything else gets a friendly refusal, in character). They also build bases of their own, up to three. ============ */
+const RES_TRAITS = {
+  shy: /\b(shy|quiet|timid|introvert\w*|reserved|nervous|awkward)\b/, bold: /\b(bold|confident|brave|fearless|outgoing|extrovert\w*|daring)\b/,
+  funny: /\b(funny|joker|jokes?|humou?r\w*|silly|goofy|playful|witty|comedian)\b/, grumpy: /\b(grump\w*|grouch\w*|cranky|moody|irritable|cynical|miserable)\b/,
+  kind: /\b(kind|gentle|caring|sweet|warm|friendly|helpful|nice|compassionate)\b/, sarcastic: /\b(sarcas\w*|snark\w*|deadpan|dry)\b/,
+  cheerful: /\b(cheer\w*|happy|bubbly|optimis\w*|sunny|energetic|upbeat|positive)\b/, calm: /\b(calm|stoic|patient|chill|relaxed|zen|serene)\b/,
+  curious: /\b(curious|nerd\w*|geek\w*|scholar\w*|smart|clever|scientist|bookish|inquisitive)\b/, dramatic: /\b(dramatic|theatrical|flamboyant|extra)\b/,
+  lazy: /\b(lazy|sleepy|slacker|tired|laid.back)\b/, charming: /\b(charming|charismatic|smooth|flirt\w*|romantic|affectionate)\b/,
+  proud: /\b(proud|arrogant|vain|cocky|smug|pompous)\b/, loyal: /\b(loyal|devoted|faithful|protective)\b/
+};
+const RES_LIKES = {
+  mining: /\b(mine|mining|miner|rocks?|ores?|crystals?|digging)\b/, building: /\b(build\w*|architect\w*|bases?|construct\w*|craft\w*)\b/,
+  exploring: /\b(explor\w*|wander\w*|travel\w*|adventur\w*|discover\w*)\b/, trading: /\b(trad\w*|merchant|money|business|haggl\w*|bargain\w*)\b/,
+  fighting: /\b(fight\w*|combat|warrior|duel\w*|battle\w*|brawl\w*)\b/, dancing: /\b(danc\w*|music|sing\w*|party|parties)\b/,
+  cooking: /\b(cook\w*|food|chef|baking|eat\w*)\b/, flying: /\b(fly\w*|pilot\w*|ships?)\b/, nature: /\b(nature|plants?|garden\w*|animals?|trees?)\b/
+};
+const RES_STYLES = { formal: /\b(formal|polite|posh|proper|eloquent|refined)\b/, slang: /\b(slang|casual|gamer|internet|zoomer)\b/, pirate: /\b(pirate\w*)\b/, poetic: /\b(poet\w*|philosoph\w*|wise)\b/, terse: /\b(few words|terse|blunt|man of few|woman of few|curt)\b/, loud: /\b(loud|shouts?|yells?|booming)\b/ };
+function resPersona(c) {
+  const P = c.persona; if (!P || !P.text) return null;
+  if (P.parsed && P.parsedOf === P.text) return P.parsed;
+  const t = ' ' + P.text.toLowerCase() + ' ', pick = M => Object.keys(M).filter(k => M[k].test(t));
+  const q = P.text.match(/["“”]([^"“”]{2,60})["“”]/);
+  const parsed = { traits: pick(RES_TRAITS), likes: pick(RES_LIKES), styles: pick(RES_STYLES), catch: q ? q[1].trim() : null };
+  P.parsed = parsed; P.parsedOf = P.text; return parsed;
+}
+const resHas = (c, k) => { const p = resPersona(c); return !!p && (p.traits.includes(k) || p.likes.includes(k) || p.styles.includes(k)); };
+function resPersonaSummary(c) {
+  const p = resPersona(c); if (!p) return '';
+  const bits = [...p.traits, ...p.styles.map(s => ({ formal: 'formal', slang: 'casual', pirate: 'talks like a pirate', poetic: 'poetic', terse: 'a person of few words', loud: 'loud' })[s])];
+  return [bits.length ? bits.join(', ') : '', p.likes.length ? 'loves ' + p.likes.join(', ') : '', p.catch ? `catchphrase “${p.catch}”` : ''].filter(Boolean).join(' · ');
+}
+// how they talk: their own voice laid over any line
+function resVoice(c, text) {
+  const p = c && resPersona(c); if (!p || !text || String(text).charAt(0) === '\u200b') return text; let s = String(text); const r = () => Math.random(); // \u200b marks plain info lines
+  const st = p.styles, tr = p.traits;
+  if (st.includes('terse')) { s = s.split(/[.!?]\s|,\s/)[0]; if (s.length > 48) s = s.slice(0, 46).replace(/\s\S*$/, '') + '.'; }
+  if (st.includes('formal')) { s = s.replace(/\blol\b/gi, 'how amusing').replace(/\bgtg\b/gi, 'I must take my leave').replace(/\bbrb\b/gi, 'I shall return shortly').replace(/\bidk\b/gi, 'I do not know').replace(/\btbh\b/gi, 'to be frank').replace(/\b(sup|yo)\b/gi, 'good day').replace(/\bok\b/gi, 'very well').replace(/\bcya\b/gi, 'farewell'); s = s.charAt(0).toUpperCase() + s.slice(1); if (!/[.!?]$/.test(s)) s += '.'; }
+  if (st.includes('slang') && r() < .35) s = s.toLowerCase().replace(/[.]$/, '') + resPick([' lol', ' tbh', ' fr', ' ngl']);
+  if (st.includes('pirate')) { s = s.replace(/\bmy\b/gi, 'me').replace(/\byou\b/gi, 'ye').replace(/\b(hello|hi|hey)\b/gi, 'ahoy'); if (r() < .35) s += resPick([' Arr!', ' Yo ho!', ' Savvy?']); }
+  if (st.includes('loud') || (tr.includes('bold') && r() < .15)) { if (r() < .4) s = s.toUpperCase(); if (!/!$/.test(s)) s = s.replace(/[.]?$/, '!'); }
+  if (st.includes('poetic') && r() < .2) s += resPick([' Like stars, we drift.', ' Such is the way of dust and light.', ' The void listens.']);
+  if (tr.includes('shy') && r() < .35) s = 'um... ' + s.charAt(0).toLowerCase() + s.slice(1);
+  if (tr.includes('grumpy') && r() < .3) s = 'Ugh. ' + s;
+  if (tr.includes('sarcastic') && r() < .25) s = 'Oh, wonderful. ' + s;
+  if (tr.includes('cheerful') && r() < .35) s = s.replace(/[.]?$/, '') + resPick([' :)', '!', ' ✨']);
+  if (tr.includes('dramatic') && r() < .25) s = s.replace(/[.!]?$/, '') + '... truly!';
+  if (tr.includes('lazy') && r() < .2) s += ' *yawns*';
+  if (p.catch && r() < .15) s += ` — ${p.catch}`;
+  return s;
+}
+// what they love doing tilts what they choose
+function resPersonaWeight(c, task) {
+  const p = resPersona(c); if (!p) return 1; let k = 1; const L = p.likes, T = p.traits;
+  if (task === 'mine' && L.includes('mining')) k *= 2.5; if (task === 'stall' && L.includes('trading')) k *= 2.5;
+  if ((task === 'wander' || task === 'jet') && (L.includes('exploring') || L.includes('flying'))) k *= 1.8;
+  if (task === 'emote' && L.includes('dancing')) k *= 2; if (task === 'toPlayer' && (T.includes('kind') || T.includes('charming') || T.includes('loyal'))) k *= 1.7;
+  if ((task === 'toPlayer' || task === 'follow') && T.includes('shy')) k *= .35; if (task === 'idle' && (T.includes('lazy') || T.includes('calm'))) k *= 2.2;
+  if (task === 'build' && L.includes('building')) k *= 3; if (task === 'steal' && T.includes('kind')) k *= .2;
+  return k;
+}
+
+// ---- the personality editor (when you send a wanderer away, or tap a resident on the Wanderers screen) ----
+const RES_PERSONA_CHIPS = ['shy', 'bold', 'funny', 'grumpy', 'kind', 'sarcastic', 'cheerful', 'calm', 'curious', 'dramatic', 'lazy', 'charming', 'proud', 'loyal', 'loves mining', 'loves building', 'loves exploring', 'loves trading', 'loves fighting', 'loves dancing', 'loves cooking', 'formal', 'casual slang', 'talks like a pirate', 'poetic', 'few words', 'loud'];
+function resPersonaOpen(c, onSend) {
+  let el = $('#resPersona'); if (!el) {
+    el = document.createElement('div'); el.id = 'resPersona'; el.className = 'res-emp hidden';
+    el.innerHTML = '<div class="re-box"><div class="re-head"><div><b class="rp-title"></b><small class="rp-sub"></small></div><button class="re-x" aria-label="Close">✕</button></div><textarea class="rp-text" maxlength="400" rows="4" placeholder="e.g. Shy but kind, loves mining and building. Says &quot;by the stars&quot; a lot."></textarea><div class="re-chips rp-chips"></div><p class="rp-read"></p><div class="re-act rp-act"></div></div>';
+    document.body.appendChild(el);
+    el.querySelector('.re-x').addEventListener('click', () => { sfx.click(); el.classList.add('hidden'); });
+    el.querySelector('.rp-chips').innerHTML = RES_PERSONA_CHIPS.map(k => `<button data-chip="${k}">${k}</button>`).join('');
+    el.querySelector('.rp-chips').addEventListener('click', e => { const b = e.target.closest('[data-chip]'); if (!b) return; sfx.click(); const ta = el.querySelector('.rp-text'); ta.value = (ta.value.trim() ? ta.value.trim().replace(/[.,]?$/, ', ') : '') + b.dataset.chip; ta.dispatchEvent(new Event('input')); });
+    el.querySelector('.rp-text').addEventListener('input', () => { const t = el.querySelector('.rp-text').value, tmp = { persona: { text: t } }; const s = resPersonaSummary(tmp); el.querySelector('.rp-read').textContent = s ? 'They read as: ' + s : 'Describe them in your own words, or tap the ideas above.'; });
+    el.querySelector('.rp-text').addEventListener('keydown', e => e.stopPropagation());
+  }
+  const ta = el.querySelector('.rp-text'); ta.value = (c.persona && c.persona.text) || '';
+  el.querySelector('.rp-title').textContent = onSend ? `SEND ${String(c.name).toUpperCase()} INTO THE WORLD` : `${String(c.name).toUpperCase()}'S PERSONALITY`;
+  el.querySelector('.rp-sub').textContent = onSend ? 'Describe who they are. They can never be played again after this.' : 'How they talk, what they love, how they react when you roleplay with them.';
+  const act = el.querySelector('.rp-act');
+  act.innerHTML = onSend ? `<button class="danger" data-go>Send ${reEsc(c.name)} for good</button><button data-cancel>Cancel</button>` : '<button data-go>Save</button><button data-cancel>Cancel</button>';
+  act.onclick = e => {
+    const b = e.target.closest('button'); if (!b) return; sfx.click();
+    if (b.hasAttribute('data-cancel')) { el.classList.add('hidden'); return; }
+    c.persona = { text: ta.value.trim().slice(0, 400), at: Date.now() };
+    el.classList.add('hidden'); if (onSend) onSend(); else { saveRoster(); renderRoster(); }
+  };
+  ta.dispatchEvent(new Event('input')); el.classList.remove('hidden'); setTimeout(() => ta.focus(), 60);
+}
+
+// ---- roleplay (safe for work) ----
+const RES_SFW_BLOCK = /\b(sex\w*|nsfw|nude|naked|strip\w*|undress\w*|grop\w*|fondl\w*|lick\w*|horny|erotic\w*|porn\w*|boob\w*|breast\w*|genital\w*|moan\w*|spank\w*|seduc\w*|make ?out|kiss\w*|lap ?dance|bed together|in bed)\b/i;
+const RP = {
+  wave: { base: ['*{name} waves back at you.*', '*{name} gives you a big wave.* Hey!'], villain: ['*{name} raises two fingers. Barely.*'], shy: ['*{name} gives a tiny wave, then looks away.*'], cheerful: ['*{name} waves with both arms!* Hiii!'] },
+  hug: { base: ['*{name} hugs you back.* Good to see you.', '*{name} wraps you in a warm hug.*'], villain: ['*{name} stiffens.* ...Fine. Don’t tell anyone about this.', '*{name} pats your back twice and steps away.* Enough.'], shy: ['*{name} freezes, then hugs you very gently.* o-oh. hi.'], grumpy: ['*{name} sighs and allows one hug.* One.'], kind: ['*{name} hugs you tight.* You needed that, didn’t you?'] },
+  highfive: { base: ['*{name} slaps your hand.* Nice!', '*High five!* *{name} grins.*'], villain: ['*{name} leaves you hanging... then high-fives, hard.* Ha.'], lazy: ['*{name} lifts a hand halfway. You meet them there.*'], cheerful: ['*{name} jumps for an enormous high five!*'] },
+  dance: { base: ['*{name} joins in, dancing beside you.*', '*{name} busts out some moves.* Keep up!'], villain: ['*{name} dances. Menacingly.*'], shy: ['*{name} sways a little, blushing behind their visor.*'], dancing: ['*{name} lights up and takes the lead.* Finally, someone with taste!'] },
+  sit: { base: ['*{name} sits down next to you.* Nice view, huh?', '*{name} sits, and you watch the sky together for a while.*'], villain: ['*{name} sits a careful distance away.* Don’t get sentimental.'], calm: ['*{name} sits, breathing slowly.* This is good.'], curious: ['*{name} sits and starts pointing out constellations.*'] },
+  food: { base: ['*{name} shares a ration with you.* Not bad, right?', '*{name} takes a bite.* Thanks!'], villain: ['*{name} sniffs it suspiciously, then eats all of it.*'], cooking: ['*{name} adds a pinch of something from their pocket.* Now it’s food.'], grumpy: ['*{name} chews.* ...It’s fine. It’s good. Don’t look at me.'] },
+  joke: { base: ['*{name} laughs.* Ok, that was good.', '*{name} snorts.* Terrible. Tell me another.'], villain: ['*{name} doesn’t laugh. Then does, a little.*'], funny: ['*{name} laughs, then fires one straight back.* Why did the Grek bring a ladder? To reach new heights!'], grumpy: ['*{name} stares.* No.'] },
+  compliment: { base: ['*{name} smiles.* Thanks, that means a lot.', '*{name} stands a bit taller.*'], villain: ['*{name} smirks.* I know.'], shy: ['*{name} goes very quiet and very red.* th-thank you...'], proud: ['*{name} poses.* Finally, someone noticed.'], charming: ['*{name} winks.* You’re not so bad yourself.'] },
+  tease: { base: ['*{name} laughs and shoves you lightly.* Hey!', '*{name} rolls their eyes.* Very funny.'], villain: ['*{name} narrows their eyes.* Careful.'], sarcastic: ['*{name} deadpans.* Wow. Devastating. I’ll never recover.'], shy: ['*{name} hides their face.* stoooop'] },
+  spar: { base: ['*{name} raises their fists.* Friendly round? You’re on.', '*{name} grins and takes a stance.*'], villain: ['*{name} cracks their knuckles.* Friendly? Sure. For you.'], fighting: ['*{name} is already bouncing on their toes.* Best of three!'], lazy: ['*{name} sighs and lifts one fist.* Ok. One round.'] },
+  walk: { base: ['*{name} falls in step beside you.* Lead the way.', '*{name} walks with you.*'], villain: ['*{name} walks a step ahead.* Try to keep up.'], exploring: ['*{name} perks up.* Ooh, where are we going?'] },
+  day: { base: ['Not bad! Mined a bit, met some people. You?', 'Long day. Good day, though.'], villain: ['I ruined three people’s afternoons. Productive.'], lazy: ['I napped. Then I napped again.'], cheerful: ['Amazing! Everything’s amazing! How’s yours?'], grumpy: ['Bad. Thanks for asking. Mostly bad.'], curious: ['I found a crystal that hums. I think it hums. Want to see?'] },
+  sing: { base: ['*{name} hums along.*'], dancing: ['*{name} joins in, loud and off-key, and loves it.*'], shy: ['*{name} mouths the words silently.*'] },
+  bow: { base: ['*{name} bows in return.*'], villain: ['*{name} nods. You may rise.*'], formal: ['*{name} bows deeply.* An honour.'] },
+  gift: { base: ['*{name} accepts it.* For me? Thank you!'], villain: ['*{name} pockets it.* What do you want?'], kind: ['*{name} beams.* I’ll treasure it.'] },
+  comfort: { base: ['*{name} puts a hand on your shoulder.* Hey. I’m here.'], villain: ['*{name} sits beside you, saying nothing, which is somehow nice.*'], kind: ['*{name} hugs you.* It’s ok. Take your time.'] },
+  unknown: { base: ['*{name} tilts their head, curious.*', '*{name} watches you.* ...Ok?', '*{name} laughs.* What are you doing?'], villain: ['*{name} raises an eyebrow.* Strange.'], shy: ['*{name} doesn’t quite know what to do with that.*'] },
+  refuse: { base: ['*{name} steps back.* Let’s keep things friendly, yeah?', '*{name} shakes their head.* Not that. Something else?'] }
+};
+function rpLine(B, act) {
+  const set = RP[act] || RP.unknown, p = resPersona(B.c), keys = [...(p ? [...p.traits, ...p.likes, ...p.styles] : []), B.al];
+  const k = keys.find(x => set[x]); return resFill(resPick(set[k] || set.base), { name: B.c.name, player: wanderer.name });
+}
+function rpDo(B, act) {
+  const anim = { wave: 'wave', hug: 'cheer', highfive: 'wave', dance: 'dance', joke: 'cheer', compliment: 'cheer', tease: 'cheer', sing: 'dance', bow: 'wave', gift: 'cheer', comfort: 'wave' }[act];
+  if (anim) { B.em = anim; B.emT = 3; }
+  if (act === 'spar') { B.task = { type: 'face', t: 0, dur: 6 }; B.em = 'spar'; B.emT = 4; }
+  if (act === 'walk') { B.task = { type: 'follow', t: 0, dur: 25 }; }
+  if (act === 'dance') { B.task = { type: 'emote', t: 0, em: 'dance', dur: 6 }; }
+  resSayTo(B, [rpLine(B, act)], () => resRoleplay(B, B.rpPage || 1)); // resSayTo adds their voice
+}
+function resRoleplay(B, page = 1) {
+  B.rpPage = page; RES.talking = B;
+  const o = (text, act) => ({ text, onPick: () => rpDo(B, act) });
+  openChoice(String(B.c.name).toUpperCase() + ' · ROLEPLAY', page === 1
+    ? [o('Wave', 'wave'), o('Hug', 'hug'), o('High five', 'highfive'), o('Dance together', 'dance'), o('Sit and chat', 'sit'), o('Share some food', 'food'), { text: 'More…', onPick: () => resRoleplay(B, 2) }, { text: 'Back', onPick: () => resTalk(B) }]
+    : [o('Tell a joke', 'joke'), o('Give a compliment', 'compliment'), o('Tease them', 'tease'), o('Spar for fun', 'spar'), o('Walk together', 'walk'), o('Ask about their day', 'day'), { text: 'Do something else…', onPick: () => resRpType(B) }, { text: 'Back', onPick: () => resRoleplay(B, 1) }]);
+}
+// type your own action: "*offers them a flower*", "sing a song"...
+function resRpType(B) {
+  ex.dlg = { who: resWho(B), lines: [''], i: 0, n: 0, acc: 0, choice: [], rate: .026, ask: true };
+  xUI.dlg.classList.remove('inspect', 'ready'); xUI.dlg.classList.add('on', 'choice'); xUI.who.textContent = 'WHAT DO YOU DO?';
+  xUI.line.innerHTML = '<form class="res-ask"><input type="text" maxlength="120" autocomplete="off" enterkeyhint="send" placeholder="e.g. offer them a flower" aria-label="Your action"><div class="opts"><button type="submit" class="opt"><b>↵</b><span>Do it</span></button><button type="button" class="opt" data-back><b>‹</b><span>Back</span></button></div></form>';
+  ui.xhud.classList.add('talking'); vel.set(0, 0, 0);
+  const f = xUI.line.querySelector('form'), inp = f.querySelector('input');
+  const done = txt => { xUI.dlg.classList.remove('choice'); ex.dlg = null; xUI.line.textContent = ''; if (txt == null) return resRoleplay(B, 2); rpTyped(B, txt); };
+  f.addEventListener('submit', e => { e.preventDefault(); const t = inp.value.trim(); if (!t) return inp.focus(); sfx.click(); inp.blur(); done(t); });
+  f.querySelector('[data-back]').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); sfx.click(); done(null); });
+  inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); if (f.requestSubmit) f.requestSubmit(); else f.dispatchEvent(new Event('submit', { cancelable: true })); } else if (e.key === 'Escape') { e.preventDefault(); done(null); } });
+  f.addEventListener('click', e => e.stopPropagation());
+  setTimeout(() => inp.focus(), 60);
+}
+function rpTyped(B, raw) {
+  const t = ' ' + raw.toLowerCase() + ' ';
+  if (RES_SFW_BLOCK.test(t)) return rpDo(B, 'refuse');
+  const map = [[/hug|cuddle|embrace/, 'hug'], [/high.?five/, 'highfive'], [/wave|greet/, 'wave'], [/danc|boogie/, 'dance'], [/\bsit|rest|relax/, 'sit'], [/food|eat|snack|cook|meal|drink|tea|coffee/, 'food'], [/joke|pun|funny/, 'joke'], [/compliment|praise|admire|you look|youre (great|awesome|cool)/, 'compliment'], [/tease|poke|prank|tickle/, 'tease'], [/spar|duel|fight|wrestle|arm.?wrestle/, 'spar'], [/walk|stroll|follow|explore/, 'walk'], [/sing|song|hum/, 'sing'], [/bow|salute|curtsy/, 'bow'], [/gift|give|offer|flower|present/, 'gift'], [/cry|sad|upset|lonely/, 'comfort'], [/how.*day|whats up|how are you/, 'day']];
+  const m = map.find(([re]) => re.test(t)); rpDo(B, m ? m[1] : 'unknown');
+}
+
+// ---- bases: residents build their own (up to three), from a camp to a house to a fortified base ----
+const RES_BASE_MAX = 3;
+const resBasesOf = c => c.bases || (c.bases = {});
+// how much they feel like building right now: nothing once their base here is a fortress, or they already have three elsewhere
+function resBuildWant(B) { if (ex.mode !== 'world') return 0; const bs = resBasesOf(B.c), b = bs[curArea()]; if (b && b.tier >= 3) return 0; if (!b && Object.keys(bs).length >= RES_BASE_MAX) return 0; return resEmpOf(B.id) ? 1 : .5; }
+function resBaseBlocked(x, z) { // walls are solid for you too
+  if (!residents.length || ex.mode !== 'world') return false; const A = curArea();
+  for (const c of residents) { const b = c.bases && c.bases[A]; if (b && (x - b.x) ** 2 + (z - b.z) ** 2 < (b.tier >= 3 ? 16 : 12)) return true; }
+  return false;
+}
+function resBaseSiteOk(x, z) {
+  if (Math.hypot(x, z - (isPl() ? 10 : 0)) < 38) return false; // well clear of the station, Orion's house or your ship
+  for (const [dx, dz] of [[0, 0], [5, 0], [-5, 0], [0, 5], [0, -5]]) if (resBlocked(x + dx, z + dz, wHeight(x + dx, z + dz))) return false;
+  if (merchantsHere().some(m => m.px != null && Math.hypot(m.px - x, m.pz - z) < 25)) return false;
+  const A = curArea(); for (const c of residents) { const b = c.bases && c.bases[A]; if (b && Math.hypot(b.x - x, b.z - z) < 20) return false; }
+  const h = [[0, 0], [3, 3], [-3, 3], [3, -3], [-3, -3]].map(([dx, dz]) => wHeight(x + dx, z + dz)); if (Math.max(...h) - Math.min(...h) > 2.5) return false; // not on a cliff
+  return true;
+}
+function resBaseSite(B) {
+  for (let i = 0; i < 14; i++) { const a = Math.random() * 6.28, d = 10 + Math.random() * 30, x = B.anchor.x + Math.cos(a) * d, z = B.anchor.z + Math.sin(a) * d; if (resBaseSiteOk(x, z)) return { x, z }; }
+  return null;
+}
+function resBaseMesh(c, b) {
+  const al = resAl(c), e = resEmpOf(c.id), g = new THREE.Group();
+  const M = (col, o) => new THREE.MeshStandardMaterial(Object.assign({ color: col, roughness: .85, metalness: .05 }, o || {}));
+  const [main, trim] = al === 'hero' ? [0x8a6a48, 0x6fd6ff] : al === 'villain' ? [0x24202a, 0xff5a6a] : [0x8c8a84, 0xe8d27a];
+  const mw = M(main), mt = M(trim, { emissive: trim, emissiveIntensity: .25 }), box = (w, h, d, x, y, z, m) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m || mw); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+  box(6.6, 3.2, 6.6, 0, -1.5, 0, M(main, { roughness: 1, color: new THREE.Color(main).multiplyScalar(.7) })); // a foundation down into the slope, so nothing floats
+  box(6.4, .3, 6.4, 0, .15, 0, M(main, { roughness: .95 }));
+  box(6.4, 2.6, .3, 0, 1.6, -3.05); box(.3, 2.6, 6.4, -3.05, 1.6, 0); // two walls: a camp
+  box(.15, 2.2, .15, 2.6, 1.1, 2.6, mt); const glow = glowSprite(trim, 2.2, .9); glow.position.set(2.6, 2.4, 2.6); g.add(glow); // a lamp
+  box(.9, .7, .9, -2, .5, -2, M(0x6a5034)); // a crate
+  if (b.tier >= 2) { // a house: four walls with a door, a roof, a crafting table
+    box(.3, 2.6, 6.4, 3.05, 1.6, 0); box(2.4, 2.6, .3, -2, 1.6, 3.05); box(2.4, 2.6, .3, 2, 1.6, 3.05);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(5, 2.2, 4), mw); roof.position.set(0, 4, 0); roof.rotation.y = Math.PI / 4; roof.castShadow = true; g.add(roof);
+    box(1.6, .9, .9, 1.6, .6, -2.2, M(0x7a5a3a)); box(1.2, .05, .5, 1.6, 1.08, -2.2, mt);
+  }
+  if (b.tier >= 3) { // a fortified base: a tower, a flag in their colours, a fence
+    box(2.4, 5.4, 2.4, -4.6, 2.7, -4.6); box(2.8, .3, 2.8, -4.6, 5.5, -4.6, mt);
+    box(.12, 3.4, .12, -4.6, 7.3, -4.6, M(0x9aa0aa));
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1), new THREE.MeshStandardMaterial({ color: e ? new THREE.Color(resEmpCol(e)) : trim, side: THREE.DoubleSide, emissive: e ? new THREE.Color(resEmpCol(e)) : new THREE.Color(trim), emissiveIntensity: .2 }));
+    flag.position.set(-3.8, 8.4, -4.6); g.add(flag); g.userData.flag = flag;
+    for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; if (Math.abs(Math.sin(a) - 1) < .25) continue; box(.18, 1.2, .18, Math.cos(a) * 6.2, .6, Math.sin(a) * 6.2, M(main)); }
+  }
+  const y = Math.max(...[[0, 0], [3, 3], [-3, 3], [3, -3], [-3, -3]].map(([dx, dz]) => wHeight(b.x + dx, b.z + dz)));
+  g.position.set(b.x, y - .1, b.z); g.rotation.y = b.ry || 0; g.userData.key = `${c.id}|${b.tier}|${!!e}`;
+  return g;
+}
+function resBaseSync() {
+  if (!RES.baseG) RES.baseG = new Map();
+  const A = ex.mode === 'world' ? curArea() : null, want = new Map();
+  if (A && A !== 'europe') for (const c of residents) { const b = c.bases && c.bases[A]; if (b) want.set(c.id, [c, b]); }
+  for (const [id, g] of RES.baseG) { const w = want.get(id); if (!w || g.userData.key !== `${id}|${w[1].tier}|${!!resEmpOf(id)}` || g.userData.area !== A) { wScene.remove(g); RES.baseG.delete(id); } }
+  if (want.size) resUi(); // their labels need the overlay even when nobody is around to talk
+  for (const [id, [c, b]] of want) if (!RES.baseG.has(id)) { const g = resBaseMesh(c, b); g.userData.area = A; wScene.add(g); RES.baseG.set(id, g); }
+  for (const g of RES.baseG.values()) if (g.userData.flag) g.userData.flag.rotation.y = Math.sin(time * 2) * .25;
+}
+function resBuildDone(B, site) {
+  const A = curArea(), bs = resBasesOf(B.c), b = bs[A];
+  if (b) b.tier = Math.min(3, b.tier + 1);
+  else { if (Object.keys(bs).length >= RES_BASE_MAX) return; bs[A] = { x: site.x, z: site.z, ry: Math.random() * 6.28, tier: 1, at: resNow() }; }
+  saveRoster(); resBaseSync();
+  const tier = bs[A].tier, line = tier === 1 ? resPick(['camp’s up! not much, but it’s mine', 'built a little camp over here', 'home sweet... two walls']) : tier === 2 ? resPick(['my house is finished!', 'roof’s on, come visit', 'finally, four walls and a door']) : resPick(['the tower is DONE', 'fortified and flying my colours', 'let them come. my base is ready']);
+  resSay(B, resVoice(B.c, line));
+}
 
 /* ============ loop ============ */
 const clock = new THREE.Clock();
