@@ -2375,7 +2375,8 @@ const sfx = (() => {
   }
   // area music: a shuffled playlist per region, with quiet gaps between tracks (No Man's Sky style)
   let areaGain = null, areaSrc = null, areaOn = false, areaLvl = 0, areaOrder = [], areaLast = -1, areaTimer = null, areaTok = 0, areaSet = 'ax'; const areaCache = {};
-  const AREA_TRACKS = { ax: 4, af: 5, eu: 0 }; // ax = Antarctica, af = Africa, eu = New London (its own tracks play through lonMusicTick, never these)
+  const AREA_TRACKS = { ax: 4, af: 5, eu: 0, sp: 9 }; // ax = Antarctica, af = Africa, eu = New London (its own tracks play through lonMusicTick, never these), sp = space and its worlds (Chapters III, IV before the time skip, and V)
+  const AREA_LAZY = { sp: true }; // fetched from data/ only when about to play (the space tracks are big)
   function decodeTag(cache, id) {
     if (!cache[id]) cache[id] = new Promise(res => {
       try {
@@ -2395,6 +2396,7 @@ const sfx = (() => {
       if (areaOrder[0] === areaLast) areaOrder.push(areaOrder.shift());
     }
     const i = areaOrder.shift(); areaLast = i;
+    if (AREA_LAZY[areaSet]) { await loadDataScript(areaSet + (i + 1), 'glb'); if (areaOrder.length) loadDataScript(areaSet + (areaOrder[0] + 1), 'glb'); } // this one, and the next ready behind it
     const buf = await decodeTag(areaCache, areaSet + (i + 1));
     if (tok !== areaTok || !areaOn || !buf) return;
     const src = ctx.createBufferSource(); src.buffer = buf; src.connect(areaGain); src.start(); areaSrc = src;
@@ -4912,7 +4914,7 @@ function notice(small, big, ms = 2800) {
 async function startChapter1(fromCutscene, place) {
   if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { // Chapter III: space, or the planet you were on (never back to Chapter I's station, whatever older flags say)
     const own = place || (!fromCutscene && resumePlace && resumePlace.who === activeId ? resumePlace : null) || (wanderer.place && wanderer.place.mode === 'explore' ? wanderer.place : null);
-    resumePlace = null; startChapter3(own); return;
+    resumePlace = null; return startChapter3(own);
   }
   if ((wanderer.chapter | 0) >= 2 && ch1().escaped && wanderer.ch2 && wanderer.ch2.introSeen) {
     const own = place || (!fromCutscene && resumePlace && resumePlace.who === activeId ? resumePlace : null) || (wanderer.place && wanderer.place.mode === 'explore' ? wanderer.place : null);
@@ -5199,7 +5201,7 @@ function updateExplore(dt) {
   }
   if (ant.radioLight) ant.radioLight.material.opacity = .5 + .5 * Math.sin(time * 5);
   if (ant.hatchOpen && ant.hatchOpen.visible && Math.random() < .6) emit(R.x + 6.85, rand(.2, 2), R.z + rand(-.5, .5), -rand(1.5, 3.5), rand(-.2, .3), rand(-.6, .6), .9, .95, 1, rand(1, 1.8), .1);
-  ant.heat.intensity = 15 + Math.sin(time * 9) * .8 + Math.sin(time * 23) * .5;
+  if (ant.heat) ant.heat.intensity = 15 + Math.sin(time * 9) * .8 + Math.sin(time * 23) * .5; // (the station may never have been built this session)
 }
 function exploreCamera(dt) {
   if (state === 'wcut') { wcutCamera(dt); return; }
@@ -11910,7 +11912,8 @@ function shipUpTick(dt) {
 function rememberPlaceSafe() { try { rememberPlace(); } catch (e) {} }
 // ---- Chapter III begins: away from New London in the ship, out over Earth ----
 async function startChapter3(place) {
-  state = 'loadingCh'; sfx.init(); syncCrewParty(); applyChapterFactions();
+  state = 'loadingCh'; SPC.booting = true; show(ui.title, false); // black until space (or the planet you saved on) is ready: never a glimpse of the ice
+  sfx.init(); syncCrewParty(); applyChapterFactions();
   await Promise.all([loadSpecies(spOf(wanderer)).catch(() => null), loadWorldHD()]); applyLook(wanderer);
   show(ui.title, false); show(ui.tbc, false); show(ui.xpause, false);
   ex.keys.clear(); ex.dlg = null; renderer.domElement.style.filter = '';
@@ -11918,9 +11921,9 @@ async function startChapter3(place) {
   const f = $('#fade'); f.style.transition = 'opacity 1.6s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 1700);
   if (place && place.where && String(place.where).startsWith('pl:')) {
     const P = bodyById(String(place.where).slice(3)); if (P) SPC.sys = P.sys; buildSpace(); if (P) setSystem(P.sys);
-    if (P && place.dir) { await landOn(P, new THREE.Vector3().fromArray(place.dir), place); return; }
+    if (P && place.dir) { try { await landOn(P, new THREE.Vector3().fromArray(place.dir), place); } finally { SPC.booting = false; } return; }
   }
-  spaceOn(place && place.where === 'space' ? place : null);
+  spaceOn(place && place.where === 'space' ? place : null); SPC.booting = false;
 }
 function beginChapter3() { // straight after the escape
   const el = $('#ferryCut'); el.classList.remove('letter'); el.classList.add('on', 'black');
@@ -12697,12 +12700,15 @@ async function placeOrion() {
   if (orionJoined() && wanderer.dip && wanderer.dip.lent && wanderer.dip.lent.orion) { if (world.orion) world.orion.root.visible = false; return; } // serving another faction
   if (curArea() !== 'africa' && !orionJoined()) { if (world.orion) world.orion.root.visible = false; return; } // once he's joined you, he comes wherever you go
   if (!world.orion) {
-    try {
-      const el = document.getElementById('cpOrion'); if (!el) return;
+    // one load, shared by every call made while it's under way: two calls close together (entering a world, then the
+    // area's own setup) used to build two Orions, and the first was left standing in the world, frozen
+    world.orionLoad = world.orionLoad || (async () => {
+      const el = document.getElementById('cpOrion'); if (!el) return null;
       const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       const R = autoRig(SkeletonUtils.clone(await parseGlb(u8.buffer)), 1.85); armRig(R, 'none'); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
-      R.lips = faceRig(R.root); world.orion = R;
-    } catch (e) { console.error('Orion failed to load', e); return; }
+      R.lips = faceRig(R.root); return (world.orion = R);
+    })().catch(e => { console.error('Orion failed to load', e); world.orionLoad = null; return null; });
+    if (!(await world.orionLoad)) return;
   }
   const R = world.orion; if (R.root.parent !== wScene) wScene.add(R.root);
   R.root.visible = true; R.mode = 'idle';
@@ -13427,8 +13433,10 @@ function doLoad(i) {
   applyLook(wanderer);
   if (resumePlace && (wanderer.chapter | 0) >= 1) {
     show(ui.title, false);
+    // loading now: nothing walks (or draws) the Antarctic station in the moment before the save starts; Chapter III shows black, then space
+    state = 'loadingCh'; if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) SPC.booting = true;
     const f = $('#fade'); f.style.opacity = 1;
-    setTimeout(() => { startChapter1(false); f.style.opacity = 0; }, 650);
+    setTimeout(() => { const go = startChapter1(false); if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) Promise.resolve(go).catch(() => null).then(() => { f.style.opacity = 0; }); else f.style.opacity = 0; }, 650); // Chapter III: the fade lifts once you're there
   } else { toTitle(); }
 }
 slotUI.list.addEventListener('click', e => {
@@ -16235,8 +16243,13 @@ function loop() {
   alOutfitSync(dt);
   try { resUiTick(); resEmpTick(dt); } catch (e) { console.error(e); }
   // each region has its own exploration playlist: Antarctica on the ice, Africa on the savanna; New London has its own tracks (lonMusicTick), so no ice music there, not even under the nightmare
-  const outside = ex.mode === 'world' && curArea() !== 'europe' && (state === 'explore' || state === 'xpaused' || state === 'wcut' || state === 'xdone');
-  sfx.area(outside ? (state === 'explore' ? .75 : .3) : 0, curArea() === 'africa' ? 'af' : curArea() === 'europe' || isPl() ? 'eu' : 'ax');
+  // space has its own playlist (SPACETHEME1-3, Vast Horizons, Wonders of the Galaxies, Inner Tranquility, FREEROAM1-3): out among the
+  // stars and on the worlds you land on, in Chapter III, Chapter IV before the time skip, and Chapter V
+  const spaceMus = (wanderer && ((wanderer.chapter | 0) >= 3 || (wanderer.ch2 && wanderer.ch2.escapedLondon))) && !((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.timeSkip);
+  const flying = ex.mode === 'space' && (state === 'space' || state === 'xpaused' || state === 'shipLand' || state === 'shipUp');
+  const outside = (ex.mode === 'world' && curArea() !== 'europe' && (state === 'explore' || state === 'xpaused' || state === 'wcut' || state === 'xdone')) || (state === 'shipLand' || state === 'shipUp');
+  const set = spaceMus && (isPl() || flying || state === 'shipLand' || state === 'shipUp') ? 'sp' : curArea() === 'africa' ? 'af' : curArea() === 'europe' || isPl() ? 'eu' : 'ax';
+  sfx.area(flying || outside ? (state === 'explore' || state === 'space' || state === 'shipLand' || state === 'shipUp' ? .75 : .3) : 0, set);
   if (state === 'intro' || state === 'introOut') {
     updateIntro(dt); sfx.music(0); if (intro.scene === 'earth') renderer.render(eScene, eCam); else renderer.render(gScene, gCam); return;
   }
@@ -16257,6 +16270,7 @@ function loop() {
   if (state === 'flashback') { flashTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'ferryTrip') { ferryTripTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'ferryCut') { updateFerryCut(dt); updateAnim(dt); worldActionPose(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
+  if (state === 'loadingCh' && SPC.booting) { sfx.music(0); renderer.setClearColor(0x000000, 1); renderer.clear(); return; } // a Chapter III save starting up: black, not the last scene built (the Antarctic ice)
   if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh' || state === 'sleeping' || state === 'wcut') {
     if (state === 'explore') updateExplore(dt);
     tickDialog(dt);
