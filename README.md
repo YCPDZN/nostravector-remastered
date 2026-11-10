@@ -195,7 +195,7 @@ Open `index.html` in a modern browser, keeping the `data/` folder next to it. It
 - **Merchants:** an Erisian trader keeps a stall on the ice (a pink diamond on the minimap). Press E to trade, selling resources for **Units** and buying materials, med kits and rations. Your Units balance shows in the inventory. Each planet the story reaches gets its own merchants.
 - **Teleporters:** a teleporter pad stands outside the station, and you can build your own at any base (it needs a crafting table nearby). Every pad joins one network: step onto a pad and press E to pick a destination. You can rename your bases, and pads show as cyan rings on the minimap. Pads on other planets are listed under their planet, and you can reach them once the story takes you there by ship.
 - **Nothing is lost between chapters:** your inventory, Units, everything you've built (stored per planet) and your companions' orders belong to the wanderer, not the chapter, so they carry into every chapter.
-- **Commanding companions:** the companion panel and the 1–5 keys work for any companion in your party. With more than one companion, the panel shows who you're commanding; tap a name, choose Everyone, or press V to switch. James is the only companion who has joined so far; the others join in later chapters.
+- **Commanding companions:** the companion panel and the 1–5 keys work for any companion in your party. With more than one companion, the panel shows who you're commanding; tap a name, choose Everyone, or press V to switch. Orion joins in Chapter II and Nico in Chapter III; the others join in later chapters.
 - What you mine and build is remembered per wanderer and saved with your save game.
 
 ## Repository layout
@@ -278,6 +278,27 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   - Villainous: **Intimidate** a companion (key **7**) −4. Attack a peaceful buffalo herd −3. Strike a harmless penguin −2. Kill a gazelle while you're at full health, for sport rather than food, −2.
 - **Companion reactions:** heroic companions favour good deeds and dislike evil ones, villainous companions the reverse, and neutral companions simply drift with you. Losing influence never makes anyone leave. Instead, their own alignment slides in the direction you pushed it.
 
+### Nico, companion (Chapter III on)
+- **Orders, just like Orion:** **1 Mine · 2 Explore · 3 Base · 4 Wander · 5 Follow**, through the companion panel (shown as **NICO · LV n**; tap her name, or press **V** to switch between Orion, Nico and Everyone) or by walking up to her (**ORDER**). Each order gets a reply in her own words (text only for now).
+- **Level 30** at the escape, and rising with you.
+- **Fighting:** she draws both pistols on anything hostile nearby and fires fast, with muzzle flashes and tracers. When she mines, she swaps them for an obsidian pickaxe, then draws again when she's done.
+- She shows as a pink marker on the minimap, can be lent or put on a puppet's throne in Diplomacy like Orion and James, and reacts to your good and evil deeds.
+- **Main menu:** she stands on your right, with Orion on your left (beyond James, if he's still with you), and walks with you the same steady way Orion does.
+
+### Fix: shooting animations (Orion, Nico, James and others)
+- **What was wrong:** models without a skeleton are split into arms, legs and head by where each part sits. Hands, gloves and fingers hang below hip height, so they were put with the **legs**: when Orion or Nico raised their guns, their arms went up and their hands stayed at their hips. Nico's coat tails and hair were put with her **arms**, so they flew up in a black mass when she aimed, while her real upper arms stayed on her body.
+- **Now:** parts are sorted by name first (hands, gloves, fingers, sleeves and shoulders go with their arm; capes, coat tails, hair and hips stay on the body), and each shoulder pivots at the top of its upper arm, not at a guessed height. Orion shoulders his rifle with both hands, Nico aims both pistols straight ahead with her coat left where it is, and James's hands come up with his rifle too.
+- **Carrying a rifle:** when not firing, Orion (and anyone with a rifle) holds it at a low ready, muzzle forward and down, instead of hanging straight down into the ground.
+
+### Fix: where you are, everywhere it's shown (Chapter III on)
+- **The big map** (M on foot, or tap the minimap) is titled with the planet you're on (ARCHIOSTAL, VENUS…), with its system and faction underneath. It used to say EARTH everywhere.
+- **The chapter line** (HUD and pause menu) names the planet you're on, or the system you're flying through: *Chapter III · Venus*, *Chapter III · Malana Prime*.
+- **Saves** are named the same way: *Chapter III · Venus*, with *On Venus · Sol* (or *In space · Steca Prime*) underneath, instead of "Antarctic wilds" or "Station". **Continue** on the main menu says where it will put you.
+
+### Fix: Orion missing after loading a save
+- A Chapter III save always resumes in Chapter III (in space, or on the planet you were on), even if it's missing older story flags. Before, such a save could drop you back into Chapter I's Antarctica, without Orion.
+- Once he's joined you, Orion now comes into every world you arrive in, however you got there, just as Nico and your crew do.
+
 ### Fix: companions on the main menu
 - Orion (and James, and any companion standing with you on the main menu) no longer flickers between walking and standing. He starts walking only once you're properly ahead, keeps a steady pace, and stops once he's caught up.
 
@@ -298,7 +319,7 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   - The baby was born just after she called, and he hasn't made a sound. She has already named him **Orion**, after the stars of Orion's Belt her grandmother showed her, which is a coincidence that catches Orion off guard.
   - The scene is ten fully voiced lines (CH2FARM1–10). Camera shots switch between over Orion's shoulder, over Nico's and a close-up of the cradle. Orion and Nico both lip-sync.
 - **Next objective:** Nico's husband, Daniel Brown, went into town for supplies yesterday and hasn't come back. The objectives are **Reach Ad-Nostra, the harbour town** (gold marker at the east gate), then the hunt for Daniel (see *Daniel Brown and The Salt Lantern* below).
-- Nico joins as a companion after Chapter II, in her normal (not pregnant) model. Her model is already loaded and ready for that.
+- **Nico joins as a companion from Chapter III**, in her normal (not pregnant) model, with her two pistols. See *Nico, companion (Chapter III on)*.
 - **Nico's Nostrapedia file** (Companions) opens the moment you meet her inside the farmhouse; until then it's redacted ("Unlocks in Chapter II"). It shows her in her normal model.
   - **Facts:** born 2000 AD, cryogenically frozen in 2030 AD and woken in 2123 AD, home is a farmhouse east of town in Africa, her son Orion was born in 2125 AD, and her alignment is Neutral Good (a placeholder until her alignment is decided).
   - **Text:** a short biography of the century she lost and the new life she built.
@@ -681,13 +702,14 @@ Moments after escaping Earth, out over the planet, the wanderer has another epis
 | Species | The nightmare |
 |---|---|
 | Chompy | **Sevirrus's cutscenes**: a fast montage of the game before this one, in its own dark and brutal style, cut together like the nightmare on the ice. It shows the Carax massacre, the siege of Aridaxx, the assassination of Damix and Jakal, and the Emperor coming apart, ending on "I am NOT WEAK!". Nostravector's subtitles, title cards and Skip button replace Sevirrus's own. |
-| Erisian | A future that hasn't happened yet: **Alexia Erisconos overthrows her sister Vishara** in the Citadel el Eriscons. |
+| Erisian | A future that hasn't happened yet: **Alexia Erisconos overthrows her sister Vishara** in the Citadel el Erisconos. |
 | Human | **Chapter II replayed**, with its own recordings: the farm, the cantina, the arrest, Hawthorne, the trial and the escape. |
 | Am-Grek | A **prophecy** of what's coming, told without a single name: a man falling, a black banner, ships darkening the sky and an empire of glass. |
 
 Then Orion and Nico bring them back. **Skip** jumps past the memories, then past the wake-up.
 
 - **Music for the Chompy nightmare:** **Wonders of Laniakea** (combat version) plays across the whole montage, in place of Sevirrus's own score. That score isn't loaded at all now, which saves about 27 MB of memory on phones; the battle keeps time by its own clock. The staged fallback uses it too, with Fields of Carax only if it can't be decoded.
+- **What the montage shows, with every line voiced:** the duel at Carax ("Turn back, prince", "Everyone kneels", and "Look at your hands. Empty. Like your homes will be by nightfall."), the settlers, the siege of Aridaxx, the assassination (Jakal's "Hak. Put it down. You are still my son.", "DAMIX!" and "…I loved you."), "Long live the Emperor." and the Emperor coming apart. Each clip jumps into its scene by running it ahead silently; a line that was already starting at the jump is now said from the top, where before it only showed as a subtitle (this is what silenced Jakal's "…I loved you").
 - **Skipping the Chompy nightmare:** **Skip** cuts to the next clip. Press it twice quickly to skip them all.
 - **What was taken from Sevirrus:** only its cutscenes, with no gameplay, menus or saves. Their code sits at the bottom of `index.html` (`#sevCinePage`).
 - **Assets:** the 5 models, the score and the 56 voice lines those cutscenes use are in `data/sevCine.js` (13 MB).
@@ -699,7 +721,7 @@ Then Orion and Nico bring them back. **Skip** jumps past the memories, then past
   - `data/sevCarax.js`: the music.
   - `data/sevDamix.js`, `data/sevJakal.js` and `data/sevSettler.js`: Damix Chompjak, Jakal Chompjak XVI and the Carax settlers, all with their Sevirrus models.
 - **Loading:** these packs, and `data/sevCine.js`, load only when the Chompy nightmare plays.
-- **Lines still to record:**
-  - Erisian: `CH3NMERIS1–8`.
-  - Grek: `CH3NMGREK1–6`.
-  - Wake-ups: `CH3NMWAKECH1–4`, `ER1–3`, `HU1–3` and `GR1–3`.
+- **Erisian nightmare voices:** `data/nmErisVoices.js` holds `CH3NMERIS1–8` in order (sources in `assets/audio/nightmare_ch3/`), and loads only when the Erisian nightmare plays. Slot 1 (The Vision) is left empty on purpose, so that card is text only.
+- **Grek nightmare voices:** `data/nmGrekVoices.js` holds `CH3NMGREK1–6` in order (sources in `assets/audio/nightmare_ch3/`), and loads only when the Grek nightmare plays.
+- **Wake-up voices:** `data/nmWakeVoices.js` holds the 13 wake-up lines (`CH3NMWAKECH1–4`, `ER1–3`, `HU1–3`, `GR1–3`, in that order; sources in `assets/audio/nightmare_ch3/`), and loads when the wake-up starts. Orion's opening "Hey! HEY!" is still his recording from the ice.
+- **Fully voiced.** The one exception is on purpose: the Erisian nightmare's opening card (THE VISION: "Citadel el Erisconos. Not yet. But soon.", `CH3NMERIS1`) is text only.
