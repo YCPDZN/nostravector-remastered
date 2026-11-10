@@ -14,6 +14,16 @@ Open `index.html` in a modern browser, keeping the `data/` folder next to it. It
 
 - **Main menu** with the wandering astronaut, Continue, New Game, Wanderers, Mission Brief and Settings.
 - **Editing a wanderer** (Wanderers → Edit active) changes their name, identity and looks, but not their species: that is chosen once, when the playthrough begins. Start a new game to play another species.
+- **Residents: sending a wanderer into the world** (Wanderers → Send active into the world, tap twice): that wanderer leaves your playable list for good and lives on in the same save as a "player", like an MMO with bots instead of real people.
+  - **Never playable again:** they can't be recruited, controlled or switched to. They stay on the Wanderers screen, greyed out, with where they were last seen. At least one wanderer always stays playable.
+  - **Where they turn up:** roughly where their own story left them (Earth in Chapters I–II, their last world from Chapter III on), and sometimes elsewhere. Who's around changes every few minutes, as if players were logging in and out. They keep levelling while you're away (about a level every half hour, up to 100).
+  - **On the ground (on-device AI):** each resident chooses what to do from what's around them: mining deposits, visiting stalls, wandering, jetpack hops, emotes (wave, dance, cheer), coming over to you, following you for a while. Heroes may hand you a few materials; villains taunt you and grab deposits near you. They never fight you on the ground.
+  - **Two or more together:** they decide things between them: chat, trade, spar, race, dance, explore together, or (a hero and a villain) argue. Three or more sometimes gather as a group.
+  - **Talking to them:** walk up and press E / tap WAVE: wave, ask what they're up to, buy a few materials (not from villains), or say bye.
+  - **In space (Chapter III on):** their ships fly around your system. Heroes and neutrals join your fights; a villain may eventually turn on you (space only).
+  - **What you see:** nameplates (name, level, species, coloured by alignment), speech bubbles, and a small zone chat (bottom left; on phones above the controls, or under the objectives when held sideways; in space under the objective).
+  - **Safe for the story:** they only appear in free roam: never in cutscenes, dialogue close-ups, New London, the station, nightmares or Chapter I's opening storm. They don't collide with you or touch your world or saves. Phones show up to 3 at once (without shadows), other screens up to 6.
+  - **Preview:** add `?residents=all` to the address to bring every resident to where you are.
 - **Opening:** a flight through the Milky Way to Earth, with five narrated quotes.
 - **Character creator:** you choose callsign, species, gender, skin, hair, beard, and suit or armour colours.
 - **Four playable species:**
