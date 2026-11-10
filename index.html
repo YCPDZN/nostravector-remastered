@@ -10699,6 +10699,16 @@ function updateLods() {
     }
   }
 }
+// the chase camera rides along with the ship (it moves exactly as far as the ship did this frame) and only eases the turns and
+// changes of distance: at pulse speed it used to fall over a kilometre behind and lose the ship. It can never trail far off its spot.
+function spaceCamFollow(cp, dt, k) {
+  const prev = SPC.camShip || (SPC.camShip = new THREE.Vector3());
+  if (!SPC.camInit) { SPC.camPos.copy(cp); prev.copy(SPC.pos); SPC.camInit = true; return; }
+  SPC.camPos.add(tmpVs.subVectors(SPC.pos, prev)); prev.copy(SPC.pos); // keep pace with the ship
+  SPC.camPos.lerp(cp, Math.min(1, dt * k)); // then ease into place behind it
+  const off = tmpVs.subVectors(SPC.camPos, cp), d = off.length(), MAX = 14;
+  if (d > MAX) SPC.camPos.copy(cp).addScaledVector(off, MAX / d);
+}
 function spaceTick(dt) {
   dt = Math.min(dt, .05); SPC.t = (SPC.t || 0) + dt;
   const K = SPC.keys, B = SPC.btn, S = SPC.stick;
@@ -10739,8 +10749,7 @@ function spaceTick(dt) {
   const sh = SPC.ship; sh.position.copy(SPC.pos); sh.quaternion.copy(SPC.q); sh.rotateZ(clamp(yawIn, -1, 1) * .35);
   for (const f of sh.userData.flames) { f.scale.set(1, .4 + SPC.thr * .8 + SPC.pulse * 2.2, 1); f.material.opacity = .4 + SPC.thr * .4 + SPC.pulse * .2; }
   const back = 36 + SPC.pulse * 12, cp = (SPC.cp || (SPC.cp = new THREE.Vector3())).copy(SPC.pos).addScaledVector(fwd, -back).addScaledVector(up, 9);
-  if (!SPC.camInit) { SPC.camPos.copy(cp); SPC.camInit = true; }
-  SPC.camPos.lerp(cp, Math.min(1, dt * 5)); camera.position.copy(SPC.camPos);
+  spaceCamFollow(cp, dt, 5); camera.position.copy(SPC.camPos);
   camera.up.copy(up); camera.lookAt(SPC.camLook.copy(SPC.pos).addScaledVector(fwd, 40).addScaledVector(up, 6)); // the ship sits low in the frame, the view ahead stays clear
   camera.fov = lerp(camera.fov, 62 + SPC.pulse * 16, Math.min(1, dt * 3)); camera.updateProjectionMatrix();
   SPC.stars.position.copy(camera.position);
@@ -10930,8 +10939,7 @@ function warpTick(dt) {
   sh.position.copy(SPC.pos); sh.quaternion.copy(SPC.q);
   for (const f of sh.userData.flames) { f.scale.set(1, .6 + a * 3, 1); f.material.opacity = .5 + a * .4; }
   const back = 36 + a * 10, cp = SPC.cp.copy(SPC.pos).addScaledVector(fwd, -back).addScaledVector(up, 9);
-  if (!SPC.camInit) { SPC.camPos.copy(cp); SPC.camInit = true; }
-  SPC.camPos.lerp(cp, Math.min(1, dt * 6)); camera.position.copy(SPC.camPos).add(tmpVs.set((Math.random() - .5) * shake, (Math.random() - .5) * shake, 0));
+  spaceCamFollow(cp, dt, 6); camera.position.copy(SPC.camPos).add(tmpVs.set((Math.random() - .5) * shake, (Math.random() - .5) * shake, 0));
   camera.up.copy(up); camera.lookAt(SPC.camLook.copy(SPC.pos).addScaledVector(fwd, 40).addScaledVector(up, 6));
   camera.fov = lerp(camera.fov, 62 + a * 38, Math.min(1, dt * 3)); camera.updateProjectionMatrix();
   SPC.stars.position.copy(camera.position);
