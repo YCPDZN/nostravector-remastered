@@ -13,7 +13,7 @@ Open `index.html` in a modern browser, keeping the `data/` folder next to it. It
 ## What's in the game
 
 - **Main menu** with the wandering astronaut, Continue, New Game, Wanderers, Mission Brief and Settings.
-- **Up to 80 wanderers** per save (the Wanderers screen shows how many you have, e.g. 79/80).
+- **Up to 100 wanderers** per save (the Wanderers screen shows how many you have, e.g. 99/100).
 - **Saves without limits:** saves are stored in the browser's database (IndexedDB), which has room for hundreds of megabytes, so big rosters and long playthroughs always save. A quick copy is also kept in localStorage while it fits, so the game starts instantly; once saves outgrow it, the game reads them from the database. The game asks the browser to keep its storage permanently. Export/Import include everything. Only a browser that blocks storage entirely (some private-browsing modes) can't save, and the game says so.
 - **Editing a wanderer** (Wanderers → Edit active) changes their name, identity and looks, but not their species: that is chosen once, when the playthrough begins. Start a new game to play another species.
 - **Residents: sending a wanderer into the world** (Wanderers → Send into the world, tap twice): that wanderer leaves your playable list for good and lives on in the same save as a "player", like an MMO with bots instead of real people.
