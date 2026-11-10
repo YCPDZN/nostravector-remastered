@@ -479,7 +479,7 @@ body.touch .touch-ui{display:block}
 
 /* ---------- survival HUD ---------- */
 .bars{margin-top:12px;display:none;flex-direction:column;gap:6px;width:150px}
-#xhud.world .bars{display:flex}
+#xhud.world .bars,#xhud.aboard .bars{display:flex}
 .bar{height:4px;background:rgba(var(--inkRGB,230,233,240),.14);position:relative;overflow:hidden;transform:skewX(-14deg)}
 .bar i{position:absolute;inset:0;transform-origin:left;transition:transform .12s linear}
 .bar.hp i{background:#ff7a72}
@@ -540,7 +540,7 @@ body.touch .jopts kbd{display:none}
 .hurt-fx.on{animation:hurt .6s ease-out}
 @keyframes hurt{0%{opacity:1}100%{opacity:0}}
 .hotbar{position:absolute;left:50%;bottom:calc(var(--sb) + 16px);transform:translateX(-50%);display:none;gap:6px;pointer-events:auto}
-#xhud.world .hotbar{display:flex}
+#xhud.world .hotbar,#xhud.aboard .hotbar{display:flex}
 .hotbar button{position:relative;width:48px;height:48px;border:1px solid var(--faint);background:rgba(7,10,17,.55);color:var(--ink);font-family:var(--display);
   font-size:8.5px;letter-spacing:.08em;padding:0;transform:skewX(-10deg);cursor:pointer;touch-action:manipulation}
 .hotbar button>*{display:block;transform:skewX(10deg)}
@@ -5266,7 +5266,7 @@ canvas.addEventListener('pointerdown', e => {
   e.preventDefault();
   if (e.pointerType === 'mouse' && e.button === 2) ex.blockM = true;
   if (e.pointerType !== 'mouse' && e.clientX < innerWidth * .5 && ex.jid === null) {
-    ex.jid = e.pointerId; ex.jox = e.clientX; ex.joy = e.clientY;
+    ex.jid = e.pointerId; ex.jox = e.clientX; ex.joy = e.clientY; ex.jt = performance.now(); ex.jmoved = 0;
     xUI.joy.style.left = e.clientX + 'px'; xUI.joy.style.top = e.clientY + 'px';
     xUI.joy.classList.add('on'); xUI.joyHint.style.opacity = 0; xUI.knob.style.transform = '';
   } else ex.drags.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), mouse: e.pointerType === 'mouse' });
@@ -5277,7 +5277,7 @@ canvas.addEventListener('pointermove', e => {
   if (e.pointerId === ex.jid) {
     let dx = e.clientX - ex.jox, dy = e.clientY - ex.joy;
     const l = Math.hypot(dx, dy); if (l > JR) { dx *= JR / l; dy *= JR / l; }
-    ex.joyX = dx / JR; ex.joyY = -dy / JR;
+    ex.joyX = dx / JR; ex.joyY = -dy / JR; ex.jmoved = Math.max(ex.jmoved || 0, l);
     xUI.knob.style.transform = `translate(${dx}px,${dy}px)`;
   } else if (ex.drags.has(e.pointerId)) {
     const d = ex.drags.get(e.pointerId), sp = e.pointerType === 'mouse' ? .0055 : .0075;
@@ -5287,8 +5287,9 @@ canvas.addEventListener('pointermove', e => {
   }
 });
 const xEnd = e => {
-  if (e.pointerId === ex.jid) { ex.jid = null; ex.joyX = ex.joyY = 0; xUI.joy.classList.remove('on'); xUI.joyHint.style.opacity = 1; }
+  if (e.pointerId === ex.jid) { if (e.type === 'pointerup' && ex.mode === 'ship' && (ex.jmoved || 0) < 8 && performance.now() - (ex.jt || 0) < 350) shipTap(e.clientX, e.clientY); ex.jid = null; ex.joyX = ex.joyY = 0; xUI.joy.classList.remove('on'); xUI.joyHint.style.opacity = 1; }
   const d = ex.drags.get(e.pointerId);
+  if (d && e.type === 'pointerup' && state === 'explore' && ex.mode === 'ship' && (!d.mouse || e.button === 0) && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 8 && performance.now() - d.t < 350) shipTap(e.clientX, e.clientY);
   if (e.button === 2) ex.blockM = false;
   if (d && d.mouse && e.button === 0 && e.type === 'pointerup' && state === 'explore' && ex.mode === 'world' && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6 && performance.now() - d.t < 350) doAttack();
   ex.drags.delete(e.pointerId);
@@ -11547,6 +11548,11 @@ const SHIP_SPOTS = [
   [['lift', 2.2, 0, 1.4, 'Lift · go to another deck', 'LIFT'], ['bunk', -1.9, -5.0, 1.5, 'Bunk · rest (restores your health)', 'REST'], ['galley', 1.9, -5.6, 1.5, 'Galley · cook (craft food)', 'COOK']],
   [['lift', 1.9, 0, 1.4, 'Lift · go to another deck', 'LIFT'], ['pilot', 0, -5.3, 1.4, 'Pilot’s seat · fly the Nostra', 'FLY'], ['holo', 0, 1.6, 1.4, 'Holo-table · the galaxy map', 'MAP']]
 ];
+const SHIP_HITS = [
+  [['lift', 3.0, 1.5, 0, 1.8, 3.1, 1.8], ['bench', -2.8, .9, -.9, 1.4, 1.8, 2.6], ['ramp', 0, 1.4, 8.7, 3.0, 2.8, .8], ['reactor', 0, 1.5, -6.1, 1.9, 3.0, 1.9]],
+  [['lift', 3.0, 1.5, 0, 1.8, 3.1, 1.8], ['bunk', -2.8, 1.2, -4.4, 1.3, 2.6, 6.2], ['galley', 2.85, .9, -5.6, 1.2, 1.9, 4.5]],
+  [['lift', 2.6, 1.5, 0, 1.8, 3.1, 1.8], ['pilot', 0, .9, -5.8, 2.0, 1.8, 2.0], ['holo', 0, 1.0, .1, 2.2, 2.0, 2.2]]
+];
 const CREW_SPOTS = [[-1.6, 2.0, Math.PI / 2], [1.6, 2.0, -Math.PI / 2], [-1.4, 6.0, Math.PI / 2], [0, 7.0, Math.PI], [1.4, -1.8, -Math.PI / 2], [-1.5, -2.2, Math.PI / 2]];
 function shipInterior() {
   if (SHIPI.scene) return SHIPI.scene;
@@ -11643,8 +11649,46 @@ function shipInterior() {
       add(new THREE.PlaneGeometry(2.4, .45), new THREE.MeshBasicMaterial({ map: nm }), 0, 2.6, z1 + .08, 0, Math.PI, 0);
     }
   }
+  // invisible hit boxes, so you can tap or click anything you can use
+  const hitM = new THREE.MeshBasicMaterial({ visible: false });
+  SHIPI.hits = SHIP_HITS.map((list, d) => list.map(([id, x, y, z, w, hh, dd]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, dd), hitM); m.position.set(x, y, z); m.userData.spot = id; SHIPI.decks[d].add(m); return m; }));
   return S;
 }
+// ---- tap or click anything aboard: close by, it's used; further off, you walk over and use it ----
+const shipRay = new THREE.Raycaster(), shipNdc = new THREE.Vector2();
+function shipPick(cx, cy) {
+  if (!SHIPI.scene || ex.mode !== 'ship') return null;
+  const r = canvas.getBoundingClientRect(); shipNdc.set((cx - r.left) / r.width * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+  shipRay.setFromCamera(shipNdc, camera);
+  const targets = [...(SHIPI.hits[SHIPI.deck] || [])];
+  if (SHIPI.deck === 1) for (const [id, R] of Object.entries(SHIPI.rigs)) if (R.root.parent && aboardIds().includes(id)) { R.root.userData.aboardId = id; targets.push(R.root); }
+  const hit = shipRay.intersectObjects(targets, true)[0]; if (!hit) return null;
+  let o = hit.object; while (o && !o.userData.spot && !o.userData.aboardId) o = o.parent;
+  if (!o) return null;
+  return o.userData.aboardId ? { id: 'aboard', who: o.userData.aboardId } : { id: o.userData.spot };
+}
+function shipSpotOf(t) { // where you stand to use it, and how close you need to be
+  if (t.id === 'aboard') { const i = aboardIds().indexOf(t.who), [x, z] = CREW_SPOTS[Math.max(0, i) % CREW_SPOTS.length]; return { x: x + (x < 0 ? .9 : -.9), z, r: 1.5 }; }
+  const s = SHIP_SPOTS[SHIPI.deck].find(q => q[0] === t.id); return s ? { x: s[1], z: s[2], r: s[3] } : null;
+}
+function shipUse(t) { // the same thing pressing E there does
+  if (t.id === 'ramp' && SHIPI.from === 'space') t = { id: 'rampSealed' };
+  shipInteract(t);
+}
+function shipTap(cx, cy) {
+  if (state !== 'explore' || ex.mode !== 'ship' || ex.dlg || ex.invOpen) return false;
+  const t = shipPick(cx, cy); if (!t) return false;
+  const s = shipSpotOf(t); if (!s) return false;
+  const p = player.position;
+  if (Math.hypot(s.x - p.x, s.z - p.z) < s.r + .4) { sfx.click(); shipUse(t); return true; }
+  SHIPI.goal = { t, x: s.x, z: s.z, r: s.r, t0: performance.now(), best: 1e9, bestT: performance.now() }; sfx.blip(); // walk over, then use it
+  return true;
+}
+canvas.addEventListener('pointermove', e => { // a hand over anything you can use (mouse)
+  if (e.pointerType !== 'mouse' || state !== 'explore' || ex.mode !== 'ship' || ex.drags.size) { if (canvas.style.cursor === 'pointer') canvas.style.cursor = ''; return; }
+  if ((SHIPI.hoverT = (SHIPI.hoverT || 0) + 1) % 3) return;
+  canvas.style.cursor = shipPick(e.clientX, e.clientY) ? 'pointer' : '';
+});
 function shipShowDeck(d) { SHIPI.deck = d; SHIPI.decks.forEach((g, i) => { g.visible = i === d; }); shipCrewPlace(); }
 // companions waiting aboard stand (or sit) about the crew deck
 async function shipCrewPlace() {
@@ -11699,8 +11743,19 @@ function updateShipMode(dt) {
   if (d || ex.invOpen) ix = iy = 0;
   const mag = Math.hypot(ix, iy); if (mag > 1) { ix /= mag; iy /= mag; }
   const SP = k.has('ShiftLeft') || k.has('ShiftRight') ? 4.2 : 2.8, fx_ = -Math.sin(ex.yaw), fz = -Math.cos(ex.yaw), rx = Math.cos(ex.yaw), rz = -Math.sin(ex.yaw);
-  vel.x += ((rx * ix + fx_ * iy) * SP - vel.x) * Math.min(1, dt * 10); vel.z += ((rz * ix + fz * iy) * SP - vel.z) * Math.min(1, dt * 10);
   const blocked = (x, z) => { const [x0, x1, z0, z1] = SHIP_BOUNDS[SHIPI.deck]; if (x < x0 || x > x1 || z < z0 || z > z1) return true; for (const [a, b, c, e] of SHIP_COLS[SHIPI.deck]) if (x > a - .28 && x < b + .28 && z > c - .28 && z < e + .28) return true; if (SHIPI.deck === 1) for (const [i] of aboardIds().entries()) { const [cx2, cz2] = CREW_SPOTS[i % CREW_SPOTS.length]; if (Math.hypot(x - cx2, z - cz2) < .55) return true; } return false; };
+  let wx = (rx * ix + fx_ * iy) * SP, wz = (rz * ix + fz * iy) * SP;
+  const G = SHIPI.goal;
+  if (G && (mag > .05 || d || ex.invOpen)) SHIPI.goal = null; // you took over
+  else if (G) {
+    const gx = G.x - p.x, gz = G.z - p.z, gd = Math.hypot(gx, gz);
+    if (gd < G.r - .15) { SHIPI.goal = null; vel.set(0, 0, 0); shipUse(G.t); }
+    else { // head for it, steering round whatever's in the way (the holo-table, the mess table, crates)
+      const a0 = Math.atan2(gx, gz); let a = a0;
+      for (const da of [0, .6, -.6, 1.2, -1.2, 1.8, -1.8, 2.4, -2.4]) { const t = a0 + da * (G.side || 1); if (!blocked(p.x + Math.sin(t) * .55, p.z + Math.cos(t) * .55)) { a = t; if (da) G.side = G.side || Math.sign(da); break; } }
+      wx = Math.sin(a) * 3; wz = Math.cos(a) * 3; if (gd < G.best - .05) { G.best = gd; G.bestT = performance.now(); } else if (performance.now() - G.bestT > 4000) { SHIPI.goal = null; lootMsg('Can’t get there from here · walk a little closer', '#cfd6e6'); } }
+  }
+  vel.x += (wx - vel.x) * Math.min(1, dt * 10); vel.z += (wz - vel.z) * Math.min(1, dt * 10);
   const nx = p.x + vel.x * dt; if (!blocked(nx, p.z)) p.x = nx; else vel.x = 0;
   const nz = p.z + vel.z * dt; if (!blocked(p.x, nz)) p.z = nz; else vel.z = 0;
   p.y = 0;
