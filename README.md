@@ -313,6 +313,7 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   - **Deck 2 · Crew deck:** bunks (**rest** to restore your health), the galley (cook), the mess table and a lounge. Companions you've dismissed wait here.
   - **Deck 3 · Bridge:** the great bow window, side stations, the **holo-table** (the galaxy map, in flight) and the **pilot's seat**: take off from the ground, or take the helm again in space.
   - A **lift** joins the decks.
+  - **Tap or click anything you can use:** the lift, bench, galley, bunks, reactor, ramp, pilot's seat, holo-table and companions waiting aboard. Close by, it's used straight away; further off, you walk over (steering round tables and crates) and use it when you get there. Moving yourself cancels the walk. With a mouse, the cursor turns to a hand over anything usable. E / the action button still work as before. The hotbar and health bars stay on screen aboard.
   - **Save anywhere:** in space, aboard or on the ground. A save made aboard is called *Aboard the Nostra · Venus · Bridge* (for example) and loads you back aboard, on the same deck, where you stood, in flight or landed. The chapter line reads *Chapter III · The Nostra · Venus* (or the system, in space); it used to show the HUD's placeholder, *Chapter I · Antarctica*.
 
 ### Dismissing companions
