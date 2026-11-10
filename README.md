@@ -117,7 +117,12 @@ Open `index.html` in a modern browser, keeping the `data/` folder next to it. It
   - **Chapter IV, after the time skip:** always blood red: every screen, from the main menu (all eight buttons included) to the in-game HUD, pause and inventory menus, uses the red interface, red night with falling ash, the Chapter IV theme, the year 2127 AD, a taunting voice, and a rewritten mission brief.
   - **Chapter V onwards:** back to the normal menu and the original theme, still in 2127 AD. **Settings → Menu style** lets you switch to Blood red (which brings back the Chapter IV theme and the voice).
   - To preview, add `?menu=ch4pre`, `?menu=ch4` or `?menu=ch5` to the game's address.
-- **Main menu:** set in Antarctica at polar night, with aurora and snowfall; once James has joined you, he walks alongside your wanderer. The moon-style menu is kept for when the story reaches the Moon.
+- **Main menu:** the backdrop and the corner panel follow where the active wanderer's save is:
+  - **Chapters I–II, and Earth in any chapter:** Antarctica at polar night, with aurora and snowfall. Once James has joined you, he walks alongside your wanderer.
+  - **Chapters III–V, aboard the ship:** your dropship cruising through the system you saved in, past the world you were nearest, with that system's star (or Sagittarius A*). In the blood-red Chapter IV menu, space is tinted red too.
+  - **Chapters III–V, landed:** the ground takes the colours of the world you landed on (Archiostal's gardens when docked).
+  - **Corner panel:** the place (system or planet), who holds it now, and your alignment. Takeovers change the name: the Catharsis in Chapter IV's Grek space, the Grek again in Chapter V, and your own Diplomacy (your colonies and their governors, conquests, occupations, renamed puppets, restored states, tributaries, and wars). Continue and the save slots name the system or world as well.
+  - In the blood-red Chapter IV menu, the voice's taunts sit above the panel (on phones, along the bottom in place of the footer).
 - **Options:** in the pause menu (and Settings on the main menu) you can turn the music on or off separately from all sound. Both choices are remembered.
 - **Nostrapedia** (main menu): the in-game encyclopaedia. **Leaders** holds detailed files on the four species leaders. They are classified until Chapter III, except the leader of your wanderer's species, whose file opens once you have met them in your dream.
   **Companions** holds files on the people who travel with you. James Brown's file is open from Chapter I; the rest are redacted and open as the story continues (Chapter II, III or IV).
