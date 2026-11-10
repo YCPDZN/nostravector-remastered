@@ -305,6 +305,30 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
 - They play in Chapter III, in Chapter IV until the two-year time skip, and again in Chapter V. Combat music takes over in dogfights, as it does on the ground.
 - Each track is its own `data/spN.js` (sp1–sp9, in the order above; sources in `assets/audio/music_space/`), fetched only when it's about to play, with the next one loaded behind it, so the game's first load isn't any slower.
 
+### The Nostra (NV1): your ship
+- **The ship:** from Chapter III you fly the **NV1 Nostra**: a long black hull with gold trim, **NOSTRA** down both flanks and **NV1** on the nose and engine pods, mandible prongs at the bow, twin raked dorsal fins, open-frame wings carrying two big engine pods, and twin main engines, all glowing blue. Three rows of amber windows are her three decks. She replaces the old dropship in space, on the ground and on the main menu's space backdrop (the nightmare's prophecy fleet keeps the old silhouette).
+- **Rigged:** four landing legs fold out as she sets down and tuck away on take-off, the boarding ramp lowers at the stern once she's down, her engine flames follow the throttle, and the wingtip nav lights blink red and green.
+- **Aboard: three decks you can walk.** Walk up the ramp (**Board the Nostra**), or press **E** / tap **DECKS** in space (not while hostiles are about; the ship holds her position).
+  - **Deck 1 · Cargo & engines:** the cargo bay, the ramp, a **crafting bench** (counts as a crafting table), a weapon rack and the reactor (check it for warp cells, drive and hull).
+  - **Deck 2 · Crew deck:** bunks (**rest** to restore your health), the galley (cook), the mess table and a lounge. Companions you've dismissed wait here.
+  - **Deck 3 · Bridge:** the great bow window, side stations, the **holo-table** (the galaxy map, in flight) and the **pilot's seat**: take off from the ground, or take the helm again in space.
+  - A **lift** joins the decks.
+  - **Save anywhere:** in space, aboard or on the ground. A save made aboard is called *Aboard the Nostra · Venus · Bridge* (for example) and loads you back aboard, on the same deck, where you stood, in flight or landed. The chapter line reads *Chapter III · The Nostra · Venus* (or the system, in space); it used to show the HUD's placeholder, *Chapter I · Antarctica*.
+
+### Dismissing companions
+- Once you have the Nostra (Chapter III on), the companion panel has **Dismiss · wait aboard the Nostra** (or key **8**). Each companion says their own goodbye (Orion: *"I'll wait aboard the Nostra. Put the kettle on when you get back…"*; Nico: *"I'll keep the Nostra warm. Try not to get yourself shot without me."*; anyone else has a line of their own), and goes to wait on the crew deck. Future companions just add their lines to `DISMISS_LINES`.
+- Walk up to them aboard and **talk** to bring them back (*"Come with me."*), or leave them be.
+
+### Rifles and armour (craftable from Chapter I)
+- **Rifles**, each upgrading the last: **Scrap rifle** (scrap, stone, cloth · 14 damage, 28 m), **Plasma rifle** (needs a crafting table · 26 damage, 38 m), **Rail rifle** (needs a crafting table · 46 damage, 55 m). Select one in the hotbar and click / tap to fire: it aims a little for you at the nearest hostile ahead, with a muzzle flash and a tracer. You carry it at a low ready and shoulder it to fire. It works on the escape's generals too.
+- **Armour sets**, each upgrading the last, worn as soon as you craft them: **Scrap plate** (15% off every hit, +10 max health), **Frostguard** (25%, +20), **Obsidian plate** (needs a crafting table · 35%, +35) and **Nostra exo-armour** (needs a crafting table · 50%, +50, black and gold with a glowing core). Each set shows on you as shoulder plates, a chest plate and shin guards in its colours.
+
+### Editing a resident
+- Tap a resident on the Wanderers screen: edit their **personality**, or **Name, looks & species…** opens the full character creator for them, species included. Their level, personality, bases and empire stay theirs, and they turn up in their new look.
+
+### Fix: the camera keeps up with the ship
+- The chase camera used to ease towards its spot behind the ship at a fixed rate, so the faster you flew, the further it fell behind: at full pulse drive it trailed **over a kilometre** back and the ship shrank to a dot. It now moves with the ship every frame and only eases the turns, so it sits about 40–50 m behind at any speed, on the pulse drive and through the warp's spool-up alike.
+
 ### Fix: loading a save made in space
 - Loading a save from inside the game used to show the white Antarctic landscape for a moment before space appeared: in the second between leaving where you were and the save starting, the game treated you as standing in the Antarctic station. Now it's loading from that moment. A Chapter III save shows black, then goes straight to space (or the planet you saved on), and Continue from the main menu does the same.
 - In a session that had never visited Antarctica, that same moment could freeze the game. That's fixed too.

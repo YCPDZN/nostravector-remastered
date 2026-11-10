@@ -726,6 +726,9 @@ button.bm-c.no{opacity:.45}
 .sh-foe.edge i{border-radius:50%;width:12px;height:12px;background:rgba(255,90,74,.5)}
 .sh-cells{display:block;font-style:normal;font-size:8px;letter-spacing:.3em;color:#c7b4ff;margin-top:6px}
 .sh-map{position:absolute;top:calc(var(--st) + 14px);right:calc(var(--sr) + 72px);height:40px;padding:0 12px;pointer-events:auto;background:rgba(7,10,17,.5);border:1px solid var(--line);color:var(--ink);font-family:var(--display);font-size:9px;letter-spacing:.24em;cursor:pointer}
+.sh-map.sh-decks{top:calc(var(--st) + 62px);right:calc(var(--sr) + 16px)} /* walk the Nostra's decks: under the menu button */
+@media (max-width:720px) and (orientation:portrait){ .sh-map.sh-decks{top:calc(var(--st) + 110px);width:auto;padding:0 10px} }
+.jopts .jdismiss{color:#e8c070}
 .sh-mk.star i{border-color:#ffd88a;border-radius:50%;transform:none}
 .sh-warp{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,0) 30%,rgba(0,0,0,.55) 100%);transition:opacity .4s}.sh-warp.on{opacity:1}
 .sh-warp.card{background:none}.sh-warp b small{display:block;margin-top:8px;font-size:8px;letter-spacing:.3em;color:var(--mute)}
@@ -972,7 +975,7 @@ body.touch .al-key{display:none}
   <div class="mmap" id="mmap"><canvas id="mmapC"></canvas><div class="cap" id="mmapCap"></div></div>
   <div class="x-obj"><div class="lvl" id="lvl"><b id="lvN">LV 1</b><div class="xpbar"><i id="xpI"></i></div><small id="xpT"></small></div><small id="xChap">CHAPTER I · ANTARCTICA</small><div id="xTasks"></div><div class="x-nav" id="xNav"></div><div class="bars"><div class="bar hp" id="hpBar"><i></i></div><div class="bar sta" id="staBar"><i></i></div><div class="bar jet" id="jetBar"><i></i></div><div class="bar heat" id="heatBar" title="Suit heat"><i></i></div></div>
     <div class="jcmd" id="jcmd"><button class="jbtn" id="jBtn"><span id="jWho">JAMES</span><b id="jMode">FOLLOWING</b><em>▾</em></button>
-      <div class="jopts" id="jOpts"><div class="jwho" id="jWhoRow" style="display:none"></div><button data-m="mine"><kbd>1</kbd>Mine</button><button data-m="explore"><kbd>2</kbd>Explore</button><button data-m="base"><kbd>3</kbd>Meet me back at base</button><button data-m="wander"><kbd>4</kbd>Wander around</button><button data-m="follow"><kbd>5</kbd>Follow me</button><button data-a="share" class="al-deed good"><kbd>6</kbd>Share food</button><button data-a="threat" class="al-deed evil"><kbd>7</kbd>Intimidate</button></div>
+      <div class="jopts" id="jOpts"><div class="jwho" id="jWhoRow" style="display:none"></div><button data-m="mine"><kbd>1</kbd>Mine</button><button data-m="explore"><kbd>2</kbd>Explore</button><button data-m="base"><kbd>3</kbd>Meet me back at base</button><button data-m="wander"><kbd>4</kbd>Wander around</button><button data-m="follow"><kbd>5</kbd>Follow me</button><button data-a="share" class="al-deed good"><kbd>6</kbd>Share food</button><button data-a="threat" class="al-deed evil"><kbd>7</kbd>Intimidate</button><button data-m="dismiss" id="jDismiss" class="jdismiss"><kbd>8</kbd>Dismiss · wait aboard the Nostra</button></div>
     </div></div>
   <button class="x-menu x-bag" id="xBagBtn" aria-label="Inventory"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 5h10l-1 10H4z" fill="none" stroke="#e6e9f0" stroke-width="1.4"/><path d="M5.5 5V3.5a2.5 2.5 0 0 1 5 0V5" fill="none" stroke="#e6e9f0" stroke-width="1.4"/></svg></button>
   <div class="hotbar" id="hotbar"></div>
@@ -2203,7 +2206,8 @@ function chapterOf(c) {
   return { short: `Ch. ${CHN_ROMAN[n]}${area ? ' · ' + area : ''}`, full: `Chapter ${CHN_ROMAN[n]}${area ? ' · ' + area : ''}` };
 }
 function liveChapterLabel() {
-  const n = (wanderer && wanderer.chapter) | 0, far = ex.mode === 'space' ? (sysById(SPC.sys) || {}).name : ex.mode === 'world' && isPl() ? world.planet.P.name : null;
+  const shipAt = () => SHIPI.from === 'space' ? (sysById(SPC.sys) || {}).name : world.planet ? world.planet.P.name : null;
+  const n = (wanderer && wanderer.chapter) | 0, far = ex.mode === 'ship' ? ['The Nostra', shipAt()].filter(Boolean).join(' · ') : ex.mode === 'space' ? (sysById(SPC.sys) || {}).name : ex.mode === 'world' && isPl() ? world.planet.P.name : null;
   if (wanderer && wanderer.ch2 && wanderer.ch2.escapedLondon && n <= 3) return `Chapter III · ${far || 'Sol'}`;
   if (far) return `Chapter ${CHN_ROMAN[Math.max(1, n)]} · ${far}`;
   const area = ex.mode === 'world' ? AREA_INFO[curArea()].name : n >= 2 && curArea() === 'africa' ? 'Africa' : 'Antarctica';
@@ -3204,10 +3208,10 @@ function enterCreate(mode = 'new', target = null) {
   show(ui.title, false); show(ui.create, true);
   player.position.set(0, height(0, 0), 0); vel.set(0, 0, 0); player.rotation.y = 0; crRot = 0;
   pedestal.position.copy(player.position); pedestal.visible = true;
-  draft = mode === 'edit' && target ? Object.assign({}, target) : Object.assign({}, DEFAULT_W);
+  draft = (mode === 'edit' || mode === 'resEdit') && target ? Object.assign({}, target) : Object.assign({}, DEFAULT_W);
   delete draft.id;
-  $('#create .cr-title').textContent = mode === 'edit' ? `EDIT ${target.name}` : 'CREATE YOUR WANDERER';
-  $('#crConfirm span').textContent = mode === 'edit' ? 'Save' : 'Confirm';
+  $('#create .cr-title').textContent = mode === 'edit' ? `EDIT ${target.name}` : mode === 'resEdit' ? `EDIT RESIDENT · ${target.name}` : 'CREATE YOUR WANDERER';
+  $('#crConfirm span').textContent = mode === 'edit' || mode === 'resEdit' ? 'Save' : 'Confirm';
   buildCreateUI(); setTab('id');
   camera.position.set(0, player.position.y + 1.4, 5.5); lookTarget.set(-1, player.position.y + 1, 0);
 }
@@ -3243,6 +3247,15 @@ $('#crRandom').addEventListener('click', () => {
 $('#crConfirm').addEventListener('click', () => {
   sfx.click(); sfx.chime();
   const name = (draft.name || '').trim() || 'WANDERER';
+  if (crMode === 'resEdit' && crTarget) { // a resident: name, identity, looks and species (their level, personality, bases and empire stay theirs)
+    const i = residents.findIndex(c => c.id === crTarget.id);
+    if (i >= 0) residents[i] = Object.assign({}, residents[i], draft, { name, id: crTarget.id });
+    try { RES.bots = RES.bots.filter(B => { if (B.id !== crTarget.id) return true; if (B.root && B.root.parent) B.root.parent.remove(B.root); return false; }); } catch (e) {} // they'll turn up again in their new look
+    saveRoster(); applyLook(wanderer); pedestal.visible = false;
+    show(ui.create, false); toTitle(); goMenu('mRoster'); renderRoster();
+    const hd = $('#mRoster .sub-head'); hd.textContent = `${name} updated`; setTimeout(() => { hd.textContent = `Wanderers ${roster.length}/${MAX_WANDERERS} · tap to switch`; }, 3000);
+    return;
+  }
   if (crMode === 'edit' && crTarget) {
     const i = roster.findIndex(c => c.id === crTarget.id);
     if (i >= 0) roster[i] = Object.assign({}, draft, { name, id: crTarget.id, species: crTarget.species }); // never a new species mid-playthrough
@@ -3263,7 +3276,7 @@ $('#crConfirm').addEventListener('click', () => {
 });
 $('#crBack').addEventListener('click', () => {
   sfx.click(); applyLook(wanderer); pedestal.visible = false; show(ui.create, false); toTitle();
-  if (crMode === 'edit') { goMenu('mRoster'); renderRoster(); }
+  if (crMode === 'edit' || crMode === 'resEdit') { goMenu('mRoster'); renderRoster(); }
 });
 
 /* ============ wanderer roster ============ */
@@ -3849,7 +3862,7 @@ function levelInfo(xp) {
   return { level: L, into: rest, need: L >= MAX_LEVEL ? 0 : xpNeed(L) };
 }
 const levelOf = c => levelInfo((c && c.xp) || 0).level;
-const maxHP = () => 100 + (levelOf(wanderer) - 1) * 2 + (wanderer && wanderer.inv && wanderer.inv.bag && wanderer.inv.bag.lining ? 20 : 0);               // +2 max health per level (298 at 100)
+const maxHP = () => 100 + (levelOf(wanderer) - 1) * 2 + (wanderer && wanderer.inv && wanderer.inv.bag && wanderer.inv.bag.lining ? 20 : 0) + (wornArmor() ? ITEMS[wornArmor()].hp : 0);               // +2 max health per level (298 at 100)
 const lvDmg = () => { const L = levelOf(wanderer); return (L >= 20) + (L >= 50) + (L >= 80); };   // extra mining damage
 function gainXP(n, why) {
   n = Math.round(n); if (n <= 0 || !wanderer) return;
@@ -4968,6 +4981,7 @@ async function startChapter1(fromCutscene, place) {
   if (worldPl) enterWorld(worldPl);
 }
 function leaveExplore(goTitle = true) {
+  if (SHIPI.on) { SHIPI.on = false; ui.xhud.classList.remove('aboard'); if (SHIPI.from !== 'space') { ex.mode = 'world'; wScene.add(player); } else { ex.mode = 'space'; } }
   if (goTitle && (state === 'xpaused' || state === 'explore') && (wanderer.chapter | 0) >= 1) rememberPlace();
   if (SPC.on) spaceOff(); SPC.paused = false;
   if (soldier.ready) soldier.root.visible = false; meet.active = false; ui.xhud.classList.remove('cutting');
@@ -5042,6 +5056,7 @@ async function interact() {
   if (ex.dlg) { advanceDialog(); return; }
   const n = ex.near; if (!n) return;
   sfx.click();
+  if (ex.mode === 'ship') { shipInteract(n); return; }
   if (n.id === 'james' && companionOn()) { toggleJamesMenu(); return; }
   if (n.id === 'james') {
     james.headTilt = .05;
@@ -5089,7 +5104,7 @@ async function interact() {
   } else if (n.id === 'farmDoor') { farmDoorTalk();
   } else if (n.id === 'townsfolk') { talkTownsfolk(n.ref);
   } else if (n.id === 'ferry') { startFerryTrip();
-  } else if (n.id === 'ship') { takeOff();
+  } else if (n.id === 'ship') { enterShip('ground');
   } else if (n.id === 'parliament') { lines(PARL_DOOR, () => { if (!wanderer.ch2.reportTried) { setCh2({ reportTried: true }); notice('New London', 'WAIT FOR THE COUNCIL', 3000); } });
   } else if (n.id === 'orion') {
     if (orionJoined()) { ex.cSel = 'orion'; refreshJamesUI(); toggleJamesMenu(); } else talkOrion();
@@ -5152,6 +5167,7 @@ function tickDialog(dt) {
 function updateExplore(dt) {
   stormClock(dt);
   if (ex.mode === 'world') { updateWorldMode(dt); return; }
+  if (ex.mode === 'ship') { updateShipMode(dt); return; }
   const R = ROOM, p = player.position;
   // typewriter
   const d = ex.dlg;
@@ -5206,6 +5222,7 @@ function updateExplore(dt) {
 function exploreCamera(dt) {
   if (state === 'wcut') { wcutCamera(dt); return; }
   if (ex.mode === 'world') { worldCamera(dt); return; }
+  if (ex.mode === 'ship') { shipCamera(dt); return; }
   if (cineCamera(dt, v => { v.x = clamp(v.x, ROOM.x - 6.6, ROOM.x + 6.6); v.z = clamp(v.z, ROOM.z - 2.6, ROOM.z + 2.6); v.y = clamp(v.y, .5, 2.7); })) return;
   const R = ROOM, p = player.position, hy = headYFor(wanderer);
   const tgt = tmpV.set(p.x, p.y + hy * .85, p.z);
@@ -5336,10 +5353,23 @@ const ITEMS = {
   hyper1: { name: 'Hyperdrive Mk I', kind: 'ship', desc: 'Retunes your ship’s hyperdrive: each jump reaches 6,000 light-years instead of 3,000. Enough to cross the gap into the galactic core.', cost: { metal: 4, crystal: 3, warpcell: 1 } },
   hyper2: { name: 'Hyperdrive Mk II', kind: 'ship', desc: 'Upgrades Mk I (it is used up): each jump reaches 12,000 light-years.', cost: { hyper1: 1, metal: 8, crystal: 6, obsidian: 4 } },
   hyper3: { name: 'Hyperdrive Mk III', kind: 'ship', desc: 'Upgrades Mk II (it is used up): each jump reaches 25,000 light-years.', cost: { hyper2: 1, metal: 12, crystal: 10, obsidian: 8 } },
+  // rifles: crafted from Chapter I on, each tier upgrading the last (it is used up); select one in the hotbar and click / tap to fire
+  rifle1: { name: 'Scrap rifle', kind: 'gun', short: 'RIFLE', desc: 'A rifle knocked together from salvaged scrap. Select it and fire at hostile creatures (it aims a little for you). 14 damage, 28 m.', cost: { scrap: 6, stone: 2, cloth: 1 }, dmg: 14, rate: .45, range: 28, col: 0x6b5a48 },
+  rifle2: { name: 'Plasma rifle', kind: 'gun', short: 'PLSMA', desc: 'Upgrades your scrap rifle (it is used up): a crystal-fed plasma chamber. 26 damage, 38 m, a faster trigger.', cost: { rifle1: 1, metal: 4, crystal: 3 }, bench: true, dmg: 26, rate: .36, range: 38, col: 0x2a4a66, glow: 0x6fd8ff },
+  rifle3: { name: 'Rail rifle', kind: 'gun', short: 'RAIL', desc: 'Upgrades your plasma rifle (it is used up): magnetic rails throw an obsidian slug clean through most things. 46 damage, 55 m.', cost: { rifle2: 1, metal: 8, obsidian: 4, crystal: 6 }, bench: true, dmg: 46, rate: .6, range: 55, col: 0x1a1a22, glow: 0xb070ff },
+  // armour sets: crafted from Chapter I on, each upgrading the last; you wear the set you own (it takes a share of every hit and adds health)
+  armor1: { name: 'Scrap plate armour', kind: 'armor', desc: 'Salvaged plates strapped over your suit. Takes 15% off every hit, +10 max health.', cost: { scrap: 8, cloth: 3, stone: 2 }, def: .15, hp: 10, col: [0x6e6a64, 0x9a6a3a] },
+  armor2: { name: 'Frostguard armour', kind: 'armor', desc: 'Upgrades your scrap plate (it is used up): crystal-laced plates over a skua-down layer. Takes 25% off every hit, +20 max health.', cost: { armor1: 1, crystal: 4, feather: 4, ice: 4 }, def: .25, hp: 20, col: [0xdfe8f0, 0x6fd8ff] },
+  armor3: { name: 'Obsidian plate armour', kind: 'armor', desc: 'Upgrades your Frostguard (it is used up): volcanic-glass plates on a metal frame. Takes 35% off every hit, +35 max health.', cost: { armor2: 1, obsidian: 6, metal: 4 }, bench: true, def: .35, hp: 35, col: [0x17141c, 0x9a5cff] },
+  armor4: { name: 'Nostra exo-armour', kind: 'armor', desc: 'Upgrades your obsidian plate (it is used up): the Nostra’s own black-and-gold exo-frame, powered by a warp cell. Takes 50% off every hit, +50 max health.', cost: { armor3: 1, metal: 10, crystal: 8, warpcell: 1 }, bench: true, def: .5, hp: 50, col: [0x121316, 0xd8a840] },
   warpcell: { name: 'Warp cell', kind: 'res', color: '#a58bff', desc: 'Antimatter held in a crystal lattice. Your ship burns one for every jump between star systems on the galaxy map.', cost: { metal: 2, crystal: 2, scrap: 2 } }
 };
 const RES_IDS = ['stone', 'ice', 'wood', 'scrap', 'metal', 'obsidian', 'crystal', 'cloth', 'blubber', 'feather', 'meat', 'warpcell'];
-const CRAFT_IDS = ['metal', 'warpcell', 'hyper1', 'hyper2', 'hyper3', 'pick', 'opick', 'medkit', 'ration', 'roast', 'lining', 'lamp', 'wall', 'heater', 'beacon'];
+const CRAFT_IDS = ['metal', 'warpcell', 'hyper1', 'hyper2', 'hyper3', 'pick', 'opick', 'rifle1', 'rifle2', 'rifle3', 'armor1', 'armor2', 'armor3', 'armor4', 'medkit', 'ration', 'roast', 'lining', 'lamp', 'wall', 'heater', 'beacon'];
+const GUN_IDS = ['rifle1', 'rifle2', 'rifle3'], ARMOR_IDS = ['armor1', 'armor2', 'armor3', 'armor4'];
+const KEEPS = k => k === 'tool' || k === 'gun' || k === 'armor'; // owned once, not counted
+const gearOwned = id => { const L = GUN_IDS.includes(id) ? GUN_IDS : ARMOR_IDS.includes(id) ? ARMOR_IDS : null; return L ? L.slice(L.indexOf(id)).some(x => have(x)) : have(id) > 0; }; // you own it, or a better one
+const wornArmor = () => { if (!wanderer || !wanderer.inv || !wanderer.inv.bag) return null; for (let i = ARMOR_IDS.length - 1; i >= 0; i--) if (wanderer.inv.bag[ARMOR_IDS[i]]) return ARMOR_IDS[i]; return null; };
 const LOOT = {
   rock: () => [['stone', 2 + (Math.random() < .5)], Math.random() < .2 && ['scrap', 1]],
   ice: () => [['ice', 2], Math.random() < .3 && ['crystal', 1]],
@@ -5366,7 +5396,7 @@ function wsState(area = curArea()) {
 const have = id => invState().bag[id] | 0;
 function giveItem(id, n) {
   const inv = invState(); inv.bag[id] = (inv.bag[id] | 0) + n;
-  if (ITEMS[id].kind !== 'res' && ITEMS[id].kind !== 'ship' && !inv.bar.includes(id)) { const i = inv.bar.indexOf(null); if (i >= 0) inv.bar[i] = id; }
+  if (ITEMS[id].kind !== 'res' && ITEMS[id].kind !== 'ship' && ITEMS[id].kind !== 'armor' && !inv.bar.includes(id)) { const i = inv.bar.indexOf(null); if (i >= 0) inv.bar[i] = id; }
   saveRoster(); renderHotbar();
 }
 function takeItem(id, n) {
@@ -5385,21 +5415,21 @@ function renderHotbar() {
   const inv = invState(), hb = $('#hotbar');
   hb.innerHTML = inv.bar.map((id, i) => {
     if (!id) return `<button class="empty${inv.sel === i ? ' sel' : ''}" data-i="${i}"><small>${i + 1}</small><span>·</span></button>`;
-    const it = ITEMS[id], cnt = it.kind === 'tool' ? '' : `<em>${have(id)}</em>`;
+    const it = ITEMS[id], cnt = KEEPS(it.kind) ? '' : `<em>${have(id)}</em>`;
     return `<button class="${inv.sel === i ? 'sel' : ''}" data-i="${i}" title="${it.name}"><small>${i + 1}</small><span>${it.short}</span>${cnt}</button>`;
   }).join('');
 }
 function selectSlot(i) { const inv = invState(); inv.sel = i; renderHotbar(); sfx.blip(); }
 $('#hotbar').addEventListener('click', e => { const b = e.target.closest('button'); if (b) selectSlot(+b.dataset.i); });
 // ---- inventory & crafting screen ----
-function canCraft(id) { const it = ITEMS[id]; if (it.kind === 'tool' && have(id)) return false; if (it.kind === 'ship' && driveTier() >= +id.slice(-1)) return false; if (it.bench && !benchNear()) return false; return Object.entries(it.cost).every(([r, n]) => have(r) >= n); }
+function canCraft(id) { const it = ITEMS[id]; if (it.kind === 'tool' && have(id)) return false; if ((it.kind === 'gun' || it.kind === 'armor') && gearOwned(id)) return false; if (it.kind === 'ship' && driveTier() >= +id.slice(-1)) return false; if (it.bench && !benchNear()) return false; return Object.entries(it.cost).every(([r, n]) => have(r) >= n); }
 function renderInv() {
   $('#invRes').innerHTML = `<div class="res-row"><b style="--c:#ffc94a"></b><span>Units</span><em>${units()}</em></div>` + RES_IDS.map(id => `<div class="res-row${have(id) ? '' : ' zero'}"><b style="--c:${ITEMS[id].color}"></b><span>${ITEMS[id].name}</span><em>${have(id)}</em></div>`).join('');
   const gear = CRAFT_IDS.filter(id => have(id) && ITEMS[id].kind !== 'res');
-  $('#invGear').innerHTML = gear.length ? gear.map(id => `<div class="res-row"><b style="--c:var(--ink)"></b><span>${ITEMS[id].name}</span><em>${ITEMS[id].kind === 'tool' ? '✓' : have(id)}</em></div>`).join('') : '<div class="res-row zero"><span>Nothing crafted yet</span></div>';
+  $('#invGear').innerHTML = gear.length ? gear.map(id => `<div class="res-row"><b style="--c:var(--ink)"></b><span>${ITEMS[id].name}</span><em>${ITEMS[id].kind === 'armor' ? 'WORN' : KEEPS(ITEMS[id].kind) ? '✓' : have(id)}</em></div>`).join('') : '<div class="res-row zero"><span>Nothing crafted yet</span></div>';
   $('#invCraft').innerHTML = CRAFT_IDS.map(id => {
-    const it = ITEMS[id], owned = (it.kind === 'tool' && have(id)) || (it.kind === 'ship' && driveTier() >= +id.slice(-1));
-    const kind = { tool: 'Tool', place: 'Placeable', use: 'Consumable', res: 'Material', ship: 'Ship upgrade' }[it.kind] + (it.bench ? (benchNear() ? ' · table ✓' : ' · needs crafting table') : '');
+    const it = ITEMS[id], owned = (it.kind === 'tool' && have(id)) || ((it.kind === 'gun' || it.kind === 'armor') && gearOwned(id)) || (it.kind === 'ship' && driveTier() >= +id.slice(-1));
+    const kind = { tool: 'Tool', place: 'Placeable', use: 'Consumable', res: 'Material', ship: 'Ship upgrade', gun: 'Weapon', armor: 'Armour' }[it.kind] + (it.bench ? (benchNear() ? ' · table ✓' : ' · needs crafting table') : '');
     const cost = Object.entries(it.cost).map(([r, n]) => `<span class="${have(r) >= n ? 'ok' : 'no'}">${n} ${ITEMS[r].name}</span>`).join('');
     return `<div class="recipe"><h4>${it.name}<small>${kind}</small></h4><p>${it.desc}</p><div class="cost">${cost}<button class="btn small" data-c="${id}"${canCraft(id) ? '' : ' disabled'}><span>${owned ? 'Owned' : 'Craft'}</span></button></div></div>`;
   }).join('');
@@ -5408,7 +5438,8 @@ $('#invCraft').addEventListener('click', e => {
   const b = e.target.closest('button[data-c]'); if (!b) return;
   const id = b.dataset.c; if (!canCraft(id)) return;
   for (const [r, n] of Object.entries(ITEMS[id].cost)) takeItem(r, n);
-  giveItem(id, 1); sfx.chime(); lootMsg(`Crafted ${ITEMS[id].name}`, '#a9dcff'); gainXP(ITEMS[id].kind === 'tool' ? 30 : 20); renderInv();
+  giveItem(id, 1); sfx.chime(); lootMsg(`Crafted ${ITEMS[id].name}${ITEMS[id].kind === 'armor' ? ' · now wearing it' : ''}`, '#a9dcff'); gainXP(KEEPS(ITEMS[id].kind) ? 30 : 20); renderInv();
+  if (ITEMS[id].kind === 'armor') { armorSync(true); ex.hp = Math.min(maxHP(), (ex.hp || 0) + (ITEMS[id].hp || 0)); }
 });
 /* ============ alignment (KOTOR / Mass Effect style) ============
    -100 AWAKENED VILLAIN · 0 NEUTRAL · +100 ENLIGHTENED HERO. Every wanderer starts grey (0).
@@ -5780,7 +5811,7 @@ function dismantle(b) {
   for (const [r, n] of Object.entries(pieceCost(b.data.k, b.data.m))) giveItem(r, n);
   lootMsg(`Dismantled ${pieceName(b.data)}`, '#e6e9f0'); sfx.click(); stormProgress();
 }
-const benchNear = () => ex.mode === 'station' || (ex.mode === 'world' && isPl() && Math.hypot(player.position.x, player.position.z - 2) < 16) || (ex.mode === 'world' && world.build.some(b => b.data.k === 'bench' && Math.hypot(b.data.x - player.position.x, b.data.z - player.position.z) < 5));
+const benchNear = () => ex.mode === 'station' || ex.mode === 'ship' || (ex.mode === 'world' && isPl() && Math.hypot(player.position.x, player.position.z - 2) < 16) || (ex.mode === 'world' && world.build.some(b => b.data.k === 'bench' && Math.hypot(b.data.x - player.position.x, b.data.z - player.position.z) < 5));
 // ---- placement: pieces snap to a 3 m grid and to the heights of what you've already built ----
 function levelNear(x, z, y) {
   let best = null, bd = .9;
@@ -6046,11 +6077,14 @@ function partyNow() {
   if (nicoJoined()) out.push('nico');
   for (const id of wanderer.party || []) if (PARTY[id] && !out.includes(id)) out.push(id);
   const lent = (wanderer.dip && wanderer.dip.lent) || {};
-  return out.filter(id => !lent[id]); // companions lent to another faction (Diplomacy) are away
+  const aboard = (wanderer && wanderer.aboard) || {};
+  return out.filter(id => !lent[id] && !aboard[id]); // companions lent to another faction (Diplomacy) are away; dismissed ones wait aboard the Nostra
 }
 function partySel() { const p = partyNow(), s = ex.cSel; return s === 'all' && p.length > 1 ? 'all' : p.includes(s) ? s : p[0] || null; }
 function cmdCompanion(mode) {
-  const sel = partySel(); if (!sel || !JCMDS.includes(mode)) return;
+  const sel = partySel();
+  if (mode === 'dismiss') { if (!sel) return; const ids = sel === 'all' ? partyNow() : [sel]; toggleJamesMenu(false); for (const id of ids) dismissCompanion(id); return; }
+  if (!sel || !JCMDS.includes(mode)) return;
   const ids = sel === 'all' ? partyNow() : [sel];
   for (const id of ids) { if (id === 'james') jamesCmd(mode, ids.length > 1 || sel !== 'james'); else if (id === 'orion') orionCmd(mode, ids.length > 1); else if (id === 'nico') nicoCmd(mode, ids.length > 1); else { (wanderer.cmds || (wanderer.cmds = {}))[id] = mode; const c = curChar(); if (c) c.cmds = wanderer.cmds; } }
   if (sel === 'all') { sfx.click(); lootMsg(`Everyone · ${jBarkSet()[mode]}`, '#7fe0a0'); saveRoster(); }
@@ -6097,6 +6131,10 @@ function doAttack() {
   if (it && ITEMS[it].kind === 'use') {
     if (!have(it) || ex.hp >= maxHP()) { lootMsg(ex.hp >= maxHP() ? 'Already at full health' : 'None left', '#ff8f86'); return; }
     const heal = ITEMS[it].heal || 40; ex.hp = Math.min(maxHP(), ex.hp + heal); invState().hp = ex.hp; takeItem(it, 1); sfx.chime(); lootMsg(`+${heal} health`, '#ff7a72'); return;
+  }
+  if (it && ITEMS[it].kind === 'gun') { // fire
+    if (time - (ex.fireT || -9) < ITEMS[it].rate) return;
+    ex.fireT = time; ex.act = { type: 'fire', t: 0, dur: .16, hit: false }; return;
   }
   if (!spend(STA.attack)) return;
   ex.act = { type: 'attack', t: 0, dur: .5, hit: false };
@@ -6238,11 +6276,75 @@ function worldActionPose(dt) {
     rig.ra.rotation.z = -.15;
     inner.rotation.y = k < .62 ? lerp(0, -.3, smooth(.3, .62, k)) : lerp(-.3, 0, smooth(.62, 1, k));
   } else damp(inner.rotation, 'y', 0, 10, dt);
+  // a rifle: carried at a low ready, shouldered when you fire (and for a moment after)
+  const gun = selItem(); if (gun && ITEMS[gun].kind === 'gun' && have(gun) && !(A && A.type === 'dodge') && !ex.blocking && !(ex.air && ex.jetting)) {
+    const aim = (A && A.type === 'fire') || time - (ex.fireT || -9) < 1.1, kick = A && A.type === 'fire' ? Math.sin(Math.min(1, A.t / A.dur) * Math.PI) * .12 : 0;
+    damp(rig.ra.rotation, 'x', (aim ? -1.5 : -.55) - kick, 22, dt); damp(rig.ra.rotation, 'z', aim ? .05 : -.08, 18, dt);
+    damp(rig.la.rotation, 'x', aim ? -1.3 : -.4, 18, dt); damp(rig.la.rotation, 'z', aim ? -.55 : -.3, 18, dt);
+    if (ex.held && ex.held.userData.id === gun) ex.held.rotation.x = lerp(ex.held.rotation.x, aim ? 0 : -.55, Math.min(1, dt * 14));
+  }
+  armorSync();
   // whatever is selected in the hotbar sits in your right hand
   syncHeld();
 }
-const HELD_KINDS = new Set(['pick', 'opick', 'medkit', 'lamp', 'wall', 'heater', 'beacon']);
+// ---- rifles ----
+function rifleModel(id) { // barrel along the hand's -y, so it points ahead when the arm comes up to aim
+  const it = ITEMS[id], g = new THREE.Group(); g.userData.id = id;
+  const body = new THREE.MeshStandardMaterial({ color: it.col, metalness: .7, roughness: .38 }), dark = new THREE.MeshStandardMaterial({ color: 0x15171b, metalness: .6, roughness: .45 });
+  const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o; };
+  add(new THREE.BoxGeometry(.06, .5, .1), body, 0, -.18, .02); // receiver
+  add(new THREE.CylinderGeometry(.016, .018, id === 'rifle3' ? .62 : .44, 10), dark, 0, id === 'rifle3' ? -.72 : -.62, .045); // barrel
+  add(new THREE.BoxGeometry(.05, .24, .12), dark, 0, .18, -.01); // stock
+  add(new THREE.BoxGeometry(.04, .07, .13), dark, 0, -.06, -.08); // grip
+  add(new THREE.BoxGeometry(.03, .14, .05), dark, 0, -.24, .1); // scope
+  if (it.glow) { const gl = new THREE.MeshStandardMaterial({ color: it.glow, emissive: it.glow, emissiveIntensity: 1.6 }); add(new THREE.BoxGeometry(.065, .2, .02), gl, 0, -.2, .075); if (id === 'rifle3') for (const x of [-.022, .022]) add(new THREE.BoxGeometry(.008, .5, .012), gl, x, -.72, .045); }
+  const fl = new THREE.Mesh(new THREE.SphereGeometry(.06, 8, 6), new THREE.MeshBasicMaterial({ color: it.glow || 0xffd38a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+  fl.position.set(0, id === 'rifle3' ? -1.05 : -.86, .045); g.add(fl); g.userData.flash = fl; g.userData.muzzle = fl;
+  return g;
+}
+function fireRifle() {
+  const id = selItem(); if (!id || ITEMS[id].kind !== 'gun') return;
+  const it = ITEMS[id], p = player.position, eye = p.y + headYFor(wanderer) * .8;
+  // aim: the nearest hostile in a cone ahead of you (turning you onto it), else straight ahead
+  let a = player.rotation.y, best = null, bs = -1;
+  const foes = [...fauna.list.filter(c => !c.dead && !c.D.passive).map(c => ({ x: c.x, y: c.y + .6, z: c.z, c })), ...(esc.on ? esc.foes.filter(f => !f.gone && f.hp > 0).map(f => ({ x: f.x, y: 1.2, z: f.z, f })) : [])];
+  for (const o of foes) { const dx = o.x - p.x, dz = o.z - p.z, d = Math.hypot(dx, dz); if (d > it.range || d < .3) continue; const dot = (dx * Math.sin(a) + dz * Math.cos(a)) / d; if (dot < .82) continue; const s = dot - d / it.range * .15; if (s > bs) { bs = s; best = o; } }
+  if (best) { a = Math.atan2(best.x - p.x, best.z - p.z); player.rotation.y = a; }
+  const fx_ = Math.sin(a), fz = Math.cos(a), mx = p.x + fx_ * .8, mz = p.z + fz * .8, my = eye - .15;
+  const end = best ? new THREE.Vector3(best.x, best.y, best.z) : new THREE.Vector3(p.x + fx_ * it.range, my, p.z + fz * it.range);
+  const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(mx, my, mz), end]);
+  const tr = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: it.glow || 0xffd38a, transparent: true, opacity: .95 })); wScene.add(tr);
+  setTimeout(() => { wScene.remove(tr); geo.dispose(); tr.material.dispose(); }, id === 'rifle3' ? 110 : 70);
+  const c = it.glow ? new THREE.Color(it.glow) : new THREE.Color(0xffd38a);
+  burst(mx, my, mz, 8, 2.2, c.r, c.g, c.b, .25, 0, 0); sfx.shot();
+  if (ex.held && ex.held.userData.flash) { const f = ex.held.userData.flash; f.material.opacity = 1; setTimeout(() => { f.material.opacity = 0; }, 60); }
+  if (!best) return;
+  burst(best.x, best.y, best.z, 12, 3, c.r, c.g, c.b, .6, .4, 1);
+  const dmg = it.dmg + lvDmg() * 3;
+  if (best.c) damageFauna(best.c, dmg); else if (best.f) { escHurt(best.f, dmg); sfx.hit('crate'); }
+}
+// ---- armour: shoulder plates, a chest plate and shin guards in the set's colours, over your suit ----
+const armorFx = { id: null, parts: [] };
+function armorSync(force) {
+  const id = ex.mode === 'world' || ex.mode === 'station' ? wornArmor() : null;
+  if (!force && armorFx.id === id && armorFx.rig === rig.ra) return;
+  for (const o of armorFx.parts) if (o.parent) o.parent.remove(o);
+  armorFx.parts = []; armorFx.id = id; armorFx.rig = rig.ra;
+  if (!id || !rig.ra) return;
+  const [cBase, cTrim] = ITEMS[id].col, k = headYFor(wanderer) / 1.66;
+  const base = new THREE.MeshStandardMaterial({ color: cBase, metalness: .75, roughness: .35 }), trim = new THREE.MeshStandardMaterial({ color: cTrim, metalness: .8, roughness: .3, emissive: id === 'armor1' ? 0 : cTrim, emissiveIntensity: id === 'armor1' ? 0 : .35 });
+  const part = (parent, build) => { const g = new THREE.Group(); build(g); g.scale.setScalar(k); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); parent.add(g); armorFx.parts.push(g); return g; };
+  const box = (g, w, h2, d, m, x, y, z, rx = 0, rz = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h2, d), m); o.position.set(x, y, z); o.rotation.set(rx, 0, rz); g.add(o); return o; };
+  // shoulder plates (they turn with the arms)
+  for (const [arm, s] of [[rig.ra, -1], [rig.la, 1]]) part(arm, g => { box(g, .22, .07, .24, base, s * .02, .0, .02, 0, s * -.12); box(g, .23, .022, .25, trim, s * .02, .038, .02, 0, s * -.12); box(g, .17, .055, .21, base, s * .08, -.07, .02, 0, s * -.45); box(g, .17, .018, .215, trim, s * .08, -.043, .02, 0, s * -.45); });
+  // shin guards
+  for (const leg of [rig.rl, rig.ll]) part(leg, g => { box(g, .14, .3, .05, base, 0, -.5, .1); box(g, .15, .03, .055, trim, 0, -.36, .1); box(g, .12, .08, .06, trim, 0, -.33, .12); });
+  // chest plate and collar, on the body
+  part(inner, g => { const y = headYFor(wanderer) / k - .42; box(g, .44, .36, .07, base, 0, y, .225); box(g, .46, .035, .075, trim, 0, y + .17, .23); box(g, .065, .28, .075, trim, 0, y - .02, .24); box(g, .36, .05, .07, base, 0, y - .22, .215); for (const s of [-1, 1]) box(g, .09, .3, .06, base, s * .2, y - .01, .2, 0, s * .15); if (id === 'armor4') { const core = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, .02, 16), new THREE.MeshStandardMaterial({ color: 0xffd36a, emissive: 0xffb02a, emissiveIntensity: 2 })); core.rotation.x = Math.PI / 2; core.position.set(0, y + .05, .195); g.add(core); } });
+}
+const HELD_KINDS = new Set(['pick', 'opick', 'medkit', 'lamp', 'wall', 'heater', 'beacon', 'rifle1', 'rifle2', 'rifle3']);
 function heldModel(id) {
+  if (GUN_IDS.includes(id)) return rifleModel(id);
   const g = new THREE.Group(), M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .6 }, o));
   const add = (geo, mat, x = 0, y = 0, z = 0, rx = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.x = rx; m.castShadow = true; g.add(m); return m; };
   if (id === 'opick') {
@@ -6323,6 +6425,7 @@ addEventListener('keydown', e => {
   if (ex.build && (e.code === 'KeyX' || e.code === 'Escape')) { e.stopImmediatePropagation(); stopBuild(); lootMsg('Stopped building', '#e6e9f0'); return; }
   if (e.code === 'KeyV') { cycleCompanion(); return; }
   if (partyNow().length && /^Digit[1-5]$/.test(e.code)) cmdCompanion(JCMDS[+e.code.slice(5) - 1]);
+  else if (partyNow().length && e.code === 'Digit8' && canDismiss()) cmdCompanion('dismiss');
   else if (partyNow().length && (e.code === 'Digit6' || e.code === 'Digit7')) partyDeed(e.code === 'Digit6' ? 'share' : 'threat');
   else if (!partyNow().length && /^Digit[1-6]$/.test(e.code)) selectSlot(+e.code.slice(5) - 1);
   else if (e.code === 'Minus' || e.code === 'NumpadSubtract') ex.dist = clamp(ex.dist + .6, 1.8, 9);
@@ -6662,6 +6765,7 @@ function refreshJamesUI() {
   $('#jWho').textContent = sel === 'all' ? 'EVERYONE' : sel === 'orion' ? `ORION · LV ${orionLevel()}` : sel === 'nico' ? `NICO · LV ${nicoLevel()}` : (PARTY[sel] || PARTY.james).name.toUpperCase();
   $('#jMode').textContent = sel === 'orion' ? OLABEL[mode] || 'FOLLOWING' : sel === 'james' && comp.mode === 'base' && comp.arrived ? 'AT BASE' : JLABEL[mode] || 'FOLLOWING';
   for (const b of document.querySelectorAll('#jOpts button[data-m]')) b.classList.toggle('on', b.dataset.m === mode);
+  const dz = $('#jDismiss'); if (dz) dz.style.display = canDismiss() && sel !== 'james' ? '' : 'none'; // once you have the Nostra to send them to
   const row = $('#jWhoRow'); row.style.display = p.length > 1 ? '' : 'none';
   row.innerHTML = p.length > 1 ? [...p, 'all'].map(id => `<button data-w="${id}" class="${id === sel ? 'on' : ''}">${id === 'all' ? 'Everyone' : PARTY[id].name}</button>`).join('') : '';
 }
@@ -7046,6 +7150,7 @@ function hurtPlayer(n, src) {
       if (n <= 0) return;
     }
   }
+  const arm = wornArmor(); if (arm) n = Math.max(1, Math.round(n * (1 - ITEMS[arm].def))); // your armour takes its share
   ex.hp = Math.max(0, ex.hp - n); invState().hp = Math.round(ex.hp);
   sfx.thud(); sfx.hit('crate'); combatPulse();
   const fx = $('#hurtFx'); fx.classList.remove('on'); void fx.offsetWidth; fx.classList.add('on');
@@ -10592,7 +10697,114 @@ function setSystem(id) {
   SPC.stars.rotation.set(S.map.y * 2.1, S.map.x * 3.3, .5 + S.map.x); // the sky shifts a little from system to system
   if (SPC.ship) scNeutrals();
 }
-function makeShip() { // the Federation dropship from Parliament Square
+// ---- the NV1 Nostra: your ship from Chapter III on. Black hull, gold trim, NOSTRA / NV1 markings, two engine pods on
+// open-frame wings, twin dorsal fins, a three-deck hull (its three rows of windows are its three decks). Rigged: landing legs
+// fold away and a boarding ramp lowers (setShipRig), the engine flames follow the throttle, the nav lights blink. Forward is -z.
+function makeShip() {
+  const g = new THREE.Group(); g.userData.flames = []; g.userData.nav = [];
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .34, metalness: .72 }, o));
+  const hull = M(0x1d2027), panel = M(0x2a2f38, { roughness: .5 }), grey = M(0x3a3f48, { roughness: .45 }), gold = M(0xc9a24a, { roughness: .28, metalness: .9, emissive: 0x3a2a08, emissiveIntensity: .35 });
+  const glass = M(0x0a1018, { roughness: .08, metalness: .9, emissive: 0x1a4a6a, emissiveIntensity: .3 }), amber = new THREE.MeshStandardMaterial({ color: 0xffc06a, emissive: 0xffa040, emissiveIntensity: 1.6 });
+  const blue = new THREE.MeshBasicMaterial({ color: 0x8fe8ff }), flameMat = () => new THREE.MeshBasicMaterial({ color: 0x6fd8ff, transparent: true, opacity: .75, blending: THREE.AdditiveBlending, depthWrite: false });
+  const add = (geo, m, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, par = g) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); par.add(o); return o; };
+  const box = (w, hh, d, m, x, y, z, rx, ry, rz, par) => add(new THREE.BoxGeometry(w, hh, d), m, x, y, z, rx, ry, rz, par);
+  const Y = .8; // the hull's centre line, so the legs reach the ground 1.7 below the ship's origin
+  const hw = (r, y) => r * Math.sqrt(Math.max(0, 1 - (y / (.74 * r)) ** 2)); // the hull's half-width at height y above its centre line (it's a little flattened)
+  // the hull: a long tapering body, a little flattened, from the needle nose (z -16) to the engine block (z +11.5)
+  const prof = [[0, -16.4], [.35, -16], [1.0, -13.8], [1.75, -11], [2.35, -8], [2.8, -4.5], [3.05, -.5], [3.1, 3.5], [2.95, 7.5], [2.6, 10.2], [2.2, 11.5], [0, 11.6]];
+  const lathe = new THREE.LatheGeometry(prof.map(([r, z]) => new THREE.Vector2(r, z)), 40); lathe.rotateX(Math.PI / 2); lathe.scale(1, .74, -1); lathe.rotateY(Math.PI);
+  const body = add(lathe, hull, 0, Y, 0);
+  // armour bands, a dorsal spine and a keel, all trimmed in gold
+  for (const [z, r] of [[-11, 1.8], [-6, 2.62], [-1, 3.07], [4, 3.09], [8.4, 2.86]]) { const t = add(new THREE.TorusGeometry(r, .07, 6, 40), panel, 0, Y, z); t.scale.y = .74; }
+  box(.9, .45, 20, panel, 0, Y + 2.25, 0); box(.95, .06, 20.2, gold, 0, Y + 2.5, 0);
+  box(1.2, .4, 17, panel, 0, Y - 2.2, 1); box(1.25, .05, 17.2, gold, 0, Y - 2.42, 1);
+  // gold trim lines down both flanks (the lines in the picture), and a lower line
+  for (const s of [-1, 1]) {
+    const line = (y, z0, z1, r0, r1) => { const a0 = hw(r0, y), a1 = hw(r1, y), len = Math.hypot(z1 - z0, a1 - a0), o = box(.05, .06, len, gold, s * ((a0 + a1) / 2 + .02), Y + y, (z0 + z1) / 2, 0, s * Math.atan2(a1 - a0, z1 - z0)); return o; };
+    line(.95, -13, -4, 1.45, 2.65); line(.95, -4, 8, 2.65, 2.75); line(.3, -9, 9, 2.4, 2.95); line(-.95, -8, 9.5, 2.2, 2.7);
+    // the flat side panel that carries the name
+    box(.08, 1.25, 8.6, panel, s * 3.0, Y + .05, 1.3); box(.06, .05, 8.8, gold, s * 3.03, Y + .7, 1.3); box(.06, .05, 8.8, gold, s * 3.03, Y - .6, 1.3);
+    // three decks of windows: amber light in three rows
+    for (let r = 0; r < 3; r++) for (let i = 0; i < 9; i++) { const z = -7.5 + i * 1.75 + (r === 1 ? .8 : 0); if (z > -5 && z < 5.5 && r === 1) continue; const yy = -.95 + r * .95, rr = hw(3.05 - Math.abs(z) * .02, yy); box(.06, .16, .55, amber, s * (rr + .015), Y + yy, z, 0, 0, s * -Math.asin(Math.min(.9, yy / 2.4)) * .9); }
+    // grilles and vents along the lower hull
+    for (let i = 0; i < 6; i++) box(.06, .3, .08, grey, s * 2.82, Y - .35, -2.5 + i * .22);
+  }
+  // the name: NOSTRA along both flanks, NV1 on the nose and the engine pods
+  const label = (txt, w, hh, size) => { const t = canvasTex(512, 128, (c, W, H) => { c.clearRect(0, 0, W, H); c.font = `900 ${size}px Arial Black, Arial, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 6; c.strokeStyle = '#3a2a08'; c.strokeText(txt, W / 2, H / 2 + 4); const gr = c.createLinearGradient(0, 20, 0, H - 20); gr.addColorStop(0, '#f6d27a'); gr.addColorStop(1, '#a8782a'); c.fillStyle = gr; c.fillText(txt, W / 2, H / 2 + 4); }); return new THREE.MeshStandardMaterial({ map: t, transparent: true, metalness: .8, roughness: .3, emissive: 0x5a4010, emissiveMap: t, emissiveIntensity: .5, depthWrite: false }); };
+  const nostra = label('NOSTRA', 0, 0, 104), nv1 = label('NV1', 0, 0, 110);
+  for (const s of [-1, 1]) {
+    add(new THREE.PlaneGeometry(6.6, 1.1), nostra, s * 3.05, Y + .05, 1.3, 0, s * Math.PI / 2);
+    add(new THREE.PlaneGeometry(2.2, .7), nv1, s * 2.2, Y + .55, -9.6, 0, s * (Math.PI / 2 - .17));
+  }
+  // the cockpit canopy, forward on the spine
+  const can = add(new THREE.SphereGeometry(1, 24, 14, 0, Math.PI * 2, 0, Math.PI / 2), glass, 0, Y + 1.55, -8.2); can.scale.set(1.25, .9, 3.4);
+  box(.08, .08, 6.6, gold, 0, Y + 2.38, -8.2);
+  // the mandibles: two prongs and sensor spines reaching past the nose
+  for (const s of [-1, 1]) { box(.22, .3, 5.2, grey, s * .75, Y - .35, -17.2, .05, s * .1); box(.08, .08, 5.3, gold, s * .75, Y - .17, -17.2, .05, s * .1); box(.08, .08, 3.2, grey, s * .35, Y + .6, -16.6, -.08, s * .05); }
+  // the wings: open frames sweeping down and out to the engine pods (the cut-outs in the picture)
+  const pods = [];
+  for (const s of [-1, 1]) {
+    const wing = new THREE.Group(); wing.position.set(s * 2.8, Y - .6, 5.2); wing.rotation.z = s * -.28; g.add(wing);
+    box(5.6, .32, .55, hull, s * 2.8, 0, -2.2, 0, 0, 0, wing); box(5.6, .32, .55, hull, s * 2.8, 0, 2.2, 0, 0, 0, wing); // front and rear spars
+    box(.55, .32, 4.95, hull, s * 1.0, 0, 0, 0, 0, 0, wing); box(.55, .32, 4.95, hull, s * 4.6, 0, 0, 0, 0, 0, wing); // ribs
+    box(5.7, .05, .6, gold, s * 2.8, .18, -2.2, 0, 0, 0, wing); box(5.7, .05, .6, gold, s * 2.8, .18, 2.2, 0, 0, 0, wing);
+    box(2.6, .2, 1.3, panel, s * 2.8, 0, 0, 0, 0, 0, wing); // a cross brace inside the frame
+    const nl = new THREE.Mesh(new THREE.SphereGeometry(.12, 8, 6), new THREE.MeshBasicMaterial({ color: s < 0 ? 0xff3a3a : 0x3aff6a })); nl.position.set(s * 5.4, .1, -2.4); wing.add(nl); g.userData.nav.push(nl);
+    // the engine pod at the wing tip
+    const pod = new THREE.Group(); pod.position.set(s * 8.1, Y - 2.15, 6.6); g.add(pod); pods.push(pod);
+    add(new THREE.CylinderGeometry(1.15, 1.2, 5.6, 20), hull, 0, 0, 0, Math.PI / 2, 0, 0, pod);
+    add(new THREE.CylinderGeometry(1.2, .95, 1.2, 20), panel, 0, 0, -3.3, Math.PI / 2, 0, 0, pod); // the intake
+    add(new THREE.TorusGeometry(1.18, .07, 6, 24), gold, 0, 0, -2.6, 0, 0, 0, pod); add(new THREE.TorusGeometry(1.2, .07, 6, 24), gold, 0, 0, 1.8, 0, 0, 0, pod);
+    add(new THREE.CylinderGeometry(.95, 1.25, 1, 20, 1, true), grey, 0, 0, 3.2, Math.PI / 2, 0, 0, pod); // the exhaust bell
+    add(new THREE.CircleGeometry(.9, 20), blue, 0, 0, 3.55, 0, 0, 0, pod);
+    const f = add(new THREE.ConeGeometry(.85, 4.6, 18, 1, true), flameMat(), 0, 0, 5.9, Math.PI / 2, 0, 0, pod); g.userData.flames.push(f);
+    for (let i = 0; i < 4; i++) box(.06, .25, 1.6, gold, Math.cos(i * Math.PI / 2) * 1.16, Math.sin(i * Math.PI / 2) * 1.16, -.4, 0, 0, i * Math.PI / 2, pod);
+    add(new THREE.PlaneGeometry(1.6, .5), nv1, s * 1.2, .25, -.6, 0, s * Math.PI / 2, 0, pod);
+  }
+  // the main engines: two blue bells at the top of the stern
+  for (const s of [-1, 1]) {
+    add(new THREE.CylinderGeometry(.62, .7, 1.4, 18), grey, s * 1.15, Y + 1.25, 11.2, Math.PI / 2);
+    add(new THREE.CircleGeometry(.55, 18), blue, s * 1.15, Y + 1.25, 11.92);
+    const f = add(new THREE.ConeGeometry(.52, 3.4, 16, 1, true), flameMat(), s * 1.15, Y + 1.25, 13.6, Math.PI / 2); g.userData.flames.push(f);
+  }
+  add(new THREE.CircleGeometry(1.05, 20), grey, 0, Y - .3, 11.58); // the stern plate
+  // twin dorsal fins, raked back and canted out, and a small ventral fin
+  for (const s of [-1, 1]) {
+    const fin = new THREE.Shape(); fin.moveTo(0, 0); fin.lineTo(3.6, 0); fin.lineTo(4.4, 3.6); fin.lineTo(3.6, 3.7); fin.lineTo(.4, .6); fin.closePath();
+    const fg = new THREE.ExtrudeGeometry(fin, { depth: .14, bevelEnabled: false }); const fm = add(fg, hull, s * .55, Y + 2.2, 6.4, 0, -Math.PI / 2, s * .22);
+  }
+  box(.12, 1.3, 2.4, hull, 0, Y - 2.75, 8.5, .35);
+  // antennae and sensor masts
+  for (const [x, z, hgt] of [[.4, -3, 1.4], [-.4, -2.4, 1.0], [0, 2.5, .8]]) add(new THREE.CylinderGeometry(.03, .05, hgt, 6), grey, x, Y + 2.5 + hgt / 2, z);
+  // landing legs: four, hinged under the hull (setShipRig folds them away)
+  g.userData.legs = [];
+  for (const [x, z] of [[-1.7, -7.5], [1.7, -7.5], [-2.1, 6.5], [2.1, 6.5]]) {
+    const piv = new THREE.Group(); piv.position.set(x, Y - 1.85, z); g.add(piv);
+    add(new THREE.CylinderGeometry(.13, .16, 1.75, 8), grey, 0, -.8, 0, 0, 0, 0, piv);
+    add(new THREE.CylinderGeometry(.08, .08, 1.1, 8), gold, 0, -.6, .18, .25, 0, 0, piv);
+    add(new THREE.CylinderGeometry(.42, .5, .14, 12), panel, 0, -1.62, 0, 0, 0, 0, piv);
+    g.userData.legs.push(piv);
+  }
+  // the boarding ramp, hinged at the stern under the engines (it opens into the cargo deck)
+  const ramp = new THREE.Group(); ramp.position.set(0, Y - 1.95, 8.6); g.add(ramp); g.userData.ramp = ramp;
+  box(2.3, .14, 4.2, panel, 0, 0, 2.1, 0, 0, 0, ramp); box(2.4, .05, .1, gold, 0, .09, 4.15, 0, 0, 0, ramp);
+  for (let i = 0; i < 6; i++) box(2.1, .03, .08, grey, 0, .085, .5 + i * .62, 0, 0, 0, ramp);
+  for (const s of [-1, 1]) box(.06, .5, 4.1, gold, s * 1.12, .25, 2.1, 0, 0, 0, ramp);
+  const rl = new THREE.PointLight(0xffb060, 0, 7, 2); rl.position.set(0, .8, 1.2); ramp.add(rl); g.userData.rampLight = rl;
+  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  setShipRig(g, 0, 0);
+  return g;
+}
+// legs: 0 folded away, 1 down. ramp: 0 shut, 1 down onto the ground
+function setShipRig(S, legs, ramp) {
+  const U = S.userData; if (!U.legs) return;
+  U.legK = legs; U.rampK = ramp;
+  U.legs.forEach((p, i) => { p.rotation.x = (i < 2 ? 1 : -1) * (1 - legs) * 1.45; p.scale.setScalar(.25 + legs * .75); });
+  if (U.ramp) U.ramp.rotation.x = lerp(-1.5, .44, ramp); // shut it sits flush under the stern; down it reaches the ground behind the ship
+  if (U.rampLight) U.rampLight.intensity = ramp * 3;
+}
+function shipNavBlink(S, t) { for (const [i, n] of (S.userData.nav || []).entries()) n.visible = Math.sin(t * 3.2 + i * 1.6) > .2; }
+function makeDropship() { // the Federation dropship from Parliament Square (the prophecy's fleet still uses its shape)
   const g = new THREE.Group(), M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .4, metalness: .6 }, o));
   const add = (geo, m, x, y, z, rx = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.x = rx; g.add(o); return o; };
   const hull = M(0xdfe5ec), dark = M(0x232a33), blue = M(0x2c5f9e), glowM = new THREE.MeshBasicMaterial({ color: 0x7fe6ff }), glass = M(0x0d1a26, { roughness: .1, metalness: .8, emissive: 0x3fb8ff, emissiveIntensity: .25 });
@@ -10618,8 +10830,8 @@ function spaceHud() {
     <div class="sh-obj" id="shObj"></div>
     <div class="sh-prompt" id="shPrompt"></div>
     <div class="sh-marks" id="shMarks"></div>
-    <div class="sh-keys">W / S thrust · A / D turn · ↑ / ↓ or drag to pitch · SHIFT pulse drive · SPACE / F / click fire · M galaxy map · ESC menu</div>
-    <button class="sh-menu" id="shMenu">☰</button><button class="sh-map" id="shMap"><span>GALAXY </span>MAP</button>
+    <div class="sh-keys">W / S thrust · A / D turn · ↑ / ↓ or drag to pitch · SHIFT pulse drive · SPACE / F / click fire · M galaxy map · E walk the ship · ESC menu</div>
+    <button class="sh-menu" id="shMenu">☰</button><button class="sh-map" id="shMap"><span>GALAXY </span>MAP</button><button class="sh-map sh-decks" id="shDecks">DECKS</button>
     <div class="sh-stick" id="shStick"><div class="sh-knob" id="shKnob"></div></div>
     <div class="sh-btns"><button data-b="fire">FIRE</button><button data-b="thrust">THRUST</button><button data-b="pulse">PULSE</button><button data-b="brake">BRAKE</button></div>
     <div class="sh-flash" id="shFlash"></div>
@@ -10627,6 +10839,7 @@ function spaceHud() {
   document.body.appendChild(el);
   el.querySelector('#shMenu').addEventListener('click', () => { sfx.click(); spacePause(true); });
   el.querySelector('#shMap').addEventListener('click', () => { sfx.click(); galOpen(); });
+  el.querySelector('#shDecks').addEventListener('click', () => { sfx.click(); spaceWalkShip(); });
   for (const b of el.querySelectorAll('.sh-btns button')) {
     const k = b.dataset.b, on = v => e => { e.preventDefault(); SPC.btn[k] = v; b.classList.toggle('on', v); };
     b.addEventListener('pointerdown', on(true)); b.addEventListener('pointerup', on(false)); b.addEventListener('pointercancel', on(false)); b.addEventListener('pointerleave', on(false));
@@ -10638,7 +10851,7 @@ function spaceHud() {
   st.addEventListener('pointerup', end); st.addEventListener('pointercancel', end);
   return el;
 }
-addEventListener('keydown', e => { if (state !== 'space') return; if (GAL.open) { if (e.code === 'Escape' || e.code === 'KeyM') { e.preventDefault(); galClose(); } return; } if (SPC.warp) return; if (e.code === 'KeyM') { galOpen(); return; } if (e.code === 'Escape' || e.code === 'KeyP') { spacePause(true); return; } if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault(); SPC.keys.add(e.code); });
+addEventListener('keydown', e => { if (state !== 'space') return; if (GAL.open) { if (e.code === 'Escape' || e.code === 'KeyM') { e.preventDefault(); galClose(); } return; } if (SPC.warp) return; if (e.code === 'KeyM') { galOpen(); return; } if (e.code === 'KeyE') { e.preventDefault(); spaceWalkShip(); return; } if (e.code === 'Escape' || e.code === 'KeyP') { spacePause(true); return; } if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault(); SPC.keys.add(e.code); });
 addEventListener('keyup', e => SPC.keys.delete(e.code));
 canvas.addEventListener('pointerdown', e => { if (state !== 'space' || e.pointerType !== 'mouse') return; SPC.drag = { x: e.clientX, y: e.clientY }; if (e.button === 0) SPC.mouseFire = true; });
 addEventListener('pointermove', e => { if (state !== 'space' || !SPC.drag) return; SPC.dragDX = (SPC.dragDX || 0) + (e.clientX - SPC.drag.x); SPC.dragDY = (SPC.dragDY || 0) + (e.clientY - SPC.drag.y); SPC.drag.x = e.clientX; SPC.drag.y = e.clientY; });
@@ -10679,6 +10892,11 @@ function ch3Init() {
   if (!W3.cellsGiven) { W3.cellsGiven = true; giveItem('warpcell', 5); }
   const c = curChar(); if (c) c.ch3 = W3;
 }
+function spaceWalkShip() { // leave the helm and walk the decks (the ship holds its position)
+  if (state !== 'space' || SPC.warp || SPC.landing || GAL.open) return;
+  if ((SC.foes && SC.foes.length) || scJammed()) { spaceMsg('Not with hostiles about · deal with them first'); return; }
+  SPC.vel = 0; SPC.thr = 0; SPC.pulse = 0; enterShip('space');
+}
 function spaceOff() {
   SPC.on = false; if (GAL.open) galClose(true); const el = $('#spaceHud'); if (el) el.classList.add('hidden');
   camera.near = .1; camera.far = 2000; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
@@ -10698,6 +10916,16 @@ function updateLods() {
       for (let i = 0; i < 3; i++) if (P.lods[i]) P.lods[i].visible = i === want; P.lod = want;
     }
   }
+}
+// the chase camera rides along with the ship (it moves exactly as far as the ship did this frame) and only eases the turns and
+// changes of distance: at pulse speed it used to fall over a kilometre behind and lose the ship. It can never trail far off its spot.
+function spaceCamFollow(cp, dt, k) {
+  const prev = SPC.camShip || (SPC.camShip = new THREE.Vector3());
+  if (!SPC.camInit) { SPC.camPos.copy(cp); prev.copy(SPC.pos); SPC.camInit = true; return; }
+  SPC.camPos.add(tmpVs.subVectors(SPC.pos, prev)); prev.copy(SPC.pos); // keep pace with the ship
+  SPC.camPos.lerp(cp, Math.min(1, dt * k)); // then ease into place behind it
+  const off = tmpVs.subVectors(SPC.camPos, cp), d = off.length(), MAX = 14;
+  if (d > MAX) SPC.camPos.copy(cp).addScaledVector(off, MAX / d);
 }
 function spaceTick(dt) {
   dt = Math.min(dt, .05); SPC.t = (SPC.t || 0) + dt;
@@ -10736,11 +10964,10 @@ function spaceTick(dt) {
     if (sd < lim) { SPC.pos.multiplyScalar(lim / Math.max(1, sd)); SPC.vel *= .5; if (time - (SPC.starMsgT || -9) > 3) { SPC.starMsgT = time; spaceMsg(st.kind === 'hole' ? 'The event horizon · the ship pulls away on its own' : `${st.name} · too hot to fly any closer`); } }
   }
   // the ship, its engines, and the chase camera
-  const sh = SPC.ship; sh.position.copy(SPC.pos); sh.quaternion.copy(SPC.q); sh.rotateZ(clamp(yawIn, -1, 1) * .35);
+  const sh = SPC.ship; sh.position.copy(SPC.pos); sh.quaternion.copy(SPC.q); sh.rotateZ(clamp(yawIn, -1, 1) * .35); shipNavBlink(sh, SPC.t);
   for (const f of sh.userData.flames) { f.scale.set(1, .4 + SPC.thr * .8 + SPC.pulse * 2.2, 1); f.material.opacity = .4 + SPC.thr * .4 + SPC.pulse * .2; }
-  const back = 36 + SPC.pulse * 12, cp = (SPC.cp || (SPC.cp = new THREE.Vector3())).copy(SPC.pos).addScaledVector(fwd, -back).addScaledVector(up, 9);
-  if (!SPC.camInit) { SPC.camPos.copy(cp); SPC.camInit = true; }
-  SPC.camPos.lerp(cp, Math.min(1, dt * 5)); camera.position.copy(SPC.camPos);
+  const back = 46 + SPC.pulse * 14, cp = (SPC.cp || (SPC.cp = new THREE.Vector3())).copy(SPC.pos).addScaledVector(fwd, -back).addScaledVector(up, 11.5);
+  spaceCamFollow(cp, dt, 5); camera.position.copy(SPC.camPos);
   camera.up.copy(up); camera.lookAt(SPC.camLook.copy(SPC.pos).addScaledVector(fwd, 40).addScaledVector(up, 6)); // the ship sits low in the frame, the view ahead stays clear
   camera.fov = lerp(camera.fov, 62 + SPC.pulse * 16, Math.min(1, dt * 3)); camera.updateProjectionMatrix();
   SPC.stars.position.copy(camera.position);
@@ -10929,9 +11156,8 @@ function warpTick(dt) {
   const sh = SPC.ship, shake = t < T2 ? (spool * .5 + (t > T1 ? .35 : 0)) : (1 - out) * .4;
   sh.position.copy(SPC.pos); sh.quaternion.copy(SPC.q);
   for (const f of sh.userData.flames) { f.scale.set(1, .6 + a * 3, 1); f.material.opacity = .5 + a * .4; }
-  const back = 36 + a * 10, cp = SPC.cp.copy(SPC.pos).addScaledVector(fwd, -back).addScaledVector(up, 9);
-  if (!SPC.camInit) { SPC.camPos.copy(cp); SPC.camInit = true; }
-  SPC.camPos.lerp(cp, Math.min(1, dt * 6)); camera.position.copy(SPC.camPos).add(tmpVs.set((Math.random() - .5) * shake, (Math.random() - .5) * shake, 0));
+  const back = 46 + a * 12, cp = SPC.cp.copy(SPC.pos).addScaledVector(fwd, -back).addScaledVector(up, 11.5);
+  spaceCamFollow(cp, dt, 6); camera.position.copy(SPC.camPos).add(tmpVs.set((Math.random() - .5) * shake, (Math.random() - .5) * shake, 0));
   camera.up.copy(up); camera.lookAt(SPC.camLook.copy(SPC.pos).addScaledVector(fwd, 40).addScaledVector(up, 6));
   camera.fov = lerp(camera.fov, 62 + a * 38, Math.min(1, dt * 3)); camera.updateProjectionMatrix();
   SPC.stars.position.copy(camera.position);
@@ -11300,6 +11526,255 @@ function dipHoldUI(text, k) {
   if (!el) { el = document.createElement('div'); el.id = 'xHold'; el.className = 'x-hold'; el.innerHTML = '<span></span><i><u></u></i>'; ui.xhud.appendChild(el); }
   el.classList.add('on'); el.querySelector('span').textContent = text; el.querySelector('u').style.width = `${clamp(k * 100, 0, 100) | 0}%`;
 }
+
+/* ============ aboard the Nostra: three decks you can walk ============
+   Deck 1 (bottom): cargo bay and engine room, the boarding ramp at the stern, a crafting bench and the reactor.
+   Deck 2: crew quarters and the mess, where companions you've dismissed wait (talk to them to bring them back), bunks to rest in.
+   Deck 3 (top): the bridge, with the pilot's seat (take off, or take the helm again in space) and the holo-table.
+   A lift joins the three. Board from the ramp when landed, or press E / tap DECKS in space (not while you're under fire). */
+const SHIPI = { scene: null, decks: [], deck: 0, on: false, from: null, outside: null, rigs: {}, t: 0 };
+const DECK_NAMES = ['Cargo & engines', 'Crew deck', 'Bridge'];
+const SHIP_BOUNDS = [[-3.35, 3.35, -8.4, 8.6], [-3.35, 3.35, -8.4, 8.4], [-3.0, 3.0, -7.6, 8.4]];
+// solid things on each deck: [x0, x1, z0, z1]
+const SHIP_COLS = [
+  [[-3.4, -1.6, 3.4, 7.4], [1.5, 3.4, 4.2, 7.6], [-1.1, 1.1, -7.6, -4.6], [-3.4, -2.2, -2.2, .4], [2.6, 3.4, -1.2, 1.2]],
+  [[-3.4, -2.2, -7.2, 1.0], [-1.1, 1.1, 3.0, 5.6], [2.3, 3.4, -7.8, -3.4], [2.6, 3.4, -1.2, 1.2], [-3.4, -1.6, 6.6, 8.4]],
+  [[-1.0, 1.0, -7.0, -5.9], [-3.0, -2.0, -6.6, -2.6], [2.0, 3.0, -6.6, -2.6], [-1.0, 1.0, -.9, 1.1], [2.3, 3.0, -1.2, 1.2]]
+];
+// things to use: [id, x, z, reach, prompt, button]
+const SHIP_SPOTS = [
+  [['lift', 2.2, 0, 1.4, 'Lift · go to another deck', 'LIFT'], ['bench', -2.0, -1.0, 1.6, 'Crafting bench · craft and build', 'CRAFT'], ['ramp', 0, 7.8, 1.6, 'Ramp · leave the Nostra', 'LEAVE'], ['reactor', 0, -4.2, 1.6, 'The reactor · warp cells, hull and drive', 'CHECK']],
+  [['lift', 2.2, 0, 1.4, 'Lift · go to another deck', 'LIFT'], ['bunk', -1.9, -5.0, 1.5, 'Bunk · rest (restores your health)', 'REST'], ['galley', 1.9, -5.6, 1.5, 'Galley · cook (craft food)', 'COOK']],
+  [['lift', 1.9, 0, 1.4, 'Lift · go to another deck', 'LIFT'], ['pilot', 0, -5.3, 1.4, 'Pilot’s seat · fly the Nostra', 'FLY'], ['holo', 0, 1.6, 1.4, 'Holo-table · the galaxy map', 'MAP']]
+];
+const CREW_SPOTS = [[-1.6, 2.0, Math.PI / 2], [1.6, 2.0, -Math.PI / 2], [-1.4, 6.0, Math.PI / 2], [0, 7.0, Math.PI], [1.4, -1.8, -Math.PI / 2], [-1.5, -2.2, Math.PI / 2]];
+function shipInterior() {
+  if (SHIPI.scene) return SHIPI.scene;
+  const S = SHIPI.scene = new THREE.Scene(); S.background = new THREE.Color(0x05060a); S.fog = new THREE.Fog(0x05060a, 14, 30);
+  S.add(new THREE.HemisphereLight(0xc8d4ff, 0x3a2a18, 1.5)); S.add(new THREE.AmbientLight(0x404048, .6));
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .55, metalness: .55 }, o));
+  const hull = M(0x353a44), dark = M(0x1e2228), panel = M(0x444a55, { roughness: .45 }), gold = M(0xc9a24a, { metalness: .9, roughness: .28, emissive: 0x3a2a08, emissiveIntensity: .4 });
+  const amberL = new THREE.MeshStandardMaterial({ color: 0xffc06a, emissive: 0xffa040, emissiveIntensity: 1.4 }), blueL = new THREE.MeshStandardMaterial({ color: 0x8fe8ff, emissive: 0x4fc8ff, emissiveIntensity: 1.6 });
+  const cloth = M(0x3a2a24, { metalness: .05, roughness: .9 }), wood = M(0x4a3424, { metalness: .1, roughness: .7 }), screen = new THREE.MeshStandardMaterial({ color: 0x0a1a24, emissive: 0x2a8ac8, emissiveIntensity: 1.1 });
+  const grate = canvasTex(256, 256, (c, w) => { c.fillStyle = '#16191e'; c.fillRect(0, 0, w, w); c.strokeStyle = '#2a2f37'; c.lineWidth = 6; for (let i = 0; i <= 8; i++) { c.beginPath(); c.moveTo(i * 32, 0); c.lineTo(i * 32, w); c.stroke(); c.beginPath(); c.moveTo(0, i * 32); c.lineTo(w, i * 32); c.stroke(); } c.fillStyle = '#c9a24a'; c.fillRect(0, 0, w, 3); });
+  grate.wrapS = grate.wrapT = THREE.RepeatWrapping; grate.repeat.set(4, 9);
+  const stars = canvasTex(512, 256, (c, w, hh) => { const gr = c.createLinearGradient(0, 0, w, hh); gr.addColorStop(0, '#0a0614'); gr.addColorStop(.5, '#1a0c2a'); gr.addColorStop(1, '#06101c'); c.fillStyle = gr; c.fillRect(0, 0, w, hh); for (let i = 0; i < 70; i++) { c.fillStyle = `rgba(${180 + Math.random() * 75 | 0},${150 + Math.random() * 60 | 0},255,${.15 + Math.random() * .25})`; c.beginPath(); c.arc(Math.random() * w, Math.random() * hh, 8 + Math.random() * 40, 0, 7); c.fill(); } for (let i = 0; i < 500; i++) { c.fillStyle = `rgba(255,255,255,${Math.random()})`; c.fillRect(Math.random() * w, Math.random() * hh, 1.5, 1.5); } });
+  const view = new THREE.MeshBasicMaterial({ map: stars }); SHIPI.viewMat = view;
+  for (let d = 0; d < 3; d++) {
+    const g = new THREE.Group(); g.visible = false; S.add(g); SHIPI.decks.push(g);
+    const add = (geo, m, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, par = g) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); o.castShadow = o.receiveShadow = true; par.add(o); return o; };
+    const box = (w, hh, dd, m, x, y, z, rx, ry, rz, par) => add(new THREE.BoxGeometry(w, hh, dd), m, x, y, z, rx, ry, rz, par);
+    const [x0, x1, z0, z1] = SHIP_BOUNDS[d], W = x1 - x0 + .4, L = z1 - z0 + .4, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, H = 3.1;
+    // floor, ceiling, walls with ribs, gold strips, lights
+    const fl = add(new THREE.PlaneGeometry(W, L), M(0xffffff, { map: grate, roughness: .7, metalness: .6 }), cx, 0, cz, -Math.PI / 2);
+    box(W, .1, L, dark, cx, H, cz);
+    for (const s of [-1, 1]) {
+      const xw = s < 0 ? x0 - .2 : x1 + .2;
+      box(.2, H, L, hull, xw, H / 2, cz); // wall
+      box(.6, .2, L, panel, xw - s * .35, H - .25, cz, 0, 0, s * .6); // the hull curving in overhead
+      box(.04, .05, L, gold, xw - s * .11, .9, cz); box(.04, .05, L, gold, xw - s * .11, 2.2, cz);
+      box(.05, .06, L - .4, amberL, xw - s * .45, .04, cz); // floor edge lights
+      for (let z = z0 + .8; z < z1 - .4; z += 1.6) { box(.16, H, .14, panel, xw - s * .1, H / 2, z); box(.1, .06, .2, gold, xw - s * .17, 1.55, z); } // ribs
+      // portholes showing the stars
+      for (let z = z0 + 1.6; z < z1 - 1.2; z += 3.2) { add(new THREE.PlaneGeometry(.8, .5), view, xw - s * .11, 1.65, z, 0, -s * Math.PI / 2); add(new THREE.TorusGeometry(.42, .05, 6, 20), gold, xw - s * .12, 1.65, z, 0, Math.PI / 2, 0).scale.set(1, .65, 1); }
+    }
+    box(W, H, .2, hull, cx, H / 2, z1 + .2); box(W, H, .2, hull, cx, H / 2, z0 - .2);
+    for (let z = z0 + 1.5; z < z1; z += 3) { box(1.6, .05, .5, amberL, cx, H - .07, z); const pl = new THREE.PointLight(0xffe2b8, 7, 10, 1.6); pl.position.set(cx, H - .4, z); g.add(pl); }
+    for (const s of [-1, 1]) { const wl = new THREE.PointLight(0x9fc8ff, 2.5, 6, 2); wl.position.set(s * (W / 2 - .6), 1.2, cz); g.add(wl); } // cool light off the walls
+    // the lift: a glass tube with a glowing pad, on the starboard side
+    const lx = d === 2 ? 2.6 : 3.0;
+    add(new THREE.CylinderGeometry(.75, .75, .06, 24), blueL, lx, .03, 0); add(new THREE.CylinderGeometry(.8, .8, H, 24, 1, true), M(0x6fa8c8, { transparent: true, opacity: .18, roughness: .05, side: THREE.DoubleSide }), lx, H / 2, 0);
+    add(new THREE.TorusGeometry(.8, .05, 6, 24), gold, lx, .1, 0, Math.PI / 2); add(new THREE.TorusGeometry(.8, .05, 6, 24), gold, lx, H - .1, 0, Math.PI / 2);
+    const sign = canvasTex(256, 64, (c, w, hh) => { c.fillStyle = '#081018'; c.fillRect(0, 0, w, hh); c.fillStyle = '#8fe8ff'; c.font = 'bold 26px Arial'; c.textAlign = 'center'; c.fillText(`DECK ${d + 1} · ${DECK_NAMES[d].toUpperCase()}`, w / 2, 41); });
+    add(new THREE.PlaneGeometry(1.4, .35), new THREE.MeshBasicMaterial({ map: sign }), lx - .9, 2.4, -.9, 0, -Math.PI / 4);
+    if (d === 0) { // ---- cargo bay and engine room ----
+      // the ramp door at the stern, and its warning stripes
+      box(2.6, 2.6, .12, panel, 0, 1.3, z1 + .1); for (let i = 0; i < 6; i++) box(.32, .08, .14, i % 2 ? dark : gold, -1.0 + i * .4, 2.55, z1 + .05, 0, 0, .6);
+      box(2.8, .06, .2, amberL, 0, 2.75, z1);
+      // cargo: crates and containers, strapped down
+      for (const [x, y, z, w, hh, dd, c] of [[-2.5, .5, 4.4, 1.0, 1.0, 1.0, 0x4a3a2a], [-2.5, 1.5, 4.4, 1.0, 1.0, 1.0, 0x3a4a5a], [-2.4, .5, 5.6, 1.2, 1.0, 1.2, 0x5a4a2a], [-2.0, .6, 6.8, 1.6, 1.2, 1.0, 0x2a3a2a], [2.4, .7, 5.0, 1.4, 1.4, 1.4, 0x2e3440], [2.5, .45, 6.8, 1.2, .9, 1.4, 0x4a3a2a]]) { box(w, hh, dd, M(c, { metalness: .3 }), x, y, z); box(w + .02, .06, dd + .02, gold, x, y + hh / 2 - .1, z); }
+      // the reactor: a glowing core in a gold cage, conduits running aft
+      const core = add(new THREE.CylinderGeometry(.42, .42, 2.6, 20), blueL, 0, 1.4, -6.1); SHIPI.core = core;
+      for (let i = 0; i < 4; i++) add(new THREE.TorusGeometry(.75, .06, 6, 28), gold, 0, .3 + i * .78, -6.1, Math.PI / 2);
+      for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; box(.08, 2.9, .08, panel, Math.cos(a) * .8, 1.45, -6.1 + Math.sin(a) * .8); }
+      const rl = new THREE.PointLight(0x6fd8ff, 4, 9, 2); rl.position.set(0, 1.6, -5.2); g.add(rl); SHIPI.coreLight = rl;
+      for (const s of [-1, 1]) add(new THREE.CylinderGeometry(.12, .12, 9, 10), M(0x3a3f48), s * 1.2, 2.75, -1.6, Math.PI / 2);
+      // the crafting bench, tools on a rack
+      box(1.2, .9, 2.4, wood, -2.8, .45, -.9); box(1.25, .06, 2.45, gold, -2.8, .92, -.9); box(.05, 1.2, 2.2, panel, -3.35, 1.6, -.9);
+      for (let i = 0; i < 5; i++) box(.05, .45, .06, M(0x9aa3ad, { metalness: .8 }), -3.3, 1.6, -1.8 + i * .45);
+      add(new THREE.PlaneGeometry(.9, .55), screen, -2.3, 1.5, -2.25, 0, 0, 0);
+      // a weapon rack on the starboard wall
+      for (let i = 0; i < 3; i++) { const r = new THREE.Group(); r.position.set(3.3, 1.5, -3.2 - i * .7); r.rotation.set(0, -Math.PI / 2, Math.PI / 2 - .1); g.add(r); box(.06, .9, .1, M(0x1a1a22, { metalness: .7 }), 0, 0, 0, 0, 0, 0, r); box(.03, .4, .03, M(0x15171b), 0, -.6, .03, 0, 0, 0, r); }
+    } else if (d === 1) { // ---- crew quarters and the mess ----
+      // four bunks along the port wall, two high, with curtains and reading lamps
+      for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { const z = -6.2 + i * 3.6, y = .45 + j * 1.25; box(1.1, .25, 2.4, panel, -2.8, y, z); box(1.0, .14, 2.2, cloth, -2.8, y + .18, z); box(.9, .1, .4, M(0xd8d0c0, { metalness: 0 }), -2.8, y + .3, z - .85); box(.04, .9, 2.3, M(0x4a2a2a, { metalness: 0, roughness: .95 }), -2.25, y + .65, z); box(.1, .06, .1, amberL, -3.2, y + .75, z - .9); }
+      box(.08, 2.9, 7.6, panel, -2.2, 1.45, -3.0).visible = false;
+      // the mess table and benches
+      box(1.6, .08, 2.8, wood, 0, .78, 4.3); box(.2, .74, .2, panel, 0, .37, 4.3); box(1.65, .03, 2.85, gold, 0, .8, 4.3);
+      for (const s of [-1, 1]) { box(.45, .45, 2.6, cloth, s * 1.3, .23, 4.3); box(.5, .06, 2.65, panel, s * 1.3, .47, 4.3); }
+      for (const [x, z] of [[-.4, 3.6], [.4, 4.9], [0, 4.2]]) add(new THREE.CylinderGeometry(.06, .05, .12, 10), M(0xe8e0d0, { metalness: 0 }), x, .88, z);
+      // the galley along the starboard wall
+      box(1.1, .95, 4.4, panel, 2.85, .48, -5.6); box(1.15, .06, 4.45, M(0x9aa3ad, { metalness: .8, roughness: .3 }), 2.85, .97, -5.6); box(.5, .9, 4.2, dark, 3.1, 2.2, -5.6);
+      add(new THREE.PlaneGeometry(.6, .35), screen, 2.33, 1.5, -4.2, 0, -Math.PI / 2); for (let i = 0; i < 3; i++) add(new THREE.CylinderGeometry(.14, .14, .04, 16), M(0x1a1a1f), 2.75, 1.0, -6.8 + i * .5);
+      // the lounge at the stern: a curved sofa and a low table
+      box(1.8, .45, .7, cloth, -2.5, .23, 7.5); box(.7, .45, 1.6, cloth, -3.0, .23, 6.6); box(1.0, .35, .8, wood, -1.6, .18, 6.4); box(1.0, .04, .8, gold, -1.6, .37, 6.4);
+      // lockers by the lift
+      for (let i = 0; i < 3; i++) { box(.5, 2.2, .6, panel, 3.1, 1.1, 2.0 + i * .65); box(.02, .3, .04, gold, 2.84, 1.2, 1.8 + i * .65); }
+    } else { // ---- the bridge ----
+      // the great window at the bow, and the stars (or the sky) outside
+      const win = add(new THREE.PlaneGeometry(6.0, 2.0), view, 0, 1.75, z0 - .08); SHIPI.window = win;
+      box(6.2, .12, .2, gold, 0, .72, z0 - .02); box(6.2, .12, .2, gold, 0, 2.78, z0 - .02); for (const x of [-2, 0, 2]) box(.12, 2.1, .18, panel, x, 1.75, z0 - .02);
+      // the pilot's seat and its console
+      box(.7, .5, .7, M(0x2a1e18, { metalness: .1, roughness: .8 }), 0, .45, -5.3); box(.7, .9, .14, M(0x2a1e18, { metalness: .1, roughness: .8 }), 0, 1.05, -4.95); box(.75, .05, .75, gold, 0, .7, -5.3);
+      box(1.9, .9, .6, panel, 0, .45, -6.45); add(new THREE.PlaneGeometry(1.6, .45), screen, 0, 1.0, -6.12, -.5);
+      for (const s of [-1, 1]) { box(.08, .6, .08, M(0x9aa3ad, { metalness: .8 }), s * .35, .95, -5.9); add(new THREE.SphereGeometry(.06, 8, 6), blueL, s * .35, 1.27, -5.9); }
+      // side stations with screens
+      for (const s of [-1, 1]) { box(1.0, .9, 4.0, panel, s * 2.5, .45, -4.6); for (let i = 0; i < 3; i++) add(new THREE.PlaneGeometry(.9, .4), screen, s * 2.0, 1.05, -6.0 + i * 1.3, -.5, s * Math.PI / 2 * -1, 0).rotation.order = 'YXZ'; box(.4, .5, .4, M(0x2a1e18, { metalness: .1 }), s * 1.6, .25, -4.6); }
+      // the holo-table: a slowly turning galaxy over a gold ring
+      box(2.0, .8, 2.0, panel, 0, .4, .1); add(new THREE.TorusGeometry(.95, .06, 6, 32), gold, 0, .82, .1, Math.PI / 2);
+      const holo = new THREE.Group(); holo.position.set(0, 1.35, .1); g.add(holo); SHIPI.holo = holo;
+      const pts = new Float32Array(900 * 3); for (let i = 0; i < 900; i++) { const arm = i % 3, r = Math.random() * .8, a = r * 5 + arm * 2.1 + (Math.random() - .5) * .5; pts[i * 3] = Math.cos(a) * r; pts[i * 3 + 1] = (Math.random() - .5) * .06; pts[i * 3 + 2] = Math.sin(a) * r; }
+      const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pts, 3)); holo.add(new THREE.Points(pg, new THREE.PointsMaterial({ color: 0x8fe8ff, size: .035, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false })));
+      const hl = new THREE.PointLight(0x6fd8ff, 2.5, 5, 2); hl.position.set(0, 1.6, .1); g.add(hl);
+      // the captain's chair at the stern of the bridge
+      box(.8, .5, .8, M(0x3a1e18, { metalness: .1, roughness: .8 }), 0, .45, 5.2); box(.8, 1.2, .14, M(0x3a1e18, { metalness: .1, roughness: .8 }), 0, 1.2, 5.6); box(.85, .05, .85, gold, 0, .72, 5.2);
+      // the ship's name over the lift
+      const nm = canvasTex(512, 96, (c, w, hh) => { c.fillStyle = '#0c0d10'; c.fillRect(0, 0, w, hh); c.fillStyle = '#d8a840'; c.font = '900 64px Arial Black, Arial'; c.textAlign = 'center'; c.fillText('NV1 · NOSTRA', w / 2, 70); });
+      add(new THREE.PlaneGeometry(2.4, .45), new THREE.MeshBasicMaterial({ map: nm }), 0, 2.6, z1 + .08, 0, Math.PI, 0);
+    }
+  }
+  return S;
+}
+function shipShowDeck(d) { SHIPI.deck = d; SHIPI.decks.forEach((g, i) => { g.visible = i === d; }); shipCrewPlace(); }
+// companions waiting aboard stand (or sit) about the crew deck
+async function shipCrewPlace() {
+  const want = aboardIds();
+  for (const [id, R] of Object.entries(SHIPI.rigs)) if (!want.includes(id) && R.root.parent) R.root.parent.remove(R.root);
+  for (const [i, id] of want.entries()) {
+    let R = SHIPI.rigs[id];
+    if (!R) { try { R = SHIPI.rigs[id] = await compRigFor(id); } catch (e) { console.warn('aboard rig failed', id, e); continue; } }
+    if (!R) continue;
+    const [x, z, ry] = CREW_SPOTS[i % CREW_SPOTS.length]; R.mode = 'idle'; R.root.position.set(x, 0, z); R.root.rotation.y = ry;
+    if (SHIPI.decks[1] && R.root.parent !== SHIPI.decks[1]) SHIPI.decks[1].add(R.root);
+  }
+}
+async function compRigFor(id) { // a fresh rig of a companion, for the ship
+  if (id === 'nico') return nicoCompanionRig();
+  if (id === 'orion') { const el = document.getElementById('cpOrion'), bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); const R = autoRig(SkeletonUtils.clone(await parseGlb(u8.buffer)), 1.85); armRig(R, 'rifle'); return R; }
+  const c = charById(id); return c ? loadCharRig(c, 1.85) : null;
+}
+function enterShip(from) {
+  if (SHIPI.on) return;
+  shipInterior(); SHIPI.on = true; SHIPI.from = from; SHIPI.outside = from === 'space' ? currentPlace() : null;
+  if (from === 'space') { SPC.keys.clear(); const el = $('#spaceHud'); if (el) el.classList.add('hidden'); camera.near = .1; camera.far = 200; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0); }
+  else { SHIPI.outside = currentPlace(); if (world.landShip) setShipRig(world.landShip, 1, 1); }
+  SHIPI.viewMat.color.set(from === 'space' ? 0xffffff : 0xb0c8e0);
+  ex.mode = 'ship'; state = 'explore'; closeModals(); show(ui.xhud, true); ui.xhud.classList.remove('world'); ui.xhud.classList.add('aboard');
+  SHIPI.scene.add(player); player.visible = true; resetRig();
+  const d = from === 'space' ? 2 : 0; shipShowDeck(d);
+  if (d === 0) { player.position.set(0, 0, 6.8); player.rotation.y = Math.PI; } else { player.position.set(0, 0, 3.4); player.rotation.y = Math.PI; }
+  ex.yaw = player.rotation.y + Math.PI; ex.pitch = .2; ex.dist = Math.min(ex.dist || 4, 3.4); vel.set(0, 0, 0); ex.snap = true;
+  ui.xhud.classList.remove('cutting', 'cineonly', 'dreaming'); renderTasks();
+  notice(from === 'space' ? 'Aboard · in flight' : 'Aboard', 'THE NOSTRA', 2400); sfx.whoosh(); renderHotbar();
+}
+function leaveShip(to) { // to: 'ground' (down the ramp), 'space' (back to the helm), or 'takeoff'
+  if (!SHIPI.on) return;
+  SHIPI.on = false; ui.xhud.classList.remove('aboard'); xUI.prompt.classList.remove('on'); xUI.act.classList.remove('on');
+  if (to === 'space') { state = 'space'; ex.mode = 'space'; show(ui.xhud, false); spaceHud().classList.remove('hidden'); camera.near = 1; camera.far = 1.4e6; camera.updateProjectionMatrix(); SPC.camInit = false; SPC.vel = Math.min(SPC.vel, 60); clock.getDelta(); return; }
+  wScene.add(player); ex.mode = 'world'; ui.xhud.classList.add('world');
+  const z = 13.2; player.position.set(0, wHeight(0, z), z); player.rotation.y = 0; ex.yaw = Math.PI; ex.snap = true; vel.set(0, 0, 0);
+  if (to === 'takeoff') { takeOff(); return; }
+  if (world.landShip) setShipRig(world.landShip, 1, 1);
+  if (orionJoined()) placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
+}
+function updateShipMode(dt) {
+  const p = player.position, d = ex.dlg; SHIPI.t += dt;
+  if (SHIPI.core) { SHIPI.core.material.emissiveIntensity = 1.4 + Math.sin(SHIPI.t * 3) * .4; SHIPI.coreLight.intensity = 3.5 + Math.sin(SHIPI.t * 3) * 1; }
+  if (SHIPI.holo) SHIPI.holo.rotation.y += dt * .25;
+  for (const R of Object.values(SHIPI.rigs)) if (R.root.parent) animRig(R, dt);
+  // walking
+  let ix = ex.joyX, iy = ex.joyY; const k = ex.keys;
+  if (k.has('KeyA') || k.has('ArrowLeft')) ix -= 1; if (k.has('KeyD') || k.has('ArrowRight')) ix += 1;
+  if (k.has('KeyW') || k.has('ArrowUp')) iy += 1; if (k.has('KeyS') || k.has('ArrowDown')) iy -= 1;
+  if (d || ex.invOpen) ix = iy = 0;
+  const mag = Math.hypot(ix, iy); if (mag > 1) { ix /= mag; iy /= mag; }
+  const SP = k.has('ShiftLeft') || k.has('ShiftRight') ? 4.2 : 2.8, fx_ = -Math.sin(ex.yaw), fz = -Math.cos(ex.yaw), rx = Math.cos(ex.yaw), rz = -Math.sin(ex.yaw);
+  vel.x += ((rx * ix + fx_ * iy) * SP - vel.x) * Math.min(1, dt * 10); vel.z += ((rz * ix + fz * iy) * SP - vel.z) * Math.min(1, dt * 10);
+  const blocked = (x, z) => { const [x0, x1, z0, z1] = SHIP_BOUNDS[SHIPI.deck]; if (x < x0 || x > x1 || z < z0 || z > z1) return true; for (const [a, b, c, e] of SHIP_COLS[SHIPI.deck]) if (x > a - .28 && x < b + .28 && z > c - .28 && z < e + .28) return true; if (SHIPI.deck === 1) for (const [i] of aboardIds().entries()) { const [cx2, cz2] = CREW_SPOTS[i % CREW_SPOTS.length]; if (Math.hypot(x - cx2, z - cz2) < .55) return true; } return false; };
+  const nx = p.x + vel.x * dt; if (!blocked(nx, p.z)) p.x = nx; else vel.x = 0;
+  const nz = p.z + vel.z * dt; if (!blocked(p.x, nz)) p.z = nz; else vel.z = 0;
+  p.y = 0;
+  if (Math.hypot(vel.x, vel.z) > .2) player.rotation.y = angLerp(player.rotation.y, Math.atan2(vel.x, vel.z), Math.min(1, dt * 10));
+  // what's in reach
+  let best = null, bd = 1e9;
+  for (const [id, x, z, r, label, btn] of SHIP_SPOTS[SHIPI.deck]) { const dd = Math.hypot(x - p.x, z - p.z); if (dd < r && dd < bd) { bd = dd; best = { id, label, btn }; } }
+  if (SHIPI.deck === 1) aboardIds().forEach((id, i) => { const [x, z] = CREW_SPOTS[i % CREW_SPOTS.length], dd = Math.hypot(x - p.x, z - p.z); if (dd < 1.5 && dd < bd) { bd = dd; best = { id: 'aboard', who: id, label: `Talk to ${compName(id)}`, btn: 'TALK' }; } });
+  if (best && best.id === 'ramp' && SHIPI.from === 'space') best = { id: 'rampSealed', label: 'Ramp · sealed (you’re in space)', btn: 'SEALED' };
+  if (best && best.id === 'pilot') best.label = SHIPI.from === 'space' ? 'Pilot’s seat · take the helm' : 'Pilot’s seat · take off';
+  if (best && best.id === 'holo' && SHIPI.from !== 'space') best.label = 'Holo-table · the galaxy (open it in flight)';
+  ex.near = best;
+  const showP = !!best && !d && !ex.invOpen;
+  xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
+  if (best) { xUI.promptT.textContent = best.label; xUI.act.textContent = best.btn; }
+  $('#xNav').textContent = `The Nostra · Deck ${SHIPI.deck + 1} · ${DECK_NAMES[SHIPI.deck]}`;
+  // health and stamina bars (aboard there's nothing to hurt you, and you get your breath back)
+  if (ex.hp == null) ex.hp = Math.min(maxHP(), invState().hp == null ? maxHP() : invState().hp); ex.sta = Math.min(100, (ex.sta == null ? 100 : ex.sta) + 30 * dt);
+  const hb = $('#hpBar'), sb = $('#staBar'); if (hb) hb.firstChild.style.transform = `scaleX(${ex.hp / maxHP()})`; if (sb) sb.firstChild.style.transform = `scaleX(${ex.sta / 100})`;
+}
+function shipCamera(dt) {
+  const p = player.position, hy = headYFor(wanderer), [x0, x1, z0, z1] = SHIP_BOUNDS[SHIPI.deck];
+  const tgt = tmpV.set(p.x, hy * .85, p.z), dd = (ex.dist || 3.4) * (camera.aspect < .8 ? 1.2 : 1);
+  let cx = tgt.x + Math.sin(ex.yaw) * Math.cos(ex.pitch) * dd, cz = tgt.z + Math.cos(ex.yaw) * Math.cos(ex.pitch) * dd, cy = tgt.y + Math.sin(ex.pitch) * dd;
+  cx = clamp(cx, x0 + .1, x1 - .1); cz = clamp(cz, z0 + .1, z1 - .1); cy = clamp(cy, .6, 2.85);
+  const kk = ex.snap ? 1 : Math.min(1, dt * 9); camera.position.lerp(tmpV2.set(cx, cy, cz), kk); lookTarget.lerp(tgt, ex.snap ? 1 : Math.min(1, dt * 12)); ex.snap = false; camera.lookAt(lookTarget);
+}
+async function shipInteract(n) {
+  if (n.id === 'lift') { openChoice('THE LIFT', [0, 1, 2].filter(i => i !== SHIPI.deck).map(i => ({ text: `Deck ${i + 1} · ${DECK_NAMES[i]}`, onPick: () => shipLift(i) })).concat([{ text: 'Stay here', onPick: () => {} }])); return; }
+  if (n.id === 'bench' || n.id === 'galley') { openInv(true); return; }
+  if (n.id === 'ramp') { leaveShip('ground'); return; }
+  if (n.id === 'rampSealed') { lootMsg('The ramp stays sealed in space · land first', '#ff8f86'); return; }
+  if (n.id === 'reactor') { lootMsg(`Reactor steady · ${have('warpcell')} warp cell${have('warpcell') === 1 ? '' : 's'} · hyperdrive Mk ${['—', 'I', 'II', 'III'][driveTier()] || '—'} · hull ${Math.round(SC.hull || 100)}%`, '#8fe8ff'); return; }
+  if (n.id === 'bunk') { const m = maxHP(); if (ex.hp >= m) { lootMsg('You’re already rested', '#cfd6e6'); return; } const f = $('#fade'); f.style.transition = 'opacity .5s'; f.style.opacity = 1; setTimeout(() => { ex.hp = m; invState().hp = m; f.style.opacity = 0; lootMsg('Rested · health restored', '#7fe0a0'); }, 700); return; }
+  if (n.id === 'pilot') { if (SHIPI.from === 'space') leaveShip('space'); else leaveShip('takeoff'); return; }
+  if (n.id === 'holo') { if (SHIPI.from === 'space') { leaveShip('space'); setTimeout(() => galOpen(), 50); } else lootMsg('The galaxy map works in flight · take off first', '#cfd6e6'); return; }
+  if (n.id === 'aboard') { aboardTalk(n.who); return; }
+}
+function shipLift(d) {
+  const f = $('#fade'); f.style.transition = 'opacity .35s'; f.style.opacity = 1; sfx.whoosh();
+  setTimeout(() => { shipShowDeck(d); const [x, z] = d === 2 ? [1.0, 0] : [1.3, 0]; player.position.set(x, 0, z); player.rotation.y = -Math.PI / 2; ex.yaw = player.rotation.y + Math.PI; ex.snap = true; f.style.opacity = 0; notice('The Nostra', `DECK ${d + 1} · ${DECK_NAMES[d].toUpperCase()}`, 1600); }, 380);
+}
+/* ---- dismissing companions: they go and wait aboard the Nostra, each with their own goodbye ---- */
+const DISMISS_LINES = {
+  orion: ['I’ll wait aboard the Nostra. Put the kettle on when you get back, and don’t do anything I wouldn’t.', 'Back aboard? Good. Lead on, friend.'],
+  nico: ['I’ll keep the Nostra warm. Try not to get yourself shot without me.', 'About time. Both guns are ready.'],
+  james: ['I’ll head back to the ship. Holler if you need me.', 'Right behind you.']
+};
+const dismissLine = id => (DISMISS_LINES[id] || [`I’ll be aboard the Nostra if you need me.`, 'Let’s go.'])[0];
+const recallLine = id => (DISMISS_LINES[id] || [null, 'Let’s go.'])[1];
+const aboardIds = () => Object.keys((wanderer && wanderer.aboard) || {}).filter(id => wanderer.aboard[id]);
+const canDismiss = () => !!(wanderer && ((wanderer.chapter | 0) >= 3 || (wanderer.ch2 && wanderer.ch2.escapedLondon))); // once you have the Nostra
+function dismissCompanion(id) {
+  if (!canDismiss()) { lootMsg('There’s nowhere to send them yet · you’ll have a ship in Chapter III', '#ff8f86'); return; }
+  wanderer.aboard = Object.assign({}, wanderer.aboard, { [id]: true }); const c = curChar(); if (c) c.aboard = wanderer.aboard; saveRoster();
+  const nm = (PARTY[id] || {}).full || compName(id);
+  openDialog(nm.toUpperCase(), [dismissLine(id)], false, () => {});
+  if (id === 'orion' && world.orion) world.orion.root.visible = false;
+  if (CREW[id] && CREW[id].R) CREW[id].R.root.visible = false;
+  setTimeout(() => lootMsg(`${compName(id)} is waiting aboard the Nostra (crew deck)`, compColor(id)), 400);
+  ex.cSel = null; refreshJamesUI(); placeCrew().catch(() => null);
+  ui.xhud.classList.toggle('comp', companionOn() || partyNow().length > 0);
+}
+function aboardTalk(id) {
+  const nm = ((PARTY[id] || {}).full || compName(id)).toUpperCase();
+  openChoice(nm, [{ text: 'Come with me.', onPick: () => recallCompanion(id) }, { text: 'Stay aboard for now.', onPick: () => lootMsg(`${compName(id)} stays aboard`, compColor(id)) }]);
+}
+function recallCompanion(id) {
+  if (!wanderer.aboard) return; delete wanderer.aboard[id]; const c = curChar(); if (c) c.aboard = wanderer.aboard; saveRoster();
+  setTimeout(() => openDialog(((PARTY[id] || {}).full || compName(id)).toUpperCase(), [recallLine(id)], false, () => {}), 80);
+  shipCrewPlace(); ex.cSel = id; refreshJamesUI(); ui.xhud.classList.add('comp');
+  lootMsg(`${compName(id)} rejoins you`, compColor(id));
+}
+
 /* ---- Nico (Lady Luck): your companion from Chapter III on, with the same five orders as Orion and James ---- */
 const nicoJoined = () => !!(wanderer && ((wanderer.chapter | 0) >= 3 || (wanderer.ch2 && wanderer.ch2.escapedLondon)));
 function nicoLevel() { return clamp(29 + levelInfo((wanderer && wanderer.xp) || 0).level, 30, 100); } // level 30 in the escape, and rising with you
@@ -11874,7 +12349,8 @@ async function landOn(P, dir, place) {
   enterWorld(pl); buildCity(); await placeOrion().catch(() => null); placeGivers().catch(() => null);
   // your ship, set down on the ground
   if (!world.landShip) world.landShip = makeShip();
-  wScene.add(world.landShip); world.landShip.position.set(0, wHeight(0, 0) + 1.7, 0); world.landShip.rotation.set(0, 0, 0); world.landShip.visible = true;
+  setShipRig(world.landShip, 1, 1);
+  wScene.add(world.landShip); world.landShip.position.set(0, wHeight(0, 0) + 2.7, 0); world.landShip.rotation.set(0, 0, 0); world.landShip.visible = true;
   for (const f of world.landShip.userData.flames) f.visible = false;
   const W3 = wanderer.ch3 = Object.assign({}, wanderer.ch3, { landed: true, lastPlanet: P.id }); const c = curChar(); if (c) c.ch3 = W3; saveRoster();
   const f = $('#shFlash'); if (f) f.classList.remove('on');
@@ -11883,7 +12359,7 @@ async function landOn(P, dir, place) {
   SPC.descent = { t: 0 }; state = 'shipLand'; show(ui.xhud, false); player.visible = false; for (const fl of world.landShip.userData.flames) fl.visible = true;
 }
 function shipLandTick(dt) {
-  const D = SPC.descent, S = world.landShip, gy = wHeight(0, 0) + 1.7; D.t += dt; const k = smooth(0, 3.2, D.t);
+  const D = SPC.descent, S = world.landShip, gy = wHeight(0, 0) + 2.7; D.t += dt; const k = smooth(0, 3.2, D.t); setShipRig(S, smooth(1.8, 3.0, D.t), smooth(3.0, 3.6, D.t));
   S.position.set(0, lerp(gy + 90, gy, k), lerp(-60, 0, k)); S.rotation.x = lerp(-.35, 0, k);
   for (const f of S.userData.flames) f.scale.set(1, 1.6 - k, 1);
   camera.position.set(26, gy + 12, 30); camera.lookAt(S.position);
@@ -11900,11 +12376,11 @@ function takeOff() {
   SPC.ascent = { t: 0 }; state = 'shipUp'; show(ui.xhud, false); player.visible = false; if (world.orion) world.orion.root.visible = false; for (const f of S.userData.flames) f.visible = true; sfx.whoosh();
 }
 function shipUpTick(dt) {
-  const A = SPC.ascent, S = world.landShip, gy = wHeight(0, 0) + 1.7; A.t += dt; const k = A.t * A.t * .35;
+  const A = SPC.ascent, S = world.landShip, gy = wHeight(0, 0) + 2.7; A.t += dt; const k = A.t * A.t * .35; setShipRig(S, 1 - smooth(.3, 1.4, A.t), 1 - smooth(0, .5, A.t));
   S.position.set(0, gy + k * 30, -k * 18); S.rotation.x = -Math.min(.4, A.t * .2);
   camera.position.set(22, gy + 10 + k * 8, 28); camera.lookAt(S.position);
   if (A.t > 2.6) {
-    const W = world.planet; S.visible = false; if (world.orion) world.orion.root.visible = true;
+    const W = world.planet; S.visible = false; setShipRig(S, 1, 1); if (world.orion) world.orion.root.visible = true;
     rememberPlaceSafe(); ui.xhud.classList.remove('world');
     spaceOn({ fromPlanet: W.P.id, dir: W.D.toArray() });
   }
@@ -11921,9 +12397,14 @@ async function startChapter3(place) {
   const f = $('#fade'); f.style.transition = 'opacity 1.6s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 1700);
   if (place && place.where && String(place.where).startsWith('pl:')) {
     const P = bodyById(String(place.where).slice(3)); if (P) SPC.sys = P.sys; buildSpace(); if (P) setSystem(P.sys);
-    if (P && place.dir) { try { await landOn(P, new THREE.Vector3().fromArray(place.dir), place); } finally { SPC.booting = false; } return; }
+    if (P && place.dir) { try { await landOn(P, new THREE.Vector3().fromArray(place.dir), place); } finally { SPC.booting = false; } if (place.aboard) shipResume(place, 'ground'); return; }
   }
   spaceOn(place && place.where === 'space' ? place : null); SPC.booting = false;
+  if (place && place.aboard && place.where === 'space') shipResume(place, 'space');
+}
+function shipResume(pl, from) { // a save made aboard: back on the same deck, where you were standing
+  enterShip(from); shipShowDeck(clamp(pl.deck | 0, 0, 2));
+  if (pl.ax != null) player.position.set(+pl.ax, 0, +pl.az); ex.snap = true; renderTasks();
 }
 function beginChapter3() { // straight after the escape
   const el = $('#ferryCut'); el.classList.remove('letter'); el.classList.add('on', 'black');
@@ -12117,7 +12598,7 @@ function nmSet(kind) {
     const glow = new THREE.Mesh(new THREE.PlaneGeometry(400, 40), new THREE.MeshBasicMaterial({ color: 0xff8a50, transparent: true, opacity: .4, fog: false })); glow.position.set(0, 6, -70); P.add(glow); // a burning horizon behind the silhouettes
     const sky = new THREE.Mesh(new THREE.PlaneGeometry(400, 120), new THREE.MeshBasicMaterial({ color: 0x5e2a22, fog: false })); sky.position.set(0, 50, -80); P.add(sky);
     box(.25, 12, .25, M(0x111111), 0, 6, -8); const flag = box(4.6, 3, .08, M(0x050505, { side: THREE.DoubleSide }), 2.4, 10.3, -8); NM.flag = flag;
-    for (let i = 0; i < 9; i++) { const s = makeShip(); s.traverse(o => { if (o.isMesh && !o.material.blending) o.material = new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: .6, metalness: .5 }); }); s.scale.setScalar(.22); s.position.set(-12 + (i % 5) * 6, 14 + (i % 3) * 2.5, -26 - Math.floor(i / 5) * 6); P.add(s); }
+    for (let i = 0; i < 9; i++) { const s = makeDropship(); s.traverse(o => { if (o.isMesh && !o.material.blending) o.material = new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: .6, metalness: .5 }); }); s.scale.setScalar(.22); s.position.set(-12 + (i % 5) * 6, 14 + (i % 3) * 2.5, -26 - Math.floor(i / 5) * 6); P.add(s); }
   }
   S.fog.color.set(look.fog); S.fog.density = look.dens; S.background.set(look.bg); NM.ground.material.color.set(look.ground); NM.hemi.color.set(look.hemi); NM.rim.color.set(look.rim); NM.key.color.set(look.key);
 }
@@ -12697,6 +13178,7 @@ const ORION_WAKE = [
   'Get some air. Stretch your legs. Just don’t wander too far, and if anyone asks, you’re my cousin from the coast.'
 ];
 async function placeOrion() {
+  if (wanderer && wanderer.aboard && wanderer.aboard.orion) { if (world.orion) world.orion.root.visible = false; return; } // waiting aboard the Nostra
   if (orionJoined() && wanderer.dip && wanderer.dip.lent && wanderer.dip.lent.orion) { if (world.orion) world.orion.root.visible = false; return; } // serving another faction
   if (curArea() !== 'africa' && !orionJoined()) { if (world.orion) world.orion.root.visible = false; return; } // once he's joined you, he comes wherever you go
   if (!world.orion) {
@@ -12718,6 +13200,7 @@ async function placeOrion() {
   if (R.lips && R.lips.mouth) R.lips.mouth.scale.y = .7; // his face relaxes now you're alive
 }
 function orionTick(dt) {
+  if (ex.mode !== 'world') return; // you're aboard the ship (or in space)
   const R = world.orion; if (!R || !R.root.visible || (curArea() !== 'africa' && !orionJoined())) return;
   if (world.cantinaScene || trial.on || esc.on) return; // the scene in The Salt Lantern, the trial and the escape move him
   const p = player.position, o = R.root.position, d = Math.hypot(p.x - o.x, p.z - o.z);
@@ -13008,6 +13491,7 @@ function updateWorldMode(dt) {
     A.t += dt;
     if (A.type === 'dodge') { const v = 11 * (1 - A.t / A.dur) + 2; wx = A.dx * v; wz = A.dz * v; }
     else if (A.type === 'attack') { wx *= .25; wz *= .25; if (!A.hit && A.t > A.dur * .55) { A.hit = true; strike(); } }
+    else if (A.type === 'fire') { wx *= .6; wz *= .6; if (!A.hit) { A.hit = true; fireRifle(); } }
     if (A.t >= A.dur) { if (A.type === 'dodge') { inner.rotation.x = 0; inner.position.y = 0; } ex.act = null; }
   }
   const grip = ex.air ? (ex.jetting ? 5 : 2.5) : (A && A.type === 'dodge' ? 30 : 8);
@@ -13101,7 +13585,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Take off · your ship', 'FLY'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], nico: ['Give Nico orders', 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
+    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], nico: ['Give Nico orders', 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
@@ -13387,6 +13871,7 @@ function renderSlots() {
 }
 function slotWhere(pl, a) { // the line under a save: where you were standing (or flying)
   if (!pl || pl.mode !== 'explore') return 'Base';
+  if (pl.aboard) { const at = pl.where === 'space' || pl.area === 'space' ? (sysById(pl.sys) || {}).name : /^pl:/.test(pl.where || '') ? (bodyById(pl.where.slice(3)) || {}).name : null; return `Aboard the Nostra${at ? ' · ' + at : ''} · ${DECK_NAMES[pl.deck | 0]}`; }
   if (pl.where === 'space' || pl.area === 'space') { const S = sysById(pl.sys); return S ? `In space · ${S.name}` : 'In space'; }
   if (/^pl:/.test(pl.where || '')) { const P = bodyById(pl.where.slice(3)), S = P && sysById(P.sys); return P ? `On ${P.name}${S && S.name !== P.name ? ' · ' + S.name : ''}` : 'On a planet'; }
   if (pl.area !== 'world') return 'Station';
@@ -13399,6 +13884,7 @@ function openSlots(mode, from) {
 }
 function closeSlots() { show(slotUI.root, false); refreshMenu(); refreshDirty(); }
 function currentPlace() {
+  if (ex.mode === 'ship' && SHIPI.outside) return Object.assign({}, SHIPI.outside, { aboard: true, deck: SHIPI.deck, ax: +player.position.x.toFixed(2), az: +player.position.z.toFixed(2) }); // aboard: where the ship is, and where you are inside her
   if (ex.mode === 'space') return { mode: 'explore', area: 'space', where: 'space', sys: SPC.sys, sp: SPC.pos.toArray().map(v => +v.toFixed(1)), sq: SPC.q.toArray().map(v => +v.toFixed(5)) };
   return ex.mode === 'world'
     ? Object.assign({ mode: 'explore', area: 'world', where: curArea(), x: +player.position.x.toFixed(2), z: +player.position.z.toFixed(2), y: +player.position.y.toFixed(2), rot: player.rotation.y, yaw: ex.yaw }, isPl() ? { dir: world.planet.D.toArray().map(v => +v.toFixed(6)) } : {})
@@ -16093,13 +16579,14 @@ function resPersonaOpen(c, onSend) {
     el.querySelector('.rp-text').addEventListener('keydown', e => e.stopPropagation());
   }
   const ta = el.querySelector('.rp-text'); ta.value = (c.persona && c.persona.text) || '';
-  el.querySelector('.rp-title').textContent = onSend ? `SEND ${String(c.name).toUpperCase()} INTO THE WORLD` : `${String(c.name).toUpperCase()}'S PERSONALITY`;
-  el.querySelector('.rp-sub').textContent = onSend ? 'Describe who they are. They can never be played again after this.' : 'How they talk, what they love, how they react when you roleplay with them.';
+  el.querySelector('.rp-title').textContent = onSend ? `SEND ${String(c.name).toUpperCase()} INTO THE WORLD` : `EDIT ${String(c.name).toUpperCase()}`;
+  el.querySelector('.rp-sub').textContent = onSend ? 'Describe who they are. They can never be played again after this.' : 'Their personality: how they talk, what they love, how they react when you roleplay with them. Or change their name, looks and species.';
   const act = el.querySelector('.rp-act');
-  act.innerHTML = onSend ? `<button class="danger" data-go>Send ${reEsc(c.name)} for good</button><button data-cancel>Cancel</button>` : '<button data-go>Save</button><button data-cancel>Cancel</button>';
+  act.innerHTML = onSend ? `<button class="danger" data-go>Send ${reEsc(c.name)} for good</button><button data-cancel>Cancel</button>` : '<button data-go>Save</button><button data-look>Name, looks &amp; species…</button><button data-cancel>Cancel</button>';
   act.onclick = e => {
     const b = e.target.closest('button'); if (!b) return; sfx.click();
     if (b.hasAttribute('data-cancel')) { el.classList.add('hidden'); return; }
+    if (b.hasAttribute('data-look')) { c.persona = { text: ta.value.trim().slice(0, 400), at: Date.now() }; el.classList.add('hidden'); enterCreate('resEdit', c); return; } // the full editor, species and all
     c.persona = { text: ta.value.trim().slice(0, 400), at: Date.now() };
     el.classList.add('hidden'); if (onSend) onSend(); else { saveRoster(); renderRoster(); }
   };
@@ -16248,8 +16735,9 @@ function loop() {
   const spaceMus = (wanderer && ((wanderer.chapter | 0) >= 3 || (wanderer.ch2 && wanderer.ch2.escapedLondon))) && !((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.timeSkip);
   const flying = ex.mode === 'space' && (state === 'space' || state === 'xpaused' || state === 'shipLand' || state === 'shipUp');
   const outside = (ex.mode === 'world' && curArea() !== 'europe' && (state === 'explore' || state === 'xpaused' || state === 'wcut' || state === 'xdone')) || (state === 'shipLand' || state === 'shipUp');
-  const set = spaceMus && (isPl() || flying || state === 'shipLand' || state === 'shipUp') ? 'sp' : curArea() === 'africa' ? 'af' : curArea() === 'europe' || isPl() ? 'eu' : 'ax';
-  sfx.area(flying || outside ? (state === 'explore' || state === 'space' || state === 'shipLand' || state === 'shipUp' ? .75 : .3) : 0, set);
+  const aboard = ex.mode === 'ship' && (state === 'explore' || state === 'xpaused');
+  const set = spaceMus && (isPl() || flying || aboard || state === 'shipLand' || state === 'shipUp') ? 'sp' : curArea() === 'africa' ? 'af' : curArea() === 'europe' || isPl() ? 'eu' : 'ax';
+  sfx.area(flying || outside || aboard ? (aboard ? .5 : state === 'explore' || state === 'space' || state === 'shipLand' || state === 'shipUp' ? .75 : .3) : 0, set);
   if (state === 'intro' || state === 'introOut') {
     updateIntro(dt); sfx.music(0); if (intro.scene === 'earth') renderer.render(eScene, eCam); else renderer.render(gScene, gCam); return;
   }
@@ -16274,8 +16762,8 @@ function loop() {
   if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh' || state === 'sleeping' || state === 'wcut') {
     if (state === 'explore') updateExplore(dt);
     tickDialog(dt);
-    if (state !== 'loadingCh') { updateAnim(dt); if (ex.mode === 'world') worldActionPose(dt); else { syncHeld(); hideSuitGear(); } jamesTick(dt); updateParticles(dt); exploreCamera(dt); if (ex.mode === 'world') updateWorldScene(dt); }
-    sfx.music(0); renderer.render(ex.mode === 'world' ? wScene : aScene, camera); return;
+    if (state !== 'loadingCh') { updateAnim(dt); if (ex.mode === 'world') worldActionPose(dt); else { syncHeld(); hideSuitGear(); armorSync(); } jamesTick(dt); updateParticles(dt); exploreCamera(dt); if (ex.mode === 'world') updateWorldScene(dt); }
+    sfx.music(0); renderer.render(ex.mode === 'world' ? wScene : ex.mode === 'ship' && SHIPI.scene ? SHIPI.scene : aScene, camera); return;
   }
   if (state === 'advStudio' || state === 'advPlay') { advTick(dt); sfx.music(.6); renderer.render(adv.scene, camera); return; }
   if (state === 'cc' || state === 'pedia') { ccTick(dt); sfx.music(.85); renderer.render(ccScene, ccCam); return; }
