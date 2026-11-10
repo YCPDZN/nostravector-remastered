@@ -13,6 +13,7 @@ Open `index.html` in a modern browser, keeping the `data/` folder next to it. It
 ## What's in the game
 
 - **Main menu** with the wandering astronaut, Continue, New Game, Wanderers, Mission Brief and Settings.
+- **Editing a wanderer** (Wanderers → Edit active) changes their name, identity and looks, but not their species: that is chosen once, when the playthrough begins. Start a new game to play another species.
 - **Opening:** a flight through the Milky Way to Earth, with five narrated quotes.
 - **Character creator:** you choose callsign, species, gender, skin, hair, beard, and suit or armour colours.
 - **Four playable species:**
