@@ -298,6 +298,7 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
 ### Fix: Orion missing after loading a save
 - A Chapter III save always resumes in Chapter III (in space, or on the planet you were on), even if it's missing older story flags. Before, such a save could drop you back into Chapter I's Antarctica, without Orion.
 - Once he's joined you, Orion now comes into every world you arrive in, however you got there, just as Nico and your crew do.
+- **Only one Orion:** arriving somewhere asks for Orion twice in quick succession (entering the world, then the area's own setup). On a first visit both calls used to load him, leaving a second, frozen Orion standing in New London (and anywhere else this happened). Now every call shares the one load.
 
 ### Fix: companions on the main menu
 - Orion (and James, and any companion standing with you on the main menu) no longer flickers between walking and standing. He starts walking only once you're properly ahead, keeps a steady pace, and stops once he's caught up.

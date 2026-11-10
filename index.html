@@ -12697,12 +12697,15 @@ async function placeOrion() {
   if (orionJoined() && wanderer.dip && wanderer.dip.lent && wanderer.dip.lent.orion) { if (world.orion) world.orion.root.visible = false; return; } // serving another faction
   if (curArea() !== 'africa' && !orionJoined()) { if (world.orion) world.orion.root.visible = false; return; } // once he's joined you, he comes wherever you go
   if (!world.orion) {
-    try {
-      const el = document.getElementById('cpOrion'); if (!el) return;
+    // one load, shared by every call made while it's under way: two calls close together (entering a world, then the
+    // area's own setup) used to build two Orions, and the first was left standing in the world, frozen
+    world.orionLoad = world.orionLoad || (async () => {
+      const el = document.getElementById('cpOrion'); if (!el) return null;
       const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       const R = autoRig(SkeletonUtils.clone(await parseGlb(u8.buffer)), 1.85); armRig(R, 'none'); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
-      R.lips = faceRig(R.root); world.orion = R;
-    } catch (e) { console.error('Orion failed to load', e); return; }
+      R.lips = faceRig(R.root); return (world.orion = R);
+    })().catch(e => { console.error('Orion failed to load', e); world.orionLoad = null; return null; });
+    if (!(await world.orionLoad)) return;
   }
   const R = world.orion; if (R.root.parent !== wScene) wScene.add(R.root);
   R.root.visible = true; R.mode = 'idle';
