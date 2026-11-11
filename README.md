@@ -1001,35 +1001,79 @@ Then Orion and Nico bring them back. **Skip** jumps past the memories, then past
 - **Wake-up voices:** `data/nmWakeVoices.js` holds the 13 wake-up lines (`CH3NMWAKECH1–4`, `ER1–3`, `HU1–3`, `GR1–3`, in that order; sources in `assets/audio/nightmare_ch3/`), and loads when the wake-up starts. Orion's opening "Hey! HEY!" is still his recording from the ice.
 - **Fully voiced.** The one exception is on purpose: the Erisian nightmare's opening card (THE VISION: "Citadel el Erisconos. Not yet. But soon.", `CH3NMERIS1`) is text only.
 
-## Chapter III: Khazglar on Olympus Mons
-After the nightmare in space (whichever of the four you had), the next stop is Mars. These episodes aren't stopping, and the one person who might understand them is **Khazglar**, a Martian hermit who has watched the sky from Olympus Mons for three hundred years.
+## Chapter III: Olympus Mons, eight floors, and Khazglar
+After the nightmare in space (whichever of the four you had), the next stop is Mars. These episodes aren't stopping, and the one person who might understand them is **Khazglar**, the hermit of Olympus Mons. He's not the welcoming sort.
 
 - **The way there:**
-  - The wake-up dialogue is unchanged and doesn't mention him. Once it ends, a card reads **FIND KHAZGLAR ON MARS** and the objective becomes **Find Khazglar on Olympus Mons, Mars**. It replaces *Land on a planet* and *Warp to another star system* until you've met him.
-  - In Sol, a **gold marker** sits on Mars at Olympus Mons, with its distance.
-  - In Mars's sky, Olympus Mons is marked in gold, and over the mountain the land button reads **LAND · OLYMPUS MONS**. It sets you down beside the hermitage.
-  - Land anywhere else on Mars and you're told how far the mountain is. The pilot's seat then offers **Fly to Olympus Mons · Khazglar's hermitage**.
-- **Olympus Mons** is now a real feature of Mars, at its real latitude and longitude (18.65° N, 133.8° W). It's a broad shield volcano about 1.3 km across and 130 m high, with a caldera at the top, a cliff round its foot and old lava terraces. You can see it from space, fly over it and walk up it. (`olympusH`, added to Mars's `planetH`.)
-- **The hermitage** sits on the upper slopes, north of the caldera:
-  - a low dome of fitted red stone, half dug into the slope
-  - a brass telescope built from a crashed survey probe, with what's left of the probe and its solar panel
-  - wind chimes, a cairn, and a fire ringed with stones and glowing Martian plants
-  - a gold beacon over it until you've met him
-  - The minimap and the objective marker point to Khazglar.
-- **The conversation:**
-  - It's 16 lines, in the cinematic style: Khazglar, Orion and Nico.
-  - His greeting changes with your species: human, Chompy, Erisian or Grek.
-  - He knows about the visions: *"the sky has been loud ever since you left Earth"*. Something at the heart of the galaxy is turning over in its sleep.
-  - You choose how to answer:
-    - *Then help me understand it* (heroic, +3)
-    - *What's at the heart of the galaxy?* (neutral; he names Sagittarius A\*)
-    - *Stay out of my head, old man* (villainous, −2)
-- **He joins your crew:**
-  - +200 XP.
-  - He walks and fights with you and takes the same five orders as Orion and Nico.
-  - He can be dismissed to wait aboard the Nostra, with his own goodbye.
-  - His Nostrapedia file opens once you've met him (in Chapter III it stays locked until then).
-  - His old side quest, *Khazglar's Request*, is no longer offered once he's with you.
+  - The wake-up dialogue is unchanged. Once it ends, a card reads **FIND KHAZGLAR ON MARS** and the objective becomes **Find Khazglar on Olympus Mons, Mars**.
+  - In Sol a **gold marker** sits on Mars at Olympus Mons. In Mars's sky the mountain is marked in gold, and over it the land button reads **LAND · OLYMPUS MONS**.
+  - Land anywhere else on Mars and the pilot's seat offers **Fly to Olympus Mons · Khazglar's hermitage**.
+- **Olympus Mons** is a real feature of Mars, at its real latitude and longitude (18.65° N, 133.8° W). It's a broad shield volcano about 1.3 km across and 130 m high, with a caldera, a cliff round its foot and lava terraces. You can see it from space, fly over it and walk up it.
+- **The hermitage** is empty. His stone hut, his telescope and his fire are all there, but he isn't. Behind the hut a door is cut into the rock: **Enter Olympus Mons**. A gold beacon hangs over it until you've found him.
+
+### The dungeon: eight floors inside the mountain
+- **Eight floors**, each with its own name:
+  1. The Lava Tubes
+  2. The Ash Galleries
+  3. The Obsidian Halls
+  4. The Ember Vaults
+  5. The Glass Gardens
+  6. The Magma Gallery
+  7. The Hermit's Stair
+  8. The Caldera Throne, at the summit
+- **The layout:** each floor is a run of rooms and corridors, with lava cracks and pools, obsidian pillars and torches. A few of the rooms are side rooms off the main route.
+- **Martian creatures** live in the dark:
+  - **Rust hounds** (packs)
+  - **Dust stalkers**, which stalk you
+  - **Ash wings**, which fly
+  - **Basalt brutes** (heavy)
+  - **Cinder crawlers**
+- **Getting harder:** creatures run from **level 10** on the first floor to **level 30** on the seventh. Each floor brings in new kinds.
+- **Wardens:** each floor's stairs up are held by a **warden**, a huge elite brute or crawler (4 × the health, better loot). Kill it and the stairs open, and stay open.
+- **The stairs:**
+  - The stairs down take you back a floor. On the first floor they lead out of the mountain.
+  - Coming back later, the door asks whether to climb to the highest floor you've reached or start from the bottom.
+- **Healing spring:** by the stairs down on every floor. It heals you fully and needs 40 seconds to refill.
+- **Grinding:** **XP is worth 1.9 × inside the mountain** (the XP toasts show "×1.9"). Everywhere else it's normal. Creatures keep coming back: a fresh pack turns up every half a minute or so, away from you, while there are few about.
+- **Falling:** if you go down on a floor, Orion drags you back to its stairs with 60% health. The floor's progress is kept.
+- The objective tracks the climb (*Climb Olympus Mons · floor 3 of 8 · defeat the warden*), and the minimap and marker point to the warden, then the stairs. The location line reads *Olympus Mons · floor 3 of 8 · The Obsidian Halls*.
+- **No weather or cold inside.** The mountain is warm, and the planet's sky and weather are switched off while you're in it.
+
+### The summit: Khazglar, level 35 raid boss
+- **All three of you, or not at all:**
+  - A curtain of fire blocks the way into the caldera, and it only parts when **Orion and Nico are both with you**. If either is dismissed to the Nostra, call them back.
+  - In the fight, his hammer's **ward** turns aside three quarters of every blow unless Orion and Nico are both close by and fighting.
+- **The meeting is his alone, and it's brutal:**
+  - He leaps down off his throne and lands in front of you.
+  - Twelve lines, with only him speaking: he mocks all three of you for running.
+    - You crawled off the ice, fled New London with Hawthorne's dogs at your heels, and ran from Earth "like rats off a burning ship".
+    - A line for your species.
+    - Orion's thirty years of running from his son.
+    - Nico sleeping through a century.
+    - "Eight floors… You think climbing them makes you brave? Rats climb."
+  - Each line lands with something: thuds, red flashes, the arena lights flaring, a quake, his hammer raised. It ends on **"STAND. AND. FIGHT."** with a hammer slam that whites out the screen.
+- **The fight** (9,000 health, about a minute and a half with Orion and Nico pulling their weight):
+  - **Hammer slam** in front of him (red ring, 46 damage)
+  - **Quake**: hammer high, then a shockwave across 11 m. Jump it, dodge it, or be well clear (34 damage).
+  - **Leap** onto whoever he's after, which isn't always you (58 damage)
+  - **Hammer throw**: it flies end over end along a line of rings straight at you, then comes back (38 damage).
+  - He switches targets every few seconds, between you, Nico and Orion. Blows that land on them make them stagger and say so.
+  - **Phase 2 (60%):** *"Hounds! To me!"* Three rust hounds join, and he speeds up.
+  - **Phase 3 (30%):** *"LOOK UP."* Two dust stalkers join, rock falls out of the dark on all three of you (red circles: get out), and he gets faster still.
+  - The boss bar shows his level, the phase, and what to watch for.
+- **Wipe and retry:** fall and the fight starts again from the top, with his health full and you back at the arena's edge. He skips the speech the second time: *"Back again. Then stand still this time."*
+- **Beaten:**
+  - He kneels: *"…Enough. Enough. You didn't run. Not one of you."*
+  - Five lines, all his. He was wrong about you, the thing in the core only cares whether you stand, and "someone has to teach you how".
+  - Then he **joins your crew** (+1,200 XP for the fight and +200 for joining, both at 1.9 ×).
+  - He fights with his **legendary hammer**: an obsidian head bound in brass, runes burning in it.
+  - The way back down is at the foot of the throne. His Nostrapedia file opens, and his old side quest is retired.
 - **Next objective:** Warp to another star system.
-- **Saves:** flags `ch3.khzCall` and `ch3.khzMet`. A save made on the mountain loads back there, with Khazglar waiting if you haven't spoken to him yet.
-- **Voices:** the scene is text for now, and every line has an id ready. Drop in a `data/khazVoices.js` pack (same format as the other voice packs) holding `CH3KHAZ1–17`, then `CH3KHAZ4CH`, `CH3KHAZ4ER` and `CH3KHAZ4GR`, in that order, and they play. `CH3KHAZ4` is the human greeting; the three at the end are the Chompy, Erisian and Grek ones.
+
+### Saves and voices
+- **Saves:** flags `ch3.khzCall`, `ch3.dgnMax` (the highest floor whose warden has fallen) and `ch3.khzMet`. A save made inside the mountain loads back onto the same floor, where you stood. A boss fight saved partway through starts that fight again.
+- **Voices:** the scenes are text for now, and every line has an id. Drop in a `data/khazVoices.js` pack with these, in this order, and they play:
+  - `CH3KHAZT1–13`: the monologue, then the retry line. T3 is the human line.
+  - `CH3KHAZB1–2`: the phase barks.
+  - `CH3KHAZW1–5`: beaten.
+  - `CH3KHAZT3CH`, `T3ER`, `T3GR`: the Chompy, Erisian and Grek lines.

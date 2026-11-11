@@ -2708,6 +2708,7 @@ const sfx = (() => {
 
 /* ============ state ============ */
 let state = 'loading';
+const DGN = { on: false, f: 0, N: 16, C: 6, open: null, O: null, rooms: [], start: null, end: null, g: null, spawnT: 0, warden: null, boss: null, k: null, fx: [], look: null, wellT: -99, downing: false, cut: false, taunted: false }; // Olympus Mons' dungeon (Chapter III): see 'eight floors, and Khazglar'
 let time = 0, walkPhase = 0, titleYaw = 0;
 const vel = new THREE.Vector3();
 const lookTarget = new THREE.Vector3();
@@ -3924,13 +3925,14 @@ const levelOf = c => levelInfo((c && c.xp) || 0).level;
 const maxHP = () => 100 + (levelOf(wanderer) - 1) * 2 + (wanderer && wanderer.inv && wanderer.inv.bag && wanderer.inv.bag.lining ? 20 : 0) + (wornArmor() ? ITEMS[wornArmor()].hp : 0);               // +2 max health per level (298 at 100)
 const lvDmg = () => { const L = levelOf(wanderer); return (L >= 20) + (L >= 50) + (L >= 80); };   // extra mining damage
 function gainXP(n, why) {
+  const dgnX = DGN.on && n > 0; if (dgnX) n *= DGN_XP; // inside Olympus Mons: 1.9 ×
   n = Math.round(n); if (n <= 0 || !wanderer) return;
   const before = levelOf(wanderer);
   if (before >= MAX_LEVEL) return;
   wanderer.xp = (wanderer.xp || 0) + n;
   const c = curChar(); if (c) c.xp = wanderer.xp;
   saveRoster();
-  if (why) lootMsg(`+${n} XP · ${why}`, '#ffc94a');
+  if (why) lootMsg(`+${n} XP · ${why}${dgnX ? ' · ×1.9' : ''}`, '#ffc94a');
   const after = levelOf(wanderer);
   if (after > before) {
     sfx.chime(); setTimeout(() => sfx.chime(), 260);
@@ -4172,6 +4174,7 @@ const DAY_LEN = 1200;
 const NIGHT_C = new THREE.Color(0x050a18), DUSK_C = new THREE.Color(0x6a3c4a), STORM_C = new THREE.Color(0xb9c6d3), STORM_DARK_C = new THREE.Color(0x4c5663), envC = new THREE.Color(), envC2 = new THREE.Color();
 function timeOfDay() { const st = wsState(); if (st.tod == null) st.tod = .32; return st.tod; }
 function skyTick(dt) {
+  if (DGN.on) return; // inside the mountain the light is the mountain's (dgnLookOn)
   const st0 = wsState(); st0.tod = (timeOfDay() + dt / DAY_LEN) % 1;
   const t = st0.tod, sunH = Math.sin((t - .25) * Math.PI * 2); // 0 at sunrise (.25) and sunset (.75), 1 at noon
   const dl = smooth(-.14, .22, sunH), dusk = clamp(1 - Math.abs(sunH) / .28, 0, 1), sm = world.storm || 0; world.dayL = dl;
@@ -4974,7 +4977,7 @@ function renderTasks() {
   if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
   if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? campTasks(p, task) : '');
   if (curArea() === 'africa' || ((wanderer.chapter | 0) >= 2 && p.escaped)) h = ch2Tasks(task); // Chapter II's objectives follow you, even back to Antarctica
-  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, 'Find Khazglar on Olympus Mons, Mars') : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
+  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
   if ((wanderer.chapter | 0) >= 3) { const tq = sqTracked(); if (tq) h += `<div class="x-task sq-task"><i></i><span>${tq}</span></div>`; } // the side quest you're tracking
   xUI.tasks.innerHTML = h;
   $('#xChap').textContent = liveChapterLabel().toUpperCase();
@@ -5046,6 +5049,7 @@ function leaveExplore(goTitle = true) {
   // remember where you are first: aboard the Nostra included (stepping off her below would make it the helm, or the ramp)
   const remember = goTitle && (state === 'xpaused' || state === 'explore') && (wanderer.chapter | 0) >= 1;
   if (remember) rememberPlace();
+  dgnReset();
   if (SHIPI.on) { SHIPI.on = false; ui.xhud.classList.remove('aboard'); if (SHIPI.from !== 'space') { ex.mode = 'world'; wScene.add(player); } else { ex.mode = 'space'; } }
   if (SPC.on) spaceOff(); SPC.paused = false;
   if (soldier.ready) soldier.root.visible = false; meet.active = false; ui.xhud.classList.remove('cutting');
@@ -5153,8 +5157,8 @@ async function interact() {
     pickUpPlaced(n.ref);
   } else if (n.id === 'dismantle') {
     dismantle(n.ref);
-  } else if (n.id === 'khaz') {
-    khzMeet();
+  } else if (/^dgn/.test(n.id)) {
+    dgnUse(n.id);
   } else if (n.id === 'qgiver') {
     giverTalk(n.ref);
   } else if (n.id === 'bot') {
@@ -6629,7 +6633,8 @@ function mapTiles(x0, z0, x1, z1, budget) {
 }
 function questTarget() {
   const c = ch1();
-  if (isPl() && world.planet.khz && khzPending()) return { x: world.planet.khz.x, z: world.planet.khz.z, label: 'Khazglar' };
+  if (DGN.on) return dgnTarget();
+  if (isPl() && world.dgnGate && khzPending()) return { x: world.dgnGate.x, z: world.dgnGate.z, label: 'The way into the mountain' };
   if (isPl()) return Math.hypot(player.position.x, player.position.z) > 30 ? { x: 0, z: 10, label: 'Your ship' } : null;
   if (curArea() === 'europe') { const c2 = wanderer.ch2 || {}; if (esc.on) return { x: SHIP.hatch[0], z: SHIP.hatch[1], label: 'The ship' }; return c2.arrived && !c2.reportTried ? { x: LON.door.x - 2, z: LON.door.z, label: 'Houses of Parliament' } : null; }
   if (curArea() === 'africa') {
@@ -7325,7 +7330,7 @@ function hurtPlayer(n, src) {
   const fx = $('#hurtFx'); fx.classList.remove('on'); void fx.offsetWidth; fx.classList.add('on');
   ex.shake = .35;
   if (src) { const dx = player.position.x - src.x, dz = player.position.z - src.z, d = Math.hypot(dx, dz) || 1; vel.x += dx / d * 5; vel.z += dz / d * 5; }
-  if (ex.hp <= 0) { if (world.betrayal) bossDeath(); else if (esc.on) escapeDeath(); else blackout(); }
+  if (ex.hp <= 0) { if (DGN.on) dgnDown(); else if (world.betrayal) bossDeath(); else if (esc.on) escapeDeath(); else blackout(); }
 }
 function blackout() {
   for (const c of fauna.list) { c.state = 'idle'; c.tgt = null; }
@@ -7338,6 +7343,7 @@ function blackout() {
 }
 function damageFauna(c, dmg, fromJames) {
   if (c.dead) return;
+  if (c.boss) dmg = dgnBossDmg(c, dmg); // his ward
   if (c.D.passive && !c.D.huntable) {
     if (!fromJames && time - (fauna.alT || -99) > 12) { fauna.alT = time; alignAct(-2, 'Cruelty to a harmless animal'); }
     c.state = 'flee'; c.t = 0; c.tgt = null;
@@ -7382,6 +7388,7 @@ function faunaTick(dt) {
   const p = player.position;
   let threat = false;
   for (const c of [...fauna.list]) {
+    if (c.boss) continue; // Khazglar runs on his own (dgnBossTick)
     const D = c.D, u = c.mesh.userData;
     c.t += dt; c.phase += dt;
     if (c.state === 'dead') {
@@ -7693,6 +7700,7 @@ const LAKE_Y = -7;
 const FERRY = { x: -720, z: 700, dx: -.7169, dz: .6972 }; // dock point, and the direction out to sea
 function lakeAmt(x, z) { return curArea() !== 'antarctica' ? 0 : smooth(.34, .27, wFbm(x * .0042 + 90, z * .0042 + 40, 2, 50)); }
 function wHeight(x, z) {
+  if (DGN.on) return 0; // inside Olympus Mons: the floor
   if (curArea() === 'europe') return londonHeight(x, z);
   if (isPl()) return planetGroundH(x, z);
   if (curArea() === 'africa') {
@@ -7942,6 +7950,7 @@ function plScatter(cx, cz, ox, oz, grp) {
   grp.userData.nodes = nodes;
 }
 function updateChunks(budget) {
+  if (DGN.on) return; // no ground inside the mountain
   const { CH, R } = world, p = player.position, pcx = Math.round(p.x / CH), pcz = Math.round(p.z / CH);
   const want = [];
   for (let dz = -R; dz <= R; dz++) for (let dx = -R; dx <= R; dx++) {
@@ -8079,6 +8088,7 @@ function worldUnstickIn() {
   return false;
 }
 function worldBlocked(x, z, stationOnly, y = player.position.y) {
+  if (DGN.on) return dgnBlocked(x, z); // inside Olympus Mons: its walls
   if (isPl()) { if (nostraBlocked(x, z)) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2 && (world.planet.P.seaGlow || !WB_SWIM)) return true; if (cityBlocked(x, z)) return true; if (earthBlocked(x, z)) return true; } // your ship, deep water, the towers of a capital and Earth's landmarks
   else if (curArea() !== 'europe' && Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true; // the station / Orion's house
   if (isPl() && hallBlocked(x, z)) return true;
@@ -9861,18 +9871,23 @@ function shipFlyToAdNostra() {
     f.style.transition = 'opacity 1.2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 1300);
   }, 650);
 }
-/* ============ Chapter III · Khazglar, the hermit of Olympus Mons ============
-   After the nightmare in space (whichever of the four you had), the next stop is Mars: Khazglar has watched the sky from
-   Olympus Mons for three hundred years, and if anyone knows what's reaching into your head, he does. (The wake-up itself
-   doesn't mention him: the objective and the gold marker take over once it ends.)
-   - Olympus Mons is a real feature of Mars now, at its real latitude and longitude: a broad shield volcano with a caldera at the
-     top and a cliff round its foot, seen from space, flown over in the sky and walked on the ground (olympusH, added to planetH).
-   - His hermitage sits on the upper slopes, north of the caldera: a stone hut, a telescope built from a crashed survey probe,
-     a ring of strange Martian plants round a fire. Fly to it from the sky (LAND · OLYMPUS MONS), or land anywhere on Mars and
-     ask the helm to take you there.
-   - Talk to him, choose how you answer, and he joins your crew (the same five orders as everyone else).
-   Flags: ch3.khzCall (the objective's been given), ch3.khzMet (he's with you). Lines can be voiced later: drop a data/khazVoices.js
-   pack holding CH3KHAZ1–17, then CH3KHAZ4CH, 4ER, 4GR (the other species' greetings) in order and they play; until then the scene is text. */
+/* ============ Chapter III · Olympus Mons: eight floors, and Khazglar at the top ============
+   After the nightmare in space (whichever of the four you had), the next stop is Mars: Khazglar, the hermit of Olympus Mons.
+   He isn't waiting by his fire. The hermitage is empty, and a door in the rock behind it leads into the mountain: eight floors
+   of lava tubes and halls full of Martian creatures, each floor's stairs held by a warden, and on the caldera's throne at the
+   top, Khazglar himself (level 35), who has watched you run all the way here and has nothing kind to say about it.
+   - Olympus Mons is a real feature of Mars, at its real latitude and longitude (olympusH, added to planetH).
+   - The dungeon: DGN. Floors are laid out from a seed (rooms on a 4 × 4 grid joined by corridors) and built far from the
+     surface in the same world, with the planet's ground switched off while you're inside (wHeight, worldBlocked,
+     updateChunks and skyTick all defer to it). XP counts 1.9 × in here, and the creatures trickle back so you can grind.
+   - The boss is a raid fight that needs all three of you: the fire across the arena only parts with Orion and Nico beside
+     you, and his hammer's ward only breaks while they're fighting near him. He's an entry in fauna.list (boss: true), so
+     your rifle, your blows, Orion and Nico all hit him the usual way; dgnBossTick drives him (slam, quake, leap, hammer
+     throw; hounds at 60 %, falling rock at 30 %). Fall and the fight starts again.
+   - The meeting is his alone: an intense, mocking monologue. Beaten, he kneels, says his piece, and joins your crew.
+   Flags: ch3.khzCall (objective given), ch3.dgnMax (highest floor whose warden has fallen), ch3.khzMet (he's with you).
+   Voices, for a future data/khazVoices.js, in this order: CH3KHAZT1–13 (the monologue, T13 the retry; T3 is the human line),
+   CH3KHAZB1–2 (phase barks), CH3KHAZW1–5 (beaten), then CH3KHAZT3CH, T3ER, T3GR. */
 const KHZ = { lat: 18.65, lon: -133.8, R: 650, H: 130, cal: 72, calD: 26, cliff: 24, hut: [0, -150], pad: [0, -205] }; // metres on Mars's ground (2.4 km radius)
 let khzDirV = null;
 const khzDir = () => khzDirV || (khzDirV = new THREE.Vector3(Math.cos(KHZ.lat * D2R) * Math.cos(KHZ.lon * D2R), Math.sin(KHZ.lat * D2R), Math.cos(KHZ.lat * D2R) * Math.sin(KHZ.lon * D2R)).normalize());
@@ -9899,7 +9914,7 @@ function khzLocal(W, dir) { // a direction on the world, in the landing spot's m
 function khazPlan(W) { // decided with the cantina, before the ground is laid out: is the hermitage near enough to walk to?
   if (world.khzG) { if (world.khzG.parent) world.khzG.parent.remove(world.khzG); world.khzG = null; }
   if (world.khz && world.khz.R && world.khz.R.root.parent) world.khz.R.root.parent.remove(world.khz.R.root);
-  world.khz = null; W.khz = null;
+  world.khz = null; W.khz = null; world.dgnGate = null;
   if (!W || W.P.id !== 'mars') return;
   const L = khzLocal(W, khzHutDir()); if (!L || Math.hypot(L.x, L.z) > 900) return;
   const y = planetH(W.P, plDir(L.x, L.z)) - W.h0;
@@ -9940,69 +9955,530 @@ function buildHermitage() {
   for (let i = 0; i < 4; i++) add(new THREE.CylinderGeometry(.03, .03, .5 + i * .12, 5), brass, -1.6 + i * .18, 2.1 - i * .06, -.4);
   add(new THREE.CylinderGeometry(.02, .02, 1.6, 4), dark, -1.33, 2.9, -.4);
   for (let i = 0; i < 5; i++) add(new THREE.DodecahedronGeometry(.42 - i * .06, 0), stone, 1.5, .3 + i * .5, 7.5, i);
-  const glow = glowSprite(0xffc94a, 7, .55); glow.position.set(0, 9, 0); g.add(glow); world.khzBeacon = glow; // seen from the ship
-  if (khzPending()) khzPlace().catch(e => console.warn('khazglar failed', e));
-}
-async function khzPlace() { // the hermit himself, at his telescope
-  const W = world.planet, area = curArea(); if (!W || !W.khz) return;
-  const R = await companionRig('khazglar'); if (!R || curArea() !== area || !world.planet || !world.planet.khz) return;
-  R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  const x = W.khz.x + 2.4, z = W.khz.z - 1.0; R.root.position.set(x, wHeight(x, z), z); R.root.rotation.y = Math.PI * .8; R.mode = 'idle';
-  wScene.add(R.root); world.khz = { R, x, z };
-}
-function khzTick(dt) {
-  if (world.khzFire) { world.khzFire.material.opacity = .75 + Math.sin(time * 9) * .1 + Math.sin(time * 23) * .06; if (world.khzLight) world.khzLight.intensity = 16 + Math.sin(time * 11) * 3; }
-  if (world.khzBeacon) world.khzBeacon.visible = khzPending();
-  const K = world.khz; if (!K || !K.R || !K.R.root.parent) return;
-  const p = player.position, d = Math.hypot(p.x - K.x, p.z - K.z);
-  if (d < 12) K.R.root.rotation.y = angLerp(K.R.root.rotation.y, Math.atan2(p.x - K.x, p.z - K.z), Math.min(1, dt * 2.5));
-  if (!K.R.static) { try { K.R.mode = 'idle'; animRig(K.R, dt); } catch (e) { K.R.static = true; } }
+  const glow = glowSprite(0xffc94a, 7, .55); glow.position.set(-4.5, 9, -9.6); g.add(glow); world.khzBeacon = glow; // seen from the ship, over the way in
+  // the way in: a door cut into the rock behind the hut, warm light inside, and steps going down into the mountain
+  const gx = -4.5, gz = -9.6, rock = M(0x4a2c22);
+  add(new THREE.BoxGeometry(1.1, 4.2, 1.4), rock, gx - 1.9, 2.1, gz); add(new THREE.BoxGeometry(1.1, 4.2, 1.4), rock, gx + 1.9, 2.1, gz);
+  add(new THREE.BoxGeometry(5, 1, 1.6), rock, gx, 4.6, gz);
+  for (let i = 0; i < 6; i++) add(new THREE.DodecahedronGeometry(1.1 + (i % 2) * .4, 0), rock, gx + (i - 2.5) * 1.5, 5.4 + (i % 3) * .3, gz - .6, i);
+  const door = new THREE.Mesh(new THREE.PlaneGeometry(2.7, 4), new THREE.MeshBasicMaterial({ color: 0xff6a2a, transparent: true, opacity: .55 })); door.position.set(gx, 2, gz + .2); g.add(door);
+  const dg = glowSprite(0xff7a3a, 6, .7); dg.position.set(gx, 2.2, gz + .8); g.add(dg);
+  world.dgnGate = { x: K.x + gx, z: K.z + gz + 1.6 };
 }
 function khzImpostor() { // the hermitage from the air: the fire's glow and a gold beacon over the slope
   const g = new THREE.Group(), dome = new THREE.Mesh(new THREE.SphereGeometry(4, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x7a4a36, roughness: .9 }));
   dome.scale.y = .78; g.add(dome); const f = glowSprite(0xff9a4a, 30, .9); f.position.set(4, 3, 6); g.add(f);
   const b = glowSprite(0xffc94a, 90, .6); b.position.y = 40; g.add(b); return g;
 }
-const khzNear = p => { const K = world.khz; return K && K.R && K.R.root.parent && khzPending() && Math.hypot(p.x - K.x, p.z - K.z) < 3.4 ? K : null; };
-const KHZ_HELLO = {
-  human: 'A child of Earth, this far up my mountain. Your Federation still teaches its schoolchildren that my people are a myth.',
-  chompy: 'A Chompy. The last of your kind who climbed up here wanted to buy the mountain. I let him keep his money, and most of his teeth.',
-  erisian: 'An Erisian, a very long way from the edge of the system. Does your Matriarch know you’ve wandered off?',
-  grek: 'Grek. You walk the way your people always do, as if the ground owes you something. Sit. It doesn’t.'
+// ---- the dungeon's creatures: Martian things that live in the dark of the mountain ----
+Object.assign(BEASTS, {
+  rusthound: { L: .95, W: .3, H: .6, neck: .28, head: .21, legW: .05, coat: ['plain', '#8a3a22', '#5a2414'], belly: 0xd8784a, ears: true, tail: .4 },
+  duststalker: { L: 1.5, W: .4, H: .6, neck: .3, head: .26, legW: .08, coat: ['spots', '#b0583a', '#2a120a'], belly: 0xe8b090, tail: .9 },
+  basaltbrute: { L: 1.8, W: .72, H: .6, neck: .26, head: .36, legW: .14, coat: ['plain', '#2e2622', '#161110'], belly: 0xff6a2a, horns: 'buffalo', tail: .12 },
+  cindercrawler: { L: 2.4, W: .44, H: .22, neck: .2, head: .34, legW: .09, coat: ['spots', '#5a2418', '#ff7a3a'], belly: 0xffa860, tail: 2 }
+});
+const DGN_BASE = {
+  rusthound: { name: 'Rust hound', beast: 'pred', pack: true, hp: 30, dmg: 8, speed: 2, run: 7.2, xp: 48, r: .75, reach: 1.8, aggro: 22, leash: 60, cd: 1.15, spot: 'Rust hounds!', loot: () => [Math.random() < .45 && ['scrap', 1]] },
+  duststalker: { name: 'Dust stalker', beast: 'pred', stalk: true, hp: 70, dmg: 14, speed: 1.9, run: 7.2, xp: 95, r: 1.1, reach: 2.3, aggro: 22, leash: 60, cd: 1.5, spot: 'Something is stalking you…', loot: () => [['crystal', 1], Math.random() < .3 && ['cloth', 1]] },
+  basaltbrute: { name: 'Basalt brute', beast: 'pred', hp: 150, dmg: 22, speed: 1.6, run: 5.8, xp: 150, r: 1.6, reach: 2.7, aggro: 16, leash: 60, cd: 1.9, spot: 'A basalt brute rears up!', loot: () => [['obsidian', 1 + (Math.random() < .4)], Math.random() < .3 && ['medkit', 1]] },
+  cindercrawler: { name: 'Cinder crawler', beast: 'pred', hp: 120, dmg: 24, speed: 1.3, run: 5.6, xp: 130, r: 1.4, reach: 2.6, aggro: 13, leash: 60, cd: 2, spot: 'A cinder crawler lunges!', loot: () => [['metal', 1], Math.random() < .25 && ['medkit', 1]] },
+  ashwing: { name: 'Ash wing', fly: true, hp: 36, dmg: 10, speed: 9, xp: 60, r: .9, reach: 2, cd: 3.8, look: { body: 0x3a2220, dark: 0x1a0e0c, s: 1.8 }, loot: () => [Math.random() < .5 && ['scrap', 1]] }
 };
+const DGN_XP = 1.9; // every XP you earn inside the mountain
+const dgnLv = f => 10 + Math.round((f - 1) * 2.8); // creatures from level 10 on the first floor to 30 on the seventh
+function dgnType(base, f, warden) { // a creature for this floor: tougher the higher you climb
+  const key = `dgn_${base}_${f}${warden ? 'w' : ''}`; if (FAUNA[key]) return key;
+  const B = DGN_BASE[base], k = 1 + (f - 1) * .32, w = warden ? 4.2 : 1, lv = dgnLv(f) + (warden ? 3 : 0);
+  FAUNA[key] = Object.assign({}, B, { name: warden ? `Warden of the ${['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh'][f]} floor · lv ${lv}` : `${B.name} · lv ${lv}`, hp: Math.round(B.hp * k * w), dmg: Math.round(B.dmg * (1 + (f - 1) * .2) * (warden ? 1.5 : 1)), xp: Math.round(B.xp * (1 + (f - 1) * .35) * (warden ? 5 : 1)), aggro: warden ? 18 : B.aggro, pack: warden ? false : B.pack,
+    loot: warden ? () => [['medkit', 1], ['obsidian', 2], ['crystal', 2], Math.random() < .5 && ['warpcell', 1]] : B.loot });
+  if (BEASTS[base]) BEASTS[key] = BEASTS[base];
+  return key;
+}
+const DGN_ROSTER = [null, ['rusthound'], ['rusthound', 'duststalker'], ['rusthound', 'ashwing', 'duststalker'], ['duststalker', 'basaltbrute', 'ashwing'], ['basaltbrute', 'cindercrawler', 'rusthound'], ['cindercrawler', 'duststalker', 'ashwing', 'basaltbrute'], ['basaltbrute', 'cindercrawler', 'duststalker', 'rusthound']];
+const DGN_NAMES = ['', 'The Lava Tubes', 'The Ash Galleries', 'The Obsidian Halls', 'The Ember Vaults', 'The Glass Gardens', 'The Magma Gallery', 'The Hermit’s Stair', 'The Caldera Throne'];
+// ---- the floors: 16 × 16 cells of 6 m; rooms are 3 × 3 cells on a 4 × 4 grid of slots, joined through the gaps ----
+// (DGN, the dungeon's state, is declared near the top of the script: the ground and collision ask it from the start)
+const dgnX0 = f => 9000 + f * 400; // each floor in a space of its own, well away from the surface
+function dgnRng(s) { return () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const dgnCell = (i, j) => i >= 0 && j >= 0 && i < DGN.N && j < DGN.N && DGN.open[j * DGN.N + i];
+const dgnW = (i, j) => [DGN.O.x + (i - DGN.N / 2 + .5) * DGN.C, DGN.O.z + (j - DGN.N / 2 + .5) * DGN.C]; // a cell's centre in the world
+const dgnIJ = (x, z) => [Math.floor((x - DGN.O.x) / DGN.C + DGN.N / 2), Math.floor((z - DGN.O.z) / DGN.C + DGN.N / 2)];
+function dgnLayout(f) {
+  const N = DGN.N, open = new Uint8Array(N * N), R = dgnRng(9100 + f * 7919), set = (i, j) => { if (i >= 0 && j >= 0 && i < N && j < N) open[j * N + i] = 1; };
+  const room = (sx, sy) => { for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) set(sx * 4 + a, sy * 4 + b); return { sx, sy, c: [sx * 4 + 1, sy * 4 + 1] }; };
+  const link = (A, B) => { if (A.sy === B.sy) set(Math.min(A.sx, B.sx) * 4 + 3, A.sy * 4 + 1); else set(A.sx * 4 + 1, Math.min(A.sy, B.sy) * 4 + 3); };
+  const rooms = [];
+  if (f === 8) { // the caldera: a short hall up from the stairs, then the round arena and the throne
+    const st = room(1 + (R() < .5), 3); rooms.push(st);
+    const cx = 7.5, cy = 5.2, r = 4.7;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) if (Math.hypot(i + .5 - (cx + .5), j + .5 - (cy + .5)) <= r) set(i, j);
+    const gi = st.sx * 4 + 1; for (let j = 11; j >= 9; j--) set(gi, j); // the hall up into it
+    DGN.arena = { c: dgnW(cx + .5 - .5, cy + .5 - .5), R: r * DGN.C, gate: [gi, 11] };
+    return { open, rooms, start: st, end: null };
+  }
+  DGN.arena = null;
+  const key = (x, y) => x + ',' + y, seen = new Set();
+  let cur = room(1 + (R() < .5), 3); rooms.push(cur); seen.add(key(cur.sx, cur.sy));
+  const L = Math.min(10, 5 + Math.ceil(f / 2));
+  while (rooms.length < L) {
+    const nb = [[1, 0], [-1, 0], [0, -1], [0, 1]].map(([a, b]) => [cur.sx + a, cur.sy + b]).filter(([x, y]) => x >= 0 && x < 4 && y >= 0 && y < 4 && !seen.has(key(x, y)));
+    if (!nb.length) break;
+    nb.sort((a, b) => (a[1] - b[1]) * .9 + (R() - .5) * 2.2); // mostly northward, up the mountain
+    const nx = room(nb[0][0], nb[0][1]); link(cur, nx); seen.add(key(nx.sx, nx.sy)); rooms.push(nx); cur = nx;
+  }
+  for (const rm of rooms.slice(1, -1)) if (R() < .5) { // side rooms off the way through, for the creatures (and the grind)
+    const nb = [[1, 0], [-1, 0], [0, -1], [0, 1]].map(([a, b]) => [rm.sx + a, rm.sy + b]).filter(([x, y]) => x >= 0 && x < 4 && y >= 0 && y < 4 && !seen.has(key(x, y)));
+    if (nb.length) { const n = nb[R() * nb.length | 0], s = room(n[0], n[1]); s.side = true; link(rm, s); seen.add(key(n[0], n[1])); rooms.push(s); }
+  }
+  const path = rooms.filter(r => !r.side);
+  return { open, rooms, start: rooms[0], end: path[path.length - 1] };
+}
+function dgnBlocked(x, z) {
+  if (!DGN.open) return true;
+  for (const [ox, oz] of [[.35, .35], [-.35, .35], [.35, -.35], [-.35, -.35]]) {
+    const [i, j] = dgnIJ(x + ox, z + oz); if (!dgnCell(i, j)) return true;
+    if (DGN.arena && DGN.barrier && i === DGN.arena.gate[0] && j === DGN.arena.gate[1]) return true;
+  }
+  return false;
+}
+const dgnCrewReady = () => partyNow().includes('orion') && partyNow().includes('nico'); // all three of you
+function dgnBuild(f) {
+  const lay = dgnLayout(f); Object.assign(DGN, { f, open: lay.open, rooms: lay.rooms, start: lay.start, end: lay.end });
+  const N = DGN.N, C = DGN.C, g = new THREE.Group(); DGN.g = g; wScene.add(g); DGN.fx = [];
+  const [ox, oz] = dgnW(0, 0); g.position.set(0, 0, 0);
+  const tex = (a, b, seed) => { const t = canvasTex(256, 256, (c, w) => { c.fillStyle = a; c.fillRect(0, 0, w, w); const R = dgnRng(seed); for (let i = 0; i < 900; i++) { c.fillStyle = R() < .5 ? b : 'rgba(0,0,0,.25)'; const s = 1 + R() * 5; c.fillRect(R() * w, R() * w, s, s); } c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 2; for (let i = 0; i < 14; i++) { c.beginPath(); c.moveTo(R() * w, R() * w); c.lineTo(R() * w, R() * w); c.stroke(); } }); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
+  const hot = f / 8, floorT = tex('#2a1a16', '#3e2620', 11 + f), wallT = tex('#3a2420', '#522e24', 23 + f);
+  floorT.repeat.set(N, N); wallT.repeat.set(1, 1.4);
+  const fl = new THREE.Mesh(new THREE.PlaneGeometry(N * C, N * C), new THREE.MeshStandardMaterial({ map: floorT, roughness: .95 })); fl.rotation.x = -Math.PI / 2; fl.position.set(DGN.O.x, 0, DGN.O.z); fl.receiveShadow = true; g.add(fl);
+  const ce = new THREE.Mesh(new THREE.PlaneGeometry(N * C, N * C), new THREE.MeshStandardMaterial({ color: 0x120a08, roughness: 1 })); ce.rotation.x = Math.PI / 2; ce.position.set(DGN.O.x, 8.6, DGN.O.z); g.add(ce);
+  // walls: every closed cell beside an open one
+  const walls = []; for (let j = -1; j <= N; j++) for (let i = -1; i <= N; i++) { if (dgnCell(i, j)) continue; let near = false; for (let a = -1; a <= 1 && !near; a++) for (let b = -1; b <= 1; b++) if (dgnCell(i + a, j + b)) { near = true; break; } if (near) walls.push([i, j]); }
+  const wm = new THREE.InstancedMesh(new THREE.BoxGeometry(C, 8.6, C), new THREE.MeshStandardMaterial({ map: wallT, roughness: .9, emissive: new THREE.Color(0x3a0c04), emissiveIntensity: .25 + hot * .4 }), walls.length);
+  const mm = new THREE.Matrix4(); walls.forEach(([i, j], k) => { const [x, z] = dgnW(i, j); mm.makeTranslation(x, 4.3, z); wm.setMatrixAt(k, mm); }); wm.castShadow = wm.receiveShadow = true; g.add(wm);
+  const R = dgnRng(777 + f * 31);
+  // lava: glowing cracks across the floors, brighter the higher you go, and a pool in some rooms
+  const lavaM = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff5a1a).lerp(new THREE.Color(0xffc060), hot * .5) });
+  for (const rm of DGN.rooms) {
+    const [cx, cz] = dgnW(rm.c[0], rm.c[1]);
+    for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(.18, .04, 3 + R() * 6), lavaM); m.position.set(cx + (R() - .5) * 13, .03, cz + (R() - .5) * 13); m.rotation.y = R() * Math.PI; g.add(m); }
+    if (rm !== DGN.start && rm !== DGN.end && R() < .45) { const m = new THREE.Mesh(new THREE.CircleGeometry(1.6 + R(), 18), lavaM); m.rotation.x = -Math.PI / 2; m.position.set(cx + (R() - .5) * 8, .04, cz + (R() - .5) * 8); g.add(m); const s = glowSprite(0xff6a2a, 5, .55); s.position.set(m.position.x, .8, m.position.z); g.add(s); }
+    for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(.55, .7, 8.6, 7), new THREE.MeshStandardMaterial({ color: 0x2a1a16, roughness: .9 })); p.position.set(cx + a * 7.4, 4.3, cz + b * 7.4); p.castShadow = true; g.add(p); }
+    for (let k = 0; k < 2; k++) { const t = glowSprite(0xff8a3a, 2.2, .85); t.position.set(cx + (k ? 7.9 : -7.9), 3.2, cz); g.add(t); DGN.fx.push(t); }
+  }
+  // a few lights where it matters: the stairs down, the way up, and the middle of the floor
+  const lights = [DGN.start, DGN.end, DGN.rooms[DGN.rooms.length >> 1]].filter(Boolean);
+  for (const rm of lights) { const [x, z] = dgnW(rm.c[0], rm.c[1]); const L = new THREE.PointLight(0xff8a4a, 40, 40, 1.6); L.position.set(x, 6, z); g.add(L); }
+  const amb = new THREE.PointLight(0xff5a2a, 25, 70, 1.4); const [mx, mz] = dgnW(8, 8); amb.position.set(mx, 7, mz); g.add(amb);
+  // the stairs down (and, on the first floor, the way out), and the healing spring beside them
+  const [sx, sz] = dgnW(DGN.start.c[0], DGN.start.c[1] + 1);
+  const arch = (x, z, col, open) => { const a = new THREE.Group(), st = new THREE.MeshStandardMaterial({ color: 0x3a2420, roughness: .9 });
+    for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(.8, 4.4, .8), st); p.position.set(s * 1.7, 2.2, 0); a.add(p); }
+    const l = new THREE.Mesh(new THREE.BoxGeometry(4.2, .8, .9), st); l.position.y = 4.6; a.add(l);
+    const d = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 4), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: open ? .6 : .3, side: THREE.DoubleSide })); d.position.y = 2; a.add(d);
+    const s = glowSprite(col, 5, .6); s.position.y = 2.4; a.add(s); a.userData.door = d; a.userData.glow = s; a.position.set(x, 0, z); g.add(a); return a; };
+  DGN.downArch = arch(sx, sz + 1.6, f === 1 ? 0xffc890 : 0x6a8aff, true); DGN.down = { x: sx, z: sz };
+  const [wx, wz] = dgnW(DGN.start.c[0] - 1, DGN.start.c[1]);
+  const well = new THREE.Mesh(new THREE.TorusGeometry(1.1, .3, 8, 18), new THREE.MeshStandardMaterial({ color: 0x3a2a26, roughness: .9 })); well.rotation.x = -Math.PI / 2; well.position.set(wx, .3, wz); g.add(well);
+  const wat = new THREE.Mesh(new THREE.CircleGeometry(.95, 18), new THREE.MeshBasicMaterial({ color: 0x5fe8ff })); wat.rotation.x = -Math.PI / 2; wat.position.set(wx, .35, wz); g.add(wat);
+  const ws = glowSprite(0x7fe8ff, 3.4, .6); ws.position.set(wx, 1, wz); g.add(ws); DGN.well = { x: wx, z: wz };
+  if (DGN.end) { const [ex2, ez2] = dgnW(DGN.end.c[0], DGN.end.c[1] - 1); DGN.upArch = arch(ex2, ez2 - 1.4, dgnBeaten(f) ? 0xffc94a : 0xff3a2a, dgnBeaten(f)); DGN.up = { x: ex2, z: ez2 }; } else { DGN.upArch = null; DGN.up = null; }
+  if (f === 8) dgnArena(g);
+}
+const dgnBeaten = f => ((wanderer.ch3 && wanderer.ch3.dgnMax) || 0) >= f;
+function dgnSpawnGroup(rm, f) {
+  const [cx, cz] = dgnW(rm.c[0], rm.c[1]), list = DGN_ROSTER[Math.min(7, f)], base = list[Math.random() * list.length | 0], D = DGN_BASE[base];
+  const n = D.pack ? 2 + (Math.random() < .5) + (f >= 4) : D.fly ? 1 + (f >= 5) : 1 + (Math.random() < .25 + f * .05);
+  for (let i = 0; i < n; i++) { const c = spawnFauna(dgnType(base, f), cx + rand(-5, 5), cz + rand(-5, 5), [cx, cz]); c.dgn = f; }
+}
+function dgnPopulate(f) {
+  if (f >= 8) return;
+  for (const rm of DGN.rooms) { if (rm === DGN.start) continue; if (rm === DGN.end && !dgnBeaten(f)) continue; if (!rm.side && Math.random() < .3) continue; dgnSpawnGroup(rm, f); } // most rooms hold something; side rooms always do
+  DGN.warden = null;
+  if (!dgnBeaten(f) && DGN.end) { // the warden, standing between you and the stairs
+    const [cx, cz] = dgnW(DGN.end.c[0], DGN.end.c[1]), base = f >= 5 ? 'cindercrawler' : 'basaltbrute';
+    const c = spawnFauna(dgnType(base, f, true), cx, cz + 2, [cx, cz]); c.dgn = f; c.mesh.scale.setScalar(1.6); DGN.warden = c;
+    dgnSpawnGroup(DGN.end, f);
+  }
+  DGN.spawnT = 30;
+}
+function dgnClearFloor() {
+  if (DGN.boss) dgnBossClear();
+  for (const c of [...fauna.list]) if (c.dgn || c.boss) { if (c.boss) fauna.list.splice(fauna.list.indexOf(c), 1); else removeFauna(c); }
+  if (DGN.g) { wScene.remove(DGN.g); DGN.g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); DGN.g = null; }
+  if (DGN.k && DGN.k.R && DGN.k.R.root.parent) DGN.k.R.root.parent.remove(DGN.k.R.root);
+  DGN.k = null; world.khz = null; DGN.warden = null; DGN.barrier = false; DGN.cut = false; DGN.won = false;
+}
+function dgnLookOn() { // inside the mountain: no sky, a red dark, the heat of the rock
+  if (!DGN.sky) DGN.sky = canvasTex(4, 256, (c) => { const gr = c.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#060203'); gr.addColorStop(1, '#1a0704'); c.fillStyle = gr; c.fillRect(0, 0, 4, 256); });
+  wScene.background = DGN.sky; wScene.fog.color.set(0x160805); wScene.fog.density = .022;
+  if (world.hemi) { world.hemi.intensity = .42; world.hemi.color.set(0xffb08a); world.hemi.groundColor.set(0x3a0e06); }
+  if (world.sun) world.sun.intensity = .08;
+  if (world.veil) world.veil.visible = false; if (world.snow) world.snow.visible = false; if (world.plSea) world.plSea.visible = false;
+  const inv = invState(); inv.heat = 100; // warm in here
+}
+function dgnSaveLook() { if (!DGN.look) DGN.look = { fog: wScene.fog.density, hc: world.hemi ? world.hemi.color.getHex() : 0, hg: world.hemi ? world.hemi.groundColor.getHex() : 0 }; }
+function dgnRestoreLook() {
+  const L = DGN.look; DGN.look = null; if (!L) return;
+  wScene.fog.density = L.fog; if (world.hemi) { world.hemi.color.setHex(L.hc); world.hemi.groundColor.setHex(L.hg); }
+  if (world.veil) world.veil.visible = true; applyAreaLook();
+}
+function dgnEnter(f, at, quick) { // go to floor f: at = { x, z } (a save), 'top' (coming back down to the stairs up), or nothing (the bottom)
+  const go = () => {
+    if (!DGN.on) { dgnSaveLook(); DGN.on = true; for (const ch of world.chunks.values()) ch.visible = false; if (typeof wxOverlayOff === 'function') wxOverlayOff(); }
+    dgnClearFloor(); DGN.O = { x: dgnX0(f), z: 0 }; dgnBuild(f); dgnLookOn();
+    const p = player.position;
+    if (at && at.x != null && !dgnBlocked(+at.x, +at.z)) p.set(+at.x, 0, +at.z);
+    else if (at === 'top' && DGN.up) p.set(DGN.up.x, 0, DGN.up.z + 3.5);
+    else p.set(DGN.down.x, 0, DGN.down.z - 3.5);
+    player.rotation.y = Math.PI; ex.yaw = 0; ex.snap = true; vel.set(0, 0, 0); ex.air = false;
+    dgnPopulate(f);
+    placeOrion().then(() => { if (world.orion && DGN.on) world.orion.root.position.set(p.x - 1.5, 0, p.z + 1.2); }).catch(() => null);
+    placeCrew().catch(() => null);
+    renderTasks(); clock.getDelta();
+    notice(f === 8 ? 'Olympus Mons · the summit' : `Olympus Mons · floor ${f} of 8 · creatures lv ${dgnLv(f)}–${dgnLv(f) + 3}`, DGN_NAMES[f].toUpperCase(), 3600);
+    if (f === 1 && !(wanderer.ch3 && wanderer.ch3.dgnSeen)) { wanderer.ch3 = Object.assign({}, wanderer.ch3, { dgnSeen: true }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster(); setTimeout(() => lootMsg('Inside the mountain, every XP counts 1.9 ×', '#ffc94a'), 2600); setTimeout(() => lootMsg('Each floor’s warden holds the stairs up · the spring by the stairs heals you', '#cfd6e6'), 5200); }
+  };
+  if (quick) { go(); return; }
+  const fd = $('#fade'); state = 'loadingCh'; fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.whoosh();
+  setTimeout(() => { go(); state = 'explore'; fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; }, 950); }, 520);
+}
+function dgnLeave() { // back out onto the slope, by the door
+  const fd = $('#fade'); state = 'loadingCh'; fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.whoosh();
+  setTimeout(() => {
+    dgnClearFloor(); DGN.on = false; DGN.open = null; for (const ch of world.chunks.values()) ch.visible = true; dgnRestoreLook();
+    const G = world.dgnGate, p = player.position; if (G) p.set(G.x, wHeight(G.x, G.z + 2), G.z + 2); else p.set(5, wHeight(5, 14.5), 14.5);
+    player.rotation.y = 0; ex.yaw = Math.PI; ex.snap = true; vel.set(0, 0, 0); updateChunks(99);
+    placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
+    state = 'explore'; fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; }, 950);
+    notice('Olympus Mons', 'BACK ON THE SLOPE', 2400);
+  }, 520);
+}
+function dgnNear(p) { // what you can use in here
+  if (!DGN.on) return null;
+  const d = (o, r) => o && Math.hypot(p.x - o.x, p.z - o.z) < r;
+  if (d(DGN.up, 3)) return { id: 'dgnUp', label: dgnBeaten(DGN.f) ? `Stairs up · floor ${DGN.f + 1}${DGN.f + 1 === 8 ? ' · the summit' : ''}` : 'Stairs up · the warden still stands' };
+  if (d(DGN.down, 3)) return { id: 'dgnDown', label: DGN.f === 1 ? 'Leave the mountain' : `Stairs down · floor ${DGN.f - 1}` };
+  if (d(DGN.well, 2.4)) return { id: 'dgnWell', label: 'Healing spring' };
+  if (DGN.f === 8 && khzJoined() && DGN.arena && d({ x: DGN.arena.c[0], z: DGN.arena.c[1] - DGN.arena.R + 6 }, 3)) return { id: 'dgnDown', label: 'The way back down' };
+  return null;
+}
+function dgnUse(id) {
+  if (id === 'dgnUp') { if (!dgnBeaten(DGN.f)) { lootMsg('The way up is sealed · defeat the warden first', '#ff8f86'); return; } dgnEnter(DGN.f + 1); return; }
+  if (id === 'dgnDown') { if (DGN.f === 1 || (DGN.f === 8 && khzJoined())) dgnLeave(); else dgnEnter(DGN.f - 1, 'top'); return; }
+  if (id === 'dgnWell') { if (time - DGN.wellT < 40) { lootMsg(`The spring is still settling · ${Math.ceil(40 - (time - DGN.wellT))} s`, '#cfd6e6'); return; } DGN.wellT = time; ex.hp = maxHP(); invState().hp = ex.hp; sfx.chime(); lootMsg('Healed · the spring needs 40 seconds to fill again', '#7fe8ff'); burst(player.position.x, 1, player.position.z, 30, 3, .5, .9, 1, .8, 1, 1.4); return; }
+  if (id === 'dgnGate') { const top = Math.max(1, Math.min(8, ((wanderer.ch3 && wanderer.ch3.dgnMax) || 0) + 1));
+    if (top > 1) openChoice('OLYMPUS MONS', [{ text: `Climb to floor ${top} · ${DGN_NAMES[top]}`, onPick: () => dgnEnter(top) }, { text: 'Start from the bottom · floor 1', onPick: () => dgnEnter(1) }, { text: 'Not yet', onPick: () => {} }]);
+    else dgnEnter(1); }
+}
+function dgnTick(dt) {
+  if (!DGN.on) return;
+  dgnLookOn();
+  for (const s of DGN.fx) s.material.opacity = .7 + Math.sin(time * 9 + s.position.x) * .15;
+  if (DGN.upArch) { const open = dgnBeaten(DGN.f); DGN.upArch.userData.door.material.opacity = open ? .45 + Math.sin(time * 3) * .15 : .25; DGN.upArch.userData.door.material.color.set(open ? 0xffc94a : 0xff3a2a); DGN.upArch.userData.glow.material.color.set(open ? 0xffc94a : 0xff3a2a); }
+  // the warden falls: the stairs open
+  if (DGN.warden && DGN.warden.dead && !dgnBeaten(DGN.f)) {
+    wanderer.ch3 = Object.assign({}, wanderer.ch3, { dgnMax: DGN.f }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster();
+    DGN.warden = null; sfx.chime(); notice(`Floor ${DGN.f} cleared`, DGN.f === 7 ? 'THE WAY TO THE SUMMIT IS OPEN' : 'THE STAIRS UP ARE OPEN', 3400); renderTasks();
+  }
+  // they keep coming: a fresh pack every half a minute or so while there are few about (the grind)
+  if (state === 'explore' && DGN.f < 8 && (DGN.spawnT -= dt) <= 0) {
+    DGN.spawnT = 32; const alive = fauna.list.filter(c => c.dgn && !c.dead).length, p = player.position;
+    if (alive < 5 + DGN.f / 2) { const far = DGN.rooms.filter(rm => rm !== DGN.start && Math.hypot(dgnW(rm.c[0], rm.c[1])[0] - p.x, dgnW(rm.c[0], rm.c[1])[1] - p.z) > 26); if (far.length) dgnSpawnGroup(far[Math.random() * far.length | 0], DGN.f); }
+  }
+  if (DGN.f === 8) dgnArenaTick(dt);
+}
+function dgnDown() { // you fell
+  if (DGN.downing) return; DGN.downing = true;
+  const fight = !!DGN.boss; state = 'loadingCh'; vel.set(0, 0, 0);
+  const bo = $('#blackout'); bo.style.transition = 'opacity 1.1s'; bo.style.opacity = 1;
+  notice(fight ? 'Khazglar’s hammer put you down' : 'You blacked out', fight ? 'THE FIGHT STARTS AGAIN' : 'ORION DRAGGED YOU BACK TO THE STAIRS', 3200);
+  setTimeout(() => {
+    const p = player.position;
+    if (fight) { dgnBossReset(); const [gx, gz] = dgnW(DGN.arena.gate[0], DGN.arena.gate[1] - 1.6); p.set(gx, 0, gz); ex.hp = maxHP(); }
+    else { for (const c of fauna.list) if (c.dgn && !c.dead) { c.state = 'idle'; c.tgt = null; } p.set(DGN.down.x, 0, DGN.down.z - 3.5); ex.hp = Math.round(maxHP() * .6); }
+    invState().hp = ex.hp; ex.snap = true; vel.set(0, 0, 0); if (world.orion) world.orion.root.position.set(p.x - 1.5, 0, p.z + 1.2);
+    state = 'explore'; DGN.downing = false; bo.style.opacity = 0; setTimeout(() => { bo.style.transition = ''; }, 1200);
+    if (fight) setTimeout(() => kbark('Up already? Good. Run again and I’ll break your legs myself.', 3600), 900);
+  }, 2600);
+}
+// ---- the summit: the caldera arena, the throne, and the hermit with his hammer ----
+function makeKhzHammer() { // the hammer: obsidian head bound in brass, runes burning in it, a haft taller than a man
+  const g = new THREE.Group(), brassM = new THREE.MeshStandardMaterial({ color: 0xd8b060, metalness: .5, roughness: .35, emissive: 0x3a2808, emissiveIntensity: .5 });
+  const haft = new THREE.Mesh(new THREE.CylinderGeometry(.05, .06, 1.7, 8), new THREE.MeshStandardMaterial({ color: 0x2a1a12, roughness: .8 })); haft.position.y = .55; g.add(haft);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(.75, .42, .42), new THREE.MeshStandardMaterial({ color: 0x141016, roughness: .3, metalness: .6, emissive: 0x5a1a06, emissiveIntensity: .7 })); head.position.y = 1.42; g.add(head);
+  for (const s of [-1, 1]) { const b = new THREE.Mesh(new THREE.BoxGeometry(.06, .46, .46), brassM); b.position.set(s * .25, 1.42, 0); g.add(b); }
+  const rune = new THREE.Mesh(new THREE.PlaneGeometry(.34, .2), new THREE.MeshBasicMaterial({ color: 0xff8a3a, transparent: true, opacity: .95 })); rune.position.set(0, 1.42, .215); g.add(rune);
+  const glow = glowSprite(0xff7a2a, 1.3, .8); glow.position.y = 1.42; g.add(glow); g.userData.glow = glow; g.userData.rune = rune;
+  g.rotation.x = Math.PI / 2; return g;
+}
+function dgnArena(g) {
+  const A = DGN.arena, [cx, cz] = A.c, lavaM = new THREE.MeshBasicMaterial({ color: 0xff6a1a });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(A.R - 3.2, A.R - 2.4, 64), lavaM); ring.rotation.x = -Math.PI / 2; ring.position.set(cx, .05, cz); g.add(ring);
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2, p = new THREE.Mesh(new THREE.CylinderGeometry(.6, .9, 9 + (i % 3) * 2, 6), new THREE.MeshStandardMaterial({ color: 0x0e0a10, roughness: .3, metalness: .5 })); p.position.set(cx + Math.cos(a) * (A.R - 1.2), 4.5, cz + Math.sin(a) * (A.R - 1.2)); g.add(p); const s = glowSprite(0xff5a1a, 3, .7); s.position.set(p.position.x, 9.5, p.position.z); g.add(s); DGN.fx.push(s); }
+  const thr = new THREE.Group(), st = new THREE.MeshStandardMaterial({ color: 0x241612, roughness: .8 });
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.8, .9, 8), st); base.position.y = .45; thr.add(base);
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1, 1.6), st); seat.position.y = 1.4; thr.add(seat);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(2.6, 4.2, .6), st); back.position.set(0, 3, -.8); thr.add(back);
+  thr.position.set(cx, 0, cz - A.R + 6); g.add(thr); A.throne = [cx, cz - A.R + 6.8];
+  const L = new THREE.PointLight(0xff4a1a, 70, 60, 1.4); L.position.set(cx, 7, cz); g.add(L); DGN.arenaL = L;
+  // the curtain of fire across the way in
+  const [gx, gz] = dgnW(A.gate[0], A.gate[1]);
+  const cur = new THREE.Mesh(new THREE.PlaneGeometry(DGN.C, 6), new THREE.MeshBasicMaterial({ color: 0xff5a1a, transparent: true, opacity: .5, side: THREE.DoubleSide })); cur.position.set(gx, 3, gz - DGN.C / 2 + .2); g.add(cur); DGN.curtain = cur;
+  DGN.barrier = true;
+  if (!khzJoined()) dgnKhzPlace();
+}
+async function dgnKhzPlace() {
+  const f = DGN.f, R = await companionRig('khazglar'); if (!R || !DGN.on || DGN.f !== f || khzJoined()) return;
+  R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  const sock = R.rh ? boneSocket(R.rh) : R.ra ? handSocket(R.ra) : null, H = makeKhzHammer(); if (sock) sock.add(H); else { H.position.set(.5, 1, 0); R.root.add(H); }
+  const [x, z] = DGN.arena.throne; R.root.position.set(x, .9, z); R.root.rotation.y = 0; R.mode = 'idle'; wScene.add(R.root);
+  DGN.k = { R, x, z, H }; world.khz = DGN.k;
+}
+function dgnArenaTick(dt) {
+  const A = DGN.arena; if (!A) return;
+  const p = player.position, [gi, gj] = A.gate, [gx, gz] = dgnW(gi, gj), K = DGN.k;
+  if (DGN.curtain) { DGN.curtain.visible = DGN.barrier; DGN.curtain.material.opacity = .4 + Math.sin(time * 7) * .12; }
+  if (DGN.arenaL) DGN.arenaL.intensity = 70 + Math.sin(time * 2.3) * 10 + (DGN.flashL || 0) * 260; DGN.flashL = Math.max(0, (DGN.flashL || 0) - dt * 2.5);
+  if (K && K.H) K.H.userData.glow.material.opacity = .6 + Math.sin(time * 5) * .25;
+  if (khzJoined() || !K || DGN.won) { DGN.barrier = DGN.won && !khzJoined(); if (K && K.R && !K.R.static) { try { animRig(K.R, dt); } catch (e) { K.R.static = true; } } return; }
+  // the curtain parts only for all three of you
+  const atGate = Math.hypot(p.x - gx, p.z - (gz + DGN.C / 2)) < 4.5;
+  if (!DGN.boss && !DGN.cut) {
+    DGN.barrier = !dgnCrewReady();
+    if (atGate && DGN.barrier && time - (DGN.gateMsgT || -9) > 4) { DGN.gateMsgT = time; lootMsg('The fire won’t part · Khazglar will only face all three of you: bring Orion and Nico', '#ff8f86'); }
+    if (!DGN.barrier && p.z < gz - DGN.C) dgnTaunt(); // through the curtain and into the arena
+  }
+  if (!DGN.boss) { if (K.R && !K.R.static) { try { K.R.mode = 'idle'; animRig(K.R, dt); } catch (e) { K.R.static = true; } } if (K.raise && K.R.ra) { K.R.ra.rotation.x = -2.7; if (K.R.la) K.R.la.rotation.x = -2.5; } if (DGN.cut && DGN.kLeap) dgnLeapTick(dt); }
+  else dgnBossTick(dt);
+}
+// ---- the meeting: his alone, and it isn't kind ----
+const KHZ_TAUNT_SP = {
+  human: ['A child of Earth who abandoned her the moment she bared her teeth.', 'CH3KHAZT3'],
+  chompy: ['A Chompy who runs. Your Emperor would have you flayed for the shame of it.', 'CH3KHAZT3CH'],
+  erisian: ['An Erisian, fleeing. The Matriarch’s court must be very quiet without its cowards.', 'CH3KHAZT3ER'],
+  grek: ['A Grek who turns tail. Am-Grek would laugh himself sick.', 'CH3KHAZT3GR']
+};
+function khzTauntLines() {
+  const sp = KHZ_TAUNT_SP[spOf(wanderer)] || KHZ_TAUNT_SP.human;
+  return [ // [text, voice id, what happens as he says it]
+    ['So. The cowards finally stop running.', 'CH3KHAZT1', 'land'],
+    ['I watched you crawl off the ice. I watched you flee New London with Hawthorne’s dogs snapping at your heels. I watched you run from Earth itself, like rats off a burning ship.', 'CH3KHAZT2', 'thud'],
+    [sp[0], sp[1], 'thud'],
+    ['Orion Mascar. Thirty years of running from a son you couldn’t bear to face.', 'CH3KHAZT4', 'thud'],
+    ['And the woman who slept through an entire century. You were hiding from the world before your grandmother was cold.', 'CH3KHAZT5', 'thud'],
+    ['Eight floors of my mountain. You think climbing them makes you brave? Rats climb.', 'CH3KHAZT6', 'flash'],
+    ['You want to know what is screaming inside your skull? Something at the heart of the galaxy is calling for the strong. It has no use for cowards.', 'CH3KHAZT7', 'quake'],
+    ['Neither do I.', 'CH3KHAZT8', 'silence'],
+    ['This hammer was forged in the heart of this mountain before your kind learned to make fire. It has broken kings. It will not even notice you.', 'CH3KHAZT9', 'raise'],
+    ['Three of you. Good. I would hate for this to be over quickly.', 'CH3KHAZT10', 'thud'],
+    ['No more running. No more hiding behind old men and lucky women.', 'CH3KHAZT11', 'flash'],
+    ['STAND. AND. FIGHT.', 'CH3KHAZT12', 'slam']
+  ];
+}
+function khzFx(kind) {
+  const K = DGN.k;
+  const flash = (c, a) => { fbFlash(a, c); setTimeout(() => fbFlash(0, c), 90); setTimeout(() => fbFlash(a * .5, c), 160); setTimeout(() => fbFlash(0, c), 260); };
+  if (kind === 'thud') { sfx.thud(); ex.shake = .45; DGN.flashL = .6; }
+  else if (kind === 'flash') { sfx.thud(); sfx.hit('rock'); ex.shake = .6; flash('#ff3a1a', .45); DGN.flashL = 1; }
+  else if (kind === 'quake') { sfx.boom && sfx.boom(); ex.shake = 1; DGN.flashL = 1.2; flash('#ff5a1a', .35); if (K) burst(K.x, .3, K.z, 60, 7, 1, .4, .1, 1, 1.2, 1.6); }
+  else if (kind === 'silence') { sfx.combat && sfx.combat(false); DGN.flashL = 0; }
+  else if (kind === 'raise') { sfx.whoosh(); DGN.flashL = .8; if (K && K.R && K.R.ra) { K.raise = 1; } }
+  else if (kind === 'slam') { if (K) { K.raise = 0; burst(K.x, .3, K.z, 120, 10, 1, .5, .15, 1.2, 1.6, 2.2); } sfx.boom && sfx.boom(); sfx.thud(); ex.shake = 1.4; flash('#ffffff', .8); DGN.flashL = 2; }
+  else if (kind === 'land') { sfx.boom && sfx.boom(); sfx.thud(); ex.shake = 1.1; flash('#ff6a2a', .5); DGN.flashL = 1.5; if (K) burst(K.x, .3, K.z, 80, 8, 1, .5, .2, 1, 1.4, 2); }
+}
+function dgnTaunt() {
+  if (DGN.cut || DGN.boss || !DGN.k) return;
+  DGN.cut = true; DGN.barrier = true; // no way back out now
+  const K = DGN.k, p = player.position, [cx, cz] = DGN.arena.c;
+  // he comes down off the throne in one leap and lands in front of you
+  const tx = p.x, tz = p.z - 4.6; DGN.kLeap = { t: 0, sx: K.x, sz: K.z, tx, tz };
+  if (!K.lamp) { K.lamp = new THREE.PointLight(0xff7a3a, 30, 9, 1.5); K.lamp.position.set(0, 2.6, .9); K.R.root.add(K.lamp); } // the forge-light on him
+  vel.set(0, 0, 0); ex.keys.clear(); sfx.whoosh();
+  if (DGN.taunted) { // a second try: no speech this time
+    setTimeout(() => { khzFx('land'); setTimeout(() => khzSayAll([['Back again. Then stand still this time.', 'CH3KHAZT13', 'slam']], dgnBossStart), 500); }, 900); return;
+  }
+  setTimeout(async () => {
+    await khzVoices(); const lines = khzTauntLines(); DGN.taunted = true;
+    khzSayAll(lines, dgnBossStart);
+  }, 950);
+}
+function dgnLeapTick(dt) {
+  const L = DGN.kLeap, K = DGN.k; if (!L || !K) return; L.t += dt;
+  const k = clamp(L.t / .85, 0, 1); K.x = lerp(L.sx, L.tx, k); K.z = lerp(L.sz, L.tz, k);
+  K.R.root.position.set(K.x, Math.sin(k * Math.PI) * 7 + (k < 1 ? .9 * (1 - k) : 0), K.z);
+  K.R.root.rotation.y = Math.atan2(player.position.x - K.x, player.position.z - K.z);
+  if (k >= 1) { DGN.kLeap = null; K.R.root.position.y = 0; }
+}
+function khzSayAll(list, done) { // one line at a time, each with its moment, and the camera on him
+  const K = DGN.k;
+  const run = i => {
+    if (i >= list.length) { done && done(); return; }
+    const [text, id, fx] = list[i]; khzFx(fx);
+    openDialog('KHAZGLAR', [text], false, () => run(i + 1), khzClip(id));
+    if (K && K.R) K.R.root.rotation.y = Math.atan2(player.position.x - K.x, player.position.z - K.z);
+  };
+  run(0);
+}
+// ---- the fight: a raid boss. All three of you, or his ward holds ----
+const KB = { hp: 9000, lv: 35 }; // about a minute and a half with Orion and Nico pulling their weight
+function dgnBossBar() {
+  const el = $('#bossBar'); if (!el) return;
+  const B = DGN.boss; if (!B) { el.classList.remove('on'); return; }
+  const c = B.c, frac = Math.max(0, c.hp / KB.hp), ward = !dgnWardDown();
+  el.innerHTML = `<div class="bb-h"><b>KHAZGLAR</b><small>LV ${KB.lv} · RAID BOSS · PHASE ${B.ph} OF 3</small></div><div class="bb"><i style="width:${(frac * 100).toFixed(1)}%"></i></div><em>${ward ? 'His ward holds · fight him together, all three of you' : B.ph === 3 ? 'Watch the sky · get out of the circles' : B.ph === 2 ? 'Rust hounds! · keep moving' : 'Dodge the hammer · stay out of the red rings'}</em>`;
+  el.classList.add('on');
+}
+function dgnWardDown() { // Orion and Nico both in the fight, near him
+  const B = DGN.boss; if (!B) return true; const c = B.c;
+  const o = world.orion && world.orion.root.visible ? world.orion.root.position : null, n = CREW.nico && CREW.nico.R && CREW.nico.R.root.visible ? CREW.nico.R.root.position : null;
+  return !!(o && n && Math.hypot(o.x - c.x, o.z - c.z) < 30 && Math.hypot(n.x - c.x, n.z - c.z) < 30);
+}
+function dgnBossDmg(c, dmg) { // what actually gets through
+  if (!dgnWardDown()) { if (time - (DGN.wardMsgT || -9) > 3) { DGN.wardMsgT = time; lootMsg('His ward turns the blow · you need Orion and Nico beside you', '#ff8f86'); } return dmg * .25; }
+  return dmg;
+}
+function dgnBossStart() {
+  const K = DGN.k; if (!K || DGN.boss) return;
+  DGN.cut = false; K.R.root.position.y = 0;
+  const D = { name: 'Khazglar', hp: KB.hp, r: 1.8, xp: 0, dmg: 0, loot: () => [] };
+  const c = { type: 'khazboss', D, mesh: K.R.root, x: K.x, z: K.z, y: 0, rot: 0, hp: KB.hp, state: 'hunt', t: 0, cd: 0, home: [K.x, K.z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, boss: true, bar: null };
+  fauna.list.push(c);
+  DGN.boss = { c, R: K.R, st: 'chase', t: 0, cd: 2, quakeCd: 11, leapCd: 6, throwCd: 8, metT: 4, aggroT: 0, tgt: 'you', ph: 1, tels: [], mets: [], proj: null };
+  sfx.combat(true, COMBAT_TRACKS.indexOf('Predator II'));
+  notice('Raid boss · level 35', 'KHAZGLAR', 3200); dgnBossBar(); renderTasks();
+}
+function dgnBossClear() {
+  const B = DGN.boss; if (!B) return;
+  for (const m of B.tels) wScene.remove(m); for (const m of B.mets) wScene.remove(m.tel);
+  if (B.proj && B.proj.m) wScene.remove(B.proj.m);
+  const i = fauna.list.indexOf(B.c); if (i >= 0) fauna.list.splice(i, 1);
+  DGN.boss = null; dgnBossBar(); sfx.combat && sfx.combat(false);
+}
+function dgnBossReset() { // a wipe: everything back as it was before the fight, Khazglar on his throne
+  dgnBossClear();
+  for (const c of [...fauna.list]) if (c.dgn) removeFauna(c);
+  const K = DGN.k; if (K) { const [x, z] = DGN.arena.throne; K.x = x; K.z = z; K.R.root.position.set(x, .9, z); K.R.root.rotation.set(0, 0, 0); K.raise = 0; }
+  DGN.cut = false; DGN.barrier = false;
+}
+const dgnTgtPos = id => id === 'orion' ? (world.orion && world.orion.root.visible ? world.orion.root.position : null) : id === 'nico' ? (CREW.nico && CREW.nico.R && CREW.nico.R.root.visible ? CREW.nico.R.root.position : null) : player.position;
+function dgnBossMove(c, tx, tz, sp, dt) {
+  const dx = tx - c.x, dz = tz - c.z, d = Math.hypot(dx, dz); if (d < .05) return d;
+  const nx = c.x + dx / d * sp * dt, nz = c.z + dz / d * sp * dt;
+  if (!dgnBlocked(nx, nz)) { c.x = nx; c.z = nz; } else if (!dgnBlocked(nx, c.z)) c.x = nx; else if (!dgnBlocked(c.x, nz)) c.z = nz;
+  return d;
+}
+function dgnHitCompanions(x, z, r, what) { // his blows land on your friends too: they stagger, and they say so
+  for (const id of ['orion', 'nico']) { const q = dgnTgtPos(id); if (q && Math.hypot(q.x - x, q.z - z) < r) { burst(q.x, 1, q.z, 16, 3, 1, .5, .2, .6, 1, 1); if (time - (DGN.compMsgT || -9) > 4) { DGN.compMsgT = time; lootMsg(`${compName(id)} takes ${what} · still standing`, compColor(id)); } } }
+}
+function dgnBossTick(dt) {
+  const B = DGN.boss, K = DGN.k; if (!B || !K) return;
+  const c = B.c, R = B.R, p = player.position; B.t += dt;
+  if (c.dead || c.hp <= 0) { dgnBossWin(); return; }
+  if ((B.barT = (B.barT || 0) - dt) <= 0) { B.barT = .15; dgnBossBar(); }
+  const frac = c.hp / KB.hp;
+  if (B.ph === 1 && frac < .6) { // phase two: he calls the hounds
+    B.ph = 2; sfx.thud(); ex.shake = .8; DGN.flashL = 1.5; kbark('Enough games. Hounds! To me!', 3200, khzClip('CH3KHAZB1') && khzClip('CH3KHAZB1')[0]);
+    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2, cc = spawnFauna(dgnType('rusthound', 7), c.x + Math.cos(a) * 6, c.z + Math.sin(a) * 6, [c.x, c.z]); cc.dgn = 8; cc.state = 'hunt'; }
+    notice('Phase two', 'THE HOUNDS OF OLYMPUS', 2600);
+  }
+  if (B.ph === 2 && frac < .3) { // phase three: the mountain itself
+    B.ph = 3; sfx.boom && sfx.boom(); ex.shake = 1.2; DGN.flashL = 2; kbark('You want to see what this mountain can do? LOOK UP.', 3400, khzClip('CH3KHAZB2') && khzClip('CH3KHAZB2')[0]);
+    for (let i = 0; i < 2; i++) { const cc = spawnFauna(dgnType('duststalker', 7), c.x + (i ? 7 : -7), c.z + 4, [c.x, c.z]); cc.dgn = 8; cc.state = 'hunt'; }
+    notice('Phase three', 'THE MOUNTAIN WAKES', 2600);
+  }
+  if (state !== 'explore' || ex.dlg) { R.mode = 'idle'; R.root.position.set(c.x, 0, c.z); animRig(R, dt); return; }
+  // who he's after: mostly you, sometimes the ones shooting him
+  if ((B.aggroT -= dt) <= 0) { B.aggroT = 5 + Math.random() * 3; const r = Math.random(); B.tgt = r < .55 ? 'you' : r < .78 ? 'nico' : 'orion'; if (!dgnTgtPos(B.tgt)) B.tgt = 'you'; }
+  const T = dgnTgtPos(B.tgt) || p, dx = T.x - c.x, dz = T.z - c.z, d = Math.hypot(dx, dz) || .01, dP = Math.hypot(p.x - c.x, p.z - c.z);
+  const sp = B.ph === 1 ? 3.6 : B.ph === 2 ? 4.2 : 4.7, fast = B.ph === 3 ? .75 : 1;
+  B.cd -= dt; B.quakeCd -= dt; B.leapCd -= dt; B.throwCd -= dt;
+  const face = (x, z, k = 8) => { R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(x - c.x, z - c.z), Math.min(1, dt * k)); };
+  const tel = (x, z, r) => { const m = telegraph(x, z, r); B.tels.push(m); return m; };
+  const endMove = () => { for (const m of B.tels) wScene.remove(m); B.tels = []; B.st = 'chase'; B.t = 0; R.mode = 'walk'; K.raise = 0; };
+  if (B.st === 'chase') {
+    if (B.quakeCd <= 0 && dP < 13) { B.st = 'quake'; B.t = 0; R.mode = 'idle'; K.raise = 1; tel(c.x, c.z, 11); sfx.whoosh(); kbark('KNEEL!', 1400); }
+    else if (B.leapCd <= 0 && d > 8) { B.st = 'leap'; B.t = 0; B.lx = T.x; B.lz = T.z; B.sx = c.x; B.sz = c.z; tel(T.x, T.z, 4.4); R.mode = 'idle'; sfx.whoosh(); }
+    else if (B.throwCd <= 0 && dP > 7 && dP < 28) { B.st = 'throw'; B.t = 0; B.tx = p.x; B.tz = p.z; R.mode = 'attack'; R.t = 0; const L = Math.hypot(p.x - c.x, p.z - c.z); for (let k = 1; k <= 5; k++) tel(lerp(c.x, p.x, k / 5), lerp(c.z, p.z, k / 5), 1.5); }
+    else if (d < 3.6 && B.cd <= 0) { B.st = 'slam'; B.t = 0; R.mode = 'attack'; R.t = 0; B.hit = false; B.sx = c.x + dx / d * 2.4; B.sz = c.z + dz / d * 2.4; tel(B.sx, B.sz, 3.4); }
+    else { R.mode = 'walk'; face(T.x, T.z); dgnBossMove(c, T.x, T.z, d > 3.2 ? sp : 0, dt); }
+  } else if (B.st === 'slam') { // the hammer comes down in front of him
+    face(T.x, T.z, 3); K.raise = B.t < .8 * fast ? 1 : 0;
+    if (!B.hit && B.t > .85 * fast) { B.hit = true; sfx.swing(); sfx.thud(); ex.shake = .7; burst(B.sx, .4, B.sz, 40, 5, 1, .5, .15, .8, 1, 1.4); if (Math.hypot(p.x - B.sx, p.z - B.sz) < 3.6) hurtPlayer(46, { x: c.x, z: c.z }); dgnHitCompanions(B.sx, B.sz, 3.6, 'the hammer'); }
+    if (B.t > 1.6 * fast) { endMove(); B.cd = (B.ph === 3 ? .9 : 1.4) + Math.random() * .6; }
+  } else if (B.st === 'quake') { // hammer high, then a ring of fire out across the floor: jump it, dodge it, or be well away
+    face(p.x, p.z, 2);
+    if (!B.hit && B.t > 1.6 * fast) { B.hit = true; K.raise = 0; sfx.boom && sfx.boom(); sfx.thud(); ex.shake = 1.1; DGN.flashL = 1.3; burst(c.x, .3, c.z, 90, 11, 1, .45, .1, 1, 1.4, 1.8); if (dP < 11 && !ex.air) hurtPlayer(34, { x: c.x, z: c.z }); dgnHitCompanions(c.x, c.z, 11, 'the shockwave'); }
+    if (B.t > 2.4 * fast) { endMove(); B.hit = false; B.quakeCd = B.ph === 3 ? 8 : 12; B.cd = 1; }
+  } else if (B.st === 'leap') { // up, and down on whoever he was after
+    const k = clamp((B.t - .8 * fast) / .7, 0, 1); face(B.lx, B.lz, 4);
+    if (k > 0) { c.x = lerp(B.sx, B.lx, k); c.z = lerp(B.sz, B.lz, k); B.jy = Math.sin(k * Math.PI) * 6; }
+    if (k >= 1 && !B.landed) { B.landed = true; B.jy = 0; sfx.boom && sfx.boom(); sfx.thud(); ex.shake = .9; burst(c.x, .2, c.z, 70, 8, 1, .5, .2, .9, 1.2, 1.6); if (Math.hypot(p.x - c.x, p.z - c.z) < 4.4) hurtPlayer(58, { x: c.x, z: c.z }); dgnHitCompanions(c.x, c.z, 4.4, 'the leap'); }
+    if (B.t > 2.2 * fast) { endMove(); B.landed = false; B.leapCd = (B.ph === 3 ? 6 : 9) + Math.random() * 3; B.cd = .8; }
+  } else if (B.st === 'throw') { // the hammer, end over end, straight at you, and back
+    face(B.tx, B.tz, 6);
+    if (!B.proj && B.t > .7 * fast) { const m = makeKhzHammer(); m.scale.setScalar(1.4); wScene.add(m); B.proj = { m, x: c.x, z: c.z, t: 0, back: false, hit: false }; if (K.H) K.H.visible = false; sfx.whoosh(); }
+    if (B.proj) {
+      const P = B.proj, tx = P.back ? c.x : B.tx, tz = P.back ? c.z : B.tz, ddx = tx - P.x, ddz = tz - P.z, dd = Math.hypot(ddx, ddz); P.t += dt;
+      const st = Math.min(dd, 26 * dt); if (dd > .01) { P.x += ddx / dd * st; P.z += ddz / dd * st; }
+      P.m.position.set(P.x, 1.4, P.z); P.m.rotation.x += dt * 14;
+      if (!P.hit && Math.hypot(p.x - P.x, p.z - P.z) < 1.7) { P.hit = true; hurtPlayer(38, { x: P.x, z: P.z }); }
+      if (!P.back && dd < .3) P.back = true;
+      if (P.back && dd < .6) { wScene.remove(P.m); B.proj = null; if (K.H) K.H.visible = true; endMove(); B.throwCd = (B.ph === 3 ? 6 : 9) + Math.random() * 3; B.cd = .8; }
+    }
+  }
+  // phase three: rocks out of the dark, on all three of you
+  if (B.ph === 3 && (B.metT -= dt) <= 0) {
+    B.metT = 4.5; for (const id of ['you', 'nico', 'orion']) { const q = dgnTgtPos(id); if (!q) continue; for (let k = 0; k < (id === 'you' ? 2 : 1); k++) { const x = q.x + (k ? rand(-3, 3) : 0), z = q.z + (k ? rand(-3, 3) : 0); B.mets.push({ x, z, t: 0, tel: telegraph(x, z, 2.6) }); } }
+  }
+  for (const M of [...B.mets]) { M.t += dt; M.tel.material.opacity = .35 + .35 * Math.sin(time * 22); if (M.t > 1.5) { burst(M.x, .5, M.z, 40, 6, 1, .5, .15, .8, 1.5, 1.4); sfx.thud(); ex.shake = Math.max(ex.shake || 0, .4); if (Math.hypot(p.x - M.x, p.z - M.z) < 2.7) hurtPlayer(40, { x: M.x, z: M.z }); wScene.remove(M.tel); B.mets.splice(B.mets.indexOf(M), 1); } }
+  for (const m of B.tels) m.material.opacity = .35 + .35 * Math.sin(time * 18);
+  // the raised hammer
+  if (R.ra && K.raise) { R.ra.rotation.x = -2.7; if (R.la) R.la.rotation.x = -2.5; }
+  c.y = 0; R.root.position.set(c.x, B.jy || 0, c.z); R.root.scale.setScalar(c.hurtT > 0 ? 1.03 : 1); c.hurtT = Math.max(0, c.hurtT - dt);
+  animRig(R, dt); if (R.ra && K.raise) { R.ra.rotation.x = -2.7; if (R.la) R.la.rotation.x = -2.5; }
+}
+function dgnBossWin() {
+  const B = DGN.boss, K = DGN.k; if (!B || B.won) return; B.won = true; DGN.won = true;
+  for (const c of [...fauna.list]) if (c.dgn && !c.dead) removeFauna(c);
+  dgnBossClear(); if (K && K.H) K.H.visible = true;
+  sfx.chime(); ex.shake = .6; DGN.flashL = 1.5; notice('Raid boss defeated', 'KHAZGLAR KNEELS', 3600);
+  gainXP(1200, 'Defeated Khazglar');
+  if (K) { K.R.mode = 'idle'; K.R.root.rotation.x = .35; K.R.root.position.y = -.35; } // down on one knee
+  setTimeout(async () => {
+    await khzVoices(); vel.set(0, 0, 0);
+    khzSayAll([
+      ['…Enough. Enough.', 'CH3KHAZW1', 'thud'],
+      ['You didn’t run. Not one of you. Not even when you should have.', 'CH3KHAZW2', null],
+      ['I was wrong about you. I am rarely wrong, and I hate it.', 'CH3KHAZW3', null],
+      ['The thing in the core will come for you, and it will not care how fast you can flee. Only whether you stand.', 'CH3KHAZW4', 'flash'],
+      ['So I will stand with you. Someone has to teach you how.', 'CH3KHAZW5', null]
+    ], () => { if (K && K.R.root.parent) K.R.root.parent.remove(K.R.root); DGN.k = null; world.khz = null; khzJoin(); DGN.barrier = false; DGN.won = false; });
+  }, 2400);
+}
 let khzVo = null;
 async function khzVoices() { if (khzVo) return khzVo; khzVo = await loadDataScript('khazVoices').then(() => sfx.loadClips('khazVoices')).catch(() => null) || []; return khzVo; }
-const KHZ_IDS = [...Array.from({ length: 17 }, (_, i) => 'CH3KHAZ' + (i + 1)), 'CH3KHAZ4CH', 'CH3KHAZ4ER', 'CH3KHAZ4GR']; // CH3KHAZ4 is the human greeting; the other species' follow at the end
+const KHZ_IDS = [...Array.from({ length: 13 }, (_, i) => 'CH3KHAZT' + (i + 1)), 'CH3KHAZB1', 'CH3KHAZB2', ...Array.from({ length: 5 }, (_, i) => 'CH3KHAZW' + (i + 1)), 'CH3KHAZT3CH', 'CH3KHAZT3ER', 'CH3KHAZT3GR'];
 const khzClip = id => { const i = KHZ_IDS.indexOf(id); return khzVo && i >= 0 && khzVo[i] ? [khzVo[i]] : undefined; };
-function khzSay(list, done) { const run = i => { if (i >= list.length) { done && done(); return; } openDialog(list[i][0], [list[i][1]], false, () => run(i + 1), khzClip(list[i][2])); }; run(0); }
-async function khzMeet() {
-  if (!khzPending() || ex.dlg) return;
-  await khzVoices(); if (state !== 'explore' || ex.dlg) return;
-  const sp = spOf(wanderer), K = 'KHAZGLAR', O = 'ORION MASCAR', N = 'NICO';
-  const a = [
-    [K, 'I watched your ship come down through the dust an hour ago. Nobody lands on this mountain by accident.', 'CH3KHAZ1'],
-    [O, 'Khazglar. You haven’t aged a day.', 'CH3KHAZ2'],
-    [K, 'And you have aged several decades, Orion Mascar. It suits you. Barely.', 'CH3KHAZ3'],
-    [K, KHZ_HELLO[sp] || KHZ_HELLO.human, { chompy: 'CH3KHAZ4CH', erisian: 'CH3KHAZ4ER', grek: 'CH3KHAZ4GR' }[sp] || 'CH3KHAZ4'],
-    [N, 'So the Martians are real. My grandmother owes me an apology.', 'CH3KHAZ5'],
-    [K, 'Your grandmother was a sensible woman. Most of us live under the ice now. I prefer the view.', 'CH3KHAZ6'],
-    [K, 'But you didn’t climb up here for the view. You’ve been seeing things. Not dreams. Places you’ve never been. People who aren’t born yet, or who have been dead for a thousand years.', 'CH3KHAZ7'],
-    [O, 'How could you possibly know that?', 'CH3KHAZ8'],
-    [K, 'Because the sky has been loud ever since you left Earth. Something at the heart of the galaxy is turning over in its sleep, and it talks to anyone who will listen. You listen very well.', 'CH3KHAZ9']
-  ];
-  const b = [
-    [K, 'I have watched that sky for three hundred years, through a telescope I built from a crashed survey probe. I would like to see it up close before the dust takes me.', 'CH3KHAZ13'],
-    [N, 'Is he asking to come with us?', 'CH3KHAZ14'],
-    [K, 'He is. He also cooks, and he knows every pirate lane between here and Neptune.', 'CH3KHAZ15'],
-    [O, 'Khazglar, coming down off Olympus Mons. Now I’ve seen everything.', 'CH3KHAZ16'],
-    [K, 'Not yet, old friend. But you will.', 'CH3KHAZ17']
-  ];
-  const reply = (d, line, why) => () => { if (d) alignAct(d, why); khzSay([line, ...b], khzJoin); };
-  khzSay(a, () => openChoice('YOUR REPLY', [
-    { text: 'Then help me understand it. Please.', onPick: reply(3, [K, 'Good. Fear is a poor teacher, but humility makes an excellent student.', 'CH3KHAZ10'], 'you asked Khazglar for help') },
-    { text: 'What’s at the heart of the galaxy?', onPick: reply(0, [K, 'Sagittarius A*. A black hole, and the oldest empire in the galaxy wrapped round it like a fist. That much I know for certain. The rest, we find out together.', 'CH3KHAZ11']) },
-    { text: 'Stay out of my head, old man.', onPick: reply(-2, [K, 'I’m not in your head. That is rather the problem. Something else is.', 'CH3KHAZ12'], 'you snapped at Khazglar') }
-  ]));
+function khzTaskText() { // the objective, as far up the mountain as you've got
+  if (khzJoined()) return 'Find Khazglar on Olympus Mons, Mars';
+  if (DGN.on) return DGN.f === 8 ? (DGN.boss ? 'Defeat Khazglar · all three of you' : 'Face Khazglar on the caldera throne') : `Climb Olympus Mons · floor ${DGN.f} of 8${dgnBeaten(DGN.f) ? ' · take the stairs up' : ' · defeat the warden'}`;
+  const top = (wanderer.ch3 && wanderer.ch3.dgnMax) || 0;
+  return top ? `Find Khazglar · climb Olympus Mons (${top} of 8 floors cleared)` : 'Find Khazglar on Olympus Mons, Mars';
+}
+function dgnTarget() { // where the marker points inside the mountain
+  if (DGN.f === 8) { const K = DGN.k; if (khzJoined() && DGN.arena) return { x: DGN.arena.c[0], z: DGN.arena.c[1] - DGN.arena.R + 6, label: 'The way down' }; return K ? { x: K.x, z: K.z, label: 'Khazglar' } : null; }
+  if (dgnBeaten(DGN.f) && DGN.up) return { x: DGN.up.x, z: DGN.up.z, label: 'Stairs up' };
+  if (DGN.warden && !DGN.warden.dead) return { x: DGN.warden.x, z: DGN.warden.z, label: 'The warden' };
+  return DGN.up ? { x: DGN.up.x, z: DGN.up.z, label: 'Stairs up' } : null;
+}
+function kbark(text, ms = 3000, clip) { showNarr('KHAZGLAR', text); clearTimeout(world.barkT); world.barkT = setTimeout(hideNarr, clip ? Math.max(ms, clip.duration * 1000 + 300) : ms); if (clip) sfx.playNarr(clip, 1.3); }
+function dgnReset() { // out of the mountain at once (a load, a landing elsewhere, the main menu)
+  if (!DGN.on) return; dgnClearFloor(); DGN.on = false; DGN.open = null; for (const ch of world.chunks.values()) ch.visible = true; dgnRestoreLook();
+}
+function khzTick(dt) {
+  if (world.khzFire) { world.khzFire.material.opacity = .75 + Math.sin(time * 9) * .1 + Math.sin(time * 23) * .06; if (world.khzLight) world.khzLight.intensity = 16 + Math.sin(time * 11) * 3; }
+  if (world.khzBeacon) world.khzBeacon.visible = khzPending();
+  dgnTick(dt);
 }
 function khzJoin() {
   const pdPre = pdStoryIds();
@@ -10010,12 +10486,12 @@ function khzJoin() {
   wanderer.party = [...new Set([...(wanderer.party || []), 'khazglar'])];
   const c = curChar(); if (c) { c.ch3 = wanderer.ch3; c.party = wanderer.party; }
   saveRoster(); pdStoryNote(pdPre);
-  const K = world.khz; if (K && K.R && K.R.root.parent) K.R.root.parent.remove(K.R.root); world.khz = null; // he walks with you now, as crew
   syncCrewParty(); placeCrew().catch(() => null);
   ui.xhud.classList.add('comp'); refreshJamesUI(); renderTasks();
   sfx.chime(); gainXP(200, 'Khazglar joined you');
   notice('The Hermit of Olympus Mons', 'KHAZGLAR JOINS YOUR CREW', 4200);
   setTimeout(() => lootMsg('Khazglar takes the same five orders as Orion and Nico · his file is open in the Nostrapedia', compColor('khazglar')), 1600);
+  setTimeout(() => lootMsg('The way back down is at the foot of the throne', '#cfd6e6'), 4200);
 }
 function khzFly() { // from anywhere on Mars: the helm takes you up the mountain
   const f = $('#fade'); f.style.transition = 'opacity .6s'; f.style.opacity = 1; sfx.whoosh();
@@ -11745,6 +12221,7 @@ const wxTag = P => { const W = planetWx(P); return `${W.type} · ${W.wx}`; };
 function wxOverlayOff() { const f = document.getElementById('wxFlash'); if (f) f.style.opacity = 0; world.flashA = 0; }
 function wxReset() { wxOverlayOff(); world.wx = null; world.storm = 0; world.stormDarkT = 0; world.flashA = 0; for (const k of world.wxRocks || []) wScene.remove(k.ring, k.rock); world.wxRocks = []; }
 function planetWxTick(dt) {
+  if (DGN.on) { world.storm = 0; return; } // no weather inside the mountain
   const P = world.planet && world.planet.P, W = P && planetWx(P), S = W && W.storm;
   if (!S) { world.storm = clamp((world.storm || 0) - dt / 6, 0, 1); world.wxK = null; if (world.snow) world.snow.visible = false; if (world.flashA) wxOverlayOff(); wxHazard(dt, null); return; }
   const rr = (a, d) => a ? a[0] + Math.random() * (a[1] - a[0]) : d, warnT = S.warn || 10;
@@ -12315,7 +12792,9 @@ function spaceHudTick(P, alt, fwd) {
   }
   box.innerHTML = h;
 }
-function ch3Goal() { const c = wanderer.ch3 || {}; if (khzPending()) return SPC.atmo && ATM.P && ATM.P.id === 'mars' ? 'Find Khazglar · fly to Olympus Mons and land' : 'Find Khazglar on Olympus Mons, Mars'; return c.warped ? `Explore ${curSys().name}` : !c.landed ? 'Land on a planet in Sol' : 'Warp to another star system · open the galaxy map'; }
+function ch3Goal() { const c = wanderer.ch3 || {}; if (khzPending()) return SPC.atmo && ATM.P && ATM.P.id === 'mars' ? 'Find Khazglar · fly to Olympus Mons and land' : khzTaskText();
+  return ch3GoalRest(c); }
+function ch3GoalRest(c) { return c.warped ? `Explore ${curSys().name}` : !c.landed ? 'Land on a planet in Sol' : 'Warp to another star system · open the galaxy map'; }
 /* ============ Into the atmosphere, No Man's Sky style ============
    Below 420 m over a world you no longer drop straight onto the ground: you fly into its sky. The world is drawn at its ground
    scale (Earth at 14 ×), as a cube-sphere of tiles that split finer the closer you fly (a quadtree on each of the six faces),
@@ -14302,7 +14781,9 @@ async function companionRig(id) { // the rig any companion walks and fights with
   if (id === 'nico') return nicoCompanionRig();
   const L = COMPANIONS.find(o => o.id === id && o.tag);
   if (L) { const el = document.getElementById(L.tag); if (!el) throw new Error('no model for ' + id); const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-    const sc = await parseGlb(u8.buffer); if (L.mod === 'kizna') feminiseRobot(sc); const R = autoRig(SkeletonUtils.clone(sc), L.h || 1.9); armRig(R, L.weapon || 'none'); return R; }
+    const sc = await parseGlb(u8.buffer); if (L.mod === 'kizna') feminiseRobot(sc); const R = autoRig(SkeletonUtils.clone(sc), L.h || 1.9); armRig(R, L.weapon || 'none');
+    if (id === 'khazglar') { const sock = R.rh ? boneSocket(R.rh) : R.ra ? handSocket(R.ra) : null; if (sock) { const H = makeKhzHammer(); sock.add(H); R.gear.push(H); } R.weapon = 'sword'; } // his legendary hammer
+    return R; }
   return loadCharRig(charById(id), 1.85);
 }
 async function nicoCompanionRig() { // a rig of her own (the escape and the menu have theirs), with her two pistols
@@ -14856,7 +15337,7 @@ function dryLandDir(P, D) { // nudges D onto the nearest ground at least 4 m abo
   return D;
 }
 async function landOn(P, dir, place) {
-  spaceOff(); state = 'loadingCh';
+  dgnReset(); spaceOff(); state = 'loadingCh';
   earthGroundClear();
   if (place && !place.nf && place.z != null) place = Object.assign({}, place, { z: -place.z, rot: Math.PI - (+place.rot || 0), yaw: Math.PI - (+place.yaw || 0), nf: 1 }); // saved before the ground stopped being a mirror image
   const fresh = !!(place && P.real && place.ev !== EARTH_V); // Earth has been remade with its real continents: set down afresh near where you were
@@ -14880,7 +15361,7 @@ async function landOn(P, dir, place) {
   for (const f of world.landShip.userData.flames) f.visible = false;
   const W3 = wanderer.ch3 = Object.assign({}, wanderer.ch3, { landed: true, lastPlanet: P.id }); const c = curChar(); if (c) c.ch3 = W3; saveRoster();
   const f = $('#shFlash'); if (f) f.classList.remove('on');
-  if (place) { state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks(); notice(wxTag(P), P.name.toUpperCase(), 3600); setTimeout(() => lootMsg(P.faction, '#9fe6ff'), 1400); sqOnLand(P); return; }
+  if (place) { state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks(); if (place.dgn && P.id === 'mars') { dgnEnter(+place.dgn.f || 1, place.dgn, true); return; } notice(wxTag(P), P.name.toUpperCase(), 3600); setTimeout(() => lootMsg(P.faction, '#9fe6ff'), 1400); sqOnLand(P); return; } // a save made inside Olympus Mons goes straight back in
   // the ship comes down out of the sky onto the spot
   SPC.descent = { t: 0 }; state = 'shipLand'; show(ui.xhud, false); player.visible = false; for (const fl of world.landShip.userData.flames) fl.visible = true;
 }
@@ -16347,7 +16828,8 @@ function updateWorldMode(dt) {
     let bd = 2.6;
     for (const b of world.build) { const dd = Math.hypot(b.data.x - p.x, b.data.z - p.z); if (dd < bd && Math.abs(b.data.y - p.y) < 3.2) { bd = dd; ex.near = { id: 'dismantle', ref: b, label: pieceName(b.data) }; } }
   }
-  if (!ex.near && isPl() && khzNear(p)) ex.near = { id: 'khaz', label: 'Khazglar' }; // the hermit of Olympus Mons
+  if (!ex.near && DGN.on) ex.near = dgnNear(p); // inside Olympus Mons: the stairs, the spring
+  if (!ex.near && isPl() && !DGN.on && world.dgnGate && Math.hypot(p.x - world.dgnGate.x, p.z - world.dgnGate.z) < 3.2) ex.near = { id: 'dgnGate', label: 'Enter Olympus Mons' };
   if (!ex.near && isPl()) { const G = giverNear(p); if (G) ex.near = { id: 'qgiver', ref: G, label: titleName(G.name) }; } // quest givers
   if (!ex.near && RES.bots.length) { const B = resNear(p); if (B) ex.near = { id: 'bot', ref: B, label: B.c.name }; } // residents (wanderers you sent into the world)
   if (!ex.near) for (const m of merchantsHere()) if (m.px != null && Math.hypot(m.px - p.x, m.pz - p.z) < 3) ex.near = { id: 'merchant', ref: m, label: m.who };
@@ -16385,7 +16867,7 @@ function updateWorldMode(dt) {
   // where's home, and your nearest beacon
   const dist = Math.hypot(p.x - 8, p.z), dirs = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
   const brg = (x, z) => dirs[((Math.round(Math.atan2(-(z - p.z), x - p.x) / (Math.PI / 4)) % 8) + 8) % 8];
-  let nav = isPl() || (world.adVisit && curArea() === 'africa') ? (d => d < 8 ? 'At your ship' : `Your ship · ${Math.round(d)} m · ${brg(shipX(), shipZ() + 10)}`)(Math.hypot(p.x - shipX(), p.z - shipZ() - 10)) : curArea() === 'europe' ? (d => d < 6 ? 'At the Houses of Parliament' : `Parliament · ${Math.round(d)} m · ${brg(LON.door.x, LON.door.z)}`)(Math.hypot(p.x - LON.door.x, p.z - LON.door.z)) : dist < 6 ? 'At the station' : `Station · ${Math.round(dist)} m · ${brg(8, 0)}`;
+  let nav = DGN.on ? `Olympus Mons · ${DGN.f === 8 ? 'the summit' : `floor ${DGN.f} of 8`} · ${DGN_NAMES[DGN.f]}` : isPl() || (world.adVisit && curArea() === 'africa') ? (d => d < 8 ? 'At your ship' : `Your ship · ${Math.round(d)} m · ${brg(shipX(), shipZ() + 10)}`)(Math.hypot(p.x - shipX(), p.z - shipZ() - 10)) : curArea() === 'europe' ? (d => d < 6 ? 'At the Houses of Parliament' : `Parliament · ${Math.round(d)} m · ${brg(LON.door.x, LON.door.z)}`)(Math.hypot(p.x - LON.door.x, p.z - LON.door.z)) : dist < 6 ? 'At the station' : `Station · ${Math.round(dist)} m · ${brg(8, 0)}`;
   if (ex.vehicle) nav = `Rover · ${Math.round(Math.abs(ex.vehicle.speed) * 3.6)} km/h<br>` + nav;
   let bb = null, bdist = 1e9;
   for (const o of world.placed) if (o.data.t === 'beacon') { const dd = Math.hypot(o.data.x - p.x, o.data.z - p.z); if (dd < bdist) { bdist = dd; bb = o; } }
@@ -16680,6 +17162,7 @@ function openSlots(mode, from) {
 }
 function closeSlots() { show(slotUI.root, false); refreshMenu(); refreshDirty(); }
 function currentPlace() {
+  if (DGN.on && ex.mode === 'world' && isPl()) { const G = world.dgnGate || { x: 5, z: 14.5 }; return { mode: 'explore', area: 'world', where: curArea(), x: +G.x.toFixed(2), z: +(G.z + 2).toFixed(2), y: 0, rot: 0, yaw: Math.PI, dir: world.planet.D.toArray().map(v => +v.toFixed(6)), nf: 1, ev: world.planet.P.real ? EARTH_V : 0, dgn: { f: DGN.f, x: +player.position.x.toFixed(2), z: +player.position.z.toFixed(2) } }; } // inside Olympus Mons: the floor, and where on it
   if (ex.mode === 'ship' && SHIPI.outside) return Object.assign({}, SHIPI.outside, { aboard: true, deck: SHIPI.deck, ax: +player.position.x.toFixed(2), az: +player.position.z.toFixed(2) }); // aboard: where the ship is, and where you are inside her
   if (ex.mode === 'space' && ATM.on) return atmoPlace();
   if (ex.mode === 'space') return { mode: 'explore', area: 'space', where: 'space', sys: SPC.sys, sp: SPC.pos.toArray().map(v => +v.toFixed(1)), sq: SPC.q.toArray().map(v => +v.toFixed(5)) };
