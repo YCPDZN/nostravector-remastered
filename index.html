@@ -5042,8 +5042,10 @@ async function startChapter1(fromCutscene, place) {
   if (worldPl) enterWorld(worldPl);
 }
 function leaveExplore(goTitle = true) {
+  // remember where you are first: aboard the Nostra included (stepping off her below would make it the helm, or the ramp)
+  const remember = goTitle && (state === 'xpaused' || state === 'explore') && (wanderer.chapter | 0) >= 1;
+  if (remember) rememberPlace();
   if (SHIPI.on) { SHIPI.on = false; ui.xhud.classList.remove('aboard'); if (SHIPI.from !== 'space') { ex.mode = 'world'; wScene.add(player); } else { ex.mode = 'space'; } }
-  if (goTitle && (state === 'xpaused' || state === 'explore') && (wanderer.chapter | 0) >= 1) rememberPlace();
   if (SPC.on) spaceOff(); SPC.paused = false;
   if (soldier.ready) soldier.root.visible = false; meet.active = false; ui.xhud.classList.remove('cutting');
   ex.mode = 'station'; openMap(false); $('#xNav').textContent = ''; ui.xhud.classList.remove('world'); hideGhost(); stopBuild(); closeModals(); ex.act = null; ex.air = false;
@@ -10355,7 +10357,7 @@ async function arriveNewLondon(pl) {
     arr.officer = LON.guards[0];
   }
   notice('Europe', 'NEW LONDON', 3600);
-  if (wanderer.ch2 && wanderer.ch2.trialDone && !wanderer.ch2.escapedLondon && !esc.on) { renderTasks(); startEscape(); return; }
+  if (wanderer.ch2 && wanderer.ch2.trialDone && !wanderer.ch2.escapedLondon && !esc.on) { renderTasks(); startEscape(pl); return; } // a save made mid-escape: the chase picks up where you saved
   // if the nightmare didn't catch you on the ice in Antarctica, it catches you here: Orion mentions the war, and it all comes rushing in
   const flashDue = () => orionJoined() && !(wanderer.ch2 && wanderer.ch2.antFlashback);
   arrVo().then(() => setTimeout(() => {
@@ -10789,7 +10791,7 @@ function escBars() {
   for (const f of esc.foes) if (!f.gone) rows.push(`<div class="eb"><div class="bb-h"><b>${f.name}</b><small>LV 20 · BOSS</small></div><div class="bb"><i style="width:${Math.max(0, f.hp / f.max * 100).toFixed(1)}%"></i></div></div>`);
   el.innerHTML = rows.join(''); el.classList.toggle('on', rows.length > 0);
 }
-async function startEscape() {
+async function startEscape(pl) { // pl: a save made during the escape, to carry on from that spot
   esc.on = true; esc.t = 0; esc.said = {}; esc.phase = 'run'; esc.foes = []; esc.dead = false;
   if (!esc.vo) esc.vo = (await sfx.loadClips('escapeVoices').catch(() => null)) || [];
   world.commons && (world.commons.visible = false); if (world.london) world.london.visible = true; for (const g of world.chunks.values()) g.visible = true;
@@ -10804,6 +10806,10 @@ async function startEscape() {
   // Hawthorne, a few steps behind you
   const H = trial.actors.haw || await hawthorneRig(); esc.H = { R: H, x: 15.5, z: 70, st: 'out', t: 0, cd: 1.5 };
   if (H) { if (H.root.parent) H.root.parent.remove(H.root); world.london.add(H.root); H.root.visible = false; H.root.position.set(15.5, 0, 70); H.root.rotation.set(0, 0, 0); }
+  if (pl && pl.x != null) { // carrying on from a save: back where you were, Orion and Nico at your side
+    p.set(+pl.x, 0, +pl.z); player.rotation.y = +pl.rot || 0; ex.yaw = pl.yaw != null ? +pl.yaw : player.rotation.y + Math.PI; ex.snap = true;
+    if (O) O.root.position.set(p.x + 1.5, 0, p.z + 1.5); if (N) N.root.position.set(p.x - 1.5, 0, p.z + 1.5);
+  }
   state = 'explore'; show(ui.xhud, true); ui.xhud.classList.remove('cutting'); clock.getDelta(); resize();
   sfx.combat(true, COMBAT_TRACKS.indexOf('Wonders of Laniakea (Combat)')); // Hawthorne's chase
   notice('Escape New London', 'RUN TO THE SHIP', 3200); say(ESC.go); renderTasks(); escBars();
@@ -15983,6 +15989,7 @@ function enterWorld(place) {
     setTimeout(() => notice('Footprints in the snow', 'FOLLOW JAMES’S TRAIL', 3200), 1200);
     setTimeout(() => notice('Survival', 'GATHER · CRAFT · BUILD', 3000), 5200);
   }
+  if (place && place.rover && world.rover && world.rover.visible && !ex.vehicle) enterRover(); // saved behind the wheel: still there
 }
 function goOutside() {
   state = 'loadingCh';
@@ -16495,6 +16502,8 @@ function currentPlace() {
 // each wanderer remembers where they were, so Continue / Load put you back there
 function rememberPlace() {
   const p = currentPlace(); wanderer.place = p; resumePlace = null; // this is newer than whatever slot was last loaded
+  const V = ex.vehicle; // driving the rover: it's parked exactly here, and loading puts you back behind the wheel
+  if (V && ex.mode === 'world' && ch1().rover) { Object.assign(ch1().rover, { x: +V.x.toFixed(2), z: +V.z.toFixed(2), r: +V.heading.toFixed(3) }); p.rover = true; }
   const c = curChar(); if (c) c.place = p;
   return p;
 }

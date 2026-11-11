@@ -223,7 +223,11 @@ The game never autosaves. It writes progress only when you choose **Save game**,
 - There are three save slots. Each holds all your wanderers, the active one, their chapter progress, and where you were standing if you saved in the station.
 - Changes since your last save are kept only in memory and are marked **UNSAVED**. Loading or overwriting a slot asks you to confirm.
 - **Delete save** (in Save / Load or the pause menu) clears a slot after a second tap to confirm.
-- Each wanderer remembers exactly where they were (out on the ice or in the station). Saving, loading, Continue and going to the main menu all put you back on that spot.
+- Each wanderer remembers exactly where they were, in every chapter, and saving, loading, Continue and going to the main menu all put you back on that spot (never a chapter's starting point):
+  - **Chapter I:** in the station or out on the ice, and **behind the wheel of the rover** if you saved while driving (the rover stays exactly where you left it).
+  - **Chapter II:** in Africa and Ad-Nostra, back in Antarctica, in New London, and **partway through the escape from New London** (the chase picks up where you saved, with Orion and Nico beside you).
+  - **Chapters III–V:** in space, in a world's sky, on any planet, at Ad-Nostra, and **aboard the Nostra**: on the same deck, where you stood, in flight or landed.
+  - Scenes you can't pause in (conversations, cutscenes, the trial) can't be saved partway through either. A boss fight saved partway through starts that fight again.
 - When the game starts, it reads your most recent save so Continue picks up where you left off. That only reads; it never writes.
 - Saves live in the browser's local storage, so each browser and device keeps its own slots.
 
@@ -556,6 +560,12 @@ So space doesn't fill with labels, a small moon is only marked once you're withi
 ### Fix: the helm and the holo-table aboard the Nostra
 - In flight, pressing **E** (or Enter / Space) at the **pilot's seat** or the **holo-table** seemed to do nothing. The seat did hand you back to the helm, but the space controls then read that same key press as "walk the ship" and put you straight back on the bridge, so you could never fly off, and the galaxy map never got the chance to open. That key press now stops at the ship: the pilot's seat puts you back in control, and the holo-table opens the galaxy map. (Tapping or clicking them was never affected.)
 - **Phones: tapping the pilot's seat from across the bridge.** Tap something aboard that's out of reach and you walk over to it, giving up with *"Can't get there from here"* if you stop getting closer. That limit counted real seconds, but on a slow phone the walk itself runs slower, so a tap on the pilot's seat from where you arrive on the bridge (behind the holo-table) often gave up halfway round the table. It now counts game time, so a slow phone walks you all the way, as a fast one does.
+
+### Fix: saves carry on from wherever you saved (every chapter)
+- **Aboard the Nostra, then the main menu:** quitting to the main menu while aboard used to forget you were aboard, so Continue put you at the helm (or at the foot of the ramp). Where you stood is now remembered before you step off.
+- **The escape from New London:** a save made during the chase, loaded after reopening the game, started the escape again from the Commons doors. It now carries on from where you saved.
+- **The rover:** a save made while driving came back with you on foot, standing where the rover was, and the rover as much as a second's drive behind. You're now back behind the wheel, and the rover is exactly where you saved.
+- Tested by saving and loading (from the pause menu, Continue, and after reopening the game) in the station, on the ice, in the rover, in Africa, Ad-Nostra, Antarctica in Chapter II, New London, mid-escape, in space, in a world's sky, on Mars and on Earth, and aboard the Nostra in flight and landed.
 
 ### Fix: loading a save made in space
 - Loading a save from inside the game used to show the white Antarctic landscape for a moment before space appeared: in the second between leaving where you were and the save starting, the game treated you as standing in the Antarctic station. Now it's loading from that moment. A Chapter III save shows black, then goes straight to space (or the planet you saved on), and Continue from the main menu does the same.
