@@ -327,6 +327,21 @@ Every one is landable, with its own look:
 
 The galaxy map marks moons, dwarf planets and worlds with open water. Inner moons fly the Federation's flag; the outer ones are unclaimed. Icy shells use a new terrain type (`ice` in `PKIND`). Coming down over open water (Earth's oceans, Europa's cracks), the Nostra sets down on the nearest shore.
 
+### Phones, both ways up
+
+Every screen was checked on a phone held upright (390×844) and sideways (844×390): the menus, the Nostrapedia, Custom creations, all four chapters' play screens, inventory, crafting, the map, shops, teleporters, dialogue, the companion orders, diplomacy, side quests, Resident empires, Options, the cantina brawl, space, the galaxy map, the ship decks and the cutscenes. What changed:
+
+- **Title screen, sideways:** the logo shrinks and the rows tighten, so all eight menu items fit (Custom creations, Nostrapedia and Settings used to fall off the bottom). The mission brief wraps instead of running off the edge, and the screen scrolls if a list is ever too long.
+- **Nostrapedia tabs:** on phones the eight tabs are one row you swipe, which keeps the open tab in view and gives the file itself more room.
+- **Companion orders, sideways:** the list opens as a scrollable panel beside the Following companions box, instead of running over the move stick and off the screen. Upright, it stops above the stick and scrolls.
+- **Pickup messages, sideways:** they sit above the move stick, not on it.
+- **Shops and other menus, sideways:** less padding and a compact header, so the lists get the height.
+- **Custom creations, sideways:** a compact header and tabs, so the editor form gets the room. Sliders are taller and easier to grab on touch screens.
+- "New species" no longer reads "New specie".
+- The game can be added to a phone's home screen and opens full screen.
+
+Desktop is unchanged.
+
 ### Your story in the Nostrapedia
 
 The Nostrapedia's **Lore events** tab now records your own story from Chapters I and II, plus the nightmare at the start of Chapter III. Each event stays hidden until you finish its mission, and a toast tells you when a new one has been added. Once you are past a chapter, all of its events are there.
