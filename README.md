@@ -567,6 +567,9 @@ So space doesn't fill with labels, a small moon is only marked once you're withi
 - **The rover:** a save made while driving came back with you on foot, standing where the rover was, and the rover as much as a second's drive behind. You're now back behind the wheel, and the rover is exactly where you saved.
 - Tested by saving and loading (from the pause menu, Continue, and after reopening the game) in the station, on the ice, in the rover, in Africa, Ad-Nostra, Antarctica in Chapter II, New London, mid-escape, in space, in a world's sky, on Mars and on Earth, and aboard the Nostra in flight and landed.
 
+### The wind, turned down
+- The ambient wind (on the ice, on the savanna, on every planet, and in the blizzard) plays at about a third of its old volume, with less hiss. Calm and stormy weather keep the same difference between them; it's all just quieter.
+
 ### Fix: loading a save made in space
 - Loading a save from inside the game used to show the white Antarctic landscape for a moment before space appeared: in the second between leaving where you were and the save starting, the game treated you as standing in the Antarctic station. Now it's loading from that moment. A Chapter III save shows black, then goes straight to space (or the planet you saved on), and Continue from the main menu does the same.
 - In a session that had never visited Antarctica, that same moment could freeze the game. That's fixed too.
@@ -999,10 +1002,10 @@ Then Orion and Nico bring them back. **Skip** jumps past the memories, then past
 - **Fully voiced.** The one exception is on purpose: the Erisian nightmare's opening card (THE VISION: "Citadel el Erisconos. Not yet. But soon.", `CH3NMERIS1`) is text only.
 
 ## Chapter III: Khazglar on Olympus Mons
-Straight after the nightmare in space (whichever of the four you had), Orion has an idea: these episodes aren't stopping, and the one person who might understand them is **Khazglar**, a Martian hermit who has watched the sky from Olympus Mons for three hundred years.
+After the nightmare in space (whichever of the four you had), the next stop is Mars. These episodes aren't stopping, and the one person who might understand them is **Khazglar**, a Martian hermit who has watched the sky from Olympus Mons for three hundred years.
 
 - **The way there:**
-  - Five lines after the wake-up (Orion and Nico), then the objective **Find Khazglar on Olympus Mons, Mars**. It replaces *Land on a planet* and *Warp to another star system* until you've met him.
+  - The wake-up dialogue is unchanged and doesn't mention him. Once it ends, a card reads **FIND KHAZGLAR ON MARS** and the objective becomes **Find Khazglar on Olympus Mons, Mars**. It replaces *Land on a planet* and *Warp to another star system* until you've met him.
   - In Sol, a **gold marker** sits on Mars at Olympus Mons, with its distance.
   - In Mars's sky, Olympus Mons is marked in gold, and over the mountain the land button reads **LAND · OLYMPUS MONS**. It sets you down beside the hermitage.
   - Land anywhere else on Mars and you're told how far the mountain is. The pilot's seat then offers **Fly to Olympus Mons · Khazglar's hermitage**.
@@ -1029,4 +1032,4 @@ Straight after the nightmare in space (whichever of the four you had), Orion has
   - His old side quest, *Khazglar's Request*, is no longer offered once he's with you.
 - **Next objective:** Warp to another star system.
 - **Saves:** flags `ch3.khzCall` and `ch3.khzMet`. A save made on the mountain loads back there, with Khazglar waiting if you haven't spoken to him yet.
-- **Voices:** the scene is text for now, and every line has an id ready. Drop in a `data/khazVoices.js` pack (same format as the other voice packs) holding `CH3KHAZCALL1–5`, then `CH3KHAZ1–17`, then `CH3KHAZ4CH`, `CH3KHAZ4ER` and `CH3KHAZ4GR`, in that order, and they play. `CH3KHAZ4` is the human greeting; the three at the end are the Chompy, Erisian and Grek ones.
+- **Voices:** the scene is text for now, and every line has an id ready. Drop in a `data/khazVoices.js` pack (same format as the other voice packs) holding `CH3KHAZ1–17`, then `CH3KHAZ4CH`, `CH3KHAZ4ER` and `CH3KHAZ4GR`, in that order, and they play. `CH3KHAZ4` is the human greeting; the three at the end are the Chompy, Erisian and Grek ones.

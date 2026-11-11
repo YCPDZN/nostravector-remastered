@@ -2680,15 +2680,15 @@ const sfx = (() => {
       return Math.sqrt(sum / vData.length);
     },
     wind(level) {
-      if (!ctx) return;
+      if (!ctx) return; const WIND_VOL = .33;
       if (!windGain) {
         const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
         windBP = ctx.createBiquadFilter(); windBP.type = 'bandpass'; windBP.frequency.value = 420; windBP.Q.value = .55;
-        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1900;
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1300; // softer: less hiss
         windGain = ctx.createGain(); windGain.gain.value = 0;
         src.connect(windBP); windBP.connect(lp); lp.connect(windGain); windGain.connect(master); src.start();
       }
-      windGain.gain.setTargetAtTime(level, ctx.currentTime, .7);
+      windGain.gain.setTargetAtTime(level * WIND_VOL, ctx.currentTime, .7); // every scene's wind, a third as loud as it used to be
     },
     gust(f) { if (windBP) windBP.frequency.setTargetAtTime(f, ctx.currentTime, .5); },
     heart(v) { tone(62, 38, .16, 'sine', v); tone(56, 34, .18, 'sine', v * .8, .24); },
@@ -9862,16 +9862,17 @@ function shipFlyToAdNostra() {
   }, 650);
 }
 /* ============ Chapter III · Khazglar, the hermit of Olympus Mons ============
-   After the nightmare in space (whichever of the four you had), Orion sends you to Mars: Khazglar has watched the sky from
-   Olympus Mons for three hundred years, and if anyone knows what's reaching into your head, he does.
+   After the nightmare in space (whichever of the four you had), the next stop is Mars: Khazglar has watched the sky from
+   Olympus Mons for three hundred years, and if anyone knows what's reaching into your head, he does. (The wake-up itself
+   doesn't mention him: the objective and the gold marker take over once it ends.)
    - Olympus Mons is a real feature of Mars now, at its real latitude and longitude: a broad shield volcano with a caldera at the
      top and a cliff round its foot, seen from space, flown over in the sky and walked on the ground (olympusH, added to planetH).
    - His hermitage sits on the upper slopes, north of the caldera: a stone hut, a telescope built from a crashed survey probe,
      a ring of strange Martian plants round a fire. Fly to it from the sky (LAND · OLYMPUS MONS), or land anywhere on Mars and
      ask the helm to take you there.
    - Talk to him, choose how you answer, and he joins your crew (the same five orders as everyone else).
-   Flags: ch3.khzCall (Orion's suggestion), ch3.khzMet (he's with you). Lines can be voiced later: drop a data/khazVoices.js
-   pack holding CH3KHAZCALL1–5, CH3KHAZ1–17, then CH3KHAZ4CH, 4ER, 4GR (the other species' greetings) in order and they play; until then the scene is text. */
+   Flags: ch3.khzCall (the objective's been given), ch3.khzMet (he's with you). Lines can be voiced later: drop a data/khazVoices.js
+   pack holding CH3KHAZ1–17, then CH3KHAZ4CH, 4ER, 4GR (the other species' greetings) in order and they play; until then the scene is text. */
 const KHZ = { lat: 18.65, lon: -133.8, R: 650, H: 130, cal: 72, calD: 26, cliff: 24, hut: [0, -150], pad: [0, -205] }; // metres on Mars's ground (2.4 km radius)
 let khzDirV = null;
 const khzDir = () => khzDirV || (khzDirV = new THREE.Vector3(Math.cos(KHZ.lat * D2R) * Math.cos(KHZ.lon * D2R), Math.sin(KHZ.lat * D2R), Math.cos(KHZ.lat * D2R) * Math.sin(KHZ.lon * D2R)).normalize());
@@ -9963,14 +9964,6 @@ function khzImpostor() { // the hermitage from the air: the fire's glow and a go
   const b = glowSprite(0xffc94a, 90, .6); b.position.y = 40; g.add(b); return g;
 }
 const khzNear = p => { const K = world.khz; return K && K.R && K.R.root.parent && khzPending() && Math.hypot(p.x - K.x, p.z - K.z) < 3.4 ? K : null; };
-// the way there: Orion's idea, straight after the nightmare
-const KHZ_CALL = [
-  ['ORION MASCAR', 'That wasn’t the first of these, and it won’t be the last. We need someone who knows what they’re dealing with.', 'CH3KHAZCALL1'],
-  ['NICO', 'Who? A doctor?', 'CH3KHAZCALL2'],
-  ['ORION MASCAR', 'A hermit. Khazglar. He lives on Olympus Mons, up on Mars, and he’s spent longer watching the sky than anyone alive.', 'CH3KHAZCALL3'],
-  ['NICO', 'A Martian? Those are bedtime stories.', 'CH3KHAZCALL4'],
-  ['ORION MASCAR', 'So was I, once. Set a course for Mars.', 'CH3KHAZCALL5']
-];
 const KHZ_HELLO = {
   human: 'A child of Earth, this far up my mountain. Your Federation still teaches its schoolchildren that my people are a myth.',
   chompy: 'A Chompy. The last of your kind who climbed up here wanted to buy the mountain. I let him keep his money, and most of his teeth.',
@@ -9979,7 +9972,7 @@ const KHZ_HELLO = {
 };
 let khzVo = null;
 async function khzVoices() { if (khzVo) return khzVo; khzVo = await loadDataScript('khazVoices').then(() => sfx.loadClips('khazVoices')).catch(() => null) || []; return khzVo; }
-const KHZ_IDS = ['CH3KHAZCALL1', 'CH3KHAZCALL2', 'CH3KHAZCALL3', 'CH3KHAZCALL4', 'CH3KHAZCALL5', ...Array.from({ length: 17 }, (_, i) => 'CH3KHAZ' + (i + 1)), 'CH3KHAZ4CH', 'CH3KHAZ4ER', 'CH3KHAZ4GR']; // CH3KHAZ4 is the human greeting; the other species' follow at the end
+const KHZ_IDS = [...Array.from({ length: 17 }, (_, i) => 'CH3KHAZ' + (i + 1)), 'CH3KHAZ4CH', 'CH3KHAZ4ER', 'CH3KHAZ4GR']; // CH3KHAZ4 is the human greeting; the other species' follow at the end
 const khzClip = id => { const i = KHZ_IDS.indexOf(id); return khzVo && i >= 0 && khzVo[i] ? [khzVo[i]] : undefined; };
 function khzSay(list, done) { const run = i => { if (i >= list.length) { done && done(); return; } openDialog(list[i][0], [list[i][1]], false, () => run(i + 1), khzClip(list[i][2])); }; run(0); }
 async function khzMeet() {
@@ -15529,12 +15522,11 @@ async function nmWake() {
   const fl = await sfx.loadClips('antOrionFlashVoices').catch(() => null); // Orion's "Hey! HEY!" from the ice
   const wv = await loadDataScript('nmWakeVoices').then(() => sfx.loadClips('nmWakeVoices')).catch(() => null) || []; // CH3NMWAKECH1–4, ER1–3, HU1–3, GR1–3, in that order
   const wake = {}; NM_WAKE_IDS.forEach((id, i) => { if (wv[i]) wake[id] = wv[i]; });
-  await khzVoices(); // Orion's idea afterwards: Khazglar (voiced if data/khazVoices.js is there)
-  const lines = [['ORION MASCAR', 'Hey! HEY! Look at me! Snap out of it!'], ...NM_WAKE[NM.race], ...KHZ_CALL];
+  const lines = [['ORION MASCAR', 'Hey! HEY! Look at me! Snap out of it!'], ...NM_WAKE[NM.race]];
   show(ui.xhud, true); ui.xhud.classList.add('cutting');
   const run = i => {
     if (i >= lines.length) { nmEnd(); return; }
-    const c = i === 0 ? (fl ? fl[0] : null) : wake[lines[i][2]] || (khzClip(lines[i][2]) || [])[0] || null;
+    const c = i === 0 ? (fl ? fl[0] : null) : wake[lines[i][2]] || null;
     openDialog(lines[i][0], [lines[i][1]], false, () => run(i + 1), c ? [c] : undefined);
   };
   setTimeout(() => run(0), 700);
