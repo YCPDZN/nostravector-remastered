@@ -567,6 +567,9 @@ So space doesn't fill with labels, a small moon is only marked once you're withi
 - **The rover:** a save made while driving came back with you on foot, standing where the rover was, and the rover as much as a second's drive behind. You're now back behind the wheel, and the rover is exactly where you saved.
 - Tested by saving and loading (from the pause menu, Continue, and after reopening the game) in the station, on the ice, in the rover, in Africa, Ad-Nostra, Antarctica in Chapter II, New London, mid-escape, in space, in a world's sky, on Mars and on Earth, and aboard the Nostra in flight and landed.
 
+### The wind, turned down
+- The ambient wind (on the ice, on the savanna, on every planet, and in the blizzard) plays at about a third of its old volume, with less hiss. Calm and stormy weather keep the same difference between them; it's all just quieter.
+
 ### Fix: loading a save made in space
 - Loading a save from inside the game used to show the white Antarctic landscape for a moment before space appeared: in the second between leaving where you were and the save starting, the game treated you as standing in the Antarctic station. Now it's loading from that moment. A Chapter III save shows black, then goes straight to space (or the planet you saved on), and Continue from the main menu does the same.
 - In a session that had never visited Antarctica, that same moment could freeze the game. That's fixed too.
