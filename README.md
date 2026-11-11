@@ -336,6 +336,43 @@ Every world now has a scanner description: its **type** and its **weather**. You
 - **Shelter:** a dangerous storm wears down your suit (the heat bar). Shelter under the Nostra (within about 10 m of it), in a shelter you built, by a heater, in a vehicle, or under water. If your suit runs out, the exosuit's emergency recovery puts you back at your ship. Gentle rain on lush worlds like Earth and Malana does no harm.
 - The minimap shows the weather: the type and "calm for now", then "⚠ Flash superstorm incoming", then the storm and how long it has left.
 
+### Cantina brawls (Chapter III on)
+You can now step into the ring yourself, the way Orion did in The Salt Lantern. The fight is Chapter II's: **J / click** punch (jab, cross, hook), **K / right-click** uppercut, **L** grab and slam, hold **Shift** to block, and **F** for RAGE once the meter's full. On a touch screen you get the same pad and stick.
+- **Every cantina has a ladder of three fighters:** a contender, a bruiser and the house champion. Beat one to unlock the next. Each win pays a purse and XP (more in the tougher houses), and rematches pay a third. Lose and you can always run it back. Brawl health is separate from your real health.
+- **The MC** stands on the bar (talk to them to fight) and shouts their own lines through the fight. **The bartender** sells a drink: 15 units for +30 health.
+- **The Salt Lantern:** after Chapter II the regulars are back, and **MC Irie** runs fights from the bar. His recorded lines play wherever they fit, and the cantina owner points you at him. The fighters are Kofi ‘Big K’ Mensah, Zawadi Okafor and the Harbour Bull. Daniel's no longer on the floor.
+- **On inhabited worlds:** a cantina stands a short walk from where you land, with its door facing your ship. Each species builds its own:
+  - **Chompy:** violet walls, gold spikes and a dome.
+  - **Erisian:** crystal spires.
+  - **Grek:** timber beams and a mossy roof.
+  - **Human:** steel, pipes and orange neon.
+
+  Inside there's a ring with ropes, a bar and shelves of glowing bottles, tables, the regulars and the MC.
+  - **Named houses:** The Gilded Fang (Alphinos, MC Gravvik the Loud), The Violet Tide (Karribassa, Mistress Ollara), The Billionth Year (Eris, Serelith of the Long Bar) and The Quiet Root (Malana, Old Maag).
+  - **Everywhere else**, every other world with traders gets a house of its own, named from its seed (The Iron Drift, The Rusty Comet and so on), with its own fighters and MC.
+- Indoors, the roof lifts away and the camera stays inside the room.
+
+### Ad-Nostra from the Nostra
+Land on Earth, board the Nostra and sit at the helm: **Fly to Ad-Nostra, East Africa** sets you down in the open ground north of Orion's farm. The town, the harbour and The Salt Lantern are a short walk west. Board the Nostra there and take off to return to orbit over Earth. Saves made at Ad-Nostra, or aboard there, come back to Ad-Nostra. The ferry south is closed while the Nostra waits outside town.
+
+### The capitals, rebuilt
+Every tower's windows are now mapped by world position, so every tower has properly sized floors of lit rooms instead of stretched noise. Windows and street lines brighten as the sun goes down. Each city has a style of its own:
+- **Alphinos (imperial):** amethyst towers in gold-edged setbacks with gold crowns. At its heart is a stepped ziggurat palace with four minarets, the great spire, a beam of light into the sky, the Imperial crest turning overhead and searchlights sweeping the clouds. The **Boulevard of Emperors** runs from the palace to the **Grand Gate** facing the spaceport, with a canal down the middle, statues, braziers and crest banners. A ring road circles the city.
+- **Karribassa (garden):** rounded teal towers with glass domes and terraces of gardens, glowing violet trees along the streets, and floating lanterns. At its heart is the **Hall of Oaths**, a great ribbed dome on a ring of columns with a lantern spire and an oath-flame, inside a circular canal with four bridges. Twin arches form its gate.
+- **Citadel el Erisconos (crystal, new, on Eris):** a walkable city of pale lilac crystal spires. At its heart is a great crystal spire crowned by six more, with the Matriarch's faceted hall at their feet. A ring of crystal blades with four gates surrounds the plaza, shards drift overhead and **an aurora** ripples high over it all.
+- **The vision's Citadel** (the Erisian nightmare) is richer too, with a polished processional floor, crystal columns, pointed windows full of aurora, the throne on three steps with a crown of crystal, and banners of the house.
+
+### New London, expanded
+Westminster now runs all the way to the Palace, rebuilt in Federation stone with light in its seams:
+- **Downing Street:** a gated street west off Whitehall, with security pylons and a shimmer of a barrier. **Number 10** has its black door, white numerals, fanlight, lamp and a faint shield across the door. **Number 11** stands next door. The Georgian terrace has white-framed windows, railings, chimney stacks and aerials. The **Foreign Office** stands across the street.
+- **Horse Guards Parade:** gravel, with Federation flags round it.
+- **Trafalgar Square:** **Nelson's Column** with its four bronze lions and rings of light climbing the column, and two fountains with rising and falling jets lit from beneath. **The National Gallery** has a portico, dome and glowing name, **St Martin-in-the-Fields** has its spire and clock, and a Federation screen hangs on the buildings round the square.
+- **Admiralty Arch and The Mall:** a red avenue lined with plane trees, lamps and Federation flags, with hover traffic overhead.
+- **St James's Park:** lawns, trees, the lake with its lit bridge, and lights drifting over the water.
+- **The Victoria Memorial:** white marble tiers and fountains, with a gilded figure under a turning halo.
+- **Buckingham Palace:** the east front with its balustrade, centre portico and balcony with a crimson drape, a holographic crest and the Federation flag. The forecourt has black and gold railings, open gates and a shimmer of a field, and **sentries** in crimson and bearskins with a line of light across the visor.
+- You can **look** at Number 10, Number 11, Nelson's Column, the National Gallery, the Palace and the Memorial. The big map names them all, and the city's bounds are bigger to fit them.
+
 ### Carax: singularity storms
 Carax circles Sagittarius A*, and when the accretion disc flares the fortress world gets the deadliest weather in the galaxy (Fortress World · Singularity storms · catastrophic).
 - **Warning:** 18 seconds ahead, triple alarm, "CATASTROPHIC WEATHER WARNING · GET UNDER YOUR SHIP". Storms last 70 to 100 seconds, with only one to two minutes of calm between them (the first comes 40 to 70 seconds after you land).

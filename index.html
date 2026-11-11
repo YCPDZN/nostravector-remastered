@@ -2209,8 +2209,8 @@ function chapterOf(c) {
   return { short: `Ch. ${CHN_ROMAN[n]}${area ? ' · ' + area : ''}`, full: `Chapter ${CHN_ROMAN[n]}${area ? ' · ' + area : ''}` };
 }
 function liveChapterLabel() {
-  const shipAt = () => SHIPI.from === 'space' ? (sysById(SPC.sys) || {}).name : world.planet ? world.planet.P.name : null;
-  const n = (wanderer && wanderer.chapter) | 0, far = ex.mode === 'ship' ? ['The Nostra', shipAt()].filter(Boolean).join(' · ') : ex.mode === 'space' ? (sysById(SPC.sys) || {}).name : ex.mode === 'world' && isPl() ? world.planet.P.name : null;
+  const shipAt = () => SHIPI.from === 'space' ? (sysById(SPC.sys) || {}).name : world.adVisit && !isPl() ? 'Ad-Nostra' : world.planet ? world.planet.P.name : null;
+  const n = (wanderer && wanderer.chapter) | 0, far = ex.mode === 'ship' ? ['The Nostra', shipAt()].filter(Boolean).join(' · ') : ex.mode === 'space' ? (sysById(SPC.sys) || {}).name : ex.mode === 'world' && isPl() ? world.planet.P.name : ex.mode === 'world' && world.adVisit && curArea() === 'africa' ? 'Earth · Ad-Nostra' : null;
   if (wanderer && wanderer.ch2 && wanderer.ch2.escapedLondon && n <= 3) return `Chapter III · ${far || 'Sol'}`;
   if (far) return `Chapter ${CHN_ROMAN[Math.max(1, n)]} · ${far}`;
   const area = ex.mode === 'world' ? AREA_INFO[curArea()].name : n >= 2 && curArea() === 'africa' ? 'Africa' : 'Antarctica';
@@ -5109,6 +5109,9 @@ async function interact() {
   } else if (n.id === 'townsfolk') { talkTownsfolk(n.ref);
   } else if (n.id === 'ferry') { startFerryTrip();
   } else if (n.id === 'ship') { enterShip('ground');
+  } else if (n.id === 'lonsight') { openDialog(n.ref.label.toUpperCase(), n.ref.text, true);
+  } else if (n.id === 'brawl') { brawlMenu(n.ref);
+  } else if (n.id === 'bartender') { barDrink(n.ref);
   } else if (n.id === 'parliament') { lines(PARL_DOOR, () => { if (!wanderer.ch2.reportTried) { setCh2({ reportTried: true }); notice('New London', 'WAIT FOR THE COUNCIL', 3000); } });
   } else if (n.id === 'orion') {
     if (orionJoined()) { ex.cSel = 'orion'; refreshJamesUI(); toggleJamesMenu(); } else talkOrion();
@@ -6197,7 +6200,7 @@ function updateSurvival(dt) {
   const hb = $('#heatBar'), hv = suitHeat(); hb.firstChild.style.transform = `scaleX(${hv / 100})`; hb.classList.toggle('on', hv < 99.5 || (ch1().stormTalk && !ch1().stormOver)); hb.classList.toggle('low', hv < 30);
   const jb = $('#jetBar'); jb.firstChild.style.transform = `scaleX(${(ex.jet == null ? 100 : ex.jet) / 100})`; jb.classList.toggle('on', ex.jet != null && ex.jet < 99.5); jb.classList.toggle('low', ex.jet < 15);
   // placement preview, teleporter rings, merchants
-  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt);
+  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt); hallTick(dt);
   for (const b of world.build) if (b.mesh.userData.spin) b.mesh.userData.spin.rotation.z += dt * 1.5;
   if (world.stationTp) world.stationTp.userData.spin.rotation.z += dt * 1.5;
   const it = selItem();
@@ -6486,6 +6489,9 @@ function londonMapCanvas() {
   // streets
   const road = '#33445e'; ctr(150, 24, -5, -68, road); ctr(14, 420, -4, -110, road); ctr(12, 250, 10, 80, road); ctr(14, 280, 62, -220, road); ctr(14, 700, 190, -40, road);
   ctr(110, 120, -50, 0, '#4a5a70'); // the square's paving
+  ctr(14, 120, -4, -380, road); ctr(100, 10, -61, -205, road); rect(-118, -34, -338, -254, '#7a6e58'); rect(-392, -128, -330, -236, '#2f5a3a', '#6fbf7a'); g.fillStyle = '#0e4a6e'; g.beginPath(); g.ellipse(X(-262), Z(-284), 92 * K, 14 * K, 0, 0, Math.PI * 2); g.fill();
+  ctr(180, 120, -16, -450, '#5a6474'); g.strokeStyle = '#8a3a2e'; g.lineWidth = 20 * K; g.beginPath(); g.moveTo(X(-104), Z(-432)); g.lineTo(X(-400), Z(-334)); g.stroke(); ctr(40, 170, -452, -323, '#4a5a70');
+  g.fillStyle = '#e8e2d4'; g.beginPath(); g.arc(X(-418), Z(-324), 16 * K, 0, Math.PI * 2); g.fill(); g.fillStyle = '#ffd36a'; g.beginPath(); g.arc(X(-16), Z(-424), 4 * K, 0, Math.PI * 2); g.fill();
   // the Thames and Westminster Bridge
   const R = LON.river, Br = LON.bridge; rect(R.x0, R.x1, B.z0, B.z1, '#0e4a6e'); g.strokeStyle = '#5fd2ff'; g.lineWidth = 2; for (const x of [R.x0, R.x1]) { g.beginPath(); g.moveTo(X(x), 0); g.lineTo(X(x), cv.height); g.stroke(); }
   rect(Br.x0, Br.x1, Br.z0, Br.z1, '#3d6b55', '#7fe0a0');
@@ -6497,13 +6503,14 @@ function londonMapCanvas() {
   // the landmarks, picked out
   rect(20, 66, -28, 170, '#c9ad6e', '#ffe2a0');                                  // the Palace of Westminster
   ctr(22, 22, 40, 158, '#e6c983'); g.strokeStyle = '#fff1c8'; g.strokeRect(X(29), Z(147), 22 * K, 22 * K); // Victoria Tower
+  rect(-540, -470, -392, -254, '#e6dfcf', '#fff1c8'); rect(-84, -30, -229, -213, '#3a2e28', '#ff8a6a'); rect(-92, 60, -540, -510, '#d8cfb8', '#fff1c8');
   ctr(13, 13, 52, -40, '#ffd36a'); g.strokeStyle = '#7fe6ff'; g.lineWidth = 3; g.beginPath(); g.arc(X(52), Z(-40), 11 * K, 0, Math.PI * 2); g.stroke(); // Big Ben and its halo
   rect(16, 64, -142, -92, '#8a6a44', '#e0b27a');                                  // Portcullis House
   g.strokeStyle = '#e8eef4'; g.lineWidth = 3 * K; g.beginPath(); g.moveTo(X(214), Z(-232)); g.lineTo(X(214), Z(-108)); g.stroke(); // the London Eye, edge-on
   g.fillStyle = '#9fe6ff'; for (let i = 0; i <= 12; i++) { g.beginPath(); g.arc(X(214), Z(-232 + i * 124 / 12), 1.6 * K, 0, Math.PI * 2); g.fill(); }
   return (LON.mapCv = cv);
 }
-const LON_LABELS = [[43, 112, 'HOUSES OF PARLIAMENT'], [52, -54, 'BIG BEN'], [40, -150, 'PORTCULLIS HOUSE'], [-52, -40, 'PARLIAMENT SQUARE'], [214, -244, 'LONDON EYE'], [125, -96, 'WESTMINSTER BRIDGE'], [125, 230, 'RIVER THAMES'], [-4, -250, 'WHITEHALL']];
+const LON_LABELS = [[43, 112, 'HOUSES OF PARLIAMENT'], [52, -54, 'BIG BEN'], [40, -150, 'PORTCULLIS HOUSE'], [-52, -40, 'PARLIAMENT SQUARE'], [214, -244, 'LONDON EYE'], [125, -96, 'WESTMINSTER BRIDGE'], [125, 230, 'RIVER THAMES'], [-4, -260, 'WHITEHALL'], [-16, -462, 'TRAFALGAR SQUARE'], [-57, -236, 'DOWNING STREET'], [-505, -323, 'BUCKINGHAM PALACE'], [-262, -256, 'ST JAMES’S PARK'], [-250, -398, 'THE MALL'], [-16, -546, 'NATIONAL GALLERY'], [-76, -296, 'HORSE GUARDS']];
 const MAP = { TILE: 64, PX: 32, tiles: new Map(), seed: null, queue: [], big: false };
 function mapTileKey(tx, tz) { return tx + ',' + tz; }
 function genMapTile(tx, tz) {
@@ -7727,7 +7734,7 @@ function plMats() {
 }
 function plScatter(cx, cz, ox, oz, grp) {
   const W = world.planet, R = planetRes(W.P), M = plMats(), mined = wsState().mined, nodes = [], CH = world.CH, sy = plSeaY();
-  const Cc = W.city, ok = (x, z) => Math.hypot(x, z) > 30 && !(sy != null && wHeight(x, z) < sy + .4) && !worldBlocked(x, z, true) && !(Cc && Math.hypot(x - Cc.cx, z - Cc.cz) < Cc.R + 25);
+  const Cc = W.city, ok = (x, z) => Math.hypot(x, z) > 30 && !(sy != null && wHeight(x, z) < sy + .4) && !worldBlocked(x, z, true) && !(Cc && Math.hypot(x - Cc.cx, z - Cc.cz) < Cc.R + 25) && !(W.pads || []).some(q => Math.hypot(x - q.x, z - q.z) < q.r + 6); // nothing on a cantina's ground
   const spot = (salt, i) => [ox + (wHash(cx, cz, salt + i * 2) - .5) * CH, oz + (wHash(cx, cz, salt + 1 + i * 2) - .5) * CH];
   const count = (w, salt) => Math.floor(wHash(cx, cz, salt) * w * 1.6);
   const add = (key, type, x, z, y, r, hp, meshes) => { for (const m of meshes) { m.castShadow = true; m.receiveShadow = true; grp.add(m); } nodes.push({ key, type, x, z, y, r, hp, meshes }); };
@@ -7920,6 +7927,8 @@ function worldUnstickIn() {
 function worldBlocked(x, z, stationOnly, y = player.position.y) {
   if (isPl()) { if (nostraBlocked(x, z)) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2 && (world.planet.P.seaGlow || !WB_SWIM)) return true; if (cityBlocked(x, z)) return true; } // your ship, deep water and the towers of a capital
   else if (curArea() !== 'europe' && Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true; // the station / Orion's house
+  if (isPl() && hallBlocked(x, z)) return true;
+  if (world.adVisit && !isPl() && nostraBlocked(x - world.shipAt.x, z - world.shipAt.z)) return true;
   if (curArea() === 'europe' && londonBlocked(x, z)) return true;
   if (curArea() === 'africa' && Math.abs(x - FARM.x) < 5.3 && Math.abs(z - FARM.z) < 3.8) return true;
   if (curArea() === 'africa' && townSolid(x, z)) return true;
@@ -7962,7 +7971,7 @@ function applyAreaLook() {
   else if (pl) planetLook();
   else if (world.iceSky) wScene.background = world.iceSky;
   if (!pl && world.plSea) world.plSea.visible = false;
-  if (!pl && world.landShip) world.landShip.visible = false;
+  if (!pl && world.landShip && !(world.adVisit && curArea() === 'africa')) world.landShip.visible = false;
   wScene.fog.color.set(areaFog());
   const ice = !af && !eu && !pl;
   if (world.snow) { world.snow.visible = ice; if (ice) { world.snow.material.color.set(0xffffff); world.snow.material.opacity = .9; } }
@@ -8486,6 +8495,7 @@ function townNear(p) { let best = null, bd = 9; for (const n of TOWN.npcs) { if 
 function talkTownsfolk(n) {
   if (!n || ex.dlg) return;
   const c2 = wanderer.ch2 || {}, sp = spOf(wanderer), say = l => typeof l === 'function' ? l(sp) : l, lines = n.d.lines.map(say);
+  if (n.d.at === 'cantina' && brawlOn()) { world.townTalk = n; sfx.click(); openDialog(n.d.name, ['Ever since Orion put Daniel Brown on my floor, the regulars want a fight every night. So now they get one.', 'Irie runs it from up on the bar. Talk to him if you want in. And if you need something to steady your hands first…'], false, () => { world.townTalk = null; barDrink(saltVenue()); }); return; }
   const toCantina = c2.metNico && !c2.husbandFound && n.d.name === 'HARBOUR CLERK' && danielClues() >= DANIEL_CLUES.length;
   if (toCantina) lines.push('Daniel Brown. Let me see… no. He never boarded anything. But that cart of his has been sitting outside The Salt Lantern since last night. Try the cantina.');
   else if (c2.metNico && !c2.husbandFound && n.d.husband) lines.push(say(n.d.husband));
@@ -8609,7 +8619,7 @@ function ferryTick() {
   if (curArea() === 'antarctica' && world.ferryShip && !world.betrayal) { world.ferryShip.visible = true; if (world.ferryShip.position.lengthSq()) world.ferryShip.position.set(0, 0, 0); }
 }
 function ferryNear(p) {
-  if (!ferryOpen() || ft.on) return null;
+  if (!ferryOpen() || ft.on || world.adVisit) return null; // the Nostra is waiting outside town: no ferry south while she is
   if (curArea() === 'africa' && world.townFerry && Math.hypot(p.x - TOWN_FERRY.board[0], p.z - TOWN_FERRY.board[1]) < 3 && Math.abs(p.y - TOWN.deck) < 1) return { id: 'ferry', label: 'Antarctica' };
   if (curArea() === 'antarctica' && world.ferryShip && world.ferryShip.visible) {
     const L = ferryLocal(p.x, p.z);
@@ -8953,7 +8963,7 @@ async function cantinaActors() {
 function cantinaPose() {
   const D = cant.D, W = cant.W; if (!D) return;
   const c2 = wanderer.ch2 || {}, waiting = c2.cantinaClue && !c2.husbandFound;
-  D.root.visible = waiting || !!c2.husbandFound; W.root.visible = waiting && !cant.on;
+  D.root.visible = (waiting || !!c2.husbandFound) && !brawlOn(); W.root.visible = waiting && !cant.on;
   if (waiting) {
     D.root.position.set(-88.4, 0, 16.4); D.root.rotation.set(0, Math.atan2(.6, .7), 0);
     W.root.position.set(-87.8, 0, 17.1); W.root.rotation.set(0, Math.atan2(-.6, -.7), 0);
@@ -8965,6 +8975,11 @@ function cantinaTick(dt) {
   arrestTick(dt);
   const L = TOWN.cantinaLight, p = player.position; if (!L) return;
   const near = Math.abs(p.x + 92) < 22 && Math.abs(p.z - 12) < 18;
+  if (brawlOn() && !cant.on) { // after Chapter II: the regulars are back, and MC Irie runs fights from the bar
+    if (near && !cant.crowd && !cant.crowdLoading) { cant.crowdLoading = true; fightCrowd().catch(() => null); }
+    if (cant.crowd) { for (const m of cant.crowd) m.R.root.visible = near; if (near && state === 'explore') crowdTick(dt, .2, saltVenue()); }
+    if (cant.D) cant.D.root.visible = false; if (cant.W) cant.W.root.visible = false; return;
+  }
   if (!near && !cant.on) return;
   const c2 = wanderer.ch2 || {};
   if (c2.cantinaClue && !cant.D && !cant.loading) { cant.loading = true; cantinaActors(); }
@@ -8978,12 +8993,12 @@ function cantinaTick(dt) {
   if (cant.on) { cantinaSceneTick(dt); cantinaLips(dt); }
 }
 // blood on the boards where Daniel goes down
-function cantBlood(n = 1) {
-  const D = cant.D, h = D.root.position;
+function cantBlood(n = 1, vic) {
+  const h = (vic ? vic.R : cant.D).root.position, V = FV();
   for (let i = 0; i < n; i++) {
     const g = new THREE.Mesh(new THREE.CircleGeometry(rand(.08, .26), 10), new THREE.MeshStandardMaterial({ color: 0x5a0606, roughness: .3, transparent: true, opacity: .92, polygonOffset: true, polygonOffsetFactor: -4 }));
-    g.rotation.x = -Math.PI / 2; g.position.set(h.x + rand(-.7, .7), .07 + cant.decals.length * .0005, h.z + rand(-.7, .7)); g.scale.x = rand(.6, 1.6);
-    world.town.add(g); cant.decals.push(g);
+    g.rotation.x = -Math.PI / 2; g.position.set(h.x + rand(-.7, .7), V.y + .07 + (cant.decals.length % 60) * .0005, h.z + rand(-.7, .7)); g.scale.x = rand(.6, 1.6);
+    (V.parent || world.town).add(g); (V.decals || cant.decals).push(g);
   }
 }
 // lip sync in the cantina: whoever is speaking opens their mouth with the voice
@@ -9088,6 +9103,17 @@ const CANT_WIN = [
 ];
 const cf = { keys: new Set(), touch: null };
 let cfHud = null;
+// where the fight is: the Salt Lantern in Chapter II (Orion against Daniel), or any cantina's brawl (you against its fighters)
+const SALT_V = { arena: FIGHT.arena, get room() { return TOWN.rooms.cantina; }, y: 0 };
+const FV = () => cf.V || SALT_V;
+function fightNames(a, b) { if (!cfHud) fightHud(false); cfHud.querySelector('.o b').textContent = a; cfHud.querySelector('.d b').textContent = b; }
+// your own body as a fighter: the fight poses drive your rig directly (no separate model)
+function selfAnim(R, dt) {
+  R.t = (R.t || 0) + dt;
+  if (R.mode === 'walk') { const s = Math.sin(R.t * 8.5); rig.rl.rotation.x = s * .55; rig.ll.rotation.x = -s * .55; }
+  else { damp(rig.rl.rotation, 'x', .12, 10, dt); damp(rig.ll.rotation, 'x', -.18, 10, dt); }
+  inner.rotation.set(0, 0, 0); inner.position.set(0, 0, 0);
+}
 function fightHud(on) {
   if (!cfHud) {
     cfHud = document.createElement('div'); cfHud.id = 'cfHud';
@@ -9110,9 +9136,9 @@ function fightHud(on) {
 function fightPop(text, cls = '') { const el = cfHud.querySelector('.pop'); el.className = 'pop ' + cls; el.textContent = text; void el.offsetWidth; el.classList.add('go'); }
 function hype(kind, force, not) {
   const now = performance.now(); if (!force && (now - (cf.hypeT || 0) < 2600 || now < (cf.hypeUntil || 0))) return;
-  const all = HYPE[kind]; if (!all) return; const list = all.length > 1 ? all.filter(l => l[0] !== not) : all, [id, text] = list[Math.floor(Math.random() * list.length)]; cf.lastHype = id;
-  cf.hypeT = now; const el = cfHud.querySelector('.hype'); el.querySelector('small').textContent = MC; el.querySelector('span').textContent = text;
-  const clip = cf.hypeClips && cf.hypeClips[+id.replace('CH2HYPE', '') - 1], dur = clip ? clip.duration : 2;
+  const all = (FV().hype || HYPE)[kind]; if (!all || !all.length) return; const list = all.length > 1 ? all.filter(l => l[0] !== not) : all, [id, text] = list[Math.floor(Math.random() * list.length)]; cf.lastHype = id;
+  cf.hypeT = now; const el = cfHud.querySelector('.hype'); el.querySelector('small').textContent = FV().mc || MC; el.querySelector('span').textContent = text;
+  const clip = id && /^CH2HYPE/.test(id) && cf.hypeClips && cf.hypeClips[+id.replace('CH2HYPE', '') - 1], dur = clip ? clip.duration : Math.max(2, text.length / 14);
   if (clip) { sfx.playBuf(clip, 1.3); cant.speaker = 'mc'; } cf.hypeUntil = now + dur * 1000 + 300;
   el.style.animationDuration = Math.max(2.6, dur + .8).toFixed(2) + 's'; // the caption stays up as long as he's talking
   el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); cf.mcPump = 1;
@@ -9132,6 +9158,7 @@ function startFight() {
   cant.phase = 'fight'; ui.xhud.classList.remove('cutting', 'noskip'); show(ui.xhud, false);
   const D = cant.D, O = world.orion;
   O.root.rotation.x = 0; D.root.rotation.x = 0;
+  cf.V = null; fightHud(false); fightNames('ORION MASCAR', 'DANIEL BROWN');
   cf.o = fighter(O, FIGHT.orionHp, -92.2, 13.4); cf.d = fighter(D, FIGHT.danielHp, -89.6, 15.0);
   cf.rage = 0; cf.ts = 1; cf.slow = 0; cf.shake = 0; cf.block = false; cf.keys.clear(); cf.endT = 0; cf.hits = 0; cf.ragePinged = false; cf.hypeT = 0;
   player.position.set(-92.6, 0, 9.4); player.rotation.y = .3; // you watch from the door with the others
@@ -9151,7 +9178,7 @@ const canAct = f => f.st === 'idle' || f.st === 'walk' || f.st === 'block';
 function doMove(f, name, set) { f.st = 'atk'; f.mv = Object.assign({ name }, set[name]); f.t = 0; f.hitDone = false; if (name !== 'rage') sfx.swing(); }
 function fdist() { const a = cf.o.R.root.position, b = cf.d.R.root.position; return Math.hypot(a.x - b.x, a.z - b.z); }
 function moveFighter(f, dx, dz) {
-  const P = f.R.root.position, nx = P.x + dx, nz = P.z + dz, A = FIGHT.arena, o = f === cf.o ? cf.d : cf.o, op = o.R.root.position;
+  const P = f.R.root.position, nx = P.x + dx, nz = P.z + dz, A = FV().arena, o = f === cf.o ? cf.d : cf.o, op = o.R.root.position;
   if (Math.hypot(nx - A.x, nz - A.z) > A.r) return;
   if (Math.hypot(nx - op.x, nz - op.z) < .85 && o.st !== 'down') return;
   if (worldBlocked(nx, nz)) return;
@@ -9163,8 +9190,8 @@ function landHit(att, vic, mv) {
   const vp = vic.R.root.position, ap = att.R.root.position, dx = vp.x - ap.x, dz = vp.z - ap.z, l = Math.hypot(dx, dz) || 1;
   if (blocked) { moveFighter(vic, dx / l * .25, dz / l * .25); sfx.thud(); if (!isO) hype('block'); else cf.shake = .08; return; }
   sfx.thud(); if (mv.dmg >= 12) sfx.hit('ice');
-  burst(vp.x, 1.55, vp.z, mv.dmg >= 12 ? 18 : 9, mv.dmg >= 12 ? 2.6 : 1.6, .55, .03, .03, .45, 1.4, .8);
-  if (mv.dmg >= 10) cantBlood(mv.dmg >= 18 ? 3 : 1);
+  burst(vp.x, FV().y + 1.55, vp.z, mv.dmg >= 12 ? 18 : 9, mv.dmg >= 12 ? 2.6 : 1.6, .55, .03, .03, .45, 1.4, .8);
+  if (mv.dmg >= 10) cantBlood(mv.dmg >= 18 ? 3 : 1, vic);
   cf.shake = Math.max(cf.shake, mv.dmg >= 18 ? .5 : mv.dmg >= 12 ? .28 : .12);
   if (isO) { cf.rage = Math.min(100, cf.rage + mv.rage); cf.hits++; if (cf.rage >= 100 && !cf.ragePinged) { cf.ragePinged = true; hype('rageOn', true); fightPop('RAGE READY', 'rage'); } }
   else { cf.rage = Math.min(100, cf.rage + 5); if (cf.o.hp < cf.o.max * .5) hype('hurt'); }
@@ -9193,7 +9220,7 @@ function poseMove(f, other) {
     root.rotation.y = base + s * (k < h ? -mv.twist * .6 * wind : lerp(-mv.twist * .6, mv.twist, ext));
   } else if (mv.kind === 'upper') {
     const a = R.ra; a.rotation.x = k < h ? lerp(-1.05, -.2, wind) : lerp(-.2, -2.9, smooth(0, .35, rec)) * (1 - rec * .5); if (R.raL) R.raL.rotation.x = -1.2;
-    root.position.y = k < h ? -.18 * wind : lerp(-.18, .05, smooth(0, .3, rec)) * (1 - rec);
+    root.position.y = FV().y + (k < h ? -.18 * wind : lerp(-.18, .05, smooth(0, .3, rec)) * (1 - rec));
     root.rotation.x = k < h ? .15 * wind : -.1 * (1 - rec);
   } else if (mv.kind === 'grab') {
     R.ra.rotation.x = R.la.rotation.x = k < .15 ? lerp(-1.1, -1.7, k / .15) : k < .55 ? lerp(-1.7, -3.0, (k - .15) / .4) : k < .65 ? lerp(-3, -1.2, (k - .55) / .1) : -1.2;
@@ -9201,43 +9228,43 @@ function poseMove(f, other) {
   } else if (mv.kind === 'rage') { // spin, lift, and bring him down with everything
     const spin = smooth(.15, .55, k) * Math.PI * 2;
     root.rotation.y = base + spin; R.ra.rotation.x = R.la.rotation.x = k < .55 ? -3 : lerp(-3, -1, smooth(.55, .65, k));
-    root.position.y = Math.sin(clamp((k - .15) / .45, 0, 1) * Math.PI) * .9; root.rotation.x = k > .55 && k < .75 ? .4 : 0;
+    root.position.y = FV().y + Math.sin(clamp((k - .15) / .45, 0, 1) * Math.PI) * .9; root.rotation.x = k > .55 && k < .75 ? .4 : 0;
   }
 }
 function poseHeld(vic, att) { // lifted overhead by the grab or the rage move, then slammed
   const mv = att.mv, k = clamp(att.t / mv.dur, 0, 1), ap = att.R.root.position, fy = att.face, root = vic.R.root;
-  const top = mv.kind === 'rage' ? 2.6 + att.R.root.position.y : 2.2, slam = mv.kind === 'rage' ? .62 : .58;
+  const top = mv.kind === 'rage' ? 2.6 + att.R.root.position.y - FV().y : 2.2, slam = mv.kind === 'rage' ? .62 : .58;
   const lift = k < slam ? smooth(.12, slam - .08, k) : 0, fall = k < slam ? 0 : smooth(slam, slam + .07, k);
   const fx = Math.sin(fy + (mv.kind === 'rage' ? smooth(.15, .55, k) * Math.PI * 2 : 0)), fz = Math.cos(fy + (mv.kind === 'rage' ? smooth(.15, .55, k) * Math.PI * 2 : 0));
-  root.position.set(ap.x + fx * lerp(.45, .9, fall), lerp(lift * top, .15, fall), ap.z + fz * lerp(.45, .9, fall));
+  root.position.set(ap.x + fx * lerp(.45, .9, fall), FV().y + lerp(lift * top, .15, fall), ap.z + fz * lerp(.45, .9, fall));
   root.rotation.set(-Math.PI / 2 * Math.max(lift, fall), fy + Math.PI, 0, 'YXZ');
   vic.R.ra.rotation.x = -2.6 + Math.sin(time * 18) * .4; vic.R.la.rotation.x = -2.4 + Math.cos(time * 17) * .4;
 }
 function poseFighter(f, other, dt) {
-  const R = f.R; R.mode = f.st === 'walk' ? 'walk' : 'idle'; animRig(R, dt * (f.st === 'walk' ? 1.4 : 1));
+  const R = f.R; R.mode = f.st === 'walk' ? 'walk' : 'idle'; if (R.self) selfAnim(R, dt); else animRig(R, dt * (f.st === 'walk' ? 1.4 : 1));
   const op = other.R.root.position, P = R.root.position;
-  if (f.st !== 'down' && f.st !== 'held') { const want = Math.atan2(op.x - P.x, op.z - P.z); f.face = angLerp(f.face == null ? want : f.face, want, Math.min(1, dt * 10)); R.root.rotation.set(0, f.face, 0); P.y = 0; }
-  if (f.st === 'idle' || f.st === 'walk') { guard(R, 1); R.root.position.y = Math.sin(time * 6 + (f === cf.o ? 0 : 2)) * .02; R.root.rotation.x = .06; }
+  if (f.st !== 'down' && f.st !== 'held') { const want = Math.atan2(op.x - P.x, op.z - P.z); f.face = angLerp(f.face == null ? want : f.face, want, Math.min(1, dt * 10)); R.root.rotation.set(0, f.face, 0); P.y = FV().y; }
+  if (f.st === 'idle' || f.st === 'walk') { guard(R, 1); R.root.position.y = FV().y + Math.sin(time * 6 + (f === cf.o ? 0 : 2)) * .02; R.root.rotation.x = .06; }
   else if (f.st === 'block') { R.ra.rotation.x = -2.05; R.la.rotation.x = -2.05; R.ra.rotation.z = .55; R.la.rotation.z = -.55; if (R.raL) R.raL.rotation.x = -1.7; if (R.laL) R.laL.rotation.x = -1.7; R.root.rotation.x = .12; }
   else if (f.st === 'atk' && f.mv) poseMove(f, other);
   else if (f.st === 'hit') { const k = clamp(f.t / f.stun, 0, 1); R.root.rotation.x = -.35 * Math.sin(k * Math.PI); guard(R, .4); R.ra.rotation.x = -.6; }
   else if (f.st === 'down') { // thrown flat, a beat on the floor, then up again
     const k = clamp(f.t / .45, 0, 1), up = f.hp > 0 && f.t > 2.0 ? clamp((f.t - 2.0) / .7, 0, 1) : 0;
-    R.root.rotation.set(-Math.PI / 2 * (k - up) + Math.sin(f.t * 30) * .03 * (1 - k), f.face, 0, 'YXZ'); R.root.position.y = .14 * (k - up);
+    R.root.rotation.set(-Math.PI / 2 * (k - up) + Math.sin(f.t * 30) * .03 * (1 - k), f.face, 0, 'YXZ'); R.root.position.y = FV().y + .14 * (k - up);
     R.ra.rotation.x = -.4; R.la.rotation.x = -2.6 * (1 - up);
   }
 }
 function fightAI(f, o, dt) { // Daniel: closes in, jabs, throws the odd haymaker, blocks when he sees it coming
   if (!canAct(f)) return;
   const d = fdist(), P = f.R.root.position, op = o.R.root.position;
-  if (o.st === 'atk' && o.mv && o.mv.kind !== 'grab' && o.mv.kind !== 'rage' && d < 1.6 && o.t < o.mv.hit && !f.blockRoll) { f.blockRoll = true; if (Math.random() < .22 + (1 - f.hp / f.max) * .25) { f.st = 'block'; f.t = 0; return; } }
+  if (o.st === 'atk' && o.mv && o.mv.kind !== 'grab' && o.mv.kind !== 'rage' && d < 1.6 && o.t < o.mv.hit && !f.blockRoll) { f.blockRoll = true; if (Math.random() < (.22 + (1 - f.hp / f.max) * .25) * (f.blockK || 1)) { f.st = 'block'; f.t = 0; return; } }
   if (!(o.st === 'atk')) f.blockRoll = false;
   if (f.st === 'block' && f.t > .5) f.st = 'idle';
   if (f.st === 'block') return;
   f.cd -= dt;
-  if (d > 1.25) { const sp = 2.1 * dt; moveFighter(f, (op.x - P.x) / d * sp, (op.z - P.z) / d * sp); f.st = 'walk'; }
+  if (d > 1.25) { const sp = 2.1 * (f.spd || 1) * dt; moveFighter(f, (op.x - P.x) / d * sp, (op.z - P.z) / d * sp); f.st = 'walk'; }
   else { f.st = 'idle'; if (Math.random() < dt * .8) { const s = Math.random() < .5 ? 1 : -1, sp = 1.2 * dt; moveFighter(f, -(op.z - P.z) / d * sp * s, (op.x - P.x) / d * sp * s); } }
-  if (d < 1.4 && f.cd <= 0 && o.st !== 'down') { const r = Math.random(); doMove(f, r < .45 ? 'jab' : r < .78 ? 'cross' : 'hay', DANIEL_MOVES); f.cd = rand(.55, 1.3); }
+  if (d < 1.4 && f.cd <= 0 && o.st !== 'down') { const r = Math.random(); doMove(f, r < .45 ? 'jab' : r < .78 ? 'cross' : 'hay', f.moves || DANIEL_MOVES); f.cd = rand(.55, 1.3) * (f.cdK || 1); }
 }
 function stepFighter(f, o, dt) {
   f.t += dt; f.comboT = Math.max(0, f.comboT - dt);
@@ -9252,7 +9279,7 @@ function stepFighter(f, o, dt) {
     if (f.holding) {
       poseHeld(o, f);
       const slamAt = (mv.kind === 'rage' ? .62 : .58) * mv.dur;
-      if (f.t >= slamAt && !f.slammed) { f.slammed = true; const vp = o.R.root.position; burst(vp.x, .3, vp.z, 40, 4, .7, .6, .5, .7, 1, 1.5); sfx.thud(); sfx.thud(); cf.shake = .9; o.st = 'hit'; landHit(f, o, mv); if (o.st !== 'down') { o.st = 'down'; o.t = 0; } }
+      if (f.t >= slamAt && !f.slammed) { f.slammed = true; const vp = o.R.root.position; burst(vp.x, FV().y + .3, vp.z, 40, 4, .7, .6, .5, .7, 1, 1.5); sfx.thud(); sfx.thud(); cf.shake = .9; o.st = 'hit'; landHit(f, o, mv); if (o.st !== 'down') { o.st = 'down'; o.t = 0; } }
     }
     if (f.t >= mv.dur) { f.st = 'idle'; f.mv = null; f.holding = false; f.slammed = false; if (f === cf.o && mv.kind !== 'grab' && mv.kind !== 'rage') f.comboT = .45; if (f.buffer) { const b = f.buffer; f.buffer = null; fightInput(b); } }
   } else if (f.st === 'hit' && f.t >= f.stun) { f.st = 'idle'; f.combo = 0; }
@@ -9289,20 +9316,20 @@ function fightTick(dt) {
   // camera: low and close behind Orion's shoulder, keeping both of them in frame, inside the room
   const A = o.R.root.position, B = d.R.root.position, mx = (A.x + B.x) / 2, mz = (A.z + B.z) / 2;
   let dx = B.x - A.x, dz = B.z - A.z; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
-  const side = cf.side || (cf.side = 1), Rm = TOWN.rooms.cantina;
+  const side = cf.side || (cf.side = 1), Rm = FV().room, FY = FV().y;
   let cx = A.x - dx * 2.5 + dz * 1.5 * side, cz = A.z - dz * 2.5 - dx * 1.5 * side;
   if (cx < Rm.x0 + .35 || cx > Rm.x1 - .35 || cz < Rm.z0 + .35 || cz > Rm.z1 - .35) { const ax = A.x - dx * 2.5 - dz * 1.5 * side, az = A.z - dz * 2.5 + dx * 1.5 * side; if (ax > Rm.x0 + .35 && ax < Rm.x1 - .35 && az > Rm.z0 + .35 && az < Rm.z1 - .35) { cf.side = -side; cx = ax; cz = az; } }
   cx = clamp(cx, Rm.x0 + .35, Rm.x1 - .35); cz = clamp(cz, Rm.z0 + .35, Rm.z1 - .35);
   cf.shake = Math.max(0, cf.shake - dt * 2.5); const s = cf.shake, j = () => (Math.random() - .5) * s * .5;
-  if (!cf.cam) cf.cam = new THREE.Vector3(cx, 2.0, cz);
+  if (!cf.cam) cf.cam = new THREE.Vector3(cx, FY + 2.0, cz);
   if (cant.phase === 'ko' || cant.phase === 'lost') { // slow orbit round the fallen
     cf.endT += dt; const lo = cant.phase === 'ko' ? d : o, lp = lo.R.root.position, a = cf.endT * .5 + 1;
-    cf.cam.set(clamp(lp.x + Math.sin(a) * 2.3, Rm.x0 + .35, Rm.x1 - .35), 1.3, clamp(lp.z + Math.cos(a) * 2.3, Rm.z0 + .35, Rm.z1 - .35));
-    camera.position.copy(cf.cam); camera.lookAt(lp.x, .5, lp.z);
-    if (cf.endT > 4.2) { if (cant.phase === 'ko') endFight(); else retryFight(); }
+    cf.cam.set(clamp(lp.x + Math.sin(a) * 2.3, Rm.x0 + .35, Rm.x1 - .35), FY + 1.3, clamp(lp.z + Math.cos(a) * 2.3, Rm.z0 + .35, Rm.z1 - .35));
+    camera.position.copy(cf.cam); camera.lookAt(lp.x, FY + .5, lp.z);
+    if (cf.endT > 4.2) { if (FV().brawl) brawlDone(cant.phase === 'ko'); else if (cant.phase === 'ko') endFight(); else retryFight(); }
   } else {
-    cf.cam.lerp(new THREE.Vector3(cx, 1.95, cz), Math.min(1, dt * 5));
-    camera.position.set(cf.cam.x + j(), cf.cam.y + j(), cf.cam.z + j()); camera.lookAt(mx, 1.15, mz);
+    cf.cam.lerp(new THREE.Vector3(cx, FY + 1.95, cz), Math.min(1, dt * 5));
+    camera.position.set(cf.cam.x + j(), cf.cam.y + j(), cf.cam.z + j()); camera.lookAt(mx, FY + 1.15, mz);
   }
   ciFx(cf.ts < 1 ? 1.2 : 0, cf.shake * .6 + (o.hp < o.max * .3 ? .25 : 0), 0, 0, cf.ts < 1 ? .6 : 1); // the canvas filter only in slow motion: it's expensive
 }
@@ -9334,14 +9361,14 @@ async function fightCrowd() {
     R.root.position.set(c.x, c.y || 0, c.z); world.town.add(R.root); cant.crowd.push({ R, c, ph: Math.random() * 6 });
   }
 }
-function crowdTick(dt, energy) {
-  if (!cant.crowd) return;
-  const A = FIGHT.arena;
-  for (const m of cant.crowd) {
+function crowdTick(dt, energy, V = FV()) {
+  const list = V.crowd || cant.crowd; if (!list) return;
+  const A = V.arena;
+  for (const m of list) {
     const R = m.R, P = R.root.position; R.mode = 'idle'; animRig(R, dt);
     R.root.rotation.y = Math.atan2(A.x - P.x, A.z - P.z);
     const t = time * (m.c.mc ? 7 : 4.5) + m.ph, cheer = energy * (m.c.mc ? 1 : .7);
-    P.y = (m.c.y || 0) + Math.max(0, Math.sin(t)) * .06 * cheer;
+    P.y = (V.y || 0) + (m.c.y || 0) + Math.max(0, Math.sin(t)) * .06 * cheer;
     if (m.c.mc) { // the hype man never stops: one arm pumping, the other pointing at the action
       cf.mcPump = Math.max(0, (cf.mcPump || 0) - dt * 1.5);
       R.ra.rotation.x = -2.6 - Math.sin(t * 1.4) * .5 * cheer - (cf.mcPump || 0) * .4; R.la.rotation.x = -1.6; R.la.rotation.z = -.3;
@@ -9357,13 +9384,323 @@ function cantinaEnd() {
   setCh2({ husbandFound: true }); cantinaPose(); renderTasks();
   startArrest(); // and then the Federation walks in
 }
+
+/* ---- cantina brawls (Chapter III on): you step into the ring yourself, the way Orion did in The Salt Lantern. Every cantina has a
+   ladder of three fighters (a contender, a bruiser and the house champion), an MC on the bar and a crowd round the walls. Win and
+   the house pays out; lose and you can always run it back. The fight itself is Chapter II's: J / click punch (jab, cross, hook),
+   K / right-click uppercut, L grab and slam, hold Shift to block, F for RAGE once the meter's full. ---- */
+const BRAWL_RANKS = ['Contender', 'Bruiser', 'House champion'];
+function brawlStats(L, tier = 1) { // L: 1-3 up the ladder; tier: how tough the house is
+  const k = L + (tier - 1) * .7;
+  return { hp: Math.round(105 + 38 * k), dmgK: .75 + .22 * k, spd: .88 + .1 * k, cdK: Math.max(.55, 1.18 - .15 * k), blockK: .7 + .32 * k, prize: Math.round((40 + 60 * L * L) * tier), xp: Math.round((50 + 60 * L) * tier) };
+}
+const brawlWins = id => ((wanderer && wanderer.brawl) || {})[id] | 0;
+function setBrawlWins(id, n) { wanderer.brawl = Object.assign({}, wanderer.brawl, { [id]: Math.max(brawlWins(id), n) }); const c = curChar(); if (c) c.brawl = wanderer.brawl; saveRoster(); }
+// what each house's MC shouts (the Salt Lantern keeps MC Irie's recordings wherever a line fits)
+const HYPE_SETS = {
+  salt: {
+    open: [[null, 'Wha gwan, Salt Lantern! Fresh blood inna di ring tonight! Mek some NOISE!'], [null, 'Bets pon di table, people! Dis one ago be WICKED!']],
+    big: [HYPE.big[0], HYPE.big[2], HYPE.big[3], HYPE.big[4]], combo: [HYPE.combo[1], [null, 'Combo! Yuh see dat? Yuh SEE dat?']], slam: HYPE.slam,
+    down: [[null, 'Dem DROP! Somebody count, somebody count!'], [null, 'Pon di floor! Get up, get up!']], hurt: [[null, 'Watch yuhself! Keep di guard up!'], [null, 'Oh, dat one sting!']],
+    block: HYPE.block, rageOn: [[null, 'Di fire a BURN! Time fi di big one!']], finish: HYPE.finish, ko: [HYPE.ko[1], [null, 'K.O.! Somebody peel dem off di floor!']],
+    lost: [[null, 'Our challenger DROP! Run it back, run it back!']]
+  },
+  chompy: {
+    open: [[null, 'By the Emperor’s beard! A challenger! Teeth out, everyone!'], [null, 'Silence for the fighters! No, wait. NOISE for the fighters!']],
+    big: [[null, 'OHHH! I felt that one in my tusks!'], [null, 'Again! The Emperor wants blood, and so do I!'], [null, 'That’s going to bruise for a week!']],
+    combo: [[null, 'One, two, THREE! Somebody write that down!']], slam: [[null, 'Into the floor! The floor lost too!']],
+    down: [[null, 'DOWN! Count with me! One!'], [null, 'Flat as a Steca flatbread!']], hurt: [[null, 'The challenger bleeds! Guard up, little star!']],
+    block: [[null, 'Blocked! Smart, smart!']], rageOn: [[null, 'Look at those eyes! Here comes the big one!']], finish: [[null, 'THAT is how we finish a fight in the Empire!']],
+    ko: [[null, 'Lights out! Drag them to the back room!']], lost: [[null, 'The challenger drops! Pay up, pay up!']]
+  },
+  erisian: {
+    open: [[null, 'A billion years of quarrels, and we still love a good fight. Begin!'], [null, 'Settle your wagers, friends. Something new is about to happen.']],
+    big: [[null, 'Exquisite!'], [null, 'Oh, that one will be remembered for ten thousand years.'], [null, 'Even the Matriarch would wince at that!']],
+    combo: [[null, 'A whole sentence of blows! Lovely grammar!']], slam: [[null, 'Down through the floor and into the ice below!']],
+    down: [[null, 'Fallen! Do take your time getting up.']], hurt: [[null, 'Our guest is bleeding. How very mortal.']], block: [[null, 'Parried, with style.']],
+    rageOn: [[null, 'Look at that fire. Ancient, almost.']], finish: [[null, 'Magnificent. Write it into the long histories!']],
+    ko: [[null, 'And the lights go out. Somebody fetch a healer.']], lost: [[null, 'Our guest falls. Again? We have all the time in the world.']]
+  },
+  grek: {
+    open: [[null, 'Slowly, friends. Breathe. Now, FIGHT!'], [null, 'Two saplings in the ring. Let us see which one bends.']],
+    big: [[null, 'Like an axe in old wood!'], [null, 'Archamus forgive me, I enjoyed that.']], combo: [[null, 'Blow on blow, like rain on leaves!']], slam: [[null, 'Felled! Like a great tree!']],
+    down: [[null, 'Down! Rest a moment, friend. Then rise.']], hurt: [[null, 'Patience! A wounded tree still stands.']], block: [[null, 'Good bark on that one.']],
+    rageOn: [[null, 'The storm is coming. I can feel it in my roots.']], finish: [[null, 'And the forest falls silent.']], ko: [[null, 'Done. Plant them somewhere soft.']], lost: [[null, 'Our challenger is down. Every seed falls before it grows.']]
+  },
+  human: {
+    open: [[null, 'Ladies, gents, and everyone else! Tonight, in this corner, a challenger!'], [null, 'Drinks down, voices up! FIGHT!']],
+    big: [[null, 'Oh, that’s gonna leave a mark!'], [null, 'Did you HEAR that one?'], [null, 'Somebody get a medic on standby!']],
+    combo: [[null, 'One-two-three! Textbook!']], slam: [[null, 'BODY SLAM! The tables are shaking!']], down: [[null, 'Down goes the champ! Count it!']],
+    hurt: [[null, 'Our challenger’s rattled! Hands up, hands up!']], block: [[null, 'Blocked clean!']], rageOn: [[null, 'Uh-oh. Someone’s angry now.']],
+    finish: [[null, 'THAT’S A FINISHER!']], ko: [[null, 'Goodnight! Somebody sweep them up!']], lost: [[null, 'The challenger’s down! Run it back!']]
+  }
+};
+// the houses: the Salt Lantern, the three capitals, and every other inhabited world gets one of its own (named from its seed)
+const SALT_FOES = [
+  { name: 'KOFI ‘BIG K’ MENSAH', short: 'Big K', sp: 'human', c: [0x7a4a2a, 0xe8dcc6], skin: 5, line: 'Daniel never could take a punch. Let’s see if you can.' },
+  { name: 'ZAWADI OKAFOR', short: 'Zawadi', sp: 'human', c: [0x8f2f5a, 0x2b2f36], skin: 3, female: true, line: 'I break up the fights in here. Tonight I start one.' },
+  { name: 'THE HARBOUR BULL', short: 'the Harbour Bull', sp: 'human', c: [0x2b4a6b, 0xc9a24a], skin: 4, line: 'Thirty years on the docks. Nobody’s put me on the boards yet.' }
+];
+const NAMED_HOUSES = {
+  aridaxx: { name: 'THE GILDED FANG', mc: 'GRAVVIK THE LOUD', sp: 'chompy', tier: 1.6, style: 'chompy', foes: [
+    { name: 'GRUBNAK', c: [0x6a3a9a, 0xd8a63a], line: 'A little star from the outer arms. I’ll send you home in a box.' },
+    { name: 'TUSKA VARR', c: [0x2a1a3a, 0x69b8ea], line: 'I have broken nine jaws in this ring. Yours makes ten.' },
+    { name: 'CHAMPION GNASHKA', c: [0xd8a63a, 0x5a1a1a], line: 'I fought before the Emperor himself. He laughed. You won’t.' }] },
+  janira: { name: 'THE VIOLET TIDE', mc: 'MISTRESS OLLARA', sp: 'chompy', tier: 1.3, style: 'chompy', foes: [
+    { name: 'PELLO THE QUICK', c: [0x3a6a8a, 0xe8dcc6], line: 'Fast hands, faster feet. You won’t even see it.' },
+    { name: 'MOTHER KRAGG', c: [0x5a2a6a, 0xffd08a], line: 'I raised eleven children on Janira. You don’t scare me.' },
+    { name: 'THE OATHBREAKER', c: [0x1a1a22, 0xff5a5a], line: 'I swore an oath never to lose. I keep that one.' }] },
+  eris: { name: 'THE BILLIONTH YEAR', mc: 'SERELITH OF THE LONG BAR', sp: 'erisian', tier: 1.8, style: 'erisian', foes: [
+    { name: 'VAEL ORUNE', c: [0x7a6a98, 0xeda8d4], line: 'I have waited ten thousand years for someone interesting. Are you?' },
+    { name: 'SISTER QUILLA', c: [0x3a4a6a, 0xb8f0ff], line: 'The houses send me when talking fails. It is failing now.' },
+    { name: 'THE MATRIARCH’S FIST', c: [0xd8d0f0, 0x9a5cff], line: 'Vishara’s guard taught me. Vishara’s guard feared me.' }] },
+  malana: { name: 'THE QUIET ROOT', mc: 'OLD MAAG', sp: 'grek', tier: 1.2, style: 'grek', foes: [
+    { name: 'BROTHER TAMM', c: [0x4a5a3a, 0xc5a87c], line: 'Archamus teaches patience. I teach bruises.' },
+    { name: 'OSKA THE OAK', c: [0x3a2a1a, 0x9fe07f], line: 'Hit me as hard as you like. Oaks don’t fall.' },
+    { name: 'ELDER HROTH', c: [0x5a4a3a, 0xffd08a], line: 'Two hundred years in this ring. Sit down, child.' }] }
+};
+const HOUSE_A = ['RUSTY', 'BROKEN', 'LAST', 'DROWNED', 'IRON', 'LUCKY', 'HOLLOW', 'SILVER', 'BURNING', 'CROOKED', 'WANDERING', 'SLEEPING', 'GOLDEN', 'BLACK', 'SALTED', 'HOWLING'];
+const HOUSE_B = ['COMET', 'ORBIT', 'LANTERN', 'MOON', 'HOUND', 'ANCHOR', 'STAR', 'TANKARD', 'FANG', 'NEBULA', 'BELL', 'CROWN', 'GULLET', 'DRIFT', 'SPUR', 'KETTLE'];
+const FOE_NAMES = {
+  chompy: ['DRAKK', 'MOGRA', 'VESH THE BOLD', 'KORRIN', 'BRUL', 'SKARRA', 'OLD TUSK', 'GRIMBA'],
+  grek: ['TOHM', 'BRAKA', 'IRRIN', 'HALD THE STEADY', 'MOSS', 'VARRO', 'KESH', 'UNDA'],
+  erisian: ['SELIS', 'OVARA', 'NYTH', 'CAELI', 'MORVENE', 'ISHEN', 'TALVI', 'RHEA OF THE ICE'],
+  human: ['JONAH ‘THE CRATE’ HALE', 'RUBY SANTOS', 'BIG DEV', 'MARTA KOVAC', 'IKE OKONJO', 'ROSA VEGA', 'DOC MORROW', 'THE WELDER']
+};
+const FOE_LINES = ['First drink’s on whoever stays standing.', 'I don’t know you. I don’t like you. Let’s dance.', 'House rules: no weapons, no mercy.', 'I’ve been waiting all night for this.', 'You picked the wrong cantina, stranger.', 'Don’t cry when it’s over.'];
+const COLS = [[0x6a3a9a, 0xd8a63a], [0x2a4a6a, 0xe8dcc6], [0x5a2a2a, 0xc9a24a], [0x3a5a3a, 0xffd08a], [0x1a1a22, 0x6fe2ff], [0x7a5a3a, 0x2b2f36], [0x8f2f5a, 0xe8dcc6], [0x3a3a48, 0xff8a4a]];
+function houseFor(P) { // the cantina on this world, or null
+  if (!P || !P.land || P.dock || P.minor || P.kind === 'station') return null;
+  if (P._house !== undefined) return P._house;
+  const N = NAMED_HOUSES[P.id], tr = planetTraders(P)[0], sp = N ? N.sp : tr ? (tr.sp === 'catharsis' ? null : tr.sp) : null;
+  if (!N && (!sp || !P.atmo)) return (P._house = null);
+  const s = P.seed || 1, pk = (a, k) => a[Math.floor(wxHash(s, k) * a.length)], spp = sp === 'erisian' && P.id === 'earth' ? 'human' : sp;
+  const name = N ? N.name : `THE ${pk(HOUSE_A, 21)} ${pk(HOUSE_B, 22)}`;
+  const foes = N ? N.foes.map(f => Object.assign({ sp: N.sp }, f)) : [0, 1, 2].map(i => ({ name: FOE_NAMES[spp][Math.floor(wxHash(s, 30 + i) * 8 + i * 3) % 8], sp: spp, c: COLS[Math.floor(wxHash(s, 40 + i) * COLS.length)], skin: Math.floor(wxHash(s, 50 + i) * 6), female: spp === 'human' && wxHash(s, 60 + i) < .4, line: FOE_LINES[Math.floor(wxHash(s, 70 + i) * FOE_LINES.length)] }));
+  if (!N) { foes[2].name = foes[2].name.replace(/^THE /, '') + ', THE CHAMPION'; if (foes[0].name === foes[1].name) foes[1].name = FOE_NAMES[spp][(FOE_NAMES[spp].indexOf(foes[1].name) + 3) % 8]; }
+  const mc = N ? N.mc : `MC ${pk({ chompy: ['RAKKA', 'BOOMJAW', 'GILT'], grek: ['OSTA', 'BIRCH', 'LUM'], erisian: ['VELLE', 'ORIS', 'SHAI'], human: ['BLAZE', 'DOLLY', 'RICO'] }[spp], 23)}`;
+  return (P._house = { id: 'h:' + P.id, name, mc, sp: spp, style: N ? N.style : spp, tier: N ? N.tier : 1 + wxHash(s, 24) * .5, foes, hype: HYPE_SETS[spp] || HYPE_SETS.human });
+}
+async function brawlRig(d) { // a fighter, a regular, a bartender: townsfolk of any species, dressed in their colours
+  const src = await townModel(d.sp); if (!src) return null;
+  const H = d.sp === 'human' ? (d.female ? 1.68 : 1.8) : ((SPECIES[d.sp] && SPECIES[d.sp].height) || 1.96);
+  const R = autoRig(dressTownsfolk(src, d), H * (d.scale || 1)); armRig(R, 'none');
+  for (const [k, sg] of [['ra', 1], ['la', -1]]) { const a = R[k], dr = R.model.userData[k + 'Drop']; if (a && dr > 0) { a.rotation.z += sg * dr; R.rest.get(a).z = a.rotation.z; } }
+  try { bakeRig(R); } catch (e) {}
+  R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return R;
+}
+// the Salt Lantern after Chapter II: the regulars want a fight every night now, and MC Irie runs them from the bar
+function saltVenue() {
+  const Rm = TOWN.rooms && TOWN.rooms.cantina; if (!Rm) return null;
+  return cant.saltV || (cant.saltV = { id: 'salt', salt: true, brawl: true, name: 'THE SALT LANTERN', mc: MC, sp: 'human', tier: 1, foes: SALT_FOES, hype: HYPE_SETS.salt, arena: FIGHT.arena, get room() { return TOWN.rooms.cantina; }, y: 0,
+    get parent() { return world.town; }, get crowd() { return cant.crowd; }, decals: [], mcAt: { x: -94.6, z: 15.4 }, ready: true });
+}
+const brawlOn = () => (wanderer.chapter | 0) >= 3 || !!(wanderer.ch2 && wanderer.ch2.escapedLondon);
+function brawlVenueHere() {
+  if (!brawlOn()) return null;
+  if (isPl()) return world.hall && world.hall.V && world.hall.V.ready ? world.hall.V : null;
+  if (curArea() === 'africa' && inCantina(player.position.x, player.position.z)) return saltVenue();
+  return null;
+}
+function brawlMenu(V) {
+  if (!V || ex.dlg) return;
+  const won = brawlWins(V.id), opts = [];
+  V.foes.forEach((f, i) => { if (i > won) return; const st = brawlStats(i + 1, V.tier), again = i < won; opts.push({ text: `${again ? 'Rematch' : 'Fight'} ${titleName(f.name)} · ${BRAWL_RANKS[i]} · ${again ? Math.round(st.prize / 3) : st.prize} units`, onPick: () => startBrawl(V, i) }); });
+  opts.push({ text: 'Not tonight', onPick: () => {} });
+  const done = won >= V.foes.length, lead = done ? `The champion of ${titleName(V.name)} walks in! Back for more? The house pays a third for rematches.` : won ? `You’re still standing, so the house has someone tougher. ${titleName(V.foes[won].name)} is waiting.` : `New face. You want in the ring? Three fighters, three purses. Beat ${titleName(V.foes[0].name)} first.`;
+  openDialog(V.mc, [V.salt ? (done ? 'Di champion reach! Yuh waan run it back? Di house pay a third fi rematch.' : won ? `Yuh still standing? Den mi have somebody tougher. ${titleName(V.foes[won].name)} a wait.` : `Yuh waan inna di ring? Three fighter, three purse. Beat ${titleName(V.foes[0].name)} first.`) : lead], false, () => openChoice(V.mc, opts));
+}
+async function startBrawl(V, i) {
+  if (state !== 'explore' || cant.phase === 'fight' || cf.loading) return;
+  const foe = V.foes[i], st = brawlStats(i + 1, V.tier); cf.loading = true;
+  const R = await brawlRig(Object.assign({}, foe, { sp: foe.sp || V.sp })).catch(() => null); cf.loading = false;
+  if (!R || state !== 'explore') { lootMsg('The fight is off · try again in a moment', '#ff8f86'); return; }
+  V.parent.add(R.root); if (V.foeR && V.foeR.root.parent) V.foeR.root.parent.remove(V.foeR.root); V.foeR = R;
+  if (V.salt) sfx.loadClips('hypeVoices').then(c => { cf.hypeClips = c || []; });
+  closeDialog(); ex.keys.clear(); vel.set(0, 0, 0); stopBuild(); hideGhost();
+  // your companions step back into the crowd for this one
+  cf.hid = []; for (const C of [world.orion, CREW.nico && CREW.nico.R]) if (C && C.root.visible) { C.root.visible = false; cf.hid.push(C); }
+  cf.V = V; cf.brawlI = i; cf.brawlSt = st; state = 'brawl'; cant.phase = 'fight';
+  const A = V.arena, self = { root: player, ra: rig.ra, la: rig.la, rl: rig.rl, ll: rig.ll, self: true, mode: 'idle', t: 0 };
+  resetRig(); cf.o = fighter(self, 140, A.x - 1.3, A.z); cf.d = fighter(R, st.hp, A.x + 1.3, A.z);
+  Object.assign(cf.d, { moves: Object.fromEntries(Object.entries(DANIEL_MOVES).map(([k, m]) => [k, Object.assign({}, m, { dmg: Math.round(m.dmg * st.dmgK) })])), spd: st.spd, cdK: st.cdK, blockK: st.blockK });
+  cf.rage = 0; cf.ts = 1; cf.slow = 0; cf.shake = 0; cf.block = false; cf.keys.clear(); cf.endT = 0; cf.hits = 0; cf.ragePinged = false; cf.hypeT = 0; cf.hypeUntil = 0; cf.cam = null; cf.side = 1;
+  show(ui.xhud, false); fightHud(true); fightNames((wanderer.name || 'YOU').toUpperCase(), foe.name); cfHud.querySelector('.combo').textContent = '';
+  fightPop('FIGHT!', 'fight'); sfx.thud(); hype('open', true);
+  sfx.loadClips('cantinaFightMusic').then(c => { if (c && c[0] && cant.phase === 'fight' && cf.V === V) sfx.playSong(c[0]); });
+  setTimeout(() => { if (cant.phase !== 'fight' || cf.V !== V) return; const el = cfHud.querySelector('.hype'); el.querySelector('small').textContent = foe.name; el.querySelector('span').textContent = foe.line; el.style.animationDuration = '3.6s'; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); cf.hypeUntil = performance.now() + 3600; }, 2800);
+}
+function brawlDone(won) {
+  const V = cf.V, i = cf.brawlI, st = cf.brawlSt, foe = V.foes[i], R = V.foeR;
+  cant.phase = 'over'; fightHud(false); ciFx(0, 0, 0, 0, 1); sfx.stopSong(2.5);
+  player.rotation.set(0, player.rotation.y, 0); resetRig(); player.position.y = V.y; ex.yaw = player.rotation.y + Math.PI; ex.pitch = .3; ex.snap = true; vel.set(0, 0, 0);
+  for (const C of cf.hid || []) { C.root.visible = true; C.root.position.set(player.position.x - 1.4, V.y, player.position.z + 1.6); } cf.hid = [];
+  if (R) { R.root.rotation.x = won ? -Math.PI / 2 : 0; R.root.position.y = V.y + (won ? .14 : 0); R.mode = 'idle'; setTimeout(() => { if (V.foeR === R && R.root.parent && cant.phase !== 'fight') { R.root.parent.remove(R.root); V.foeR = null; } }, won ? 9000 : 5000); }
+  cf.V = null; state = 'explore'; show(ui.xhud, true);
+  if (won) {
+    const first = i >= brawlWins(V.id), prize = first ? st.prize : Math.round(st.prize / 3);
+    addUnits(prize); gainXP(first ? st.xp : Math.round(st.xp / 3), 'brawl'); if (first) setBrawlWins(V.id, i + 1); sfx.chime();
+    notice(first && i === V.foes.length - 1 ? `Champion of ${titleName(V.name)}` : `You beat ${titleName(foe.name)}`, `+${prize} UNITS`, 3600);
+  } else notice('You lost the brawl', `TALK TO ${V.mc} FOR A REMATCH`, 3600);
+  setTimeout(() => { for (const g of V.decals || []) g.parent && g.parent.remove(g); if (V.decals) V.decals.length = 0; }, 45000); // the floor gets mopped
+  renderTasks();
+}
+// a drink at the bar: a little health back for a few units
+function barDrink(V) {
+  const nm = V.salt ? 'CANTINA OWNER' : 'BARTENDER', cost = 15;
+  openChoice(nm, [{ text: `A drink · ${cost} units · +30 health`, onPick: () => { if (units() < cost) { lootMsg('Not enough units', '#ff8f86'); return; } addUnits(-cost); const m = maxHP(); ex.hp = Math.min(m, ex.hp + 30); invState().hp = Math.round(ex.hp); sfx.blip(); lootMsg('You knock it back · +30 health', '#ffc94a'); } },
+    { text: 'Who runs the fights?', onPick: () => openDialog(nm, [`${titleName(V.mc)}, up on the bar. Three fighters, three purses, and the champion takes on anyone. Talk to the MC if you want in.`]) }, { text: 'Nothing, thanks', onPick: () => {} }]);
+}
+
+/* ---- the cantina on an inhabited world: a hall a short walk from where you land, its door facing your ship. Each species builds
+   its own (Chompy violet and gold, Erisian crystal, Grek timber, human steel and neon); inside, the ring, the bar, the MC and the
+   regulars. The ground under it is levelled, like a capital's. ---- */
+const HALL = { w: 16, d: 12, h: 5 };
+const HALL_STYLE = {
+  chompy: { wall: 0x3a2456, wall2: 0x24163a, trim: 0xd8a63a, neon: 0xc890ff, floor: '#3a2430', floor2: '#2a1a24', accent: 0x69b8ea, roof: 0x1c1028 },
+  erisian: { wall: 0x5a4a6e, wall2: 0x3a3048, trim: 0xeda8d4, neon: 0xffa8e4, floor: '#3a3448', floor2: '#2c2638', accent: 0xb8f0ff, roof: 0x2a2236 },
+  grek: { wall: 0x5a4430, wall2: 0x3a2c1e, trim: 0xc5a87c, neon: 0x9fe07f, floor: '#4a3624', floor2: '#3a2a1a', accent: 0xffd08a, roof: 0x2e3a22 },
+  human: { wall: 0x3e434a, wall2: 0x2a2e34, trim: 0xd8762a, neon: 0xffa04a, floor: '#33302c', floor2: '#26231f', accent: 0x6fe2ff, roof: 0x22252a }
+};
+function hallPlan(W) { // where the hall goes (and the pad it stands on), decided before the ground is laid out
+  W.pads = []; W.hall = null; const H = houseFor(W.P); if (!H || !brawlOn()) return;
+  const raw = (x, z) => planetH(W.P, plDir(x, z)) - W.h0, sea = W.P.sea ? (W.P.seaH || 0) - W.h0 + 2 : -1e9;
+  let best = null;
+  for (const [x, z] of [[-40, -4], [-40, 18], [-44, -24], [34, -20], [-58, 6], [40, 26]]) { // dry and fairly flat, clear of the ship and the trader
+    const hs = [[0, 0], [-8, -6], [8, -6], [-8, 6], [8, 6]].map(([a, b]) => raw(x + a, z + b)), lo = Math.min(...hs), hi = Math.max(...hs), sc = (hi - lo) + (lo < sea ? 1e3 : 0);
+    if (!best || sc < best.sc) best = { x, z, y: Math.max(hs[0], sea), sc };
+  }
+  W.hall = { x: best.x, z: best.z, y: best.y, H }; W.pads.push({ x: best.x, z: best.z, r: 13, y: best.y });
+}
+function hallTex(c1, c2, kind) {
+  return canvasTex(256, 256, (g, w) => {
+    g.fillStyle = c1; g.fillRect(0, 0, w, w); g.strokeStyle = c2; g.lineWidth = 3;
+    if (kind === 'planks') for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? c2 : c1; g.fillRect(0, i * 32, w, 30); for (let k = 0; k < 3; k++) g.fillRect(((i * 97 + k * 83) % w), i * 32, 2, 30); }
+    else for (let i = 0; i <= 8; i++) { g.beginPath(); g.moveTo(i * 32, 0); g.lineTo(i * 32, w); g.stroke(); g.beginPath(); g.moveTo(0, i * 32); g.lineTo(w, i * 32); g.stroke(); }
+  });
+}
+function signTex(text, col) {
+  return canvasTex(1024, 160, (g, w, hh) => {
+    g.fillStyle = 'rgba(0,0,0,0)'; g.clearRect(0, 0, w, hh); g.font = '700 84px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.shadowColor = col; g.shadowBlur = 28; g.fillStyle = col; g.fillText(text, w / 2, hh / 2 + 4); g.shadowBlur = 8; g.fillStyle = '#ffffff'; g.globalAlpha = .55; g.fillText(text, w / 2, hh / 2 + 4);
+  });
+}
+function buildHall() {
+  if (world.hall && world.hall.G) { wScene.remove(world.hall.G); world.hall = null; }
+  const W = world.planet, P0 = W && W.hall; if (!P0 || !isPl()) return;
+  const Hs = P0.H, S = HALL_STYLE[Hs.style] || HALL_STYLE.human, G = new THREE.Group(); G.position.set(P0.x, P0.y, P0.z);
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .8 }, o));
+  const box = (w, hh, d, m, x, y, z, ry = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = o.receiveShadow = true; G.add(o); return o; };
+  const cyl = (r0, r1, hh, m, x, y, z, seg = 10) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r0, r1, hh, seg), m); o.position.set(x, y, z); o.castShadow = true; G.add(o); return o; };
+  const hw = HALL.w / 2, hd = HALL.d / 2, hh = HALL.h, T = .4, door = 1.4;
+  const wall = M(S.wall, { roughness: .7, metalness: Hs.style === 'human' ? .45 : .1 }), wall2 = M(S.wall2), trim = M(S.trim, { metalness: .7, roughness: .35 });
+  const neon = new THREE.MeshBasicMaterial({ color: S.neon }), acc = new THREE.MeshBasicMaterial({ color: S.accent });
+  // floor and walls (the door in the +x wall, facing your ship)
+  const ft = hallTex(S.floor, S.floor2, Hs.style === 'grek' || Hs.style === 'human' ? 'planks' : 'tiles'); ft.wrapS = ft.wrapT = THREE.RepeatWrapping; ft.repeat.set(3, 2.2);
+  const fl = new THREE.Mesh(new THREE.PlaneGeometry(HALL.w + 6, HALL.d + 6), new THREE.MeshStandardMaterial({ map: ft, roughness: .7 })); fl.rotation.x = -Math.PI / 2; fl.position.y = .04; fl.receiveShadow = true; G.add(fl);
+  box(HALL.w + 6.4, .5, HALL.d + 6.4, wall2, 0, -.2, 0); // the plinth
+  box(T, hh, HALL.d, wall, -hw, hh / 2, 0); box(HALL.w, hh, T, wall, 0, hh / 2, -hd); box(HALL.w, hh, T, wall, 0, hh / 2, hd);
+  box(T, hh, hd - door, wall, hw, hh / 2, -(hd + door) / 2); box(T, hh, hd - door, wall, hw, hh / 2, (hd + door) / 2); box(T, hh - 2.9, door * 2, wall, hw, hh - (hh - 2.9) / 2, 0);
+  // trim: a gilded band, glowing seams, columns at the corners
+  for (const [x, z, w2, d2] of [[0, -hd, HALL.w + .2, T + .1], [0, hd, HALL.w + .2, T + .1], [-hw, 0, T + .1, HALL.d + .2]]) { box(w2, .25, d2, trim, x, hh - .1, z); box(w2, .12, d2, neon, x, .55, z); }
+  for (const [x, z] of [[-hw, -hd], [hw, -hd], [-hw, hd], [hw, hd]]) { cyl(.45, .55, hh + .6, trim, x, (hh + .6) / 2, z, 8); }
+  // the roof, hidden while you're inside so the camera can see you
+  const roof = new THREE.Group(); G.add(roof);
+  const rf = new THREE.Mesh(new THREE.BoxGeometry(HALL.w + 1.2, .5, HALL.d + 1.2), M(S.roof, { roughness: .6, metalness: .3 })); rf.position.y = hh + .25; rf.castShadow = true; roof.add(rf);
+  if (Hs.style === 'chompy') { const dome = new THREE.Mesh(new THREE.SphereGeometry(4.2, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), M(S.wall, { metalness: .5, roughness: .3 })); dome.position.y = hh + .5; dome.scale.y = .6; roof.add(dome); const sp = new THREE.Mesh(new THREE.ConeGeometry(.5, 3, 8), trim); sp.position.y = hh + 3.5; roof.add(sp); for (const [x, z] of [[-hw, -hd], [hw, -hd], [-hw, hd], [hw, hd]]) { const c = new THREE.Mesh(new THREE.ConeGeometry(.5, 2.2, 6), trim); c.position.set(x, hh + 1.7, z); roof.add(c); } }
+  else if (Hs.style === 'erisian') { const cm = M(0x2a1840, { emissive: S.neon, emissiveIntensity: .8, roughness: .2, metalness: .3, transparent: true, opacity: .92 }); for (const [x, z, s] of [[-hw, -hd, 1], [hw, -hd, .8], [-hw, hd, .9], [hw, hd, 1.1], [0, 0, 1.6]]) { const c = new THREE.Mesh(new THREE.OctahedronGeometry(.9 * s), cm); c.scale.y = 3; c.position.set(x, hh + 2.6 * s, z); roof.add(c); } }
+  else if (Hs.style === 'grek') { for (let x = -hw; x <= hw; x += 2) { const b = new THREE.Mesh(new THREE.BoxGeometry(.3, .3, HALL.d + 1.6), trim); b.position.set(x, hh + .6, 0); roof.add(b); } const moss = new THREE.Mesh(new THREE.BoxGeometry(HALL.w - 1, .4, HALL.d - 1), M(0x3f6a33, { roughness: 1 })); moss.position.y = hh + .65; roof.add(moss); }
+  else { for (let z = -hd + 1; z < hd; z += 2.4) { const p = new THREE.Mesh(new THREE.CylinderGeometry(.18, .18, HALL.w + 1, 8), trim); p.rotation.z = Math.PI / 2; p.position.set(0, hh + .7, z); roof.add(p); } const fan = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, .8, 16), M(0x55595e, { metalness: .7 })); fan.position.set(-4, hh + .9, -2); roof.add(fan); }
+  // the front: awning, the neon sign with the house's name, lanterns and a couple of crates
+  const aw = new THREE.Mesh(new THREE.BoxGeometry(2.2, .14, door * 2 + 3), M(S.wall2)); aw.position.set(hw + 1.1, 3.25, 0); aw.rotation.z = -.18; aw.castShadow = true; G.add(aw);
+  const sg = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.4), new THREE.MeshBasicMaterial({ map: signTex(Hs.name, '#' + new THREE.Color(S.neon).getHexString()), transparent: true, depthWrite: false })); sg.position.set(hw + .32, hh - .55, 0); sg.rotation.y = Math.PI / 2; G.add(sg);
+  for (const z of [-door - .5, door + .5]) { cyl(.06, .06, .5, trim, hw + .6, 2.9, z, 6); const l = glowSprite(S.neon, 1.8, .9); l.position.set(hw + .6, 2.55, z); G.add(l); }
+  box(.9, .8, .9, wCrateMat, hw + 2.2, .4, -door - 2.4); box(.7, .6, .7, wCrateMat, hw + 2.4, .3, -door - 3.4, .4);
+  // inside: the ring (rope posts round a lit circle), the bar along the back wall, shelves of bottles, tables in the corners
+  const ar = { x: -.5, z: 0, r: 3.1 };
+  const ring = new THREE.Mesh(new THREE.RingGeometry(ar.r - .12, ar.r + .08, 48), neon); ring.rotation.x = -Math.PI / 2; ring.position.set(ar.x, .06, ar.z); G.add(ring);
+  const mat = new THREE.Mesh(new THREE.CircleGeometry(ar.r - .12, 48), M(S.wall2, { roughness: .95 })); mat.rotation.x = -Math.PI / 2; mat.position.set(ar.x, .05, ar.z); G.add(mat);
+  for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + .3; cyl(.08, .1, 1.3, trim, ar.x + Math.cos(a) * (ar.r + .35), .65, ar.z + Math.sin(a) * (ar.r + .35), 8); }
+  for (const y of [.8, 1.15]) { const rp = new THREE.Mesh(new THREE.TorusGeometry(ar.r + .35, .035, 6, 48), new THREE.MeshStandardMaterial({ color: 0x9a2a2a, roughness: .7 })); rp.rotation.x = Math.PI / 2; rp.position.set(ar.x, y, ar.z); G.add(rp); }
+  const bx = -hw + 1.7; box(1, 1.1, 8, M(S.wall2, { roughness: .5, metalness: .3 }), bx, .55, 0); box(1.2, .1, 8.2, trim, bx, 1.12, 0);
+  const BOT = [0x3a6b3a, 0x7a2a1a, 0xc9a24a, 0x2b4a6b, 0xe8dcc6, S.neon].map(c => M(c, { roughness: .2, emissive: c, emissiveIntensity: .25 }));
+  for (const y of [1.6, 2.3, 3.0]) { box(.35, .06, 8, trim, -hw + .45, y, 0); for (let z = -3.8; z < 3.9; z += .34) cyl(.05, .05, .3, BOT[Math.floor(Math.abs(z * 7 + y * 3)) % BOT.length], -hw + .45, y + .18, z, 6); }
+  box(.06, .9, 6, acc, -hw + .24, 3.8, 0); // a glowing strip over the shelves
+  for (const [x, z] of [[4.6, -4.2], [4.6, 4.2], [-4.6, -4.5], [-4.6, 4.5]]) { cyl(.6, .6, .06, trim, x, .78, z, 14); cyl(.07, .1, .74, wall2, x, .38, z, 8); for (let k = 0; k < 3; k++) { const a = k * 2.1 + .4; box(.42, .5, .42, wall2, x + Math.cos(a) * .95, .25, z + Math.sin(a) * .95); } const c = glowSprite(S.accent, .8, .8); c.position.set(x, 1.0, z); G.add(c); }
+  for (const [x, z] of [[ar.x, ar.z], [-4, -3], [-4, 3], [4, 0]]) { const l = glowSprite(S.neon, 2.2, .7); l.position.set(x, hh - .5, z); G.add(l); }
+  const spot = new THREE.PointLight(S.neon, 18, 12, 1.6); spot.position.set(ar.x, hh - .8, ar.z); G.add(spot);
+  wScene.add(G);
+  // walls and furniture for walking; the room's bounds for the camera
+  const X = P0.x, Z = P0.z, cols = [[X - hw - .3, X - hw + .3, Z - hd, Z + hd], [X - hw, X + hw, Z - hd - .3, Z - hd + .3], [X - hw, X + hw, Z + hd - .3, Z + hd + .3], [X + hw - .3, X + hw + .3, Z - hd, Z - door], [X + hw - .3, X + hw + .3, Z + door, Z + hd],
+    [X + bx - .6, X + bx + .6, Z - 4.1, Z + 4.1], [X - hw, X - hw + .7, Z - 4, Z + 4]];
+  for (const [x, z] of [[4.6, -4.2], [4.6, 4.2], [-4.6, -4.5], [-4.6, 4.5]]) cols.push([X + x - .7, X + x + .7, Z + z - .7, Z + z + .7]);
+  const V = { id: Hs.id, brawl: true, name: Hs.name, mc: Hs.mc, sp: Hs.sp, tier: Hs.tier, foes: Hs.foes, hype: Hs.hype, y: P0.y, arena: { x: X + ar.x, z: Z + ar.z, r: ar.r },
+    room: { x0: X - hw + .3, x1: X + hw - .3, z0: Z - hd + .3, z1: Z + hd - .3 }, parent: G.parent ? wScene : wScene, crowd: [], decals: [], mcAt: { x: X + bx + 1.3, z: Z }, barAt: { x: X + bx + 1.3, z: Z + 2.6 }, ready: false };
+  world.hall = { G, roof, cols, V, x: X, z: Z, y: P0.y, inside: false };
+  hallCrowd(world.hall, S).catch(e => console.error(e));
+  setTimeout(() => { if (world.hall && world.hall.V === V) lootMsg(`${titleName(Hs.name)} · a cantina · brawls nightly`, '#' + new THREE.Color(S.neon).getHexString()); }, 4200);
+}
+async function hallCrowd(Hl, S) { // the regulars round the walls, the MC up on the bar, someone pouring drinks
+  const V = Hl.V, X = Hl.x, Z = Hl.z, Y = Hl.y, sp = V.sp, s = (world.planet.P.seed || 1);
+  const spots = [[-3.6, -4.9], [-.6, -5.25], [2.4, -4.9], [-3.6, 4.9], [-.6, 5.25], [2.4, 4.9], [4.4, -2.4], [4.4, 2.4]];
+  const list = [];
+  for (let i = 0; i < spots.length; i++) { const R = await brawlRig({ sp: i % 3 === 2 && sp !== 'human' ? sp : sp, c: COLS[(i * 3 + s) % COLS.length], skin: (i + s) % 6, female: sp === 'human' && i % 2 === 1 }); if (!R || world.hall !== Hl) return; R.root.position.set(X + spots[i][0], Y, Z + spots[i][1]); wScene.add(R.root); list.push({ R, c: { x: X + spots[i][0], z: Z + spots[i][1] }, ph: Math.random() * 6 }); }
+  const mc = await brawlRig({ sp, c: [0xd9302a, 0xf0f0f0], skin: 5 }); if (mc && world.hall === Hl) { mc.root.position.set(V.mcAt.x - 1.3, Y + 1.18, V.mcAt.z); wScene.add(mc.root); list.push({ R: mc, c: { mc: true, x: V.mcAt.x - 1.3, z: V.mcAt.z, y: 1.18 }, ph: 0 }); }
+  const bt = await brawlRig({ sp, c: [0x2b2f36, S ? S.trim : 0xc9a24a], skin: 2 }); if (bt && world.hall === Hl) { bt.root.position.set(X - HALL.w / 2 + 1.0, Y, Z + 2.6); bt.root.rotation.y = Math.PI / 2; wScene.add(bt.root); Hl.bartender = bt; }
+  V.crowd = list; V.ready = true;
+}
+function hallTick(dt) {
+  const Hl = world.hall; if (!Hl || !isPl()) return;
+  const p = player.position, R = Hl.V.room, inside = p.x > R.x0 - .3 && p.x < R.x1 + .3 && p.z > R.z0 - .3 && p.z < R.z1 + .3;
+  if (inside !== Hl.inside) { Hl.inside = inside; Hl.roof.visible = !inside; }
+  const near = Math.hypot(p.x - Hl.x, p.z - Hl.z) < 45; if (!near) return;
+  if (Hl.V.crowd.length && state === 'explore') crowdTick(dt, .18, Hl.V);
+  if (Hl.bartender) { Hl.bartender.mode = 'idle'; animRig(Hl.bartender, dt); }
+}
+const hallBlocked = (x, z) => { const Hl = world.hall; if (!Hl || !isPl() || Math.abs(x - Hl.x) > 12 || Math.abs(z - Hl.z) > 10) return false; for (const c of Hl.cols) if (x > c[0] - .25 && x < c[1] + .25 && z > c[2] - .25 && z < c[3] + .25) return true; return false; };
+// indoors, the camera stays inside the room
+function roomAround(p) {
+  if (isPl() && world.hall && world.hall.inside) { const R = world.hall.V.room; return { x0: R.x0, x1: R.x1, z0: R.z0, z1: R.z1, top: world.hall.y + HALL.h - .35 }; }
+  if (curArea() === 'africa' && inCantina(p.x, p.z)) { const R = TOWN.rooms.cantina; return { x0: R.x0 + .1, x1: R.x1 - .1, z0: R.z0 + .1, z1: R.z1 - .1, top: 2.85 }; }
+  return null;
+}
+
+/* ---- Ad-Nostra from the Nostra (Chapter III on): land on Earth, then ask the helm to fly you to East Africa. The Nostra sets down
+   in the open ground north of Orion's farm; the town, the harbour and The Salt Lantern are a short walk west. ---- */
+const ADN = { ship: { x: -24, z: 62 }, dir: [.62, -.07, .78] };
+async function visitAdNostra(place) {
+  spaceOff(); state = 'loadingCh';
+  world.planet = null; world.area = 'africa'; world.adVisit = true; world.shipAt = { x: ADN.ship.x, z: ADN.ship.z };
+  const sx = ADN.ship.x, sz = ADN.ship.z;
+  enterWorld(place && place.where === 'africa' ? place : { mode: 'explore', area: 'world', where: 'africa', x: sx + 4, z: sz + 14.5, y: 0, rot: -Math.PI * .7, yaw: -Math.PI * .7 + Math.PI });
+  ui.xhud.classList.add('world');
+  if (!world.landShip) world.landShip = makeShip();
+  setShipRig(world.landShip, 1, 1); wScene.add(world.landShip); world.landShip.position.set(sx, wHeight(sx, sz) + 2.7, sz); world.landShip.rotation.set(0, 0, 0); world.landShip.visible = true;
+  for (const f of world.landShip.userData.flames) f.visible = false;
+  worldUnstick(); await placeOrion().catch(() => null); placeCrew().catch(() => null);
+  const W3 = wanderer.ch3 = Object.assign({}, wanderer.ch3, { lastPlanet: 'earth' }); const c = curChar(); if (c) c.ch3 = W3;
+  state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks();
+  notice('Earth · East Africa', 'AD-NOSTRA', 3400);
+  if (!place) setTimeout(() => lootMsg('The Salt Lantern is in town, a short walk west · fights nightly', '#ffc94a'), 2400);
+}
+function shipFlyToAdNostra() {
+  const f = $('#fade'); f.style.transition = 'opacity .6s'; f.style.opacity = 1; sfx.whoosh();
+  setTimeout(async () => {
+    SHIPI.on = false; ui.xhud.classList.remove('aboard'); xUI.prompt.classList.remove('on'); xUI.act.classList.remove('on');
+    if (world.landShip) world.landShip.visible = false;
+    try { await visitAdNostra(null); } catch (e) { console.error(e); }
+    f.style.transition = 'opacity 1.2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 1300);
+  }, 650);
+}
+const shipX = () => world.adVisit && !isPl() ? world.shipAt.x : 0, shipZ = () => world.adVisit && !isPl() ? world.shipAt.z : 0;
 /* ---- Chapter II: New London, capital of the Human Federation of Sol (Europe) ----
    Westminster, rebuilt: the Palace of Westminster on the west bank of the Thames with Elizabeth Tower (Big Ben) at its north end,
    Westminster Bridge, Portcullis House across Bridge Street, Parliament Square, and the London Eye on the far bank, all in
    Federation stone, bronze and light. +x is east, -z is north. */
 const LON = {
   river: { x0: 70, x1: 180, water: -2.4, bed: -7 }, bridge: { x0: 64, x1: 186, z0: -80, z1: -56 },
-  bounds: { x0: -280, x1: 380, z0: -360, z1: 300 }, cols: [], cars: [], hands: [], lit: null, eye: null, halo: null,
+  bounds: { x0: -560, x1: 380, z0: -580, z1: 300 }, cols: [], cars: [], hands: [], lit: null, eye: null, halo: null,
   arrive: { x: -16, z: 6 }, door: { x: 15.5, z: 70 }, tp: { x: -74, z: 30 }
 };
 const inRiver = (x, z) => x > LON.river.x0 && x < LON.river.x1;
@@ -9558,12 +9895,13 @@ function buildLondon() {
   for (let i = 0; i < 90; i++) {
     const a = rnd() * Math.PI * 2, d = rr(240, 720), x = 60 + Math.cos(a) * d, z = Math.sin(a) * d; if (x > 55 && x < 195) continue; // keep the river open
     const w = rr(14, 34), dd = rr(14, 34), h = rr(40, d > 450 ? 260 : 150), m = rnd() < .6 ? tw1 : tw2;
+    if (z - dd / 2 < -140 && z + dd / 2 > -600 && x + w / 2 > -600 && (x - w / 2 < 40 || (x - w / 2 < 100 && z - dd / 2 < -380))) continue; // Westminster's west and north: Downing Street to the Palace
     box(w, h, dd, m, x, h / 2, z); if (rnd() < .35) { cyl(.2, .4, h * .2, iron, x, h + h * .1, z, 6); const b = glowSprite(0xff5a4a, 3, .8); b.position.set(x, h * 1.2, z); live.add(b); }
     if (rnd() < .5) box(w + .4, .5, dd + .4, glow, x, h * rr(.3, .9), z);
     if (x > LON.bounds.x0 - 20 && x < LON.bounds.x1 + 20 && z > LON.bounds.z0 - 20 && z < LON.bounds.z1 + 20) col(x - w / 2, x + w / 2, z - dd / 2, z + dd / 2);
   }
   // Whitehall's stone offices lining Parliament Street, north of the square
-  for (let z = -100; z > -340; z -= 30) for (const s of [-1, 1]) { if (s > 0 && z > -160) continue; const x = -4 + s * 22, h = rr(18, 28); box(28, h, 26, stone, x, h / 2, z); col(x - 14, x + 14, z - 13, z + 13); for (let y = 4; y < h - 2; y += 4.2) box(28.2, 2.2, 26.2, rnd() < .5 ? winLit : glassDk, x, y, z); box(28.6, .8, 26.6, stoneDk, x, h, z); }
+  for (let z = -100; z > -340; z -= 30) for (const s of [-1, 1]) { if (s > 0 && z > -160) continue; if (s < 0 && (z === -190 || z === -220)) continue; /* Downing Street */ const x = -4 + s * 22, h = rr(18, 28); box(28, h, 26, stone, x, h / 2, z); col(x - 14, x + 14, z - 13, z + 13); for (let y = 4; y < h - 2; y += 4.2) box(28.2, 2.2, 26.2, rnd() < .5 ? winLit : glassDk, x, y, z); box(28.6, .8, 26.6, stoneDk, x, h, z); }
   // street lamps
   for (const [x, z] of [[-14, -54], [-14, -82], [10, -54], [10, -82], [-26, -40], [-78, -40], [-26, 40], [-78, 40], [10, 20], [10, 50], [10, 100], [56, -100], [56, -160]]) { cyl(.12, .16, 7, iron, x, 3.5, z, 8); const g = glowSprite(0xfff1c8, 2.6, .9); g.position.set(x, 7.2, z); live.add(g); col(x - .2, x + .2, z - .2, z + .2); }
   // ---- hover traffic: three lanes in the air ----
@@ -9580,6 +9918,172 @@ function buildLondon() {
     const lg = glowSprite(0x9fe8ff, 3, .7); lg.position.set(-1.8, -.6, 0); c.add(lg);
     live.add(c); LON.cars.push({ c, L, t: rnd(), sp: rr(.018, .03) });
   }
+  // ==== New London, the rest of Westminster: Downing Street, Horse Guards, Trafalgar Square, the Mall, St James's Park and
+  // Buckingham Palace. The old city, rebuilt in Federation stone with light in its seams. ====
+  const brick = M(0x2c2622, { roughness: .9 }), white = M(0xf0ece4, { roughness: .6 }), black = M(0x0a0a0c, { roughness: .2, metalness: .5 });
+  const marble = M(0xf2efe8, { roughness: .45 }), palaceStone = M(0xe6dfcf, { roughness: .7 }), redM = M(0x9a1a1a, { roughness: .6 }), gravel = M(0xc2b394, { roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  const mallRed = M(0x8a3a2e, { roughness: .9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), lonWater = M(0x1d5a7a, { roughness: .08, metalness: .5, emissive: 0x2a8ac8, emissiveIntensity: .35 });
+  const holo = new THREE.MeshBasicMaterial({ color: 0x6fe2ff, transparent: true, opacity: .32, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  const numTex = (n, col = '#f4f0e6') => canvasTex(128, 128, (c, w) => { c.clearRect(0, 0, w, w); c.font = '700 84px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = col; c.fillText(String(n), w / 2, w / 2 + 4); });
+  const rotGround = (ax, az, bx, bz, wd, m, y = .02) => { const L = Math.hypot(bx - ax, bz - az), o = new THREE.Mesh(new THREE.PlaneGeometry(L, wd), m); o.rotation.set(-Math.PI / 2, Math.atan2(-(bz - az), bx - ax), 0, 'YXZ'); o.position.set((ax + bx) / 2, y, (az + bz) / 2); S.add(o); return o; };
+  const lamp = (x, z, h = 7, c = 0xfff1c8) => { cyl(.12, .16, h, iron, x, h / 2, z, 8); const g = glowSprite(c, 2.6, .9); g.position.set(x, h + .2, z); live.add(g); };
+  // Whitehall runs on north to Trafalgar Square
+  ground(14, 120, asphalt, -4, -380);
+  for (const z of [-340, -370, -400]) for (const s of [-1, 1]) lamp(-4 + s * 9, z);
+  // ---- Downing Street: a gated street west off Whitehall; Number 10 and Number 11 on its north side ----
+  ground(100, 10, asphalt, -61, -205); ground(100, 3, paveL, -61, -211.4, .025);
+  const DS = { x0: -84, x1: -30, z0: -229, z1: -213, h: 15.5 };
+  box(DS.x1 - DS.x0, DS.h, DS.z1 - DS.z0, brick, (DS.x0 + DS.x1) / 2, DS.h / 2, (DS.z0 + DS.z1) / 2); col(DS.x0, DS.x1, DS.z0, DS.z1);
+  box(DS.x1 - DS.x0 + .6, .5, DS.z1 - DS.z0 + .6, white, (DS.x0 + DS.x1) / 2, DS.h + .1, (DS.z0 + DS.z1) / 2); // the cornice
+  box(DS.x1 - DS.x0 - 2, 3, DS.z1 - DS.z0 - 4, slate, (DS.x0 + DS.x1) / 2, DS.h + 1.7, (DS.z0 + DS.z1) / 2);
+  for (let x = DS.x0 + 4; x < DS.x1; x += 9) { box(1.6, 3.4, 1.2, brick, x, DS.h + 3.4, DS.z0 + 4); for (let k = 0; k < 3; k++) cyl(.18, .18, .8, M(0x7a4a32), x - .5 + k * .5, DS.h + 5.4, DS.z0 + 4, 6); }
+  box(DS.x1 - DS.x0, .14, .1, glow, (DS.x0 + DS.x1) / 2, DS.h - .3, DS.z1 + .06); box(DS.x1 - DS.x0, .14, .1, glow, (DS.x0 + DS.x1) / 2, .9, DS.z1 + .06); // Federation light in the seams
+  for (const y of [3.4, 7, 10.6, 13.6]) for (let x = DS.x0 + 2.4; x < DS.x1 - 1; x += 3.3) {
+    if (y < 5 && (Math.abs(x + 44) < 2.2 || Math.abs(x + 58) < 2.2)) continue; // the doors
+    const tall = y < 12; box(1.5, tall ? 2.3 : 1.5, .12, white, x, y, DS.z1 + .05); box(1.2, tall ? 2.0 : 1.2, .1, rnd() < .45 ? winLit : glassDk, x, y, DS.z1 + .1); box(1.5, .1, .14, white, x, y, DS.z1 + .12);
+  }
+  for (const [x, n] of [[-44, 10], [-58, 11]]) { // the doors: black, with white numerals, a fanlight and a lamp
+    box(2.8, 3.6, .2, white, x, 1.8, DS.z1 + .1); box(1.5, 2.7, .14, black, x, 1.45, DS.z1 + .22);
+    const num = new THREE.Mesh(new THREE.PlaneGeometry(.5, .5), new THREE.MeshBasicMaterial({ map: numTex(n), transparent: true })); num.position.set(x, 2.2, DS.z1 + .31); live.add(num);
+    const fan = new THREE.Mesh(new THREE.CircleGeometry(.75, 20, 0, Math.PI), new THREE.MeshBasicMaterial({ color: 0xffd9a0 })); fan.position.set(x, 2.85, DS.z1 + .24); live.add(fan);
+    box(.12, .9, .12, iron, x, 4.05, DS.z1 + .55); const lp = glowSprite(0xfff1c8, 1.4, .9); lp.position.set(x, 3.7, DS.z1 + .7); live.add(lp);
+    box(2.2, .2, 1, stoneDk, x, .1, DS.z1 + .55);
+    if (n === 10) { const sh = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 3.1), holo); sh.position.set(x, 1.6, DS.z1 + .45); live.add(sh); LON.door10 = sh; } // a shimmer of shielding across Number 10's door
+  }
+  for (let x = DS.x0; x < DS.x1; x += .5) { if (Math.abs(x + 44) < 1.5 || Math.abs(x + 58) < 1.5) continue; cyl(.03, .03, 1.1, iron, x, .55, DS.z1 + 1.6, 4); } box(DS.x1 - DS.x0, .06, .06, iron, (DS.x0 + DS.x1) / 2, 1.08, DS.z1 + 1.6);
+  for (let k = 0; k < 4; k++) { cyl(.15, .18, 4, iron, DS.x0 + 6 + k * 14, 2, DS.z0 - .5, 6); const b = glowSprite(0xff5a4a, .8, .9); b.position.set(DS.x0 + 6 + k * 14, DS.h + 7.5, DS.z0 + 3); live.add(b); } // aerials on the roof
+  // the gates at the Whitehall end: pylons, an arch with the street's name, a shimmer of a barrier (open by day), sentry posts
+  for (const z of [-210.5, -199.5]) { box(1.2, 4.2, 1.2, iron, -13, 2.1, z); box(1.4, .25, 1.4, glow, -13, 4.3, z); col(-13.7, -12.3, z - .7, z + .7); }
+  box(.6, .8, 12.6, iron, -13, 4.8, -205); { const sg = new THREE.Mesh(new THREE.PlaneGeometry(10, 1), new THREE.MeshBasicMaterial({ map: canvasTex(512, 52, (c, w, hh) => { c.fillStyle = '#0a0f16'; c.fillRect(0, 0, w, hh); c.font = '700 32px system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#9fe8ff'; c.fillText('DOWNING STREET  SW1', w / 2, hh / 2 + 2); }) })); sg.position.set(-12.65, 4.8, -205); sg.rotation.y = Math.PI / 2; live.add(sg); }
+  { const bar = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.6), holo); bar.position.set(-13, 2, -205); bar.rotation.y = Math.PI / 2; bar.material = holo.clone(); bar.material.opacity = .12; live.add(bar); }
+  for (const z of [-213.6, -196.4]) { box(1.6, 2.6, 1.6, M(0x1c2632, { metalness: .6, roughness: .3 }), -15.5, 1.3, z); box(1.65, .15, 1.65, glow, -15.5, 2.65, z); col(-16.3, -14.7, z - .8, z + .8); }
+  // the Foreign Office across the street: grand stone, columns at its door
+  { const F = { x0: -110, x1: -22, z0: -199, z1: -177, h: 22 }; box(F.x1 - F.x0, F.h, F.z1 - F.z0, stone, (F.x0 + F.x1) / 2, F.h / 2, (F.z0 + F.z1) / 2); col(F.x0, F.x1, F.z0, F.z1);
+    box(F.x1 - F.x0 + .4, 1, F.z1 - F.z0 + .4, stoneDk, (F.x0 + F.x1) / 2, F.h, (F.z0 + F.z1) / 2); box(F.x1 - F.x0, .14, .1, glow, (F.x0 + F.x1) / 2, F.h - 1, F.z0 - .06);
+    for (const y of [5, 10.5, 16]) for (let x = F.x0 + 3; x < F.x1 - 2; x += 4.2) box(1.6, 3, .12, rnd() < .4 ? winLit : glassDk, x, y, F.z0 - .06);
+    for (let k = 0; k < 6; k++) cyl(.6, .7, 9, stoneDk, -70 + k * 3.2, 4.5, F.z0 - 1.6, 12); box(20, 1.4, 3.4, stoneDk, -62, 9.6, F.z0 - 1.6); }
+  // ---- Horse Guards Parade: the old gravel parade ground, flags of the Federation round it ----
+  ground(84, 84, gravel, -76, -296, .018);
+  for (let k = 0; k < 6; k++) { const x = -112 + k * 14; cyl(.12, .14, 14, iron, x, 7, -339, 6); const f = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2), LON.flag ? LON.flag.material : glowGold); f.position.set(x + 1.6, 13, -339); live.add(f); }
+  // ---- Trafalgar Square ----
+  const TQ = { x0: -96, x1: 64, z0: -502, z1: -398, cx: -16, cz: -450 };
+  ground(TQ.x1 - TQ.x0 + 20, TQ.z1 - TQ.z0 + 16, asphalt, TQ.cx, TQ.cz, .015);
+  ground(TQ.x1 - TQ.x0, TQ.z1 - TQ.z0, M(0xb9b2a4, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), TQ.cx, TQ.cz, .03);
+  for (let i = 0; i <= 8; i++) { ground(.25, TQ.z1 - TQ.z0, M(0x8f897e, { polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }), TQ.x0 + i * (TQ.x1 - TQ.x0) / 8, TQ.cz, .035); }
+  // Nelson's Column: plinth, lions, the fluted column ringed with light, and the admiral on top
+  { const nx = TQ.cx, nz = -424;
+    for (let k = 0; k < 4; k++) box(16 - k * 2.4, 1, 16 - k * 2.4, marble, nx, .5 + k, nz);
+    box(7, 8, 7, M(0xd8d2c4), nx, 8, nz); box(7.6, .6, 7.6, bronze, nx, 12.2, nz); col(nx - 8, nx + 8, nz - 8, nz + 8);
+    for (const [ox, oz] of [[0, 3.55], [0, -3.55], [3.55, 0], [-3.55, 0]]) box(oz ? 4.4 : .12, 4.4, oz ? .12 : 4.4, bronze, nx + ox, 7.5, nz + oz); // the bronze reliefs
+    cyl(1.9, 2.1, 3, M(0xd8d2c4), nx, 14, nz, 16); cyl(1.55, 1.7, 40, M(0xe8e2d4), nx, 35.5, nz, 16);
+    for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; box(.12, 40, .12, glow, nx + Math.cos(a) * 1.63, 35.5, nz + Math.sin(a) * 1.63); }
+    box(4.4, 2.4, 4.4, bronze, nx, 56.6, nz); cyl(1.1, 1.3, 1.2, bronze, nx, 58.4, nz, 12);
+    cyl(.55, .75, 3.4, bronze, nx, 60.8, nz, 10); const hd = new THREE.Mesh(new THREE.SphereGeometry(.42, 12, 8), bronze); hd.position.set(nx, 62.9, nz); S.add(hd); box(1.4, .35, .5, bronze, nx, 63.3, nz); box(.22, 1.8, .22, bronze, nx + .7, 61, nz, 0, 0, -.25);
+    for (const y of [20, 32, 44]) { const hr = new THREE.Mesh(new THREE.TorusGeometry(3.2, .1, 6, 48), new THREE.MeshBasicMaterial({ color: 0x6fe2ff, transparent: true, opacity: .6 })); hr.position.set(nx, y, nz); hr.rotation.x = Math.PI / 2; live.add(hr); (LON.rings = LON.rings || []).push(hr); }
+    const lion = (x, z, ry) => { // a bronze lion, couchant, facing out
+      const c = Math.cos(ry), s = Math.sin(ry), P = (lx, lz) => [x + lx * c + lz * s, z - lx * s + lz * c];
+      box(4.4, 1.8, 1, marble, ...[P(0, 0)].map(q => q[0]), 0.9, P(0, 0)[1], ry); // the plinth
+      const add = (geo, lx, y, lz) => { const o = new THREE.Mesh(geo, bronze); const [px, pz] = P(lx, lz); o.position.set(px, y, pz); o.rotation.y = ry; S.add(o); return o; };
+      add(new THREE.BoxGeometry(1.5, 1.1, 3.2), 0, 2.35, -.1); add(new THREE.SphereGeometry(1.05, 12, 10), 0, 3.05, 1.2).scale.set(1, 1, .85); add(new THREE.BoxGeometry(.8, .7, .8), 0, 2.8, 2.0);
+      for (const lx of [-.55, .55]) add(new THREE.BoxGeometry(.4, .3, 1.3), lx, 1.95, 2.1); add(new THREE.CylinderGeometry(.1, .14, 2.4, 6).rotateX(Math.PI / 2.2), 0, 2.1, -2.2);
+    };
+    lion(nx + 7, nz + 7, Math.PI / 4); lion(nx - 7, nz + 7, -Math.PI / 4); lion(nx + 7, nz - 7, Math.PI * .75); lion(nx - 7, nz - 7, -Math.PI * .75);
+  }
+  // the two fountains, lit from beneath; their jets rise and fall
+  LON.jets = [];
+  for (const fx of [TQ.cx - 34, TQ.cx + 34]) { const fz = -456;
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(8.5, .5, 8, 48), marble); rim.rotation.x = Math.PI / 2; rim.position.set(fx, .5, fz); S.add(rim);
+    const pool = new THREE.Mesh(new THREE.CircleGeometry(8.4, 48), lonWater); pool.rotation.x = -Math.PI / 2; pool.position.set(fx, .35, fz); S.add(pool); col(fx - 8.6, fx + 8.6, fz - 8.6, fz + 8.6);
+    cyl(1.6, 2.2, 2.2, marble, fx, 1.1, fz, 16); cyl(2.6, 2.6, .3, marble, fx, 2.3, fz, 16);
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, j = new THREE.Mesh(new THREE.CylinderGeometry(.06, .16, 1, 6), new THREE.MeshBasicMaterial({ color: 0xdff6ff, transparent: true, opacity: .6 })); j.position.set(fx + Math.cos(a) * 5.5, .4, fz + Math.sin(a) * 5.5); live.add(j); LON.jets.push({ j, ph: k * .7, h: 3 }); }
+    const cj = new THREE.Mesh(new THREE.CylinderGeometry(.12, .3, 1, 8), new THREE.MeshBasicMaterial({ color: 0xe8fbff, transparent: true, opacity: .7 })); cj.position.set(fx, 2.4, fz); live.add(cj); LON.jets.push({ j: cj, ph: 0, h: 9, base: 2.4 });
+    const gl = glowSprite(0x6fe2ff, 9, .55); gl.position.set(fx, 1.2, fz); live.add(gl);
+  }
+  for (const [x, z] of [[TQ.x0 + 4, TQ.z0 + 4], [TQ.x1 - 4, TQ.z0 + 4], [TQ.x0 + 4, TQ.z1 - 4], [TQ.x1 - 4, TQ.z1 - 4], [TQ.cx - 60, -430], [TQ.cx + 60, -430]]) lamp(x, z, 8);
+  // the National Gallery along the north side: a terrace and steps, a portico of eight columns, a dome
+  { const G = { x0: -92, x1: 60, z0: -540, z1: -510, h: 18 };
+    for (let k = 0; k < 4; k++) box(G.x1 - G.x0 - 20 + k * 0, .6, 3 - k * .2, marble, (G.x0 + G.x1) / 2, .3 + k * .6, G.z1 + 7 - k * 1.6);
+    box(G.x1 - G.x0, 2.4, 8, marble, (G.x0 + G.x1) / 2, 1.2, G.z1 + 3); col(G.x0, G.x1, G.z0, G.z1 + 6);
+    box(G.x1 - G.x0, G.h, G.z1 - G.z0, palaceStone, (G.x0 + G.x1) / 2, G.h / 2 + 2.4, (G.z0 + G.z1) / 2); box(G.x1 - G.x0 + .6, 1.2, G.z1 - G.z0 + .6, stoneDk, (G.x0 + G.x1) / 2, G.h + 2.4, (G.z0 + G.z1) / 2);
+    box(G.x1 - G.x0, .16, .1, glow, (G.x0 + G.x1) / 2, G.h + 1.6, G.z1 + .06);
+    for (let x = G.x0 + 4; x < G.x1 - 3; x += 5.2) { if (Math.abs(x - TQ.cx) < 12) continue; box(2, 4.4, .12, rnd() < .4 ? winLit : glassDk, x, 9, G.z1 + .06); box(2.6, .4, .3, stoneDk, x, 11.6, G.z1 + .1); }
+    for (let k = 0; k < 8; k++) cyl(.7, .8, 12, marble, TQ.cx - 11.2 + k * 3.2, 8.4, G.z1 + 4.6, 14);
+    box(26, 1.6, 6, marble, TQ.cx, 15.2, G.z1 + 4); const ped = new THREE.Mesh(new THREE.CylinderGeometry(0, 1, 1, 3, 1).rotateZ(Math.PI / 2).rotateY(Math.PI / 2), marble); ped.scale.set(26, 4, 6); ped.position.set(TQ.cx, 17.6, G.z1 + 4.2); S.add(ped);
+    cyl(7, 7, 6, palaceStone, TQ.cx, G.h + 5.6, (G.z0 + G.z1) / 2, 16); const dm = new THREE.Mesh(new THREE.SphereGeometry(7, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), M(0x5a8a7a, { roughness: .4, metalness: .6 })); dm.position.set(TQ.cx, G.h + 8.6, (G.z0 + G.z1) / 2); S.add(dm);
+    cyl(1, 1.2, 3, palaceStone, TQ.cx, G.h + 16.6, (G.z0 + G.z1) / 2, 10); const tp = glowSprite(0x9fe8ff, 3, .9); tp.position.set(TQ.cx, G.h + 18.8, (G.z0 + G.z1) / 2); live.add(tp);
+    const big = new THREE.Mesh(new THREE.PlaneGeometry(22, 3.2), new THREE.MeshBasicMaterial({ map: canvasTex(1024, 150, (c, w, hh) => { c.clearRect(0, 0, w, hh); c.font = '600 86px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.shadowColor = '#6fe2ff'; c.shadowBlur = 20; c.fillStyle = '#e8fbff'; c.fillText('THE NATIONAL GALLERY', w / 2, hh / 2 + 4); }), transparent: true, depthWrite: false })); big.position.set(TQ.cx, 20.6, G.z1 + 7.25); live.add(big); }
+  // St Martin-in-the-Fields on the north-east corner: a portico and a tall spire
+  { const sx0 = 70, sz0 = -470; box(22, 16, 44, palaceStone, sx0 + 11, 8, sz0); col(sx0, sx0 + 22, sz0 - 22, sz0 + 22); box(23, 1, 45, stoneDk, sx0 + 11, 16, sz0);
+    for (let k = 0; k < 6; k++) cyl(.7, .8, 13, marble, sx0 - 1.6, 6.5, sz0 - 8 + k * 3.2, 12); const ped = new THREE.Mesh(new THREE.CylinderGeometry(0, 1, 1, 3, 1).rotateZ(Math.PI / 2), marble); ped.scale.set(5, 4, 19); ped.position.set(sx0 - 1.6, 15.4, sz0); S.add(ped);
+    box(7, 14, 7, palaceStone, sx0 + 11, 23, sz0 + 14); box(5.6, 8, 5.6, palaceStone, sx0 + 11, 34, sz0 + 14); cyl(2.4, 2.8, 6, palaceStone, sx0 + 11, 41, sz0 + 14, 8); cone(2.4, 22, palaceStone, sx0 + 11, 55, sz0 + 14, 8, 0); cyl(.08, .12, 4, gold, sx0 + 11, 68, sz0 + 14, 6);
+    const cl = new THREE.Mesh(new THREE.CircleGeometry(1.4, 24), new THREE.MeshStandardMaterial({ map: clockFaceTex(), roughness: .5 })); cl.position.set(sx0 + 7.45, 34, sz0 + 14); cl.rotation.y = -Math.PI / 2; S.add(cl); }
+  // the buildings round the square, with Federation screens high on their walls
+  for (const [x0, x1, z0, z1, h] of [[-128, -100, -520, -470, 24], [-128, -100, -465, -436, 20], [64, 92, -444, -404, 22], [-60, -10, -392 + 0, -380, 18]].slice(0, 3)) { box(x1 - x0, h, z1 - z0, stone, (x0 + x1) / 2, h / 2, (z0 + z1) / 2); col(x0, x1, z0, z1); box(x1 - x0 + .4, .14, z1 - z0 + .4, glow, (x0 + x1) / 2, h - .6, (z0 + z1) / 2); for (const y of [5, 10, 15]) box(x1 - x0 + .1, 2.4, z1 - z0 + .1, rnd() < .5 ? winLit : glassDk, (x0 + x1) / 2, y, (z0 + z1) / 2); }
+  { const scr = new THREE.Mesh(new THREE.PlaneGeometry(18, 9), new THREE.MeshBasicMaterial({ map: canvasTex(512, 256, (c, w, hh) => { const gr = c.createLinearGradient(0, 0, w, hh); gr.addColorStop(0, '#0a2a4a'); gr.addColorStop(1, '#1d3f8f'); c.fillStyle = gr; c.fillRect(0, 0, w, hh); c.strokeStyle = '#e8b93c'; c.lineWidth = 8; c.beginPath(); c.arc(110, hh / 2, 62, 0, Math.PI * 2); c.stroke(); c.fillStyle = '#e8f6ff'; c.font = '700 44px system-ui,sans-serif'; c.fillText('NEW LONDON', 196, 112); c.font = '400 26px system-ui,sans-serif'; c.fillStyle = '#9fe8ff'; c.fillText('Capital of the Federation', 198, 156); }) })); scr.position.set(63.8, 15, -424); scr.rotation.y = -Math.PI / 2; live.add(scr); LON.screen = scr; }
+  // Admiralty Arch at the south-west corner, and the Mall beyond it
+  const MA = { ax: -104, az: -432, bx: -400, bz: -334 }, mu = { x: (MA.bx - MA.ax), z: (MA.bz - MA.az) }, ml = Math.hypot(mu.x, mu.z); mu.x /= ml; mu.z /= ml; const mv = { x: -mu.z, z: mu.x }, mry = Math.atan2(-mu.z, mu.x);
+  const onMall = (t, o) => [MA.ax + mu.x * t + mv.x * o, MA.az + mu.z * t + mv.z * o];
+  rotGround(MA.ax - mu.x * 14, MA.az - mu.z * 14, MA.bx, MA.bz, 20, mallRed); rotGround(MA.ax, MA.az, MA.bx, MA.bz, 30, paveL, .015);
+  { for (const [o, w] of [[-22, 14], [-8.5, 4], [8.5, 4], [22, 14]]) { const [x, z] = onMall(4, o); box(6, 22, w, palaceStone, x, 11, z, mry); const r0 = w / 2 + 1; col(x - r0, x + r0, z - r0, z + r0); }
+    const [x, z] = onMall(4, 0); box(6.2, 6, 58, palaceStone, x, 19, z, mry); box(6.6, 1, 59, stoneDk, x, 22.4, z, mry); box(6.4, .16, 58, glow, x, 15.8, z, mry);
+    for (const o of [-26, -18, 18, 26]) { const [a, b] = onMall(1, o); cyl(.45, .5, 9, marble, a, 6, b, 10); } }
+  for (let t = 18; t < ml - 10; t += 16) for (const s of [-1, 1]) { // plane trees, lamps, flags on tall poles all the way down
+    const [x, z] = onMall(t, s * 13); cyl(.35, .45, 6, M(0x4a3b2c), x, 3, z, 6); const c = new THREE.Mesh(new THREE.IcosahedronGeometry(3.6, 1), M(0x456f36, { roughness: 1, flatShading: true })); c.position.set(x, 8, z); S.add(c); col(x - .5, x + .5, z - .5, z + .5);
+    const [lx, lz] = onMall(t + 8, s * 10.6); lamp(lx, lz, 6.5); if ((t / 16) % 2 < 1) { cyl(.08, .1, 11, iron, lx, 5.5, lz, 6); const f = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.5), LON.flag ? LON.flag.material : glowGold); f.position.set(lx, 10.4, lz + .9); f.rotation.y = Math.PI / 2; live.add(f); }
+  }
+  // ---- St James's Park: lawns, the lake with its bridge, lights drifting over the water ----
+  { const pk = { x0: -392, x1: -128, z0: -330, z1: -236 }; ground(pk.x1 - pk.x0, pk.z1 - pk.z0, grass, (pk.x0 + pk.x1) / 2, (pk.z0 + pk.z1) / 2, .02);
+    const lake = new THREE.Mesh(new THREE.CircleGeometry(1, 48), lonWater); lake.rotation.x = -Math.PI / 2; lake.scale.set(92, 14, 1); lake.position.set(-262, .05, -284); S.add(lake);
+    for (let a = 0; a < Math.PI * 2; a += .05) { const x = -262 + Math.cos(a) * 92, z = -284 + Math.sin(a) * 14; if (Math.abs(x + 262) < 3) continue; col(x - 1.2, x + 1.2, z - 1.2, z + 1.2); }
+    box(5, .6, 32, stoneDk, -262, .4, -284); for (const s of [-1, 1]) { box(.2, 1, 32, iron, -262 + s * 2.4, 1, -284); for (let z = -298; z <= -270; z += 7) { const g = glowSprite(0xfff1c8, 1.2, .8); g.position.set(-262 + s * 2.4, 1.8, z); live.add(g); } }
+    for (let k = 0; k < 34; k++) { const x = rr(pk.x0 + 6, pk.x1 - 6), z = rr(pk.z0 + 6, pk.z1 - 6); if (Math.abs((x + 262) / 96) ** 2 + Math.abs((z + 284) / 18) ** 2 < 1.1) continue; cyl(.3, .4, 5, M(0x4a3b2c), x, 2.5, z, 6); const c = new THREE.Mesh(new THREE.IcosahedronGeometry(rr(2.6, 4), 1), M(rnd() < .5 ? 0x3f6a33 : 0x4f7a3a, { roughness: 1, flatShading: true })); c.position.set(x, 7, z); S.add(c); col(x - .5, x + .5, z - .5, z + .5); }
+    LON.orbs = []; for (let k = 0; k < 14; k++) { const o = glowSprite(k % 2 ? 0x9fe8ff : 0xffe2a8, 1.6, .8); o.position.set(-262 + rr(-80, 80), 2.2, -284 + rr(-9, 9)); live.add(o); LON.orbs.push({ o, ph: rnd() * 6, y: 2.2 }); } }
+  // ---- the Victoria Memorial: white marble tiers, fountains, the gilded figure with her wings ----
+  { const vx = -418, vz = -324;
+    const pool = new THREE.Mesh(new THREE.RingGeometry(16, 24, 48), lonWater); pool.rotation.x = -Math.PI / 2; pool.position.set(vx, .3, vz); S.add(pool);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(24, .5, 8, 60), marble); rim.rotation.x = Math.PI / 2; rim.position.set(vx, .5, vz); S.add(rim);
+    for (let k = 0; k < 4; k++) cyl(15 - k * 3, 15.5 - k * 3, 1.2, marble, vx, .6 + k * 1.2, vz, 32);
+    box(6, 12, 6, marble, vx, 10.2, vz); cyl(2, 2.6, 6, marble, vx, 19, vz, 12); col(vx - 16, vx + 16, vz - 16, vz + 16);
+    cyl(.9, 1.1, 3.2, gold, vx, 23.6, vz, 12); const hd = new THREE.Mesh(new THREE.SphereGeometry(.6, 12, 8), gold); hd.position.set(vx, 25.6, vz); S.add(hd);
+    for (const s of [-1, 1]) { const w = new THREE.Mesh(new THREE.BoxGeometry(.12, 3.4, 2.4), gold); w.position.set(vx, 24.4, vz + s * 1.3); w.rotation.x = s * .5; S.add(w); }
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(2.2, .08, 6, 40), new THREE.MeshBasicMaterial({ color: 0xffd68c })); halo.position.set(vx, 26.6, vz); live.add(halo); LON.vhalo = halo;
+    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4; box(3, 2.2, 3, marble, vx + Math.cos(a) * 9, 5.6, vz + Math.sin(a) * 9); const fg = new THREE.Mesh(new THREE.ConeGeometry(.7, 2.8, 8), bronze); fg.position.set(vx + Math.cos(a) * 9, 8.1, vz + Math.sin(a) * 9); S.add(fg); } }
+  // ---- Buckingham Palace: the east front in pale stone, the balcony, the forecourt and its gates, the sentries ----
+  { const B0 = { x0: -540, x1: -470, z0: -392, z1: -254, h: 25 }, fx = B0.x1, cz = (B0.z0 + B0.z1) / 2;
+    ground(40, 170, paveL, -452, cz, .025);
+    box(B0.x1 - B0.x0, B0.h, B0.z1 - B0.z0, palaceStone, (B0.x0 + B0.x1) / 2, B0.h / 2, cz); col(B0.x0, B0.x1, B0.z0, B0.z1);
+    box(1.2, 1.6, B0.z1 - B0.z0 + .6, M(0xd6cdb8), fx + .3, B0.h, cz); box(.5, 1.2, B0.z1 - B0.z0, M(0xd6cdb8), fx + .25, 8.6, cz);
+    for (let z = B0.z0 + 2; z < B0.z1; z += 2.6) box(.6, 1.1, .5, M(0xd6cdb8), fx + .2, B0.h + 1.35, z); // the balustrade
+    box(.12, .14, B0.z1 - B0.z0, glow, fx + .5, B0.h - .9, cz); box(.12, .14, B0.z1 - B0.z0, glow, fx + .5, 1, cz);
+    for (const y of [5, 11.5, 17.5, 22]) for (let z = B0.z0 + 3; z < B0.z1 - 2; z += 4) { if (Math.abs(z - cz) < 13 && y < 20) continue; const tall = y < 20; box(.12, tall ? 3.4 : 1.6, 1.7, white, fx + .06, y, z); box(.1, tall ? 3 : 1.3, 1.4, rnd() < .4 ? winLit : glassDk, fx + .1, y, z); }
+    for (let k = 0; k < 6; k++) cyl(.7, .8, 16, marble, fx + 2.4, 8, cz - 10 + k * 4, 14); // the centre portico
+    box(4.6, 2, 26, M(0xd6cdb8), fx + 2.3, 17, cz); const ped = new THREE.Mesh(new THREE.CylinderGeometry(0, 1, 1, 3, 1).rotateZ(Math.PI / 2), M(0xd6cdb8)); ped.scale.set(4.6, 4, 26); ped.position.set(fx + 2.3, 20, cz); S.add(ped);
+    box(3, .4, 14, palaceStone, fx + 1.8, 11.2, cz); box(.12, 1, 14, iron, fx + 3.2, 11.9, cz); box(.1, 3.2, 3.6, redM, fx + .2, 13, cz); // the balcony, with its crimson drape
+    { const crest = new THREE.Group(); crest.add(new THREE.Mesh(new THREE.TorusGeometry(2.4, .14, 6, 48), new THREE.MeshBasicMaterial({ color: 0xffc94a }))); crest.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1.4, 1), new THREE.MeshBasicMaterial({ color: 0x6fe2ff, wireframe: true, transparent: true, opacity: .6 }))); crest.position.set(fx + 2.6, 26, cz); live.add(crest); LON.pcrest = crest; }
+    cyl(.18, .22, 12, iron, (B0.x0 + B0.x1) / 2, B0.h + 6, cz, 8); if (LON.flag) { const f = new THREE.Mesh(new THREE.PlaneGeometry(8, 5), LON.flag.material); f.position.set((B0.x0 + B0.x1) / 2 + 4.1, B0.h + 10, cz); live.add(f); }
+    // the forecourt railings: black and gold, with the gates open in the middle, and a shimmer of a field above them
+    const fxr = -446; for (let z = B0.z0 - 4; z <= B0.z1 + 4; z += .7) { if (Math.abs(z - cz) < 6) continue; cyl(.05, .05, 2.6, black, fxr, 1.3, z, 4); const tip = new THREE.Mesh(new THREE.ConeGeometry(.08, .3, 4), gold); tip.position.set(fxr, 2.75, z); S.add(tip); }
+    for (const s of [-1, 1]) { box(.2, .2, (B0.z1 - B0.z0) / 2 + 2, gold, fxr, 2.2, cz + s * ((B0.z1 - B0.z0) / 4 + 4)); col(fxr - .3, fxr + .3, s < 0 ? B0.z0 - 4 : cz + 6, s < 0 ? cz - 6 : B0.z1 + 4);
+      box(1.6, 5.4, 1.6, palaceStone, fxr, 2.7, cz + s * 6.8); const gl2 = glowSprite(0xffd68c, 2, .9); gl2.position.set(fxr, 6, cz + s * 6.8); live.add(gl2); col(fxr - .8, fxr + .8, cz + s * 6.8 - .8, cz + s * 6.8 + .8);
+      const gate = box(.12, 2.8, 5.4, black, fxr - 2.6, 1.4, cz + s * 3.4, s * .9); void gate; }
+    { const fld = new THREE.Mesh(new THREE.PlaneGeometry(B0.z1 - B0.z0 + 8, 1.6), holo); fld.position.set(fxr, 3.4, cz); fld.rotation.y = Math.PI / 2; live.add(fld); }
+    // the sentries: crimson tunics, tall black bearskins, and a line of light across the visor
+    for (const [sx2, sz2] of [[-458, cz - 14], [-458, cz + 14], [-472.5, cz - 4.6], [-472.5, cz + 4.6]]) {
+      box(1.5, 2.8, 1.5, M(0x7a1414), sx2 - .6, 1.4, sz2); box(1.7, .25, 1.7, black, sx2 - .6, 2.9, sz2); // the sentry box
+      cyl(.24, .26, .9, black, sx2 + .2, .45, sz2, 8); cyl(.3, .28, .8, redM, sx2 + .2, 1.3, sz2, 10); const hd2 = new THREE.Mesh(new THREE.SphereGeometry(.17, 10, 8), M(0xc69a7a)); hd2.position.set(sx2 + .2, 1.85, sz2); S.add(hd2);
+      cyl(.22, .2, .6, black, sx2 + .2, 2.2, sz2, 10); box(.04, .05, .3, glow, sx2 + .38, 1.86, sz2); cyl(.03, .03, 1.4, iron, sx2 + .45, 1.5, sz2 + .25, 4); col(sx2 - 1.4, sx2 + .5, sz2 - .8, sz2 + .8);
+    }
+    for (const z of [B0.z0 - 10, B0.z1 + 10]) lamp(-450, z, 8); }
+  // hover traffic over the Mall and round the square
+  for (let i = 0; i < 6; i++) { const L = i % 2 ? { a: [MA.bx, 20, MA.bz], b: [MA.ax, 20, MA.az] } : { a: [MA.ax, 16, MA.az], b: [MA.bx, 16, MA.bz] }, c = new THREE.Group(), body = new THREE.Mesh(new THREE.CapsuleGeometry(.9, 2.6, 4, 10), M([0xe8eef4, 0x1d3f8f, 0xd8a63a][i % 3], { roughness: .3, metalness: .6 })); body.rotation.z = Math.PI / 2; c.add(body); const st2 = new THREE.Mesh(new THREE.BoxGeometry(4, .08, .1), new THREE.MeshBasicMaterial({ color: i % 2 ? 0x6fe2ff : 0xff5a4a })); st2.position.y = -.5; c.add(st2); live.add(c); LON.cars.push({ c, L, t: rnd(), sp: rr(.012, .02) }); }
+  LON.sights = [
+    { x: -44, z: -210, r: 2.6, label: '10 Downing Street', text: ['10 Downing Street. The Head of Government lives and works here. A faint shield shimmers across the black door; the guards at the gate watch you all the way up the street.'] },
+    { x: -58, z: -210, r: 2.4, label: '11 Downing Street', text: ['11 Downing Street. The Chancellor’s house, next door to Number 10. The same black door, the same brass, the same quiet.'] },
+    { x: TQ.cx, z: -413, r: 4, label: 'Nelson’s Column', text: ['Nelson’s Column, rebuilt after the war stone by stone, with rings of Federation light climbing it now. The four lions still keep watch.'] },
+    { x: TQ.cx, z: -500, r: 6, label: 'The National Gallery', text: ['The National Gallery. Open again. The crowds come for the paintings that survived, and for the new ones painted on other worlds.'] },
+    { x: -442, z: -323, r: 4.5, label: 'Buckingham Palace', text: ['Buckingham Palace. The Federation’s ceremonial heart, where the President receives envoys from other worlds. The sentries don’t blink.'] },
+    { x: -418, z: -300, r: 4, label: 'The Victoria Memorial', text: ['The Victoria Memorial. Gilded, white, and older than anything else on this side of the park.'] }
+  ];
   // ---- merge, add the river, finish ----
   const merged = mergeStatic(S), grp = new THREE.Group(); grp.add(merged, live);
   wScene.add(grp); world.london = grp;
@@ -9597,6 +10101,10 @@ function londonTick(dt) {
   for (const H of LON.hands) H.piv.rotation.z = -(H.kind === 'h' ? h12 / 12 : mins / 60) * Math.PI * 2;
   if (LON.halo) { LON.halo.rotation.z += dt * .4; LON.halo.material.opacity = .35 + night * .4 + Math.sin(time * 2) * .08; }
   if (LON.holo) LON.holo.rotation.y += dt * .5;
+  for (const J of LON.jets || []) { const k = J.h * (.75 + .25 * Math.sin(time * 1.3 + J.ph)); J.j.scale.y = k; J.j.position.y = (J.base || .4) + k / 2; }
+  for (const [i, r] of (LON.rings || []).entries()) { r.rotation.z += dt * (.3 + i * .15); r.material.opacity = .35 + night * .45; }
+  for (const O of LON.orbs || []) O.o.position.y = O.y + Math.sin(time * .9 + O.ph) * .5;
+  if (LON.pcrest) LON.pcrest.rotation.y += dt * .4; if (LON.vhalo) LON.vhalo.rotation.x = Math.sin(time * .5) * .2; if (LON.door10) LON.door10.material.opacity = .18 + Math.sin(time * 2.4) * .08;
   if (LON.eye) LON.eye.rotation.x += dt * .012; // a full turn takes about nine minutes
   if (LON.eye) for (const c of LON.eye.children) if (c.userData.cap) c.rotation.x = -LON.eye.rotation.x; // the pods stay level
   for (const C of LON.cars) { C.t = (C.t + C.sp * dt) % 1; const a = C.L.a, b = C.L.b; C.c.position.set(lerp(a[0], b[0], C.t), lerp(a[1], b[1], C.t) + Math.sin(time * 2 + C.t * 40) * .15, lerp(a[2], b[2], C.t)); C.c.rotation.y = Math.atan2(b[2] - a[2], b[0] - a[0]) * -1; }
@@ -11998,7 +12506,7 @@ function leaveShip(to) { // to: 'ground' (down the ramp), 'space' (back to the h
   SHIPI.on = false; ui.xhud.classList.remove('aboard'); xUI.prompt.classList.remove('on'); xUI.act.classList.remove('on');
   if (to === 'space') { state = 'space'; ex.mode = 'space'; show(ui.xhud, false); spaceHud().classList.remove('hidden'); camera.near = 1; camera.far = 1.4e6; camera.updateProjectionMatrix(); SPC.camInit = false; SPC.vel = Math.min(SPC.vel, 60); clock.getDelta(); return; }
   wScene.add(player); ex.mode = 'world'; ui.xhud.classList.add('world');
-  const z = 13.2; player.position.set(0, wHeight(0, z), z); player.rotation.y = 0; ex.yaw = Math.PI; ex.snap = true; vel.set(0, 0, 0); worldUnstick();
+  const z = shipZ() + 13.2, x0 = shipX(); player.position.set(x0, wHeight(x0, z), z); player.rotation.y = 0; ex.yaw = Math.PI; ex.snap = true; vel.set(0, 0, 0); worldUnstick();
   if (to === 'takeoff') { takeOff(); return; }
   if (world.landShip) setShipRig(world.landShip, 1, 1);
   if (orionJoined()) placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
@@ -12063,7 +12571,10 @@ async function shipInteract(n) {
   if (n.id === 'rampSealed') { lootMsg('The ramp stays sealed in space · land first', '#ff8f86'); return; }
   if (n.id === 'reactor') { lootMsg(`Reactor steady · ${have('warpcell')} warp cell${have('warpcell') === 1 ? '' : 's'} · hyperdrive Mk ${['—', 'I', 'II', 'III'][driveTier()] || '—'} · hull ${Math.round(SC.hull || 100)}%`, '#8fe8ff'); return; }
   if (n.id === 'bunk') { const m = maxHP(); if (ex.hp >= m) { lootMsg('You’re already rested', '#cfd6e6'); return; } const f = $('#fade'); f.style.transition = 'opacity .5s'; f.style.opacity = 1; setTimeout(() => { ex.hp = m; invState().hp = m; f.style.opacity = 0; lootMsg('Rested · health restored', '#7fe0a0'); }, 700); return; }
-  if (n.id === 'pilot') { if (SHIPI.from === 'space') leaveShip('space'); else leaveShip('takeoff'); return; }
+  if (n.id === 'pilot') {
+    if (SHIPI.from === 'space') { leaveShip('space'); return; }
+    if (brawlOn() && isPl() && world.planet && world.planet.P.id === 'earth') { openChoice('THE HELM', [{ text: 'Take off', onPick: () => leaveShip('takeoff') }, { text: 'Fly to Ad-Nostra, East Africa · The Salt Lantern', onPick: () => shipFlyToAdNostra() }, { text: 'Stay landed', onPick: () => {} }]); return; }
+    leaveShip('takeoff'); return; }
   if (n.id === 'holo') { if (SHIPI.from === 'space') { leaveShip('space'); setTimeout(() => galOpen(), 50); } else lootMsg('The galaxy map works in flight · take off first', '#cfd6e6'); return; }
   if (n.id === 'aboard') { aboardTalk(n.who); return; }
 }
@@ -12673,15 +13184,15 @@ async function landOn(P, dir, place) {
   spaceOff(); state = 'loadingCh';
   const key = planetAreaKey(P), D = dir.clone().normalize(), E = new THREE.Vector3(0, 1, 0).cross(D); if (E.lengthSq() < .01) E.set(1, 0, 0); E.normalize(); const N = new THREE.Vector3().crossVectors(D, E).normalize();
   if (!place && P.sea) dryLandDir(P, D); // over the sea (Earth's oceans, Europa's cracks): she sets down on the nearest shore
-  world.planet = { P, D, E, N, h0: planetH(P, D) }; wxReset();
-  cityPlan(world.planet); // Alphinos on Aridaxx, Karribassa on Janira Prime
+  world.planet = { P, D, E, N, h0: planetH(P, D) }; wxReset(); world.adVisit = false;
+  cityPlan(world.planet); hallPlan(world.planet); // Alphinos on Aridaxx, Karribassa on Janira Prime
   AREA_INFO[key] = { planet: P.name, name: P.name, space: true, stationTp: { x: 1e5, z: 1e5, name: '' } };
   AREA_FOG[key] = new THREE.Color(P.fog).getHex();
   world.area = key; world.builtArea = null; // a new landing spot: the ground is laid out afresh around it
   const nt = planetTraders(P); for (const m of MERCHANTS[key] || []) if (!nt.includes(m) && m.stall) { wScene.remove(m.stall); m.stall = null; } // a stall whose world changed hands goes
   MERCHANTS[key] = nt; for (const m of MERCHANTS[key]) m.seed = null; // its stall finds dry ground near the new spot
   const pl = place || { mode: 'explore', area: 'world', where: key, x: 5, z: 14.5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI }; // by the ramp, clear of the wings
-  enterWorld(pl); buildCity(); await placeOrion().catch(() => null); placeGivers().catch(() => null);
+  enterWorld(pl); buildCity(); buildHall(); await placeOrion().catch(() => null); placeGivers().catch(() => null);
   // your ship, set down on the ground
   if (!world.landShip) world.landShip = makeShip();
   setShipRig(world.landShip, 1, 1);
@@ -12711,12 +13222,13 @@ function takeOff() {
   SPC.ascent = { t: 0 }; state = 'shipUp'; show(ui.xhud, false); player.visible = false; if (world.orion) world.orion.root.visible = false; for (const f of S.userData.flames) f.visible = true; sfx.whoosh();
 }
 function shipUpTick(dt) {
-  const A = SPC.ascent, S = world.landShip, gy = wHeight(0, 0) + 2.7; A.t += dt; const k = A.t * A.t * .35; setShipRig(S, 1 - smooth(.3, 1.4, A.t), 1 - smooth(0, .5, A.t));
-  S.position.set(0, gy + k * 30, -k * 18); S.rotation.x = -Math.min(.4, A.t * .2);
-  camera.position.set(22, gy + 10 + k * 8, 28); camera.lookAt(S.position);
+  const A = SPC.ascent, S = world.landShip, X0 = shipX(), Z0 = shipZ(), gy = wHeight(X0, Z0) + 2.7; A.t += dt; const k = A.t * A.t * .35; setShipRig(S, 1 - smooth(.3, 1.4, A.t), 1 - smooth(0, .5, A.t));
+  S.position.set(X0, gy + k * 30, Z0 - k * 18); S.rotation.x = -Math.min(.4, A.t * .2);
+  camera.position.set(X0 + 22, gy + 10 + k * 8, Z0 + 28); camera.lookAt(S.position);
   if (A.t > 2.6) {
     const W = world.planet; S.visible = false; setShipRig(S, 1, 1); if (world.orion) world.orion.root.visible = true;
     rememberPlaceSafe(); ui.xhud.classList.remove('world');
+    if (world.adVisit && !isPl()) { world.adVisit = false; spaceOn({ fromPlanet: 'earth', dir: ADN.dir }); return; }
     spaceOn({ fromPlanet: W.P.id, dir: W.D.toArray() });
   }
 }
@@ -12734,6 +13246,7 @@ async function startChapter3(place) {
     const P = bodyById(String(place.where).slice(3)); if (P) SPC.sys = P.sys; buildSpace(); if (P) setSystem(P.sys);
     if (P && place.dir) { try { await landOn(P, new THREE.Vector3().fromArray(place.dir), place); } finally { SPC.booting = false; } if (place.aboard) shipResume(place, 'ground'); return; }
   }
+  if (place && place.where === 'africa' && place.adVisit) { SPC.sys = 'sol'; buildSpace(); setSystem('sol'); try { await visitAdNostra(place); } finally { SPC.booting = false; } if (place.aboard) shipResume(place, 'ground'); return; }
   spaceOn(place && place.where === 'space' ? place : null); SPC.booting = false;
   if (place && place.aboard && place.where === 'space') shipResume(place, 'space');
 }
@@ -12752,8 +13265,17 @@ function beginChapter3() { // straight after the escape
    spaceports: the city rises just beyond your ship. Alphinos is ten times the size of Karribassa (ten times the ground,
    ten times the towers). Built from instanced meshes, so even Alphinos's seven hundred towers draw cheaply. ---- */
 const CAPITALS = {
-  aridaxx: { name: 'Alphinos', R: 380, grid: 34, maxH: 330, spire: 540, seed: 71, note: 'Alphinos · capital of the Chompy Empire' },
-  janira: { name: 'Karribassa', R: 120, grid: 26, maxH: 150, spire: 200, seed: 33, note: 'Karribassa · capital of Janira Prime' }
+  aridaxx: { name: 'Alphinos', style: 'imperial', R: 380, grid: 34, maxH: 330, spire: 540, seed: 71, plaza: 78, note: 'Alphinos · capital of the Chompy Empire' },
+  janira: { name: 'Karribassa', style: 'garden', R: 130, grid: 26, maxH: 150, spire: 200, seed: 33, plaza: 46, note: 'Karribassa · capital of Janira Prime' },
+  eris: { name: 'Citadel el Erisconos', style: 'crystal', R: 170, grid: 28, maxH: 190, spire: 300, seed: 19, plaza: 62, note: 'Citadel el Erisconos · seat of the Matriarch of Eris' }
+};
+// each capital in its own style: imperial Alphinos (amethyst towers, gold, a ziggurat palace and the Boulevard of Emperors),
+// garden Karribassa (rounded teal towers, glowing trees, canals round the Hall of Oaths), and crystal Citadel el Erisconos
+// (spires of pink and lilac crystal round the Matriarch's citadel, under an aurora)
+const CITY_STYLE = {
+  imperial: { wall: '#231634', slab: '#3a2a52', win: ['#ffd68c', '#ffe9c0', '#c8a0ff', '#8fe0ff'], lit: .5, tint: 0x8a6ab8, trim: 0xffc35a, accent: 0x69e0ff, tip: 0xff6ad8, roof: 0x1a1024, floor: ['#241a30', '#2e2240', 'rgba(255,195,90,.55)', 'rgba(105,224,255,.45)'], lamp: 0xffc35a, car: 0xffe2a8 },
+  garden: { wall: '#12262e', slab: '#1f3a44', win: ['#7fffe0', '#c890ff', '#ffe2a8', '#9fd8ff'], lit: .46, tint: 0x5a9aa8, trim: 0x7fffe0, accent: 0xc890ff, tip: 0xffb0f0, roof: 0x14262a, floor: ['#16242a', '#1e3036', 'rgba(200,144,255,.5)', 'rgba(127,255,224,.4)'], lamp: 0xc890ff, car: 0xb8fff0 },
+  crystal: { wall: '#7a6a98', slab: '#a898c8', win: ['#ffc8f0', '#e8d8ff', '#b8f0ff', '#ffffff'], lit: .36, tint: 0xd8c8f0, trim: 0xffa8e4, accent: 0xb8f0ff, tip: 0xffd8f8, roof: 0x3a3050, floor: ['#2e2840', '#3a3250', 'rgba(255,168,228,.5)', 'rgba(184,240,255,.45)'], lamp: 0xffa8e4, car: 0xffd8f8 }
 };
 function cityPlan(W) {
   const K = CAPITALS[W.P.id]; W.city = null; if (!K) return;
@@ -12761,70 +13283,239 @@ function cityPlan(W) {
   W.city = null; const raw = planetH(W.P, plDir(C.cx, C.cz)) - W.h0; C.y = W.P.sea ? Math.max(raw, (W.P.seaH || 0) - W.h0 + 3) : raw;
   W.city = C;
 }
-function cityTex() { // lit windows on a dark violet curtain wall
-  if (world.cityTex) return world.cityTex;
-  return world.cityTex = canvasTex(64, 512, (g, w, h) => {
-    g.fillStyle = '#140c22'; g.fillRect(0, 0, w, h); let sd = 5; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-    for (let y = 0; y < 128; y++) for (let x = 0; x < 8; x++) { if (r() < .42) continue; const c = r(); g.fillStyle = c < .55 ? 'rgba(140,220,255,.95)' : c < .85 ? 'rgba(210,170,255,.95)' : 'rgba(255,210,140,.95)'; g.fillRect(x * 8 + 2, y * 4 + 1, 4, 2); }
+// façades: floors of lit rooms (a texture per style, mapped by world position so every tower has properly sized windows)
+function cityFacade(st, slits) {
+  const key = 'fac:' + st.wall + (slits ? 's' : ''); world.cityTexs = world.cityTexs || {}; if (world.cityTexs[key]) return world.cityTexs[key];
+  let sd = slits ? 11 : 5; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  const draw = emis => canvasTex(128, 512, (g, w, h) => {
+    g.fillStyle = emis ? '#000' : st.wall; g.fillRect(0, 0, w, h);
+    for (let f = 0; f < 16; f++) { // 16 floors of 4 m; each 32 px: a slab band, then the windows
+      const y = f * 32; if (!emis) { g.fillStyle = st.slab; g.fillRect(0, y, w, 6); }
+      if (slits) { for (let x = 0; x < 8; x++) { const on = r() < st.lit; g.fillStyle = on ? st.win[Math.floor(r() * st.win.length)] : (emis ? '#000' : '#0a0810'); g.globalAlpha = on ? 1 : .8; g.fillRect(x * 16 + 6, y + 8, 4, 22); } }
+      else { let run = 0, col = st.win[0], on = false; for (let x = 0; x < 8; x++) { if (run-- <= 0) { run = 1 + Math.floor(r() * 3); on = r() < st.lit; col = st.win[Math.floor(r() * st.win.length)]; } g.fillStyle = on ? col : (emis ? '#000' : '#0c0a14'); g.globalAlpha = on ? (emis ? .95 : .9) : 1; g.fillRect(x * 16 + 2, y + 9, 12, 19); } }
+      g.globalAlpha = 1;
+    }
+  });
+  const m = draw(false), e = draw(true); for (const t of [m, e]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; }
+  return (world.cityTexs[key] = { m, e });
+}
+function cityMat(st, slits, extra = {}) { // windows mapped from world position (16 m wide, 64 m tall per tile); roofs plain
+  const T = cityFacade(st, slits);
+  const m = new THREE.MeshStandardMaterial(Object.assign({ color: 0xffffff, map: T.m, emissive: 0xffffff, emissiveMap: T.e, emissiveIntensity: .9, roughness: .38, metalness: .5 }, extra));
+  m.onBeforeCompile = sh => {
+    sh.uniforms.uRoof = { value: new THREE.Color(st.roof) };
+    sh.vertexShader = sh.vertexShader.replace('void main() {', 'varying float vCRoof;\nvoid main() {').replace('#include <uv_vertex>', `#include <uv_vertex>
+      {
+        #ifdef USE_INSTANCING
+          mat4 cm_ = modelMatrix * instanceMatrix;
+        #else
+          mat4 cm_ = modelMatrix;
+        #endif
+        vec4 cwp_ = cm_ * vec4(position, 1.0); vec3 cwn_ = normalize(mat3(cm_) * normal);
+        vec2 cuv_ = vec2(abs(cwn_.x) > abs(cwn_.z) ? cwp_.z : cwp_.x, cwp_.y) / vec2(16.0, 64.0);
+        vCRoof = abs(cwn_.y) > .6 ? 1.0 : 0.0;
+        #ifdef USE_MAP
+          vMapUv = cuv_;
+        #endif
+        #ifdef USE_EMISSIVEMAP
+          vEmissiveMapUv = cuv_;
+        #endif
+      }`);
+    sh.fragmentShader = sh.fragmentShader.replace('void main() {', 'varying float vCRoof; uniform vec3 uRoof;\nvoid main() {')
+      .replace('#include <map_fragment>', '#include <map_fragment>\n  diffuseColor.rgb = mix(diffuseColor.rgb, uRoof, vCRoof);')
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance *= (1.0 - vCRoof);');
+  };
+  m.customProgramCacheKey = () => 'cityMat1';
+  return m;
+}
+function cityFloorTex(C, st, emis) { // the streets: the block grid, the avenues, the plaza, lane lines that glow at night
+  const K = C.K, Rf = K.R + 25, S = K.R > 200 ? 2048 : 1024, px = v => (v / (2 * Rf) + .5) * S;
+  return canvasTex(S, S, (g) => {
+    g.fillStyle = emis ? '#000' : st.floor[0]; g.fillRect(0, 0, S, S);
+    const line = (x0, y0, x1, y1, col, wd) => { g.strokeStyle = col; g.lineWidth = wd; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); };
+    if (!emis) { g.fillStyle = st.floor[1]; for (let gx = -K.R; gx <= K.R; gx += K.grid) for (let gz = -K.R; gz <= K.R; gz += K.grid) { const a = px(gx - K.grid / 2 + 3), b = px(gz - K.grid / 2 + 3), w = (K.grid - 6) / (2 * Rf) * S; g.fillRect(a, b, w, w); } } // the blocks, a shade lighter than the streets
+    for (let k = -K.R - K.grid / 2; k <= K.R + K.grid / 2; k += K.grid) { line(px(k), 0, px(k), S, emis ? st.floor[3] : 'rgba(255,255,255,.07)', emis ? 1.4 : 2); line(0, px(k), S, px(k), emis ? st.floor[3] : 'rgba(255,255,255,.07)', emis ? 1.4 : 2); }
+    // the grand avenue from the plaza to the edge facing the spaceport, and the plaza itself
+    const aw = K.style === 'imperial' ? 34 : 22; g.fillStyle = emis ? '#000' : st.floor[1]; g.fillRect(px(-aw / 2), px(0), aw / (2 * Rf) * S, S / 2);
+    for (const s of [-1, 1]) line(px(s * aw / 2), px(K.plaza * .8), px(s * aw / 2), S, st.floor[2], emis ? 3 : 4);
+    g.strokeStyle = st.floor[2]; g.lineWidth = emis ? 3 : 5; for (const rr of [K.plaza, K.plaza * .72]) { g.beginPath(); g.arc(px(0), px(0), rr / (2 * Rf) * S, 0, Math.PI * 2); g.stroke(); }
+    for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; line(px(Math.cos(a) * K.plaza * .72), px(Math.sin(a) * K.plaza * .72), px(Math.cos(a) * K.plaza), px(Math.sin(a) * K.plaza), st.floor[2], emis ? 1.5 : 2.5); }
+    if (K.style === 'imperial') { g.lineWidth = emis ? 2 : 3; g.strokeStyle = st.floor[3]; g.beginPath(); g.arc(px(0), px(0), K.R * .58 / (2 * Rf) * S, 0, Math.PI * 2); g.stroke(); }
   });
 }
 function buildCity() {
   if (world.cityG) { wScene.remove(world.cityG); world.cityG.traverse(o => { if (o.geometry && !o.userData.shared) o.geometry.dispose(); }); world.cityG = null; }
   const W = world.planet, C = W && W.city; if (!C) return;
-  const K = C.K, g = new THREE.Group(); let sd = K.seed * 7919 + 1; const r = () => (sd = (sd * 48271) % 2147483647) / 2147483647;
-  const tex = cityTex(), wall = new THREE.MeshStandardMaterial({ color: 0x8a6ab8, map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: .85, roughness: .35, metalness: .55 });
-  const glass = new THREE.MeshStandardMaterial({ color: 0x2a1a48, roughness: .15, metalness: .9, emissive: 0x3a2a7a, emissiveIntensity: .35 });
-  const trim = new THREE.MeshBasicMaterial({ color: 0x69e0ff }), tipM = new THREE.MeshBasicMaterial({ color: 0xff6ad8 });
-  const towers = [], cyls = [], spires = [], rings = [], beacons = []; C.cells = new Map();
-  const add = (list, x, y, z, sx, sy, sz, ry = 0) => list.push([x, y, z, sx, sy, sz, ry]);
-  // the street grid: towers on every block, tallest towards the middle
+  const K = C.K, st = CITY_STYLE[K.style] || CITY_STYLE.imperial, g = new THREE.Group(); let sd = K.seed * 7919 + 1; const r = () => (sd = (sd * 48271) % 2147483647) / 2147483647;
+  const phone = document.body.classList.contains('touch'); // phones: no tower shadows, lighter traffic
+  const crystal = K.style === 'crystal', garden = K.style === 'garden', imperial = K.style === 'imperial';
+  const wallA = cityMat(st, false, crystal ? { color: st.tint, roughness: .18, metalness: .25, emissiveIntensity: .7 } : { color: st.tint }), wallB = cityMat(st, true, crystal ? { color: 0xf0d8f4, roughness: .15, metalness: .2, emissiveIntensity: .7 } : { color: st.tint });
+  const glass = new THREE.MeshStandardMaterial({ color: crystal ? 0xe8d0ff : 0x2a1a48, roughness: .12, metalness: .85, emissive: crystal ? 0xb070ff : 0x3a2a7a, emissiveIntensity: crystal ? .6 : .35 });
+  const gold = new THREE.MeshStandardMaterial({ color: st.trim, roughness: .28, metalness: .9, emissive: st.trim, emissiveIntensity: .18 });
+  const trim = new THREE.MeshBasicMaterial({ color: st.accent }), tipM = new THREE.MeshBasicMaterial({ color: st.tip }), lampM = new THREE.MeshBasicMaterial({ color: st.lamp });
+  const stone = new THREE.MeshStandardMaterial({ color: imperial ? 0x4a3a62 : garden ? 0x2a4a52 : 0x5a4a72, roughness: .6, metalness: .3 });
+  const L = { boxA: [], boxB: [], cylA: [], cylB: [], hex: [], cone: [], spire: [], ring: [], beacon: [], gold: [], goldCyl: [], goldCone: [], dome: [], green: [], lampPole: [], lampHead: [], tree: [], crown: [], stone: [], stoneCyl: [] };
+  const add = (k, x, y, z, sx, sy, sz, ry = 0) => L[k].push([x, y, z, sx, sy, sz, ry]);
+  C.cells = new Map(); C.big = []; const cell = (x, z, hw) => { if (hw > 9) { C.big.push([x, z, hw]); return; } const key = `${Math.round((x - C.cx) / 12)},${Math.round((z - C.cz) / 12)}`; (C.cells.get(key) || C.cells.set(key, []).get(key)).push([x, z, hw]); };
+  const y0 = C.y - 1, aw = imperial ? 34 : 22;
+  // ---- the towers, block by block: tallest towards the middle, never on the avenue or the plaza ----
   for (let gx = -K.R; gx <= K.R; gx += K.grid) for (let gz = -K.R; gz <= K.R; gz += K.grid) {
-    const d = Math.hypot(gx, gz); if (d > K.R || d < K.grid * 1.1) continue;
-    const n = 1 + (r() < .45 ? 1 : 0) + (r() < .15 ? 1 : 0);
+    const d = Math.hypot(gx, gz); if (d > K.R || d < K.plaza + K.grid * .5) continue;
+    if (Math.abs(gx) < aw / 2 + K.grid * .5 && gz > 0) continue; // the grand avenue
+    if (imperial && Math.abs(d - K.R * .58) < K.grid * .45) continue; // the ring road
+    const n = 1 + (r() < .4 ? 1 : 0);
     for (let i = 0; i < n; i++) {
-      const fw = 7 + r() * (n > 1 ? 7 : 12), x = C.cx + gx + (r() - .5) * (K.grid - fw - 8), z = C.cz + gz + (r() - .5) * (K.grid - fw - 8);
-      const H = 22 + Math.pow(1 - d / K.R, 1.4) * K.maxH * (.45 + r() * .55) + r() * 20, kind = r(), y = C.y - 1;
-      if (kind < .62) { add(towers, x, y + H / 2, z, fw, H, fw * (.7 + r() * .5), r() < .5 ? 0 : Math.PI / 4); if (r() < .5) add(towers, x, y + H + H * .08, z, fw * .6, H * .16, fw * .6); }
-      else { add(cyls, x, y + H / 2, z, fw, H, fw); if (r() < .6) add(rings, x, y + H * (.55 + r() * .35), z, fw * .62, fw * .62, 1); }
-      if (H > K.maxH * .45) { add(spires, x, y + H + H * .12 + 6, z, fw * .25, H * .22 + 10, fw * .25); add(beacons, x, y + H + H * .25 + 12, z, 1.2, 1.2, 1.2); }
-      const key = `${Math.round((x - C.cx) / 12)},${Math.round((z - C.cz) / 12)}`; (C.cells.get(key) || C.cells.set(key, []).get(key)).push([x, z, fw / 2 + .6]);
+      const fw = 8 + r() * (n > 1 ? 7 : 11), x = C.cx + gx + (r() - .5) * (K.grid - fw - 8), z = C.cz + gz + (r() - .5) * (K.grid - fw - 8);
+      const H = 20 + Math.pow(1 - d / K.R, 1.35) * K.maxH * (.45 + r() * .55) + r() * 16, kind = r(), m = r() < .5 ? 'A' : 'B';
+      if (crystal) { // crystal shards: hexagonal prisms with a point, sometimes a cluster of three
+        const parts = kind < .35 ? 3 : 1;
+        for (let k = 0; k < parts; k++) { const s = k ? .55 : 1, ox = k ? Math.cos(k * 2.1) * fw * .5 : 0, oz = k ? Math.sin(k * 2.1) * fw * .5 : 0, hh = H * (k ? .55 + r() * .25 : 1); add('hex', x + ox, y0 + hh / 2, z + oz, fw * s * .55, hh, fw * s * .55, r() * 3); add('cone', x + ox, y0 + hh + fw * s * .55, z + oz, fw * s * .55, fw * s * 1.1, fw * s * .55, 0); }
+        if (H > K.maxH * .5) add('beacon', x, y0 + H + fw * 1.2, z, 1.4, 1.4, 1.4);
+      } else if (garden && kind < .55) { // rounded towers with domed tops; terraces of gardens on the lower ones
+        add(m === 'A' ? 'cylA' : 'cylB', x, y0 + H / 2, z, fw, H, fw); add('dome', x, y0 + H, z, fw * .5, fw * .42, fw * .5);
+        if (H < K.maxH * .55) for (let t = 1; t <= 2; t++) add('green', x, y0 + H * t / 3, z, fw * 1.12, .9, fw * 1.12);
+        if (r() < .5) add('ring', x, y0 + H * (.5 + r() * .35), z, fw * .62, fw * .62, 1);
+      } else if (kind < .62) { // setbacks: two or three tiers, each narrower, crowned
+        const tiers = H > K.maxH * .4 ? 3 : 2; let yy = y0, ww = fw, dd = fw * (.75 + r() * .45);
+        for (let t = 0; t < tiers; t++) { const hh = H * (t === 0 ? .55 : t === 1 ? (tiers === 2 ? .45 : .3) : .15); add(m === 'A' ? 'boxA' : 'boxB', x, yy + hh / 2, z, ww, hh, dd); if (imperial) add('gold', x, yy + hh + .25, z, ww + .6, .5, dd + .6); yy += hh; ww *= .72; dd *= .72; }
+        if (imperial && r() < .6) add('goldCone', x, yy + fw * .5, z, ww * .9, fw, ww * .9); else if (garden) add('green', x, yy + .5, z, ww, 1, dd);
+      } else { // cylinders with a band of light
+        add(m === 'A' ? 'cylA' : 'cylB', x, y0 + H / 2, z, fw, H, fw); if (r() < .7) add('ring', x, y0 + H * (.55 + r() * .35), z, fw * .62, fw * .62, 1);
+        if (imperial) add('goldCyl', x, y0 + H + .4, z, fw * 1.04, .8, fw * 1.04);
+      }
+      if (!crystal && H > K.maxH * .45) { add('spire', x, y0 + H + H * .12 + 6, z, fw * .25, H * .22 + 10, fw * .25); add('beacon', x, y0 + H + H * .25 + 12, z, 1.2, 1.2, 1.2); }
+      cell(x, z, fw / 2 + .6);
     }
   }
-  const phone = document.body.classList.contains('touch'); // phones: no tower shadows, lighter traffic
+  // ---- street lamps along the avenue and round the plaza; trees in the garden city ----
+  for (let zz = K.plaza + 8; zz < K.R + 20; zz += imperial ? 16 : 13) for (const s of [-1, 1]) { const x = C.cx + s * (aw / 2 + 2), z = C.cz + zz; add('lampPole', x, y0 + 4.5, z, .5, 9, .5); add('lampHead', x, y0 + 9.4, z, 1.4, .6, 1.4); if (garden || (imperial && zz % 32 < 16)) add('tree', x + s * 3.5, y0, z + 6, 1, 1, 1); }
+  for (let k = 0; k < 28; k++) { const a = k / 28 * Math.PI * 2, rr = K.plaza + 3; const x = C.cx + Math.cos(a) * rr, z = C.cz + Math.sin(a) * rr; if (z > C.cz && Math.abs(x - C.cx) < aw / 2) continue; add('lampPole', x, y0 + 4.5, z, .5, 9, .5); add('lampHead', x, y0 + 9.4, z, 1.4, .6, 1.4); }
+  if (garden) for (let gx = -K.R; gx <= K.R; gx += K.grid) for (let gz = -K.R; gz <= K.R; gz += K.grid) { const x = C.cx + gx + K.grid / 2, z = C.cz + gz + K.grid / 2, d = Math.hypot(gx + K.grid / 2, gz + K.grid / 2); if (d < K.R - 5 && d > K.plaza + 8 && r() < .55) add('tree', x, y0, z, .8 + r() * .5, .8 + r() * .5, .8 + r() * .5); }
+  // ---- instancing ----
   const inst = (geo, mat, list, shadow = !phone) => {
-    if (!list.length) return; const m = new THREE.InstancedMesh(geo, mat, list.length), M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), Y = new THREE.Vector3(0, 1, 0);
+    if (!list.length) return null; const m = new THREE.InstancedMesh(geo, mat, list.length), M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), Y = new THREE.Vector3(0, 1, 0);
     list.forEach(([x, y, z, sx, sy, sz, ry], i) => m.setMatrixAt(i, M4.compose(new THREE.Vector3(x, y, z), Q.setFromAxisAngle(Y, ry || 0), new THREE.Vector3(sx, sy, sz))));
-    m.castShadow = shadow; m.receiveShadow = true; m.frustumCulled = false; g.add(m);
+    m.castShadow = shadow; m.receiveShadow = true; m.frustumCulled = false; g.add(m); return m;
   };
-  inst(new THREE.BoxGeometry(1, 1, 1), wall, towers); inst(new THREE.CylinderGeometry(.5, .5, 1, 14), wall, cyls);
-  inst(new THREE.ConeGeometry(.5, 1, 8), glass, spires); inst(new THREE.TorusGeometry(1, .07, 6, 24).rotateX(Math.PI / 2), trim, rings, false); inst(new THREE.SphereGeometry(.5, 8, 6), tipM, beacons, false);
-  // the great spire at the heart: the Imperial palace in Alphinos, the Hall of Oaths in Karribassa
-  const sx = C.cx, sz = C.cz, sy = C.y - 1, tiers = 6;
-  for (let t = 0; t < tiers; t++) { const k = 1 - t / tiers, h = K.spire / tiers, rr = (K.R > 200 ? 34 : 14) * k + 4; const seg = new THREE.Mesh(new THREE.CylinderGeometry(rr * .82, rr, h, 10), wall); seg.position.set(sx, sy + h * (t + .5), sz); seg.castShadow = !phone; g.add(seg); const band = new THREE.Mesh(new THREE.TorusGeometry(rr * 1.02, rr * .03 + .3, 6, 30).rotateX(Math.PI / 2), trim); band.position.set(sx, sy + h * (t + 1), sz); g.add(band); }
-  const crown = new THREE.Mesh(new THREE.ConeGeometry(K.R > 200 ? 9 : 4, K.spire * .22, 8), glass); crown.position.set(sx, sy + K.spire * 1.11, sz); g.add(crown);
-  const star = glowSprite(0xff8ae8, K.R > 200 ? 60 : 24, .9); star.position.set(sx, sy + K.spire * 1.23, sz); g.add(star);
-  (C.cells.get('0,0') || C.cells.set('0,0', []).get('0,0')).push([sx, sz, (K.R > 200 ? 38 : 18)]);
-  // paved streets under it all
-  const pave = canvasTex(256, 256, (c2, w) => { c2.fillStyle = '#231a33'; c2.fillRect(0, 0, w, w); c2.strokeStyle = 'rgba(105,224,255,.35)'; c2.lineWidth = 2; for (let i = 0; i <= 8; i++) { c2.beginPath(); c2.moveTo(i * 32, 0); c2.lineTo(i * 32, w); c2.stroke(); c2.beginPath(); c2.moveTo(0, i * 32); c2.lineTo(w, i * 32); c2.stroke(); } });
-  pave.wrapS = pave.wrapT = THREE.RepeatWrapping; pave.repeat.set(K.R / 34, K.R / 34);
-  const floor = new THREE.Mesh(new THREE.CircleGeometry(K.R + 25, 64), new THREE.MeshStandardMaterial({ map: pave, roughness: .8, metalness: .2 })); floor.rotation.x = -Math.PI / 2; floor.position.set(C.cx, C.y + .06, C.cz); floor.receiveShadow = true; g.add(floor);
-  // air traffic between the towers
-  const nCars = (K.R > 200 ? 90 : 24) >> (phone ? 1 : 0), cars = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, .6, 3.4), new THREE.MeshBasicMaterial({ color: 0xffe2a8 }), nCars); cars.frustumCulled = false; g.add(cars);
-  C.cars = { m: cars, list: Array.from({ length: nCars }, () => ({ r: K.grid * 1.5 + r() * (K.R - K.grid * 1.5), a: r() * 6.28, h: 30 + r() * K.maxH * .6, w: (.05 + r() * .08) * (r() < .5 ? 1 : -1) * (120 / K.R) })) };
+  const box1 = new THREE.BoxGeometry(1, 1, 1), cyl1 = new THREE.CylinderGeometry(.5, .5, 1, 18), hex1 = new THREE.CylinderGeometry(.5, .5, 1, 6), cone1 = new THREE.ConeGeometry(.5, 1, 6);
+  inst(box1, wallA, L.boxA); inst(box1, wallB, L.boxB); inst(cyl1, wallA, L.cylA); inst(cyl1, wallB, L.cylB); inst(hex1, wallB, L.hex); inst(cone1, glass, L.cone);
+  inst(new THREE.ConeGeometry(.5, 1, 8), glass, L.spire); inst(new THREE.TorusGeometry(1, .07, 6, 24).rotateX(Math.PI / 2), trim, L.ring, false); inst(new THREE.SphereGeometry(.5, 8, 6), tipM, L.beacon, false);
+  inst(box1, gold, L.gold, false); inst(new THREE.CylinderGeometry(.5, .5, 1, 18), gold, L.goldCyl, false); inst(new THREE.ConeGeometry(.5, 1, 4), gold, L.goldCone);
+  inst(new THREE.SphereGeometry(1, 18, 9, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x9fe8d8, roughness: .2, metalness: .6, emissive: 0x2a8a7a, emissiveIntensity: .4 }), L.dome);
+  inst(box1, new THREE.MeshStandardMaterial({ color: 0x2f6a3a, roughness: .9, emissive: 0x1a5a3a, emissiveIntensity: .3 }), L.green, false);
+  inst(new THREE.CylinderGeometry(.12, .18, 1, 6), new THREE.MeshStandardMaterial({ color: 0x1a1a22, metalness: .7, roughness: .4 }), L.lampPole, false); inst(new THREE.SphereGeometry(.5, 10, 6), lampM, L.lampHead, false);
+  if (L.tree.length) { // trees: a trunk, and a crown that glows in the garden city
+    const leaf = garden ? new THREE.MeshStandardMaterial({ color: 0x7a4aa8, roughness: .7, emissive: 0x9a5cff, emissiveIntensity: .55, flatShading: true }) : new THREE.MeshStandardMaterial({ color: 0x3f6a33, roughness: .9, flatShading: true });
+    inst(new THREE.CylinderGeometry(.25, .35, 4, 6).translate(0, 2, 0), new THREE.MeshStandardMaterial({ color: 0x3a2a2a }), L.tree, false);
+    inst(new THREE.IcosahedronGeometry(2.4, 1).translate(0, 5.4, 0), leaf, L.tree, false);
+  }
+  // ---- the paved city floor ----
+  const pave = cityFloorTex(C, st, false), paveE = cityFloorTex(C, st, true);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(K.R + 25, 96), new THREE.MeshStandardMaterial({ map: pave, emissive: 0xffffff, emissiveMap: paveE, emissiveIntensity: .8, roughness: crystal ? .25 : .8, metalness: crystal ? .5 : .2 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.set(C.cx, C.y + .06, C.cz); floor.receiveShadow = true; g.add(floor); C.floorM = floor.material;
+  C.glow = [wallA, wallB, floor.material]; C.fx = [];
+  // ---- the landmark at the heart of each city ----
+  const M = (o, x, y, z) => { o.position.set(x, y, z); o.castShadow = !phone; o.receiveShadow = true; g.add(o); return o; };
+  const sx = C.cx, sz = C.cz, sy = y0;
+  if (imperial) {
+    // the Imperial Palace: a stepped ziggurat edged in gold, four minarets, and the great spire on top
+    let ty = sy, sz0 = 140; for (let t = 0; t < 6; t++) { const hh = 15 - t; M(new THREE.Mesh(new THREE.BoxGeometry(sz0, hh, sz0), wallA), sx, ty + hh / 2, sz); M(new THREE.Mesh(new THREE.BoxGeometry(sz0 + 1.2, .9, sz0 + 1.2), gold), sx, ty + hh, sz); ty += hh; sz0 -= 20; }
+    for (const [ax, az] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { M(new THREE.Mesh(new THREE.CylinderGeometry(3.4, 4.4, 150, 12), wallB), sx + ax * 64, sy + 75, sz + az * 64); M(new THREE.Mesh(new THREE.ConeGeometry(5, 22, 12), gold), sx + ax * 64, sy + 161, sz + az * 64); const b = glowSprite(st.tip, 14, .9); b.position.set(sx + ax * 64, sy + 175, sz + az * 64); g.add(b); }
+    const tiers = 6; for (let t = 0; t < tiers; t++) { const k = 1 - t / tiers, h = K.spire / tiers, rr = 30 * k + 5; M(new THREE.Mesh(new THREE.CylinderGeometry(rr * .82, rr, h, 12), t % 2 ? wallB : wallA), sx, ty + h * (t + .5), sz); M(new THREE.Mesh(new THREE.TorusGeometry(rr * .9, .8, 8, 32).rotateX(Math.PI / 2), gold), sx, ty + h * (t + 1), sz); }
+    M(new THREE.Mesh(new THREE.ConeGeometry(9, K.spire * .22, 8), gold), sx, ty + K.spire * 1.11, sz);
+    const star = glowSprite(0xffd68c, 80, .95); star.position.set(sx, ty + K.spire * 1.24, sz); g.add(star);
+    // a beam of light into the sky, and the Imperial crest turning above the palace
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 6, 2600, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd68c, transparent: true, opacity: .14, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })); M(beam, sx, ty + K.spire + 1300, sz); C.fx.push({ o: beam, k: 'beam' });
+    const crest = new THREE.Group(), cm = new THREE.MeshBasicMaterial({ color: st.trim, transparent: true, opacity: .7, blending: THREE.AdditiveBlending, depthWrite: false });
+    crest.add(new THREE.Mesh(new THREE.TorusGeometry(26, .6, 8, 64), cm)); const c2 = new THREE.Mesh(new THREE.TorusGeometry(20, .4, 8, 64), cm); c2.rotation.y = Math.PI / 2; crest.add(c2);
+    crest.add(new THREE.Mesh(new THREE.IcosahedronGeometry(12, 1), new THREE.MeshBasicMaterial({ color: st.accent, wireframe: true, transparent: true, opacity: .5 })));
+    crest.position.set(sx, ty + K.spire * .62, sz); g.add(crest); C.fx.push({ o: crest, k: 'spin', s: .25 });
+    // searchlights sweeping the sky from the palace's corners
+    for (let k = 0; k < 4; k++) { const sl = new THREE.Mesh(new THREE.ConeGeometry(18, 700, 16, 1, true).translate(0, 350, 0), new THREE.MeshBasicMaterial({ color: k % 2 ? 0xc8a0ff : 0xffe2a8, transparent: true, opacity: .07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })); sl.position.set(sx + (k % 2 ? 1 : -1) * 64, sy + 160, sz + (k < 2 ? -1 : 1) * 64); g.add(sl); C.fx.push({ o: sl, k: 'sweep', ph: k * 1.6 }); }
+    cell(sx, sz, 72);
+    // the Boulevard of Emperors: a canal down the middle, statues and braziers, banners with the crest; the Grand Gate at the end
+    const canal = new THREE.Mesh(new THREE.PlaneGeometry(8, K.R - K.plaza - 20), new THREE.MeshStandardMaterial({ color: 0x1a3a6a, roughness: .1, metalness: .6, emissive: 0x2a6ab8, emissiveIntensity: .35 })); canal.rotation.x = -Math.PI / 2; M(canal, sx, C.y + .12, sz + (K.plaza + K.R - 20) / 2 + 10);
+    for (const s of [-1, 1]) M(new THREE.Mesh(new THREE.BoxGeometry(.8, .7, K.R - K.plaza - 20), gold), sx + s * 4.4, C.y + .35, sz + (K.plaza + K.R - 20) / 2 + 10);
+    const crestTex = canvasTex(256, 512, (c, w, h) => { c.fillStyle = '#3a1a5a'; c.fillRect(0, 0, w, h); c.fillStyle = '#ffc35a'; c.fillRect(0, 0, w, 18); c.fillRect(0, h - 40, w, 40); c.strokeStyle = '#ffc35a'; c.lineWidth = 10; c.beginPath(); c.arc(w / 2, h * .42, 70, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.moveTo(w / 2, h * .42 - 100); c.lineTo(w / 2 + 50, h * .42); c.lineTo(w / 2, h * .42 + 100); c.lineTo(w / 2 - 50, h * .42); c.closePath(); c.stroke(); for (let i = 0; i < 5; i++) { c.beginPath(); c.moveTo(i * 64 - 10, h - 40); c.lineTo(i * 64 + 22, h); c.lineTo(i * 64 + 54, h - 40); c.fill(); } });
+    const banM = new THREE.MeshStandardMaterial({ map: crestTex, side: THREE.DoubleSide, roughness: .8, emissive: 0xffffff, emissiveMap: crestTex, emissiveIntensity: .25 });
+    for (let zz = K.plaza + 22; zz < K.R - 10; zz += 32) for (const s of [-1, 1]) {
+      const x = sx + s * 10, z = sz + zz; M(new THREE.Mesh(new THREE.BoxGeometry(3, 4, 3), stone), x, C.y + 2, z); M(new THREE.Mesh(new THREE.ConeGeometry(.9, 5.2, 8), gold), x, C.y + 6.6, z); M(new THREE.Mesh(new THREE.SphereGeometry(.7, 10, 8), gold), x, C.y + 9.6, z);
+      const fire = glowSprite(0xffa040, 4, .9); fire.position.set(sx + s * 13.5, C.y + 4.4, z + 16); g.add(fire); C.fx.push({ o: fire, k: 'flicker', ph: zz + s });
+      M(new THREE.Mesh(new THREE.CylinderGeometry(.5, .7, 3.4, 8), gold), sx + s * 13.5, C.y + 1.7, z + 16);
+      const ban = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 7), banM); ban.position.set(sx + s * (aw / 2 - 1), C.y + 11, z + 8); ban.rotation.y = s * Math.PI / 2; g.add(ban);
+      cell(x, z, 2); cell(sx + s * 13.5, z + 16, 1);
+    }
+    const gz = sz + K.R - 2; // the Grand Gate
+    for (const s of [-1, 1]) { M(new THREE.Mesh(new THREE.CylinderGeometry(7, 11, 72, 4, 1).rotateY(Math.PI / 4), wallA), sx + s * (aw / 2 + 6), C.y + 36, gz); M(new THREE.Mesh(new THREE.ConeGeometry(6, 18, 4).rotateY(Math.PI / 4), gold), sx + s * (aw / 2 + 6), C.y + 81, gz); const b = glowSprite(0xffd68c, 12, .9); b.position.set(sx + s * (aw / 2 + 6), C.y + 92, gz); g.add(b); cell(sx + s * (aw / 2 + 6), gz, 10); }
+    M(new THREE.Mesh(new THREE.BoxGeometry(aw + 24, 9, 10), wallB), sx, C.y + 60, gz); M(new THREE.Mesh(new THREE.BoxGeometry(aw + 26, 1.2, 11), gold), sx, C.y + 55, gz); M(new THREE.Mesh(new THREE.BoxGeometry(aw + 26, 1.2, 11), gold), sx, C.y + 65, gz);
+    const gc = new THREE.Mesh(new THREE.TorusGeometry(7, .6, 8, 48), new THREE.MeshBasicMaterial({ color: st.trim })); M(gc, sx, C.y + 60, gz + 5.3);
+  } else if (garden) {
+    // the Hall of Oaths: a great dome on a ring of columns, a lantern and spire, a canal round it with four bridges
+    const drum = M(new THREE.Mesh(new THREE.CylinderGeometry(26, 28, 22, 32), stone), sx, sy + 11, sz);
+    for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2; M(new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.3, 24, 10), new THREE.MeshStandardMaterial({ color: 0xe8e0f0, roughness: .5 })), sx + Math.cos(a) * 30, sy + 12, sz + Math.sin(a) * 30); }
+    M(new THREE.Mesh(new THREE.TorusGeometry(30, 1.2, 8, 48).rotateX(Math.PI / 2), gold), sx, sy + 24.4, sz);
+    M(new THREE.Mesh(new THREE.SphereGeometry(28, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x8adad0, roughness: .25, metalness: .6, emissive: 0x2a8a7a, emissiveIntensity: .35 })), sx, sy + 24, sz).scale.y = .8;
+    for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; const rib = M(new THREE.Mesh(new THREE.TorusGeometry(28, .35, 6, 24, Math.PI / 2), trim), sx, sy + 24, sz); rib.rotation.set(0, a, 0); rib.scale.set(1, .8, 1); }
+    M(new THREE.Mesh(new THREE.CylinderGeometry(5, 6, 14, 12), stone), sx, sy + 53, sz); M(new THREE.Mesh(new THREE.ConeGeometry(4, K.spire * .55, 12), gold), sx, sy + 60 + K.spire * .27, sz);
+    const flame = glowSprite(0xffb0f0, 30, .95); flame.position.set(sx, sy + 64 + K.spire * .55, sz); g.add(flame); C.fx.push({ o: flame, k: 'flicker', ph: 1 });
+    const canal = new THREE.Mesh(new THREE.RingGeometry(36, 43, 64), new THREE.MeshStandardMaterial({ color: 0x1a4a5a, roughness: .1, metalness: .6, emissive: 0x2a8a9a, emissiveIntensity: .4 })); canal.rotation.x = -Math.PI / 2; M(canal, sx, C.y + .12, sz);
+    for (const rr of [36, 43]) M(new THREE.Mesh(new THREE.TorusGeometry(rr, .4, 6, 64).rotateX(Math.PI / 2), trim), sx, C.y + .4, sz);
+    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 2; const br = M(new THREE.Mesh(new THREE.BoxGeometry(6, .6, 10), stone), sx + Math.cos(a) * 39.5, C.y + .5, sz + Math.sin(a) * 39.5); br.rotation.y = -a; }
+    cell(sx, sz, 31);
+    // terraced gardens and floating lanterns over the plaza
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + .2; M(new THREE.Mesh(new THREE.CylinderGeometry(4, 4.4, 1.2, 12), stone), sx + Math.cos(a) * 52, C.y + .6, sz + Math.sin(a) * 52); M(new THREE.Mesh(new THREE.IcosahedronGeometry(2.6, 1), new THREE.MeshStandardMaterial({ color: 0x7a4aa8, emissive: 0x9a5cff, emissiveIntensity: .6, flatShading: true })), sx + Math.cos(a) * 52, C.y + 4, sz + Math.sin(a) * 52); cell(sx + Math.cos(a) * 52, sz + Math.sin(a) * 52, 4.4); }
+    for (let k = 0; k < 40; k++) { const a = r() * Math.PI * 2, rr = 20 + r() * (K.R * .9), l = glowSprite(r() < .5 ? 0xffd08a : 0xc890ff, 2 + r() * 2, .85); l.position.set(sx + Math.cos(a) * rr, C.y + 14 + r() * 50, sz + Math.sin(a) * rr); g.add(l); C.fx.push({ o: l, k: 'bob', ph: r() * 6, y: l.position.y }); }
+    // a gate of twin arches facing the spaceport
+    const gz = sz + K.R - 2; for (const s of [-1, 1]) { M(new THREE.Mesh(new THREE.CylinderGeometry(3, 3.6, 34, 12), stone), sx + s * (aw / 2 + 4), C.y + 17, gz); M(new THREE.Mesh(new THREE.SphereGeometry(3.6, 12, 8), gold), sx + s * (aw / 2 + 4), C.y + 35, gz); cell(sx + s * (aw / 2 + 4), gz, 4); }
+    const arch = M(new THREE.Mesh(new THREE.TorusGeometry(aw / 2 + 4, 1.6, 10, 40, Math.PI), stone), sx, C.y + 30, gz); arch.scale.y = .45;
+    M(new THREE.Mesh(new THREE.TorusGeometry(aw / 2 + 4, .4, 6, 40, Math.PI), trim), sx, C.y + 30, gz + 1.4).scale.y = .45;
+  } else {
+    // the Citadel el Erisconos: a great crystal spire in a crown of six, the Matriarch's faceted hall at their feet, a ring of
+    // crystal blades round the plaza with four gates, shards drifting overhead, and the aurora
+    const cm = new THREE.MeshStandardMaterial({ color: 0xf0d8ff, roughness: .12, metalness: .3, emissive: 0xc070ff, emissiveIntensity: .55, flatShading: true });
+    const cm2 = new THREE.MeshStandardMaterial({ color: 0xd8f4ff, roughness: .1, metalness: .3, emissive: 0x70c8ff, emissiveIntensity: .45, flatShading: true });
+    M(new THREE.Mesh(new THREE.CylinderGeometry(14, 20, K.spire * .7, 6), cm), sx, sy + K.spire * .35, sz); M(new THREE.Mesh(new THREE.ConeGeometry(14, K.spire * .35, 6), cm), sx, sy + K.spire * .875, sz);
+    const star = glowSprite(0xffc8f0, 70, .95); star.position.set(sx, sy + K.spire * 1.1, sz); g.add(star); C.fx.push({ o: star, k: 'flicker', ph: 2 });
+    for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, hh = 110 + (k % 3) * 30, sp = M(new THREE.Mesh(new THREE.CylinderGeometry(6, 9, hh, 6), k % 2 ? cm : cm2), sx + Math.cos(a) * 26, sy + hh / 2, sz + Math.sin(a) * 26); sp.rotation.set(Math.sin(a) * .12, 0, -Math.cos(a) * .12); const tp = M(new THREE.Mesh(new THREE.ConeGeometry(6, 26, 6), k % 2 ? cm : cm2), sx + Math.cos(a) * (26 + hh * .06), sy + hh + 10, sz + Math.sin(a) * (26 + hh * .06)); tp.rotation.copy(sp.rotation); }
+    const hall = M(new THREE.Mesh(new THREE.IcosahedronGeometry(34, 1), new THREE.MeshStandardMaterial({ color: 0xe8d8ff, roughness: .15, metalness: .4, emissive: 0x9a5cff, emissiveIntensity: .35, flatShading: true })), sx, sy + 6, sz); hall.scale.set(1, .55, 1);
+    cell(sx, sz, 36);
+    const blades = []; for (let k = 0; k < 56; k++) { const a = k / 56 * Math.PI * 2; if (Math.abs(((a + Math.PI / 4) % (Math.PI / 2)) - Math.PI / 4) < .12) continue; blades.push([sx + Math.cos(a) * (K.plaza - 4), sy + 9, sz + Math.sin(a) * (K.plaza - 4), 2.2, 18 + (k % 3) * 5, 2.2, -a]); }
+    { const bm = new THREE.InstancedMesh(new THREE.OctahedronGeometry(1, 0).scale(1, 1, .4), cm2, blades.length), M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), Y = new THREE.Vector3(0, 1, 0); blades.forEach(([x, y, z, a1, b1, c1, ry], i) => { bm.setMatrixAt(i, M4.compose(new THREE.Vector3(x, y, z), Q.setFromAxisAngle(Y, ry), new THREE.Vector3(a1, b1, c1))); cell(x, z, 1.6); }); g.add(bm); }
+    const shards = new THREE.Group(); for (let k = 0; k < 26; k++) { const s = new THREE.Mesh(new THREE.OctahedronGeometry(2 + r() * 4, 0), k % 2 ? cm : cm2); const a = r() * Math.PI * 2, rr = 40 + r() * 110; s.position.set(Math.cos(a) * rr, 60 + r() * 140, Math.sin(a) * rr); s.scale.y = 2.2; shards.add(s); } shards.position.set(sx, sy, sz); g.add(shards); C.fx.push({ o: shards, k: 'spin', s: .03 });
+    // the aurora: ribbons of light high over the citadel
+    const aurT = canvasTex(64, 256, (c, w, h) => { const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,120,220,0)'); gr.addColorStop(.35, 'rgba(255,140,230,.55)'); gr.addColorStop(.7, 'rgba(120,255,220,.6)'); gr.addColorStop(1, 'rgba(120,255,220,0)'); c.fillStyle = gr; c.fillRect(0, 0, w, h); });
+    for (let k = 0; k < 3; k++) { const geo = new THREE.PlaneGeometry(1400, 260, 40, 1), pa = geo.attributes.position; for (let i = 0; i < pa.count; i++) pa.setZ(i, Math.sin(pa.getX(i) / 140 + k) * 120); const au = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: aurT, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })); au.position.set(sx + (k - 1) * 160, sy + 520 + k * 60, sz - 200 - k * 120); au.rotation.y = .3 * (k - 1); g.add(au); C.fx.push({ o: au, k: 'aurora', ph: k * 2 }); }
+    // the gate facing the spaceport: two crystal pylons and a floating arch of shards
+    const gz = sz + K.R - 2; for (const s of [-1, 1]) { M(new THREE.Mesh(new THREE.CylinderGeometry(3.5, 5, 46, 6), cm), sx + s * (aw / 2 + 5), C.y + 23, gz); M(new THREE.Mesh(new THREE.ConeGeometry(3.5, 12, 6), cm), sx + s * (aw / 2 + 5), C.y + 52, gz); cell(sx + s * (aw / 2 + 5), gz, 5); }
+    for (let k = 0; k <= 10; k++) { const a = Math.PI * k / 10, s = M(new THREE.Mesh(new THREE.OctahedronGeometry(1.8, 0), cm2), sx + Math.cos(a) * (aw / 2 + 5), C.y + 44 + Math.sin(a) * 12, gz); s.scale.y = 1.8; }
+  }
+  // ---- air traffic between the towers ----
+  const nCars = (K.R > 200 ? 110 : 34) >> (phone ? 1 : 0), cars = new THREE.InstancedMesh(new THREE.CapsuleGeometry(.6, 2.6, 3, 8).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: st.car }), nCars); cars.frustumCulled = false; g.add(cars);
+  C.cars = { m: cars, list: Array.from({ length: nCars }, () => ({ r: K.grid * 1.5 + K.plaza * .6 + r() * (K.R - K.grid * 1.5 - K.plaza * .6), a: r() * 6.28, h: 30 + r() * K.maxH * .6, w: (.05 + r() * .08) * (r() < .5 ? 1 : -1) * (120 / K.R) })) };
   wScene.add(g); world.cityG = g;
-  setTimeout(() => lootMsg(K.note, '#d6b8ff'), 2600);
+  setTimeout(() => lootMsg(K.note, '#' + new THREE.Color(st.trim).getHexString()), 2600);
 }
 function cityTick(dt) {
   const C = world.planet && isPl() && world.planet.city; if (!C || !C.cars || !world.cityG) return;
   const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), Y = new THREE.Vector3(0, 1, 0), S = new THREE.Vector3(1, 1, 1), V = new THREE.Vector3();
   C.cars.list.forEach((c, i) => { c.a += c.w * dt; V.set(C.cx + Math.cos(c.a) * c.r, C.y + c.h, C.cz + Math.sin(c.a) * c.r); C.cars.m.setMatrixAt(i, M4.compose(V, Q.setFromAxisAngle(Y, -c.a + (c.w > 0 ? 0 : Math.PI)), S)); });
   C.cars.m.instanceMatrix.needsUpdate = true;
+  const night = 1 - (world.dayL == null ? 1 : world.dayL); // the windows and the street lines brighten as the sun goes down
+  if (C.glow) { C.glow[0].emissiveIntensity = C.glow[1].emissiveIntensity = (C.K.style === 'crystal' ? .55 : .5) + night * .9; C.glow[2].emissiveIntensity = .35 + night * 1.1; }
+  for (const f of C.fx || []) {
+    if (f.k === 'spin') f.o.rotation.y += dt * f.s;
+    else if (f.k === 'sweep') { f.o.rotation.z = Math.sin(time * .35 + f.ph) * .55; f.o.rotation.x = Math.cos(time * .27 + f.ph) * .45; f.o.material.opacity = .04 + night * .07; }
+    else if (f.k === 'flicker') { const s = 1 + Math.sin(time * 9 + f.ph * 3) * .08 + Math.sin(time * 23 + f.ph) * .05; f.o.scale.setScalar(f.base || (f.base = f.o.scale.x)); f.o.scale.multiplyScalar(s); }
+    else if (f.k === 'bob') f.o.position.y = f.y + Math.sin(time * .8 + f.ph) * 1.6;
+    else if (f.k === 'beam') f.o.material.opacity = .06 + night * .14;
+    else if (f.k === 'aurora') { f.o.material.opacity = .32 + Math.sin(time * .2 + f.ph) * .14 + night * .15; f.o.position.x += Math.sin(time * .05 + f.ph) * dt * 4; }
+  }
 }
 function cityBlocked(x, z) {
   const C = world.planet && world.planet.city; if (!C || !C.cells) return false;
   const ix = Math.round((x - C.cx) / 12), iz = Math.round((z - C.cz) / 12);
+  for (const [tx, tz, hw] of C.big || []) if (Math.abs(x - tx) < hw && Math.abs(z - tz) < hw) return true; // the palace, the hall, the gates
   for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) { const L = C.cells.get(`${ix + a},${iz + b}`); if (L) for (const [tx, tz, hw] of L) if (Math.abs(x - tx) < hw && Math.abs(z - tz) < hw) return true; }
-  if (Math.hypot(x - C.cx, z - C.cz) < (C.K.R > 200 ? 38 : 18)) return true;
   return false;
 }
 const isPl = () => String(world.area || '').startsWith('pl:') && !!world.planet;
@@ -12832,6 +13523,7 @@ function plDir(x, z) { const W = world.planet, R = W.P.r; return new THREE.Vecto
 function planetGroundH(x, z) {
   const W = world.planet; let h = planetH(W.P, plDir(x, z)) - W.h0;
   const C = W.city; if (C) { const d = Math.hypot(x - C.cx, z - C.cz), k = smooth(C.R + 90, C.R + 15, d); if (k > 0) h = lerp(h, C.y, k); } // a capital city sits on level ground
+  if (W.pads) for (const q of W.pads) { const d = Math.hypot(x - q.x, z - q.z); if (d < q.r + 14) h = lerp(h, q.y, smooth(q.r + 14, q.r, d)); } // and so does a cantina
   return h;
 }
 const plSeaY = () => { const W = world.planet; return W && W.P.sea ? -W.h0 + (W.P.seaH || 0) + .4 : null; };
@@ -12917,9 +13609,28 @@ function nmSet(kind) {
     box(3.2, .5, 24, red, 0, .02, -2); box(6, 1.2, 3, stone, 0, .6, -14); box(1.8, 3.6, 1.2, gold, 0, 3, -15);
   } else if (kind === 'citadel') { // the Citadel el Erisconos
     Object.assign(look, { fog: 0x140820, dens: .035, bg: 0x05020a, ground: 0x1a1028, hemi: 0x6040a0, rim: 0xb070ff, key: 0xe0d0ff });
-    const cry = M(0x2a1840, { emissive: 0x7a3aff, emissiveIntensity: .7, roughness: .2, metalness: .3 });
-    for (let z = -14; z <= 8; z += 4.4) for (const s of [-1, 1]) { const c = new THREE.Mesh(new THREE.ConeGeometry(.9, 11, 6), cry); c.position.set(s * 5, 5.5, z); P.add(c); }
-    box(5, 1, 3, M(0x24183a), 0, .5, -14); const th = new THREE.Mesh(new THREE.OctahedronGeometry(1.6), cry); th.position.set(0, 3.2, -15); th.scale.y = 1.8; P.add(th);
+    const cry = M(0x2a1840, { emissive: 0x7a3aff, emissiveIntensity: .7, roughness: .2, metalness: .3 }), cry2 = M(0x3a2a58, { emissive: 0xff7ad8, emissiveIntensity: .6, roughness: .15, metalness: .3, flatShading: true });
+    const ice = M(0x241a36, { roughness: .15, metalness: .6 }), inlay = new THREE.MeshBasicMaterial({ color: 0xc890ff });
+    // a polished floor with a glowing processional inlay, rings round the throne
+    box(3.4, .04, 26, ice, 0, .03, -3); for (const s of [-1, 1]) box(.12, .05, 26, inlay, s * 1.8, .05, -3);
+    for (const rr of [3.2, 4.6]) { const ring = new THREE.Mesh(new THREE.RingGeometry(rr, rr + .1, 48), inlay); ring.rotation.x = -Math.PI / 2; ring.position.set(0, .05, -14); P.add(ring); }
+    // crystal columns in two rows, each a hexagonal shaft with a point and a glow at its foot
+    for (let z = -14; z <= 8; z += 4.4) for (const s of [-1, 1]) {
+      const c = new THREE.Mesh(new THREE.CylinderGeometry(.55, .75, 9, 6), cry); c.position.set(s * 5, 4.5, z); P.add(c);
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(.55, 3, 6), cry2); tip.position.set(s * 5, 10.5, z); P.add(tip);
+      const gl = glowSprite(0xb070ff, 2.4, .8); gl.position.set(s * 5, .5, z); P.add(gl);
+      for (const k of [-1, 1]) { const sh = new THREE.Mesh(new THREE.OctahedronGeometry(.35), cry2); sh.scale.y = 2.4; sh.position.set(s * 5 + k * .7, 1.1, z + k * .4); sh.rotation.z = k * .3; P.add(sh); }
+    }
+    // the far wall: tall pointed windows full of aurora
+    const aur = canvasTex(32, 128, (c, w, hh) => { const gr = c.createLinearGradient(0, 0, 0, hh); gr.addColorStop(0, '#120624'); gr.addColorStop(.4, '#c050c8'); gr.addColorStop(.7, '#40e8c8'); gr.addColorStop(1, '#100820'); c.fillStyle = gr; c.fillRect(0, 0, w, hh); });
+    box(24, 16, .6, M(0x140a22), 0, 8, -19.5);
+    for (let i = -2; i <= 2; i++) { const wdw = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 9), new THREE.MeshBasicMaterial({ map: aur, fog: false })); wdw.position.set(i * 4.2, 7, -19.15); P.add(wdw); const pt = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.2, 4), new THREE.MeshBasicMaterial({ map: aur, fog: false })); pt.position.set(i * 4.2, 12.6, -19.18); pt.rotation.y = Math.PI / 4; pt.scale.z = .05; P.add(pt); }
+    // the throne on three steps, a crown of crystal behind it, banners of the house
+    for (let k = 0; k < 3; k++) box(6.4 - k * 1.2, .35, 4.2 - k * .8, M(0x24183a), 0, .17 + k * .35, -14.6 - k * .2);
+    const th = new THREE.Mesh(new THREE.OctahedronGeometry(1.6), cry); th.position.set(0, 3.4, -15.6); th.scale.y = 1.8; P.add(th);
+    for (let k = -3; k <= 3; k++) { const c = new THREE.Mesh(new THREE.ConeGeometry(.35, 3.4 - Math.abs(k) * .4, 6), cry2); c.position.set(k * .55, 5.6 - Math.abs(k) * .2, -16.4); c.rotation.z = -k * .12; P.add(c); }
+    for (const s of [-1, 1]) { const b = box(1.6, 6, .06, M(0x3a1a5a, { emissive: 0x6a2a9a, emissiveIntensity: .3 }), s * 3.6, 7, -18.9); const tr = box(1.6, .2, .08, M(0xeda8d4, { metalness: .6, roughness: .3 }), s * 3.6, 9.9, -18.85); void b; void tr; }
+    for (let i = 0; i < 12; i++) { const sh = new THREE.Mesh(new THREE.OctahedronGeometry(.25 + Math.random() * .35), cry2); sh.scale.y = 2; const a = i / 12 * Math.PI * 2; sh.position.set(Math.cos(a) * 3.4, 6 + Math.random() * 3, -14 + Math.sin(a) * 2.2); sh.rotation.y = a; P.add(sh); }
   } else if (kind === 'stars') { // a world on fire
     Object.assign(look, { fog: 0x05080a, dens: .006, bg: 0x010203, ground: 0x050505, hemi: 0x305040, rim: 0xff5a20 });
     const pl = new THREE.Mesh(new THREE.SphereGeometry(10, 48, 32), M(0x3a1a0a, { emissive: 0xff3a0a, emissiveIntensity: .6 })); pl.position.set(0, 9, -30); P.add(pl); NM.burn = pl;
@@ -13962,7 +14673,9 @@ function updateWorldMode(dt) {
   if (!ex.near && curArea() === 'africa' && wanderer.ch2 && wanderer.ch2.lionsDone && !wanderer.ch2.doorReached && Math.hypot(p.x - (FARM.x - 5.6), p.z - FARM.z) < 2.6) ex.near = { id: 'farmDoor', label: 'Farmhouse door' };
   if (!ex.near) { const fn = ferryNear(p); if (fn) ex.near = fn; }
   if (!ex.near && curArea() === 'europe' && Math.hypot(p.x - (LON.door.x - 1.5), p.z - LON.door.z) < 3.2) ex.near = { id: 'parliament', label: 'Houses of Parliament' };
-  if (!ex.near && isPl() && Math.hypot(p.x, p.z - 10) < 4.5) ex.near = { id: 'ship', label: 'Your ship' };
+  if (!ex.near && curArea() === 'europe' && LON.sights) for (const s of LON.sights) if (Math.hypot(p.x - s.x, p.z - s.z) < s.r) ex.near = { id: 'lonsight', ref: s, label: s.label };
+  if (!ex.near) { const BV = brawlVenueHere(); if (BV) { if (Math.hypot(p.x - BV.mcAt.x, p.z - BV.mcAt.z) < 2.3) ex.near = { id: 'brawl', ref: BV, label: `${titleName(BV.mc)} · fights` }; else if (BV.barAt && Math.hypot(p.x - BV.barAt.x, p.z - BV.barAt.z) < 1.9) ex.near = { id: 'bartender', ref: BV, label: 'Bartender' }; } }
+  if (!ex.near && (isPl() || world.adVisit) && Math.hypot(p.x - shipX(), p.z - shipZ() - 10) < 4.5) ex.near = { id: 'ship', label: 'Your ship' };
   if (!ex.near && curArea() === 'africa' && TOWN.npcs.length) { const tn = townNear(p); if (tn) ex.near = { id: 'townsfolk', ref: tn, label: tn.label }; }
   if (!ex.near && (curArea() === 'africa' || orionJoined()) && world.orion && world.orion.root.visible && Math.hypot(world.orion.root.position.x - p.x, world.orion.root.position.z - p.z) < 2.4) ex.near = { id: 'orion', label: 'Orion' };
   if (!ex.near && CREW.nico && CREW.nico.R && CREW.nico.R.root.visible && CREW.nico.R.root.parent === wScene && partyNow().includes('nico') && Math.hypot(CREW.nico.R.root.position.x - p.x, CREW.nico.R.root.position.z - p.z) < 2.4) ex.near = { id: 'nico', label: 'Nico' };
@@ -13977,7 +14690,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], nico: ['Give Nico orders', 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
+    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], nico: ['Give Nico orders', 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
@@ -14064,9 +14777,10 @@ function worldCamera(dt) {
   const p = player.position, hy = headYFor(wanderer);
   const tgt = tmpV.set(p.x, p.y + hy * .85, p.z);
   const dd = ex.dist * (camera.aspect < .8 ? 1.2 : 1);
-  const cx = tgt.x + Math.sin(ex.yaw) * Math.cos(ex.pitch) * dd, cz = tgt.z + Math.cos(ex.yaw) * Math.cos(ex.pitch) * dd;
+  let cx = tgt.x + Math.sin(ex.yaw) * Math.cos(ex.pitch) * dd, cz = tgt.z + Math.cos(ex.yaw) * Math.cos(ex.pitch) * dd;
   let cy = tgt.y + Math.sin(ex.pitch) * dd;
   cy = Math.max(cy, wHeight(cx, cz) + .5);
+  const RA = ex.mode === 'world' && roomAround(p); if (RA) { cx = clamp(cx, RA.x0, RA.x1); cz = clamp(cz, RA.z0, RA.z1); cy = Math.min(cy, RA.top); }
   const k = ex.snap ? 1 : Math.min(1, dt * 8);
   camera.position.lerp(tmpV2.set(cx, cy, cz), k);
   lookTarget.lerp(tgt, ex.snap ? 1 : Math.min(1, dt * 12));
@@ -14279,7 +14993,7 @@ function currentPlace() {
   if (ex.mode === 'ship' && SHIPI.outside) return Object.assign({}, SHIPI.outside, { aboard: true, deck: SHIPI.deck, ax: +player.position.x.toFixed(2), az: +player.position.z.toFixed(2) }); // aboard: where the ship is, and where you are inside her
   if (ex.mode === 'space') return { mode: 'explore', area: 'space', where: 'space', sys: SPC.sys, sp: SPC.pos.toArray().map(v => +v.toFixed(1)), sq: SPC.q.toArray().map(v => +v.toFixed(5)) };
   return ex.mode === 'world'
-    ? Object.assign({ mode: 'explore', area: 'world', where: curArea(), x: +player.position.x.toFixed(2), z: +player.position.z.toFixed(2), y: +player.position.y.toFixed(2), rot: player.rotation.y, yaw: ex.yaw }, isPl() ? { dir: world.planet.D.toArray().map(v => +v.toFixed(6)) } : {})
+    ? Object.assign({ mode: 'explore', area: 'world', where: curArea(), x: +player.position.x.toFixed(2), z: +player.position.z.toFixed(2), y: +player.position.y.toFixed(2), rot: player.rotation.y, yaw: ex.yaw }, world.adVisit && !isPl() ? { adVisit: true } : {}, isPl() ? { dir: world.planet.D.toArray().map(v => +v.toFixed(6)) } : {})
     : { mode: 'explore', area: 'station', x: player.position.x - ROOM.x, z: player.position.z - ROOM.z, rot: player.rotation.y, yaw: ex.yaw };
 }
 // each wanderer remembers where they were, so Continue / Load put you back there
@@ -17140,6 +17854,7 @@ function loop() {
   if (state === 'ch2intro') { updateCh2Intro(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); renderer.render(afScene, camera); return; }
   if (state === 'travel') { updateParticles(dt); renderer.render(wScene, camera); return; }
   if (state === 'cantinaScene') { updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
+  if (state === 'brawl') { try { fightTick(dt); } catch (e) { console.error(e); } updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'nightmare') { nightmareTick(dt); sfx.music(0); return; }
   if (state === 'space') { spaceTick(dt); try { resSpaceTick(dt); } catch (e) { console.error(e); } sfx.music(0); renderer.render(SPC.scene, camera); return; }
   if (state === 'xpaused' && SPC.paused) { sfx.music(0); renderer.render(SPC.scene, camera); return; }
