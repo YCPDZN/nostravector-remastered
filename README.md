@@ -327,6 +327,82 @@ Every one is landable, with its own look:
 
 The galaxy map marks moons, dwarf planets and worlds with open water. Inner moons fly the Federation's flag; the outer ones are unclaimed. Icy shells use a new terrain type (`ice` in `PKIND`). Coming down over open water (Earth's oceans, Europa's cracks), the Nostra sets down on the nearest shore.
 
+### Into the atmosphere, and the real Earth (No Man's Sky style)
+Coming down to a planet no longer drops you straight onto the ground. Below 420 m you fly **into its sky**, and you choose where to land.
+- **Flying in a world's sky:**
+  - The whole planet is there to fly over. Its ground is drawn as six faces of tiles that split finer the closer you are, so mountains rise on the horizon and the world curves away below you.
+  - You get the sea, drifting clouds, a sky that's blue by day and black by night (the same 20-minute day as on the ground), and stars when you climb.
+  - **W / S** throttle, **A / D** turn, **↑ / ↓** (or drag) pitch, **Shift** afterburner. On a phone: the stick, THRUST, BRAKE and BOOST.
+  - The ship levels itself, and won't let you fly into the ground ("Terrain · pull up").
+  - **Climb above the ceiling** (about 4 km over Earth, less over small worlds) and you're back in space.
+  - The galaxy map and the decks wait until you're out of the atmosphere.
+  - **Small worlds are drawn bigger** on the ground and in the air, at least 2.4 km in radius (the Moon is nearly four times its old size, a little moonlet eight), so there's room to fly. Their hills are a little gentler for it.
+- **Landing where you like:**
+  - Press **E** (or tap **LAND**) anywhere below about 1.5 km. The Nostra sets down a little ahead of you.
+  - Over water, she finds the nearest shore.
+  - Over a city or a wonder, the button names it ("LAND · PARIS") and she sets down on its landing ground.
+- **Taking off** lifts you back into the sky over the same spot, ready to fly on and land somewhere new.
+- **Saves:** a save made in the sky puts you back in the sky.
+- **Capitals:** Alphinos, Karribassa and Citadel el Erisconos now stand at fixed places on their worlds. You can see them lit up from the air, with a marker, and fly to them. Land near one and you set down at its edge.
+- **The ground is no longer a mirror image:** east is east and north is north, so what you saw from the air is where you land. Older saves on a planet are moved to match.
+
+**Earth, as it really is.**
+- **The real continents:** Earth's coastlines come from Natural Earth's 1:50m land map (public domain). Over them, by hand:
+  - **Mountains and plateaus:** the Himalaya and Tibet, the Andes and Altiplano, the Rockies, Alps, Atlas, Urals, Ethiopian Highlands, Kilimanjaro, Fuji and the Southern Alps.
+  - **Ice and climate:** the ice sheets of Antarctica and Greenland, plus the deserts and rainforests.
+  - **Rivers:** the Nile, Amazon, Mississippi, Yangtze, Danube, Ganges, Yamuna, Congo and Seine, each carved down to the water.
+- **Scale:** on the ground and in the air, Earth is drawn at 14 times its space scale (33.6 km across the middle), so crossing the Atlantic takes about a minute on afterburner. Every city and wonder sits at its real latitude and longitude.
+- **Eight continents:** the HUD names the one you're over, with a banner as you cross into it: Africa, Antarctica, Asia, Europe, North America, Oceania, South America, and **Zealandia**, the drowned eighth continent (New Zealand and New Caledonia are its peaks).
+- **The cities:** each has hover traffic and sights you can walk up to and read about.
+  - **New Paris:**
+    - The Seine runs through it, with the Île de la Cité and Notre-Dame.
+    - The Eiffel Spire is re-forged in lattice with light down its edges.
+    - The Champ de Mars is the landing ground. The Trocadéro faces the Spire across the river.
+    - From the Arc de Triomphe at the Étoile, the tree-lined Champs-Élysées runs to the Concorde's obelisk, then the Tuileries and the Louvre with its glass pyramid.
+    - Sacré-Cœur stands on Montmartre and the Grande Arche at La Défense.
+    - Haussmann blocks have zinc mansards, there are bridges with gilded statues, and a maglev ring circles the city.
+  - **New York:**
+    - Manhattan sits between the Hudson and the East River.
+    - Lady Liberty stands on her star fort in the harbour, with a fusion torch.
+    - Towers include One World Trade Center (a square that turns as it rises) and the memorial pools, the Flatiron, the Empire State with its mast, and the Chrysler's steel sunbursts.
+    - The Brooklyn and Manhattan bridges cross the East River. Times Square is a canyon of light.
+    - Central Park, with the Reservoir, is the landing ground.
+  - **New Beijing:**
+    - Tiananmen Square holds the Monument, the Mausoleum, the Great Hall and the Museum.
+    - Tiananmen Gate leads into the Forbidden City: red walls and moat, corner towers, and the great halls on their marble terraces.
+    - Also: Jingshan's pavilion, the Temple of Heaven, the Bird's Nest, the CCTV loop, a vase-shaped supertall and hutong courtyards.
+  - **New Tokyo:**
+    - The Skytree stands by the Sumida, and Tokyo Tower in orange and white.
+    - Sensō-ji has the Thunder Gate and its lantern, Nakamise and the pagoda.
+    - Also: the Imperial Palace and its moat, the Shibuya scramble with its screens and Hachikō, and the Shinjuku towers with the twin-spired Government Building.
+    - The Rainbow Bridge crosses to Odaiba, the city is full of neon, and Fuji is on the horizon.
+  - **New Cairo:**
+    - The Nile runs past Gezira Island and the lotus-lattice Cairo Tower.
+    - Also: Tahrir and the Egyptian Museum, and the Citadel with the domes and pencil minarets of the Mosque of Muhammad Ali.
+    - New glass pyramids rise in the east.
+    - On the Giza plateau stand **the Great Pyramid** (the last ancient wonder still standing), Khafre with its casing cap, Menkaure, the queens' pyramids and the Sphinx.
+- **The New Seven Wonders:**
+  - **The Great Wall:** about 3 km of wall and watchtowers over the Yanshan mountains, from the desert's edge to the sea at Shanhaiguan. You can walk along its top.
+  - **Petra:** rose-red cliffs and the narrow Siq lit with candles. Al-Khazneh (the Treasury) is carved into the rock, with the Royal Tombs, the colonnaded street and the Monastery high above.
+  - **Christ the Redeemer:** on Corcovado above Rio, with Sugarloaf and its cable car in Guanabara Bay. There are favelas on the slopes, and Copacabana's beach and its wave-mosaic promenade.
+  - **Machu Picchu:** on its saddle between Huayna Picchu and Machu Picchu mountain, with terraces, the stone houses, the Temple of the Sun and Intihuatana.
+  - **Chichén Itzá:** El Castillo with its serpent stairs, the Great Ball Court, the Temple of the Warriors and the Thousand Columns, El Caracol and the Sacred Cenote, in the Yucatán jungle.
+  - **The Colosseum:** half-ruined, with the arena and its hypogeum, the Arch of Constantine, the Forum and the pines of the Palatine.
+  - **The Taj Mahal:** on the Yamuna, with its minarets, the mosque and its twin, the long pool and cypresses of the garden, and the Great Gate.
+- **Ad-Nostra** is marked on Kenya's coast. Land there and you set down outside the town, as before.
+- **New London** is Federation airspace: you can fly past its skyline, but you're still wanted there, so you can't land.
+- **Continent enemies:** away from the cities, every continent has its own wildlife, hunting in packs, alone or from the air, with neutral herds that charge if you attack them and prey that bolts.
+  - **Europe:** wolf packs, brown bears, wild boar and red deer.
+  - **Asia:** Bengal tigers, dhole packs, wild yaks, deer and black kites.
+  - **Africa:** lions, hyena packs, buffalo, gazelles and kites.
+  - **North America:** grizzlies, coyote packs, bison stampedes, deer and bald eagles.
+  - **South America:** jaguars, peccary herds, tapirs, capybaras and Andean condors.
+  - **Oceania:** saltwater crocodiles, dingo packs, feral camels and brumbies.
+  - **Zealandia:** boar and Haast's eagles, brought back from extinction.
+  - **Antarctica:** leopard seals, elephant seal bulls, skuas and penguins.
+- **Trees on Earth** grow where the climate does: thick in the rainforests, sparse on the steppe, none in the Sahara or on the ice. The land beyond the ground near you is drawn out to the horizon, so you can see the city skylines and the mountains from the street.
+- **Saves:** a save on Earth from before this update sets you down near where you were.
+
 ### Planet types and weather (No Man's Sky style)
 Every world now has a scanner description: its **type** and its **weather**. You see it on the galaxy map, in the space HUD as you approach, on the card when you land, on the big map, and under the minimap.
 - **Types** include Paradise, Faux Paradise, Lush, Verdant, Temperate, Ocean, Desert, Arid, Dusty, Scorched, Volcanic, Magma, Toxic, Caustic, Noxious, Frozen, Glacial, Arctic, Barren, Dead, Desolate, Gas Giant and Ice Giant, with "Moon", "Moonlet" or "Dwarf Planet" swapped in where it fits. Sol's worlds are written by hand (Venus: Toxic Planet · caustic acid storms; Mars: Dusty Planet · planet-wide dust storms; Titan: Hazy Moon · methane rainstorms; Io: Volcanic Moon · sulphur ash storms). The 490 generated systems get theirs from their world type and seed, the same every time.
