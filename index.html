@@ -480,6 +480,7 @@ body.touch .touch-ui{display:block}
 /* ---------- survival HUD ---------- */
 .bars{margin-top:12px;display:none;flex-direction:column;gap:6px;width:150px}
 #xhud.world .bars,#xhud.aboard .bars{display:flex}
+.bar.o2 i{background:#5fd0ff}
 .bar{height:4px;background:rgba(var(--inkRGB,230,233,240),.14);position:relative;overflow:hidden;transform:skewX(-14deg)}
 .bar i{position:absolute;inset:0;transform-origin:left;transition:transform .12s linear}
 .bar.hp i{background:#ff7a72}
@@ -4063,7 +4064,7 @@ function stormClock(dt) {
 const suitHeat = () => { const h = invState().heat; return h == null ? 100 : h; };
 function nearHeater() { for (const o of world.placed) if (o.data.t === 'heater' && Math.hypot(o.data.x - player.position.x, o.data.z - player.position.z) < 3.2) return true; return false; }
 function emergencyRecovery() {
-  const p = player.position; p.set(11.5, wHeight(11.5, 3), 3); vel.set(0, 0, 0); ex.snap = true; ex.air = false;
+  const p = player.position; if (isPl()) p.set(4, wHeight(4, 14.5), 14.5); else p.set(11.5, wHeight(11.5, 3), 3); vel.set(0, 0, 0); ex.snap = true; ex.air = false; worldUnstick();
   invState().heat = 60;
   if (companionOn() && james.ready && james.root.parent === wScene && comp.mode === 'follow') jTeleportNear();
   sfx.thud(); notice('Exosuit · emergency recovery', 'RETURNED TO THE STATION', 4200);
@@ -6100,12 +6101,12 @@ $('#jWhoRow').addEventListener('pointerdown', e => { const b = e.target.closest(
 const STA = { sprint: 22, jump: 12, dodge: 26, attack: 6 };
 function spend(n) { if (ex.sta < n) return false; ex.sta -= n; ex.staT = time; return true; }
 function doJump() {
-  if (ex.mode !== 'world' || ex.vehicle || ex.air || ex.act || ex.invOpen || ex.dlg) return;
+  if (ex.mode !== 'world' || ex.vehicle || ex.air || ex.swim || ex.act || ex.invOpen || ex.dlg) return;
   if (!spend(STA.jump)) return;
   ex.air = true; ex.vy = 6.4; ex.jumpT = time; sfx.blip();
 }
 function doDodge() {
-  if (ex.mode !== 'world' || ex.vehicle || ex.act || ex.invOpen || ex.dlg) return;
+  if (ex.mode !== 'world' || ex.vehicle || ex.swim || ex.act || ex.invOpen || ex.dlg) return;
   if (!spend(STA.dodge)) return;
   let ix = ex.joyX, iy = ex.joyY; const k = ex.keys;
   if (k.has('KeyA') || k.has('ArrowLeft')) ix -= 1; if (k.has('KeyD') || k.has('ArrowRight')) ix += 1;
@@ -6206,7 +6207,7 @@ function updateSurvival(dt) {
 // ---- block, jetpack and sprint ----
 const JET = { drain: 34, refill: 22, thrust: 27, maxUp: 5.5 };
 function blockHeld() { return ex.mode === 'world' && !ex.air && !ex.invOpen && !ex.dlg && !ex.build && !ex.act && ex.sta > 2 && (ex.keys.has('KeyR') || ex.blockM || ex.blockT); }
-function jetHeld() { return ex.mode === 'world' && ex.air && !ex.invOpen && !ex.dlg && ex.jet > 0 && time - (ex.jumpT || 0) > .22 && (ex.keys.has('Space') || $('#bJump').classList.contains('on')); }
+function jetHeld() { return ex.mode === 'world' && ex.air && !ex.swim && !ex.invOpen && !ex.dlg && ex.jet > 0 && time - (ex.jumpT || 0) > .22 && (ex.keys.has('Space') || $('#bJump').classList.contains('on')); }
 const suit = {};
 function suitGear() {
   if (suit.pack) return suit;
@@ -6284,6 +6285,9 @@ function worldActionPose(dt) {
     damp(rig.la.rotation, 'x', aim ? -1.3 : -.4, 18, dt); damp(rig.la.rotation, 'z', aim ? -.55 : -.3, 18, dt);
     if (ex.held && ex.held.userData.id === gun) ex.held.rotation.x = lerp(ex.held.rotation.x, aim ? 0 : -.55, Math.min(1, dt * 14));
   }
+  if (ex.swim) { swimPose(dt); ex.swimRecover = true; } // out of the water: stand back up (only after a swim, so nothing else's pose is touched)
+  else if (ex.swimRecover) { damp(inner.rotation, 'x', 0, 8, dt); inner.position.y = lerp(inner.position.y, 0, Math.min(1, dt * 8)); if (Math.abs(inner.rotation.x) < .01) { inner.rotation.x = 0; inner.position.y = 0; ex.swimRecover = false; } }
+  underwaterLook();
   armorSync();
   // whatever is selected in the hotbar sits in your right hand
   syncHeld();
@@ -7162,9 +7166,10 @@ function hurtPlayer(n, src) {
 function blackout() {
   for (const c of fauna.list) { c.state = 'idle'; c.tgt = null; }
   for (const c of [...fauna.list]) if (Math.hypot(c.x - 11, c.z - 3) < 90) removeFauna(c);
-  const p = player.position; p.set(11.5, wHeight(11.5, 3), 3); vel.set(0, 0, 0); ex.snap = true;
+  const p = player.position; if (isPl()) p.set(4, wHeight(4, 14.5), 14.5); else p.set(11.5, wHeight(11.5, 3), 3); vel.set(0, 0, 0); ex.snap = true; worldUnstick(); // on a planet: by your ship's ramp
   ex.hp = Math.round(maxHP() * .5); invState().hp = ex.hp;
   if (curArea() === 'africa') notice('You blacked out', orionJoined() ? 'ORION CARRIED YOU BACK TO HIS HOME' : 'YOU CAME TO OUTSIDE ORION’S HOME', 4200);
+  else if (isPl()) notice('You blacked out', partyNow().length ? `${compName(partyNow()[0]).toUpperCase()} GOT YOU BACK TO THE NOSTRA` : 'YOU CAME TO BY THE NOSTRA', 4200);
   else notice('You blacked out', companionOn() ? 'JAMES DRAGGED YOU BACK TO THE STATION' : 'YOU CAME TO AT THE STATION', 4200);
 }
 function damageFauna(c, dmg, fromJames) {
@@ -7891,8 +7896,25 @@ function buildWorld(seed) {
   }
 }
   }
+let WB_SWIM = false; // true while moving the player: deep water is for swimming, not a wall (lava stays a wall)
+function nostraBlocked(x, z) { // the landed ship, at the landing spot's centre (nose to -z)
+  if (!world.landShip || !world.landShip.visible) return false;
+  const ax = Math.abs(x);
+  if (ax < 3.3 && z > -17 && z < 10.2) return true; // the hull (under it to the stern; the ramp end, past z 10.2, is open)
+  if (ax >= 3.3 && ax < 9.6 && z > 3.0 && z < 9.8) return true; // the wings and the engine pods
+  return false;
+}
+// you've ended up inside something solid you can't walk out of (the ship, deep water, a tower): the nearest open ground
+function worldUnstick() {
+  const was = WB_SWIM; WB_SWIM = true; try { return worldUnstickIn(); } finally { WB_SWIM = was; } // swimmable water is open, not solid
+}
+function worldUnstickIn() {
+  const p = player.position; if (ex.mode !== 'world' || !worldBlocked(p.x, p.z, true)) return false;
+  for (let r = .5; r <= 40; r += .5) for (let k = 0; k < 32; k++) { const a = k / 32 * Math.PI * 2, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r; if (!worldBlocked(x, z, true) && !worldBlocked(x, z)) { p.x = x; p.z = z; p.y = Math.max(wHeight(x, z), groundAt(x, z, p.y + 50)); vel.set(0, 0, 0); ex.snap = true; return true; } }
+  return false;
+}
 function worldBlocked(x, z, stationOnly, y = player.position.y) {
-  if (isPl()) { if (Math.abs(x) < 3.6 && z > -12.5 && z < 8) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2) return true; if (cityBlocked(x, z)) return true; } // your ship, deep water and the towers of a capital
+  if (isPl()) { if (nostraBlocked(x, z)) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2 && (world.planet.P.seaGlow || !WB_SWIM)) return true; if (cityBlocked(x, z)) return true; } // your ship, deep water and the towers of a capital
   else if (curArea() !== 'europe' && Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true; // the station / Orion's house
   if (curArea() === 'europe' && londonBlocked(x, z)) return true;
   if (curArea() === 'africa' && Math.abs(x - FARM.x) < 5.3 && Math.abs(z - FARM.z) < 3.8) return true;
@@ -10361,6 +10383,16 @@ const PKIND = {
     col(h, d, P, out) { return out.copy(P.c.low).lerp(P.c.mid, smooth(-80, 80, h)).lerp(P.c.rock, clamp(fbm3(d.x * 14, d.y * 14, d.z * 14, 2, P.seed + 7) * 1.4 - .4, 0, 1) * .5); } },
   venus: { sea: null, h(d, P) { return (fbm3(d.x * 1.6, d.y * 1.6, d.z * 1.6, 5, P.seed) - .5) * 240 + Math.pow(ridge3(d.x * 3, d.y * 3, d.z * 3, 3, P.seed + 1), 3) * 160; },
     col(h, d, P, out) { return out.copy(P.c.low).lerp(P.c.mid, smooth(-60, 80, h)).lerp(P.c.rock, smooth(90, 200, h)); } },
+  // an ice shell over an ocean (Europa, Enceladus): ridged plains, rust-brown lineae, and leads of open water you can swim in
+  ice: { sea: 0, h(d, P) {
+      const base = (fbm3(d.x * 2.2, d.y * 2.2, d.z * 2.2, 4, P.seed) - .5) * 60 + 34;
+      const c1 = 1 - Math.abs(vn3(d.x * 7, d.y * 7, d.z * 7, P.seed + 3) * 2 - 1), c2 = 1 - Math.abs(vn3(d.x * 13 + 5, d.y * 13, d.z * 13, P.seed + 9) * 2 - 1);
+      const lead = Math.max(smooth(.94, .985, c1), smooth(.95, .99, c2) * .8) * (P.leads == null ? 1 : P.leads);
+      return base + Math.pow(Math.max(c1, c2), 12) * 14 - lead * 90; },
+    col(h, d, P, out) {
+      const c1 = 1 - Math.abs(vn3(d.x * 7, d.y * 7, d.z * 7, P.seed + 3) * 2 - 1), c2 = 1 - Math.abs(vn3(d.x * 13 + 5, d.y * 13, d.z * 13, P.seed + 9) * 2 - 1);
+      out.copy(P.c.low).lerp(P.c.mid, smooth(0, 40, h)); out.lerp(P.c.line, smooth(.8, .93, Math.max(c1, c2)) * .75);
+      if (h < 6) out.lerp(P.c.rock, smooth(6, -6, h)); return out; } },
   gas: { gas: true }
 };
 // ---- Sol, at game scale (radii and orbits in metres) ----
@@ -10380,6 +10412,73 @@ SOL.push(
   { id: 'eris', name: 'Eris', kind: 'rock', r: 820, orbit: 300000, ang: 2.75, seed: 79, c: { low: '#aab0c4', mid: '#e6e9f2', rock: '#7d8399' }, atmo: '#c8b8ff', sky: ['#120f24', '#3c3466'], fog: '#5a5280', faction: 'The Erisian Empire · puppet of the Chompy Empire' },
   { id: 'dysnomia', name: 'Dysnomia', kind: 'rock', r: 380, parent: 'eris', orbit: 4200, ang: .4, seed: 83, c: { low: '#4a4a50', mid: '#6a6a70', rock: '#34343a' }, atmo: null, sky: ['#020205', '#0b0b10'], fog: '#17171c', faction: 'The Erisian Empire · puppet of the Chompy Empire' }
 );
+// Sol's moons and dwarf planets: all of them landable. Europa's cracks and Titan's lakes you can swim in; Io's lakes are lava.
+{
+  const AIRLESS = { atmo: null, sky: ['#020205', '#0c0c10'], fog: '#18181b' }, FED = 'Human Federation of Sol', FREE = 'Unclaimed · no faction';
+  const rockC = (low, mid, rock) => ({ kind: 'rock', c: { low, mid, rock } });
+  SOL.push(
+    // Mars
+    Object.assign({ id: 'phobos', name: 'Phobos', r: 220, parent: 'mars', orbit: 3200, ang: .9, seed: 201, faction: FED }, rockC('#4a3e36', '#6a5a4e', '#2e2620'), AIRLESS),
+    Object.assign({ id: 'deimos', name: 'Deimos', r: 180, parent: 'mars', orbit: 5200, ang: 3.6, seed: 203, faction: FED }, rockC('#5a4c40', '#7a6a5a', '#3a3028'), AIRLESS),
+    // the belt
+    Object.assign({ id: 'ceres', name: 'Ceres', r: 480, orbit: 100000, ang: 1.45, seed: 207, faction: FED + ' · belt mining colony', dwarf: true }, rockC('#4a4844', '#6e6c66', '#2e2c2a'), AIRLESS),
+    // Jupiter
+    Object.assign({ id: 'io', name: 'Io', kind: 'desert', r: 520, parent: 'jupiter', orbit: 13500, ang: .3, seed: 211, c: { low: '#c8b030', mid: '#e8d860', rock: '#6a3a10', snow: '#f0f0c0' }, sea: '#ff6a10', seaGlow: true, seaH: -9, faction: FED }, AIRLESS, { sky: ['#06040a', '#2a1a10'], fog: '#3a2a18' }),
+    Object.assign({ id: 'europa', name: 'Europa', kind: 'ice', r: 480, parent: 'jupiter', orbit: 17500, ang: 1.9, seed: 213, c: { low: '#c9d4df', mid: '#f4f7fb', rock: '#4f6f8f', line: '#9a5a3a' }, sea: '#0d3352', seaH: 0, faction: FED + ' · ocean research station', swim: true }, AIRLESS, { sky: ['#03050c', '#16203a'], fog: '#2a3a52' }),
+    Object.assign({ id: 'ganymede', name: 'Ganymede', r: 700, parent: 'jupiter', orbit: 23000, ang: 3.4, seed: 217, faction: FED }, rockC('#6a6458', '#9a948a', '#4a443a'), AIRLESS),
+    Object.assign({ id: 'callisto', name: 'Callisto', r: 650, parent: 'jupiter', orbit: 30000, ang: 5.0, seed: 219, faction: FED }, rockC('#3e3a34', '#5a544a', '#2a2622'), AIRLESS),
+    // Saturn
+    Object.assign({ id: 'mimas', name: 'Mimas', r: 260, parent: 'saturn', orbit: 20000, ang: 1.0, seed: 223, faction: FREE }, rockC('#7a7672', '#a8a49e', '#4e4a46'), AIRLESS),
+    Object.assign({ id: 'enceladus', name: 'Enceladus', kind: 'ice', r: 300, parent: 'saturn', orbit: 23500, ang: 2.4, seed: 227, leads: .55, c: { low: '#e2edf6', mid: '#ffffff', rock: '#4a7aa0', line: '#6a9ac8' }, sea: '#0d3352', seaH: 0, faction: FREE, swim: true }, AIRLESS, { sky: ['#03050c', '#121a2c'], fog: '#26324a' }),
+    Object.assign({ id: 'rhea', name: 'Rhea', r: 420, parent: 'saturn', orbit: 28500, ang: 3.9, seed: 229, faction: FREE }, rockC('#8a8682', '#b8b4ae', '#5a5652'), AIRLESS),
+    Object.assign({ id: 'titan', name: 'Titan', kind: 'desert', r: 700, parent: 'saturn', orbit: 35000, ang: 5.3, seed: 233, c: { low: '#7a5a2a', mid: '#a8803f', rock: '#4a3418', snow: '#c8a870' }, sea: '#2b2414', seaH: -6, atmo: '#e8a040', clouds: '#d89a48', cloudCover: .95, sky: ['#8a5a1a', '#d8a050'], fog: '#b07a30', faction: FED + ' · methane refinery', swim: true }),
+    Object.assign({ id: 'iapetus', name: 'Iapetus', r: 400, parent: 'saturn', orbit: 43000, ang: .2, seed: 239, faction: FREE }, rockC('#2a2622', '#d8d4cc', '#4a4440'), AIRLESS),
+    // Uranus
+    Object.assign({ id: 'miranda', name: 'Miranda', r: 240, parent: 'uranus', orbit: 7600, ang: 1.2, seed: 241, faction: FREE }, rockC('#7a7874', '#a4a29c', '#4a4844'), AIRLESS),
+    Object.assign({ id: 'titania', name: 'Titania', r: 420, parent: 'uranus', orbit: 11500, ang: 3.0, seed: 251, faction: FREE }, rockC('#8a8580', '#b0aba4', '#5a5550'), AIRLESS),
+    Object.assign({ id: 'oberon', name: 'Oberon', r: 400, parent: 'uranus', orbit: 15500, ang: 4.8, seed: 257, faction: FREE }, rockC('#6a625a', '#928a80', '#423c36'), AIRLESS),
+    // Neptune
+    Object.assign({ id: 'triton', name: 'Triton', r: 440, parent: 'neptune', orbit: 9800, ang: 2.1, seed: 263, faction: FREE }, rockC('#c8b0a8', '#efe2dc', '#8a7470'), AIRLESS, { sky: ['#04050c', '#1a2238'], fog: '#3a4258' }),
+    // the dwarf planets of the far dark
+    Object.assign({ id: 'pluto', name: 'Pluto', r: 600, orbit: 268000, ang: 4.0, seed: 269, faction: FREE, dwarf: true }, rockC('#b89070', '#efe0cc', '#6a4a34'), { atmo: '#9ab8ff', sky: ['#05060e', '#1a2240'], fog: '#3a4466' }),
+    Object.assign({ id: 'charon', name: 'Charon', r: 320, parent: 'pluto', orbit: 2600, ang: 1.0, seed: 271, faction: FREE }, rockC('#6a6662', '#9a948e', '#4a2a22'), AIRLESS),
+    Object.assign({ id: 'haumea', name: 'Haumea', r: 420, orbit: 283000, ang: 5.6, seed: 277, faction: FREE, dwarf: true }, rockC('#d8dce4', '#f6f8fc', '#9aa0aa'), AIRLESS),
+    Object.assign({ id: 'makemake', name: 'Makemake', r: 380, orbit: 292000, ang: .9, seed: 281, faction: FREE, dwarf: true }, rockC('#a8705a', '#d8a890', '#6a4434'), AIRLESS)
+  );
+}
+
+// the smaller moons of the giants (and the mid-sized ones: Tethys, Dione, Ariel, Umbriel). Every one landable; the little
+// ones are marked in space only once you're close, and the galaxy map counts them under their planet.
+{
+  const AIR = { atmo: null, sky: ['#020205', '#0c0c10'], fog: '#18181b' }, FED = 'Human Federation of Sol', FREE = 'Unclaimed · no faction';
+  const look = { grey: ['#6e6a66', '#9a958f', '#45413d'], dark: ['#3e3a35', '#5a544c', '#2a2622'], red: ['#6a4a3a', '#8a6650', '#3e2a20'], ice: ['#b8c0c8', '#e4e8ee', '#7a828c'], tan: ['#7a6a58', '#a8957e', '#4e4236'] };
+  //   [id, name, parent, radius, orbit, angle, look, minor?, squash?]
+  const L = [
+    // Jupiter: the inner four, then the far irregulars
+    ['metis', 'Metis', 'jupiter', 70, 10400, 4.4, 'red', 1, 1], ['adrastea', 'Adrastea', 'jupiter', 60, 10850, 5.6, 'red', 1, 1], ['amalthea', 'Amalthea', 'jupiter', 150, 11500, 2.6, 'red', 1, 1], ['thebe', 'Thebe', 'jupiter', 90, 12400, 0.9, 'dark', 1, 1],
+    ['leda', 'Leda', 'jupiter', 60, 36500, 2.2, 'dark', 1, 1], ['himalia', 'Himalia', 'jupiter', 140, 38500, 3.7, 'dark', 1, 1], ['lysithea', 'Lysithea', 'jupiter', 70, 40500, 5.4, 'dark', 1, 1], ['elara', 'Elara', 'jupiter', 100, 42500, 0.6, 'grey', 1, 1],
+    ['ananke', 'Ananke', 'jupiter', 60, 47000, 1.6, 'dark', 1, 1], ['carme', 'Carme', 'jupiter', 70, 50000, 4.0, 'red', 1, 1], ['pasiphae', 'Pasiphae', 'jupiter', 80, 53000, 2.9, 'grey', 1, 1], ['sinope', 'Sinope', 'jupiter', 70, 56000, 5.9, 'red', 1, 1],
+    // Saturn: shepherds in and around the rings, Tethys and Dione with their Trojans, Hyperion, and far Phoebe
+    ['pan', 'Pan', 'saturn', 60, 12000, 3.1, 'ice', 1, 1], ['daphnis', 'Daphnis', 'saturn', 50, 12700, 4.9, 'ice', 1, 1], ['atlas', 'Atlas', 'saturn', 60, 13300, 0.7, 'ice', 1, 1], ['prometheus', 'Prometheus', 'saturn', 90, 13900, 2.0, 'ice', 1, 1],
+    ['pandora', 'Pandora', 'saturn', 85, 14500, 5.6, 'ice', 1, 1], ['epimetheus', 'Epimetheus', 'saturn', 110, 15600, 1.3, 'grey', 1, 1], ['janus', 'Janus', 'saturn', 150, 16400, 4.3, 'grey', 1, 1],
+    ['tethys', 'Tethys', 'saturn', 360, 26000, 1.6, 'ice', 0, 0], ['telesto', 'Telesto', 'saturn', 60, 26000, 0.55, 'ice', 1, 1], ['calypso', 'Calypso', 'saturn', 55, 26000, 2.65, 'ice', 1, 1],
+    ['dione', 'Dione', 'saturn', 380, 31500, 3.1, 'ice', 0, 0], ['helene', 'Helene', 'saturn', 65, 31500, 2.05, 'ice', 1, 1], ['polydeuces', 'Polydeuces', 'saturn', 45, 31500, 4.2, 'ice', 1, 1],
+    ['hyperion', 'Hyperion', 'saturn', 160, 39000, 2.7, 'tan', 1, 1], ['phoebe', 'Phoebe', 'saturn', 160, 52000, 4.6, 'dark', 1, 1], ['ymir', 'Ymir', 'saturn', 60, 58000, 1.2, 'dark', 1, 1],
+    // Uranus: Ariel and Umbriel, the crowded inner moons named for Shakespeare, and the far irregulars
+    ['ariel', 'Ariel', 'uranus', 400, 9200, 4.1, 'ice', 0, 0], ['umbriel', 'Umbriel', 'uranus', 400, 10400, 5.9, 'dark', 0, 0],
+    ['cordelia', 'Cordelia', 'uranus', 50, 5850, .3, 'dark', 1, 1], ['ophelia', 'Ophelia', 'uranus', 55, 6000, 1.5, 'dark', 1, 1], ['bianca', 'Bianca', 'uranus', 60, 6200, 2.8, 'dark', 1, 1], ['cressida', 'Cressida', 'uranus', 70, 6400, 4.0, 'dark', 1, 1],
+    ['desdemona', 'Desdemona', 'uranus', 65, 6600, 5.3, 'dark', 1, 1], ['juliet', 'Juliet', 'uranus', 80, 6800, 0.9, 'dark', 1, 1], ['portia', 'Portia', 'uranus', 95, 7000, 2.2, 'dark', 1, 1], ['rosalind', 'Rosalind', 'uranus', 70, 7200, 3.5, 'dark', 1, 1],
+    ['belinda', 'Belinda', 'uranus', 70, 7400, 4.7, 'dark', 1, 1], ['puck', 'Puck', 'uranus', 100, 8300, 6.0, 'dark', 1, 1], ['caliban', 'Caliban', 'uranus', 80, 19500, 2.5, 'red', 1, 1], ['sycorax', 'Sycorax', 'uranus', 110, 22500, 4.4, 'red', 1, 1],
+    // Neptune: the inner six, Proteus, and Nereid and the far irregulars
+    ['naiad', 'Naiad', 'neptune', 55, 5800, 3.4, 'dark', 1, 1], ['thalassa', 'Thalassa', 'neptune', 60, 6050, 4.6, 'dark', 1, 1], ['despina', 'Despina', 'neptune', 80, 6350, 5.8, 'dark', 1, 1], ['galatea', 'Galatea', 'neptune', 90, 6750, 0.4, 'dark', 1, 1],
+    ['larissa', 'Larissa', 'neptune', 100, 7300, 1.3, 'dark', 1, 1], ['hippocamp', 'Hippocamp', 'neptune', 45, 7800, 4.0, 'dark', 1, 1], ['proteus', 'Proteus', 'neptune', 200, 8500, 5.2, 'grey', 1, 1],
+    ['nereid', 'Nereid', 'neptune', 150, 14500, 0.8, 'grey', 1, 1], ['halimede', 'Halimede', 'neptune', 60, 17500, 3.0, 'grey', 1, 1], ['sao', 'Sao', 'neptune', 50, 19500, 4.9, 'grey', 1, 1], ['neso', 'Neso', 'neptune', 55, 22000, 1.9, 'grey', 1, 1]
+  ];
+  for (const [id, name, parent, r, orbit, ang, lk, minor, squash] of L) {
+    const [low, mid, rock] = look[lk], s = 301 + SOL.length * 7;
+    SOL.push(Object.assign({ id, name, kind: 'rock', r, parent, orbit, ang, seed: s, c: { low, mid, rock }, faction: parent === 'jupiter' ? FED : FREE, minor: !!minor, squash: squash ? [1 + ((s * 37) % 30) / 100, .78 + ((s * 13) % 14) / 100, 1 + ((s * 29) % 20) / 100] : null }, AIR));
+  }
+}
 /* ---- the galaxy: ten star systems. Sol, four from the lore, five uncharted. map: x, y on the galaxy map (the core at 0, 0;
    the disc's edge at 1), ly: light-years from the core. Each system's first `home` world is where a warp drops you. ---- */
 const UNCLAIMED = 'Unclaimed · no faction';
@@ -10387,7 +10486,7 @@ const CATH_LAND = 'Former Catharsis space'; // Chapter V: these worlds become th
 const SYSTEMS = [
   { id: 'sol', name: 'Sol', star: { kind: 'star', name: 'The Sun', r: 3800, col: '#fff3c8', glow: ['rgba(255,240,200,1)', 'rgba(255,200,120,.55)', 'rgba(255,160,60,0)'], light: '#fff2dc', type: 'Yellow dwarf · G2V' },
     faction: 'Human Federation of Sol', map: { x: .18, y: .5 }, home: 'earth', bodies: SOL,
-    desc: 'Humanity’s home, far out on a spiral arm: eight planets, the Moon, and Eris at the frozen edge, where the Erisians have lived for a billion years.' },
+    desc: 'Humanity’s home, far out on a spiral arm: eight planets and dozens of moons (Europa’s hidden ocean, Titan’s methane lakes, Io’s volcanoes), the belt and Ceres, Pluto and the dwarf planets of the far dark, and Eris at the frozen edge, where the Erisians have lived for a billion years.' },
   { id: 'malana', name: 'Malana Prime', star: { kind: 'star', name: 'Malana Prime', r: 3400, col: '#fff8e8', glow: ['rgba(255,252,236,1)', 'rgba(255,236,190,.5)', 'rgba(255,220,150,0)'], light: '#fff8ea', type: 'Yellow-white dwarf · F8V' },
     faction: 'The Order of Archamus', fac3: 'The Order of Archamus', fac4: 'The Grek Empire', map: { x: .27, y: .44 }, home: 'malana',
     desc: 'A near neighbour of Sol. The Order of Archamus controls Archiostal, the garden station where most of the Grek live, and holds the Grek Empire as its puppet state. Am-Grek, High Hierarch of the Grek, was born on Malana in 1700 AD.',
@@ -10639,6 +10738,7 @@ function buildBody(P) {
     if (P.clouds) { const cl = new THREE.Mesh(new THREE.SphereGeometry(P.r + 330, 96, 64), new THREE.MeshStandardMaterial({ map: spCloudTex(P), transparent: true, depthWrite: false, roughness: 1 })); g.add(cl); P.cloud = cl; }
   }
   if (P.atmo) g.add(atmoMesh(P.r, P.atmo, P.kind === 'gas' ? 1.04 : 1.09));
+  if (P.squash) g.scale.set(...P.squash); // the little irregular moons: lumpy, not round
   return g;
 }
 function bodyPos(P, out) { // orbits are frozen for now (positions fixed in the system); moons sit beside their planets
@@ -10996,6 +11096,7 @@ function spaceHudTick(P, alt, fwd) {
     const v3 = tmpVs.copy(Q.pos).project(camera); if (v3.z > 1) continue;
     const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; if (x < -40 || x > W + 40 || y < -40 || y > H + 40) continue;
     const d = SPC.pos.distanceTo(Q.pos) - Q.r; if (Q === P && d < Q.r * 2) continue;
+    if (Q.minor && d > 15000 && Q !== P) continue; // a small moon: marked only once you're close
     h += `<div class="sh-mk" style="left:${x | 0}px;top:${y | 0}px"><i></i><span>${Q.name.toUpperCase()}<br><small>${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`;
   }
   box.innerHTML = h;
@@ -11069,7 +11170,7 @@ function galClose(silent) {
 function galPanel() {
   const S = sysById(GAL.sel), here = S.id === SPC.sys, n = have('warpcell'), W3 = wanderer.ch3 || {}, seen = (W3.visited || []).includes(S.id);
   const cost = warpCost(curSys(), S);
-  const kind = P => (P.kind === 'station' ? 'Station · fly in to dock' : P.kind === 'gas' ? 'No surface' : P.parent ? 'Moon · landable' : 'Landable') + (P.land && planetTraders(P).length ? ' · trader' : '');
+  const kind = P => (P.kind === 'station' ? 'Station · fly in to dock' : P.kind === 'gas' ? 'No surface' : P.parent ? 'Moon · landable' : P.dwarf ? 'Dwarf planet · landable' : 'Landable') + (P.swim ? ' · open water' : '') + (P.land && planetTraders(P).length ? ' · trader' : '');
   let btn;
   if (here) btn = `<button class="btn gp-warp" disabled><span>You are here</span></button>`;
   else if (SC.foes.length) btn = `<button class="btn gp-warp" disabled><span>Can't warp in combat</span></button><div class="gp-why">The hyperdrive won't spool up under fire · destroy them, outrun them, or drop into a planet's atmosphere</div>`;
@@ -11078,7 +11179,7 @@ function galPanel() {
   else btn = `<button class="btn gp-warp" data-warp="${S.id}"><span>Warp · ${cellsTxt(cost)} (${n - cost} left after)</span></button>`;
   const qHere = Object.entries((wanderer.sq || {}).act || {}).filter(([id, A]) => sqById(id) && sqSysOf(sqById(id), A) === S.id).map(([id]) => sqById(id).t);
   $('#galPanel').innerHTML = `${resGalHere(S)}${qHere.length ? `<div class="gp-sub" style="color:#ffd36a">◆ Side quest: ${qHere.join(' · ')}</div>` : ''}<h3>${S.name.toUpperCase()}</h3><div class="gp-sub">${S.star.type} · ${S.faction}${here ? '' : ` · ${galDist(curSys(), S).toLocaleString()} ly · ${inRange(curSys(), S) ? cellsTxt(cost) : 'out of range'}`}${seen ? ' · visited' : ''}</div><p>${S.desc}</p>
-    <ul>${S.bodies.map(P => `<li><span>${P.name}</span><small>${P.faction.split(' · ')[0]} · ${kind(P)}</small></li>`).join('')}</ul><div class="gp-act">${btn}</div>`;
+    <ul>${S.bodies.filter(P => !P.minor).map(P => { const m = S.bodies.filter(Q => Q.minor && Q.parent === P.id).length; return `<li><span>${P.name}</span><small>${P.faction.split(' · ')[0]} · ${kind(P)}${m ? ` · +${m} smaller moon${m === 1 ? '' : 's'}` : ''}</small></li>`; }).join('')}</ul><div class="gp-act">${btn}</div>`;
   $('#galPanel').classList.remove('hidden');
 }
 function galDraw(dt) {
@@ -11695,6 +11796,17 @@ canvas.addEventListener('pointermove', e => { // a hand over anything you can us
   if ((SHIPI.hoverT = (SHIPI.hoverT || 0) + 1) % 3) return;
   canvas.style.cursor = shipPick(e.clientX, e.clientY) ? 'pointer' : '';
 });
+function shipBlocked(x, z) {
+  const [x0, x1, z0, z1] = SHIP_BOUNDS[SHIPI.deck]; if (x < x0 || x > x1 || z < z0 || z > z1) return true;
+  for (const [a, b, c, e] of SHIP_COLS[SHIPI.deck]) if (x > a - .28 && x < b + .28 && z > c - .28 && z < e + .28) return true;
+  if (SHIPI.deck === 1) for (const [i] of aboardIds().entries()) { const [cx2, cz2] = CREW_SPOTS[i % CREW_SPOTS.length]; if (Math.hypot(x - cx2, z - cz2) < .55) return true; }
+  return false;
+}
+function shipUnstick() { // the nearest open floor, if you're standing inside something
+  const p = player.position; if (!shipBlocked(p.x, p.z)) return false;
+  for (let r = .25; r <= 6; r += .25) for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r; if (!shipBlocked(x, z)) { p.x = x; p.z = z; vel.set(0, 0, 0); ex.snap = true; return true; } }
+  p.set(0, 0, 3.4); return true; // the middle of the deck is always clear
+}
 function shipShowDeck(d) { SHIPI.deck = d; SHIPI.decks.forEach((g, i) => { g.visible = i === d; }); shipCrewPlace(); }
 // companions waiting aboard stand (or sit) about the crew deck
 async function shipCrewPlace() {
@@ -11732,7 +11844,7 @@ function leaveShip(to) { // to: 'ground' (down the ramp), 'space' (back to the h
   SHIPI.on = false; ui.xhud.classList.remove('aboard'); xUI.prompt.classList.remove('on'); xUI.act.classList.remove('on');
   if (to === 'space') { state = 'space'; ex.mode = 'space'; show(ui.xhud, false); spaceHud().classList.remove('hidden'); camera.near = 1; camera.far = 1.4e6; camera.updateProjectionMatrix(); SPC.camInit = false; SPC.vel = Math.min(SPC.vel, 60); clock.getDelta(); return; }
   wScene.add(player); ex.mode = 'world'; ui.xhud.classList.add('world');
-  const z = 13.2; player.position.set(0, wHeight(0, z), z); player.rotation.y = 0; ex.yaw = Math.PI; ex.snap = true; vel.set(0, 0, 0);
+  const z = 13.2; player.position.set(0, wHeight(0, z), z); player.rotation.y = 0; ex.yaw = Math.PI; ex.snap = true; vel.set(0, 0, 0); worldUnstick();
   if (to === 'takeoff') { takeOff(); return; }
   if (world.landShip) setShipRig(world.landShip, 1, 1);
   if (orionJoined()) placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
@@ -11762,6 +11874,7 @@ function updateShipMode(dt) {
       wx = Math.sin(a) * 3; wz = Math.cos(a) * 3; if (gd < G.best - .05) { G.best = gd; G.bestT = performance.now(); } else if (performance.now() - G.bestT > 4000) { SHIPI.goal = null; lootMsg('Can’t get there from here · walk a little closer', '#cfd6e6'); } }
   }
   vel.x += (wx - vel.x) * Math.min(1, dt * 10); vel.z += (wz - vel.z) * Math.min(1, dt * 10);
+  if (blocked(p.x, p.z)) shipUnstick(); // standing inside something (a bad drop-off, an old save): step out to open floor
   const nx = p.x + vel.x * dt; if (!blocked(nx, p.z)) p.x = nx; else vel.x = 0;
   const nz = p.z + vel.z * dt; if (!blocked(p.x, nz)) p.z = nz; else vel.z = 0;
   p.y = 0;
@@ -11802,7 +11915,7 @@ async function shipInteract(n) {
 }
 function shipLift(d) {
   const f = $('#fade'); f.style.transition = 'opacity .35s'; f.style.opacity = 1; sfx.whoosh();
-  setTimeout(() => { shipShowDeck(d); const [x, z] = d === 2 ? [1.0, 0] : [1.3, 0]; player.position.set(x, 0, z); player.rotation.y = -Math.PI / 2; ex.yaw = player.rotation.y + Math.PI; ex.snap = true; f.style.opacity = 0; notice('The Nostra', `DECK ${d + 1} · ${DECK_NAMES[d].toUpperCase()}`, 1600); }, 380);
+  setTimeout(() => { shipShowDeck(d); const [x, z] = d === 2 ? [1.6, 1.9] : [1.3, 0]; player.position.set(x, 0, z); shipUnstick(); player.rotation.y = -Math.PI / 2; ex.yaw = player.rotation.y + Math.PI; ex.snap = true; f.style.opacity = 0; notice('The Nostra', `DECK ${d + 1} · ${DECK_NAMES[d].toUpperCase()}`, 1600); }, 380);
 }
 /* ---- dismissing companions: they go and wait aboard the Nostra, each with their own goodbye ---- */
 const DISMISS_LINES = {
@@ -12396,9 +12509,16 @@ function landingTick(dt) {
   if (L.t > .55 && !L.done) { L.done = true; landOn(L.P, L.dir); }
 }
 function planetAreaKey(P) { return 'pl:' + P.id; }
+function dryLandDir(P, D) { // nudges D onto the nearest ground at least 4 m above the sea
+  const sea = P.seaH || 0, ok = v => planetH(P, v) > sea + 4; if (ok(D)) return D;
+  const t = new THREE.Vector3(), a = new THREE.Vector3(0, 1, 0).cross(D); if (a.lengthSq() < .01) a.set(1, 0, 0); a.normalize(); const b = new THREE.Vector3().crossVectors(D, a);
+  for (let r = 6; r < 3000; r *= 1.25) for (let k = 0; k < 24; k++) { const ang = k / 24 * Math.PI * 2, s = r / P.r; t.copy(D).addScaledVector(a, Math.cos(ang) * s).addScaledVector(b, Math.sin(ang) * s).normalize(); if (ok(t)) { D.copy(t); return D; } }
+  return D;
+}
 async function landOn(P, dir, place) {
   spaceOff(); state = 'loadingCh';
   const key = planetAreaKey(P), D = dir.clone().normalize(), E = new THREE.Vector3(0, 1, 0).cross(D); if (E.lengthSq() < .01) E.set(1, 0, 0); E.normalize(); const N = new THREE.Vector3().crossVectors(D, E).normalize();
+  if (!place && P.sea) dryLandDir(P, D); // over the sea (Earth's oceans, Europa's cracks): she sets down on the nearest shore
   world.planet = { P, D, E, N, h0: planetH(P, D) };
   cityPlan(world.planet); // Alphinos on Aridaxx, Karribassa on Janira Prime
   AREA_INFO[key] = { planet: P.name, name: P.name, space: true, stationTp: { x: 1e5, z: 1e5, name: '' } };
@@ -12406,7 +12526,7 @@ async function landOn(P, dir, place) {
   world.area = key; world.builtArea = null; // a new landing spot: the ground is laid out afresh around it
   const nt = planetTraders(P); for (const m of MERCHANTS[key] || []) if (!nt.includes(m) && m.stall) { wScene.remove(m.stall); m.stall = null; } // a stall whose world changed hands goes
   MERCHANTS[key] = nt; for (const m of MERCHANTS[key]) m.seed = null; // its stall finds dry ground near the new spot
-  const pl = place || { mode: 'explore', area: 'world', where: key, x: 6, z: 5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI };
+  const pl = place || { mode: 'explore', area: 'world', where: key, x: 5, z: 14.5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI }; // by the ramp, clear of the wings
   enterWorld(pl); buildCity(); await placeOrion().catch(() => null); placeGivers().catch(() => null);
   // your ship, set down on the ground
   if (!world.landShip) world.landShip = makeShip();
@@ -13528,6 +13648,55 @@ function setStationAfter(after) {
   if (ant.hatchOpen) ant.hatchOpen.visible = after;
   if (after && james.ready) james.root.visible = false;
 }
+/* ---- swimming: in any deep water you can swim in (Earth's seas, Europa's and Enceladus's cracks, Titan's methane lakes) ----
+   You float with your head out; Space / JUMP swims up, C / Ctrl / DIVE dives. Under the surface your suit's air runs down
+   (the AIR bar); at the surface it fills again. Run out and you start to drown. Lava is never water. */
+const swimSea = () => { const sy = plSeaY(); return sy != null && !world.planet.P.seaGlow ? sy : null; };
+function swimTick(dt, ground) {
+  const p = player.position, sy = swimSea(), hy = headYFor(wanderer);
+  if (sy == null || ex.vehicle) { swimEnd(); return false; }
+  const floatY = sy - hy * .76; // the water at your shoulders
+  if (ground >= floatY - .05 || p.y > floatY + .45) { swimEnd(); return false; } // wading in the shallows, or still in the air above it
+  if (!ex.swim) { ex.swim = true; ex.air = false; ex.vy = 0; burst(p.x, sy, p.z, 18, 3.2, .75, .88, 1, .8, .6, 1); sfx.whoosh(); if (!ex.swimTold) { ex.swimTold = true; lootMsg('Swimming · Space to rise · C / Ctrl to dive', '#8fd8ff'); } }
+  const k = ex.keys, up = k.has('Space') || $('#bJump').classList.contains('on'), down = k.has('KeyC') || k.has('ControlLeft') || k.has('ControlRight') || $('#bDodge').classList.contains('on');
+  const vy = up ? 2.6 : down ? -2.4 : p.y < floatY - .05 ? 1.1 : 0; // you drift back up when you let go
+  ex.vy = lerp(ex.vy || 0, vy, Math.min(1, dt * 6)); p.y = clamp(p.y + ex.vy * dt, ground + .25, floatY);
+  // air: your suit's supply runs down under the surface and fills again above it
+  const under = p.y + hy * .92 < sy; ex.under = under;
+  if (ex.o2 == null) ex.o2 = 100;
+  if (under) { ex.o2 = Math.max(0, ex.o2 - 6.5 * dt); if (ex.o2 <= 0 && time - (ex.drownT || 0) > 1) { ex.drownT = time; hurtPlayer(9, 'drown'); if (time - (ex.drownMsgT || -9) > 4) { ex.drownMsgT = time; lootMsg('Out of air · swim up!', '#ff8f86'); } } }
+  else ex.o2 = Math.min(100, ex.o2 + 28 * dt);
+  swimHud(); swimButtons(true);
+  return true;
+}
+function swimEnd() {
+  if (!ex.swim) { if (ex.o2 != null && ex.o2 < 100) { ex.o2 = Math.min(100, ex.o2 + 28 * (1 / 60)); swimHud(); } return; }
+  ex.swim = false; ex.under = false; swimButtons(false);
+}
+function swimHud() {
+  let el = $('#o2Bar'); if (!el) { const bars = document.querySelector('#xhud .bars'); if (!bars) return; el = document.createElement('div'); el.id = 'o2Bar'; el.className = 'bar o2'; el.innerHTML = '<i></i>'; bars.appendChild(el); }
+  const v = ex.o2 == null ? 100 : ex.o2; el.style.display = v < 99.5 || ex.under ? '' : 'none'; el.firstChild.style.transform = `scaleX(${v / 100})`; el.classList.toggle('low', v < 25);
+}
+function swimButtons(on) { const j = $('#bJump'), d = $('#bDodge'); if (!j || !d || j.dataset.swim === String(on)) return; j.dataset.swim = d.dataset.swim = String(on); j.textContent = on ? 'UP' : 'JUMP'; d.textContent = on ? 'DIVE' : 'DODGE'; }
+// the body in the water: front crawl when you're moving, treading water when you're not
+function swimPose(dt) {
+  const mv = Math.hypot(vel.x, vel.z), going = mv > .4, st = time * (mv > 3 ? 7 : 5);
+  damp(inner.rotation, 'x', going ? 1.2 : .18, 5, dt); inner.position.y = lerp(inner.position.y, (inner.rotation.x / 1.2) * headYFor(wanderer) * .5, Math.min(1, dt * 6));
+  if (going) { rig.ra.rotation.x = -((st % (Math.PI * 2))); rig.la.rotation.x = -(((st + Math.PI) % (Math.PI * 2))); rig.ra.rotation.z = -.15; rig.la.rotation.z = .15; }
+  else { rig.ra.rotation.x = -.7 + Math.sin(st) * .35; rig.la.rotation.x = -.7 - Math.sin(st) * .35; rig.ra.rotation.z = -.7 - Math.sin(st * 2) * .25; rig.la.rotation.z = .7 + Math.sin(st * 2) * .25; }
+  const kick = Math.sin(st * 1.7) * (going ? .45 : .25); if (rig.rl) rig.rl.rotation.x = kick; if (rig.ll) rig.ll.rotation.x = -kick;
+}
+// under the surface: the water closes in, tinted the colour of the sea
+const UW = { on: false };
+function underwaterLook() {
+  const sy = swimSea(), f = wScene.fog, uw = ex.mode === 'world' && sy != null && camera.position.y < sy - .05;
+  if (uw && !UW.on) { UW.on = true; UW.near = f.near; UW.far = f.far; UW.col = f.color.getHex(); }
+  if (uw) { const c = new THREE.Color(world.planet.P.sea || '#0d3352'); f.color.copy(c).multiplyScalar(.55); f.near = .5; f.far = 26; }
+  else if (UW.on) { UW.on = false; f.near = UW.near; f.far = UW.far; f.color.setHex(UW.col); }
+  let t = $('#uwTint'); if (!t) { t = document.createElement('div'); t.id = 'uwTint'; t.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:4;opacity:0;transition:opacity .25s;mix-blend-mode:multiply'; document.body.appendChild(t); }
+  if (uw) t.style.background = `radial-gradient(ellipse at 50% 30%, ${world.planet.P.sea}55, ${world.planet.P.sea}cc)`;
+  t.style.opacity = uw ? 1 : 0;
+}
 function updateWorldMode(dt) {
   const p = player.position, d = ex.dlg;
   if (ex.vehicle) driveTick(dt); else {
@@ -13544,6 +13713,7 @@ function updateWorldMode(dt) {
   if (ex.blocking) speed = Math.min(speed, 1.8);
   const wantSprint = (k.has('ShiftLeft') || k.has('ShiftRight') || ex.sprintT) && mag > .2 && !ex.walk && !ex.blocking;
   if (wantSprint && ex.sta > 1) { speed = 7.6; ex.sta = Math.max(0, ex.sta - STA.sprint * dt); ex.staT = time; }
+  if (ex.swim) { speed = wantSprint && ex.sta > 1 ? 3.6 : 2.4; } // swimming: slower (a hard crawl with Shift / sprint)
   ex.speedMode = speed > 7 ? 'sprint' : speed > 3 ? 'run' : 'walk';
   const fx_ = -Math.sin(ex.yaw), fz = -Math.cos(ex.yaw), rx = Math.cos(ex.yaw), rz = -Math.sin(ex.yaw);
   let wx = (rx * ix + fx_ * iy) * speed, wz = (rz * ix + fz * iy) * speed;
@@ -13564,11 +13734,15 @@ function updateWorldMode(dt) {
     if ((onBuilt0 || g1 > wHeight(x, z) + .02) && d < .6) return 0; // stepping on or off something you built
     return Math.abs(d) / Math.max(.001, Math.hypot(x - p.x, z - p.z));
   };
-  const maxSlope = ex.air ? 3 : 1.4;
-  // if you've ended up inside something (landed in a wall, a tree grew on you), let yourself walk out of it
+  const maxSlope = ex.air || ex.swim ? 99 : 1.4; // swimming over the seabed: its slopes don't matter
+  // if you've ended up inside something (landed in a wall, a tree grew on you), let yourself walk out of it; and if it's
+  // something you can't walk out of (the ship, deep water, a tower), you're set down on the nearest open ground
+  WB_SWIM = true;
+  if (!ex.vehicle && worldBlocked(p.x, p.z, true)) worldUnstick();
   const free = worldBlocked(p.x, p.z);
   if (!worldBlocked(nx, p.z, free) && slope(nx, p.z) < maxSlope) p.x = nx; else vel.x = 0;
   if (!worldBlocked(p.x, nz, free) && slope(p.x, nz) < maxSlope) p.z = nz; else vel.z = 0;
+  WB_SWIM = false;
   ex.walkAcc = (ex.walkAcc || 0) + Math.hypot(vel.x, vel.z) * dt;
   if (ex.walkAcc >= 40) { ex.walkAcc -= 40; gainXP(1); }
   const ground = groundAt(p.x, p.z, p.y);
@@ -13578,11 +13752,14 @@ function updateWorldMode(dt) {
   if (ex.jetting) { ex.vy = Math.min(JET.maxUp, ex.vy + JET.thrust * dt); ex.jet = Math.max(0, ex.jet - JET.drain * dt); ex.jetT = time; if (!ex.jetOn) sfx.whoosh(); }
   else if (!ex.air && time - (ex.jetT || 0) > .6) ex.jet = Math.min(100, ex.jet + JET.refill * dt);
   ex.jetOn = ex.jetting;
+  if (swimTick(dt, ground)) { /* in the water */ }
+  else {
   if (!ex.air && p.y > ground + .35) { ex.air = true; ex.vy = 0; } // stepped off a ledge
   if (ex.air) {
     ex.vy -= 18 * dt; p.y += ex.vy * dt;
     if (p.y <= ground) { p.y = ground; ex.air = false; ex.vy = 0; burst(p.x, p.y + .05, p.z, 10, 2, .9, .95, 1, .6, .4, .5); }
   } else p.y += (ground - p.y) * Math.min(1, dt * 18);
+  }
   if (Math.hypot(vel.x, vel.z) > .2 && !(A && A.type === 'attack')) player.rotation.y = angLerp(player.rotation.y, Math.atan2(vel.x, vel.z), Math.min(1, dt * 10));
   }
   // things to interact with: the station door and anything you've built
