@@ -327,6 +327,25 @@ Every one is landable, with its own look:
 
 The galaxy map marks moons, dwarf planets and worlds with open water. Inner moons fly the Federation's flag; the outer ones are unclaimed. Icy shells use a new terrain type (`ice` in `PKIND`). Coming down over open water (Earth's oceans, Europa's cracks), the Nostra sets down on the nearest shore.
 
+### Your story in the Nostrapedia
+
+The Nostrapedia's **Lore events** tab now records your own story from Chapters I and II, plus the nightmare at the start of Chapter III. Each event stays hidden until you finish its mission, and a toast tells you when a new one has been added. Once you are past a chapter, all of its events are there.
+
+| Event | Appears when you… |
+|---|---|
+| The Survivor of the Drop | sleep at the research station (it names the leader you dreamt of) |
+| The Meeting in the Snow | find James Brown out on the ice (the soldier's masters stay redacted until the trial) |
+| The Super Blizzard | wait out the storm with James |
+| The Betrayal at the Pier | escape Antarctica on the ferry |
+| The Man Who Asked No Questions | speak to Orion |
+| The Night of the Lions | check on the woman at the farmhouse |
+| The Brawl at the Salt Lantern | are arrested by the Federation |
+| The Trial in the House of Commons | stand trial (Hawthorne's greeting depends on your species) |
+| The Escape from New London | escape to the ship in Parliament Square |
+| *Your* Chapter III nightmare | have the nightmare above Earth. There are four (The Nightmare of Sevirrus for Chompy, The Vision of the Citadel for Erisians, The Nightmare of New London for humans, The Prophecy in the Dark for Grek), but your species is fixed for the whole game, so you only ever see your own |
+
+Each event shows the people who were there, as they were at the time.
+
 ### Companions, all the same way
 - **One walk for everyone:** every companion now walks with Nico's and Orion's walk: legs swinging, arms swinging against them, a gentle sway at rest. That includes James Brown (his lantern arm swings too, less when he's holding it up), the crew you recruit, and anyone who joins later. It's one shared function (`compWalkPose`), so a new companion gets it for free.
 - **Give [name] orders:** walk up to any companion and the prompt names them: "Give Orion orders", "Give Nico orders", "Give Peter orders" and so on, for the crew too (before, only Orion and Nico had a prompt). Pressing E opens their orders with them already chosen. When someone joins you, the banner says "GIVE [NAME] ORDERS".

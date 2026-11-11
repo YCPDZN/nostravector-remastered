@@ -3906,11 +3906,12 @@ function renderLevel() {
 // story milestones
 const STORY_XP = { talked: [50, 'Spoke to James'], slept: [100, 'Rested'], outside: [50, 'Stepped outside'], sawMeeting: [100, 'Witnessed the meeting'], found: [150, 'Found James'], metOutside: [250, 'James joins you'] };
 function setCh1(patch) {
-  const prev = ch1();
+  const prev = ch1(), pdPre = pdStoryIds();
   wanderer.ch1 = Object.assign({}, prev, patch);
   const c = curChar(); if (c) c.ch1 = wanderer.ch1;
   saveRoster();
   for (const k in STORY_XP) if (patch[k] && !prev[k]) setTimeout(() => gainXP(STORY_XP[k][0], STORY_XP[k][1]), 300);
+  pdStoryNote(pdPre);
   if (patch.seen && patch.seen.length > (prev.seen || []).length) gainXP(15 * (patch.seen.length - (prev.seen || []).length), 'Inspected');
 }
 // after James joins: set up a camp with him, then the ice is yours to explore
@@ -8090,7 +8091,7 @@ function farmY() { // the natural ground height at the farm, before the yard is 
   return farmYc;
 }
 const nearFarm = (x, z) => Math.hypot(x - FARM.x, z - FARM.z) < 22;
-function setCh2(patch) { wanderer.ch2 = Object.assign({}, wanderer.ch2, patch); const c = curChar(); if (c) c.ch2 = wanderer.ch2; saveRoster(); renderTasks(); }
+function setCh2(patch) { const pdPre = pdStoryIds(); wanderer.ch2 = Object.assign({}, wanderer.ch2, patch); const c = curChar(); if (c) c.ch2 = wanderer.ch2; saveRoster(); renderTasks(); pdStoryNote(pdPre); }
 function buildFarmhouse() {
   if (world.farm) return;
   const g = new THREE.Group(), M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .95 }, o));
@@ -15289,7 +15290,7 @@ async function nmWake() {
 }
 function nmEnd() {
   ui.xhud.classList.remove('cutting'); show(ui.xhud, false); NM.on = false; NM.phase = null;
-  wanderer.ch3 = Object.assign({}, wanderer.ch3, { nightmare: NM.race }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster();
+  const pdPre = pdStoryIds(); wanderer.ch3 = Object.assign({}, wanderer.ch3, { nightmare: NM.race }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster(); pdStoryNote(pdPre);
   const hud = $('#spaceHud'); if (hud) hud.classList.remove('hidden');
   state = 'space'; SPC.camInit = false; clock.getDelta();
   spaceMsg('Fly with W/S and A/D (or the stick and THRUST) · descend onto any rocky planet to land');
@@ -17619,7 +17620,7 @@ function pdEntryLocked(L, tab = pedia.tab) {
   if (tab === 'leaders' && wanderer.ch1 && wanderer.ch1.slept && spOf(wanderer) === L.sp) return false;
   return true;
 }
-const pdSet = () => pedia.tab === 'leaders' ? PEDIA_LEADERS : pedia.tab === 'companions' ? companionsNow() : pedia.tab === 'ti' ? (chNow() >= 3 ? PEDIA_TI : []) : pedia.tab === 'ancient' ? PEDIA_ANCIENT : pedia.tab === 'events' ? PEDIA_EVENTS : PRIME_TABS[pedia.tab] ? PRIME_TABS[pedia.tab]() : [];
+const pdSet = () => pedia.tab === 'leaders' ? PEDIA_LEADERS : pedia.tab === 'companions' ? companionsNow() : pedia.tab === 'ti' ? (chNow() >= 3 ? PEDIA_TI : []) : pedia.tab === 'ancient' ? PEDIA_ANCIENT : pedia.tab === 'events' ? pdEvents() : PRIME_TABS[pedia.tab] ? PRIME_TABS[pedia.tab]() : [];
 const pdLocked = () => { const set = pdSet(); return set.length > 0 && set.every(L => pdEntryLocked(L)); };
 const bar = n => `<span class="rd" style="width:${Math.round(n)}ch"></span>`;
 const barsFor = text => text.split(' ').map(w => bar(Math.max(2, w.length * .9))).join(' ');
@@ -17658,6 +17659,16 @@ const PEDIA_ANCIENT = [
 // ---- Lore events: the wars, crimes and turning points behind the story ----
 // cast: figures shown on the stage, each only once its own file is open (chapter it unlocks)
 const EV_CAST = { sevirrus: 1, orion: 2, hawthorne: 3 };
+// your story's events: done once the mission's flag is set, or once you're past that chapter
+const evDone = (ch, k) => !!wanderer && (chNow() > ch || !!((ch === 1 ? wanderer.ch1 : wanderer.ch2) || {})[k]);
+// which Chapter III nightmare this wanderer had (saved as their race; older saves stored true), or null before it
+const nmSeen = () => { if (!wanderer) return null; const n = wanderer.ch3 && wanderer.ch3.nightmare; if (!n && chNow() <= 3) return null; return typeof n === 'string' ? n : (['chompy', 'erisian', 'human', 'grek'].includes(spOf(wanderer)) ? spOf(wanderer) : 'human'); };
+const pdEvents = () => PEDIA_EVENTS.filter(L => !L.showIf || L.showIf());
+const pdStoryIds = () => { try { return PEDIA_EVENTS.filter(L => L.showIf && L.showIf()).map(L => L.id); } catch { return null; } };
+function pdStoryNote(before) { // a toast for each event a mission just added to the Nostrapedia
+  if (!before) return; const now = pdStoryIds(); if (!now) return;
+  now.filter(id => !before.includes(id)).forEach((id, i) => { const L = PEDIA_EVENTS.find(e => e.id === id); setTimeout(() => lootMsg(`Nostrapedia · new lore event: ${L.name}`, '#7fd4ff'), 900 + i * 700); });
+}
 const PEDIA_EVENTS = [
   { id: 'ww3', name: 'THE THIRD WORLD WAR', title: 'World War · Earth', sub: 'Ended in the 2090s', cast: ['orion', 'hawthorne'],
     facts: [['Type', 'Global war'], ['Theatre', 'Earth'], ['Belligerents', 'United States of America · China · Russia'], ['Notable veterans', '—'], ['Ended', 'The 2090s']],
@@ -17705,6 +17716,143 @@ const PEDIA_EVENTS = [
       'After his defeat in 1800 AD, the prince who had ruled as Sevirrus spent 26 years in prison for everything he had done. In 1826 AD the Chompy Empire released him, and he went back to Carax under his own name: Hak Chompjak.',
       'The Cult of Zark had dug in there, led by the High Priest of Destruction. Hak fought his way to the top of the five-floor bastion of Carax, faced him there and defeated him, and the Cult was broken on the same world Sevirrus had once massacred in its name. The battle cost Hak his sight.',
       'He returned to Janira Prime blind, renounced his old ways, and in time the empire forgave him. He would later take the throne as Emperor Hak Chompjak V.'
+    ] },
+  // ---- your own story: each Chapter I and II event appears only once you've finished its mission (or moved past that chapter) ----
+  { id: 'ch1station', story: 1, showIf: () => evDone(1, 'slept'), name: 'THE SURVIVOR OF THE DROP', title: 'Rescue · the Antarctic research station', sub: 'Chapter I · 2125 AD', cast: ['james'],
+    facts: [], align: '', paras: [],
+    dyn: () => {
+      const L = wanderer && PEDIA_LEADERS.find(x => x.sp === spOf(wanderer)), who = L ? `${L.name.toLowerCase().replace(/(^|[\s-])([a-z])/g, (m, a, b) => a + b.toUpperCase())}, ${L.title}` : 'a leader of their own people';
+      return {
+        facts: [['Date', '2125 AD'], ['Place', 'A research station on the Antarctic ice'], ['Survivor', 'The wanderer, of the Exploration Division'], ['Rescuer', 'James Brown, explorer of the Human Federation of Sol'], ['Dream', who]],
+        align: 'One offered hand in the snow, and the wanderer had a friend. Or so it seemed.',
+        paras: [
+          'In 2125 AD the Exploration Division sent its lone wanderer to the ice of Antarctica. Whatever happened on the drop, the wanderer was the only one to walk away from it, out of the whiteout and on until their suit and their body both gave up.',
+          'James Brown, a British explorer of the Human Federation of Sol, found them collapsing in the snow and dragged them into a small research station. He kept the heater running and kept watch while they slept. When they woke, the radio was hissing static and the blizzard was still screaming against the glass.',
+          `James told them to rest, warm up and wait for the storm to clear. The wanderer looked over the station, lay down again, and dreamt of ${who}. When they woke the second time, James was gone.`
+        ]
+      };
+    } },
+  { id: 'ch1meeting', story: 1, showIf: () => evDone(1, 'found'), name: 'THE MEETING IN THE SNOW', title: 'Conspiracy · outside the station', sub: 'Chapter I · 2125 AD', cast: ['james'],
+    facts: [], align: '', paras: [],
+    dyn: ch => {
+      const known = ch >= 3 || !!(wanderer && wanderer.ch2 && wanderer.ch2.trialDone);
+      return {
+        facts: [['Date', '2125 AD'], ['Place', 'The ice outside the research station'], ['Present', 'James Brown · an armoured soldier'], ['The soldier’s masters', known ? 'Terra Imperia' : bar(13)], ['Subject', 'The wanderer · a signal under the ice']],
+        align: 'An arrangement made in a blizzard, and the wanderer was never meant to be part of it.',
+        paras: [
+          'The wanderer woke to an empty station and went out into the storm to look for James Brown. They found him out on the ice, but he was not alone. He was talking to an armoured soldier, and the soldier had been expecting him.',
+          'You’re late, the soldier said. James answered that the storm was worse than they had said, and that he had found a survivor from the drop. A survivor, the soldier replied, had never been part of the arrangement. James spoke of a signal under the ice that seemed to be waking up. The soldier told him to keep his guest warm, and close: their people would want a look at the wanderer.',
+          known ? 'James came back as friendly as ever and said nothing about it. Months later, at the trial in New London, Nico named the soldier’s masters: Terra Imperia had hired James Brown to get close to the wanderer.'
+            : 'James came back as friendly as ever and said nothing about it. Whose people the soldier meant, he never said.'
+        ]
+      };
+    } },
+  { id: 'ch1storm', story: 1, showIf: () => evDone(1, 'stormOver'), name: 'THE SUPER BLIZZARD', title: 'Survival · James’s camp', sub: 'Chapter I · 2125 AD', cast: ['james'],
+    facts: [['Date', '2125 AD'], ['Place', 'A camp on the Antarctic ice'], ['Duration', 'Five minutes of total whiteout'], ['Shelter', 'Built by hand: a floor, three walls and a roof'], ['Survivors', 'The wanderer · James Brown']],
+    align: 'The ice tried to kill them both, and for five minutes they were on the same side.',
+    paras: [
+      'With James beside them again, the wanderer made camp out on the ice: a crafting table first, then a teleporter, so the station would never be more than a step away.',
+      'Then the wanderer’s suit picked up a super blizzard. James told them to build a shelter, fast, and they did: a floor, three walls and a roof, finished just before the whiteout swallowed everything. Outside, the landmarks vanished and the cold drained a suit’s heat in minutes.',
+      'They waited it out together. When the storm finally broke, the two of them built a bed and slept, then set out to find James’s rover and drive for the coast, where a ferry was waiting to sail north.'
+    ] },
+  { id: 'ch1pier', story: 1, showIf: () => evDone(1, 'escaped'), name: 'THE BETRAYAL AT THE PIER', title: 'Betrayal · the Antarctic coast', sub: 'Chapter I · 2125 AD', cast: ['james', 'croxian'],
+    facts: [['Date', '2125 AD'], ['Place', 'The ferry pier on the Antarctic coast'], ['Betrayer', 'James Brown'], ['Pursuer', 'Croxian Mascar'], ['Result', 'James Brown pushed into the sea · the wanderer escapes north on the ferry']],
+    align: 'You should have learned to fear the man who kept telling you there was nothing to fear.',
+    paras: [
+      'James’s rover carried them across the ice to the ferry. At the pier, James stopped. He told the wanderer they had been a fool to trust him: he had kept them close only to watch them, and he had never meant for the two of them to leave together. He wanted their supplies and their power cells, and a deck full of places where a man could disappear on the way to Africa. He had a weapon inside his coat.',
+      'The wanderer pushed him into the water.',
+      'Then a man stepped off the ferry. James Brown, he said, had owed his people a great deal. He was meant to hand the wanderer over, not rob them and run. He gave his name as Croxian Mascar, promised it would be the last name the wanderer ever learned, and gave chase along the shore.',
+      'The wanderer outran him and made the ferry. Antarctica slipped below the horizon, with weeks at sea still ahead.'
+    ] },
+  { id: 'ch2orion', story: 2, showIf: () => evDone(2, 'talkedOrion'), name: 'THE MAN WHO ASKED NO QUESTIONS', title: 'Rescue · Orion’s home, Africa', sub: 'Chapter II · 2125 AD', cast: ['orion'],
+    facts: [['Date', '2125 AD'], ['Place', 'Orion’s home, on the edge of Ad-Nostra, Africa'], ['Rescuer', 'Orion Mascar'], ['Fever', 'Fourteen days'], ['A name in the fever', 'Croxian Mascar']],
+    align: 'A stranger on the road, and an old soldier who took them in without asking why.',
+    paras: [
+      'Weeks at sea, on a ferry deck baking under the equatorial sun, finished what the ice had started. The wanderer came ashore in Africa, and their body gave out on the first road they found.',
+      'The man who found them asked no questions. He carried them to his home on the edge of Ad-Nostra, the harbour town, and kept them alive. For fourteen days the wanderer drifted in and out of fever, hearing a voice that talked to them as though they could answer.',
+      'His name was Orion Mascar. When the wanderer finally whispered the name Croxian Mascar, the old man went very quiet. He did not say why.'
+    ] },
+  { id: 'ch2lions', story: 2, showIf: () => evDone(2, 'metNico'), name: 'THE NIGHT OF THE LIONS', title: 'Siege · the farmhouse east of town', sub: 'Chapter II · 2125 AD', cast: ['nico', 'orion'],
+    facts: [['Date', '2125 AD'], ['Place', 'A farmhouse on the savanna east of Ad-Nostra'], ['Caller', 'Nico'], ['Attackers', 'A pride of lions'], ['Born that night', 'Orion, Nico’s son'], ['Result', 'The lions driven off · Nico and her newborn safe']],
+    align: 'A child born to the sound of gunfire, named for the man who came running.',
+    paras: [
+      'The wanderer was out exploring with Orion when the call came in: lions at a farmhouse east of town, and a woman alone inside. They ran for it, and they drove the lions off together.',
+      'Inside they found Nico, and her son, born that very night. He had not made a sound. She had named him Orion, after the three stars of Orion’s Belt that her grandmother used to show her from that porch. It was a promise she had made long before she ever met Orion Mascar.',
+      'Her husband had gone into town the day before for supplies, and he had not come back. Orion promised her they would find him.'
+    ] },
+  { id: 'ch2lantern', story: 2, showIf: () => evDone(2, 'arrested'), name: 'THE BRAWL AT THE SALT LANTERN', title: 'Brawl · Ad-Nostra', sub: 'Chapter II · 2125 AD', cast: ['orion'],
+    facts: [['Date', '2125 AD'], ['Place', 'The Salt Lantern, a cantina in Ad-Nostra'], ['Found', 'Daniel Brown, Nico’s husband'], ['Fight', 'Orion Mascar against Daniel Brown'], ['Result', 'Daniel beaten · the wanderer and Orion arrested by the Federation Guard']],
+    align: 'Orion did the right thing, and as usual he did not ask permission first.',
+    paras: [
+      'In Ad-Nostra the wanderer and Orion asked around for Nico’s husband. The gate warden, a shopkeeper and an old man each gave them a piece of it, and his name with it: Daniel Brown. The trail ended at The Salt Lantern.',
+      'He was there, and he was not alone. Your wife is lying in that farmhouse with your newborn son in her arms, Orion told him, and you are here. The fight did not last long. That’s for Nico, Orion said, standing over him.',
+      'Then the Federation Guard burst in. A beating in a Federation port, the officer said, was a matter for New London, and the wanderer and Orion were taken there under arrest.'
+    ] },
+  { id: 'ch2trial', story: 2, showIf: () => evDone(2, 'trialDone'), name: 'THE TRIAL IN THE HOUSE OF COMMONS', title: 'Trial · New London', sub: 'Chapter II · 2125 AD', cast: ['leader:human', 'hawthorne', 'nico', 'orion'],
+    facts: [], align: '', paras: [],
+    dyn: () => {
+      const hostile = wanderer && wanderer.ch2 && wanderer.ch2.hawMood === 'hostile';
+      return {
+        facts: [['Date', '2125 AD'], ['Place', 'The House of Commons, New London'], ['Presiding', 'Darius Ancin, President of the Human Federation of Sol'], ['Prosecuting', 'Thomas Hawthorne, Head of Government'], ['Accused', 'The wanderer · Orion Mascar'], ['Charge', 'Assault on a Federation citizen in a Federation port'], ['Result', 'Guilty · Nico’s testimony · Hawthorne exposed']],
+        align: 'A trial for a cantina brawl that ended with the Federation’s Head of Government coming for the accused himself.',
+        paras: [
+          `New London, capital of the Human Federation of Sol, let the wanderer and Orion walk Westminster while they waited for the Council. There they met Thomas Hawthorne, the Federation’s Head of Government, who ${hostile ? 'told the wanderer to call him General, called Orion a war hero running errands for aliens, and promised chains for one step out of line' : 'apologised for the guards, called the cantina a misunderstanding and promised the Council’s summons was a formality'}. Orion did not believe a word of it.`,
+          'In the House of Commons, President Darius Ancin heard the charge. Hawthorne said the facts were not in dispute. Orion said Daniel had been cheating on Nico while she lay in that farmhouse with his newborn son. Whatever Daniel did, Darius answered, it was not Orion’s to punish, and he found them both guilty.',
+          'Then Nico burst in. The woman with Daniel in the cantina, she said, was one of Hawthorne’s spies, sent by Hawthorne himself. And Terra Imperia had hired James Brown to get close to the wanderer in Antarctica; when James failed, they sent Croxian Mascar to finish the job. Orion told the House about the nightmares, and the name the wanderer kept screaming: Croxian.',
+          'Darius turned to his Head of Government and asked what he had done. Hawthorne’s answer was rage. He had carried the Federation on his back while Darius made speeches, he said, and he would not be brought down by a farmer’s wife and a stray from the ice. He came for them himself. Orion shouted the only thing left to say: run.'
+        ]
+      };
+    } },
+  { id: 'ch2escape', story: 2, showIf: () => evDone(2, 'escapedLondon'), name: 'THE ESCAPE FROM NEW LONDON', title: 'Escape · Parliament Square', sub: 'Chapter II · 2125 AD', cast: ['croxian', 'malia', 'nico', 'orion'],
+    facts: [['Date', '2125 AD'], ['Place', 'Westminster · the ship in Parliament Square'], ['Pursuers', 'Croxian Mascar · Malia de Toro, on Hawthorne’s orders'], ['Escaped', 'The wanderer · Orion Mascar · Nico'], ['Result', 'The ship leaves Earth with the wanderer aboard']],
+    align: 'A father met his son again across Parliament Square, and neither of them stopped.',
+    paras: [
+      'The wanderer, Orion and Nico ran out of the House of Commons into Westminster, making for the ship on the lawn of Parliament Square. Behind them Hawthorne called for Croxian and Malia to bring them to him.',
+      'Croxian Mascar was waiting. Hello again, wanderer. It was the first time in years that Orion had seen his son. Croxian, son, what have they done to you? Croxian did not answer. Nico put herself between them, and together they fought Croxian and Malia de Toro until Malia called the retreat.',
+      'They boarded the ship and lifted off while Hawthorne shouted after them that there was nowhere in this galaxy the Federation could not reach them. Earth fell away below, and for the first time the wanderer was out among the stars.'
+    ] },
+  // ---- the nightmare above Earth at the start of Chapter III: one per species, and you only ever see your own ----
+  { id: 'nmChompy', story: 3, showIf: () => nmSeen() === 'chompy', name: 'THE NIGHTMARE OF SEVIRRUS', title: 'Nightmare · above Earth', sub: 'Chapter III · Chompy', cast: ['sevirrus'],
+    facts: [['When', 'Just after the escape from New London'], ['Dreamer', 'The wanderer, a Chompy'], ['Seen', 'Lord Sevirrus · Emperor Jakal Chompjak XVI · Damix Chompjak · the High Priest of Destruction'], ['Places', 'The fields of Carax · the throne hall of Alphinos'], ['Woken by', 'Orion Mascar · Nico']],
+    align: 'Not a memory of their own, but one every Chompy carries: the prince who knelt to Zark.',
+    paras: [
+      'The ship had barely cleared Earth when it happened again, like the episodes on the ice and in Westminster. This time the wanderer did not see Antarctica. They saw the history every Chompy grows up with, as though they had been standing in it.',
+      'They saw Sevirrus on Carax among the kneeling settlers. Everyone kneels, he said; some of them just need help. They saw him in the throne hall of Alphinos, sending for the head of his father, Emperor Jakal Chompjak XVI. They saw Damix Chompjak throw himself in the way, and Jakal tell his son at the very end that he loved him. I know, Sevirrus answered. That’s why it had to be you.',
+      'The last thing they saw was Carax again, and the High Priest of Destruction welcoming the Prince of Zark home.',
+      'They woke screaming the name Sevirrus. To Orion it was a name out of the history books. Not to the Chompy, Nico said. To them it is still an open wound.'
+    ] },
+  { id: 'nmErisian', story: 3, showIf: () => nmSeen() === 'erisian', name: 'THE VISION OF THE CITADEL', title: 'Vision · above Earth', sub: 'Chapter III · Erisian', cast: ['leader:erisian', 'alexia'],
+    facts: [], align: '', paras: [],
+    dyn: ch => {
+      const came = ch >= 4 || (ch === 3 && (forceCh === 3 || !!(wanderer && wanderer.ch3 && wanderer.ch3.alexiaCoup)));
+      return {
+        facts: [['When', 'Just after the escape from New London'], ['Dreamer', 'The wanderer, an Erisian'], ['Place', 'The Citadel el Erisconos, on Eris'], ['Seen', 'Alexia Erisconos · Vishara Erisconos, Matriarch of Eris'], ['Came true', came ? 'Yes. Alexia overthrew her sister and seized Eris' : 'Not yet'], ['Woken by', 'Orion Mascar · Nico']],
+        align: 'Not a memory but a warning: a future that had not happened yet.',
+        paras: [
+          'The ship had barely cleared Earth when it happened again, like the episodes on the ice and in Westminster. This time the wanderer saw something that had not happened yet.',
+          'Citadel el Erisconos, a voice said. Not yet. But soon. Alexia Erisconos, banished from the Citadel, walked up the processional to her sister’s throne. Vishara called for her guards. Your guards answer to me now, sister, Alexia told her. They have for a long time.',
+          'Vishara reminded her that everything she was, Vishara had given her: the name, the Citadel, Eris itself. You gave me a cage, Alexia said, and called it a crown. She had the Matriarch taken below, then turned to the wanderer. When I’m finished with her, she said, I’ll come for you.',
+          `They woke shouting Alexia’s name. Nico could hardly believe it: the Matriarch’s own sister? Whatever you saw hasn’t happened, Orion said. Let’s keep it that way.${came ? ' It happened anyway.' : ''}`
+        ]
+      };
+    } },
+  { id: 'nmHuman', story: 3, showIf: () => nmSeen() === 'human', name: 'THE NIGHTMARE OF NEW LONDON', title: 'Nightmare · above Earth', sub: 'Chapter III · Human', cast: ['nico', 'orion', 'hawthorne', 'croxian'],
+    facts: [['When', 'Just after the escape from New London'], ['Dreamer', 'The wanderer, a human'], ['Relived', 'The farmhouse · the Salt Lantern · the arrest · Hawthorne · the trial · Croxian Mascar'], ['Woken by', 'Orion Mascar · Nico']],
+    align: 'No history and no prophecy. Only the last few weeks, all over again.',
+    paras: [
+      'The ship had barely cleared Earth when it happened again, like the episodes on the ice and in Westminster. This time there was no future and no distant past, only Chapter II all over again.',
+      'Nico on the farmhouse porch, saying her husband should have been back by now. Daniel Brown in The Salt Lantern, and Orion’s fist. The Federation Guard bursting in. Hawthorne, smiling, asking them to stay where his guards could see them. Darius Ancin finding them guilty, and Hawthorne’s ENOUGH.',
+      'And last, Croxian Mascar walking out of the dark: Hello again, wanderer. Run, then, Hawthorne shouted after them. There is nowhere in this galaxy the Federation cannot reach you.',
+      'It’s the cantina again, isn’t it, Orion asked when they woke. The trial. Hawthorne. Nico told them to look at her: it was over, and they had got out, all three of them. He can’t reach us up here, Orion said. Not today.'
+    ] },
+  { id: 'nmGrek', story: 3, showIf: () => nmSeen() === 'grek', name: 'THE PROPHECY IN THE DARK', title: 'Prophecy · above Earth', sub: 'Chapter III · Grek', cast: [],
+    facts: [['When', 'Just after the escape from New London'], ['Dreamer', 'The wanderer, a Grek'], ['Speaker', 'A voice in the dark'], ['Names given', 'None'], ['Woken by', 'Orion Mascar · Nico']],
+    align: 'Shapes, never faces. The Grek say their dreams come true.',
+    paras: [
+      'The ship had barely cleared Earth when it happened again, like the episodes on the ice and in Westminster. This time there were no faces at all, only shapes, and a voice in the dark.',
+      'Hear it, child of the ice. The stars are already burning. A man who carries a federation on his back will fall, and no one will catch him. A black banner will rise where the golden one was torn down, and ships beyond counting will darken the sky.',
+      'An empire of glass will break, and its land will be given to one who never asked for it. The red world at the heart of the stars will burn beneath the boots of its friends. And at the end of it all, you will stand alone at the centre of everything, and you will choose.',
+      'You were talking in riddles, Orion told them when they woke. A man falling. A black banner. An empire of glass. The Grek say their dreams come true, said Nico. Then let’s hope this one’s wrong, said Orion.'
     ] },
   { id: 'carax2', unlockAt: 5, name: 'THE SIEGE OF CARAX', title: 'The Catharsis · Carax', sub: 'Chapter V', cast: [], stage: 'zark',
     facts: [['Date', 'After the war of Chapter IV'], ['Place', 'Carax · the five-floor bastion, the Catharsis capital'], ['Attackers', 'The Chompy Empire · Archamus · the Erisian Empire · the Grek · the Human Federation of Sol'], ['Defender', 'The Catharsis, under Lord Zark'], ['At the summit', 'Archamus · the Wanderer · Vishara Erisconos · Hak Chompjak V · Am-Grek · Darius Ancin'], ['Result', 'Lord Zark defeated · the Catharsis destroyed · Thomas Hawthorne killed · its worlds pass to the Wanderer']],
@@ -18079,10 +18227,12 @@ function pediaPreview() {
   if (pedia.tab === 'events' && pedia.cur && pedia.cur.stage === 'zark' && !pdEntryLocked(pedia.cur)) { pdZarkStage(tok); return; }
   if (pedia.tab === 'events') {
     const all = [...PEDIA_ANCIENT, ...PEDIA_TI, ...COMPANIONS];
-    const cast = pedia.cur ? (pedia.cur.cast || []).filter(id => chNow() >= (EV_CAST[id] || 99)).map(id => all.find(L => L.id === id)).filter(Boolean) : [];
-    cast.forEach((L0, i) => { const L = pdResolve(L0), n = cast.length, x = n > 1 ? (i - (n - 1) / 2) * 1.9 : 0;
-      loadFigure(L).then(h => { if (!h || tok !== cc.loadTok || state !== 'pedia') return; h.userData.keep = true; h.position.set(x, 0, 0); h.rotation.y = -x * .15; ccRoot.add(h); }).catch(() => {}); });
-    cc.lookY = 1.1; cc.dist = cast.length > 1 ? 6.4 : 4.6;
+    const story = !!(pedia.cur && pedia.cur.story), asMet = [...COMPANIONS, ...PEDIA_ANCIENT, ...PEDIA_TI]; // your own story shows people as you met them
+    const cast = pedia.cur ? (pedia.cur.cast || []).filter(id => story || chNow() >= (EV_CAST[id] || 99))
+      .map(id => /^leader:/.test(id) ? { sp: id.slice(7) } : (story ? asMet : all).find(L => L.id === id)).filter(Boolean) : [];
+    cast.forEach((L0, i) => { const L = story || L0.sp ? L0 : pdResolve(L0), n = cast.length, x = n > 1 ? (i - (n - 1) / 2) * (n > 3 ? 1.2 : 1.9) : 0;
+      (L.tag ? loadFigure(L) : loadLeader(L.sp)).then(h => { if (!h || tok !== cc.loadTok || state !== 'pedia') return; h.userData.keep = true; h.position.set(x, 0, 0); h.rotation.y = -x * .15; ccRoot.add(h); }).catch(() => {}); });
+    cc.lookY = 1.1; cc.dist = cast.length > 3 ? 7.6 : cast.length > 1 ? 6.4 : 4.6;
     return;
   }
   if (PRIME_TABS[pedia.tab]) {
