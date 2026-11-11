@@ -327,6 +327,15 @@ Every one is landable, with its own look:
 
 The galaxy map marks moons, dwarf planets and worlds with open water. Inner moons fly the Federation's flag; the outer ones are unclaimed. Icy shells use a new terrain type (`ice` in `PKIND`). Coming down over open water (Earth's oceans, Europa's cracks), the Nostra sets down on the nearest shore.
 
+### Planet types and weather (No Man's Sky style)
+Every world now has a scanner description: its **type** and its **weather**. You see it on the galaxy map, in the space HUD as you approach, on the card when you land, on the big map, and under the minimap.
+- **Types** include Paradise, Faux Paradise, Lush, Verdant, Temperate, Ocean, Desert, Arid, Dusty, Scorched, Volcanic, Magma, Toxic, Caustic, Noxious, Frozen, Glacial, Arctic, Barren, Dead, Desolate, Gas Giant and Ice Giant, with "Moon", "Moonlet" or "Dwarf Planet" swapped in where it fits. Sol's worlds are written by hand (Venus: Toxic Planet · caustic acid storms; Mars: Dusty Planet · planet-wide dust storms; Titan: Hazy Moon · methane rainstorms; Io: Volcanic Moon · sulphur ash storms). The 490 generated systems get theirs from their world type and seed, the same every time.
+- **True paradise** worlds have **no storms at all**: Verdance and the new **Arcadia** (golden skies) in Halcyon, plus about 30 out in the generated galaxy.
+- **Faux paradise** worlds look exactly like paradise until the weather turns: the new **Siren** (Halcyon, flash superstorms with lightning), **Lorelei** (Thalassa Reach, hurricane-force storms over white beaches and lagoons) and **Mirage** (Ossian Drift, scorching firestorms), plus about 30 generated ones. Their first storm comes soon after you land.
+- **Storms** come and go: calm for a minute and a half to three minutes, a **weather warning** ten seconds before, then 45 to 75 seconds of storm. Each kind looks different: rain, superstorm (with lightning and thunder), dust, blizzard, ash, firestorm, toxic rain and methane rain. The sky darkens, the haze closes in and the wind picks up.
+- **Shelter:** a dangerous storm wears down your suit (the heat bar). Shelter under the Nostra (within about 10 m of it), in a shelter you built, by a heater, in a vehicle, or under water. If your suit runs out, the exosuit's emergency recovery puts you back at your ship. Gentle rain on lush worlds like Earth and Malana does no harm.
+- The minimap shows the weather: the type and "calm for now", then "⚠ Flash superstorm incoming", then the storm and how long it has left.
+
 ### The giants' smaller moons
 Forty-nine more moons, also all landable: little grey, red, dark or icy rocks, most of them lumpy rather than round.
 - **Jupiter:** Metis, Adrastea, Amalthea and Thebe close in; Leda, Himalia, Lysithea, Elara, Ananke, Carme, Pasiphae and Sinope far out.

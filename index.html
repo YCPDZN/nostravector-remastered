@@ -493,7 +493,9 @@ body.touch .touch-ui{display:block}
 .mmap canvas{width:150px;height:150px;display:block;border-radius:50%;box-shadow:0 0 0 1px rgba(var(--accRGB,150,220,255),.35),0 0 18px rgba(0,0,0,.6)}
 .mmap .cap{margin-top:6px;font-size:7.5px;letter-spacing:.32em;color:var(--mute);text-transform:uppercase;text-shadow:0 0 6px #000;white-space:nowrap}
 .mmap .cap b{color:var(--acc,#9fe6ff);font-weight:400}
-@media (max-width:720px),(pointer:coarse){ .mmap{width:108px;right:calc(var(--sr) + 66px)} .mmap canvas{width:108px;height:108px} .mmap .cap{font-size:6.5px;letter-spacing:.24em} }
+.mmap .wx{margin-top:3px;font-size:7px;line-height:1.6;letter-spacing:.2em;color:var(--mute);text-transform:uppercase;text-shadow:0 0 6px #000;white-space:normal;opacity:.85}
+.mmap .wx b{color:#ffb36b;font-weight:400}
+@media (max-width:720px),(pointer:coarse){ .mmap{width:108px;right:calc(var(--sr) + 66px)} .mmap canvas{width:108px;height:108px} .mmap .cap{font-size:6.5px;letter-spacing:.24em} .mmap .wx{font-size:6px;letter-spacing:.14em} }
 #xhud.cutting .mmap{opacity:0;pointer-events:none}
 @media (max-width:720px){
   .mmap{top:calc(var(--st) + 64px);right:calc(var(--sr) + 12px);width:96px} .mmap canvas{width:96px;height:96px}
@@ -973,7 +975,7 @@ body.touch .al-key{display:none}
 
 <!-- Exploration HUD -->
 <div id="xhud" class="hidden">
-  <div class="mmap" id="mmap"><canvas id="mmapC"></canvas><div class="cap" id="mmapCap"></div></div>
+  <div class="mmap" id="mmap"><canvas id="mmapC"></canvas><div class="cap" id="mmapCap"></div><div class="wx" id="mmWx"></div></div>
   <div class="x-obj"><div class="lvl" id="lvl"><b id="lvN">LV 1</b><div class="xpbar"><i id="xpI"></i></div><small id="xpT"></small></div><small id="xChap">CHAPTER I · ANTARCTICA</small><div id="xTasks"></div><div class="x-nav" id="xNav"></div><div class="bars"><div class="bar hp" id="hpBar"><i></i></div><div class="bar sta" id="staBar"><i></i></div><div class="bar jet" id="jetBar"><i></i></div><div class="bar heat" id="heatBar" title="Suit heat"><i></i></div></div>
     <div class="jcmd" id="jcmd"><button class="jbtn" id="jBtn"><span id="jWho">JAMES</span><b id="jMode">FOLLOWING</b><em>▾</em></button>
       <div class="jopts" id="jOpts"><div class="jwho" id="jWhoRow" style="display:none"></div><button data-m="mine"><kbd>1</kbd>Mine</button><button data-m="explore"><kbd>2</kbd>Explore</button><button data-m="base"><kbd>3</kbd>Meet me back at base</button><button data-m="wander"><kbd>4</kbd>Wander around</button><button data-m="follow"><kbd>5</kbd>Follow me</button><button data-a="share" class="al-deed good"><kbd>6</kbd>Share food</button><button data-a="threat" class="al-deed evil"><kbd>7</kbd>Intimidate</button><button data-m="dismiss" id="jDismiss" class="jdismiss"><kbd>8</kbd>Dismiss · wait aboard the Nostra</button></div>
@@ -4067,9 +4069,10 @@ function emergencyRecovery() {
   const p = player.position; if (isPl()) p.set(4, wHeight(4, 14.5), 14.5); else p.set(11.5, wHeight(11.5, 3), 3); vel.set(0, 0, 0); ex.snap = true; ex.air = false; worldUnstick();
   invState().heat = 60;
   if (companionOn() && james.ready && james.root.parent === wScene && comp.mode === 'follow') jTeleportNear();
-  sfx.thud(); notice('Exosuit · emergency recovery', 'RETURNED TO THE STATION', 4200);
+  sfx.thud(); notice('Exosuit · emergency recovery', isPl() ? 'BACK AT YOUR SHIP' : 'RETURNED TO THE STATION', 4200);
 }
 function stormTick(dt) {
+  if (isPl()) { planetWxTick(dt); return; } // planets have their own weather
   const c = ch1(), active = !!(c.stormTalk && !c.stormOver && !c.escaped); // never again once you've left Antarctica
   world.storm = clamp((world.storm || 0) + (active ? dt / 20 : -dt / 25), 0, 1);
   // the storm hits once it's at full strength (or as soon as you're inside, if you were quick)
@@ -4116,13 +4119,13 @@ function skyTick(dt) {
   const dl = smooth(-.14, .22, sunH), dusk = clamp(1 - Math.abs(sunH) / .28, 0, 1), sm = world.storm || 0; world.dayL = dl;
   const dark = world.stormDarkT ? smooth(0, 6, time - world.stormDarkT) * sm : 0; // the sky darkens when the storm hits
   // lights
-  if (world.hemi) world.hemi.intensity = (.16 + .89 * dl) * (1 - .35 * dark);
+  if (world.hemi) world.hemi.intensity = (.16 + .89 * dl) * (1 - .35 * dark) + (isPl() ? (world.flashA || 0) * 2.4 : 0); // lightning
   world.sun.intensity = 1.7 * dl * (1 - .7 * sm);
   world.sun.color.setRGB(1, lerp(.96, .72, dusk), lerp(.92, .55, dusk));
   // sky: night/dusk tint and the storm, layered over the sky panorama
   const nightA = (1 - dl) * .94, duskA = dusk * .45 * dl;
   envC.copy(DUSK_C).lerp(NIGHT_C, 1 - dl);
-  const stormC = envC2.copy(STORM_C).lerp(STORM_DARK_C, dark).lerp(NIGHT_C, (1 - dl) * .6);
+  const stormC = envC2.copy(isPl() && world.wxK && world.wxFogC ? world.wxFogC : STORM_C).lerp(STORM_DARK_C, dark * (isPl() ? .5 : 1)).lerp(NIGHT_C, (1 - dl) * .6);
   const baseA = Math.max(nightA, duskA), stormA = Math.min(.95, sm * 1.1);
   if (world.veil) {
     world.veil.material.color.copy(envC).lerp(stormC, stormA / Math.max(.001, stormA + baseA * (1 - stormA)));
@@ -4131,8 +4134,8 @@ function skyTick(dt) {
   if (world.stars) { world.stars.material.opacity = clamp((1 - dl) * (1 - sm * 1.2), 0, 1); world.stars.position.copy(camera.position); world.stars.visible = world.stars.material.opacity > .01; }
   // haze
   wScene.fog.color.set(areaFog()).lerp(DUSK_C, duskA * .6).lerp(NIGHT_C, (1 - dl) * .9).lerp(stormC, sm);
-  wScene.fog.density = isPl() ? (world.planet && world.planet.city ? .0015 + (1 - dl) * .001 : .0048 + (1 - dl) * .003) : curArea() === 'europe' ? .0042 + (1 - dl) * .003 : .0105 + .045 * sm * sm + (1 - dl) * .006; // London's air is clear enough to see the Eye from the square
-  world.snow.material.size = .08 + .07 * sm;
+  wScene.fog.density = isPl() ? (world.planet && world.planet.city ? .0015 + (1 - dl) * .001 + .012 * sm * sm : .0048 + (1 - dl) * .003 + .032 * sm * sm) : curArea() === 'europe' ? .0042 + (1 - dl) * .003 : .0105 + .045 * sm * sm + (1 - dl) * .006; // London's air is clear enough to see the Eye from the square
+  world.snow.material.size = isPl() && world.wxK ? world.wxK.size * (1 + sm * .6) : .08 + .07 * sm;
 }
 // ---- after the storm: James makes a bed, you sleep, and someone else is waiting in the dream ----
 const JAMES_BED = ['I’ll make a bed. Feel free to sleep.'];
@@ -6699,11 +6702,12 @@ function earthCoords(x, z) {
 let mapAcc = 0;
 function updateMinimap(dt) {
   mapAcc += dt;
-  if (MAP.big) { $('#bmLegSt').textContent = curArea() === 'antarctica' ? 'Station' : 'Teleporter'; renderMap($('#bigmapC'), 320, false, 6, false); const PL = isPl() ? world.planet.P : null; $('#bmTitle').textContent = (PL ? PL.name : AREA_INFO[curArea()].planet || 'Earth').toUpperCase(); $('#bmSub').textContent = PL ? `${((sysById(PL.sys) || {}).name || '').toUpperCase()} · ${PL.faction}` : `${AREA_INFO[curArea()].name.toUpperCase()} · ${earthCoords(player.position.x, player.position.z)}`; return; }
+  if (MAP.big) { $('#bmLegSt').textContent = curArea() === 'antarctica' ? 'Station' : 'Teleporter'; renderMap($('#bigmapC'), 320, false, 6, false); const PL = isPl() ? world.planet.P : null; $('#bmTitle').textContent = (PL ? PL.name : AREA_INFO[curArea()].planet || 'Earth').toUpperCase(); $('#bmSub').textContent = PL ? `${((sysById(PL.sys) || {}).name || '').toUpperCase()} · ${planetWx(PL).type} · ${PL.faction}` : `${AREA_INFO[curArea()].name.toUpperCase()} · ${earthCoords(player.position.x, player.position.z)}`; return; }
   if (mapAcc < 1 / 30) return; mapAcc = 0;
   renderMap($('#mmapC'), 110, true, 2, true);
   const q = questTarget(), p = player.position;
   $('#mmapCap').innerHTML = q ? `<b>◆</b> ${Math.round(Math.hypot(q.x - p.x, q.z - p.z))} m` : AREA_INFO[curArea()].name.toUpperCase();
+  const wxe = $('#mmWx'); if (wxe) { const t = isPl() ? wxLine() : ''; if (wxe.innerHTML !== t) wxe.innerHTML = t; }
 }
 function openMap(on) {
   if (on && (ex.mode !== 'world' || state !== 'explore')) return;
@@ -7961,7 +7965,7 @@ function applyAreaLook() {
   if (!pl && world.landShip) world.landShip.visible = false;
   wScene.fog.color.set(areaFog());
   const ice = !af && !eu && !pl;
-  if (world.snow) world.snow.visible = ice;
+  if (world.snow) { world.snow.visible = ice; if (ice) { world.snow.material.color.set(0xffffff); world.snow.material.opacity = .9; } }
   if (world.station) world.station.visible = ice;
   if (world.ferry) world.ferry.visible = ice;
   if (world.rover) world.rover.visible = ice && !!ch1().rover;
@@ -10476,7 +10480,7 @@ SOL.push(
   ];
   for (const [id, name, parent, r, orbit, ang, lk, minor, squash] of L) {
     const [low, mid, rock] = look[lk], s = 301 + SOL.length * 7;
-    SOL.push(Object.assign({ id, name, kind: 'rock', r, parent, orbit, ang, seed: s, c: { low, mid, rock }, faction: parent === 'jupiter' ? FED : FREE, minor: !!minor, squash: squash ? [1 + ((s * 37) % 30) / 100, .78 + ((s * 13) % 14) / 100, 1 + ((s * 29) % 20) / 100] : null }, AIR));
+    SOL.push(Object.assign({ id, name, kind: 'rock', r, parent, orbit, ang, seed: s, c: { low, mid, rock }, faction: parent === 'jupiter' ? FED : FREE, minor: !!minor, look: lk, squash: squash ? [1 + ((s * 37) % 30) / 100, .78 + ((s * 13) % 14) / 100, 1 + ((s * 29) % 20) / 100] : null }, AIR));
   }
 }
 /* ---- the galaxy: ten star systems. Sol, four from the lore, five uncharted. map: x, y on the galaxy map (the core at 0, 0;
@@ -10519,8 +10523,9 @@ const SYSTEMS = [
     ] },
   { id: 'thalassa', name: 'Thalassa Reach', star: { kind: 'star', name: 'Thalassa', r: 3600, col: '#e8f2ff', glow: ['rgba(236,244,255,1)', 'rgba(170,200,255,.5)', 'rgba(110,150,255,0)'], light: '#eef4ff', type: 'White star · A5V' },
     faction: UNCLAIMED, map: { x: .48, y: .1 }, home: 'thalassa',
-    desc: 'Uncharted. A bright white star with an ocean world almost drowned from pole to pole, and a pale ice giant further out.',
+    desc: 'Uncharted. A bright white star with an ocean world almost drowned from pole to pole, Lorelei closer in (white beaches, turquoise lagoons, and hurricanes), and a pale ice giant further out.',
     bodies: [
+      { id: 'lorelei', name: 'Lorelei', kind: 'earth', r: 1700, orbit: 38000, ang: 5.4, seed: 159, landBias: -.04, c: { sand: '#f4ecc8', low: '#48b070', forest: '#208050', rock: '#6a7068', snow: '#f8fcfc' }, sea: '#0a9ab8', atmo: '#90e8ff', clouds: '#ffffff', cloudCover: .55, sky: ['#30a8e0', '#d0f4ff'], fog: '#b0e4f4', faction: UNCLAIMED },
       { id: 'thalassa', name: 'Thalassa', kind: 'earth', r: 2500, orbit: 64000, ang: 2.4, seed: 151, landBias: -.09, c: { sand: '#e8dcb0', low: '#3f8a5a', forest: '#2a6a42', rock: '#6a6a62', snow: '#f4f8fc' }, sea: '#0f4a8a', atmo: '#8ac8ff', clouds: '#ffffff', cloudCover: .6, sky: ['#3a7ad8', '#c4e0ff'], fog: '#a8cdf0', faction: UNCLAIMED },
       { id: 'thalassa-g', name: 'Thalassa III', kind: 'gas', r: 5200, orbit: 150000, ang: .9, seed: 157, bands: ['#cfeaf0', '#b8dce6', '#e2f4f8'], atmo: '#d0f4ff', faction: 'Ice giant · no surface' }
     ] },
@@ -10540,15 +10545,18 @@ const SYSTEMS = [
     ] },
   { id: 'ossian', name: 'Ossian Drift', star: { kind: 'star', name: 'Ossian', r: 4600, col: '#cfe0ff', glow: ['rgba(214,228,255,1)', 'rgba(140,170,255,.55)', 'rgba(80,110,255,0)'], light: '#dce8ff', type: 'Blue giant · B2III' },
     faction: UNCLAIMED, map: { x: .1, y: -.62 }, home: 'ossian',
-    desc: 'Uncharted. A blue giant scorching a wide desert world, with a great ringed gas giant beyond.',
+    desc: 'Uncharted. A blue giant scorching a wide desert world, Mirage (green and gentle-looking, until the firestorms come), and a great ringed gas giant beyond.',
     bodies: [
+      { id: 'mirage', name: 'Mirage', kind: 'earth', r: 1600, orbit: 44000, ang: 4.0, seed: 185, landBias: .06, c: { sand: '#e8d4a0', low: '#8ab840', forest: '#4a8a28', rock: '#7a6a50', snow: '#fff8e8' }, sea: '#2a9a9a', atmo: '#c8e0ff', clouds: '#fff4e0', cloudCover: .35, sky: ['#5a8ad8', '#e0ecff'], fog: '#c8d8ec', faction: UNCLAIMED },
       { id: 'ossian', name: 'Ossian', kind: 'desert', r: 2100, orbit: 70000, ang: .3, seed: 181, c: { low: '#c8b89a', mid: '#e8dcc4', rock: '#8a7a62', snow: '#f8f4ec' }, atmo: '#bcd4ff', sky: ['#5a7ac8', '#d8e4f8'], fog: '#b8c8e4', faction: UNCLAIMED },
       { id: 'ossian-g', name: 'Ossian V', kind: 'gas', r: 9400, orbit: 150000, ang: 2.9, seed: 191, bands: ['#d8c8e8', '#b8a0d0', '#efe4f8', '#9a80b8'], rings: true, spot: true, atmo: '#e0d0ff', faction: 'Gas giant · no surface' }
     ] },
   { id: 'halcyon', name: 'Halcyon', star: { kind: 'star', name: 'Halcyon', r: 3500, col: '#fff6d8', glow: ['rgba(255,248,220,1)', 'rgba(255,220,150,.5)', 'rgba(255,190,90,0)'], light: '#fff4dc', type: 'Yellow dwarf · G5V' },
     faction: UNCLAIMED, map: { x: -.3, y: .7 }, home: 'verdance',
-    desc: 'Uncharted. A quiet yellow sun and a lush green world, Verdance, with no one on it at all.',
+    desc: 'Uncharted. A quiet yellow sun and three green worlds with no one on them at all. Verdance and golden Arcadia are true paradises, without a single storm. Siren, closer in, is just as beautiful, and flash superstorms tear across it.',
     bodies: [
+      { id: 'siren', name: 'Siren', kind: 'earth', r: 2000, orbit: 36000, ang: 1.6, seed: 201, landBias: .05, c: { sand: '#e8e0b0', low: '#3aa060', forest: '#1a7044', rock: '#5a6a60', snow: '#f0faf4' }, sea: '#0a7a8a', atmo: '#7ae8d0', clouds: '#e8f8f4', cloudCover: .7, sky: ['#2a9a9a', '#c8f4e8'], fog: '#9adcd0', faction: UNCLAIMED },
+      { id: 'arcadia', name: 'Arcadia', kind: 'earth', r: 1900, orbit: 84000, ang: 2.2, seed: 203, landBias: .1, c: { sand: '#f0dca0', low: '#7ab048', forest: '#3a8030', rock: '#8a7a60', snow: '#fffaf0' }, sea: '#1a8aa8', atmo: '#ffe0b0', clouds: '#fffaf0', cloudCover: .3, sky: ['#e8a070', '#ffe8c8'], fog: '#f0d8b8', faction: UNCLAIMED },
       { id: 'verdance', name: 'Verdance', kind: 'earth', r: 2300, orbit: 56000, ang: 4.8, seed: 197, landBias: .12, c: { sand: '#d0c48e', low: '#5a9a3a', forest: '#2a6a24', rock: '#6a6252', snow: '#f0f4ec' }, sea: '#1a5a7a', atmo: '#a8e0ff', clouds: '#ffffff', cloudCover: .45, sky: ['#4a8ad8', '#cde6f6'], fog: '#b0d0e6', faction: UNCLAIMED },
       { id: 'verdance-m', name: 'Lull', kind: 'rock', r: 560, parent: 'verdance', orbit: 7400, ang: .7, seed: 199, c: { low: '#7a766e', mid: '#a8a29a', rock: '#55514a' }, atmo: null, sky: ['#020205', '#0c0c10'], fog: '#18181b', faction: UNCLAIMED }
     ] }
@@ -10570,6 +10578,7 @@ const SYSTEMS = [
   const W = STARS.reduce((t, x) => t + x[0], 0), starOf = () => { let r = R() * W; for (const x of STARS) if ((r -= x[0]) < 0) return x; return STARS[0]; };
   const used = new Set(SYSTEMS.map(S => S.name));
   const world = (type, P) => { // fills in a world's look by type
+    P.gtype = type; // remembered for the planet's description (lush, arid, toxic...); no random draw, so the galaxy doesn't change
     const h = R() * 360;
     if (type === 'lush' || type === 'ocean') { const fh = pick([105, 95, 125, 140, 165, 285, 25, 330]); return Object.assign(P, { kind: 'earth', landBias: type === 'ocean' ? -.09 - R() * .04 : G() * .07, c: { sand: hsl(42 + G() * 10, 40, 70), low: hsl(fh, 42, 34), forest: hsl(fh + 12, 48, 19), rock: hsl(28, 12, 38), snow: hsl(210, 20, 94) }, sea: hsl(205 + G() * 25, 60, 28), atmo: hsl(205 + G() * 30, 80, 72), clouds: '#ffffff', cloudCover: .3 + R() * .35, sky: [hsl(212 + G() * 20, 55, 50), hsl(205, 55, 82)], fog: hsl(208, 40, 75) }); }
     if (type === 'arid') { const dh = 15 + R() * 35; return Object.assign(P, { kind: 'desert', c: { low: hsl(dh, 45, 38), mid: hsl(dh + 5, 45, 60), rock: hsl(dh - 6, 40, 24), snow: hsl(dh, 20, 90) }, atmo: R() < .7 ? hsl(dh + 5, 80, 70) : null, clouds: R() < .3 ? '#fff4e6' : null, cloudCover: .2, sky: [hsl(dh, 40, 44), hsl(dh + 10, 60, 78)], fog: hsl(dh, 45, 62) }); }
@@ -10624,6 +10633,105 @@ ALL_BODIES.push({ id: 'archiostal-gardens', name: 'Archiostal', dock: 'archiosta
   c: { sand: '#5e9a44', low: '#4f8a3a', forest: '#2a6a2a', rock: '#7a8a70', snow: '#eef4e8' }, sea: '#2a7a8a', atmo: null, sky: ['#a8dcc8', '#f4fff0'], fog: '#cfe8d8', faction: 'The Order of Archamus · garden station of the Grek' });
 ALL_BODIES.forEach(P => { if (P.c) for (const k in P.c) P.c[k] = C3(P.c[k]); P.land = P.kind !== 'gas' && P.kind !== 'station'; });
 const sysById = id => SYSTEMS.find(S => S.id === id) || SYSTEMS[0];
+
+/* ---- what kind of world it is, and its weather, the way a scanner would put it (No Man's Sky style). A true paradise has no storms;
+   a faux paradise looks just like one, until a storm comes. ---- */
+const STORMS = {
+  rain: { name: 'Rainstorm', col: '#a8bccc', fog: '#4e5c6a', fall: -18, wind: .5, size: .05, op: .55, haz: 0 },
+  super: { name: 'Flash superstorm', col: '#c8dcea', fog: '#2a3440', fall: -26, wind: 1.9, size: .06, op: .7, haz: 1.6, bolt: true },
+  dust: { name: 'Dust storm', col: null, fog: null, fall: -.8, wind: 2.6, size: .13, op: .6, haz: .7 },
+  snow: { name: 'Blizzard', col: '#ffffff', fog: '#b9c6d3', fall: -2.4, wind: 2, size: .1, op: .9, haz: 1 },
+  ash: { name: 'Ash storm', col: '#4a4440', fog: '#3a2e28', fall: -1.6, wind: 1.4, size: .11, op: .8, haz: .9 },
+  ember: { name: 'Firestorm', col: '#ff8a3a', fog: '#6a2a14', fall: 1.2, wind: 1.6, size: .09, op: .9, haz: 1.5 },
+  toxic: { name: 'Toxic storm', col: '#c8f070', fog: '#6a7a30', fall: -12, wind: .9, size: .06, op: .6, haz: 1.2 },
+  methane: { name: 'Methane rainstorm', col: '#d8a050', fog: '#7a5420', fall: -11, wind: .6, size: .06, op: .55, haz: .25 }
+};
+const AIRLESS_WX = 'No atmosphere';
+//   id: [type, weather, storm kind, storm strength]
+const PTYPES = {
+  mercury: ['Scorched Planet', 'No atmosphere · superheated days'], venus: ['Toxic Planet', 'Caustic acid storms', 'toxic', .85], earth: ['Lush Planet', 'Mild · occasional rain', 'rain', .35],
+  moon: ['Dead Moon', AIRLESS_WX], mars: ['Dusty Planet', 'Planet-wide dust storms', 'dust', .6], phobos: ['Lifeless Moon', AIRLESS_WX], deimos: ['Lifeless Moon', AIRLESS_WX],
+  ceres: ['Barren Dwarf Planet', AIRLESS_WX], io: ['Volcanic Moon', 'Sulphur ash storms', 'ash', .7], europa: ['Frozen Moon', 'No atmosphere · an ocean below the ice'],
+  ganymede: ['Icy Moon', AIRLESS_WX], callisto: ['Cratered Moon', AIRLESS_WX], mimas: ['Dead Moon', AIRLESS_WX], enceladus: ['Glacial Moon', 'Ice geysers · no storms'],
+  rhea: ['Icy Moon', AIRLESS_WX], titan: ['Hazy Moon', 'Methane rainstorms', 'methane', .5], iapetus: ['Two-toned Moon', AIRLESS_WX], miranda: ['Fractured Moon', AIRLESS_WX],
+  titania: ['Icy Moon', AIRLESS_WX], oberon: ['Icy Moon', AIRLESS_WX], triton: ['Frozen Moon', 'Nitrogen geysers · thin air'], pluto: ['Frozen Dwarf Planet', 'Thin haze · no storms'],
+  charon: ['Icy Moon', AIRLESS_WX], haumea: ['Icy Dwarf Planet', AIRLESS_WX], makemake: ['Frozen Dwarf Planet', AIRLESS_WX], eris: ['Frozen Dwarf Planet', 'Frigid, still air'],
+  dysnomia: ['Dead Moon', AIRLESS_WX], tethys: ['Icy Moon', AIRLESS_WX], dione: ['Icy Moon', AIRLESS_WX], ariel: ['Icy Moon', AIRLESS_WX], umbriel: ['Dark Moon', AIRLESS_WX],
+  malana: ['Lush Planet', 'Gentle rain', 'rain', .3], carax: ['Fortress World', AIRLESS_WX], aridaxx: ['Exotic Planet', 'Warm violet winds'], steca: ['Volcanic Planet', 'Burning ash storms', 'ash', .8],
+  janira: ['Lush Planet', 'Warm rain', 'rain', .3], thalassa: ['Ocean World', 'Rolling sea squalls', 'rain', .55], vey: ['Volcanic Planet', 'Firestorms', 'ember', .85], 'vey-moon': ['Dead Moon', AIRLESS_WX],
+  nadir: ['Frozen Planet', 'Raging blizzards', 'snow', .9], 'nadir-ii': ['Dead Planet', AIRLESS_WX], ossian: ['Scorched Planet', 'Superheated sandstorms', 'dust', .85],
+  verdance: ['Paradise Planet', 'Clear skies · no storms'], 'verdance-m': ['Barren Moon', AIRLESS_WX], arcadia: ['Paradise Planet', 'Balmy breezes · no storms'],
+  siren: ['Faux Paradise Planet', 'Flash superstorms', 'super', 1], lorelei: ['Faux Paradise Planet', 'Hurricane-force storms', 'super', .95], mirage: ['Faux Paradise Planet', 'Scorching firestorms', 'ember', 1],
+  'archiostal-gardens': ['Garden Station', 'Artificial sky · no storms']
+};
+const wxHash = (s, k) => { let x = Math.imul((s | 0) ^ Math.imul(k + 1, 0x9E3779B1 | 0), 0x85EBCA6B | 0); x ^= x >>> 13; x = Math.imul(x, 0xC2B2AE35 | 0); x ^= x >>> 16; return (x >>> 0) / 4294967296; }; // the same answer for a world every time
+const wxPick = (a, s, k) => a[Math.floor(wxHash(s, k) * a.length)];
+function planetWx(P) {
+  if (P._wx) return P._wx;
+  const s = P.seed || 1, moon = !!P.parent, w = moon ? 'Moon' : P.dwarf ? 'Dwarf Planet' : 'Planet', T = t => t.replace('Planet', w);
+  let e = PTYPES[P.id];
+  if (!e) {
+    const g = P.gtype || (P.kind === 'earth' ? 'lush' : P.kind === 'venus' ? 'toxic' : P.kind === 'desert' ? (P.seaGlow ? 'lava' : 'arid') : P.kind === 'ice' ? 'frozen' : 'barren'), air = !!P.atmo, r = wxHash(s, 1);
+    if (P.kind === 'station') e = ['Space Station', 'Fly in to dock'];
+    else if (P.kind === 'gas') e = [/Ice giant/i.test(P.faction || '') ? 'Ice Giant' : 'Gas Giant', 'Crushing storms · no surface'];
+    else if (P.minor) e = [{ ice: 'Icy Moonlet', dark: 'Dark Moonlet', red: 'Rusty Moonlet' }[P.look] || 'Rocky Moonlet', AIRLESS_WX];
+    else if (g === 'lush' && r < .2) e = Object.assign([T(wxPick(['Paradise Planet', 'Idyllic Planet', 'Rainbow Planet', 'Blissful Planet', 'Halcyon Planet'], s, 2)), wxPick(['Clear skies', 'Balmy breezes', 'Beautiful days', 'Gentle breezes', 'Perfect weather'], s, 3) + ' · no storms'], { par: 1 });
+    else if (g === 'lush' && r < .4) e = [T('Faux Paradise Planet'), wxPick(['Flash superstorms', 'Hurricane-force storms', 'Violent electrical storms'], s, 3), 'super', .9 + wxHash(s, 4) * .1];
+    else if (g === 'lush') e = [T(wxPick(['Lush Planet', 'Verdant Planet', 'Temperate Planet', 'Humid Planet', 'Bountiful Planet', 'Flourishing Planet'], s, 2)), wxPick(['Light showers', 'Warm rain', 'Humid, with rain', 'Mild rain'], s, 3), 'rain', .25 + wxHash(s, 4) * .2];
+    else if (g === 'ocean') e = [T(wxPick(['Ocean Planet', 'Water Planet', 'Tropical Ocean Planet'], s, 2)), wxPick(['Rolling squalls', 'Sea storms', 'Heavy rain'], s, 3), 'rain', .4 + wxHash(s, 4) * .25];
+    else if (g === 'arid') { const hot = r < .35; e = [T(hot ? wxPick(['Scorched Planet', 'Parched Planet', 'Blasted Planet'], s, 2) : wxPick(['Desert Planet', 'Arid Planet', 'Dusty Planet', 'Sandy Planet'], s, 2)), air ? (hot ? 'Superheated sandstorms' : wxPick(['Sandstorms', 'Choking dust storms', 'Dusty winds'], s, 3)) : AIRLESS_WX, air ? 'dust' : null, (hot ? .75 : .4) + wxHash(s, 4) * .2]; }
+    else if (g === 'lava') e = [T(wxPick(['Volcanic Planet', 'Magma Planet', 'Molten Planet', 'Infernal Planet', 'Scorched Planet'], s, 2)), wxPick(['Firestorms', 'Burning ash storms', 'Ash and cinders'], s, 3), r < .5 ? 'ember' : 'ash', .7 + wxHash(s, 4) * .25];
+    else if (g === 'toxic') e = [T(wxPick(['Toxic Planet', 'Caustic Planet', 'Poisonous Planet', 'Noxious Planet', 'Acidic Planet'], s, 2)), wxPick(['Toxic rain', 'Acid storms', 'Caustic downpours'], s, 3), 'toxic', .6 + wxHash(s, 4) * .35];
+    else if (g === 'frozen') e = [T(wxPick(['Frozen Planet', 'Glacial Planet', 'Icy Planet', 'Freezing Planet', 'Arctic Planet'], s, 2)), air ? wxPick(['Blizzards', 'Freezing storms', 'Icy squalls'], s, 3) : AIRLESS_WX, air ? 'snow' : null, .55 + wxHash(s, 4) * .4];
+    else e = [T(wxPick(['Barren Planet', 'Dead Planet', 'Lifeless Planet', 'Rocky Planet', 'Desolate Planet', 'Airless Planet'], s, 2)), AIRLESS_WX];
+  }
+  const [type, wx, k, power] = e, S0 = k && STORMS[k];
+  let storm = null;
+  if (S0) { storm = Object.assign({ k, power: power || .5 }, S0); if (k === 'dust') { const m = new THREE.Color(P.c ? P.c.mid : '#c8a070'); storm.col = '#' + m.getHexString(); storm.fog = '#' + m.clone().multiplyScalar(.6).getHexString(); } }
+  return (P._wx = { type, wx, storm, paradise: !storm && (!!e.par || /Paradise/.test(type)), faux: /Faux Paradise/.test(type) });
+}
+const wxTag = P => { const W = planetWx(P); return `${W.type} · ${W.wx}`; };
+// the weather where you're standing: calm, a warning, then the storm, then calm again
+function wxReset() { world.wx = null; world.storm = 0; world.stormDarkT = 0; world.flashA = 0; }
+function planetWxTick(dt) {
+  const P = world.planet && world.planet.P, W = P && planetWx(P), S = W && W.storm;
+  if (!S) { world.storm = clamp((world.storm || 0) - dt / 6, 0, 1); world.wxK = null; if (world.snow) world.snow.visible = false; wxHazard(dt, null); return; }
+  const X = world.wx || (world.wx = { phase: 'calm', t: W.faux ? 35 + Math.random() * 25 : 70 + Math.random() * 80, bolt: 2 });
+  world.wxK = S; if (!world.wxFogC || world.wxFogK !== S) { world.wxFogC = new THREE.Color(S.fog); world.wxFogK = S; }
+  if (state === 'explore') X.t -= dt;
+  if (X.phase === 'calm' && X.t <= 10) { X.phase = 'warn'; sfx.alarm(); notice('Weather warning', `${S.name} incoming`.toUpperCase(), 3200); }
+  else if (X.phase === 'warn' && X.t <= 0) { X.phase = 'storm'; X.len = X.t = 45 + Math.random() * 30; world.stormDarkT = time; notice(W.faux ? 'This paradise has a temper' : 'Weather alert', S.name.toUpperCase(), 2800); }
+  else if (X.phase === 'storm' && X.t <= 0) { X.phase = 'calm'; X.t = 90 + Math.random() * 90; lootMsg('The storm has passed', '#9fe6ff'); }
+  const target = X.phase === 'storm' ? S.power : 0;
+  world.storm = clamp((world.storm || 0) + Math.sign(target - (world.storm || 0)) * dt / (target ? 8 : 12), 0, 1);
+  if (Math.abs(world.storm - target) < dt / 8) world.storm = target;
+  // lightning in a superstorm
+  world.flashA = Math.max(0, (world.flashA || 0) - dt * 5);
+  if (S.bolt && world.storm > .5 && state === 'explore' && (X.bolt -= dt) <= 0) {
+    X.bolt = 1.4 + Math.random() * 4; world.flashA = 1; const d = 250 + Math.random() * 1100; setTimeout(() => sfx.boom(.35 + Math.random() * .4), d);
+  }
+  let fl = $('#wxFlash'); if (!fl) { fl = document.createElement('div'); fl.id = 'wxFlash'; fl.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:4;background:#eef4ff;opacity:0;mix-blend-mode:screen'; document.body.appendChild(fl); }
+  fl.style.opacity = (world.flashA * .55).toFixed(3);
+  if (world.snow) { const s = world.storm || 0, m = world.snow.material; world.snow.visible = s > .02; m.color.set(S.col); m.opacity = S.op * smooth(.02, .4, s); }
+  wxHazard(dt, X.phase === 'storm' ? S : null);
+}
+// a storm wears down the suit (the heat bar) unless you shelter: under the Nostra, in a shelter, by a heater, in a vehicle, or under water
+function wxHazard(dt, S) {
+  if (state !== 'explore') return;
+  const p = player.position, sheltered = !!ex.vehicle || Math.hypot(p.x, p.z) < 11 || !!ex.under || insideShelterCached(dt) || nearHeater();
+  const inv = invState(); let h = suitHeat();
+  const drain = S && S.haz && world.storm > .35 && !sheltered ? S.haz * S.power : 0;
+  h = clamp(drain ? h - drain * dt : h + (sheltered ? 9 : 3) * dt, 0, 100); inv.heat = h;
+  if (h <= 0) { emergencyRecovery(); return; }
+  if (drain && h < 30 && (!world.coldMsg || time - world.coldMsg > 30)) { world.coldMsg = time; notice('Exosuit · protection critical', 'SHELTER UNDER YOUR SHIP', 2800); }
+}
+function wxLine() {
+  const P = world.planet && world.planet.P; if (!P) return '';
+  const W = planetWx(P), X = world.wx, S = W.storm;
+  if (S && X && X.phase === 'warn') return `<b>⚠ ${S.name} incoming</b>`;
+  if (S && X && X.phase === 'storm') return `<b>⚠ ${S.name} · ${Math.max(0, Math.ceil(X.t))}s</b>`;
+  return `${W.type} · ${S ? 'calm for now' : W.wx.replace(' · no storms', '')}`;
+}
 // Chapter III and Chapter IV hold the same galaxy under different flags: swap them to suit the wanderer you're playing
 let FAC_CH = 0;
 function applyChapterFactions() {
@@ -11084,7 +11192,7 @@ function spaceHudTick(P, alt, fwd) {
   const v = SPC.vel; $('#shSpeed').textContent = v > 1000 ? `${(v / 1000).toFixed(1)} km/s` : `${Math.round(v)} m/s`;
   $('#shSpeedBar').style.width = `${clamp(SPC.thr * 100, 2, 100)}%`; $('#shMode').textContent = SPC.pulse > .3 ? 'PULSE DRIVE' : 'IMPULSE';
   $('#shTarget').textContent = P.name.toUpperCase();
-  $('#shSub').textContent = alt < 20000 ? `${P.faction} · altitude ${alt > 1000 ? (alt / 1000).toFixed(1) + ' km' : Math.round(alt) + ' m'}${P.land ? (alt < 2500 ? ' · descend to land' : '') : ''}` : `${P.faction} · ${(alt / 1000).toFixed(1)} km`;
+  $('#shSub').textContent = alt < 20000 ? `${planetWx(P).type} · ${P.faction} · altitude ${alt > 1000 ? (alt / 1000).toFixed(1) + ' km' : Math.round(alt) + ' m'}${P.land ? (alt < 2500 ? ' · descend to land' : '') : ''}` : `${P.faction} · ${(alt / 1000).toFixed(1)} km`;
   const tq = sqTracked(); $('#shObj').innerHTML = `<div class="x-task"><i></i><span>${ch3Goal()}</span></div>${tq ? `<div class="x-task sq-task"><i></i><span>${tq}</span></div>` : ''}`;
   $('#shCells').textContent = `◆ ${have('warpcell')} warp cell${have('warpcell') === 1 ? '' : 's'}`;
   // markers on every planet, No Man's Sky style
@@ -11170,7 +11278,7 @@ function galClose(silent) {
 function galPanel() {
   const S = sysById(GAL.sel), here = S.id === SPC.sys, n = have('warpcell'), W3 = wanderer.ch3 || {}, seen = (W3.visited || []).includes(S.id);
   const cost = warpCost(curSys(), S);
-  const kind = P => (P.kind === 'station' ? 'Station · fly in to dock' : P.kind === 'gas' ? 'No surface' : P.parent ? 'Moon · landable' : P.dwarf ? 'Dwarf planet · landable' : 'Landable') + (P.swim ? ' · open water' : '') + (P.land && planetTraders(P).length ? ' · trader' : '');
+  const kind = P => (P.kind === 'station' ? 'Station · fly in to dock' : wxTag(P)) + (P.swim ? ' · open water' : '') + (P.land && planetTraders(P).length ? ' · trader' : '');
   let btn;
   if (here) btn = `<button class="btn gp-warp" disabled><span>You are here</span></button>`;
   else if (SC.foes.length) btn = `<button class="btn gp-warp" disabled><span>Can't warp in combat</span></button><div class="gp-why">The hyperdrive won't spool up under fire · destroy them, outrun them, or drop into a planet's atmosphere</div>`;
@@ -12519,7 +12627,7 @@ async function landOn(P, dir, place) {
   spaceOff(); state = 'loadingCh';
   const key = planetAreaKey(P), D = dir.clone().normalize(), E = new THREE.Vector3(0, 1, 0).cross(D); if (E.lengthSq() < .01) E.set(1, 0, 0); E.normalize(); const N = new THREE.Vector3().crossVectors(D, E).normalize();
   if (!place && P.sea) dryLandDir(P, D); // over the sea (Earth's oceans, Europa's cracks): she sets down on the nearest shore
-  world.planet = { P, D, E, N, h0: planetH(P, D) };
+  world.planet = { P, D, E, N, h0: planetH(P, D) }; wxReset();
   cityPlan(world.planet); // Alphinos on Aridaxx, Karribassa on Janira Prime
   AREA_INFO[key] = { planet: P.name, name: P.name, space: true, stationTp: { x: 1e5, z: 1e5, name: '' } };
   AREA_FOG[key] = new THREE.Color(P.fog).getHex();
@@ -12535,7 +12643,7 @@ async function landOn(P, dir, place) {
   for (const f of world.landShip.userData.flames) f.visible = false;
   const W3 = wanderer.ch3 = Object.assign({}, wanderer.ch3, { landed: true, lastPlanet: P.id }); const c = curChar(); if (c) c.ch3 = W3; saveRoster();
   const f = $('#shFlash'); if (f) f.classList.remove('on');
-  if (place) { state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks(); notice(P.faction, P.name.toUpperCase(), 3200); sqOnLand(P); return; }
+  if (place) { state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks(); notice(wxTag(P), P.name.toUpperCase(), 3600); setTimeout(() => lootMsg(P.faction, '#9fe6ff'), 1400); sqOnLand(P); return; }
   // the ship comes down out of the sky onto the spot
   SPC.descent = { t: 0 }; state = 'shipLand'; show(ui.xhud, false); player.visible = false; for (const fl of world.landShip.userData.flames) fl.visible = true;
 }
@@ -12547,7 +12655,7 @@ function shipLandTick(dt) {
   if (D.t > 3.6) {
     for (const f of S.userData.flames) f.visible = false;
     state = 'explore'; player.visible = true; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks();
-    const P = world.planet.P; notice(P.faction, P.name.toUpperCase(), 3400); sqOnLand(P);
+    const P = world.planet.P; notice(wxTag(P), P.name.toUpperCase(), 3800); setTimeout(() => lootMsg(P.faction, '#9fe6ff'), 1400); sqOnLand(P);
     if (merchantsHere().length) setTimeout(() => lootMsg(`A ${merchantsHere()[0].who.toLowerCase()} has a stall near your ship`, '#eda8d4'), 1800);
   }
 }
@@ -13847,10 +13955,10 @@ function updateWorldScene(dt) {
   const c = camera.position, pa = world.snow.geometry.attributes.position.array;
   try { resTick(dt); } catch (e) { console.error(e); }
   stormTick(dt); skyTick(dt); betrayalTick(dt); orionTick(dt); crewTick(dt); dipGroundTick(dt); farmTick(); townTick(dt); ferryTick(); londonTick(dt); londonGuardsTick(dt);
-  const st = world.storm || 0, gust = (.7 + .4 * Math.sin(time * .5) + .2 * Math.sin(time * 1.9)) * (1 + st * 2.2), wx = -9 * gust, wz = 3.5 * gust;
+  const K = isPl() && world.wxK, st = world.storm || 0, gust = (.7 + .4 * Math.sin(time * .5) + .2 * Math.sin(time * 1.9)) * (1 + st * (K ? K.wind * 1.6 : 2.2)), wx = -9 * gust, wz = 3.5 * gust, fall = K ? K.fall : -2.2;
   for (let i = 0; i < world.sN; i++) {
     const j = i * 3, sd = world.sSeed[i];
-    pa[j] += (wx + Math.sin(time * 2 + sd) * 1.6) * dt; pa[j + 1] += (-2.2 + Math.cos(time * 1.6 + sd)) * dt; pa[j + 2] += (wz + Math.sin(time * 1.3 + sd * 2) * 1.6) * dt;
+    pa[j] += (wx + Math.sin(time * 2 + sd) * 1.6) * dt; pa[j + 1] += (fall + Math.cos(time * 1.6 + sd)) * dt; pa[j + 2] += (wz + Math.sin(time * 1.3 + sd * 2) * 1.6) * dt;
     if (pa[j] < c.x - 25) pa[j] += 50; else if (pa[j] > c.x + 25) pa[j] -= 50;
     if (pa[j + 2] < c.z - 25) pa[j + 2] += 50; else if (pa[j + 2] > c.z + 25) pa[j + 2] -= 50;
     if (pa[j + 1] < c.y - 4) pa[j + 1] += 18; else if (pa[j + 1] > c.y + 14) pa[j + 1] -= 18;
