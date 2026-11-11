@@ -659,8 +659,12 @@ button.bm-c.no{opacity:.45}
 .tp-name input{background:rgba(0,0,0,.35);border:1px solid var(--line);color:var(--ink);font:inherit;font-size:11px;letter-spacing:.1em;padding:8px 10px;min-width:200px}
 .tp-list{max-height:min(52vh,460px);overflow-y:auto;width:100%}
 .recipe .btn.on{border-color:#7fe0a0}
-.jwho{display:flex;flex-wrap:wrap;gap:4px;flex-direction:row;max-width:min(420px,calc(100vw - var(--sl) - var(--sr) - 40px))}
-.jwho button{min-width:0!important;padding:6px 10px!important;font-size:8px!important}
+.jwho{display:flex;flex-direction:column;gap:4px;max-width:min(420px,calc(100vw - var(--sl) - var(--sr) - 40px));max-height:min(46vh,320px);overflow-y:auto;padding-bottom:4px;border-bottom:1px solid var(--faint);margin-bottom:2px}
+.jwho button{min-width:190px!important;padding:7px 12px!important;font-size:9px!important;text-transform:none!important;letter-spacing:.12em!important}
+.jwho button i{flex:0 0 auto;width:8px;height:8px;border-radius:50%}
+.jwho button span{display:flex;flex-direction:column;gap:3px;text-transform:uppercase;letter-spacing:.2em}
+.jwho button small{font-size:7.5px;letter-spacing:.2em;color:var(--mute)}
+.jwho button.on{border-color:#7fe0a0;background:rgba(18,40,30,.78)}.jwho button.on small{color:#bff5d4}
 #bBuild{right:168px;bottom:168px;width:52px;height:52px;font-size:8px}
 @media (max-width:720px){ .bm-wrap{grid-template-columns:1fr} .bm-grid{grid-template-columns:58px repeat(5,1fr)} .res-row.shop em{display:none} }
 
@@ -990,7 +994,7 @@ body.touch .al-key{display:none}
 <div id="xhud" class="hidden">
   <div class="mmap" id="mmap"><canvas id="mmapC"></canvas><div class="cap" id="mmapCap"></div><div class="wx" id="mmWx"></div></div>
   <div class="x-obj"><div class="lvl" id="lvl"><b id="lvN">LV 1</b><div class="xpbar"><i id="xpI"></i></div><small id="xpT"></small></div><small id="xChap">CHAPTER I · ANTARCTICA</small><div id="xTasks"></div><div class="x-nav" id="xNav"></div><div class="bars"><div class="bar hp" id="hpBar"><i></i></div><div class="bar sta" id="staBar"><i></i></div><div class="bar jet" id="jetBar"><i></i></div><div class="bar heat" id="heatBar" title="Suit heat"><i></i></div></div>
-    <div class="jcmd" id="jcmd"><button class="jbtn" id="jBtn"><span id="jWho">JAMES</span><b id="jMode">FOLLOWING</b><em>▾</em></button>
+    <div class="jcmd" id="jcmd"><button class="jbtn" id="jBtn"><span id="jWho">FOLLOWING COMPANIONS</span><b id="jMode"></b><em>▾</em></button>
       <div class="jopts" id="jOpts"><div class="jwho" id="jWhoRow" style="display:none"></div><button data-m="mine"><kbd>1</kbd>Mine</button><button data-m="explore"><kbd>2</kbd>Explore</button><button data-m="base"><kbd>3</kbd>Meet me back at base</button><button data-m="wander"><kbd>4</kbd>Wander around</button><button data-m="follow"><kbd>5</kbd>Follow me</button><button data-a="share" class="al-deed good"><kbd>6</kbd>Share food</button><button data-a="threat" class="al-deed evil"><kbd>7</kbd>Intimidate</button><button data-m="dismiss" id="jDismiss" class="jdismiss"><kbd>8</kbd>Dismiss · wait aboard the Nostra</button></div>
     </div></div>
   <button class="x-menu x-bag" id="xBagBtn" aria-label="Inventory"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 5h10l-1 10H4z" fill="none" stroke="#e6e9f0" stroke-width="1.4"/><path d="M5.5 5V3.5a2.5 2.5 0 0 1 5 0V5" fill="none" stroke="#e6e9f0" stroke-width="1.4"/></svg></button>
@@ -3422,27 +3426,21 @@ function setupJames(m) {
 function jamesTick(dt) {
   if (!james.ready) return;
   const J = james, r = J.root;
+  J.phase += dt; const W = compWalkPose(J.phase, !!J.walking); // the companions' walk, the same as Nico's and Orion's
   if (J.walking && J.wdir) {
     r.position.x += J.wdir[0] * J.speed * dt; r.position.z += J.wdir[1] * J.speed * dt;
     r.position.y = (J.ground || wHeight)(r.position.x, r.position.z);
-    J.phase += dt * (2.1 + J.speed * 1.5);
-    const s = Math.sin(J.phase), a = .36;
-    J.ll.rotation.x = s * a; J.rl.rotation.x = -s * a; J.la.rotation.x = -s * a * .7;
   } else if (J.walking) {
     const dir = J.dir || -1;
     r.position.z += dir * J.speed * dt;
-    J.phase += dt * (2.1 + J.speed * 1.5);
-    const s = Math.sin(J.phase), a = .36;
-    J.ll.rotation.x = s * a; J.rl.rotation.x = -s * a;
-    J.la.rotation.x = -s * a * .7;
     if ((dir < 0 && r.position.z <= J.stopZ) || (dir > 0 && r.position.z >= J.stopZ)) J.walking = false;
-  } else {
-    for (const l of [J.ll, J.rl, J.la]) damp(l.rotation, 'x', 0, 6, dt);
   }
+  if (J.walking) { J.rl.rotation.x = W.rl; J.ll.rotation.x = W.ll; J.la.rotation.x = W.la; J.la.rotation.z = 0; }
+  else { for (const l of [J.ll, J.rl]) damp(l.rotation, 'x', 0, 6, dt); damp(J.la.rotation, 'x', W.la, 6, dt); damp(J.la.rotation, 'z', W.laz, 6, dt); }
   damp(J.body.rotation, 'x', J.lean, 3, dt);
   damp(J.head.rotation, 'x', J.headTilt, 3, dt);
   damp(J.head.rotation, 'y', J.headYaw, 3, dt);
-  damp(J.ra.rotation, 'x', -J.raise, 3, dt);
+  damp(J.ra.rotation, 'x', -J.raise + W.ra * (1 - Math.min(1, J.raise)), J.walking ? 12 : 3, dt); // his lantern arm swings too, less when it's raised
   J.body.rotation.z = Math.sin(time * 1.3) * .012;
   if (J.swing) { J.la.rotation.x = -1.35 + Math.sin(time * 7) * 1.05; J.body.rotation.x = .12 + Math.sin(time * 7) * .06; }
   if (J.jawP) {
@@ -5075,7 +5073,7 @@ async function interact() {
   const n = ex.near; if (!n) return;
   sfx.click();
   if (ex.mode === 'ship') { shipInteract(n); return; }
-  if (n.id === 'james' && companionOn()) { toggleJamesMenu(); return; }
+  if (n.id === 'james' && companionOn()) { ex.cSel = 'james'; toggleJamesMenu(); return; }
   if (n.id === 'james') {
     james.headTilt = .05;
     const clips = await sfx.loadClips('ch1Voices');
@@ -5088,7 +5086,7 @@ async function interact() {
   } else if (n.id === 'hatch' && ch1().slept) {
     goOutside();
   } else if (n.id === 'james2' && companionOn()) {
-    if (ch1().campDone && !ch1().stormTalk) stormTalk(); else toggleJamesMenu();
+    if (ch1().campDone && !ch1().stormTalk) stormTalk(); else { ex.cSel = 'james'; toggleJamesMenu(); }
   } else if (n.id === 'james2') {
     james.headTilt = .05;
     const clips = await sfx.loadClips('foundVoices');
@@ -5099,7 +5097,7 @@ async function interact() {
       if (first) {
         sfx.chime(); startCompanion();
         setTimeout(() => notice('James Brown', 'JOINS YOU', 3600), 500);
-        setTimeout(() => notice(document.body.classList.contains('touch') ? 'Tap JAMES under your objectives' : '1 Mine · 2 Explore · 3 Base · 4 Wander · 5 Follow', 'GIVE JAMES ORDERS', 5200), 4600);
+        compJoinNotice('james', 4600);
         setTimeout(() => { if (state === 'explore') notice(document.body.classList.contains('touch') ? 'BUILD → Structures' : 'Press B → Structures', 'NEW OBJECTIVE · MAKE CAMP', 4200); }, 10400);
       }
     }, clips);
@@ -5128,8 +5126,8 @@ async function interact() {
   } else if (n.id === 'bartender') { barDrink(n.ref);
   } else if (n.id === 'parliament') { lines(PARL_DOOR, () => { if (!wanderer.ch2.reportTried) { setCh2({ reportTried: true }); notice('New London', 'WAIT FOR THE COUNCIL', 3000); } });
   } else if (n.id === 'orion') {
-    if (orionJoined()) { ex.cSel = 'orion'; refreshJamesUI(); toggleJamesMenu(); } else talkOrion();
-  } else if (n.id === 'nico') { ex.cSel = 'nico'; refreshJamesUI(); toggleJamesMenu();
+    if (orionJoined()) { ex.cSel = 'orion'; refreshJamesUI(); toggleJamesMenu(true); } else talkOrion();
+  } else if (n.id === 'comp') { ex.cSel = n.cid; refreshJamesUI(); toggleJamesMenu(true); // give this companion orders
   } else if (n.id === 'push') {
     pushJames();
   } else if (n.id === 'rover') {
@@ -6102,13 +6100,26 @@ function partyNow() {
   const aboard = (wanderer && wanderer.aboard) || {};
   return out.filter(id => !lent[id] && !aboard[id]); // companions lent to another faction (Diplomacy) are away; dismissed ones wait aboard the Nostra
 }
+// ---- every companion, the same way: a level, what they're doing, and (for anyone who joins later) a rig that walks like the rest ----
+function compLevel(id) {
+  const pl = levelInfo((wanderer && wanderer.xp) || 0).level;
+  if (id === 'orion') return orionLevel(); if (id === 'nico') return nicoLevel();
+  if (id === 'james') return clamp(pl + 2, 3, 100); // James has been out on the ice longer than you
+  const L = COMPANIONS.find(c => c.id === id); if (L && L.lv) return clamp(L.lv + pl - 1, L.lv, 110);
+  const c = charById(id); return c && c.level ? clamp(+c.level || pl, 1, 110) : pl;
+}
+function compMode(id) { return id === 'orion' ? orionC.mode : id === 'james' ? comp.mode : (wanderer && wanderer.cmds && wanderer.cmds[id]) || 'follow'; }
+function compModeLabel(id) { const m = compMode(id); return id === 'orion' ? OLABEL[m] || 'FOLLOWING' : id === 'james' && m === 'base' && comp.arrived ? 'AT BASE' : JLABEL[m] || 'FOLLOWING'; }
+function compJoinNotice(id, wait = 4200) { // someone new is with you: how to give them orders
+  setTimeout(() => notice(document.body.classList.contains('touch') ? 'Tap FOLLOWING COMPANIONS under your objectives' : '1 Mine · 2 Explore · 3 Base · 4 Wander · 5 Follow' + (partyNow().length > 1 ? ' · V choose who' : ''), `GIVE ${compName(id).toUpperCase()} ORDERS`, 4600), wait);
+}
 function partySel() { const p = partyNow(), s = ex.cSel; return s === 'all' && p.length > 1 ? 'all' : p.includes(s) ? s : p[0] || null; }
 function cmdCompanion(mode) {
   const sel = partySel();
   if (mode === 'dismiss') { if (!sel) return; const ids = sel === 'all' ? partyNow() : [sel]; toggleJamesMenu(false); for (const id of ids) dismissCompanion(id); return; }
   if (!sel || !JCMDS.includes(mode)) return;
   const ids = sel === 'all' ? partyNow() : [sel];
-  for (const id of ids) { if (id === 'james') jamesCmd(mode, ids.length > 1 || sel !== 'james'); else if (id === 'orion') orionCmd(mode, ids.length > 1); else if (id === 'nico') nicoCmd(mode, ids.length > 1); else { (wanderer.cmds || (wanderer.cmds = {}))[id] = mode; const c = curChar(); if (c) c.cmds = wanderer.cmds; } }
+  for (const id of ids) { if (id === 'james') jamesCmd(mode, ids.length > 1 || sel !== 'james'); else if (id === 'orion') orionCmd(mode, ids.length > 1); else if (id === 'nico') nicoCmd(mode, ids.length > 1); else { (wanderer.cmds || (wanderer.cmds = {}))[id] = mode; const c = curChar(); if (c) c.cmds = wanderer.cmds; const C = CREW[id]; if (C) { C.wp = null; C.node = null; } if (ids.length === 1) { sfx.click(); lootMsg(`${compName(id)} · ${jBarkSet()[mode]}`, compColor(id)); saveRoster(); } } }
   if (sel === 'all') { sfx.click(); lootMsg(`Everyone · ${jBarkSet()[mode]}`, '#7fe0a0'); saveRoster(); }
   toggleJamesMenu(false); refreshJamesUI();
 }
@@ -6790,17 +6801,19 @@ function jamesGear(rifle, pick) {
 }
 function refreshJamesUI() {
   if (!$('#jMode')) return;
-  const p = partyNow(), sel = partySel() || 'james';
-  const mode = sel === 'orion' ? orionC.mode : sel === 'james' || sel === 'all' ? comp.mode : (wanderer.cmds && wanderer.cmds[sel]) || 'follow';
-  $('#jWho').textContent = sel === 'all' ? 'EVERYONE' : sel === 'orion' ? `ORION · LV ${orionLevel()}` : sel === 'nico' ? `NICO · LV ${nicoLevel()}` : (PARTY[sel] || PARTY.james).name.toUpperCase();
-  $('#jMode').textContent = sel === 'orion' ? OLABEL[mode] || 'FOLLOWING' : sel === 'james' && comp.mode === 'base' && comp.arrived ? 'AT BASE' : JLABEL[mode] || 'FOLLOWING';
+  const p = partyNow(), sel = partySel() || p[0] || 'james';
+  const mode = sel === 'all' ? (p.every(id => compMode(id) === compMode(p[0])) ? compMode(p[0]) : null) : compMode(sel);
+  $('#jWho').textContent = 'FOLLOWING COMPANIONS'; $('#jMode').textContent = p.length ? String(p.length) : '';
   for (const b of document.querySelectorAll('#jOpts button[data-m]')) b.classList.toggle('on', b.dataset.m === mode);
   const dz = $('#jDismiss'); if (dz) dz.style.display = canDismiss() && sel !== 'james' ? '' : 'none'; // once you have the Nostra to send them to
-  const row = $('#jWhoRow'); row.style.display = p.length > 1 ? '' : 'none';
-  row.innerHTML = p.length > 1 ? [...p, 'all'].map(id => `<button data-w="${id}" class="${id === sel ? 'on' : ''}">${id === 'all' ? 'Everyone' : PARTY[id].name}</button>`).join('') : '';
+  const row = $('#jWhoRow'); row.style.display = p.length ? '' : 'none'; // who's with you, their level and what they're doing: tap one to give them orders
+  row.innerHTML = [...p, ...(p.length > 1 ? ['all'] : [])].map(id => id === 'all'
+    ? `<button data-w="all" class="${sel === 'all' ? 'on' : ''}"><i style="background:#e6e9f0"></i><span>Everyone<small>${p.length} companions</small></span></button>`
+    : `<button data-w="${id}" class="${id === sel ? 'on' : ''}"><i style="background:${compColor(id)}"></i><span>${compName(id)}<small>LV ${compLevel(id)} · ${compModeLabel(id)}</small></span></button>`).join('');
 }
 function toggleJamesMenu(force) {
   const el = $('#jcmd'), on = force != null ? force : !el.classList.contains('open');
+  if (on) refreshJamesUI(); // fresh levels every time it opens
   el.classList.toggle('open', on);
 }
 function jamesCmd(mode, quiet) {
@@ -14042,6 +14055,13 @@ function nicoCmd(mode, quiet) {
   refreshJamesUI();
 }
 let nicoSrcP = null;
+async function companionRig(id) { // the rig any companion walks and fights with: Nico's own, a story companion's Nostrapedia model, or an imported/custom character
+  if (id === 'nico') return nicoCompanionRig();
+  const L = COMPANIONS.find(o => o.id === id && o.tag);
+  if (L) { const el = document.getElementById(L.tag); if (!el) throw new Error('no model for ' + id); const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    const sc = await parseGlb(u8.buffer); if (L.mod === 'kizna') feminiseRobot(sc); const R = autoRig(SkeletonUtils.clone(sc), L.h || 1.9); armRig(R, L.weapon || 'none'); return R; }
+  return loadCharRig(charById(id), 1.85);
+}
 async function nicoCompanionRig() { // a rig of her own (the escape and the menu have theirs), with her two pistols
   const el = document.getElementById('nicoGlb'); if (!el) throw new Error('no Nico model');
   nicoSrcP = nicoSrcP || (async () => { const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return parseGlb(u8.buffer); })();
@@ -14062,6 +14082,7 @@ function compTracer(R, foe) { // a muzzle flash and a streak to the target, as O
 }
 /* ---- crew: the imported Project BC / Sevirrus characters (and your own creations) as companions ---- */
 function syncCrewParty() {
+  for (const id of (wanderer && wanderer.party) || []) if (!PARTY[id]) { const L = COMPANIONS.find(o => o.id === id && o.tag); if (L) { PARTY[id] = { name: titleName(L.name.split(' ')[0]), full: titleName(L.name), crew: true, story: true }; continue; } }
   for (const id of (wanderer && wanderer.party) || []) if (!PARTY[id]) { const c = charById(id); if (c) PARTY[id] = { name: titleName(c.name.split(' ').slice(-1)[0] === 'SEVIRRUS' ? 'Sevirrus' : c.name.split(' ')[0]), full: titleName(c.name), imported: true }; }
 }
 const crewIds = () => partyNow().filter(id => PARTY[id] && (PARTY[id].imported || PARTY[id].crew));
@@ -14072,7 +14093,7 @@ async function placeCrew() {
   for (const id of Object.keys(CREW)) if (!want.includes(id) && CREW[id].R) CREW[id].R.root.visible = false;
   for (const id of want) {
     const C = CREW[id] || (CREW[id] = { mode: 'follow', wp: null, wpT: 0, node: null, swingT: 0, atkT: 0, legs: 0 });
-    if (!C.R) { if (C.loading) continue; C.loading = true; try { C.R = id === 'nico' ? await nicoCompanionRig() : await loadCharRig(charById(id), 1.85); C.R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); registerCompanionRig(id, () => C.R.root); } catch (e) { console.error('crew load failed', id, e); C.loading = false; continue; } C.loading = false; }
+    if (!C.R) { if (C.loading) continue; C.loading = true; try { C.R = await companionRig(id); C.R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); registerCompanionRig(id, () => C.R.root); } catch (e) { console.error('crew load failed', id, e); C.loading = false; continue; } C.loading = false; }
     const R = C.R; if (R.root.parent !== wScene) wScene.add(R.root);
     if (!want.includes(id)) continue;
     const p = player.position, k = want.indexOf(id) + 1; R.root.visible = true; R.mode = 'idle';
@@ -14229,7 +14250,7 @@ function dipClick(e) {
   else if (a === 'govSet') { const n = $(`#dipBody input[data-a="govName"][data-p="${pid}"]`).value.trim(); if (n) { D.col[pid].gov = 'name:' + n; dipSave(); sfx.chime(); } }
   else if (a === 'lend') { const v = $(`#dipBody select[data-a="lendTo"][data-c="${id}"]`).value; if (!v) return; D.lent[id] = v; dipSave(); sfx.click(); if (id === 'orion' && world.orion) world.orion.root.visible = false; placeCrew(); refreshJamesUI(); lootMsg(`${compName(id)} leaves to serve ${dipFacName(DIP_FAC.find(o => o.id === v))}`, compColor(id)); }
   else if (a === 'recall') { delete D.lent[id]; dipSave(); if (id === 'orion') placeOrion().catch(() => null); placeCrew(); refreshJamesUI(); lootMsg(`${compName(id)} is back with you`, compColor(id)); }
-  else if (a === 'recruit') { wanderer.party = [...new Set([...(wanderer.party || []), id])]; syncCrewParty(); dipSave(); placeCrew(); ui.xhud.classList.add('comp'); refreshJamesUI(); sfx.chime(); lootMsg(`${PARTY[id].full} joins your crew`, compColor(id)); }
+  else if (a === 'recruit') { wanderer.party = [...new Set([...(wanderer.party || []), id])]; syncCrewParty(); dipSave(); placeCrew(); ui.xhud.classList.add('comp'); refreshJamesUI(); sfx.chime(); lootMsg(`${PARTY[id].full} joins your crew`, compColor(id)); compJoinNotice(id, 900); }
   else if (a === 'dismiss') { wanderer.party = (wanderer.party || []).filter(x => x !== id); delete D.lent[id]; dipSave(); placeCrew(); refreshJamesUI(); sfx.click(); }
   dipRender();
 }
@@ -15843,7 +15864,7 @@ function talkOrion() {
         orionC.mode = 'follow'; ui.xhud.classList.add('comp'); ex.cSel = 'orion'; refreshJamesUI(); renderTasks();
         gainXP(40); sfx.chime();
         setTimeout(() => notice(`Orion Mascar · level ${orionLevel()}`, 'JOINED YOUR PARTY', 3400), 400);
-        setTimeout(() => notice(document.body.classList.contains('touch') ? 'Tap ORION under your objectives' : '1 Mine · 2 Explore · 3 Base · 4 Wander · 5 Follow', 'GIVE ORION ORDERS', 4200), 4200);
+        compJoinNotice('orion', 4200);
       }
     }, clips || []);
   });
@@ -16097,8 +16118,8 @@ function updateWorldMode(dt) {
   if (!ex.near) { const BV = brawlVenueHere(); if (BV) { if (Math.hypot(p.x - BV.mcAt.x, p.z - BV.mcAt.z) < 2.3) ex.near = { id: 'brawl', ref: BV, label: `${titleName(BV.mc)} · fights` }; else if (BV.barAt && Math.hypot(p.x - BV.barAt.x, p.z - BV.barAt.z) < 1.9) ex.near = { id: 'bartender', ref: BV, label: 'Bartender' }; } }
   if (!ex.near && (isPl() || world.adVisit) && Math.hypot(p.x - shipX(), p.z - shipZ() - 10) < 4.5) ex.near = { id: 'ship', label: 'Your ship' };
   if (!ex.near && curArea() === 'africa' && TOWN.npcs.length) { const tn = townNear(p); if (tn) ex.near = { id: 'townsfolk', ref: tn, label: tn.label }; }
-  if (!ex.near && (curArea() === 'africa' || orionJoined()) && world.orion && world.orion.root.visible && Math.hypot(world.orion.root.position.x - p.x, world.orion.root.position.z - p.z) < 2.4) ex.near = { id: 'orion', label: 'Orion' };
-  if (!ex.near && CREW.nico && CREW.nico.R && CREW.nico.R.root.visible && CREW.nico.R.root.parent === wScene && partyNow().includes('nico') && Math.hypot(CREW.nico.R.root.position.x - p.x, CREW.nico.R.root.position.z - p.z) < 2.4) ex.near = { id: 'nico', label: 'Nico' };
+  if (!ex.near && !orionJoined() && curArea() === 'africa' && world.orion && world.orion.root.visible && Math.hypot(world.orion.root.position.x - p.x, world.orion.root.position.z - p.z) < 2.4) ex.near = { id: 'orion', label: 'Orion' };
+  if (!ex.near) for (const cid of partyNow()) { if (cid === 'james') continue; const r = compRoot(cid); if (r && r.visible && r.parent === wScene && Math.hypot(r.position.x - p.x, r.position.z - p.z) < 2.4) { ex.near = { id: 'comp', cid, label: compName(cid) }; break; } } // any companion: Orion, Nico, the crew, whoever joins next
   if (!ex.near && curArea() === 'antarctica' && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
   if (ex.vehicle) ex.near = { id: 'roverOut', label: 'Rover' };
   if (world.betrayal) ex.near = world.betrayal.phase === 'push' && james.root.visible && Math.hypot(james.root.position.x - p.x, james.root.position.z - p.z) < 2.6 ? { id: 'push', label: 'James Brown' } : null;
@@ -16110,8 +16131,8 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: orionJoined() ? ['Give Orion orders', 'ORDER'] : ['Talk to Orion', 'TALK'], nico: ['Give Nico orders', 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
-    xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
+    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'] }[ex.near.id];
+    xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give James orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
   // where's home, and your nearest beacon
@@ -16660,13 +16681,18 @@ async function loadCharRig(c, targetH) {
   return R;
 }
 // ---- animation: idle, walk, and an attack per weapon ----
+// every companion walks this way (Nico, Orion, James, the crew, and anyone who joins later): legs swing half a radian,
+// the arms swing against them, six radians a second; at rest the arms sway with the breath
+function compWalkPose(t, walk) {
+  if (walk) { const s = Math.sin(t * 6); return { rl: s * .5, ll: -s * .5, rk: Math.max(0, -s) * .6, lk: Math.max(0, s) * .6, ra: -s * .4, la: s * .4, raz: 0, laz: 0 }; }
+  const b = Math.sin(t * 1.6); return { rl: 0, ll: 0, rk: 0, lk: 0, ra: b * .04, la: -b * .04, raz: -.04, laz: .04 };
+}
 function animRig(R, dt) {
   R.t += dt; const t = R.t;
   const S = (o, ax, v) => { if (o) o.rotation[ax] = R.rest.get(o)[ax] + v; };
   const W = R.weapon, guns = W === 'rifle' || W === 'pistols', walk = R.mode === 'walk', atk = R.mode === 'attack';
   let ra = 0, la = 0, raz = 0, laz = 0, raL = 0, laL = 0, tor = 0;
-  if (walk) { const s = Math.sin(t * 6); S(R.rl, 'x', s * .5); S(R.ll, 'x', -s * .5); S(R.rk, 'x', Math.max(0, -s) * .6); S(R.lk, 'x', Math.max(0, s) * .6); ra = -s * .4; la = s * .4; }
-  else { S(R.rl, 'x', 0); S(R.ll, 'x', 0); S(R.rk, 'x', 0); S(R.lk, 'x', 0); const b = Math.sin(t * 1.6); ra = b * .04; la = -b * .04; raz = -.04; laz = .04; }
+  { const Wp = compWalkPose(t, walk); S(R.rl, 'x', Wp.rl); S(R.ll, 'x', Wp.ll); S(R.rk, 'x', Wp.rk); S(R.lk, 'x', Wp.lk); ra = Wp.ra; la = Wp.la; raz = Wp.raz; laz = Wp.laz; }
   if (guns && !atk) { if (W === 'pistols') { ra = -.25; la = -.25; } else { ra = -.5; la = -.35; laz = R.ra && R.la ? wxSign(R) * .35 : .3; } }
   if (W === 'rifle') for (const g of R.gear) g.rotation.x = atk ? 0 : -.55; // low ready: muzzle forward and down, clear of the ground
   for (const g of R.gear) if (g.userData.flash) g.userData.flash.material.opacity = 0;
