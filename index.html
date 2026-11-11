@@ -745,6 +745,7 @@ button.bm-c.no{opacity:.45}
 .sh-land{display:none;position:absolute;left:50%;bottom:calc(var(--sb) + 22px);transform:translateX(-50%);pointer-events:auto;padding:12px 22px;min-width:150px;border-radius:12px;border:1px solid var(--ice);background:rgba(7,10,17,.55);color:var(--ink);font-family:var(--display);font-size:10px;letter-spacing:.22em;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .space-hud.atmo .sh-land.on{display:block}.space-hud.atmo .sh-map,.space-hud.atmo .sh-decks,.space-hud.atmo .sh-cells,.space-hud.atmo .sh-btns button[data-b="fire"],.space-hud.atmo .sh-def{display:none}
 .sh-mk.nf i{border-color:#ff6a5a}.sh-mk.nf span{color:#ffb3a8}
+.sh-mk.gold i{border-color:#ffc94a;background:rgba(255,201,74,.25)}.sh-mk.gold span{color:#ffe2a0}
 .sh-region{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);text-align:center;opacity:0;transition:opacity 1.2s;pointer-events:none;width:min(92vw,900px)}.sh-region.on{opacity:1}
 .sh-region small{display:block;font-size:9px;letter-spacing:.42em;color:var(--mute);margin-bottom:8px}.sh-region b{font-family:var(--display);font-weight:500;font-size:clamp(22px,5vw,46px);letter-spacing:.3em;color:#eef7ff;text-shadow:0 0 18px rgba(0,0,0,.7)}
 @media (pointer:coarse){.sh-land{bottom:calc(var(--sb) + 200px);font-size:11px;padding:14px 22px}}
@@ -4973,7 +4974,7 @@ function renderTasks() {
   if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
   if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? campTasks(p, task) : '');
   if (curArea() === 'africa' || ((wanderer.chapter | 0) >= 2 && p.escaped)) h = ch2Tasks(task); // Chapter II's objectives follow you, even back to Antarctica
-  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
+  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, 'Find Khazglar on Olympus Mons, Mars') : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
   if ((wanderer.chapter | 0) >= 3) { const tq = sqTracked(); if (tq) h += `<div class="x-task sq-task"><i></i><span>${tq}</span></div>`; } // the side quest you're tracking
   xUI.tasks.innerHTML = h;
   $('#xChap').textContent = liveChapterLabel().toUpperCase();
@@ -5152,6 +5153,8 @@ async function interact() {
     pickUpPlaced(n.ref);
   } else if (n.id === 'dismantle') {
     dismantle(n.ref);
+  } else if (n.id === 'khaz') {
+    khzMeet();
   } else if (n.id === 'qgiver') {
     giverTalk(n.ref);
   } else if (n.id === 'bot') {
@@ -6278,7 +6281,7 @@ function updateSurvival(dt) {
   const hb = $('#heatBar'), hv = suitHeat(); hb.firstChild.style.transform = `scaleX(${hv / 100})`; hb.classList.toggle('on', hv < 99.5 || (ch1().stormTalk && !ch1().stormOver)); hb.classList.toggle('low', hv < 30);
   const jb = $('#jetBar'); jb.firstChild.style.transform = `scaleX(${(ex.jet == null ? 100 : ex.jet) / 100})`; jb.classList.toggle('on', ex.jet != null && ex.jet < 99.5); jb.classList.toggle('low', ex.jet < 15);
   // placement preview, teleporter rings, merchants
-  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt); hallTick(dt);
+  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt); hallTick(dt); khzTick(dt);
   for (const b of world.build) if (b.mesh.userData.spin) b.mesh.userData.spin.rotation.z += dt * 1.5;
   if (world.stationTp) world.stationTp.userData.spin.rotation.z += dt * 1.5;
   const it = selItem();
@@ -6626,6 +6629,7 @@ function mapTiles(x0, z0, x1, z1, budget) {
 }
 function questTarget() {
   const c = ch1();
+  if (isPl() && world.planet.khz && khzPending()) return { x: world.planet.khz.x, z: world.planet.khz.z, label: 'Khazglar' };
   if (isPl()) return Math.hypot(player.position.x, player.position.z) > 30 ? { x: 0, z: 10, label: 'Your ship' } : null;
   if (curArea() === 'europe') { const c2 = wanderer.ch2 || {}; if (esc.on) return { x: SHIP.hatch[0], z: SHIP.hatch[1], label: 'The ship' }; return c2.arrived && !c2.reportTried ? { x: LON.door.x - 2, z: LON.door.z, label: 'Houses of Parliament' } : null; }
   if (curArea() === 'africa') {
@@ -9857,6 +9861,183 @@ function shipFlyToAdNostra() {
     f.style.transition = 'opacity 1.2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 1300);
   }, 650);
 }
+/* ============ Chapter III · Khazglar, the hermit of Olympus Mons ============
+   After the nightmare in space (whichever of the four you had), Orion sends you to Mars: Khazglar has watched the sky from
+   Olympus Mons for three hundred years, and if anyone knows what's reaching into your head, he does.
+   - Olympus Mons is a real feature of Mars now, at its real latitude and longitude: a broad shield volcano with a caldera at the
+     top and a cliff round its foot, seen from space, flown over in the sky and walked on the ground (olympusH, added to planetH).
+   - His hermitage sits on the upper slopes, north of the caldera: a stone hut, a telescope built from a crashed survey probe,
+     a ring of strange Martian plants round a fire. Fly to it from the sky (LAND · OLYMPUS MONS), or land anywhere on Mars and
+     ask the helm to take you there.
+   - Talk to him, choose how you answer, and he joins your crew (the same five orders as everyone else).
+   Flags: ch3.khzCall (Orion's suggestion), ch3.khzMet (he's with you). Lines can be voiced later: drop a data/khazVoices.js
+   pack holding CH3KHAZCALL1–5, CH3KHAZ1–17, then CH3KHAZ4CH, 4ER, 4GR (the other species' greetings) in order and they play; until then the scene is text. */
+const KHZ = { lat: 18.65, lon: -133.8, R: 650, H: 130, cal: 72, calD: 26, cliff: 24, hut: [0, -150], pad: [0, -205] }; // metres on Mars's ground (2.4 km radius)
+let khzDirV = null;
+const khzDir = () => khzDirV || (khzDirV = new THREE.Vector3(Math.cos(KHZ.lat * D2R) * Math.cos(KHZ.lon * D2R), Math.sin(KHZ.lat * D2R), Math.cos(KHZ.lat * D2R) * Math.sin(KHZ.lon * D2R)).normalize());
+function khzAt(ax, az) { // a point near Olympus Mons, ax metres east and az metres south of the caldera's centre
+  const O = khzDir(), e = new THREE.Vector3(0, 1, 0).cross(O).normalize(), n = new THREE.Vector3().crossVectors(e, O).normalize(), Rg = atmRg(bodyById('mars'));
+  return O.clone().multiplyScalar(Rg).addScaledVector(e, ax).addScaledVector(n, az).normalize();
+}
+const khzHutDir = () => khzAt(KHZ.hut[0], KHZ.hut[1]), khzPadDir = () => khzAt(KHZ.pad[0], KHZ.pad[1]);
+function olympusH(d) { // the volcano's height above the plains, for a direction on Mars
+  const O = khzDir(), c = d.x * O.x + d.y * O.y + d.z * O.z; if (c < .93) return 0; // nowhere near (keeps the rest of Mars cheap)
+  const m = Math.acos(Math.min(1, c)) * 2400, R = KHZ.R; if (m > R + 80) return 0;
+  let h = KHZ.H * Math.pow(Math.max(0, 1 - m / R), 1.35); // the long, gentle shield
+  h += KHZ.cliff * smooth(R + 55, R - 5, m); // the great cliff round its foot
+  h -= KHZ.calD * smooth(KHZ.cal + 20, KHZ.cal - 6, m); // the caldera at the top
+  h += Math.sin(m * .045) * 1.6 * smooth(R, R * .3, m); // old lava terraces
+  return h;
+}
+const khzPending = () => !!(wanderer && (wanderer.chapter | 0) === 3 && wanderer.ch3 && wanderer.ch3.nightmare && !wanderer.ch3.khzMet);
+const khzJoined = () => !!(wanderer && wanderer.ch3 && wanderer.ch3.khzMet);
+function khzLocal(W, dir) { // a direction on the world, in the landing spot's metres (x east, z south)
+  const td = dir.dot(W.D); if (td < .5) return null; const R = W.R || W.P.r;
+  return { x: R * dir.dot(W.E) / td, z: R * dir.dot(W.N) / td };
+}
+function khazPlan(W) { // decided with the cantina, before the ground is laid out: is the hermitage near enough to walk to?
+  if (world.khzG) { if (world.khzG.parent) world.khzG.parent.remove(world.khzG); world.khzG = null; }
+  if (world.khz && world.khz.R && world.khz.R.root.parent) world.khz.R.root.parent.remove(world.khz.R.root);
+  world.khz = null; W.khz = null;
+  if (!W || W.P.id !== 'mars') return;
+  const L = khzLocal(W, khzHutDir()); if (!L || Math.hypot(L.x, L.z) > 900) return;
+  const y = planetH(W.P, plDir(L.x, L.z)) - W.h0;
+  W.khz = { x: L.x, z: L.z, y }; (W.pads || (W.pads = [])).push({ x: L.x, z: L.z, r: 10, y });
+}
+function buildHermitage() {
+  const W = world.planet; if (!W || !W.khz) return;
+  const K = W.khz, g = new THREE.Group(); g.position.set(K.x, K.y, K.z); world.khzG = g; wScene.add(g);
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .9, metalness: .05 }, o));
+  const stone = M(0x7a4a36), dark = M(0x3a241c), brass = M(0xd8b060, { metalness: .35, roughness: .38, emissive: 0x3a2808, emissiveIntensity: .5 }), cloth = M(0x5e3f6e, { roughness: 1 }), glass = M(0x9fe6ff, { emissive: 0x2a6a8a, emissiveIntensity: .6, metalness: .3, roughness: .2 });
+  const add = (geo, mat, x, y, z, ry = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.y = ry; m.castShadow = m.receiveShadow = true; g.add(m); return m; };
+  // the hut: a low dome of fitted red stone, half dug into the slope, a cloth over the door
+  const dome = add(new THREE.SphereGeometry(3.4, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), stone, -4.5, -.2, -3.5); dome.scale.y = .78;
+  add(new THREE.CylinderGeometry(3.5, 3.7, .5, 18), dark, -4.5, 0, -3.5);
+  add(new THREE.BoxGeometry(1.5, 1.9, .3), cloth, -4.5, .95, -.2);
+  for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; add(new THREE.DodecahedronGeometry(.5 + (i % 3) * .15, 0), stone, -4.5 + Math.cos(a) * 3.9, .25, -3.5 + Math.sin(a) * 3.9, a); }
+  const chim = add(new THREE.CylinderGeometry(.28, .34, 1.3, 8), dark, -3.2, 2.6, -4.6);
+  // the telescope: a brass tube on a tripod, pointed at the sky
+  const scope = new THREE.Group(); scope.position.set(3.6, 0, -2.4); g.add(scope);
+  for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2, leg = new THREE.Mesh(new THREE.CylinderGeometry(.05, .07, 2.3, 6), dark); leg.position.set(Math.cos(a) * .55, 1.05, Math.sin(a) * .55); leg.rotation.set(Math.sin(a) * .26, 0, -Math.cos(a) * .26); scope.add(leg); }
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(.22, .3, 2.6, 14), brass); tube.position.set(0, 2.35, 0); tube.rotation.set(.9, .4, 0); scope.add(tube);
+  const lens = new THREE.Mesh(new THREE.CircleGeometry(.21, 14), glass); lens.position.set(.48, 3.2, -.62); lens.lookAt(1.5, 6, -3); scope.add(lens);
+  const probe = add(new THREE.BoxGeometry(1.1, .7, .8), M(0xb8bcc4, { metalness: .7, roughness: .4 }), 5.4, .35, -.8, .5); // what's left of the survey probe it was built from
+  add(new THREE.BoxGeometry(2.2, .05, .8), M(0x2a4a8a, { metalness: .6, roughness: .3, emissive: 0x0a1a3a }), 6.3, .7, -.4, 1.2);
+  // the garden: a ring of stones round a fire, and the strange plants that grow nowhere else
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; add(new THREE.DodecahedronGeometry(.28, 0), stone, Math.cos(a) * 1.15, .12, 2.2 + Math.sin(a) * 1.15, a); }
+  const fire = glowSprite(0xff9a4a, 2.6, .9); fire.position.set(0, .8, 2.2); g.add(fire); world.khzFire = fire;
+  const fl = new THREE.PointLight(0xffa060, 18, 16, 1.8); fl.position.set(0, 1.4, 2.2); g.add(fl); world.khzLight = fl;
+  const plantC = [0x8fe8c8, 0xc89fff, 0x7fd8ff, 0xffd38a];
+  for (let i = 0; i < 16; i++) {
+    const a = i / 16 * Math.PI * 2 + .2, r = 3.6 + (i % 4) * .55, x = Math.cos(a) * r, z = 2.2 + Math.sin(a) * r * .8; if (x < -2 && z < 0) continue;
+    const col = plantC[i % 4], h = .6 + (i * 37 % 10) / 10;
+    add(new THREE.CylinderGeometry(.03, .05, h, 5), M(0x3a5a4a), x, h / 2, z);
+    const bulb = add(new THREE.SphereGeometry(.16 + (i % 3) * .05, 8, 6), M(col, { emissive: col, emissiveIntensity: .9, roughness: .4 }), x, h + .1, z);
+    bulb.userData.khzBob = i;
+  }
+  // wind chimes and a cairn marking the way up
+  for (let i = 0; i < 4; i++) add(new THREE.CylinderGeometry(.03, .03, .5 + i * .12, 5), brass, -1.6 + i * .18, 2.1 - i * .06, -.4);
+  add(new THREE.CylinderGeometry(.02, .02, 1.6, 4), dark, -1.33, 2.9, -.4);
+  for (let i = 0; i < 5; i++) add(new THREE.DodecahedronGeometry(.42 - i * .06, 0), stone, 1.5, .3 + i * .5, 7.5, i);
+  const glow = glowSprite(0xffc94a, 7, .55); glow.position.set(0, 9, 0); g.add(glow); world.khzBeacon = glow; // seen from the ship
+  if (khzPending()) khzPlace().catch(e => console.warn('khazglar failed', e));
+}
+async function khzPlace() { // the hermit himself, at his telescope
+  const W = world.planet, area = curArea(); if (!W || !W.khz) return;
+  const R = await companionRig('khazglar'); if (!R || curArea() !== area || !world.planet || !world.planet.khz) return;
+  R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  const x = W.khz.x + 2.4, z = W.khz.z - 1.0; R.root.position.set(x, wHeight(x, z), z); R.root.rotation.y = Math.PI * .8; R.mode = 'idle';
+  wScene.add(R.root); world.khz = { R, x, z };
+}
+function khzTick(dt) {
+  if (world.khzFire) { world.khzFire.material.opacity = .75 + Math.sin(time * 9) * .1 + Math.sin(time * 23) * .06; if (world.khzLight) world.khzLight.intensity = 16 + Math.sin(time * 11) * 3; }
+  if (world.khzBeacon) world.khzBeacon.visible = khzPending();
+  const K = world.khz; if (!K || !K.R || !K.R.root.parent) return;
+  const p = player.position, d = Math.hypot(p.x - K.x, p.z - K.z);
+  if (d < 12) K.R.root.rotation.y = angLerp(K.R.root.rotation.y, Math.atan2(p.x - K.x, p.z - K.z), Math.min(1, dt * 2.5));
+  if (!K.R.static) { try { K.R.mode = 'idle'; animRig(K.R, dt); } catch (e) { K.R.static = true; } }
+}
+function khzImpostor() { // the hermitage from the air: the fire's glow and a gold beacon over the slope
+  const g = new THREE.Group(), dome = new THREE.Mesh(new THREE.SphereGeometry(4, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x7a4a36, roughness: .9 }));
+  dome.scale.y = .78; g.add(dome); const f = glowSprite(0xff9a4a, 30, .9); f.position.set(4, 3, 6); g.add(f);
+  const b = glowSprite(0xffc94a, 90, .6); b.position.y = 40; g.add(b); return g;
+}
+const khzNear = p => { const K = world.khz; return K && K.R && K.R.root.parent && khzPending() && Math.hypot(p.x - K.x, p.z - K.z) < 3.4 ? K : null; };
+// the way there: Orion's idea, straight after the nightmare
+const KHZ_CALL = [
+  ['ORION MASCAR', 'That wasn’t the first of these, and it won’t be the last. We need someone who knows what they’re dealing with.', 'CH3KHAZCALL1'],
+  ['NICO', 'Who? A doctor?', 'CH3KHAZCALL2'],
+  ['ORION MASCAR', 'A hermit. Khazglar. He lives on Olympus Mons, up on Mars, and he’s spent longer watching the sky than anyone alive.', 'CH3KHAZCALL3'],
+  ['NICO', 'A Martian? Those are bedtime stories.', 'CH3KHAZCALL4'],
+  ['ORION MASCAR', 'So was I, once. Set a course for Mars.', 'CH3KHAZCALL5']
+];
+const KHZ_HELLO = {
+  human: 'A child of Earth, this far up my mountain. Your Federation still teaches its schoolchildren that my people are a myth.',
+  chompy: 'A Chompy. The last of your kind who climbed up here wanted to buy the mountain. I let him keep his money, and most of his teeth.',
+  erisian: 'An Erisian, a very long way from the edge of the system. Does your Matriarch know you’ve wandered off?',
+  grek: 'Grek. You walk the way your people always do, as if the ground owes you something. Sit. It doesn’t.'
+};
+let khzVo = null;
+async function khzVoices() { if (khzVo) return khzVo; khzVo = await loadDataScript('khazVoices').then(() => sfx.loadClips('khazVoices')).catch(() => null) || []; return khzVo; }
+const KHZ_IDS = ['CH3KHAZCALL1', 'CH3KHAZCALL2', 'CH3KHAZCALL3', 'CH3KHAZCALL4', 'CH3KHAZCALL5', ...Array.from({ length: 17 }, (_, i) => 'CH3KHAZ' + (i + 1)), 'CH3KHAZ4CH', 'CH3KHAZ4ER', 'CH3KHAZ4GR']; // CH3KHAZ4 is the human greeting; the other species' follow at the end
+const khzClip = id => { const i = KHZ_IDS.indexOf(id); return khzVo && i >= 0 && khzVo[i] ? [khzVo[i]] : undefined; };
+function khzSay(list, done) { const run = i => { if (i >= list.length) { done && done(); return; } openDialog(list[i][0], [list[i][1]], false, () => run(i + 1), khzClip(list[i][2])); }; run(0); }
+async function khzMeet() {
+  if (!khzPending() || ex.dlg) return;
+  await khzVoices(); if (state !== 'explore' || ex.dlg) return;
+  const sp = spOf(wanderer), K = 'KHAZGLAR', O = 'ORION MASCAR', N = 'NICO';
+  const a = [
+    [K, 'I watched your ship come down through the dust an hour ago. Nobody lands on this mountain by accident.', 'CH3KHAZ1'],
+    [O, 'Khazglar. You haven’t aged a day.', 'CH3KHAZ2'],
+    [K, 'And you have aged several decades, Orion Mascar. It suits you. Barely.', 'CH3KHAZ3'],
+    [K, KHZ_HELLO[sp] || KHZ_HELLO.human, { chompy: 'CH3KHAZ4CH', erisian: 'CH3KHAZ4ER', grek: 'CH3KHAZ4GR' }[sp] || 'CH3KHAZ4'],
+    [N, 'So the Martians are real. My grandmother owes me an apology.', 'CH3KHAZ5'],
+    [K, 'Your grandmother was a sensible woman. Most of us live under the ice now. I prefer the view.', 'CH3KHAZ6'],
+    [K, 'But you didn’t climb up here for the view. You’ve been seeing things. Not dreams. Places you’ve never been. People who aren’t born yet, or who have been dead for a thousand years.', 'CH3KHAZ7'],
+    [O, 'How could you possibly know that?', 'CH3KHAZ8'],
+    [K, 'Because the sky has been loud ever since you left Earth. Something at the heart of the galaxy is turning over in its sleep, and it talks to anyone who will listen. You listen very well.', 'CH3KHAZ9']
+  ];
+  const b = [
+    [K, 'I have watched that sky for three hundred years, through a telescope I built from a crashed survey probe. I would like to see it up close before the dust takes me.', 'CH3KHAZ13'],
+    [N, 'Is he asking to come with us?', 'CH3KHAZ14'],
+    [K, 'He is. He also cooks, and he knows every pirate lane between here and Neptune.', 'CH3KHAZ15'],
+    [O, 'Khazglar, coming down off Olympus Mons. Now I’ve seen everything.', 'CH3KHAZ16'],
+    [K, 'Not yet, old friend. But you will.', 'CH3KHAZ17']
+  ];
+  const reply = (d, line, why) => () => { if (d) alignAct(d, why); khzSay([line, ...b], khzJoin); };
+  khzSay(a, () => openChoice('YOUR REPLY', [
+    { text: 'Then help me understand it. Please.', onPick: reply(3, [K, 'Good. Fear is a poor teacher, but humility makes an excellent student.', 'CH3KHAZ10'], 'you asked Khazglar for help') },
+    { text: 'What’s at the heart of the galaxy?', onPick: reply(0, [K, 'Sagittarius A*. A black hole, and the oldest empire in the galaxy wrapped round it like a fist. That much I know for certain. The rest, we find out together.', 'CH3KHAZ11']) },
+    { text: 'Stay out of my head, old man.', onPick: reply(-2, [K, 'I’m not in your head. That is rather the problem. Something else is.', 'CH3KHAZ12'], 'you snapped at Khazglar') }
+  ]));
+}
+function khzJoin() {
+  const pdPre = pdStoryIds();
+  wanderer.ch3 = Object.assign({}, wanderer.ch3, { khzMet: true });
+  wanderer.party = [...new Set([...(wanderer.party || []), 'khazglar'])];
+  const c = curChar(); if (c) { c.ch3 = wanderer.ch3; c.party = wanderer.party; }
+  saveRoster(); pdStoryNote(pdPre);
+  const K = world.khz; if (K && K.R && K.R.root.parent) K.R.root.parent.remove(K.R.root); world.khz = null; // he walks with you now, as crew
+  syncCrewParty(); placeCrew().catch(() => null);
+  ui.xhud.classList.add('comp'); refreshJamesUI(); renderTasks();
+  sfx.chime(); gainXP(200, 'Khazglar joined you');
+  notice('The Hermit of Olympus Mons', 'KHAZGLAR JOINS YOUR CREW', 4200);
+  setTimeout(() => lootMsg('Khazglar takes the same five orders as Orion and Nico · his file is open in the Nostrapedia', compColor('khazglar')), 1600);
+}
+function khzFly() { // from anywhere on Mars: the helm takes you up the mountain
+  const f = $('#fade'); f.style.transition = 'opacity .6s'; f.style.opacity = 1; sfx.whoosh();
+  setTimeout(async () => {
+    SHIPI.on = false; ui.xhud.classList.remove('aboard'); xUI.prompt.classList.remove('on'); xUI.act.classList.remove('on');
+    if (world.landShip) world.landShip.visible = false;
+    try { await landOn(bodyById('mars'), khzPadDir()); } catch (e) { console.error(e); }
+    f.style.transition = 'opacity 1.2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 1300);
+  }, 650);
+}
+function khzFarHint() { // landed on Mars, but nowhere near the mountain
+  const W = world.planet; if (!W || W.P.id !== 'mars' || W.khz || !khzPending()) return;
+  const km = (Math.acos(clamp(W.D.dot(khzHutDir()), -1, 1)) * 2400 / 1000).toFixed(1);
+  setTimeout(() => notice(`Olympus Mons is ${km} km away`, 'TAKE THE HELM TO FLY THERE', 4200), 4200);
+}
 const shipX = () => world.adVisit && !isPl() ? world.shipAt.x : 0, shipZ = () => world.adVisit && !isPl() ? world.shipAt.z : 0;
 /* ---- Chapter II: New London, capital of the Human Federation of Sol (Europe) ----
    Westminster, rebuilt: the Palace of Westminster on the west bank of the Thames with Elizabeth Tower (Big Ben) at its north end,
@@ -11680,7 +11861,7 @@ const driveRange = () => DRIVE_LY[driveTier()];
 const warpCost = (A, B) => A === B ? 0 : Math.max(1, Math.ceil(galDist(A, B) / LY_PER_CELL));
 const inRange = (A, B) => galDist(A, B) <= driveRange();
 const cellsTxt = n => `${n} cell${n === 1 ? '' : 's'}`;
-const planetH = (P, d) => PKIND[P.kind].h(d, P) * (P.amp || (P.amp = P.kind === 'earth' ? 1 : clamp(P.r / 2600, .3, .8))); // smaller worlds, gentler relief
+const planetH = (P, d) => PKIND[P.kind].h(d, P) * (P.amp || (P.amp = P.kind === 'earth' ? 1 : clamp(P.r / 2600, .3, .8))) + (P.id === 'mars' ? olympusH(d) : 0); // smaller worlds, gentler relief (and Mars has Olympus Mons)
 // ---- the planet meshes: a cube-sphere, displaced, coloured by height; three levels of detail ----
 function cubeSphere(P, N) {
   const faces = [[[1, 0, 0], [0, 0, -1], [0, 1, 0]], [[-1, 0, 0], [0, 0, 1], [0, 1, 0]], [[0, 1, 0], [1, 0, 0], [0, 0, -1]], [[0, -1, 0], [1, 0, 0], [0, 0, 1]], [[0, 0, 1], [1, 0, 0], [0, 1, 0]], [[0, 0, -1], [-1, 0, 0], [0, 1, 0]]];
@@ -12134,9 +12315,14 @@ function spaceHudTick(P, alt, fwd) {
     if (Q.minor && d > 15000 && Q !== P) continue; // a small moon: marked only once you're close
     h += `<div class="sh-mk${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${Q.name.toUpperCase()}<br><small>${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`;
   }
+  if (khzPending() && SPC.sys === 'sol') { // the story's next stop: Olympus Mons, in gold
+    const M = SPC.bodies.find(Q => Q.id === 'mars');
+    if (M) { const wp = tmpVs.copy(khzDir()).multiplyScalar(M.r + spaceH(M, khzDir())).add(M.pos), d = SPC.pos.distanceTo(wp), v3 = wp.project(camera);
+      if (v3.z < 1) { const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; h += `<div class="sh-mk gold${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>OLYMPUS MONS<br><small>KHAZGLAR · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`; } }
+  }
   box.innerHTML = h;
 }
-function ch3Goal() { const c = wanderer.ch3 || {}; return c.warped ? `Explore ${curSys().name}` : !c.landed ? 'Land on a planet in Sol' : 'Warp to another star system · open the galaxy map'; }
+function ch3Goal() { const c = wanderer.ch3 || {}; if (khzPending()) return SPC.atmo && ATM.P && ATM.P.id === 'mars' ? 'Find Khazglar · fly to Olympus Mons and land' : 'Find Khazglar on Olympus Mons, Mars'; return c.warped ? `Explore ${curSys().name}` : !c.landed ? 'Land on a planet in Sol' : 'Warp to another star system · open the galaxy map'; }
 /* ============ Into the atmosphere, No Man's Sky style ============
    Below 420 m over a world you no longer drop straight onto the ground: you fly into its sky. The world is drawn at its ground
    scale (Earth at 14 ×), as a cube-sphere of tiles that split finer the closer you fly (a quadtree on each of the six faces),
@@ -12307,6 +12493,7 @@ function atmCloudsTick(dt) {
 // ---- places seen from the air: on Earth its cities and wonders; on a capital world, its capital ----
 function atmPois(P) {
   if (P.real) return EPOIS.map(Q => (epoiInit(Q), Q));
+  if (P.id === 'mars') return [{ id: 'olympus', name: 'Olympus Mons', P, c: khzHutDir(), R: 60, khz: true, mk: khzImpostor, get tag() { return khzPending() ? 'Khazglar' : 'the hermitage'; } }];
   const K = CAPITALS[P.id]; if (!K) return [];
   return [{ id: 'cap-' + P.id, name: K.name, cap: K, P, c: capDir(P), R: K.R, imp: true }];
 }
@@ -12330,9 +12517,9 @@ function atmPoiTick() {
   for (const Q of A.pois) {
     const far = Q.see || 14000, d = A.tp.copy(Q.c).multiplyScalar(A.Rg).distanceTo(cam);
     if (d < far && !Q.ag && !built) { // build its model the first time you come near (one a frame)
-      built = true; Q.am = Q.imp ? capImpostor(Q) : Q.line ? wallAtmo(Q) : epoiModel(Q);
+      built = true; Q.am = Q.imp ? capImpostor(Q) : Q.line ? wallAtmo(Q) : Q.mk ? Q.mk(Q) : epoiModel(Q);
       const grp = Q.ag = new THREE.Group(), e = new THREE.Vector3(0, 1, 0).cross(Q.c).normalize(), s = new THREE.Vector3().crossVectors(e, Q.c);
-      grp.matrix.makeBasis(e, Q.c, s).setPosition(A.tp.copy(Q.c).multiplyScalar(A.Rg + (Q.imp ? planetH(A.P, Q.c) : epoiBase(Q)))); grp.matrixAutoUpdate = false; grp.matrixWorldNeedsUpdate = true;
+      grp.matrix.makeBasis(e, Q.c, s).setPosition(A.tp.copy(Q.c).multiplyScalar(A.Rg + (Q.imp || Q.mk ? planetH(A.P, Q.c) : epoiBase(Q)))); grp.matrixAutoUpdate = false; grp.matrixWorldNeedsUpdate = true;
     }
     if (Q.ag) { if (d < far * 1.15) { if (Q.am && Q.am.parent !== Q.ag) Q.ag.add(Q.am); if (Q.ag.parent !== A.scene) A.scene.add(Q.ag); } else if (Q.ag.parent === A.scene) A.scene.remove(Q.ag); }
   }
@@ -12390,6 +12577,7 @@ function atmLandSpot() {
   if (P.real) { const Q = epoiAt(d, 220); if (Q) {
     if (Q.line) { const [la, lo] = earthLL(d); return { d: wallDist(Q, d) < 45 ? earthDir(la - 50 / (EARTH_RG * D2R), lo) : d, Q }; } // beside the wall, not on it
     return { d: Q.pad ? epoiDir(Q, Q.pad[0], Q.pad[1]) : Q.c.clone(), Q }; } }
+  for (const Q of A.pois) if (Q.khz && Q.c.dot(d) > Math.cos(420 / A.Rg)) return { d: khzPadDir(), Q }; // over Olympus Mons: down beside the hermitage
   for (const Q of A.pois) if (Q.imp && Q.c.dot(d) > Math.cos((Q.R + 500) / A.Rg)) { // a capital: its spaceport, at the city's edge on your side
     const t = d.clone().addScaledVector(Q.c, -d.dot(Q.c)); if (t.lengthSq() < 1e-8) t.set(0, 1, 0).cross(Q.c); t.normalize();
     return { d: Q.c.clone().multiplyScalar(A.Rg).addScaledVector(t, Q.R + 70).normalize(), Q }; }
@@ -12498,7 +12686,7 @@ function atmHudTick(alt) {
   for (const Q of A.pois) {
     const wp = A.tp.copy(Q.c).multiplyScalar(A.Rg + 60), d = wp.distanceTo(pos); if (d > (P.real ? 48000 : 1e9) || d < 220) continue;
     const v3 = wp.project(camera); if (v3.z > 1) continue; const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; if (x < -40 || x > W + 40 || y < -40 || y > H + 40) continue;
-    h += `<div class="sh-mk${Q.nofly ? ' nf' : ''}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${Q.name.toUpperCase()}<br><small>${d > 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'}${Q.tag ? ' · ' + Q.tag : ''}</small></span></div>`;
+    h += `<div class="sh-mk${Q.nofly ? ' nf' : ''}${Q.khz && khzPending() ? ' gold' : ''}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${Q.name.toUpperCase()}<br><small>${d > 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'}${Q.tag ? ' · ' + Q.tag : ''}</small></span></div>`;
   }
   box.innerHTML = h;
 }
@@ -14056,6 +14244,7 @@ async function shipInteract(n) {
   if (n.id === 'bunk') { const m = maxHP(); if (ex.hp >= m) { lootMsg('You’re already rested', '#cfd6e6'); return; } const f = $('#fade'); f.style.transition = 'opacity .5s'; f.style.opacity = 1; setTimeout(() => { ex.hp = m; invState().hp = m; f.style.opacity = 0; lootMsg('Rested · health restored', '#7fe0a0'); }, 700); return; }
   if (n.id === 'pilot') {
     if (SHIPI.from === 'space') { leaveShip('space'); return; }
+    if (isPl() && world.planet && world.planet.P.id === 'mars' && !world.planet.khz && khzPending()) { openChoice('THE HELM', [{ text: 'Fly to Olympus Mons · Khazglar’s hermitage', onPick: () => khzFly() }, { text: 'Take off', onPick: () => leaveShip('takeoff') }, { text: 'Stay landed', onPick: () => {} }]); return; }
     if (brawlOn() && isPl() && world.planet && world.planet.P.id === 'earth') { openChoice('THE HELM', [{ text: 'Take off', onPick: () => leaveShip('takeoff') }, { text: 'Fly to Ad-Nostra, East Africa · The Salt Lantern', onPick: () => shipFlyToAdNostra() }, { text: 'Stay landed', onPick: () => {} }]); return; }
     leaveShip('takeoff'); return; }
   if (n.id === 'holo') { if (SHIPI.from === 'space') { leaveShip('space'); setTimeout(() => galOpen(), 50); } else lootMsg('The galaxy map works in flight · take off first', '#cfd6e6'); return; }
@@ -14069,7 +14258,8 @@ function shipLift(d) {
 const DISMISS_LINES = {
   orion: ['I’ll wait aboard the Nostra. Put the kettle on when you get back, and don’t do anything I wouldn’t.', 'Back aboard? Good. Lead on, friend.'],
   nico: ['I’ll keep the Nostra warm. Try not to get yourself shot without me.', 'About time. Both guns are ready.'],
-  james: ['I’ll head back to the ship. Holler if you need me.', 'Right behind you.']
+  james: ['I’ll head back to the ship. Holler if you need me.', 'Right behind you.'],
+  khazglar: ['I will wait aboard. Wake me if anything interesting crosses the sky.', 'Lead on. I have sat still for long enough.']
 };
 const dismissLine = id => (DISMISS_LINES[id] || [`I’ll be aboard the Nostra if you need me.`, 'Let’s go.'])[0];
 const recallLine = id => (DISMISS_LINES[id] || [null, 'Let’s go.'])[1];
@@ -14467,6 +14657,7 @@ function sqSave() { const c = curChar(); if (c) c.sq = wanderer.sq; saveRoster()
 const sqKills = () => ((wanderer.ch3 || {}).kills | 0);
 const sqPlanetName = id => { const P = bodyById(id); return P ? `${P.name} (${sysById(P.sys).name})` : '?'; };
 function sqEligible(q, m) {
+  if (q.id === 'h13' && khzJoined()) return false; // the hermit's errand: he's aboard now
   if (q.at === 'catharsis' && (wanderer.chapter | 0) >= 4) return false; // only while they're neutral
   if (q.at === 'any') return true;
   if (q.at === 'sol') { const P = bodyById(m.pid); return !!P && /^Human Federation/.test(P.baseFac || P.faction || ''); }
@@ -14681,14 +14872,14 @@ async function landOn(P, dir, place) {
   if ((!place || fresh) && P.sea) dryLandDir(P, D); // over the sea (Earth's oceans, Europa's cracks): she sets down on the nearest shore
   const E = new THREE.Vector3(0, 1, 0).cross(D); if (E.lengthSq() < .01) E.set(1, 0, 0); E.normalize(); const N = new THREE.Vector3().crossVectors(E, D).normalize(); // x east, z south: the world seen from above
   world.planet = { P, D, E, N, R: atmRg(P), h0: planetH(P, D) }; wxReset(); world.adVisit = false;
-  cityPlan(world.planet); hallPlan(world.planet); // Alphinos on Aridaxx, Karribassa on Janira Prime
+  cityPlan(world.planet); hallPlan(world.planet); khazPlan(world.planet); // Alphinos on Aridaxx, Karribassa on Janira Prime, Khazglar's hermitage on Olympus Mons
   AREA_INFO[key] = { planet: P.name, name: P.name, space: true, stationTp: { x: 1e5, z: 1e5, name: '' } };
   AREA_FOG[key] = new THREE.Color(P.fog).getHex();
   world.area = key; world.builtArea = null; // a new landing spot: the ground is laid out afresh around it
   const nt = planetTraders(P); for (const m of MERCHANTS[key] || []) if (!nt.includes(m) && m.stall) { wScene.remove(m.stall); m.stall = null; } // a stall whose world changed hands goes
   MERCHANTS[key] = nt; for (const m of MERCHANTS[key]) m.seed = null; // its stall finds dry ground near the new spot
   const pl = place || { mode: 'explore', area: 'world', where: key, x: 5, z: 14.5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI }; // by the ramp, clear of the wings
-  enterWorld(pl); buildCity(); buildHall(); try { earthGroundBuild(world.planet); } catch (e) { console.error(e); } await placeOrion().catch(() => null); placeGivers().catch(() => null);
+  enterWorld(pl); buildCity(); buildHall(); buildHermitage(); khzFarHint(); try { earthGroundBuild(world.planet); } catch (e) { console.error(e); } await placeOrion().catch(() => null); placeGivers().catch(() => null);
   // your ship, set down on the ground
   if (!world.landShip) world.landShip = makeShip();
   setShipRig(world.landShip, 1, 1);
@@ -15338,21 +15529,23 @@ async function nmWake() {
   const fl = await sfx.loadClips('antOrionFlashVoices').catch(() => null); // Orion's "Hey! HEY!" from the ice
   const wv = await loadDataScript('nmWakeVoices').then(() => sfx.loadClips('nmWakeVoices')).catch(() => null) || []; // CH3NMWAKECH1–4, ER1–3, HU1–3, GR1–3, in that order
   const wake = {}; NM_WAKE_IDS.forEach((id, i) => { if (wv[i]) wake[id] = wv[i]; });
-  const lines = [['ORION MASCAR', 'Hey! HEY! Look at me! Snap out of it!'], ...NM_WAKE[NM.race]];
+  await khzVoices(); // Orion's idea afterwards: Khazglar (voiced if data/khazVoices.js is there)
+  const lines = [['ORION MASCAR', 'Hey! HEY! Look at me! Snap out of it!'], ...NM_WAKE[NM.race], ...KHZ_CALL];
   show(ui.xhud, true); ui.xhud.classList.add('cutting');
   const run = i => {
     if (i >= lines.length) { nmEnd(); return; }
-    const c = i === 0 ? (fl ? fl[0] : null) : wake[lines[i][2]] || null;
+    const c = i === 0 ? (fl ? fl[0] : null) : wake[lines[i][2]] || (khzClip(lines[i][2]) || [])[0] || null;
     openDialog(lines[i][0], [lines[i][1]], false, () => run(i + 1), c ? [c] : undefined);
   };
   setTimeout(() => run(0), 700);
 }
 function nmEnd() {
   ui.xhud.classList.remove('cutting'); show(ui.xhud, false); NM.on = false; NM.phase = null;
-  const pdPre = pdStoryIds(); wanderer.ch3 = Object.assign({}, wanderer.ch3, { nightmare: NM.race }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster(); pdStoryNote(pdPre);
+  const pdPre = pdStoryIds(); wanderer.ch3 = Object.assign({}, wanderer.ch3, { nightmare: NM.race, khzCall: true }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster(); pdStoryNote(pdPre);
   const hud = $('#spaceHud'); if (hud) hud.classList.remove('hidden');
   state = 'space'; SPC.camInit = false; clock.getDelta();
-  spaceMsg('Fly with W/S and A/D (or the stick and THRUST) · descend onto any rocky planet to land');
+  spaceMsg(khzPending() ? 'Fly to Mars · Khazglar lives on Olympus Mons (the gold marker) · descend into the sky to land' : 'Fly with W/S and A/D (or the stick and THRUST) · descend onto any rocky planet to land');
+  if (khzPending()) setTimeout(() => notice('Chapter III', 'FIND KHAZGLAR ON MARS', 3600), 600);
 }
 // ---- the Chompy nightmare: Sevirrus's cutscenes ----
 // A fast montage of Sevirrus, the game before this one, in its own dark, brutal style, cut together like the nightmare on the ice:
@@ -16162,6 +16355,7 @@ function updateWorldMode(dt) {
     let bd = 2.6;
     for (const b of world.build) { const dd = Math.hypot(b.data.x - p.x, b.data.z - p.z); if (dd < bd && Math.abs(b.data.y - p.y) < 3.2) { bd = dd; ex.near = { id: 'dismantle', ref: b, label: pieceName(b.data) }; } }
   }
+  if (!ex.near && isPl() && khzNear(p)) ex.near = { id: 'khaz', label: 'Khazglar' }; // the hermit of Olympus Mons
   if (!ex.near && isPl()) { const G = giverNear(p); if (G) ex.near = { id: 'qgiver', ref: G, label: titleName(G.name) }; } // quest givers
   if (!ex.near && RES.bots.length) { const B = resNear(p); if (B) ex.near = { id: 'bot', ref: B, label: B.c.name }; } // residents (wanderers you sent into the world)
   if (!ex.near) for (const m of merchantsHere()) if (m.px != null && Math.hypot(m.px - p.x, m.pz - p.z) < 3) ex.near = { id: 'merchant', ref: m, label: m.who };
@@ -16238,6 +16432,8 @@ function dlgSpeaker() {
   const at = (o, h) => o && o.visible !== false ? v.set(o.position.x, o.position.y + h, o.position.z) : null;
   if (/JAMES/.test(w) && james.ready && james.root.visible) return at(james.root, 1.62);
   if (/ORION|ON THE PHONE/.test(w) && world.orion && world.orion.root.visible) return at(world.orion.root, 1.62);
+  if (w === 'KHAZGLAR' && world.khz && world.khz.R) return at(world.khz.R.root, 2.0);
+  if (w === 'NICO' && CREW.nico && CREW.nico.R && CREW.nico.R.root.parent === wScene) return at(CREW.nico.R.root, 1.55);
   if (w === 'HFOS OFFICER' && arr.officer) return at(arr.officer.root, 1.68);
   if (w === 'HFOS DOOR GUARD' && LON.guards && LON.guards[2]) return at(LON.guards[2].root, 1.68);
   if (w === HAW_NAME && haw.R) return at(haw.R.root, 1.66);
@@ -18023,7 +18219,7 @@ const COMPANIONS = [
       'She made a new life anyway: a farmhouse on the savanna east of town, a husband, and in 2125 AD a son. She named him Orion, after the three stars of Orion’s Belt that her grandmother used to show her. It was a promise made long before she ever met Orion Mascar.',
       'She met you on the night he was born, when lions broke into her home and Orion answered her call. After Chapter II she travels with you.'
     ] },
-  { id: 'khazglar', tag: 'cpKhaz', h: 2.2, unlockAt: 3, name: 'KHAZGLAR', title: 'The Hermit of Olympus Mons',
+  { id: 'khazglar', tag: 'cpKhaz', h: 2.2, unlockAt: 4, unlockLabel: 'Chapter III', unlockIf: () => khzJoined(), name: 'KHAZGLAR', title: 'The Hermit of Olympus Mons',
     facts: [['Species', 'Martian'], ['Homeworld', 'Mars'], ['Lives', 'As a hermit on Olympus Mons'], ['Alignment', 'Neutral Good']],
     align: 'Gentle and solitary. Khazglar helps whoever climbs his mountain, but he has never once come down it to look for trouble.',
     paras: [

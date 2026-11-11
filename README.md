@@ -997,3 +997,36 @@ Then Orion and Nico bring them back. **Skip** jumps past the memories, then past
 - **Grek nightmare voices:** `data/nmGrekVoices.js` holds `CH3NMGREK1–6` in order (sources in `assets/audio/nightmare_ch3/`), and loads only when the Grek nightmare plays.
 - **Wake-up voices:** `data/nmWakeVoices.js` holds the 13 wake-up lines (`CH3NMWAKECH1–4`, `ER1–3`, `HU1–3`, `GR1–3`, in that order; sources in `assets/audio/nightmare_ch3/`), and loads when the wake-up starts. Orion's opening "Hey! HEY!" is still his recording from the ice.
 - **Fully voiced.** The one exception is on purpose: the Erisian nightmare's opening card (THE VISION: "Citadel el Erisconos. Not yet. But soon.", `CH3NMERIS1`) is text only.
+
+## Chapter III: Khazglar on Olympus Mons
+Straight after the nightmare in space (whichever of the four you had), Orion has an idea: these episodes aren't stopping, and the one person who might understand them is **Khazglar**, a Martian hermit who has watched the sky from Olympus Mons for three hundred years.
+
+- **The way there:**
+  - Five lines after the wake-up (Orion and Nico), then the objective **Find Khazglar on Olympus Mons, Mars**. It replaces *Land on a planet* and *Warp to another star system* until you've met him.
+  - In Sol, a **gold marker** sits on Mars at Olympus Mons, with its distance.
+  - In Mars's sky, Olympus Mons is marked in gold, and over the mountain the land button reads **LAND · OLYMPUS MONS**. It sets you down beside the hermitage.
+  - Land anywhere else on Mars and you're told how far the mountain is. The pilot's seat then offers **Fly to Olympus Mons · Khazglar's hermitage**.
+- **Olympus Mons** is now a real feature of Mars, at its real latitude and longitude (18.65° N, 133.8° W). It's a broad shield volcano about 1.3 km across and 130 m high, with a caldera at the top, a cliff round its foot and old lava terraces. You can see it from space, fly over it and walk up it. (`olympusH`, added to Mars's `planetH`.)
+- **The hermitage** sits on the upper slopes, north of the caldera:
+  - a low dome of fitted red stone, half dug into the slope
+  - a brass telescope built from a crashed survey probe, with what's left of the probe and its solar panel
+  - wind chimes, a cairn, and a fire ringed with stones and glowing Martian plants
+  - a gold beacon over it until you've met him
+  - The minimap and the objective marker point to Khazglar.
+- **The conversation:**
+  - It's 16 lines, in the cinematic style: Khazglar, Orion and Nico.
+  - His greeting changes with your species: human, Chompy, Erisian or Grek.
+  - He knows about the visions: *"the sky has been loud ever since you left Earth"*. Something at the heart of the galaxy is turning over in its sleep.
+  - You choose how to answer:
+    - *Then help me understand it* (heroic, +3)
+    - *What's at the heart of the galaxy?* (neutral; he names Sagittarius A\*)
+    - *Stay out of my head, old man* (villainous, −2)
+- **He joins your crew:**
+  - +200 XP.
+  - He walks and fights with you and takes the same five orders as Orion and Nico.
+  - He can be dismissed to wait aboard the Nostra, with his own goodbye.
+  - His Nostrapedia file opens once you've met him (in Chapter III it stays locked until then).
+  - His old side quest, *Khazglar's Request*, is no longer offered once he's with you.
+- **Next objective:** Warp to another star system.
+- **Saves:** flags `ch3.khzCall` and `ch3.khzMet`. A save made on the mountain loads back there, with Khazglar waiting if you haven't spoken to him yet.
+- **Voices:** the scene is text for now, and every line has an id ready. Drop in a `data/khazVoices.js` pack (same format as the other voice packs) holding `CH3KHAZCALL1–5`, then `CH3KHAZ1–17`, then `CH3KHAZ4CH`, `CH3KHAZ4ER` and `CH3KHAZ4GR`, in that order, and they play. `CH3KHAZ4` is the human greeting; the three at the end are the Chompy, Erisian and Grek ones.
