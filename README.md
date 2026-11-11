@@ -329,7 +329,7 @@ The galaxy map marks moons, dwarf planets and worlds with open water. Inner moon
 
 ### Your story in the Nostrapedia
 
-The Nostrapedia's **Lore events** tab now records your own story from Chapters I and II. Each event stays hidden until you finish its mission, and a toast tells you when a new one has been added. Once you are past a chapter, all of its events are there.
+The Nostrapedia's **Lore events** tab now records your own story from Chapters I and II, plus the nightmare at the start of Chapter III. Each event stays hidden until you finish its mission, and a toast tells you when a new one has been added. Once you are past a chapter, all of its events are there.
 
 | Event | Appears when you… |
 |---|---|
@@ -342,6 +342,7 @@ The Nostrapedia's **Lore events** tab now records your own story from Chapters I
 | The Brawl at the Salt Lantern | are arrested by the Federation |
 | The Trial in the House of Commons | stand trial (Hawthorne's greeting depends on your species) |
 | The Escape from New London | escape to the ship in Parliament Square |
+| *Your* Chapter III nightmare | have the nightmare above Earth. There are four (The Nightmare of Sevirrus for Chompy, The Vision of the Citadel for Erisians, The Nightmare of New London for humans, The Prophecy in the Dark for Grek), but your species is fixed for the whole game, so you only ever see your own |
 
 Each event shows the people who were there, as they were at the time.
 

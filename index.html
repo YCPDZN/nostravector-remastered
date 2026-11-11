@@ -15290,7 +15290,7 @@ async function nmWake() {
 }
 function nmEnd() {
   ui.xhud.classList.remove('cutting'); show(ui.xhud, false); NM.on = false; NM.phase = null;
-  wanderer.ch3 = Object.assign({}, wanderer.ch3, { nightmare: NM.race }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster();
+  const pdPre = pdStoryIds(); wanderer.ch3 = Object.assign({}, wanderer.ch3, { nightmare: NM.race }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster(); pdStoryNote(pdPre);
   const hud = $('#spaceHud'); if (hud) hud.classList.remove('hidden');
   state = 'space'; SPC.camInit = false; clock.getDelta();
   spaceMsg('Fly with W/S and A/D (or the stick and THRUST) · descend onto any rocky planet to land');
@@ -17661,6 +17661,8 @@ const PEDIA_ANCIENT = [
 const EV_CAST = { sevirrus: 1, orion: 2, hawthorne: 3 };
 // your story's events: done once the mission's flag is set, or once you're past that chapter
 const evDone = (ch, k) => !!wanderer && (chNow() > ch || !!((ch === 1 ? wanderer.ch1 : wanderer.ch2) || {})[k]);
+// which Chapter III nightmare this wanderer had (saved as their race; older saves stored true), or null before it
+const nmSeen = () => { if (!wanderer) return null; const n = wanderer.ch3 && wanderer.ch3.nightmare; if (!n && chNow() <= 3) return null; return typeof n === 'string' ? n : (['chompy', 'erisian', 'human', 'grek'].includes(spOf(wanderer)) ? spOf(wanderer) : 'human'); };
 const pdEvents = () => PEDIA_EVENTS.filter(L => !L.showIf || L.showIf());
 const pdStoryIds = () => { try { return PEDIA_EVENTS.filter(L => L.showIf && L.showIf()).map(L => L.id); } catch { return null; } };
 function pdStoryNote(before) { // a toast for each event a mission just added to the Nostrapedia
@@ -17808,6 +17810,49 @@ const PEDIA_EVENTS = [
       'The wanderer, Orion and Nico ran out of the House of Commons into Westminster, making for the ship on the lawn of Parliament Square. Behind them Hawthorne called for Croxian and Malia to bring them to him.',
       'Croxian Mascar was waiting. Hello again, wanderer. It was the first time in years that Orion had seen his son. Croxian, son, what have they done to you? Croxian did not answer. Nico put herself between them, and together they fought Croxian and Malia de Toro until Malia called the retreat.',
       'They boarded the ship and lifted off while Hawthorne shouted after them that there was nowhere in this galaxy the Federation could not reach them. Earth fell away below, and for the first time the wanderer was out among the stars.'
+    ] },
+  // ---- the nightmare above Earth at the start of Chapter III: one per species, and you only ever see your own ----
+  { id: 'nmChompy', story: 3, showIf: () => nmSeen() === 'chompy', name: 'THE NIGHTMARE OF SEVIRRUS', title: 'Nightmare · above Earth', sub: 'Chapter III · Chompy', cast: ['sevirrus'],
+    facts: [['When', 'Just after the escape from New London'], ['Dreamer', 'The wanderer, a Chompy'], ['Seen', 'Lord Sevirrus · Emperor Jakal Chompjak XVI · Damix Chompjak · the High Priest of Destruction'], ['Places', 'The fields of Carax · the throne hall of Alphinos'], ['Woken by', 'Orion Mascar · Nico']],
+    align: 'Not a memory of their own, but one every Chompy carries: the prince who knelt to Zark.',
+    paras: [
+      'The ship had barely cleared Earth when it happened again, like the episodes on the ice and in Westminster. This time the wanderer did not see Antarctica. They saw the history every Chompy grows up with, as though they had been standing in it.',
+      'They saw Sevirrus on Carax among the kneeling settlers. Everyone kneels, he said; some of them just need help. They saw him in the throne hall of Alphinos, sending for the head of his father, Emperor Jakal Chompjak XVI. They saw Damix Chompjak throw himself in the way, and Jakal tell his son at the very end that he loved him. I know, Sevirrus answered. That’s why it had to be you.',
+      'The last thing they saw was Carax again, and the High Priest of Destruction welcoming the Prince of Zark home.',
+      'They woke screaming the name Sevirrus. To Orion it was a name out of the history books. Not to the Chompy, Nico said. To them it is still an open wound.'
+    ] },
+  { id: 'nmErisian', story: 3, showIf: () => nmSeen() === 'erisian', name: 'THE VISION OF THE CITADEL', title: 'Vision · above Earth', sub: 'Chapter III · Erisian', cast: ['leader:erisian', 'alexia'],
+    facts: [], align: '', paras: [],
+    dyn: ch => {
+      const came = ch >= 4 || (ch === 3 && (forceCh === 3 || !!(wanderer && wanderer.ch3 && wanderer.ch3.alexiaCoup)));
+      return {
+        facts: [['When', 'Just after the escape from New London'], ['Dreamer', 'The wanderer, an Erisian'], ['Place', 'The Citadel el Erisconos, on Eris'], ['Seen', 'Alexia Erisconos · Vishara Erisconos, Matriarch of Eris'], ['Came true', came ? 'Yes. Alexia overthrew her sister and seized Eris' : 'Not yet'], ['Woken by', 'Orion Mascar · Nico']],
+        align: 'Not a memory but a warning: a future that had not happened yet.',
+        paras: [
+          'The ship had barely cleared Earth when it happened again, like the episodes on the ice and in Westminster. This time the wanderer saw something that had not happened yet.',
+          'Citadel el Erisconos, a voice said. Not yet. But soon. Alexia Erisconos, banished from the Citadel, walked up the processional to her sister’s throne. Vishara called for her guards. Your guards answer to me now, sister, Alexia told her. They have for a long time.',
+          'Vishara reminded her that everything she was, Vishara had given her: the name, the Citadel, Eris itself. You gave me a cage, Alexia said, and called it a crown. She had the Matriarch taken below, then turned to the wanderer. When I’m finished with her, she said, I’ll come for you.',
+          `They woke shouting Alexia’s name. Nico could hardly believe it: the Matriarch’s own sister? Whatever you saw hasn’t happened, Orion said. Let’s keep it that way.${came ? ' It happened anyway.' : ''}`
+        ]
+      };
+    } },
+  { id: 'nmHuman', story: 3, showIf: () => nmSeen() === 'human', name: 'THE NIGHTMARE OF NEW LONDON', title: 'Nightmare · above Earth', sub: 'Chapter III · Human', cast: ['nico', 'orion', 'hawthorne', 'croxian'],
+    facts: [['When', 'Just after the escape from New London'], ['Dreamer', 'The wanderer, a human'], ['Relived', 'The farmhouse · the Salt Lantern · the arrest · Hawthorne · the trial · Croxian Mascar'], ['Woken by', 'Orion Mascar · Nico']],
+    align: 'No history and no prophecy. Only the last few weeks, all over again.',
+    paras: [
+      'The ship had barely cleared Earth when it happened again, like the episodes on the ice and in Westminster. This time there was no future and no distant past, only Chapter II all over again.',
+      'Nico on the farmhouse porch, saying her husband should have been back by now. Daniel Brown in The Salt Lantern, and Orion’s fist. The Federation Guard bursting in. Hawthorne, smiling, asking them to stay where his guards could see them. Darius Ancin finding them guilty, and Hawthorne’s ENOUGH.',
+      'And last, Croxian Mascar walking out of the dark: Hello again, wanderer. Run, then, Hawthorne shouted after them. There is nowhere in this galaxy the Federation cannot reach you.',
+      'It’s the cantina again, isn’t it, Orion asked when they woke. The trial. Hawthorne. Nico told them to look at her: it was over, and they had got out, all three of them. He can’t reach us up here, Orion said. Not today.'
+    ] },
+  { id: 'nmGrek', story: 3, showIf: () => nmSeen() === 'grek', name: 'THE PROPHECY IN THE DARK', title: 'Prophecy · above Earth', sub: 'Chapter III · Grek', cast: [],
+    facts: [['When', 'Just after the escape from New London'], ['Dreamer', 'The wanderer, a Grek'], ['Speaker', 'A voice in the dark'], ['Names given', 'None'], ['Woken by', 'Orion Mascar · Nico']],
+    align: 'Shapes, never faces. The Grek say their dreams come true.',
+    paras: [
+      'The ship had barely cleared Earth when it happened again, like the episodes on the ice and in Westminster. This time there were no faces at all, only shapes, and a voice in the dark.',
+      'Hear it, child of the ice. The stars are already burning. A man who carries a federation on his back will fall, and no one will catch him. A black banner will rise where the golden one was torn down, and ships beyond counting will darken the sky.',
+      'An empire of glass will break, and its land will be given to one who never asked for it. The red world at the heart of the stars will burn beneath the boots of its friends. And at the end of it all, you will stand alone at the centre of everything, and you will choose.',
+      'You were talking in riddles, Orion told them when they woke. A man falling. A black banner. An empire of glass. The Grek say their dreams come true, said Nico. Then let’s hope this one’s wrong, said Orion.'
     ] },
   { id: 'carax2', unlockAt: 5, name: 'THE SIEGE OF CARAX', title: 'The Catharsis · Carax', sub: 'Chapter V', cast: [], stage: 'zark',
     facts: [['Date', 'After the war of Chapter IV'], ['Place', 'Carax · the five-floor bastion, the Catharsis capital'], ['Attackers', 'The Chompy Empire · Archamus · the Erisian Empire · the Grek · the Human Federation of Sol'], ['Defender', 'The Catharsis, under Lord Zark'], ['At the summit', 'Archamus · the Wanderer · Vishara Erisconos · Hak Chompjak V · Am-Grek · Darius Ancin'], ['Result', 'Lord Zark defeated · the Catharsis destroyed · Thomas Hawthorne killed · its worlds pass to the Wanderer']],
