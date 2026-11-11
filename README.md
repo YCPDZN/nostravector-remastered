@@ -316,6 +316,12 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   - **Tap or click anything you can use:** the lift, bench, galley, bunks, reactor, ramp, pilot's seat, holo-table and companions waiting aboard. Close by, it's used straight away; further off, you walk over (steering round tables and crates) and use it when you get there. Moving yourself cancels the walk. With a mouse, the cursor turns to a hand over anything usable. E / the action button still work as before. The hotbar and health bars stay on screen aboard.
   - **Save anywhere:** in space, aboard or on the ground. A save made aboard is called *Aboard the Nostra · Venus · Bridge* (for example) and loads you back aboard, on the same deck, where you stood, in flight or landed. The chapter line reads *Chapter III · The Nostra · Venus* (or the system, in space); it used to show the HUD's placeholder, *Chapter I · Antarctica*.
 
+### Fix: getting stuck on the Nostra
+- **The lift to the bridge** let you off inside the holo-table's footprint, so every step was refused and you were stuck for good. It now lets you off in open floor beside the table.
+- **Never stuck aboard:** if you're ever standing inside something (a table, a bunk, a crate), you step straight out to the nearest open floor.
+- **Never stuck outside:** on the ground, if you end up inside something you can't walk out of (the ship, deep water, a capital's tower), you're set down on the nearest open ground. Before, only things like rocks and buildings let you walk out.
+- **The landed ship's footprint** matches the Nostra (her long hull, her wings and engine pods), not the old dropship's box, so you no longer walk through her wings or get caught on invisible corners. The ramp end stays open to board. Landing, blacking out and coming down the ramp all set you down by the ramp, clear of her.
+
 ### Dismissing companions
 - Once you have the Nostra (Chapter III on), the companion panel has **Dismiss · wait aboard the Nostra** (or key **8**). Each companion says their own goodbye (Orion: *"I'll wait aboard the Nostra. Put the kettle on when you get back…"*; Nico: *"I'll keep the Nostra warm. Try not to get yourself shot without me."*; anyone else has a line of their own), and goes to wait on the crew deck. Future companions just add their lines to `DISMISS_LINES`.
 - Walk up to them aboard and **talk** to bring them back (*"Come with me."*), or leave them be.

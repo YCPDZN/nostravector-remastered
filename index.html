@@ -4063,7 +4063,7 @@ function stormClock(dt) {
 const suitHeat = () => { const h = invState().heat; return h == null ? 100 : h; };
 function nearHeater() { for (const o of world.placed) if (o.data.t === 'heater' && Math.hypot(o.data.x - player.position.x, o.data.z - player.position.z) < 3.2) return true; return false; }
 function emergencyRecovery() {
-  const p = player.position; p.set(11.5, wHeight(11.5, 3), 3); vel.set(0, 0, 0); ex.snap = true; ex.air = false;
+  const p = player.position; if (isPl()) p.set(4, wHeight(4, 14.5), 14.5); else p.set(11.5, wHeight(11.5, 3), 3); vel.set(0, 0, 0); ex.snap = true; ex.air = false; worldUnstick();
   invState().heat = 60;
   if (companionOn() && james.ready && james.root.parent === wScene && comp.mode === 'follow') jTeleportNear();
   sfx.thud(); notice('Exosuit · emergency recovery', 'RETURNED TO THE STATION', 4200);
@@ -7162,9 +7162,10 @@ function hurtPlayer(n, src) {
 function blackout() {
   for (const c of fauna.list) { c.state = 'idle'; c.tgt = null; }
   for (const c of [...fauna.list]) if (Math.hypot(c.x - 11, c.z - 3) < 90) removeFauna(c);
-  const p = player.position; p.set(11.5, wHeight(11.5, 3), 3); vel.set(0, 0, 0); ex.snap = true;
+  const p = player.position; if (isPl()) p.set(4, wHeight(4, 14.5), 14.5); else p.set(11.5, wHeight(11.5, 3), 3); vel.set(0, 0, 0); ex.snap = true; worldUnstick(); // on a planet: by your ship's ramp
   ex.hp = Math.round(maxHP() * .5); invState().hp = ex.hp;
   if (curArea() === 'africa') notice('You blacked out', orionJoined() ? 'ORION CARRIED YOU BACK TO HIS HOME' : 'YOU CAME TO OUTSIDE ORION’S HOME', 4200);
+  else if (isPl()) notice('You blacked out', partyNow().length ? `${compName(partyNow()[0]).toUpperCase()} GOT YOU BACK TO THE NOSTRA` : 'YOU CAME TO BY THE NOSTRA', 4200);
   else notice('You blacked out', companionOn() ? 'JAMES DRAGGED YOU BACK TO THE STATION' : 'YOU CAME TO AT THE STATION', 4200);
 }
 function damageFauna(c, dmg, fromJames) {
@@ -7891,8 +7892,21 @@ function buildWorld(seed) {
   }
 }
   }
+function nostraBlocked(x, z) { // the landed ship, at the landing spot's centre (nose to -z)
+  if (!world.landShip || !world.landShip.visible) return false;
+  const ax = Math.abs(x);
+  if (ax < 3.3 && z > -17 && z < 10.2) return true; // the hull (under it to the stern; the ramp end, past z 10.2, is open)
+  if (ax >= 3.3 && ax < 9.6 && z > 3.0 && z < 9.8) return true; // the wings and the engine pods
+  return false;
+}
+// you've ended up inside something solid you can't walk out of (the ship, deep water, a tower): the nearest open ground
+function worldUnstick() {
+  const p = player.position; if (ex.mode !== 'world' || !worldBlocked(p.x, p.z, true)) return false;
+  for (let r = .5; r <= 40; r += .5) for (let k = 0; k < 32; k++) { const a = k / 32 * Math.PI * 2, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r; if (!worldBlocked(x, z, true) && !worldBlocked(x, z)) { p.x = x; p.z = z; p.y = Math.max(wHeight(x, z), groundAt(x, z, p.y + 50)); vel.set(0, 0, 0); ex.snap = true; return true; } }
+  return false;
+}
 function worldBlocked(x, z, stationOnly, y = player.position.y) {
-  if (isPl()) { if (Math.abs(x) < 3.6 && z > -12.5 && z < 8) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2) return true; if (cityBlocked(x, z)) return true; } // your ship, deep water and the towers of a capital
+  if (isPl()) { if (nostraBlocked(x, z)) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2) return true; if (cityBlocked(x, z)) return true; } // your ship, deep water and the towers of a capital
   else if (curArea() !== 'europe' && Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true; // the station / Orion's house
   if (curArea() === 'europe' && londonBlocked(x, z)) return true;
   if (curArea() === 'africa' && Math.abs(x - FARM.x) < 5.3 && Math.abs(z - FARM.z) < 3.8) return true;
@@ -11695,6 +11709,17 @@ canvas.addEventListener('pointermove', e => { // a hand over anything you can us
   if ((SHIPI.hoverT = (SHIPI.hoverT || 0) + 1) % 3) return;
   canvas.style.cursor = shipPick(e.clientX, e.clientY) ? 'pointer' : '';
 });
+function shipBlocked(x, z) {
+  const [x0, x1, z0, z1] = SHIP_BOUNDS[SHIPI.deck]; if (x < x0 || x > x1 || z < z0 || z > z1) return true;
+  for (const [a, b, c, e] of SHIP_COLS[SHIPI.deck]) if (x > a - .28 && x < b + .28 && z > c - .28 && z < e + .28) return true;
+  if (SHIPI.deck === 1) for (const [i] of aboardIds().entries()) { const [cx2, cz2] = CREW_SPOTS[i % CREW_SPOTS.length]; if (Math.hypot(x - cx2, z - cz2) < .55) return true; }
+  return false;
+}
+function shipUnstick() { // the nearest open floor, if you're standing inside something
+  const p = player.position; if (!shipBlocked(p.x, p.z)) return false;
+  for (let r = .25; r <= 6; r += .25) for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r; if (!shipBlocked(x, z)) { p.x = x; p.z = z; vel.set(0, 0, 0); ex.snap = true; return true; } }
+  p.set(0, 0, 3.4); return true; // the middle of the deck is always clear
+}
 function shipShowDeck(d) { SHIPI.deck = d; SHIPI.decks.forEach((g, i) => { g.visible = i === d; }); shipCrewPlace(); }
 // companions waiting aboard stand (or sit) about the crew deck
 async function shipCrewPlace() {
@@ -11732,7 +11757,7 @@ function leaveShip(to) { // to: 'ground' (down the ramp), 'space' (back to the h
   SHIPI.on = false; ui.xhud.classList.remove('aboard'); xUI.prompt.classList.remove('on'); xUI.act.classList.remove('on');
   if (to === 'space') { state = 'space'; ex.mode = 'space'; show(ui.xhud, false); spaceHud().classList.remove('hidden'); camera.near = 1; camera.far = 1.4e6; camera.updateProjectionMatrix(); SPC.camInit = false; SPC.vel = Math.min(SPC.vel, 60); clock.getDelta(); return; }
   wScene.add(player); ex.mode = 'world'; ui.xhud.classList.add('world');
-  const z = 13.2; player.position.set(0, wHeight(0, z), z); player.rotation.y = 0; ex.yaw = Math.PI; ex.snap = true; vel.set(0, 0, 0);
+  const z = 13.2; player.position.set(0, wHeight(0, z), z); player.rotation.y = 0; ex.yaw = Math.PI; ex.snap = true; vel.set(0, 0, 0); worldUnstick();
   if (to === 'takeoff') { takeOff(); return; }
   if (world.landShip) setShipRig(world.landShip, 1, 1);
   if (orionJoined()) placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
@@ -11762,6 +11787,7 @@ function updateShipMode(dt) {
       wx = Math.sin(a) * 3; wz = Math.cos(a) * 3; if (gd < G.best - .05) { G.best = gd; G.bestT = performance.now(); } else if (performance.now() - G.bestT > 4000) { SHIPI.goal = null; lootMsg('Can’t get there from here · walk a little closer', '#cfd6e6'); } }
   }
   vel.x += (wx - vel.x) * Math.min(1, dt * 10); vel.z += (wz - vel.z) * Math.min(1, dt * 10);
+  if (blocked(p.x, p.z)) shipUnstick(); // standing inside something (a bad drop-off, an old save): step out to open floor
   const nx = p.x + vel.x * dt; if (!blocked(nx, p.z)) p.x = nx; else vel.x = 0;
   const nz = p.z + vel.z * dt; if (!blocked(p.x, nz)) p.z = nz; else vel.z = 0;
   p.y = 0;
@@ -11802,7 +11828,7 @@ async function shipInteract(n) {
 }
 function shipLift(d) {
   const f = $('#fade'); f.style.transition = 'opacity .35s'; f.style.opacity = 1; sfx.whoosh();
-  setTimeout(() => { shipShowDeck(d); const [x, z] = d === 2 ? [1.0, 0] : [1.3, 0]; player.position.set(x, 0, z); player.rotation.y = -Math.PI / 2; ex.yaw = player.rotation.y + Math.PI; ex.snap = true; f.style.opacity = 0; notice('The Nostra', `DECK ${d + 1} · ${DECK_NAMES[d].toUpperCase()}`, 1600); }, 380);
+  setTimeout(() => { shipShowDeck(d); const [x, z] = d === 2 ? [1.6, 1.9] : [1.3, 0]; player.position.set(x, 0, z); shipUnstick(); player.rotation.y = -Math.PI / 2; ex.yaw = player.rotation.y + Math.PI; ex.snap = true; f.style.opacity = 0; notice('The Nostra', `DECK ${d + 1} · ${DECK_NAMES[d].toUpperCase()}`, 1600); }, 380);
 }
 /* ---- dismissing companions: they go and wait aboard the Nostra, each with their own goodbye ---- */
 const DISMISS_LINES = {
@@ -12406,7 +12432,7 @@ async function landOn(P, dir, place) {
   world.area = key; world.builtArea = null; // a new landing spot: the ground is laid out afresh around it
   const nt = planetTraders(P); for (const m of MERCHANTS[key] || []) if (!nt.includes(m) && m.stall) { wScene.remove(m.stall); m.stall = null; } // a stall whose world changed hands goes
   MERCHANTS[key] = nt; for (const m of MERCHANTS[key]) m.seed = null; // its stall finds dry ground near the new spot
-  const pl = place || { mode: 'explore', area: 'world', where: key, x: 6, z: 5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI };
+  const pl = place || { mode: 'explore', area: 'world', where: key, x: 5, z: 14.5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI }; // by the ramp, clear of the wings
   enterWorld(pl); buildCity(); await placeOrion().catch(() => null); placeGivers().catch(() => null);
   // your ship, set down on the ground
   if (!world.landShip) world.landShip = makeShip();
@@ -13565,7 +13591,9 @@ function updateWorldMode(dt) {
     return Math.abs(d) / Math.max(.001, Math.hypot(x - p.x, z - p.z));
   };
   const maxSlope = ex.air ? 3 : 1.4;
-  // if you've ended up inside something (landed in a wall, a tree grew on you), let yourself walk out of it
+  // if you've ended up inside something (landed in a wall, a tree grew on you), let yourself walk out of it; and if it's
+  // something you can't walk out of (the ship, deep water, a tower), you're set down on the nearest open ground
+  if (!ex.vehicle && worldBlocked(p.x, p.z, true)) worldUnstick();
   const free = worldBlocked(p.x, p.z);
   if (!worldBlocked(nx, p.z, free) && slope(nx, p.z) < maxSlope) p.x = nx; else vel.x = 0;
   if (!worldBlocked(p.x, nz, free) && slope(p.x, nz) < maxSlope) p.z = nz; else vel.z = 0;
