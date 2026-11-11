@@ -336,6 +336,15 @@ Every world now has a scanner description: its **type** and its **weather**. You
 - **Shelter:** a dangerous storm wears down your suit (the heat bar). Shelter under the Nostra (within about 10 m of it), in a shelter you built, by a heater, in a vehicle, or under water. If your suit runs out, the exosuit's emergency recovery puts you back at your ship. Gentle rain on lush worlds like Earth and Malana does no harm.
 - The minimap shows the weather: the type and "calm for now", then "⚠ Flash superstorm incoming", then the storm and how long it has left.
 
+### Carax: singularity storms
+Carax circles Sagittarius A*, and when the accretion disc flares the fortress world gets the deadliest weather in the galaxy (Fortress World · Singularity storms · catastrophic).
+- **Warning:** 18 seconds ahead, triple alarm, "CATASTROPHIC WEATHER WARNING · GET UNDER YOUR SHIP". Storms last 70 to 100 seconds, with only one to two minutes of calm between them (the first comes 40 to 70 seconds after you land).
+- **The sky:** blood-red haze two and a half times as thick as a normal storm, burning embers streaming sideways, orange flashes, and a constant rumble and camera shake.
+- **Falling debris:** burning rocks come down out of the sky every second or two, sometimes three at once, often right on top of you. A pulsing red ring marks each impact a second before it lands, so you can dodge. A direct hit does up to 44 damage and knocks you flying.
+- **Gravity surges:** every 6 to 13 seconds the black hole's tide lifts you off your feet and throws you sideways.
+- **Radiation:** your suit lasts about 30 seconds in the open. Then there's no emergency recovery: the radiation burns straight through at 9 HP a second until you black out (you come to by the Nostra).
+- **The only safe place** is under the Nostra (within about 10 m of the hull). The hull takes the debris, the surges can't reach you, and your suit recharges.
+
 ### The giants' smaller moons
 Forty-nine more moons, also all landable: little grey, red, dark or icy rocks, most of them lumpy rather than round.
 - **Jupiter:** Metis, Adrastea, Amalthea and Thebe close in; Leda, Himalia, Lysithea, Elara, Ananke, Carme, Pasiphae and Sinope far out.
