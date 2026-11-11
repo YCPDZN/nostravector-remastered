@@ -336,6 +336,26 @@ Every world now has a scanner description: its **type** and its **weather**. You
 - **Shelter:** a dangerous storm wears down your suit (the heat bar). Shelter under the Nostra (within about 10 m of it), in a shelter you built, by a heater, in a vehicle, or under water. If your suit runs out, the exosuit's emergency recovery puts you back at your ship. Gentle rain on lush worlds like Earth and Malana does no harm.
 - The minimap shows the weather: the type and "calm for now", then "⚠ Flash superstorm incoming", then the storm and how long it has left.
 
+### Fixes and phone polish (after the cantina and city update)
+- **Cantinas left behind:** taking off now clears the last world's cantina, with its regulars, bartender, fighter and blood. Before, the regulars stayed standing in the world, and flying from Earth to Ad-Nostra brought Earth's cantina along next to Orion's farm.
+- **Ad-Nostra state:** the Nostra parked outside Ad-Nostra now belongs to that visit only. Before, loading another save afterwards could leave the ship parked in Chapter II's Africa, with the ferry closed.
+- **Storms:**
+  - A cantina is now shelter from a storm, and rain no longer falls inside it.
+  - A lightning flash can't follow you off a planet any more.
+- **Brawls:**
+  - A **FORFEIT** button sits on the fight screen (or press **Esc**), so you can walk out of a fight on a phone, where there's no pause during a brawl.
+  - Whatever you were holding is put away for the fight.
+  - Afterwards you're set down clear of the furniture.
+- **At Ad-Nostra** the nav line points to the Nostra instead of the old station.
+- **Lighter on phones:**
+  - Each cantina is merged into a handful of draw calls and no longer adds a real light (which recompiled every material and cost every frame).
+  - Each capital's landmarks are merged too.
+  - New London's new districts share materials, so the city merges into fewer draw calls.
+- **Phone layout:**
+  - The galaxy map panel fits on short landscape screens instead of running off the bottom.
+  - Space markers near the edge of the screen keep their names on screen.
+  - Checked on a phone-sized touch screen: the weather line, MC prompt, fight choice, fight pad, stick and forfeit button, the storm HUD, New London's sights, and the Salt Lantern.
+
 ### Cantina brawls (Chapter III on)
 You can now step into the ring yourself, the way Orion did in The Salt Lantern. The fight is Chapter II's: **J / click** punch (jab, cross, hook), **K / right-click** uppercut, **L** grab and slam, hold **Shift** to block, and **F** for RAGE once the meter's full. On a touch screen you get the same pad and stick.
 - **Every cantina has a ladder of three fighters:** a contender, a bruiser and the house champion. Beat one to unlock the next. Each win pays a purse and XP (more in the tougher houses), and rematches pay a third. Lose and you can always run it back. Brawl health is separate from your real health.

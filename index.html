@@ -431,7 +431,11 @@ body.touch .touch-ui{display:block}
 @keyframes cfHype{0%{opacity:0;transform:translateX(-50%) scale(1.25)}8%{opacity:1;transform:translateX(-50%) scale(1)}85%{opacity:1}100%{opacity:0}}
 #cfHud .keys{position:absolute;left:50%;bottom:3%;transform:translateX(-50%);font-size:10px;letter-spacing:.14em;opacity:.65;white-space:nowrap}
 #cfHud .pad,#cfHud .stick{display:none;pointer-events:auto}
+#cfHud .kq{display:none}#cfHud.brawl .kq{display:inline}
 #cfHud.touch .keys{display:none}
+#cfHud .quit{all:unset;display:none;box-sizing:border-box;position:absolute;right:max(16px,env(safe-area-inset-right));top:calc(max(18px,env(safe-area-inset-top)) + 58px);padding:9px 14px;font:700 9px 'Lexend Exa',sans-serif;letter-spacing:.24em;color:#fff;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.5);cursor:pointer;pointer-events:auto;-webkit-tap-highlight-color:transparent}
+#cfHud.brawl .quit{display:block}
+#cfHud.brawl.touch .quit{top:calc(max(8px,env(safe-area-inset-top)) + 44px)}
 #cfHud.touch .pad{display:grid;grid-template-columns:repeat(3,auto);gap:8px;position:absolute;right:16px;bottom:16px}
 #cfHud .pad button{all:unset;width:62px;height:62px;border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:700;letter-spacing:.12em;background:rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.7)}
 #cfHud .pad .rg{opacity:.4}#cfHud .pad .rg.full{opacity:1;border-color:#ffcc00;color:#ffcc00}
@@ -695,7 +699,9 @@ button.bm-c.no{opacity:.45}
 .sh-obj{position:absolute;top:calc(var(--st) + 18px);left:calc(var(--sl) + 20px)}
 .sh-prompt{position:absolute;left:50%;bottom:calc(var(--sb) + 30%);transform:translateX(-50%);font-size:10px;letter-spacing:.3em;text-transform:uppercase;opacity:0;transition:opacity .3s;text-align:center;text-shadow:0 0 10px #000;width:min(560px,90vw)}
 .sh-prompt.on{opacity:1}
-.sh-mk{position:absolute;transform:translate(-50%,-50%);text-align:center}
+.sh-mk{position:absolute;transform:translate(-50%,-50%);text-align:center;white-space:nowrap}
+.sh-mk.l{transform:translate(-5px,-50%);text-align:left}.sh-mk.l i{margin:0 0 4px}
+.sh-mk.r{transform:translate(calc(-100% + 5px),-50%);text-align:right}.sh-mk.r i{margin:0 0 4px auto}
 .sh-mk i{display:block;width:10px;height:10px;margin:0 auto 4px;border:1px solid #9fe6ff;transform:rotate(45deg)}
 .sh-mk span{font-size:8px;letter-spacing:.28em;color:#cfeeff;text-shadow:0 0 6px #000}.sh-mk small{color:var(--mute);font-size:7.5px}
 .sh-keys{position:absolute;right:calc(var(--sr) + 22px);bottom:calc(var(--sb) + 22px);font-size:8px;letter-spacing:.24em;color:var(--mute);text-transform:uppercase}
@@ -773,7 +779,7 @@ button.bm-c.no{opacity:.45}
   .sh-warp b{top:calc(var(--st) + 84px)}
   .sh-top small{font-size:7.5px}
   .gal-hint{display:none}
-  .gal-panel{max-height:calc(100% - var(--st) - var(--sb) - 24px);width:min(300px,calc(100vw - 150px))}
+  .gal-panel{max-height:calc(100% - var(--st) - var(--sb) - 80px);width:min(300px,calc(100vw - 150px))}
 }
 @media (max-width:720px), (max-height:520px){
   .gal .gal-dip{left:calc(var(--sl) + 20px);right:auto;top:calc(var(--st) + 58px);height:34px}
@@ -4073,6 +4079,7 @@ function emergencyRecovery() {
 }
 function stormTick(dt) {
   if (isPl()) { planetWxTick(dt); return; } // planets have their own weather
+  if (world.flashA) wxOverlayOff();
   const c = ch1(), active = !!(c.stormTalk && !c.stormOver && !c.escaped); // never again once you've left Antarctica
   world.storm = clamp((world.storm || 0) + (active ? dt / 20 : -dt / 25), 0, 1);
   // the storm hits once it's at full strength (or as soon as you're inside, if you were quick)
@@ -9119,9 +9126,10 @@ function fightHud(on) {
     cfHud = document.createElement('div'); cfHud.id = 'cfHud';
     cfHud.innerHTML = `<div class="bars"><div class="side o"><b>ORION MASCAR</b><i class="hp"><u></u></i><i class="rage"><u></u></i><small>RAGE</small></div><div class="vs">VS</div><div class="side d"><b>DANIEL BROWN</b><i class="hp"><u></u></i></div></div>
       <div class="pop"></div><div class="combo"></div><div class="hype"><small></small><span></span></div>
-      <div class="keys">WASD move · J / click punch · K / right-click uppercut · L grab · hold Shift block · F RAGE</div>
-      <div class="pad"><button data-b="punch">PUNCH</button><button data-b="upper">UPPER</button><button data-b="grab">GRAB</button><button data-b="block">BLOCK</button><button data-b="rage" class="rg">RAGE</button></div><div class="stick"><i></i></div>`;
+      <div class="keys">WASD move · J / click punch · K / right-click uppercut · L grab · hold Shift block · F RAGE<span class="kq"> · Esc forfeit</span></div>
+      <button class="quit" type="button">FORFEIT</button><div class="pad"><button data-b="punch">PUNCH</button><button data-b="upper">UPPER</button><button data-b="grab">GRAB</button><button data-b="block">BLOCK</button><button data-b="rage" class="rg">RAGE</button></div><div class="stick"><i></i></div>`;
     document.body.appendChild(cfHud);
+    cfHud.querySelector('.quit').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); brawlForfeit(); });
     const pad = cfHud.querySelector('.pad');
     pad.addEventListener('pointerdown', e => { const b = e.target.closest('button'); if (!b) return; e.preventDefault(); if (b.dataset.b === 'block') cf.block = true; else fightInput(b.dataset.b); });
     for (const ev of ['pointerup', 'pointercancel', 'pointerleave', 'pointerout']) pad.addEventListener(ev, e => { const b = e.target.closest('button'); if (b && b.dataset.b === 'block') cf.block = false; });
@@ -9145,6 +9153,7 @@ function hype(kind, force, not) {
 }
 addEventListener('keydown', e => {
   if (cant.phase !== 'fight') return; cf.keys.add(e.code);
+  if ((e.code === 'Escape' || e.code === 'Backspace') && cf.V) { e.preventDefault(); brawlForfeit(); return; }
   const m = { KeyJ: 'punch', KeyK: 'upper', KeyL: 'grab', KeyE: 'grab', KeyF: 'rage', KeyQ: 'rage' }[e.code];
   if (m && !e.repeat) { e.preventDefault(); fightInput(m); }
   if (['ShiftLeft', 'ShiftRight', 'Space'].includes(e.code)) { e.preventDefault(); cf.block = true; }
@@ -9158,7 +9167,7 @@ function startFight() {
   cant.phase = 'fight'; ui.xhud.classList.remove('cutting', 'noskip'); show(ui.xhud, false);
   const D = cant.D, O = world.orion;
   O.root.rotation.x = 0; D.root.rotation.x = 0;
-  cf.V = null; fightHud(false); fightNames('ORION MASCAR', 'DANIEL BROWN');
+  cf.V = null; fightHud(false); cfHud.classList.remove('brawl'); fightNames('ORION MASCAR', 'DANIEL BROWN');
   cf.o = fighter(O, FIGHT.orionHp, -92.2, 13.4); cf.d = fighter(D, FIGHT.danielHp, -89.6, 15.0);
   cf.rage = 0; cf.ts = 1; cf.slow = 0; cf.shake = 0; cf.block = false; cf.keys.clear(); cf.endT = 0; cf.hits = 0; cf.ragePinged = false; cf.hypeT = 0;
   player.position.set(-92.6, 0, 9.4); player.rotation.y = .3; // you watch from the door with the others
@@ -9526,23 +9535,25 @@ async function startBrawl(V, i) {
   resetRig(); cf.o = fighter(self, 140, A.x - 1.3, A.z); cf.d = fighter(R, st.hp, A.x + 1.3, A.z);
   Object.assign(cf.d, { moves: Object.fromEntries(Object.entries(DANIEL_MOVES).map(([k, m]) => [k, Object.assign({}, m, { dmg: Math.round(m.dmg * st.dmgK) })])), spd: st.spd, cdK: st.cdK, blockK: st.blockK });
   cf.rage = 0; cf.ts = 1; cf.slow = 0; cf.shake = 0; cf.block = false; cf.keys.clear(); cf.endT = 0; cf.hits = 0; cf.ragePinged = false; cf.hypeT = 0; cf.hypeUntil = 0; cf.cam = null; cf.side = 1;
-  show(ui.xhud, false); fightHud(true); fightNames((wanderer.name || 'YOU').toUpperCase(), foe.name); cfHud.querySelector('.combo').textContent = '';
+  if (ex.held) ex.held.visible = false; // fists only
+  show(ui.xhud, false); fightHud(true); cfHud.classList.add('brawl'); fightNames((wanderer.name || 'YOU').toUpperCase(), foe.name); cfHud.querySelector('.combo').textContent = '';
   fightPop('FIGHT!', 'fight'); sfx.thud(); hype('open', true);
   sfx.loadClips('cantinaFightMusic').then(c => { if (c && c[0] && cant.phase === 'fight' && cf.V === V) sfx.playSong(c[0]); });
   setTimeout(() => { if (cant.phase !== 'fight' || cf.V !== V) return; const el = cfHud.querySelector('.hype'); el.querySelector('small').textContent = foe.name; el.querySelector('span').textContent = foe.line; el.style.animationDuration = '3.6s'; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); cf.hypeUntil = performance.now() + 3600; }, 2800);
 }
-function brawlDone(won) {
+function brawlForfeit() { if (cf.V && cant.phase === 'fight') { fightPop('FORFEIT', 'lost'); brawlDone(false, true); } }
+function brawlDone(won, quit) {
   const V = cf.V, i = cf.brawlI, st = cf.brawlSt, foe = V.foes[i], R = V.foeR;
-  cant.phase = 'over'; fightHud(false); ciFx(0, 0, 0, 0, 1); sfx.stopSong(2.5);
-  player.rotation.set(0, player.rotation.y, 0); resetRig(); player.position.y = V.y; ex.yaw = player.rotation.y + Math.PI; ex.pitch = .3; ex.snap = true; vel.set(0, 0, 0);
+  cant.phase = 'over'; fightHud(false); cfHud.classList.remove('brawl'); ciFx(0, 0, 0, 0, 1); sfx.stopSong(2.5);
+  player.rotation.set(0, player.rotation.y, 0); resetRig(); player.position.y = V.y; if (ex.held) ex.held.visible = true; ex.yaw = player.rotation.y + Math.PI; ex.pitch = .3; ex.snap = true; vel.set(0, 0, 0);
   for (const C of cf.hid || []) { C.root.visible = true; C.root.position.set(player.position.x - 1.4, V.y, player.position.z + 1.6); } cf.hid = [];
   if (R) { R.root.rotation.x = won ? -Math.PI / 2 : 0; R.root.position.y = V.y + (won ? .14 : 0); R.mode = 'idle'; setTimeout(() => { if (V.foeR === R && R.root.parent && cant.phase !== 'fight') { R.root.parent.remove(R.root); V.foeR = null; } }, won ? 9000 : 5000); }
-  cf.V = null; state = 'explore'; show(ui.xhud, true);
+  cf.V = null; state = 'explore'; show(ui.xhud, true); worldUnstick();
   if (won) {
     const first = i >= brawlWins(V.id), prize = first ? st.prize : Math.round(st.prize / 3);
     addUnits(prize); gainXP(first ? st.xp : Math.round(st.xp / 3), 'brawl'); if (first) setBrawlWins(V.id, i + 1); sfx.chime();
     notice(first && i === V.foes.length - 1 ? `Champion of ${titleName(V.name)}` : `You beat ${titleName(foe.name)}`, `+${prize} UNITS`, 3600);
-  } else notice('You lost the brawl', `TALK TO ${V.mc} FOR A REMATCH`, 3600);
+  } else notice(quit ? 'You walked out of the ring' : 'You lost the brawl', `TALK TO ${V.mc} FOR A REMATCH`, 3600);
   setTimeout(() => { for (const g of V.decals || []) g.parent && g.parent.remove(g); if (V.decals) V.decals.length = 0; }, 45000); // the floor gets mopped
   renderTasks();
 }
@@ -9586,8 +9597,13 @@ function signTex(text, col) {
     g.shadowColor = col; g.shadowBlur = 28; g.fillStyle = col; g.fillText(text, w / 2, hh / 2 + 4); g.shadowBlur = 8; g.fillStyle = '#ffffff'; g.globalAlpha = .55; g.fillText(text, w / 2, hh / 2 + 4);
   });
 }
+function hallClear() {
+  const Hl = world.hall; if (!Hl) return; world.hall = null;
+  const off = o => o && o.parent && o.parent.remove(o);
+  off(Hl.G); for (const m of Hl.V.crowd || []) off(m.R.root); if (Hl.bartender) off(Hl.bartender.root); if (Hl.V.foeR) off(Hl.V.foeR.root); for (const g of Hl.V.decals || []) off(g);
+}
 function buildHall() {
-  if (world.hall && world.hall.G) { wScene.remove(world.hall.G); world.hall = null; }
+  hallClear();
   const W = world.planet, P0 = W && W.hall; if (!P0 || !isPl()) return;
   const Hs = P0.H, S = HALL_STYLE[Hs.style] || HALL_STYLE.human, G = new THREE.Group(); G.position.set(P0.x, P0.y, P0.z);
   const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .8 }, o));
@@ -9629,7 +9645,10 @@ function buildHall() {
   box(.06, .9, 6, acc, -hw + .24, 3.8, 0); // a glowing strip over the shelves
   for (const [x, z] of [[4.6, -4.2], [4.6, 4.2], [-4.6, -4.5], [-4.6, 4.5]]) { cyl(.6, .6, .06, trim, x, .78, z, 14); cyl(.07, .1, .74, wall2, x, .38, z, 8); for (let k = 0; k < 3; k++) { const a = k * 2.1 + .4; box(.42, .5, .42, wall2, x + Math.cos(a) * .95, .25, z + Math.sin(a) * .95); } const c = glowSprite(S.accent, .8, .8); c.position.set(x, 1.0, z); G.add(c); }
   for (const [x, z] of [[ar.x, ar.z], [-4, -3], [-4, 3], [4, 0]]) { const l = glowSprite(S.neon, 2.2, .7); l.position.set(x, hh - .5, z); G.add(l); }
-  const spot = new THREE.PointLight(S.neon, 18, 12, 1.6); spot.position.set(ar.x, hh - .8, ar.z); G.add(spot);
+  { const pool = glowSprite(S.neon, 9, .35); pool.position.set(ar.x, .4, ar.z); G.add(pool); }
+  { // merge the static meshes (walls, bar, bottles, tables, ring) into a handful of draw calls; the roof, the sign and the glows stay apart
+    const SG = new THREE.Group(); for (const o of [...G.children]) if (o.isMesh && o !== sg) SG.add(o);
+    const merged = mergeStatic(SG); merged.traverse(o => { if (o.isMesh) { o.castShadow = !document.body.classList.contains('touch'); o.receiveShadow = true; } }); G.add(merged); }
   wScene.add(G);
   // walls and furniture for walking; the room's bounds for the camera
   const X = P0.x, Z = P0.z, cols = [[X - hw - .3, X - hw + .3, Z - hd, Z + hd], [X - hw, X + hw, Z - hd - .3, Z - hd + .3], [X - hw, X + hw, Z + hd - .3, Z + hd + .3], [X + hw - .3, X + hw + .3, Z - hd, Z - door], [X + hw - .3, X + hw + .3, Z + door, Z + hd],
@@ -9673,7 +9692,8 @@ async function visitAdNostra(place) {
   spaceOff(); state = 'loadingCh';
   world.planet = null; world.area = 'africa'; world.adVisit = true; world.shipAt = { x: ADN.ship.x, z: ADN.ship.z };
   const sx = ADN.ship.x, sz = ADN.ship.z;
-  enterWorld(place && place.where === 'africa' ? place : { mode: 'explore', area: 'world', where: 'africa', x: sx + 4, z: sz + 14.5, y: 0, rot: -Math.PI * .7, yaw: -Math.PI * .7 + Math.PI });
+  hallClear(); if (world.cityG) world.cityG.visible = false; // nothing of the last planet comes with you
+  enterWorld(Object.assign(place && place.where === 'africa' ? place : { mode: 'explore', area: 'world', where: 'africa', x: sx + 4, z: sz + 14.5, y: 0, rot: -Math.PI * .7, yaw: -Math.PI * .7 + Math.PI }, { adVisit: true }));
   ui.xhud.classList.add('world');
   if (!world.landShip) world.landShip = makeShip();
   setShipRig(world.landShip, 1, 1); wScene.add(world.landShip); world.landShip.position.set(sx, wHeight(sx, sz) + 2.7, sz); world.landShip.rotation.set(0, 0, 0); world.landShip.visible = true;
@@ -9923,6 +9943,8 @@ function buildLondon() {
   const brick = M(0x2c2622, { roughness: .9 }), white = M(0xf0ece4, { roughness: .6 }), black = M(0x0a0a0c, { roughness: .2, metalness: .5 });
   const marble = M(0xf2efe8, { roughness: .45 }), palaceStone = M(0xe6dfcf, { roughness: .7 }), redM = M(0x9a1a1a, { roughness: .6 }), gravel = M(0xc2b394, { roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   const mallRed = M(0x8a3a2e, { roughness: .9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), lonWater = M(0x1d5a7a, { roughness: .08, metalness: .5, emissive: 0x2a8ac8, emissiveIntensity: .35 });
+  const potM = M(0x7a4a32), postM = M(0x1c2632, { metalness: .6, roughness: .3 }), lineM = M(0x8f897e, { polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }), nelM = M(0xd8d2c4), trimM = M(0xd6cdb8), sentryM = M(0x7a1414), faceM = M(0xc69a7a);
+  const mallLeaf = M(0x456f36, { roughness: 1, flatShading: true }), leaf2 = M(0x4f7a3a, { roughness: 1, flatShading: true }), jetM = new THREE.MeshBasicMaterial({ color: 0xdff6ff, transparent: true, opacity: .65 }); // shared, so the city merges into few draw calls
   const holo = new THREE.MeshBasicMaterial({ color: 0x6fe2ff, transparent: true, opacity: .32, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
   const numTex = (n, col = '#f4f0e6') => canvasTex(128, 128, (c, w) => { c.clearRect(0, 0, w, w); c.font = '700 84px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = col; c.fillText(String(n), w / 2, w / 2 + 4); });
   const rotGround = (ax, az, bx, bz, wd, m, y = .02) => { const L = Math.hypot(bx - ax, bz - az), o = new THREE.Mesh(new THREE.PlaneGeometry(L, wd), m); o.rotation.set(-Math.PI / 2, Math.atan2(-(bz - az), bx - ax), 0, 'YXZ'); o.position.set((ax + bx) / 2, y, (az + bz) / 2); S.add(o); return o; };
@@ -9936,7 +9958,7 @@ function buildLondon() {
   box(DS.x1 - DS.x0, DS.h, DS.z1 - DS.z0, brick, (DS.x0 + DS.x1) / 2, DS.h / 2, (DS.z0 + DS.z1) / 2); col(DS.x0, DS.x1, DS.z0, DS.z1);
   box(DS.x1 - DS.x0 + .6, .5, DS.z1 - DS.z0 + .6, white, (DS.x0 + DS.x1) / 2, DS.h + .1, (DS.z0 + DS.z1) / 2); // the cornice
   box(DS.x1 - DS.x0 - 2, 3, DS.z1 - DS.z0 - 4, slate, (DS.x0 + DS.x1) / 2, DS.h + 1.7, (DS.z0 + DS.z1) / 2);
-  for (let x = DS.x0 + 4; x < DS.x1; x += 9) { box(1.6, 3.4, 1.2, brick, x, DS.h + 3.4, DS.z0 + 4); for (let k = 0; k < 3; k++) cyl(.18, .18, .8, M(0x7a4a32), x - .5 + k * .5, DS.h + 5.4, DS.z0 + 4, 6); }
+  for (let x = DS.x0 + 4; x < DS.x1; x += 9) { box(1.6, 3.4, 1.2, brick, x, DS.h + 3.4, DS.z0 + 4); for (let k = 0; k < 3; k++) cyl(.18, .18, .8, potM, x - .5 + k * .5, DS.h + 5.4, DS.z0 + 4, 6); }
   box(DS.x1 - DS.x0, .14, .1, glow, (DS.x0 + DS.x1) / 2, DS.h - .3, DS.z1 + .06); box(DS.x1 - DS.x0, .14, .1, glow, (DS.x0 + DS.x1) / 2, .9, DS.z1 + .06); // Federation light in the seams
   for (const y of [3.4, 7, 10.6, 13.6]) for (let x = DS.x0 + 2.4; x < DS.x1 - 1; x += 3.3) {
     if (y < 5 && (Math.abs(x + 44) < 2.2 || Math.abs(x + 58) < 2.2)) continue; // the doors
@@ -9956,7 +9978,7 @@ function buildLondon() {
   for (const z of [-210.5, -199.5]) { box(1.2, 4.2, 1.2, iron, -13, 2.1, z); box(1.4, .25, 1.4, glow, -13, 4.3, z); col(-13.7, -12.3, z - .7, z + .7); }
   box(.6, .8, 12.6, iron, -13, 4.8, -205); { const sg = new THREE.Mesh(new THREE.PlaneGeometry(10, 1), new THREE.MeshBasicMaterial({ map: canvasTex(512, 52, (c, w, hh) => { c.fillStyle = '#0a0f16'; c.fillRect(0, 0, w, hh); c.font = '700 32px system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#9fe8ff'; c.fillText('DOWNING STREET  SW1', w / 2, hh / 2 + 2); }) })); sg.position.set(-12.65, 4.8, -205); sg.rotation.y = Math.PI / 2; live.add(sg); }
   { const bar = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.6), holo); bar.position.set(-13, 2, -205); bar.rotation.y = Math.PI / 2; bar.material = holo.clone(); bar.material.opacity = .12; live.add(bar); }
-  for (const z of [-213.6, -196.4]) { box(1.6, 2.6, 1.6, M(0x1c2632, { metalness: .6, roughness: .3 }), -15.5, 1.3, z); box(1.65, .15, 1.65, glow, -15.5, 2.65, z); col(-16.3, -14.7, z - .8, z + .8); }
+  for (const z of [-213.6, -196.4]) { box(1.6, 2.6, 1.6, postM, -15.5, 1.3, z); box(1.65, .15, 1.65, glow, -15.5, 2.65, z); col(-16.3, -14.7, z - .8, z + .8); }
   // the Foreign Office across the street: grand stone, columns at its door
   { const F = { x0: -110, x1: -22, z0: -199, z1: -177, h: 22 }; box(F.x1 - F.x0, F.h, F.z1 - F.z0, stone, (F.x0 + F.x1) / 2, F.h / 2, (F.z0 + F.z1) / 2); col(F.x0, F.x1, F.z0, F.z1);
     box(F.x1 - F.x0 + .4, 1, F.z1 - F.z0 + .4, stoneDk, (F.x0 + F.x1) / 2, F.h, (F.z0 + F.z1) / 2); box(F.x1 - F.x0, .14, .1, glow, (F.x0 + F.x1) / 2, F.h - 1, F.z0 - .06);
@@ -9969,13 +9991,13 @@ function buildLondon() {
   const TQ = { x0: -96, x1: 64, z0: -502, z1: -398, cx: -16, cz: -450 };
   ground(TQ.x1 - TQ.x0 + 20, TQ.z1 - TQ.z0 + 16, asphalt, TQ.cx, TQ.cz, .015);
   ground(TQ.x1 - TQ.x0, TQ.z1 - TQ.z0, M(0xb9b2a4, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), TQ.cx, TQ.cz, .03);
-  for (let i = 0; i <= 8; i++) { ground(.25, TQ.z1 - TQ.z0, M(0x8f897e, { polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }), TQ.x0 + i * (TQ.x1 - TQ.x0) / 8, TQ.cz, .035); }
+  for (let i = 0; i <= 8; i++) { ground(.25, TQ.z1 - TQ.z0, lineM, TQ.x0 + i * (TQ.x1 - TQ.x0) / 8, TQ.cz, .035); }
   // Nelson's Column: plinth, lions, the fluted column ringed with light, and the admiral on top
   { const nx = TQ.cx, nz = -424;
     for (let k = 0; k < 4; k++) box(16 - k * 2.4, 1, 16 - k * 2.4, marble, nx, .5 + k, nz);
-    box(7, 8, 7, M(0xd8d2c4), nx, 8, nz); box(7.6, .6, 7.6, bronze, nx, 12.2, nz); col(nx - 8, nx + 8, nz - 8, nz + 8);
+    box(7, 8, 7, nelM, nx, 8, nz); box(7.6, .6, 7.6, bronze, nx, 12.2, nz); col(nx - 8, nx + 8, nz - 8, nz + 8);
     for (const [ox, oz] of [[0, 3.55], [0, -3.55], [3.55, 0], [-3.55, 0]]) box(oz ? 4.4 : .12, 4.4, oz ? .12 : 4.4, bronze, nx + ox, 7.5, nz + oz); // the bronze reliefs
-    cyl(1.9, 2.1, 3, M(0xd8d2c4), nx, 14, nz, 16); cyl(1.55, 1.7, 40, M(0xe8e2d4), nx, 35.5, nz, 16);
+    cyl(1.9, 2.1, 3, nelM, nx, 14, nz, 16); cyl(1.55, 1.7, 40, M(0xe8e2d4), nx, 35.5, nz, 16);
     for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; box(.12, 40, .12, glow, nx + Math.cos(a) * 1.63, 35.5, nz + Math.sin(a) * 1.63); }
     box(4.4, 2.4, 4.4, bronze, nx, 56.6, nz); cyl(1.1, 1.3, 1.2, bronze, nx, 58.4, nz, 12);
     cyl(.55, .75, 3.4, bronze, nx, 60.8, nz, 10); const hd = new THREE.Mesh(new THREE.SphereGeometry(.42, 12, 8), bronze); hd.position.set(nx, 62.9, nz); S.add(hd); box(1.4, .35, .5, bronze, nx, 63.3, nz); box(.22, 1.8, .22, bronze, nx + .7, 61, nz, 0, 0, -.25);
@@ -9995,8 +10017,8 @@ function buildLondon() {
     const rim = new THREE.Mesh(new THREE.TorusGeometry(8.5, .5, 8, 48), marble); rim.rotation.x = Math.PI / 2; rim.position.set(fx, .5, fz); S.add(rim);
     const pool = new THREE.Mesh(new THREE.CircleGeometry(8.4, 48), lonWater); pool.rotation.x = -Math.PI / 2; pool.position.set(fx, .35, fz); S.add(pool); col(fx - 8.6, fx + 8.6, fz - 8.6, fz + 8.6);
     cyl(1.6, 2.2, 2.2, marble, fx, 1.1, fz, 16); cyl(2.6, 2.6, .3, marble, fx, 2.3, fz, 16);
-    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, j = new THREE.Mesh(new THREE.CylinderGeometry(.06, .16, 1, 6), new THREE.MeshBasicMaterial({ color: 0xdff6ff, transparent: true, opacity: .6 })); j.position.set(fx + Math.cos(a) * 5.5, .4, fz + Math.sin(a) * 5.5); live.add(j); LON.jets.push({ j, ph: k * .7, h: 3 }); }
-    const cj = new THREE.Mesh(new THREE.CylinderGeometry(.12, .3, 1, 8), new THREE.MeshBasicMaterial({ color: 0xe8fbff, transparent: true, opacity: .7 })); cj.position.set(fx, 2.4, fz); live.add(cj); LON.jets.push({ j: cj, ph: 0, h: 9, base: 2.4 });
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, j = new THREE.Mesh(new THREE.CylinderGeometry(.06, .16, 1, 6), jetM); j.position.set(fx + Math.cos(a) * 5.5, .4, fz + Math.sin(a) * 5.5); live.add(j); LON.jets.push({ j, ph: k * .7, h: 3 }); }
+    const cj = new THREE.Mesh(new THREE.CylinderGeometry(.12, .3, 1, 8), jetM); cj.position.set(fx, 2.4, fz); live.add(cj); LON.jets.push({ j: cj, ph: 0, h: 9, base: 2.4 });
     const gl = glowSprite(0x6fe2ff, 9, .55); gl.position.set(fx, 1.2, fz); live.add(gl);
   }
   for (const [x, z] of [[TQ.x0 + 4, TQ.z0 + 4], [TQ.x1 - 4, TQ.z0 + 4], [TQ.x0 + 4, TQ.z1 - 4], [TQ.x1 - 4, TQ.z1 - 4], [TQ.cx - 60, -430], [TQ.cx + 60, -430]]) lamp(x, z, 8);
@@ -10028,7 +10050,7 @@ function buildLondon() {
     const [x, z] = onMall(4, 0); box(6.2, 6, 58, palaceStone, x, 19, z, mry); box(6.6, 1, 59, stoneDk, x, 22.4, z, mry); box(6.4, .16, 58, glow, x, 15.8, z, mry);
     for (const o of [-26, -18, 18, 26]) { const [a, b] = onMall(1, o); cyl(.45, .5, 9, marble, a, 6, b, 10); } }
   for (let t = 18; t < ml - 10; t += 16) for (const s of [-1, 1]) { // plane trees, lamps, flags on tall poles all the way down
-    const [x, z] = onMall(t, s * 13); cyl(.35, .45, 6, M(0x4a3b2c), x, 3, z, 6); const c = new THREE.Mesh(new THREE.IcosahedronGeometry(3.6, 1), M(0x456f36, { roughness: 1, flatShading: true })); c.position.set(x, 8, z); S.add(c); col(x - .5, x + .5, z - .5, z + .5);
+    const [x, z] = onMall(t, s * 13); cyl(.35, .45, 6, trunk, x, 3, z, 6); const c = new THREE.Mesh(new THREE.IcosahedronGeometry(3.6, 1), mallLeaf); c.position.set(x, 8, z); S.add(c); col(x - .5, x + .5, z - .5, z + .5);
     const [lx, lz] = onMall(t + 8, s * 10.6); lamp(lx, lz, 6.5); if ((t / 16) % 2 < 1) { cyl(.08, .1, 11, iron, lx, 5.5, lz, 6); const f = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.5), LON.flag ? LON.flag.material : glowGold); f.position.set(lx, 10.4, lz + .9); f.rotation.y = Math.PI / 2; live.add(f); }
   }
   // ---- St James's Park: lawns, the lake with its bridge, lights drifting over the water ----
@@ -10036,7 +10058,7 @@ function buildLondon() {
     const lake = new THREE.Mesh(new THREE.CircleGeometry(1, 48), lonWater); lake.rotation.x = -Math.PI / 2; lake.scale.set(92, 14, 1); lake.position.set(-262, .05, -284); S.add(lake);
     for (let a = 0; a < Math.PI * 2; a += .05) { const x = -262 + Math.cos(a) * 92, z = -284 + Math.sin(a) * 14; if (Math.abs(x + 262) < 3) continue; col(x - 1.2, x + 1.2, z - 1.2, z + 1.2); }
     box(5, .6, 32, stoneDk, -262, .4, -284); for (const s of [-1, 1]) { box(.2, 1, 32, iron, -262 + s * 2.4, 1, -284); for (let z = -298; z <= -270; z += 7) { const g = glowSprite(0xfff1c8, 1.2, .8); g.position.set(-262 + s * 2.4, 1.8, z); live.add(g); } }
-    for (let k = 0; k < 34; k++) { const x = rr(pk.x0 + 6, pk.x1 - 6), z = rr(pk.z0 + 6, pk.z1 - 6); if (Math.abs((x + 262) / 96) ** 2 + Math.abs((z + 284) / 18) ** 2 < 1.1) continue; cyl(.3, .4, 5, M(0x4a3b2c), x, 2.5, z, 6); const c = new THREE.Mesh(new THREE.IcosahedronGeometry(rr(2.6, 4), 1), M(rnd() < .5 ? 0x3f6a33 : 0x4f7a3a, { roughness: 1, flatShading: true })); c.position.set(x, 7, z); S.add(c); col(x - .5, x + .5, z - .5, z + .5); }
+    for (let k = 0; k < 34; k++) { const x = rr(pk.x0 + 6, pk.x1 - 6), z = rr(pk.z0 + 6, pk.z1 - 6); if (Math.abs((x + 262) / 96) ** 2 + Math.abs((z + 284) / 18) ** 2 < 1.1) continue; cyl(.3, .4, 5, trunk, x, 2.5, z, 6); const c = new THREE.Mesh(new THREE.IcosahedronGeometry(rr(2.6, 4), 1), (rnd() < .5 ? leaf : leaf2)); c.position.set(x, 7, z); S.add(c); col(x - .5, x + .5, z - .5, z + .5); }
     LON.orbs = []; for (let k = 0; k < 14; k++) { const o = glowSprite(k % 2 ? 0x9fe8ff : 0xffe2a8, 1.6, .8); o.position.set(-262 + rr(-80, 80), 2.2, -284 + rr(-9, 9)); live.add(o); LON.orbs.push({ o, ph: rnd() * 6, y: 2.2 }); } }
   // ---- the Victoria Memorial: white marble tiers, fountains, the gilded figure with her wings ----
   { const vx = -418, vz = -324;
@@ -10052,12 +10074,12 @@ function buildLondon() {
   { const B0 = { x0: -540, x1: -470, z0: -392, z1: -254, h: 25 }, fx = B0.x1, cz = (B0.z0 + B0.z1) / 2;
     ground(40, 170, paveL, -452, cz, .025);
     box(B0.x1 - B0.x0, B0.h, B0.z1 - B0.z0, palaceStone, (B0.x0 + B0.x1) / 2, B0.h / 2, cz); col(B0.x0, B0.x1, B0.z0, B0.z1);
-    box(1.2, 1.6, B0.z1 - B0.z0 + .6, M(0xd6cdb8), fx + .3, B0.h, cz); box(.5, 1.2, B0.z1 - B0.z0, M(0xd6cdb8), fx + .25, 8.6, cz);
-    for (let z = B0.z0 + 2; z < B0.z1; z += 2.6) box(.6, 1.1, .5, M(0xd6cdb8), fx + .2, B0.h + 1.35, z); // the balustrade
+    box(1.2, 1.6, B0.z1 - B0.z0 + .6, trimM, fx + .3, B0.h, cz); box(.5, 1.2, B0.z1 - B0.z0, trimM, fx + .25, 8.6, cz);
+    for (let z = B0.z0 + 2; z < B0.z1; z += 2.6) box(.6, 1.1, .5, trimM, fx + .2, B0.h + 1.35, z); // the balustrade
     box(.12, .14, B0.z1 - B0.z0, glow, fx + .5, B0.h - .9, cz); box(.12, .14, B0.z1 - B0.z0, glow, fx + .5, 1, cz);
     for (const y of [5, 11.5, 17.5, 22]) for (let z = B0.z0 + 3; z < B0.z1 - 2; z += 4) { if (Math.abs(z - cz) < 13 && y < 20) continue; const tall = y < 20; box(.12, tall ? 3.4 : 1.6, 1.7, white, fx + .06, y, z); box(.1, tall ? 3 : 1.3, 1.4, rnd() < .4 ? winLit : glassDk, fx + .1, y, z); }
     for (let k = 0; k < 6; k++) cyl(.7, .8, 16, marble, fx + 2.4, 8, cz - 10 + k * 4, 14); // the centre portico
-    box(4.6, 2, 26, M(0xd6cdb8), fx + 2.3, 17, cz); const ped = new THREE.Mesh(new THREE.CylinderGeometry(0, 1, 1, 3, 1).rotateZ(Math.PI / 2), M(0xd6cdb8)); ped.scale.set(4.6, 4, 26); ped.position.set(fx + 2.3, 20, cz); S.add(ped);
+    box(4.6, 2, 26, trimM, fx + 2.3, 17, cz); const ped = new THREE.Mesh(new THREE.CylinderGeometry(0, 1, 1, 3, 1).rotateZ(Math.PI / 2), trimM); ped.scale.set(4.6, 4, 26); ped.position.set(fx + 2.3, 20, cz); S.add(ped);
     box(3, .4, 14, palaceStone, fx + 1.8, 11.2, cz); box(.12, 1, 14, iron, fx + 3.2, 11.9, cz); box(.1, 3.2, 3.6, redM, fx + .2, 13, cz); // the balcony, with its crimson drape
     { const crest = new THREE.Group(); crest.add(new THREE.Mesh(new THREE.TorusGeometry(2.4, .14, 6, 48), new THREE.MeshBasicMaterial({ color: 0xffc94a }))); crest.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1.4, 1), new THREE.MeshBasicMaterial({ color: 0x6fe2ff, wireframe: true, transparent: true, opacity: .6 }))); crest.position.set(fx + 2.6, 26, cz); live.add(crest); LON.pcrest = crest; }
     cyl(.18, .22, 12, iron, (B0.x0 + B0.x1) / 2, B0.h + 6, cz, 8); if (LON.flag) { const f = new THREE.Mesh(new THREE.PlaneGeometry(8, 5), LON.flag.material); f.position.set((B0.x0 + B0.x1) / 2 + 4.1, B0.h + 10, cz); live.add(f); }
@@ -10069,8 +10091,8 @@ function buildLondon() {
     { const fld = new THREE.Mesh(new THREE.PlaneGeometry(B0.z1 - B0.z0 + 8, 1.6), holo); fld.position.set(fxr, 3.4, cz); fld.rotation.y = Math.PI / 2; live.add(fld); }
     // the sentries: crimson tunics, tall black bearskins, and a line of light across the visor
     for (const [sx2, sz2] of [[-458, cz - 14], [-458, cz + 14], [-472.5, cz - 4.6], [-472.5, cz + 4.6]]) {
-      box(1.5, 2.8, 1.5, M(0x7a1414), sx2 - .6, 1.4, sz2); box(1.7, .25, 1.7, black, sx2 - .6, 2.9, sz2); // the sentry box
-      cyl(.24, .26, .9, black, sx2 + .2, .45, sz2, 8); cyl(.3, .28, .8, redM, sx2 + .2, 1.3, sz2, 10); const hd2 = new THREE.Mesh(new THREE.SphereGeometry(.17, 10, 8), M(0xc69a7a)); hd2.position.set(sx2 + .2, 1.85, sz2); S.add(hd2);
+      box(1.5, 2.8, 1.5, sentryM, sx2 - .6, 1.4, sz2); box(1.7, .25, 1.7, black, sx2 - .6, 2.9, sz2); // the sentry box
+      cyl(.24, .26, .9, black, sx2 + .2, .45, sz2, 8); cyl(.3, .28, .8, redM, sx2 + .2, 1.3, sz2, 10); const hd2 = new THREE.Mesh(new THREE.SphereGeometry(.17, 10, 8), faceM); hd2.position.set(sx2 + .2, 1.85, sz2); S.add(hd2);
       cyl(.22, .2, .6, black, sx2 + .2, 2.2, sz2, 10); box(.04, .05, .3, glow, sx2 + .38, 1.86, sz2); cyl(.03, .03, 1.4, iron, sx2 + .45, 1.5, sz2 + .25, 4); col(sx2 - 1.4, sx2 + .5, sz2 - .8, sz2 + .8);
     }
     for (const z of [B0.z0 - 10, B0.z1 + 10]) lamp(-450, z, 8); }
@@ -11202,10 +11224,11 @@ function planetWx(P) {
 }
 const wxTag = P => { const W = planetWx(P); return `${W.type} · ${W.wx}`; };
 // the weather where you're standing: calm, a warning, then the storm, then calm again
-function wxReset() { world.wx = null; world.storm = 0; world.stormDarkT = 0; world.flashA = 0; for (const k of world.wxRocks || []) wScene.remove(k.ring, k.rock); world.wxRocks = []; }
+function wxOverlayOff() { const f = document.getElementById('wxFlash'); if (f) f.style.opacity = 0; world.flashA = 0; }
+function wxReset() { wxOverlayOff(); world.wx = null; world.storm = 0; world.stormDarkT = 0; world.flashA = 0; for (const k of world.wxRocks || []) wScene.remove(k.ring, k.rock); world.wxRocks = []; }
 function planetWxTick(dt) {
   const P = world.planet && world.planet.P, W = P && planetWx(P), S = W && W.storm;
-  if (!S) { world.storm = clamp((world.storm || 0) - dt / 6, 0, 1); world.wxK = null; if (world.snow) world.snow.visible = false; wxHazard(dt, null); return; }
+  if (!S) { world.storm = clamp((world.storm || 0) - dt / 6, 0, 1); world.wxK = null; if (world.snow) world.snow.visible = false; if (world.flashA) wxOverlayOff(); wxHazard(dt, null); return; }
   const rr = (a, d) => a ? a[0] + Math.random() * (a[1] - a[0]) : d, warnT = S.warn || 10;
   const X = world.wx || (world.wx = { phase: 'calm', t: S.first ? rr(S.first) : W.faux ? 35 + Math.random() * 25 : 70 + Math.random() * 80, bolt: 2, hit: 3, surge: 8 });
   world.wxK = S; if (!world.wxFogC || world.wxFogK !== S) { world.wxFogC = new THREE.Color(S.fog); world.wxFogK = S; }
@@ -11224,13 +11247,13 @@ function planetWxTick(dt) {
   let fl = $('#wxFlash'); if (!fl) { fl = document.createElement('div'); fl.id = 'wxFlash'; fl.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:4;background:#eef4ff;opacity:0;mix-blend-mode:screen'; document.body.appendChild(fl); }
   fl.style.background = S.flash || '#eef4ff'; fl.style.opacity = (world.flashA * (S.cata ? .7 : .55)).toFixed(3);
   if (S.cata) wxCatastrophe(dt, X, S);
-  if (world.snow) { const s = world.storm || 0, m = world.snow.material; world.snow.visible = s > .02; m.color.set(S.col); m.opacity = S.op * smooth(.02, .4, s); }
+  if (world.snow) { const s = world.storm || 0, m = world.snow.material; world.snow.visible = s > .02 && !(world.hall && world.hall.inside); m.color.set(S.col); m.opacity = S.op * smooth(.02, .4, s); }
   wxHazard(dt, X.phase === 'storm' ? S : null);
 }
 // a storm wears down the suit (the heat bar) unless you shelter: under the Nostra, in a shelter, by a heater, in a vehicle, or under water
 function wxHazard(dt, S) {
   if (state !== 'explore') return;
-  const p = player.position, sheltered = !!ex.vehicle || Math.hypot(p.x, p.z) < 11 || !!ex.under || insideShelterCached(dt) || nearHeater();
+  const p = player.position, sheltered = !!ex.vehicle || Math.hypot(p.x, p.z) < 11 || !!ex.under || !!(world.hall && world.hall.inside) || insideShelterCached(dt) || nearHeater();
   const inv = invState(); let h = suitHeat();
   const drain = S && S.haz && world.storm > .35 && !sheltered ? S.haz * S.power : 0;
   h = clamp(drain ? h - drain * dt : h + (sheltered ? 9 : 3) * dt, 0, 100); inv.heat = h;
@@ -11625,6 +11648,7 @@ function spacePause(on) {
 // ---- entering and leaving space ----
 const tmpQs = new THREE.Quaternion(), tmpVs = new THREE.Vector3(), tmpVs2 = new THREE.Vector3();
 function spaceOn(place) {
+  wxOverlayOff(); world.adVisit = false; hallClear();
   if (place && place.sys) SPC.sys = place.sys; if (place && place.fromPlanet && bodyById(place.fromPlanet)) SPC.sys = bodyById(place.fromPlanet).sys;
   if (!place) SPC.sys = 'sol';
   buildSpace(); spaceHud().classList.remove('hidden'); show(ui.xhud, false);
@@ -11759,7 +11783,7 @@ function spaceHudTick(P, alt, fwd) {
     const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; if (x < -40 || x > W + 40 || y < -40 || y > H + 40) continue;
     const d = SPC.pos.distanceTo(Q.pos) - Q.r; if (Q === P && d < Q.r * 2) continue;
     if (Q.minor && d > 15000 && Q !== P) continue; // a small moon: marked only once you're close
-    h += `<div class="sh-mk" style="left:${x | 0}px;top:${y | 0}px"><i></i><span>${Q.name.toUpperCase()}<br><small>${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`;
+    h += `<div class="sh-mk${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${Q.name.toUpperCase()}<br><small>${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`;
   }
   box.innerHTML = h;
 }
@@ -13415,7 +13439,8 @@ function buildCity() {
   floor.rotation.x = -Math.PI / 2; floor.position.set(C.cx, C.y + .06, C.cz); floor.receiveShadow = true; g.add(floor); C.floorM = floor.material;
   C.glow = [wallA, wallB, floor.material]; C.fx = [];
   // ---- the landmark at the heart of each city ----
-  const M = (o, x, y, z) => { o.position.set(x, y, z); o.castShadow = !phone; o.receiveShadow = true; g.add(o); return o; };
+  const SG = new THREE.Group(); // the landmarks' static pieces, merged into a few draw calls at the end
+  const M = (o, x, y, z) => { o.position.set(x, y, z); o.castShadow = !phone; o.receiveShadow = true; SG.add(o); return o; };
   const sx = C.cx, sz = C.cz, sy = y0;
   if (imperial) {
     // the Imperial Palace: a stepped ziggurat edged in gold, four minarets, and the great spire on top
@@ -13492,7 +13517,8 @@ function buildCity() {
   // ---- air traffic between the towers ----
   const nCars = (K.R > 200 ? 110 : 34) >> (phone ? 1 : 0), cars = new THREE.InstancedMesh(new THREE.CapsuleGeometry(.6, 2.6, 3, 8).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: st.car }), nCars); cars.frustumCulled = false; g.add(cars);
   C.cars = { m: cars, list: Array.from({ length: nCars }, () => ({ r: K.grid * 1.5 + K.plaza * .6 + r() * (K.R - K.grid * 1.5 - K.plaza * .6), a: r() * 6.28, h: 30 + r() * K.maxH * .6, w: (.05 + r() * .08) * (r() < .5 ? 1 : -1) * (120 / K.R) })) };
-  wScene.add(g); world.cityG = g;
+  { const mg = mergeStatic(SG); mg.traverse(o => { if (o.isMesh) { o.castShadow = !phone; o.receiveShadow = true; } }); g.add(mg); }
+  wScene.add(g); world.cityG = g; g.visible = true;
   setTimeout(() => lootMsg(K.note, '#' + new THREE.Color(st.trim).getHexString()), 2600);
 }
 function cityTick(dt) {
@@ -14449,6 +14475,7 @@ async function startChapter2(place) {
   if (!(wanderer.ch2 && wanderer.ch2.talkedOrion)) setTimeout(() => notice('Orion is waiting on the porch', 'SPEAK TO ORION', 3200), 3200);
 }
 function enterWorld(place) {
+  world.adVisit = !!(place && place.adVisit && place.where === 'africa'); // the Nostra parked outside Ad-Nostra (Chapter III on)
   if (!place || place.where !== 'africa') { if (!world.area) world.area = 'antarctica'; }
   buildWorld(worldSeedOf(curChar() || wanderer));
   applyAreaLook();
@@ -14697,7 +14724,7 @@ function updateWorldMode(dt) {
   // where's home, and your nearest beacon
   const dist = Math.hypot(p.x - 8, p.z), dirs = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
   const brg = (x, z) => dirs[((Math.round(Math.atan2(-(z - p.z), x - p.x) / (Math.PI / 4)) % 8) + 8) % 8];
-  let nav = isPl() ? (d => d < 8 ? 'At your ship' : `Your ship · ${Math.round(d)} m · ${brg(0, 10)}`)(Math.hypot(p.x, p.z - 10)) : curArea() === 'europe' ? (d => d < 6 ? 'At the Houses of Parliament' : `Parliament · ${Math.round(d)} m · ${brg(LON.door.x, LON.door.z)}`)(Math.hypot(p.x - LON.door.x, p.z - LON.door.z)) : dist < 6 ? 'At the station' : `Station · ${Math.round(dist)} m · ${brg(8, 0)}`;
+  let nav = isPl() || (world.adVisit && curArea() === 'africa') ? (d => d < 8 ? 'At your ship' : `Your ship · ${Math.round(d)} m · ${brg(shipX(), shipZ() + 10)}`)(Math.hypot(p.x - shipX(), p.z - shipZ() - 10)) : curArea() === 'europe' ? (d => d < 6 ? 'At the Houses of Parliament' : `Parliament · ${Math.round(d)} m · ${brg(LON.door.x, LON.door.z)}`)(Math.hypot(p.x - LON.door.x, p.z - LON.door.z)) : dist < 6 ? 'At the station' : `Station · ${Math.round(dist)} m · ${brg(8, 0)}`;
   if (ex.vehicle) nav = `Rover · ${Math.round(Math.abs(ex.vehicle.speed) * 3.6)} km/h<br>` + nav;
   let bb = null, bdist = 1e9;
   for (const o of world.placed) if (o.data.t === 'beacon') { const dd = Math.hypot(o.data.x - p.x, o.data.z - p.z); if (dd < bdist) { bdist = dd; bb = o; } }
