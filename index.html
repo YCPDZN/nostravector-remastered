@@ -5317,7 +5317,13 @@ addEventListener('keydown', e => {
   if (e.code === 'Escape' || e.code === 'KeyP') { pauseExplore(true); return; }
   if (ex.invOpen) return;
   if (e.code === 'Space' && ex.mode === 'world' && !ex.dlg) { e.preventDefault(); ex.keys.add('Space'); doJump(); return; }
-  if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); interact(); return; }
+  if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') {
+    e.preventDefault(); interact();
+    // the helm or the holo-table just handed you back to space: don't let the space controls read this same key press
+    // (E there means "walk the ship", which put you straight back aboard; Space would have fired the guns)
+    if (state !== 'explore') e.stopImmediatePropagation();
+    return;
+  }
   if (e.code.startsWith('Arrow')) e.preventDefault();
   ex.keys.add(e.code);
 });
@@ -14001,7 +14007,10 @@ function updateShipMode(dt) {
     else { // head for it, steering round whatever's in the way (the holo-table, the mess table, crates)
       const a0 = Math.atan2(gx, gz); let a = a0;
       for (const da of [0, .6, -.6, 1.2, -1.2, 1.8, -1.8, 2.4, -2.4]) { const t = a0 + da * (G.side || 1); if (!blocked(p.x + Math.sin(t) * .55, p.z + Math.cos(t) * .55)) { a = t; if (da) G.side = G.side || Math.sign(da); break; } }
-      wx = Math.sin(a) * 3; wz = Math.cos(a) * 3; if (gd < G.best - .05) { G.best = gd; G.bestT = performance.now(); } else if (performance.now() - G.bestT > 4000) { SHIPI.goal = null; lootMsg('Can’t get there from here · walk a little closer', '#cfd6e6'); } }
+      wx = Math.sin(a) * 3; wz = Math.cos(a) * 3;
+      // give up only after 4 s of game time without getting closer: on a slow phone the walk itself runs slower (each frame's step is capped),
+      // so a real-time clock gave up halfway round the holo-table
+      if (gd < G.best - .05) { G.best = gd; G.stall = 0; } else if ((G.stall = (G.stall || 0) + dt) > 4) { SHIPI.goal = null; lootMsg('Can’t get there from here · walk a little closer', '#cfd6e6'); } }
   }
   vel.x += (wx - vel.x) * Math.min(1, dt * 10); vel.z += (wz - vel.z) * Math.min(1, dt * 10);
   if (blocked(p.x, p.z)) shipUnstick(); // standing inside something (a bad drop-off, an old save): step out to open floor

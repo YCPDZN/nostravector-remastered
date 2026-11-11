@@ -553,6 +553,10 @@ So space doesn't fill with labels, a small moon is only marked once you're withi
 ### Fix: the camera keeps up with the ship
 - The chase camera used to ease towards its spot behind the ship at a fixed rate, so the faster you flew, the further it fell behind: at full pulse drive it trailed **over a kilometre** back and the ship shrank to a dot. It now moves with the ship every frame and only eases the turns, so it sits about 40–50 m behind at any speed, on the pulse drive and through the warp's spool-up alike.
 
+### Fix: the helm and the holo-table aboard the Nostra
+- In flight, pressing **E** (or Enter / Space) at the **pilot's seat** or the **holo-table** seemed to do nothing. The seat did hand you back to the helm, but the space controls then read that same key press as "walk the ship" and put you straight back on the bridge, so you could never fly off, and the galaxy map never got the chance to open. That key press now stops at the ship: the pilot's seat puts you back in control, and the holo-table opens the galaxy map. (Tapping or clicking them was never affected.)
+- **Phones: tapping the pilot's seat from across the bridge.** Tap something aboard that's out of reach and you walk over to it, giving up with *"Can't get there from here"* if you stop getting closer. That limit counted real seconds, but on a slow phone the walk itself runs slower, so a tap on the pilot's seat from where you arrive on the bridge (behind the holo-table) often gave up halfway round the table. It now counts game time, so a slow phone walks you all the way, as a fast one does.
+
 ### Fix: loading a save made in space
 - Loading a save from inside the game used to show the white Antarctic landscape for a moment before space appeared: in the second between leaving where you were and the save starting, the game treated you as standing in the Antarctic station. Now it's loading from that moment. A Chapter III save shows black, then goes straight to space (or the planet you saved on), and Continue from the main menu does the same.
 - In a session that had never visited Antarctica, that same moment could freeze the game. That's fixed too.
