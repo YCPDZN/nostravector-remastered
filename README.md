@@ -316,6 +316,23 @@ A new **Lore events** tab sits next to Ancient figures. When you open an event, 
   - **Tap or click anything you can use:** the lift, bench, galley, bunks, reactor, ramp, pilot's seat, holo-table and companions waiting aboard. Close by, it's used straight away; further off, you walk over (steering round tables and crates) and use it when you get there. Moving yourself cancels the walk. With a mouse, the cursor turns to a hand over anything usable. E / the action button still work as before. The hotbar and health bars stay on screen aboard.
   - **Save anywhere:** in space, aboard or on the ground. A save made aboard is called *Aboard the Nostra · Venus · Bridge* (for example) and loads you back aboard, on the same deck, where you stood, in flight or landed. The chapter line reads *Chapter III · The Nostra · Venus* (or the system, in space); it used to show the HUD's placeholder, *Chapter I · Antarctica*.
 
+### Sol, expanded: moons and dwarf planets
+Every one is landable, with its own look:
+- **Mars:** Phobos, Deimos.
+- **The belt:** **Ceres** (a Federation mining colony).
+- **Jupiter:** **Io** (yellow sulphur plains and lava lakes, deadly), **Europa** (an ice shell with rust-brown lineae, split by cracks of open ocean you can swim in), Ganymede, Callisto.
+- **Saturn:** Mimas, **Enceladus** (white ice with a few open cracks), Rhea, **Titan** (orange haze over dunes, with methane lakes you can swim in), Iapetus (two-toned).
+- **Uranus:** Miranda, Titania, Oberon. **Neptune:** Triton.
+- **The far dark:** **Pluto** and Charon, Haumea, Makemake, joining Eris and Dysnomia.
+
+The galaxy map marks moons, dwarf planets and worlds with open water. Inner moons fly the Federation's flag; the outer ones are unclaimed. Icy shells use a new terrain type (`ice` in `PKIND`). Coming down over open water (Earth's oceans, Europa's cracks), the Nostra sets down on the nearest shore.
+
+### Swimming
+- Walk (or fall) into deep water and you **swim**: head out, a front crawl when you move, treading water when you don't. Slower than on land; Shift / SPRINT for a hard crawl.
+- **Space / UP** swims up, **C / Ctrl / DIVE** dives (on a touch screen, JUMP and DODGE become UP and DIVE). Let go and you drift back to the surface.
+- **Air:** under the surface your suit's air runs down (the blue **AIR** bar); at the surface it fills again. Run out and you start to drown.
+- Underwater the world closes in, tinted the colour of that sea. You can swim in Earth's seas, Europa's and Enceladus's cracks, Titan's methane lakes and any ocean world's seas. Lava is never water, and companions wait for you on the shore.
+
 ### Fix: getting stuck on the Nostra
 - **The lift to the bridge** let you off inside the holo-table's footprint, so every step was refused and you were stuck for good. It now lets you off in open floor beside the table.
 - **Never stuck aboard:** if you're ever standing inside something (a table, a bunk, a crate), you step straight out to the nearest open floor.
