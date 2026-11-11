@@ -327,6 +327,12 @@ Every one is landable, with its own look:
 
 The galaxy map marks moons, dwarf planets and worlds with open water. Inner moons fly the Federation's flag; the outer ones are unclaimed. Icy shells use a new terrain type (`ice` in `PKIND`). Coming down over open water (Earth's oceans, Europa's cracks), the Nostra sets down on the nearest shore.
 
+### Companions, all the same way
+- **One walk for everyone:** every companion now walks with Nico's and Orion's walk: legs swinging, arms swinging against them, a gentle sway at rest. That includes James Brown (his lantern arm swings too, less when he's holding it up), the crew you recruit, and anyone who joins later. It's one shared function (`compWalkPose`), so a new companion gets it for free.
+- **Give [name] orders:** walk up to any companion and the prompt names them: "Give Orion orders", "Give Nico orders", "Give Peter orders" and so on, for the crew too (before, only Orion and Nico had a prompt). Pressing E opens their orders with them already chosen. When someone joins you, the banner says "GIVE [NAME] ORDERS".
+- **The Following companions box:** the box under your objectives is now called **FOLLOWING COMPANIONS**, with how many are with you. Tap or click it to see each companion's **level** and what they're doing (Following, Mining, Exploring...). Tap one (or Everyone) to give them orders. V still cycles through them on a keyboard.
+- **Ready for later:** a story companion from the Nostrapedia (Khazglar, Charon, Kizna and the rest) only needs adding to your party to walk, fight, follow orders and show up in the box, using its Nostrapedia model.
+
 ### Into the atmosphere, and the real Earth (No Man's Sky style)
 Coming down to a planet no longer drops you straight onto the ground. Below 420 m you fly **into its sky**, and you choose where to land.
 - **Flying in a world's sky:**
