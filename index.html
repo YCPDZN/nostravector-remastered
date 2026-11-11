@@ -4134,7 +4134,7 @@ function skyTick(dt) {
   if (world.stars) { world.stars.material.opacity = clamp((1 - dl) * (1 - sm * 1.2), 0, 1); world.stars.position.copy(camera.position); world.stars.visible = world.stars.material.opacity > .01; }
   // haze
   wScene.fog.color.set(areaFog()).lerp(DUSK_C, duskA * .6).lerp(NIGHT_C, (1 - dl) * .9).lerp(stormC, sm);
-  wScene.fog.density = isPl() ? (world.planet && world.planet.city ? .0015 + (1 - dl) * .001 + .012 * sm * sm : .0048 + (1 - dl) * .003 + .032 * sm * sm) : curArea() === 'europe' ? .0042 + (1 - dl) * .003 : .0105 + .045 * sm * sm + (1 - dl) * .006; // London's air is clear enough to see the Eye from the square
+  wScene.fog.density = isPl() ? (world.planet && world.planet.city ? .0015 + (1 - dl) * .001 + .012 * sm * sm : .0048 + (1 - dl) * .003 + .032 * sm * sm * (world.wxK && world.wxK.fogK || 1)) : curArea() === 'europe' ? .0042 + (1 - dl) * .003 : .0105 + .045 * sm * sm + (1 - dl) * .006; // London's air is clear enough to see the Eye from the square
   world.snow.material.size = isPl() && world.wxK ? world.wxK.size * (1 + sm * .6) : .08 + .07 * sm;
 }
 // ---- after the storm: James makes a bed, you sleep, and someone else is waiting in the dream ----
@@ -10644,7 +10644,9 @@ const STORMS = {
   ash: { name: 'Ash storm', col: '#4a4440', fog: '#3a2e28', fall: -1.6, wind: 1.4, size: .11, op: .8, haz: .9 },
   ember: { name: 'Firestorm', col: '#ff8a3a', fog: '#6a2a14', fall: 1.2, wind: 1.6, size: .09, op: .9, haz: 1.5 },
   toxic: { name: 'Toxic storm', col: '#c8f070', fog: '#6a7a30', fall: -12, wind: .9, size: .06, op: .6, haz: 1.2 },
-  methane: { name: 'Methane rainstorm', col: '#d8a050', fog: '#7a5420', fall: -11, wind: .6, size: .06, op: .55, haz: .25 }
+  methane: { name: 'Methane rainstorm', col: '#d8a050', fog: '#7a5420', fall: -11, wind: .6, size: .06, op: .55, haz: .25 },
+  // Carax, in the glare of Sagittarius A*: the accretion disc flares and rains radiation and burning debris on the fortress world
+  singularity: { name: 'Singularity storm', col: '#ffb070', fog: '#3a0e06', fall: 2.5, wind: 3.4, size: .16, op: .95, haz: 3.4, bolt: true, flash: '#ff9a5a', cata: true, fogK: 2.4, warn: 18, len: [70, 100], calm: [60, 110], first: [40, 70] }
 };
 const AIRLESS_WX = 'No atmosphere';
 //   id: [type, weather, storm kind, storm strength]
@@ -10657,7 +10659,7 @@ const PTYPES = {
   titania: ['Icy Moon', AIRLESS_WX], oberon: ['Icy Moon', AIRLESS_WX], triton: ['Frozen Moon', 'Nitrogen geysers · thin air'], pluto: ['Frozen Dwarf Planet', 'Thin haze · no storms'],
   charon: ['Icy Moon', AIRLESS_WX], haumea: ['Icy Dwarf Planet', AIRLESS_WX], makemake: ['Frozen Dwarf Planet', AIRLESS_WX], eris: ['Frozen Dwarf Planet', 'Frigid, still air'],
   dysnomia: ['Dead Moon', AIRLESS_WX], tethys: ['Icy Moon', AIRLESS_WX], dione: ['Icy Moon', AIRLESS_WX], ariel: ['Icy Moon', AIRLESS_WX], umbriel: ['Dark Moon', AIRLESS_WX],
-  malana: ['Lush Planet', 'Gentle rain', 'rain', .3], carax: ['Fortress World', AIRLESS_WX], aridaxx: ['Exotic Planet', 'Warm violet winds'], steca: ['Volcanic Planet', 'Burning ash storms', 'ash', .8],
+  malana: ['Lush Planet', 'Gentle rain', 'rain', .3], carax: ['Fortress World', 'Singularity storms · catastrophic', 'singularity', 1], aridaxx: ['Exotic Planet', 'Warm violet winds'], steca: ['Volcanic Planet', 'Burning ash storms', 'ash', .8],
   janira: ['Lush Planet', 'Warm rain', 'rain', .3], thalassa: ['Ocean World', 'Rolling sea squalls', 'rain', .55], vey: ['Volcanic Planet', 'Firestorms', 'ember', .85], 'vey-moon': ['Dead Moon', AIRLESS_WX],
   nadir: ['Frozen Planet', 'Raging blizzards', 'snow', .9], 'nadir-ii': ['Dead Planet', AIRLESS_WX], ossian: ['Scorched Planet', 'Superheated sandstorms', 'dust', .85],
   verdance: ['Paradise Planet', 'Clear skies · no storms'], 'verdance-m': ['Barren Moon', AIRLESS_WX], arcadia: ['Paradise Planet', 'Balmy breezes · no storms'],
@@ -10692,16 +10694,17 @@ function planetWx(P) {
 }
 const wxTag = P => { const W = planetWx(P); return `${W.type} · ${W.wx}`; };
 // the weather where you're standing: calm, a warning, then the storm, then calm again
-function wxReset() { world.wx = null; world.storm = 0; world.stormDarkT = 0; world.flashA = 0; }
+function wxReset() { world.wx = null; world.storm = 0; world.stormDarkT = 0; world.flashA = 0; for (const k of world.wxRocks || []) wScene.remove(k.ring, k.rock); world.wxRocks = []; }
 function planetWxTick(dt) {
   const P = world.planet && world.planet.P, W = P && planetWx(P), S = W && W.storm;
   if (!S) { world.storm = clamp((world.storm || 0) - dt / 6, 0, 1); world.wxK = null; if (world.snow) world.snow.visible = false; wxHazard(dt, null); return; }
-  const X = world.wx || (world.wx = { phase: 'calm', t: W.faux ? 35 + Math.random() * 25 : 70 + Math.random() * 80, bolt: 2 });
+  const rr = (a, d) => a ? a[0] + Math.random() * (a[1] - a[0]) : d, warnT = S.warn || 10;
+  const X = world.wx || (world.wx = { phase: 'calm', t: S.first ? rr(S.first) : W.faux ? 35 + Math.random() * 25 : 70 + Math.random() * 80, bolt: 2, hit: 3, surge: 8 });
   world.wxK = S; if (!world.wxFogC || world.wxFogK !== S) { world.wxFogC = new THREE.Color(S.fog); world.wxFogK = S; }
   if (state === 'explore') X.t -= dt;
-  if (X.phase === 'calm' && X.t <= 10) { X.phase = 'warn'; sfx.alarm(); notice('Weather warning', `${S.name} incoming`.toUpperCase(), 3200); }
-  else if (X.phase === 'warn' && X.t <= 0) { X.phase = 'storm'; X.len = X.t = 45 + Math.random() * 30; world.stormDarkT = time; notice(W.faux ? 'This paradise has a temper' : 'Weather alert', S.name.toUpperCase(), 2800); }
-  else if (X.phase === 'storm' && X.t <= 0) { X.phase = 'calm'; X.t = 90 + Math.random() * 90; lootMsg('The storm has passed', '#9fe6ff'); }
+  if (X.phase === 'calm' && X.t <= warnT) { X.phase = 'warn'; sfx.alarm(); if (S.cata) { setTimeout(() => sfx.alarm(), 400); setTimeout(() => sfx.alarm(), 800); } notice(S.cata ? 'Catastrophic weather warning' : 'Weather warning', S.cata ? 'GET UNDER YOUR SHIP' : `${S.name} incoming`.toUpperCase(), S.cata ? 4200 : 3200); if (S.cata) setTimeout(() => { if (world.wx === X && X.phase === 'warn') lootMsg(`${S.name} incoming · radiation and debris from Sagittarius A*`, '#ff9a5a'); }, 2000); }
+  else if (X.phase === 'warn' && X.t <= 0) { X.phase = 'storm'; X.len = X.t = rr(S.len, 45 + Math.random() * 30); world.stormDarkT = time; notice(S.cata ? 'Exosuit · extreme hazard' : W.faux ? 'This paradise has a temper' : 'Weather alert', S.name.toUpperCase(), 2800); if (S.cata) { sfx.boom(1); ex.shake = .8; } }
+  else if (X.phase === 'storm' && X.t <= 0) { X.phase = 'calm'; X.t = rr(S.calm, 90 + Math.random() * 90); lootMsg(S.cata ? 'The singularity storm has passed · for now' : 'The storm has passed', '#9fe6ff'); }
   const target = X.phase === 'storm' ? S.power : 0;
   world.storm = clamp((world.storm || 0) + Math.sign(target - (world.storm || 0)) * dt / (target ? 8 : 12), 0, 1);
   if (Math.abs(world.storm - target) < dt / 8) world.storm = target;
@@ -10711,7 +10714,8 @@ function planetWxTick(dt) {
     X.bolt = 1.4 + Math.random() * 4; world.flashA = 1; const d = 250 + Math.random() * 1100; setTimeout(() => sfx.boom(.35 + Math.random() * .4), d);
   }
   let fl = $('#wxFlash'); if (!fl) { fl = document.createElement('div'); fl.id = 'wxFlash'; fl.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:4;background:#eef4ff;opacity:0;mix-blend-mode:screen'; document.body.appendChild(fl); }
-  fl.style.opacity = (world.flashA * .55).toFixed(3);
+  fl.style.background = S.flash || '#eef4ff'; fl.style.opacity = (world.flashA * (S.cata ? .7 : .55)).toFixed(3);
+  if (S.cata) wxCatastrophe(dt, X, S);
   if (world.snow) { const s = world.storm || 0, m = world.snow.material; world.snow.visible = s > .02; m.color.set(S.col); m.opacity = S.op * smooth(.02, .4, s); }
   wxHazard(dt, X.phase === 'storm' ? S : null);
 }
@@ -10722,14 +10726,56 @@ function wxHazard(dt, S) {
   const inv = invState(); let h = suitHeat();
   const drain = S && S.haz && world.storm > .35 && !sheltered ? S.haz * S.power : 0;
   h = clamp(drain ? h - drain * dt : h + (sheltered ? 9 : 3) * dt, 0, 100); inv.heat = h;
+  if (h <= 0 && drain && S.cata) { // no emergency recovery here: the radiation burns straight through to you
+    ex.hp = Math.max(0, ex.hp - 9 * dt); invState().hp = Math.round(ex.hp);
+    if ((world.burnT = (world.burnT || 0) - dt) <= 0) { world.burnT = 1; const fx = $('#hurtFx'); fx.classList.remove('on'); void fx.offsetWidth; fx.classList.add('on'); sfx.hit('crate'); ex.shake = Math.max(ex.shake || 0, .2); }
+    if (!world.burnMsg || time - world.burnMsg > 12) { world.burnMsg = time; notice('Exosuit failed · radiation burning through', 'GET UNDER YOUR SHIP NOW', 2600); }
+    if (ex.hp <= 0) blackout(); return;
+  }
   if (h <= 0) { emergencyRecovery(); return; }
-  if (drain && h < 30 && (!world.coldMsg || time - world.coldMsg > 30)) { world.coldMsg = time; notice('Exosuit · protection critical', 'SHELTER UNDER YOUR SHIP', 2800); }
+  if (drain && h < 30 && (!world.coldMsg || time - world.coldMsg > (S.cata ? 12 : 30))) { world.coldMsg = time; notice('Exosuit · protection critical', 'SHELTER UNDER YOUR SHIP', 2800); }
+}
+// a catastrophic storm (Carax): burning debris falls out of the sky (a red ring marks where, a second before it lands) and gravity
+// surges throw you around. Under the Nostra's hull you're safe from both.
+function wxCatastrophe(dt, X, S) {
+  const R = world.wxRocks || (world.wxRocks = []), p = player.position;
+  for (let i = R.length - 1; i >= 0; i--) { // falling rocks
+    const k = R[i]; k.t += dt; const f = clamp((k.t - k.warn) / k.dur, 0, 1), gy = wHeight(k.x, k.z);
+    k.ring.position.set(k.x, gy + .08, k.z); k.ring.material.opacity = .25 + .55 * Math.abs(Math.sin(k.t * 9)); k.ring.scale.setScalar(1 + (1 - Math.min(1, k.t / k.warn)) * .8);
+    k.rock.visible = k.t > k.warn; k.rock.position.set(k.x + (1 - f) * k.dx, gy + (1 - f) * 120, k.z + (1 - f) * k.dz);
+    if (f >= 1) {
+      const d = Math.hypot(p.x - k.x, p.z - k.z), hull = Math.hypot(k.x, k.z) < 11;
+      burst(k.x, gy + .4, k.z, hull ? 30 : 70, hull ? 5 : 9, 1, .55, .2, 1.1, .8, 2); burst(k.x, gy + .3, k.z, 30, 4, .35, .3, .28, 1.6, .4, 1);
+      sfx.boom(hull ? .5 : Math.max(.35, 1.1 - d / 40)); ex.shake = Math.max(ex.shake || 0, Math.max(.15, .9 - d / 30)); world.flashA = Math.max(world.flashA || 0, Math.max(0, .7 - d / 40));
+      if (!hull && d < 5.5 && state === 'explore') hurtPlayer(Math.round(10 + 34 * (1 - d / 5.5)), { x: k.x, z: k.z });
+      wScene.remove(k.ring, k.rock); R.splice(i, 1);
+    }
+  }
+  if (X.phase !== 'storm' || world.storm < .4 || state !== 'explore' || ex.dlg || world.narrating) return;
+  const safe = Math.hypot(p.x, p.z) < 11;
+  if ((X.hit -= dt) <= 0) { // the next rock: sometimes right on you, more often close by
+    X.hit = .9 + Math.random() * 1.8;
+    for (let n = 0; n < (Math.random() < .3 ? 3 : 1); n++) {
+      const a = Math.random() * Math.PI * 2, rd = Math.random() < .4 ? Math.random() * 3.5 : 4 + Math.random() * 18, x = p.x + Math.cos(a) * rd + clamp((vel.x || 0) * .8, -4, 4), z = p.z + Math.sin(a) * rd + clamp((vel.z || 0) * .8, -4, 4); // leads you a little if you're running
+      if (safe && Math.hypot(x, z) < 11 && Math.random() < .5) continue; // the hull takes some of them
+      const ring = new THREE.Mesh(new THREE.RingGeometry(2.6, 3.4, 32), new THREE.MeshBasicMaterial({ color: 0xff3a1a, transparent: true, opacity: .6, depthWrite: false, side: THREE.DoubleSide }));
+      ring.rotation.x = -Math.PI / 2;
+      const rock = new THREE.Group(), core = new THREE.Mesh(new THREE.IcosahedronGeometry(.9, 0), new THREE.MeshBasicMaterial({ color: 0xffa04a }));
+      rock.add(core, glowSprite(0xff7a2a, 9, .9)); rock.visible = false;
+      wScene.add(ring, rock); R.push({ x, z, t: 0, warn: 1.1, dur: .55, ring, rock, dx: -40 + Math.random() * 10, dz: 18 + Math.random() * 8 });
+    }
+  }
+  if ((X.surge -= dt) <= 0) { // gravity surge: the black hole's tide lifts you and throws you sideways
+    X.surge = 6 + Math.random() * 7;
+    if (!safe && !ex.swim && !ex.vehicle) { ex.vy = 6 + Math.random() * 4; ex.air = true; vel.x += -7 - Math.random() * 5; vel.z += 3 + Math.random() * 3; ex.shake = Math.max(ex.shake || 0, .5); sfx.whoosh(); lootMsg('Gravity surge', '#ff9a5a'); }
+  }
+  if ((X.rumble = (X.rumble || 0) - dt) <= 0) { X.rumble = 2.5 + Math.random() * 3; sfx.boom(.25); ex.shake = Math.max(ex.shake || 0, .12); }
 }
 function wxLine() {
   const P = world.planet && world.planet.P; if (!P) return '';
   const W = planetWx(P), X = world.wx, S = W.storm;
   if (S && X && X.phase === 'warn') return `<b>⚠ ${S.name} incoming</b>`;
-  if (S && X && X.phase === 'storm') return `<b>⚠ ${S.name} · ${Math.max(0, Math.ceil(X.t))}s</b>`;
+  if (S && X && X.phase === 'storm') return `<b>${S.cata ? '☢' : '⚠'} ${S.name} · ${Math.max(0, Math.ceil(X.t))}s</b>`;
   return `${W.type} · ${S ? 'calm for now' : W.wx.replace(' · no storms', '')}`;
 }
 // Chapter III and Chapter IV hold the same galaxy under different flags: swap them to suit the wanderer you're playing
