@@ -999,10 +999,10 @@ Then Orion and Nico bring them back. **Skip** jumps past the memories, then past
 - **Fully voiced.** The one exception is on purpose: the Erisian nightmare's opening card (THE VISION: "Citadel el Erisconos. Not yet. But soon.", `CH3NMERIS1`) is text only.
 
 ## Chapter III: Khazglar on Olympus Mons
-Straight after the nightmare in space (whichever of the four you had), Orion has an idea: these episodes aren't stopping, and the one person who might understand them is **Khazglar**, a Martian hermit who has watched the sky from Olympus Mons for three hundred years.
+After the nightmare in space (whichever of the four you had), the next stop is Mars. These episodes aren't stopping, and the one person who might understand them is **Khazglar**, a Martian hermit who has watched the sky from Olympus Mons for three hundred years.
 
 - **The way there:**
-  - Five lines after the wake-up (Orion and Nico), then the objective **Find Khazglar on Olympus Mons, Mars**. It replaces *Land on a planet* and *Warp to another star system* until you've met him.
+  - The wake-up dialogue is unchanged and doesn't mention him. Once it ends, a card reads **FIND KHAZGLAR ON MARS** and the objective becomes **Find Khazglar on Olympus Mons, Mars**. It replaces *Land on a planet* and *Warp to another star system* until you've met him.
   - In Sol, a **gold marker** sits on Mars at Olympus Mons, with its distance.
   - In Mars's sky, Olympus Mons is marked in gold, and over the mountain the land button reads **LAND · OLYMPUS MONS**. It sets you down beside the hermitage.
   - Land anywhere else on Mars and you're told how far the mountain is. The pilot's seat then offers **Fly to Olympus Mons · Khazglar's hermitage**.
@@ -1029,4 +1029,4 @@ Straight after the nightmare in space (whichever of the four you had), Orion has
   - His old side quest, *Khazglar's Request*, is no longer offered once he's with you.
 - **Next objective:** Warp to another star system.
 - **Saves:** flags `ch3.khzCall` and `ch3.khzMet`. A save made on the mountain loads back there, with Khazglar waiting if you haven't spoken to him yet.
-- **Voices:** the scene is text for now, and every line has an id ready. Drop in a `data/khazVoices.js` pack (same format as the other voice packs) holding `CH3KHAZCALL1–5`, then `CH3KHAZ1–17`, then `CH3KHAZ4CH`, `CH3KHAZ4ER` and `CH3KHAZ4GR`, in that order, and they play. `CH3KHAZ4` is the human greeting; the three at the end are the Chompy, Erisian and Grek ones.
+- **Voices:** the scene is text for now, and every line has an id ready. Drop in a `data/khazVoices.js` pack (same format as the other voice packs) holding `CH3KHAZ1–17`, then `CH3KHAZ4CH`, `CH3KHAZ4ER` and `CH3KHAZ4GR`, in that order, and they play. `CH3KHAZ4` is the human greeting; the three at the end are the Chompy, Erisian and Grek ones.
