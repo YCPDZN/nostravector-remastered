@@ -327,6 +327,15 @@ Every one is landable, with its own look:
 
 The galaxy map marks moons, dwarf planets and worlds with open water. Inner moons fly the Federation's flag; the outer ones are unclaimed. Icy shells use a new terrain type (`ice` in `PKIND`). Coming down over open water (Earth's oceans, Europa's cracks), the Nostra sets down on the nearest shore.
 
+### The giants' smaller moons
+Forty-nine more moons, also all landable: little grey, red, dark or icy rocks, most of them lumpy rather than round.
+- **Jupiter:** Metis, Adrastea, Amalthea and Thebe close in; Leda, Himalia, Lysithea, Elara, Ananke, Carme, Pasiphae and Sinope far out.
+- **Saturn:** the shepherds Pan, Daphnis, Atlas, Prometheus, Pandora, Epimetheus and Janus in and around the rings; **Tethys** with Telesto and Calypso sharing its orbit; **Dione** with Helene and Polydeuces; Hyperion, Phoebe and Ymir.
+- **Uranus:** **Ariel** and **Umbriel**; Cordelia, Ophelia, Bianca, Cressida, Desdemona, Juliet, Portia, Rosalind, Belinda and Puck close in; Caliban and Sycorax far out.
+- **Neptune:** Naiad, Thalassa, Despina, Galatea, Larissa, Hippocamp and Proteus; Nereid, Halimede, Sao and Neso far out.
+
+So space doesn't fill with labels, a small moon is only marked once you're within about 15 km. The galaxy map lists the main worlds and counts the small ones under their planet (Saturn · +14 smaller moons, and so on). Every inner moon sits well clear of its planet's push-back zone, so you can always reach it and land.
+
 ### Swimming
 - Walk (or fall) into deep water and you **swim**: head out, a front crawl when you move, treading water when you don't. Slower than on land; Shift / SPRINT for a hard crawl.
 - **Space / UP** swims up, **C / Ctrl / DIVE** dives (on a touch screen, JUMP and DODGE become UP and DIVE). Let go and you drift back to the surface.
