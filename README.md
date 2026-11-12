@@ -1164,4 +1164,5 @@ After the nightmare in space (whichever of the four you had), the next stop is M
   - They wait 26 years for him, then see him come out of prison as Hak Chompjak, break the Cult of Zark and ask forgiveness. To them, that is the real betrayal.
   - They swear Hak will never wear the Usurper's armour again, and build the Usurper's Crypt around it beneath Aridaxx.
   - Their master today is Draven.
+- **On the stage:** Lord Sevirrus, with Draven beside him from Chapter IV.
 - **What you can see when:** Draven's name and the crypt are blacked out until Chapter IV. Once you've beaten Draven, a last paragraph tells of his death and the wanderer who walked out carrying the Armor of Lord Sevirrus.
