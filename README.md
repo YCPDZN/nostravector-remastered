@@ -1083,3 +1083,48 @@ After the nightmare in space (whichever of the four you had), the next stop is M
   - `CH3KHAZB1–2`: the phase barks.
   - `CH3KHAZW1–5`: beaten.
   - `CH3KHAZT3CH`, `T3ER`, `T3GR`: the Chompy, Erisian and Grek lines.
+
+### Fix: Mars's rust hounds
+- The hounds inside Olympus Mons were killing players in a few seconds. They now bite for half as much (4 at floor 1), bite less often, and run a little slower.
+- Their damage also grows more slowly as you climb (+12% a floor instead of +20%), and packs on the first two floors are two hounds.
+- A pack takes turns: only one hound bites in any 0.7 seconds, so a whole pack can't land at once.
+- Khazglar's hounds at 60% get the same changes.
+- Fix: the wardens are now drawn at their full size (they were shrinking back to normal size after spawning).
+
+## Native species and lairs across the Milky Way (Chapter III on)
+- **The galaxy map is now titled MILKY WAY GALAXY.** Its subtitle counts the lairs you've cleared.
+- **A species for every system:** each of the 490 generated systems and the five uncharted ones has its own native species (495 in all), each with its own name. They're built from a seed with the species editor's body plan:
+  - Legless, two, four or six legs, arms on the upright ones, and one to eight eyes.
+  - Horns, tails, spikes, ears or fins, five skin patterns, and colours from their world. Some glow.
+  - Each species has a temperament and a way of living ("ravenous; it feeds on heat").
+  - Every species comes in castes: pack **runners**, **stalkers**, heavy **bulwarks**, sometimes flying **gliders**, and in the lairs a **matriarch**.
+- **Wildlife:** the generated worlds that can hold life (lush, ocean, arid, toxic and frozen) now have their species roaming the surface, at a level that fits the system.
+- **Lairs: 3,060 of them.** Every landable world in those systems holds lairs: two on a planet, one on a moon. The story systems (Sol, Malana Prime, Sagittarius A\*, Steca Prime and Janira Proxima) keep their own content.
+  - **Where:** when you land, a world's lairs stand 60–110 m from your ship. Each is a stone gate glowing in its world's colour, with a beacon you can see from far off. A message says how many are nearby and names the species. The marker points to the nearest lair you haven't cleared, and the beacon turns green once it's cleared.
+  - **Levels:** from level 14 near Sol to level 85 on the far arms, and higher for a world's second lair.
+  - **Inside:** one to three floors of rooms full of that species, and a **matriarch** guarding the way down. The **heart**, an arena where the boss waits, is at the bottom. There's a healing spring by the stairs on every floor, and progress is kept, so you can go straight down to a floor you've reached.
+  - **Themes:** each lair is themed after its world: overgrown, drowned, sunken, molten, blighted, frozen or hollow, each with its own colours, light and fog. The names fit, e.g. *The Drowned Grottoes of Ithrak*.
+- **3,060 bosses, all different.** Each has its own name and title (e.g. *Morskuna the Shrike*), a giant, glowing body of its species, and lines for its intro, both phases and its death. No two have the same fight. Each one gets:
+  - **Four core attacks** from thirteen, always with at least one melee attack, with their own sizes, damage, timing and counts.
+  - **Its own rhythm:** a fixed order of five to seven attacks that it repeats.
+  - **Phase two (66%):** one or two new attacks join the rotation, it speeds up, and it calls its young.
+  - **Phase three (33%):** its signature attack joins, and it gets faster still.
+  - **The attacks:**
+    - *Slam*: a red ring in front of it.
+    - *Nova*: jump it or get clear.
+    - *Leap* onto you.
+    - *Charge* along a marked line.
+    - *Volley*: fans of bolts.
+    - *Spiral*: arms of bolts that turn.
+    - *Falling stars*: circles around you.
+    - *Pools*: lingering puddles that hurt while you stand in them.
+    - *Sweep*: a rotating beam.
+    - *Eruptions*: lines of blasts going out in a plus or a star.
+    - *Brood*: it summons runners.
+    - *Vortex*: it pulls you in, then a nova.
+    - *Blink*: it vanishes and comes down behind you.
+  - The boss bar shows its level, its phase and what's coming next ("Next: Charge · step off the line").
+  - **Wipe and retry:** if you fall, the boss is back on its perch at full health and its brood is gone.
+  - **Beaten:** XP (260 + 18 per level), med kits, warp cells, frost crystals and metal or obsidian. The beacon turns green. You can go back in to grind the brood.
+- **The galaxy map** lists each system's native species, how many lairs it has, their level range and how many you've cleared.
+- **Saves:** cleared floors are kept per lair in `lairs` on your wanderer (`{ "<lair id>": highest floor cleared }`, and floors + 1 means the boss is dead). A save made inside a lair loads back onto the same floor.
