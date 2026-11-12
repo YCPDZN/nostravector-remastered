@@ -1238,6 +1238,7 @@ body.touch .al-key{display:none}
       <button class="btn small hidden" id="xDiplo"><span>Diplomacy</span></button>
       <button class="btn small hidden" id="xQuests"><span>Side quests</span></button>
       <button class="btn small hidden" id="xResEmp"><span>Resident empires</span></button>
+      <button class="btn small hidden" id="xGuilds"><span>Guilds</span></button>
       <button class="btn small" id="xOptions"><span>Options</span></button>
       <button class="btn small" id="xQuit"><span>Main menu</span></button>
     </div>
@@ -2095,11 +2096,12 @@ if (!Array.isArray(slots)) {
   }
 }
 while (slots.length < SLOT_COUNT) slots.push(null);
-let roster = [], activeId = null, resumePlace = null, dirty = false, lastSlot = -1, residents = [], resEmp = { emp: {}, wars: [], cool: {}, log: [] }; // residents: wanderers sent into the world (never playable again)
+let roster = [], activeId = null, resumePlace = null, dirty = false, lastSlot = -1, residents = [], resEmp = { emp: {}, wars: [], cool: {}, log: [] }, resGuild = { g: {}, log: [] }; // residents: wanderers sent into the world (never playable again)
 function loadSlotData(sl) {
   roster = (sl && Array.isArray(sl.roster) ? sl.roster : []).filter(c => c && c.id).map(c => Object.assign({}, DEFAULT_W, JSON.parse(JSON.stringify(c))));
   activeId = sl && roster.some(c => c.id === sl.activeId) ? sl.activeId : (roster[0] ? roster[0].id : null);
   residents = (sl && Array.isArray(sl.residents) ? sl.residents : []).filter(c => c && c.id).map(c => JSON.parse(JSON.stringify(c)));
+  resGuild = Object.assign({ g: {}, log: [] }, sl && sl.resGuild ? JSON.parse(JSON.stringify(sl.resGuild)) : {}); // residents' guilds
   resEmp = Object.assign({ emp: {}, wars: [], cool: {}, log: [] }, sl && sl.resEmp ? JSON.parse(JSON.stringify(sl.resEmp)) : {}); // resident empires and their wars
   resumePlace = sl && sl.place && sl.place.mode === 'explore' ? Object.assign({}, sl.place, { who: activeId }) : null;
 }
@@ -5426,7 +5428,7 @@ function sceneLocked() {
 }
 function pauseExplore(on) {
   if (on && state === 'explore' && sceneLocked()) { if (time - (ex.lockMsgT || -9) > 2) { ex.lockMsgT = time; lootMsg('You can’t pause during a scene', '#cfd6e6'); } return; }
-  if (on && state === 'explore') { state = 'xpaused'; ex.keys.clear(); if (ex.dlg) { sfx.stopVoice(); closeDialog(); } refreshDirty(); $('#xPauseChap').textContent = liveChapterLabel(); $('#xDiplo').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xQuests').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xResEmp').classList.toggle('hidden', (wanderer.chapter | 0) < 3 || !residents.length); ui.xpause.classList.remove('opts'); refreshOpts(); show(ui.xpause, true); } // the chapter and place you're actually in
+  if (on && state === 'explore') { state = 'xpaused'; ex.keys.clear(); if (ex.dlg) { sfx.stopVoice(); closeDialog(); } refreshDirty(); $('#xPauseChap').textContent = liveChapterLabel(); $('#xDiplo').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xQuests').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xResEmp').classList.toggle('hidden', (wanderer.chapter | 0) < 3 || !residents.length); $('#xGuilds').classList.toggle('hidden', !residents.length); ui.xpause.classList.remove('opts'); refreshOpts(); show(ui.xpause, true); } // the chapter and place you're actually in
   else if (!on && state === 'xpaused') { state = SPC.paused ? 'space' : 'explore'; SPC.paused = false; show(ui.xpause, false); clock.getDelta(); }
 }
 $('#xMenuBtn').addEventListener('click', () => { sfx.click(); pauseExplore(true); });
@@ -5902,6 +5904,7 @@ $('#alignClose').addEventListener('click', () => { if (state === 'explore') clos
 $('#xAlign').addEventListener('click', () => openAlign(true));
 $('#xDiplo').addEventListener('click', () => dipOpen(true));
 $('#xResEmp').addEventListener('click', () => { sfx.click(); resEmpOpen(); });
+$('#xGuilds').addEventListener('click', () => { sfx.click(); guildOpen(); });
 $('#xQuests').addEventListener('click', () => sqOpen(true));
 $('#dipClose').addEventListener('click', () => dipOpen(false));
 $('#dipTabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (!b) return; DIPV.tab = b.dataset.t; DIPV.confirm = null; sfx.click(); dipRender(); });
@@ -6642,26 +6645,31 @@ function armorSync(force) { // what you wear, piece by piece: a helmet, a chestp
   for (const o of armorFx.parts) if (o.parent) o.parent.remove(o);
   armorFx.parts = []; armorFx.id = key; armorFx.rig = rig.ra;
   if (!rig.ra || !Object.keys(w).length) return;
-  const k = headYFor(wanderer) / 1.66, mc = {};
+  armorFx.parts = armorBuild(w, wanderer, inner, rig);
+}
+function armorBuild(w, who, IN, RG) { // the pieces on any body (yours, or a resident's): w is { head, chest, legs, feet } or { suit }
+  if (!RG || !RG.ra || !Object.keys(w).length) return [];
+  const k = headYFor(who) / 1.66, mc = {}, out = [];
   const mats = id => mc[id] || (mc[id] = (() => { const [cBase, cTrim] = ITEMS[id].col, dull = id === 'armor1' || ITEMS[id].set === 'pad';
     return [new THREE.MeshStandardMaterial({ color: cBase, metalness: dull ? .1 : .75, roughness: dull ? .85 : .35 }), new THREE.MeshStandardMaterial({ color: cTrim, metalness: dull ? .1 : .8, roughness: .3, emissive: dull ? 0 : cTrim, emissiveIntensity: dull ? 0 : .35 })]; })());
-  const ws = o => { o.updateMatrixWorld(true); return o.getWorldScale(new THREE.Vector3()).x || 1; }, wIn = ws(inner);
-  const part = (parent, build) => { const g = new THREE.Group(); build(g); g.scale.setScalar(k * wIn / ws(parent)); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); parent.add(g); armorFx.parts.push(g); return g; }; // the same size on every species (their limbs sit inside a scaled model)
+  const ws = o => { o.updateMatrixWorld(true); return o.getWorldScale(new THREE.Vector3()).x || 1; }, wIn = ws(IN);
+  const part = (parent, build) => { const g = new THREE.Group(); build(g); g.scale.setScalar(k * wIn / ws(parent)); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); parent.add(g); out.push(g); return g; }; // the same size on every species (their limbs sit inside a scaled model)
   const box = (g, w2, h2, d, m, x, y, z, rx = 0, rz = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w2, h2, d), m); o.position.set(x, y, z); o.rotation.set(rx, 0, rz); g.add(o); return o; };
-  const S = w.suit, chest = S || w.chest, legs = S || w.legs, feet = w.feet, head = w.head, lw = ({ chompy: 1.05, grek: 1.1 })[spOf(wanderer)] || 1; // the bulkier species need slightly wider leg plates
+  const S = w.suit, chest = S || w.chest, legs = S || w.legs, feet = w.feet, head = w.head, lw = ({ chompy: 1.05, grek: 1.1 })[spOf(who)] || 1; // the bulkier species need slightly wider leg plates
   if (chest) { const [base, trim] = mats(chest);
-    for (const [arm, s] of [[rig.ra, -1], [rig.la, 1]]) part(arm, g => { box(g, .22, .07, .24, base, s * .02, .0, .02, 0, s * -.12); box(g, .23, .022, .25, trim, s * .02, .038, .02, 0, s * -.12); box(g, .17, .055, .21, base, s * .08, -.07, .02, 0, s * -.45); box(g, .17, .018, .215, trim, s * .08, -.043, .02, 0, s * -.45); });
-    part(inner, g => { const y = headYFor(wanderer) / k - .42; box(g, .44, .36, .07, base, 0, y, .225); box(g, .46, .035, .075, trim, 0, y + .17, .23); box(g, .065, .28, .075, trim, 0, y - .02, .24); box(g, .36, .05, .07, base, 0, y - .22, .215); for (const s of [-1, 1]) box(g, .09, .3, .06, base, s * .2, y - .01, .2, 0, s * .15); if (chest === 'armor4') { const core = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, .02, 16), new THREE.MeshStandardMaterial({ color: 0xffd36a, emissive: 0xffb02a, emissiveIntensity: 2 })); core.rotation.x = Math.PI / 2; core.position.set(0, y + .05, .195); g.add(core); } }); }
-  if (chest && !S) { const [base, trim] = mats(chest); part(inner, g => { const y = headYFor(wanderer) / k - .42; box(g, .42, .34, .06, base, 0, y, -.2); box(g, .44, .035, .065, trim, 0, y + .16, -.205); box(g, .065, .26, .065, trim, 0, y - .02, -.215); }); } // a chestplate wraps round the back too
+    for (const [arm, s] of [[RG.ra, -1], [RG.la, 1]]) part(arm, g => { box(g, .22, .07, .24, base, s * .02, .0, .02, 0, s * -.12); box(g, .23, .022, .25, trim, s * .02, .038, .02, 0, s * -.12); box(g, .17, .055, .21, base, s * .08, -.07, .02, 0, s * -.45); box(g, .17, .018, .215, trim, s * .08, -.043, .02, 0, s * -.45); });
+    part(IN, g => { const y = headYFor(who) / k - .42; box(g, .44, .36, .07, base, 0, y, .225); box(g, .46, .035, .075, trim, 0, y + .17, .23); box(g, .065, .28, .075, trim, 0, y - .02, .24); box(g, .36, .05, .07, base, 0, y - .22, .215); for (const s of [-1, 1]) box(g, .09, .3, .06, base, s * .2, y - .01, .2, 0, s * .15); if (chest === 'armor4') { const core = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, .02, 16), new THREE.MeshStandardMaterial({ color: 0xffd36a, emissive: 0xffb02a, emissiveIntensity: 2 })); core.rotation.x = Math.PI / 2; core.position.set(0, y + .05, .195); g.add(core); } }); }
+  if (chest && !S) { const [base, trim] = mats(chest); part(IN, g => { const y = headYFor(who) / k - .42; box(g, .42, .34, .06, base, 0, y, -.2); box(g, .44, .035, .065, trim, 0, y + .16, -.205); box(g, .065, .26, .065, trim, 0, y - .02, -.215); }); } // a chestplate wraps round the back too
   if (legs) { const [base, trim] = mats(legs);
-    if (S) for (const leg of [rig.rl, rig.ll]) part(leg, g => { box(g, .14, .3, .05, base, 0, -.5, .1); box(g, .15, .03, .055, trim, 0, -.36, .1); box(g, .12, .08, .06, trim, 0, -.33, .12); }); // a suit's shin guards, as before
-    else for (const leg of [rig.rl, rig.ll]) part(leg, g => { box(g, .25 * lw, .28, .25 * lw, base, 0, -.17, .02); box(g, .26 * lw, .035, .26 * lw, trim, 0, -.03, .02); box(g, .15 * lw, .07, .08, trim, 0, -.33, .13 * lw); }); } // leggings: plates all round the thigh and a knee cop
+    if (S) for (const leg of [RG.rl, RG.ll]) part(leg, g => { box(g, .14, .3, .05, base, 0, -.5, .1); box(g, .15, .03, .055, trim, 0, -.36, .1); box(g, .12, .08, .06, trim, 0, -.33, .12); }); // a suit's shin guards, as before
+    else for (const leg of [RG.rl, RG.ll]) part(leg, g => { box(g, .25 * lw, .28, .25 * lw, base, 0, -.17, .02); box(g, .26 * lw, .035, .26 * lw, trim, 0, -.03, .02); box(g, .15 * lw, .07, .08, trim, 0, -.33, .13 * lw); }); } // leggings: plates all round the thigh and a knee cop
   if (feet) { const [base, trim] = mats(feet);
-    for (const leg of [rig.rl, rig.ll]) part(leg, g => { box(g, .23 * lw, .22, .23 * lw, base, 0, -.6, .03); box(g, .24 * lw, .03, .24 * lw, trim, 0, -.49, .03); box(g, .22 * lw, .13, .3 * lw, base, 0, -.8, .06); box(g, .23 * lw, .03, .31 * lw, trim, 0, -.735, .06); }); } // boots: greaves all round the shin and armoured toes
+    for (const leg of [RG.rl, RG.ll]) part(leg, g => { box(g, .23 * lw, .22, .23 * lw, base, 0, -.6, .03); box(g, .24 * lw, .03, .24 * lw, trim, 0, -.49, .03); box(g, .22 * lw, .13, .3 * lw, base, 0, -.8, .06); box(g, .23 * lw, .03, .31 * lw, trim, 0, -.735, .06); }); } // boots: greaves all round the shin and armoured toes
   if (head) { const [base, trim] = mats(head);
-    part(inner, g => { const y = headYFor(wanderer) / k + .13, r = .25; // helmet: a ring round the head (outside a suit's helmet), cheek guards, a cap and a crest
+    part(IN, g => { const y = headYFor(who) / k + .13, r = .25; // helmet: a ring round the head (outside a suit's helmet), cheek guards, a cap and a crest
       box(g, r * 2, .08, .05, base, 0, y, r); box(g, r * 2, .08, .05, base, 0, y, -r); for (const s of [-1, 1]) { box(g, .05, .08, r * 2, base, s * r, y, 0); box(g, .045, .2, .12, base, s * r, y - .14, r * .45); }
       box(g, r * 1.7, .04, r * 1.7, base, 0, y + .2, 0); box(g, .06, .12, r * 2.1, trim, 0, y + .26, 0); box(g, r * 2.05, .025, .055, trim, 0, y - .045, r + .005); }); }
+  return out;
 }
 const HELD_KINDS = new Set(['pick', 'opick', 'tpick', 'steak', 'medkit', 'lamp', 'wall', 'heater', 'beacon', 'rifle1', 'rifle2', 'rifle3']);
 function heldModel(id) {
@@ -13312,7 +13320,7 @@ canvas.addEventListener('pointerdown', e => { if (state !== 'space' || e.pointer
 addEventListener('pointermove', e => { if (state !== 'space' || !SPC.drag) return; SPC.dragDX = (SPC.dragDX || 0) + (e.clientX - SPC.drag.x); SPC.dragDY = (SPC.dragDY || 0) + (e.clientY - SPC.drag.y); SPC.drag.x = e.clientX; SPC.drag.y = e.clientY; });
 addEventListener('pointerup', () => { SPC.drag = null; SPC.mouseFire = false; });
 function spacePause(on) {
-  if (on && state === 'space' && !SPC.warp && !GAL.open) { state = 'xpaused'; SPC.paused = true; SPC.keys.clear(); refreshDirty(); $('#xPauseChap').textContent = liveChapterLabel(); $('#xDiplo').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xQuests').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xResEmp').classList.toggle('hidden', (wanderer.chapter | 0) < 3 || !residents.length); show(ui.xpause, true); }
+  if (on && state === 'space' && !SPC.warp && !GAL.open) { state = 'xpaused'; SPC.paused = true; SPC.keys.clear(); refreshDirty(); $('#xPauseChap').textContent = liveChapterLabel(); $('#xDiplo').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xQuests').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xResEmp').classList.toggle('hidden', (wanderer.chapter | 0) < 3 || !residents.length); $('#xGuilds').classList.toggle('hidden', !residents.length); show(ui.xpause, true); }
 }
 // ---- entering and leaving space ----
 const tmpQs = new THREE.Quaternion(), tmpVs = new THREE.Vector3(), tmpVs2 = new THREE.Vector3();
@@ -17958,7 +17966,7 @@ function rememberPlace() {
 async function doSave(i) {
   const place = slotFrom === 'explore' ? rememberPlace() : { mode: 'menu' };
   const prev = slots[i];
-  slots[i] = { savedAt: Date.now(), roster: JSON.parse(JSON.stringify(roster)), activeId, place, residents: JSON.parse(JSON.stringify(residents)), resEmp: JSON.parse(JSON.stringify(resEmp)) };
+  slots[i] = { savedAt: Date.now(), roster: JSON.parse(JSON.stringify(roster)), activeId, place, residents: JSON.parse(JSON.stringify(residents)), resEmp: JSON.parse(JSON.stringify(resEmp)), resGuild: JSON.parse(JSON.stringify(resGuild)) };
   slotMsg('Saving\u2026');
   if (!(await writeSlots())) { // only if the browser refuses storage altogether (private mode, storage turned off)
     slots[i] = prev; slotArm = -1; renderSlots();
@@ -19909,7 +19917,9 @@ async function resModel(c) {
   let m = null, L = null;
   try {
     applyLook(c); resetRig();
+    for (const o of armorFx.parts) if (o.parent) { o.userData.armPar = o.parent; o.parent.remove(o); } // your armour stays yours
     m = SkeletonUtils.clone(inner);
+    for (const o of armorFx.parts) if (o.userData.armPar) { o.userData.armPar.add(o); o.userData.armPar = null; }
     const src = [], dst = []; inner.traverse(o => src.push(o)); m.traverse(o => dst.push(o));
     const at = o => o ? dst[src.indexOf(o)] || null : null;
     L = { ra: at(rig.ra), la: at(rig.la), rl: at(rig.rl), ll: at(rig.ll) };
@@ -19932,8 +19942,8 @@ async function resSpawn(c, near) {
   if (!md || !RES.bots.includes(B)) return;
   B.body = md.m; B.L = md.L; B.human = md.human; B.root.add(md.m); wScene.add(B.root); B.ready = true;
   B.root.position.set(B.x, B.y, B.z); B.root.rotation.y = B.ry;
-  resAlOutfit(B);
-  resSay(B, resLine('arrive', B));
+  resAlOutfit(B); resGearDress(B);
+  const GM = myGuild(); resSay(B, GM && GM.members.includes(B.id) ? `[${GM.tag}] ${resPick(['hey', 'yo', 'o/'])} ${wanderer.name}!` : resLine('arrive', B));
 }
 // villains look the part: their outfit darkens like any wanderer's does
 function resAlOutfit(B) { try { if (!B.human) return; const k = alDarkK((B.c.align && B.c.align.p) || 0); if (k) B.body.traverse(o => { if (o.isMesh && o.material && o.material.color && !/visor|glass|skin|face/i.test(o.material.name || '')) o.material.color.lerp(AL_DARK, k * .7); }); } catch (e) {} }
@@ -20029,7 +20039,7 @@ function resLine(kind, B, other) {
 function resSay(B, text) {
   if (!text) return; text = resVoice(B.c, text);
   B.say = text; B.sayT = 4.5;
-  RES.log.push({ who: B.c.name, al: B.al, text, t: time }); if (RES.log.length > 30) RES.log.shift();
+  const GT = resGuildOf(B.id); RES.log.push({ who: (GT ? `[${GT.tag}] ` : '') + B.c.name, al: B.al, text, t: time }); if (RES.log.length > 30) RES.log.shift();
   resChatRender();
 }
 
@@ -20045,8 +20055,10 @@ function resChoose(B) {
     ['follow', dp < 30 && !V ? .5 : 0],
     ['steal', V && dp < 30 && resNodes({ x: p.x, z: p.z }, 14).length ? 1.4 : 0],
     ['jet', .5],
-    ['build', resBuildWant(B)]
+    ['build', resBuildWant(B)],
+    ['craft', .7]
   ];
+  const mate = myGuild() && myGuild().members.includes(B.id); if (mate) for (const o of opts) if (o[0] === 'steal') o[1] = 0; // your guildmates leave your deposits alone
   for (const o of opts) o[1] *= resPersonaWeight(B.c, o[0]); // their personality tilts the choice
   let sum = 0; for (const o of opts) sum += o[1]; let r = Math.random() * sum, pick = 'wander';
   for (const [k, w] of opts) { if ((r -= w) <= 0) { pick = k; break; } }
@@ -20060,6 +20072,7 @@ function resChoose(B) {
   else if (pick === 'follow') { T.dur = 12 + Math.random() * 10; resSay(B, resPick(['following you {player}, lead the way', 'mind if I tag along?', 'where we going?']).replace('{player}', wanderer.name)); }
   else if (pick === 'steal') { const ns = resNodes({ x: p.x, z: p.z }, 14); const n = resPick(ns); T.node = n; T.to = { x: n.x + .9, z: n.z + .9 }; T.dur = 5; T.type = 'mine'; T.steal = true; }
   else if (pick === 'jet') { T.dur = 1.6; }
+  else if (pick === 'craft') { T.dur = 5 + Math.random() * 4; const g = resGear(B.c), next = Object.values(g)[0], S = next && ITEMS[next] && ARMOR_SETS.find(x => x.id === ITEMS[next].set); if (Math.random() < .55) resSay(B, resPick(['smelting some {m}', 'brb, at the forge', 'hammering out a new {p}', 'need more {m} for this lol']).replace('{m}', S ? ITEMS[S.mat].name.toLowerCase() : 'copper').replace('{p}', next ? PIECE[ITEMS[next].slot || 'chest'][1] : 'helmet')); }
   else if (pick === 'build') { const b = resBasesOf(B.c)[curArea()], site = b ? { x: b.x, z: b.z } : resBaseSite(B); if (!site) { T.type = 'idle'; T.dur = 2; } else { T.site = site; T.to = resSafeSpot(site.x + 4.5, site.z + 4.5); T.dur = 14 + Math.random() * 8; if (Math.random() < .5) resSay(B, b ? 'working on my base' : 'gonna build myself a camp here'); } }
   B.task = T;
 }
@@ -20114,7 +20127,7 @@ function resTalk(B) {
   resLinesLoad(); RES.talking = B; B.task = { type: 'face', t: 0, dur: 4 }; B.em = 'wave'; B.emT = 2.2;
   const x = resCtx(B), V = B.al === 'villain', T = RL && RL.talk, back = () => resTalk(B);
   const opts = [
-    { text: 'What are you up to?', onPick: () => resSayTo(B, [resFill(resPick(T ? T.doing[B.al] : ['Just exploring.']), x), `\u200bLV ${B.lv} · ${SPECIES[B.sp].label} · ${resAlName(B)}${resTravels() ? ` · home: ${resHomeBody(B.c).name}` : ''}`, resPersonaSummary(B.c) ? '\u200bPersonality: ' + resPersonaSummary(B.c) : null], back) },
+    { text: 'What are you up to?', onPick: () => resSayTo(B, [resFill(resPick(T ? T.doing[B.al] : ['Just exploring.']), x), `\u200bLV ${B.lv} · ${SPECIES[B.sp].label} · ${resAlName(B)}${resTravels() ? ` · home: ${resHomeBody(B.c).name}` : ''}`, '\u200bGear: ' + resGearText(B.c) + (resGuildOf(B.id) ? ` · Guild: ${resGuildOf(B.id).name} [${resGuildOf(B.id).tag}]` : ''), resPersonaSummary(B.c) ? '\u200bPersonality: ' + resPersonaSummary(B.c) : null], back) },
     { text: 'Tell me about this place', onPick: () => { if (resUnsure(B, 'place')) return resSayTo(B, [resUnknownLine(B, x)], back); const k = resExploreKeys(), w = RL && k.world && RL.explore.worlds[k.world]; resSayTo(B, [resFill(resPick(T ? T.place : ['Nice place.']), x), RL ? resFill(resPick(w || RL.explore.kinds[k.kind] || RL.talk.place), x) : null], back); } },
     { text: 'Any tips?', onPick: () => resSayTo(B, resUnsure(B, 'tips') ? [resUnknownLine(B, x)] : T ? resPickN(T.tips, 2) : ['Save often.'], back) },
     { text: 'Ask something…', onPick: () => resAsk(B) }
@@ -20127,6 +20140,7 @@ function resTalk(B) {
       addUnits(-price); giveItem(id, n); lootMsg(`+${n} ${ITEMS[id].name} · from ${B.c.name}`, ITEMS[id].color || '#9fe6b0'); resSay(B, resPick(['pleasure doing business', 'ty!', 'enjoy'])); } });
   }
   if (resEmpOf(B.id)) opts.push({ text: 'About your empire\u2026', onPick: () => { const e = resEmpOf(B.id), wars = resEmp.wars.filter(w => w.a === B.id || w.b === B.id); resSayTo(B, [resClean(`${e.name}. ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars.length ? `, at war with ${wars.map(w => (resEmpOf(w.a === B.id ? w.b : w.a) || {}).name).join(' and ')}` : ', at peace for now'}.`)], () => openChoice(resWho(B), [{ text: 'Open Resident Empires', onPick: () => { RES.talking = null; closeDialog(); resEmpOpen(); } }, { text: 'Demand you disband it', onPick: () => { resDisband(B.id); RES.talking = null; } }, { text: 'Back', onPick: back }])); } });
+  opts.push(...resGuildTalkOpts(B, back));
   opts.push({ text: 'Roleplay\u2026', onPick: () => resRoleplay(B, 1) });
   opts.push({ text: 'Real life\u2026', onPick: () => resRealLife(B) });
   opts.push({ text: 'Bye', onPick: () => { RES.talking = null; resSay(B, resFill(resPick(T ? T.farewell[B.al] : ['cya']), x)); } });
@@ -20317,7 +20331,8 @@ function resTick(dt) {
   }
   if (!paused) {
     RES.social -= dt; if (RES.social <= 0) { RES.social = 3 + Math.random() * 3; resSocial(); }
-    RES.ding -= dt; if (RES.ding <= 0) { RES.ding = 20; for (const B of RES.bots) { B.lv = resLevel(B.c); if (B.lv > B.lastLv) { B.lastLv = B.lv; resSay(B, resLine('ding', B)); } } }
+    RES.ding -= dt; if (RES.ding <= 0) { RES.ding = 20; for (const B of RES.bots) { B.lv = resLevel(B.c); if (B.lv > B.lastLv) { B.lastLv = B.lv; resSay(B, resLine('ding', B)); } if (B.ready) resGearCheck(B); } }
+    resInviteCheck(dt);
   }
   for (const B of [...RES.bots]) {
     if (!B.ready) continue;
@@ -20368,6 +20383,10 @@ function resStep(B, dt, p) {
     }
     case 'follow': { const to = { x: p.x - Math.sin(player.rotation.y) * 2.6 + 1.2, z: p.z - Math.cos(player.rotation.y) * 2.6 }; resMoveTo(B, to, dt, dp > 7); if (dp < 3.5) resFace(B, p.x, p.z, dt); if (T.t > T.dur) { B.task = null; B.anchor = { x: B.x, z: B.z }; resSay(B, resPick(['ok I’m off, cya', 'thanks for the tour'])); } break; }
     case 'build': if (!T.at) { if (resMoveTo(B, T.to, dt, true) || T.t > 20) { T.at = true; T.t = 0; } } else { resFace(B, T.site.x, T.site.z, dt); B.em = 'mine'; B.emT = .1; if (Math.random() < dt * 4) emit(T.site.x + (Math.random() - .5) * 4, wHeight(T.site.x, T.site.z) + 1 + Math.random() * 2, T.site.z + (Math.random() - .5) * 4, 0, 1.5, 0, .9, .8, .6, .7); if (T.t > T.dur) { B.task = null; resBuildDone(B, T.site); } } break;
+    case 'craft': B.em = 'mine'; B.emT = .1; if (Math.random() < dt * 5) emit(B.x + Math.sin(B.ry) * .9, B.y + .7, B.z + Math.cos(B.ry) * .9, (Math.random() - .5) * 2, 1.5 + Math.random() * 2, (Math.random() - .5) * 2, 1, .65, .25, .5); if (T.t > T.dur) B.task = null; break;
+    case 'invite': { const to = { x: p.x + (B.x - p.x) / Math.max(1, dp) * 2.2, z: p.z + (B.z - p.z) / Math.max(1, dp) * 2.2 };
+      if (resMoveTo(B, to, dt, dp > 10) || dp < 3) { if (!ex.dlg && state === 'explore' && !RES.talking) { B.em = 'wave'; B.emT = 1.5; resInviteAsk(B, T.G); } else B.task = null; }
+      else if (T.t > 20) B.task = null; break; }
     case 'face': resFace(B, p.x, p.z, dt); if (RES.talking === B && ex.dlg) T.t = 0; if (T.t > T.dur) B.task = null; break;
     case 'gather': if (!T.at) { if (resMoveTo(B, T.to, dt, true) || T.t > 12) { T.at = true; T.t = 0; } } else { B.em = T.em; B.emT = .1; if (T.t > T.dur) B.task = null; } break;
     case 'leave': B.em = 'wave'; B.emT = .1; if (T.t > T.dur) { resDespawn(B); return; } break;
@@ -20392,7 +20411,7 @@ function resStep(B, dt, p) {
 }
 // a hero (sometimes a neutral) hands you a little something, at most once in a while
 function resGift(B) {
-  if (B.al === 'villain' || Math.random() > (B.al === 'hero' ? .35 : .12)) return;
+  const mate = myGuild() && myGuild().members.includes(B.id); if ((B.al === 'villain' && !mate) || Math.random() > (mate ? .5 : B.al === 'hero' ? .35 : .12)) return; // guildmates look after their own
   const k = B.id + '|' + resSlot(); if (RES.gifts[k]) return; RES.gifts[k] = true;
   const id = resPick(RES_TRADE_RES.filter(x => ITEMS[x])), n = 1 + Math.floor(Math.random() * 3);
   setTimeout(() => { if (state !== 'explore' || ex.mode !== 'world') return; giveItem(id, n); lootMsg(`+${n} ${ITEMS[id].name} · a gift from ${B.c.name}`, ITEMS[id].color || '#9fe6b0'); resSay(B, resFill(resPick(RES_LINES.gift[B.al] || RES_LINES.gift.hero), Object.assign(resCtx(B), { res: ITEMS[id].name }))); }, 1400);
@@ -20721,6 +20740,164 @@ function resEmpRender() {
   if (E.log.length) h += '<h4>Recent</h4><ul class="re-log">' + E.log.slice(-8).reverse().map(l => `<li>${reEsc(l.text)}</li>`).join('') + '</ul>';
   el.querySelector('.re-body').innerHTML = h;
 }
+/* ============ Residents: their gear, and their guilds ============
+   Residents mine, smelt and forge as they level, the same armour you can: Padded, then Copper, Iron, Gold and Titanium, piece by
+   piece, and at level 90 the endgame suit of their own race. They wear it, and they tell the zone chat when they finish a piece.
+   They also band together in guilds with other residents, and a guild member may ask you to join (unless you've turned guild
+   invites off). You can join, leave, or found a guild of your own from the Guilds panel (pause menu). */
+const RES_GEAR_TIERS = [[8, 'pad'], [16, 'cu'], [28, 'fe'], [44, 'au'], [60, 'ti']]; // from this level they work towards this set
+const RES_RACE_SUIT = { human: ['armHal'], chompy: ['armSha', 'armSev'], erisian: ['armLia'], grek: ['armGrk'] };
+function resGear(c) { // what they're wearing at their level: their next set, a piece at a time, over what they had before
+  const lv = resLevel(c), sp = spOf(c), suits = RES_RACE_SUIT[sp];
+  if (lv >= 90 && suits) return { suit: suits.length > 1 && resAl(c) === 'villain' ? suits[1] : suits[0] };
+  let cur = null, prev = null, from = 0, to = 999;
+  for (let i = 0; i < RES_GEAR_TIERS.length; i++) if (lv >= RES_GEAR_TIERS[i][0]) { cur = RES_GEAR_TIERS[i][1]; prev = i ? RES_GEAR_TIERS[i - 1][1] : null; from = RES_GEAR_TIERS[i][0]; to = RES_GEAR_TIERS[i + 1] ? RES_GEAR_TIERS[i + 1][0] : 72; }
+  if (!cur) return {};
+  if (cur === 'au' && resHash(c.id + 'gold') < .45) cur = 'fe'; // not everyone likes gold
+  const order = [...EQ_SLOTS].sort((a, b) => resHash(c.id + a) - resHash(c.id + b)), n = clamp(1 + Math.floor((lv - from) / Math.max(1, (to - from) / 4)), 1, 4), out = {};
+  order.forEach((s, i) => { const set = i < n ? cur : prev; if (set) out[s] = set + PIECE[s][0]; });
+  return out;
+}
+const resGearKey = c => JSON.stringify(resGear(c));
+const resGearDef = g => Math.min(.85, Object.values(g).reduce((t, id) => t + ((ITEMS[id] && ITEMS[id].def) || 0), 0));
+function resGearText(c) { const g = resGear(c), ids = Object.values(g); if (!ids.length) return 'no armour yet'; if (g.suit) return ITEMS[g.suit].name;
+  const sets = {}; for (const id of ids) { const S = ARMOR_SETS.find(x => x.id === ITEMS[id].set); sets[S.name] = (sets[S.name] || 0) + 1; }
+  return Object.entries(sets).map(([n, k]) => `${n} ×${k}`).join(' · ') + ` (${Math.round(resGearDef(g) * 100)}%)`; }
+function resGearDress(B) { // their armour on their own body
+  for (const o of B.armor || []) if (o.parent) o.parent.remove(o);
+  B.armor = []; if (!B.body || !B.L) return;
+  B.gearKey = resGearKey(B.c);
+  try { B.armor = armorBuild(resGear(B.c), B.c, B.body, B.L); } catch (e) { console.error(e); }
+}
+const RES_CRAFT_LINES = ['just forged my {piece}!', 'finally finished the {piece} \\o/', 'new {piece}, who dis', 'smelted enough {mat} for a {piece} at last', '{piece} done. on to the next one'];
+function resGearCheck(B) { // they levelled into a new piece: they say so, and put it on
+  const k = resGearKey(B.c); if (k === B.gearKey) return;
+  const was = B.gearKey ? JSON.parse(B.gearKey) : {}, now = JSON.parse(k), id = Object.values(now).find(x => !Object.values(was).includes(x));
+  resGearDress(B);
+  if (id && ITEMS[id]) { const S = ARMOR_SETS.find(x => x.id === ITEMS[id].set); resSay(B, resPick(RES_CRAFT_LINES).replace('{piece}', ITEMS[id].name.toLowerCase()).replace('{mat}', S ? ITEMS[S.mat].name.toLowerCase() : 'ore')); }
+}
+// ---- guilds ----
+const RES_GUILD_A = ['Iron', 'Void', 'Crimson', 'Silver', 'Starfall', 'Ember', 'Frost', 'Golden', 'Hollow', 'Thunder', 'Obsidian', 'Lantern', 'Comet', 'Night', 'Dawn', 'Rust', 'Azure', 'Wild'];
+const RES_GUILD_B = ['Comets', 'Wardens', 'Wolves', 'Anvils', 'Drifters', 'Lanterns', 'Ravens', 'Forge', 'Vanguard', 'Covenant', 'Nomads', 'Reavers', 'Order', 'Syndicate', 'Pact', 'Company', 'Fang', 'Circle'];
+const RES_GUILD_MAX = 10;
+const resGuilds = () => resGuild.g;
+const resGuildOf = id => Object.values(resGuild.g).find(G => G.members.includes(id)) || null;
+const myGuild = () => (wanderer && wanderer.guild && resGuild.g[wanderer.guild]) || null;
+const guildInvOn = () => !(wanderer && wanderer.guildInv === false);
+const resGuildOk = (G, al) => !((G.al === 'hero' && al === 'villain') || (G.al === 'villain' && al === 'hero')); // heroes and villains don't share a guild
+function resGuildLog(text, B) { resGuild.log.push({ text, t: resNow() }); if (resGuild.log.length > 40) resGuild.log.shift(); RES.log.push({ who: '⚑', al: 'neutral', text, t: time }); if (RES.log.length > 30) RES.log.shift(); resChatRender(); void B; }
+function resGuildName() { let n, tries = 0; const used = new Set(Object.values(resGuild.g).map(G => G.name)); do n = `The ${resPick(RES_GUILD_A)} ${resPick(RES_GUILD_B)}`; while (used.has(n) && ++tries < 20); return n; }
+function resGuildFound(leaderId, al, name) {
+  const id = 'g' + resNow().toString(36) + Math.floor(Math.random() * 999), nm = name || resGuildName(), tag = nm.replace(/^The /, '').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 4);
+  const G = { id, name: nm, tag, leader: leaderId, members: [leaderId], made: resNow(), al, hue: Math.floor(resHash(id) * 360) };
+  resGuild.g[id] = G; return G;
+}
+function resGuildLeave(memberId) {
+  const G = resGuildOf(memberId); if (!G) return; G.members = G.members.filter(m => m !== memberId);
+  if (!G.members.length) { delete resGuild.g[G.id]; return; }
+  if (G.leader === memberId) G.leader = G.members.find(m => m !== 'you') || G.members[0];
+}
+const resGuildName2 = id => id === 'you' ? (wanderer ? wanderer.name : 'You') : ((residents.find(c => c.id === id) || {}).name || '?');
+function resGuildTick(dt) {
+  if (!residents.length) return;
+  RES.guildT = (RES.guildT == null ? 10 : RES.guildT) - dt; if (RES.guildT > 0) return; RES.guildT = 20;
+  const ids = new Set(residents.map(c => c.id).concat(['you']));
+  for (const G of Object.values(resGuild.g)) { G.members = G.members.filter(m => ids.has(m) && (m !== 'you' || (wanderer && wanderer.guild === G.id))); if (!G.members.length) delete resGuild.g[G.id]; else if (!G.members.includes(G.leader)) G.leader = G.members[0]; }
+  if (wanderer && wanderer.guild && !resGuild.g[wanderer.guild]) wanderer.guild = null;
+  const nG = Object.keys(resGuild.g).length, cap = Math.max(2, Math.ceil(residents.length / 4));
+  for (const c of residents) {
+    if (resLevel(c) < 6) continue;
+    const mine = resGuildOf(c.id), al = resAl(c);
+    if (mine) { if (Math.random() < .004 && mine.members.length > 1) { resGuildLeave(c.id); resGuildLog(`${c.name} left ${mine.name}`); } continue; }
+    const open = Object.values(resGuild.g).filter(G => G.members.length < RES_GUILD_MAX && resGuildOk(G, al));
+    if (open.length && Math.random() < .08) { const G = resPick(open); G.members.push(c.id); resGuildLog(`${c.name} joined ${G.name} [${G.tag}]`); }
+    else if (nG < cap && Math.random() < .03) { const G = resGuildFound(c.id, al); resGuildLog(`${c.name} founded the guild ${G.name} [${G.tag}]`); }
+  }
+  saveRoster();
+}
+// ---- asking you to join ----
+function resInviteCheck(dt) {
+  RES.invT = (RES.invT == null ? 40 : RES.invT) - dt; if (RES.invT > 0) return; RES.invT = 45;
+  if (!guildInvOn() || myGuild() || ex.dlg || state !== 'explore' || ex.mode !== 'world' || RES.talking) return;
+  const p = player.position, no = (wanderer.guildNo || {});
+  const cand = RES.bots.filter(B => B.ready && !B.leaving && !B.partner && Math.hypot(B.x - p.x, B.z - p.z) < 30).map(B => [B, resGuildOf(B.id)]).filter(([, G]) => G && G.members.length < RES_GUILD_MAX && !(no[G.id] > resNow()) && resGuildOk(G, wAlign()));
+  if (!cand.length || Math.random() > .5) return;
+  const [B, G] = resPick(cand); if (RES.asked && RES.asked[G.id + resSlot()]) return; (RES.asked || (RES.asked = {}))[G.id + resSlot()] = true;
+  B.task = { type: 'invite', t: 0, G };
+  resSay(B, resPick(['hey {player}, got a sec?', '{player}! wait up', 'oi, {player}']).replace('{player}', wanderer.name));
+}
+const wAlign = () => { const v = (wanderer && wanderer.align && wanderer.align.p) | 0; return v >= 34 ? 'hero' : v <= -34 ? 'villain' : 'neutral'; };
+function resInviteAsk(B, G) {
+  RES.talking = B; B.task = { type: 'face', t: 0, dur: 4 };
+  const n = G.members.length, lead = resGuildName2(G.leader);
+  resSayTo(B, [`${B.al === 'villain' ? 'Listen' : 'Hey'} ${wanderer.name}. I’m in ${G.name} [${G.tag}]: ${n} of us, led by ${lead}. ${B.al === 'villain' ? 'We could use someone who doesn’t die easily.' : 'We’d love to have you. Want to join?'}`], () => openChoice(resWho(B), [
+    { text: `Join ${G.name}`, onPick: () => { guildJoin(G); resSay(B, resPick(['welcome aboard!!', 'yesss, welcome', 'good choice. don’t embarrass us'])); RES.talking = null; } },
+    { text: 'Not right now', onPick: () => { wanderer.guildNo = Object.assign({}, wanderer.guildNo, { [G.id]: resNow() + 20 * 60 * 1000 }); saveRoster(); resSay(B, resPick(['no worries, offer stands', 'fair enough', 'your loss'])); RES.talking = null; } },
+    { text: 'Stop asking me (turn guild invites off)', onPick: () => { wanderer.guildInv = false; const c = curChar(); if (c) c.guildInv = false; saveRoster(); lootMsg('Guild invites off · turn them back on in Pause → Guilds', '#cfd6e6'); resSay(B, 'got it, won’t bug you'); RES.talking = null; } }
+  ]));
+}
+function guildJoin(G) {
+  if (myGuild()) resGuildLeave('you');
+  if (!G.members.includes('you')) G.members.push('you');
+  wanderer.guild = G.id; const c = curChar(); if (c) c.guild = G.id; saveRoster();
+  sfx.chime(); notice('Guild joined', G.name.toUpperCase(), 3000); resGuildLog(`${wanderer.name} joined ${G.name} [${G.tag}]`);
+}
+function guildLeave() {
+  const G = myGuild(); if (!G) return; resGuildLeave('you'); wanderer.guild = null; const c = curChar(); if (c) c.guild = null; saveRoster();
+  lootMsg(`You left ${G.name}`, '#cfd6e6'); resGuildLog(`${wanderer.name} left ${G.name}`);
+}
+function guildFoundMine() {
+  if (myGuild()) guildLeave();
+  const G = resGuildFound('you', wAlign()); wanderer.guild = G.id; const c = curChar(); if (c) c.guild = G.id; saveRoster();
+  sfx.chime(); notice('Guild founded', G.name.toUpperCase(), 3000); resGuildLog(`${wanderer.name} founded the guild ${G.name} [${G.tag}]`);
+}
+// the talk menu: about their guild, asking to join, inviting them to yours
+function resGuildTalkOpts(B, back) {
+  const G = resGuildOf(B.id), M = myGuild(), out = [];
+  if (G) out.push({ text: `About ${G.name}…`, onPick: () => resSayTo(B, [`${G.name} [${G.tag}]: ${G.members.length} member${G.members.length === 1 ? '' : 's'}, led by ${resGuildName2(G.leader)}. ${G.members.slice(0, 6).map(resGuildName2).join(', ')}${G.members.length > 6 ? '…' : ''}.`], back) });
+  if (G && M !== G) out.push({ text: `Ask to join ${G.name}`, onPick: () => {
+    if (G.members.length >= RES_GUILD_MAX) return resSayTo(B, ['we’re full right now, sorry'], back);
+    if (!resGuildOk(G, wAlign())) return resSayTo(B, [G.al === 'hero' ? 'Not with your reputation. Sorry.' : 'You? Too goody-goody for us.'], back);
+    guildJoin(G); resSayTo(B, ['welcome to the guild!'], back); } });
+  if (M && !G && M.members.length < RES_GUILD_MAX) out.push({ text: `Invite them to ${M.name}`, onPick: () => {
+    if (!resGuildOk(M, B.al)) return resSayTo(B, [B.al === 'villain' ? 'Your guild? Full of do-gooders. No.' : 'Not with the company you keep. No thanks.'], back);
+    if (resLevel(B.c) < 6 || Math.random() < .25) return resSayTo(B, ['maybe later, I like going solo for now'], back);
+    M.members.push(B.id); saveRoster(); resGuildLog(`${B.c.name} joined ${M.name} [${M.tag}]`); resSayTo(B, ['sure, count me in!'], back); } });
+  return out;
+}
+// ---- the GUILDS panel (pause menu) ----
+function guildEl() {
+  let el = $('#guildPanel'); if (el) return el;
+  el = document.createElement('div'); el.id = 'guildPanel'; el.className = 'res-emp hidden';
+  el.innerHTML = '<div class="re-box"><div class="re-head"><div><b>GUILDS</b><small>Residents band together in guilds. Join one, found your own, or keep to yourself.</small></div><button class="re-x" aria-label="Close">✕</button></div><div class="re-body"></div></div>';
+  document.body.appendChild(el);
+  el.querySelector('.re-x').addEventListener('click', () => { sfx.click(); guildClose(); });
+  el.addEventListener('click', e => { if (e.target === el) guildClose(); });
+  el.querySelector('.re-body').addEventListener('click', e => {
+    const b = e.target.closest('[data-gd]'); if (!b) return; sfx.click(); const [act, id] = b.dataset.gd.split('|');
+    if (act === 'inv') { wanderer.guildInv = !guildInvOn(); const c = curChar(); if (c) c.guildInv = wanderer.guildInv; saveRoster(); }
+    else if (act === 'leave') guildLeave();
+    else if (act === 'found') guildFoundMine();
+    else if (act === 'join') { const G = resGuild.g[id]; if (G && G.members.length < RES_GUILD_MAX && resGuildOk(G, wAlign())) guildJoin(G); else lootMsg(G && !resGuildOk(G, wAlign()) ? 'They won’t take someone with your reputation' : 'That guild is full', '#ff8f86'); }
+    guildRender();
+  });
+  return el;
+}
+function guildOpen() { guildEl().classList.remove('hidden'); guildRender(); }
+function guildClose() { const el = $('#guildPanel'); if (el) el.classList.add('hidden'); }
+function guildRender() {
+  const el = $('#guildPanel'); if (!el || el.classList.contains('hidden')) return;
+  const M = myGuild(), Gs = Object.values(resGuild.g), alN = { hero: 'Hero', neutral: 'Neutral', villain: 'Villain' };
+  const row = id => { if (id === 'you') return `<li><b>${reEsc(wanderer.name)}</b> (you)</li>`; const c = residents.find(x => x.id === id); return c ? `<li><b>${reEsc(c.name)}</b> · LV ${resLevel(c)} · ${alN[resAl(c)]} · ${reEsc(resGearText(c))}</li>` : ''; };
+  let h = `<button class="re-tog" data-gd="inv">Guild invites from residents: <b>${guildInvOn() ? 'ON' : 'OFF'}</b></button>`;
+  h += M ? `<h4>Your guild</h4><div class="re-emp" style="--c:hsl(${M.hue},70%,60%)"><div class="re-emp-t"><b>${reEsc(M.name)} [${reEsc(M.tag)}]</b><small>Led by ${reEsc(resGuildName2(M.leader))} · ${M.members.length} member${M.members.length === 1 ? '' : 's'} · ${alN[M.al]}</small></div><ul class="re-log">${M.members.map(row).join('')}</ul><div class="re-act"><button class="danger" data-gd="leave">Leave the guild</button></div></div>`
+    : `<p class="re-empty">You’re not in a guild. A resident in a guild may ask you to join${guildInvOn() ? '' : ' (invites are off)'}, you can ask one yourself in their talk menu, or found your own and invite residents to it.</p><div class="re-act"><button data-gd="found">Found a guild</button></div>`;
+  const others = Gs.filter(G => G !== M);
+  if (others.length) h += '<h4>Guilds</h4>' + others.map(G => `<div class="re-emp" style="--c:hsl(${G.hue},70%,60%)"><div class="re-emp-t"><b>${reEsc(G.name)} [${reEsc(G.tag)}]</b><small>Led by ${reEsc(resGuildName2(G.leader))} · ${G.members.length}/${RES_GUILD_MAX} · ${alN[G.al]}</small></div><ul class="re-log">${G.members.map(row).join('')}</ul><div class="re-act"><button data-gd="join|${G.id}" ${G.members.length >= RES_GUILD_MAX || !resGuildOk(G, wAlign()) ? 'disabled' : ''}>${!resGuildOk(G, wAlign()) ? 'They won’t take you' : G.members.length >= RES_GUILD_MAX ? 'Full' : 'Join'}</button></div></div>`).join('');
+  else if (!M) h += `<p class="re-empty">${residents.length ? 'No guilds yet. Residents start forming them from level 6.' : 'Send a wanderer into the world from the Wanderers screen: residents form guilds with each other.'}</p>`;
+  if (resGuild.log.length) h += '<h4>Recent</h4><ul class="re-log">' + resGuild.log.slice(-8).reverse().map(l => `<li>${reEsc(l.text)}</li>`).join('') + '</ul>';
+  el.querySelector('.re-body').innerHTML = h;
+}
 // on the galaxy map: their worlds ringed in their colours, the empire's name at its capital
 function resGalEmpires(g, font) {
   for (const e of Object.values(resEmp.emp)) {
@@ -20960,7 +21137,7 @@ function loop() {
   time += dt;
   combatTick(dt);
   alOutfitSync(dt);
-  try { resUiTick(); resEmpTick(dt); } catch (e) { console.error(e); }
+  try { resUiTick(); resEmpTick(dt); resGuildTick(dt); } catch (e) { console.error(e); }
   // each region has its own exploration playlist: Antarctica on the ice, Africa on the savanna; New London has its own tracks (lonMusicTick), so no ice music there, not even under the nightmare
   // space has its own playlist (SPACETHEME1-3, Vast Horizons, Wonders of the Galaxies, Inner Tranquility, FREEROAM1-3): out among the
   // stars and on the worlds you land on, in Chapter III, Chapter IV before the time skip, and Chapter V

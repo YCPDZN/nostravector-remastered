@@ -1208,3 +1208,34 @@ After the nightmare in space (whichever of the four you had), the next stop is M
 - **Alien meat:** the native species of the generated worlds now drop alien meat. Matriarchs and bulwarks drop two.
 - **Titanium pickaxe:** upgrades the obsidian pickaxe (3 titanium ingots and 2 wood, at a crafting table). It does four times the mining and melee damage.
 - **Saves:** what you're wearing is kept in `inv.eq` (`head`, `chest`, `legs`, `feet`, or `suit`). Each furnace keeps its fuel, queue and finished items with what you've built.
+
+## Residents: their gear and their guilds
+- **Residents craft armour too.** As they level, they forge the same sets you can, a piece at a time, in their own order, over what they had before:
+  - **Padded** from level 8, **Copper** from 16, **Iron** from 28, **Gold** from 44 (about half of them prefer iron), and **Titanium** from 60.
+  - **At level 90** they wear their own race's endgame suit: Field Marshal Hale's (Human), Lianna's (Erisian), Grekicus I's (Grek), or Shakhak's or Sevirrus's (Chompy; the villains wear Sevirrus's).
+  - They wear it on their own bodies, piece by piece, and tell the zone chat when they finish one ("just forged my iron chestplate!").
+  - Now and then one stops to work at the forge, hammering with sparks flying ("smelting some iron ingot", "hammering out a new helmet").
+  - "What are you up to?" in their talk menu shows their gear and protection.
+  - **Fix:** residents no longer appear wearing a copy of your armour. Their bodies are copied from your model, and your armour used to come along with it.
+- **Guilds.** Residents band together in guilds with other residents, from level 6.
+  - Every guild has a name, a tag (e.g. *The Iron Covenant [IC]*), a leader and up to 10 members.
+  - A guild takes the alignment of its founder. Heroes and villains never share a guild, but neutrals can join either.
+  - Members come and go, a guild passes to a new leader when the old one leaves, and an empty guild disbands.
+  - Joins, departures and new guilds appear in the zone chat with a ⚑, and members' names carry their guild tag there.
+- **Invites.** A resident in a guild may walk over and ask you to join, with three answers:
+  - **Join** the guild.
+  - **Not right now:** that guild won't ask again for 20 minutes.
+  - **Stop asking me:** this turns guild invites off.
+  - A guild only asks if it has room and would take someone of your alignment. Invites are a per-wanderer option and can be turned back on in **Pause → Guilds**.
+- **In their talk menu:** *About <guild>…*, *Ask to join <guild>* (they may turn you down over your alignment, or because they're full), and, if you lead or belong to a guild, *Invite them to <your guild>* (they may prefer to stay solo for now).
+- **Pause → Guilds** (once you have residents):
+  - The invites toggle.
+  - Your guild with its members, and **Leave the guild**.
+  - **Found a guild** of your own, which residents can then be invited to.
+  - Every other guild, with members' levels, alignment and gear, and **Join** where they'd have you.
+  - The recent guild news.
+- **Guildmates:** residents in your guild greet you with the guild tag when they arrive, hand you gifts more often (villains in your guild too), and never grab deposits near you.
+- **Saves:** guilds are saved with the slot (`resGuild`). Your guild and your invite setting are saved on your wanderer (`guild`, `guildInv`).
+
+### Tested on phones
+- Upright and sideways (iPhone size), with no errors: the inventory with its Equipment slots and craft filters, the furnace, the Guilds panel, and a resident's guild invite all fit the screen and scroll.
