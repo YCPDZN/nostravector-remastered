@@ -425,6 +425,12 @@ Coming down to a planet no longer drops you straight onto the ground. Below 420 
     - Also: Tahrir and the Egyptian Museum, and the Citadel with the domes and pencil minarets of the Mosque of Muhammad Ali.
     - New glass pyramids rise in the east.
     - On the Giza plateau stand **the Great Pyramid** (the last ancient wonder still standing), Khafre with its casing cap, Menkaure, the queens' pyramids and the Sphinx.
+- **The town of New Kingston** (Jamaica), on the north shore of Kingston Harbour:
+  - Pastel houses with water tanks on their roofs, palms along the waterfront, and New Kingston's glass towers round Emancipation Park, where Redemption Song rises from its pool.
+  - Downtown: the Parade with its fountain, the sky-blue Ward Theatre and the Parish Church. National Heroes Park, with its seven heroes and the white arch over the flame, is the landing ground.
+  - Also: Devon House on its lawn, the Bob Marley Museum at 56 Hope Road with its red, gold and green gate, the National Stadium with Usain Bolt in bronze, and Hope Gardens.
+  - Gantry cranes and a container ship at the port. Across the water, the Palisadoes carry the airport's runway and the Plumb Point lighthouse out to Port Royal, Fort Charles and the leaning Giddy House.
+  - The green foothills of the Blue Mountains rise behind the town.
 - **The New Seven Wonders:**
   - **The Great Wall:** about 3 km of wall and watchtowers over the Yanshan mountains, from the desert's edge to the sea at Shanhaiguan. You can walk along its top.
   - **Petra:** rose-red cliffs and the narrow Siq lit with candles. Al-Khazneh (the Treasury) is carved into the rock, with the Royal Tombs, the colonnaded street and the Monastery high above.
