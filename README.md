@@ -1258,3 +1258,32 @@ After the nightmare in space (whichever of the four you had), the next stop is M
   - **During the war:** members of the two guilds fight whenever they meet. Skirmishes play out while you're away, weighted by the guilds' levels, and after 30 minutes the guild that won more of them wins the war (or it's a draw). All of it goes in the zone chat.
   - **The Guilds panel** shows each war with its score and time left, and a **Broker peace** button (a small good deed).
   - **Saves:** wars are saved with the guilds (`resGuild.wars`, and runs in `resGuild.dun`).
+
+## Mobile pass (every screen, four phone sizes, both ways up)
+I checked every major screen and mode on four phone sizes, upright and sideways: a small iPhone (375 × 667), a small Android (360 × 740), a standard iPhone (390 × 844) and a large Android (412 × 915).
+- **What was covered:**
+  - **Menus:** the main menu, Wanderers, Settings, Mission brief, Save / Load, character creation (all three tabs), the Nostrapedia (tabs and an entry), and Custom creations (all four tabs and the species, planet and adventure editors).
+  - **On a planet:** the HUD, the companion menu, pause, inventory, build menu, trader, teleporter, map, dialogue and choices, Alignment, Side quests, Diplomacy, Resident empires, Guilds, the furnace and a lair gate.
+  - **Space:** flight, pause, the galaxy map and a system's panel.
+  - **Your ship:** walking the decks.
+- **How:** an automatic check looked for controls you can't reach (off the screen, or covered by another control), text too small to read and sideways page scrolling, and I looked over the screenshots by eye.
+- **Fixed:**
+  - **Space, paused:** the flight controls (FIRE, THRUST, PULSE, BRAKE, the stick) and readouts were drawn on top of the pause menu and covered its buttons. They're hidden while you're paused.
+  - **Companion menu (upright phones):** with two or more companions it ran down over the action buttons, and ORDER, BUILD, BLOCK, SPRINT and DODGE sat on top of it. It's now a panel of its own above the controls, with the companions in one row and the orders two to a row, so all of them fit without scrolling.
+  - **Action button vs hotbar (upright phones):** the ORDER / TAKE / ENTER button sat on top of hotbar slots 5 and 6. It's now just left of the hotbar column.
+  - **Galaxy map (upright phones):** the title's second line ran under the Diplomacy, Residents and Empires buttons, which now sit below it.
+  - **Galaxy map's system panel (phones):** the warp button and its explanation covered most of the panel and you could see the text through them. The footer is now compact and solid, and upright the panel is taller.
+  - **Map:** the place name ran under the Close button.
+  - **Space (upright):** the target's name and distance ran under the DECKS button.
+  - **Sideways on small phones:**
+    - The pause menu's bottom row (Options, Main menu) and the inventory's Close button were off the screen. The pause menu, inventory and furnace now fit, or scroll.
+    - The residents' chat printed over your objectives and health bars. It now sits below the companion button.
+    - The space readout now stays clear of the GALAXY MAP button.
+    - "Drag to rotate" no longer overlaps the character-creation heading.
+  - **Nostrapedia and Custom creations, sideways:** the characters and creations stood hidden behind the text panel, because a sideways phone was being framed as if it were upright. They now stand beside the panel.
+  - **Inventory on phones:** new jump buttons (Equipment · Resources · Gear · Craft) take you straight to each section of the long single column.
+  - **Bigger touch targets:** the furnace's fuel buttons, the craft filters and the inventory's buttons are at least 34 px tall.
+  - **Readable text:** the minimap's distance and weather lines went up from 6–6.5 px to 7.5–8 px.
+  - **Long boss names:** upright, they wrap onto two lines instead of being cut short.
+  - **Very short upright phones:** the small logo on the main menu steps aside to leave room.
+- **Not covered:** this was done in a desktop browser emulating each phone, not on real devices. Touch feel, frame rate, battery and memory on a real phone, and the Chapter I–II story scenes (they need their own saves), weren't checked.
