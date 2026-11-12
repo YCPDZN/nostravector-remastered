@@ -1137,12 +1137,12 @@ After the nightmare in space (whichever of the four you had), the next stop is M
 
 ### Chapter IV: five endgame dungeons and race armour
 - **Five dungeons that open only in Chapter IV.** Each is marked with a large gold beacon near where you land, and a message names the dungeon, its boss and its armour.
-- **Inside:** three floors of level 88 creatures, then a **level 90 boss** (14,000 health) on that boss's own model, at 1.45 × size. The ghosts are pale and glowing, and float.
+- **Inside:** three floors of level 88 creatures, then a **level 90 boss** (14,000 health) on that boss's own model, at 1.45 × size. Draven is his own Chompy (bearded, not Sevirrus's model). The ghosts are pale and glowing, and float.
 - **Each boss has a fixed fight:** its own attacks, its own rhythm, its own phase-three signature and its own lines.
 
 | Where | Dungeon | Boss | Fight (core · phase 2 · signature) | Armour (level 90) | Who can wear it |
 |---|---|---|---|---|---|
-| Aridaxx | The Usurper's Crypt | Draven, Disciple of Sevirrus (in Lord Sevirrus's own armour) | slam, charge, blink, volley · his legion, nova · sweep | Armor of Lord Sevirrus: 62% off every hit, +85 health | Chompy |
+| Aridaxx | The Usurper's Crypt | Draven, Disciple of Sevirrus: a bearded Chompy of his own, in his master's black and red armour | slam, charge, blink, volley · his legion, nova · sweep | Armor of Lord Sevirrus: 62% off every hit, +85 health | Chompy |
 | Eris | The Tomb of Lianna | Ghost of Lianna Erisconos | blink, spiral, falling stars, pools · eruptions, vortex · spiral | Armor of Lianna Erisconos: 60%, +100 | Erisian |
 | Malana | The Halls of Grekicus | Grekicus I | slam, leap, nova, charge · brood, falling stars · eruptions | Armor of Grekicus I: 60%, +105 | Grek |
 | Janira Prime | The Founder's Vault | Ghost of Shakhak Chompjak | charge, slam, volley, leap · nova, sweep · falling stars | Armor of Shakhak Chompjak: 58%, +115 | Chompy |

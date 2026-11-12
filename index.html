@@ -10637,7 +10637,7 @@ function lairsAll() {
 const STORY_LAIRS = [['mercury', 22, 0], ['venus', 26, 0], ['moon', 16, 0], ['mars', 24, 1], ['phobos', 18, 0], ['ceres', 20, 0], ['io', 30, 1], ['europa', 32, 1], ['ganymede', 28, 0], ['callisto', 27, 0], ['enceladus', 34, 1], ['titan', 36, 2], ['triton', 40, 1], ['pluto', 44, 2], ['eris', 48, 2], ['malana', 38, 1], ['carax', 60, 2], ['aridaxx', 50, 2], ['steca', 55, 2], ['janira', 46, 1]];
 // Chapter IV only: five dungeons whose bosses wear the endgame armour, one set per race
 const CH4_LAIRS = {
-  aridaxx: { key: 'sev', name: 'The Usurper’s Crypt', boss: 'Draven', full: 'Draven, Disciple of Sevirrus', armor: 'armSev', rig: { comp: 'sev-sevirrus' }, tint: null, hover: false,
+  aridaxx: { key: 'sev', name: 'The Usurper’s Crypt', boss: 'Draven', full: 'Draven, Disciple of Sevirrus', armor: 'armSev', rig: { sp: 'chompy', c: [0x0e0a12, 0xd0343a], beard: 0x1e1418 }, tint: null, hover: false,
     core: ['slam', 'charge', 'blink', 'volley'], p2: ['summon', 'nova'], sig: 'sweep', seq: ['charge', 'slam', 'volley', 'blink', 'slam', 'charge'],
     lines: { intro: 'You walk on my master’s grave. Lord Sevirrus took a throne with this armour. I will take your head.', p2: 'Legion of the Usurper! Rise!', p3: 'He fell once. I will NOT.', win: 'Forgive me… my prince…' } },
   eris: { key: 'lia', name: 'The Tomb of Lianna', boss: 'Lianna', full: 'Ghost of Lianna Erisconos', armor: 'armLia', rig: { comp: 'lair-lianna', tag: 'anLianna' }, ghost: 0x9fe6ff, hover: true,
@@ -10712,10 +10712,24 @@ function lairRandBoss(L, R, sp, kd, J, mk) {
       win: say(['…The nest… is yours…', 'Go, then. Tell the stars what you killed.', 'The young… will remember your smell…', 'I was old when your sun was young…', 'Finally… quiet…']) } };
   return L.boss;
 }
+async function dravenRig(X) { // Draven: a Chompy of his own, bearded, in his master's black and red (coloured before the rig is baked)
+  const src = await townModel('chompy'); if (!src) return null;
+  const m = dressTownsfolk(src, { sp: 'chompy', c: X.c, name: 'DRAVEN' });
+  m.traverse(o => { if (!o.isMesh || !o.material || !o.material.color) return; const n = (o.name || '').replace(/_/g, ' ').toLowerCase();
+    if (/^(beard|moustache)|hair|crown|eyebrow/.test(n)) { o.visible = true; o.material.color.setHex(X.beard); return; }
+    const h = {}; o.material.color.getHSL(h); if (h.s > .2 && h.h > .66 && h.h < .92) { o.material.color.setHex(0x1c1a22); o.material.metalness = .55; o.material.roughness = .4; } // the purple suit: his master's black
+    if (/rim/.test(n)) o.material.color.setHex(X.c[1]); });
+  const R = autoRig(m, SPECIES.chompy.height); armRig(R, 'none');
+  for (const [k, sg] of [['ra', 1], ['la', -1]]) { const a = R[k], dr = R.model.userData[k + 'Drop']; if (a && dr > 0) { a.rotation.z += sg * dr; R.rest.get(a).z = a.rotation.z; } }
+  try { bakeRig(R); } catch (e) {}
+  armRig(R, 'sword'); const a = glowSprite(0xd0343a, 5, .35); a.position.y = 1.2; R.root.add(a);
+  return R;
+}
 async function lairRig(Bd) { // the endgame bosses: their own models, larger than life; the ghosts pale and glowing
   const X = Bd.rig; let R = null;
-  try { R = X.comp ? await loadCharRig(X.tag ? { id: X.comp, builtin: true, tag: X.tag, weapon: 'sword' } : charById(X.comp), 1.95) : X.human ? await humanRig({ name: Bd.name, c: X.c, skin: 1, female: false }, 1.85) : await brawlRig({ sp: X.sp, c: X.c, name: Bd.name }); } catch (e) { console.error(e); }
+  try { R = X.comp ? await loadCharRig(X.tag ? { id: X.comp, builtin: true, tag: X.tag, weapon: 'sword' } : charById(X.comp), 1.95) : X.human ? await humanRig({ name: Bd.name, c: X.c, skin: 1, female: false }, 1.85) : X.beard ? await dravenRig(X) : await brawlRig({ sp: X.sp, c: X.c, name: Bd.name }); } catch (e) { console.error(e); }
   if (!R) return null;
+  if (X.beard) { const a = glowSprite(0xd0343a, 5, .35); a.position.y = 1.2; R.root.add(a); }
   R.root.scale.multiplyScalar(1.45); if (X.human) armRig(R, 'rifle'); else if (X.sp) armRig(R, 'sword'); if (X.comp) R.weapon = 'sword';
   R.root.traverse(o => { if (!o.isMesh) return; o.castShadow = true; if (Bd.ghost) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = .55; o.material.depthWrite = false; if (o.material.emissive) { o.material.emissive.setHex(Bd.ghost); o.material.emissiveIntensity = .9; } } });
   if (Bd.ghost) { const g = glowSprite(Bd.ghost, 6, .5); g.position.y = 1.6; R.root.add(g); }
