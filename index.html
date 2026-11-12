@@ -7542,10 +7542,24 @@ function spawnFauna(type, x, z, home) {
   fauna.list.push(c);
   return c;
 }
+// a creature's (or a dungeon floor's) own materials and painted textures go with it, or the graphics memory fills up floor by
+// floor until the browser loses the game's 3D (a black screen, or the tab crashing). Shared materials and the glow stay.
+function disposeOwned(root) {
+  const shared = new Set(Object.values(FM));
+  root.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    const ms = !o.material ? [] : Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of ms) {
+      if (!m || shared.has(m) || m === telMat) continue;
+      for (const k of Object.keys(m)) { const v = m[k]; if (v && v.isTexture && v.isCanvasTexture && v !== glowTex && v !== DGN.sky) v.dispose(); }
+      m.dispose();
+    }
+  });
+}
 function removeFauna(c) {
   wScene.remove(c.mesh);
-  c.mesh.traverse(o => { if (o.geometry) o.geometry.dispose(); });
-  fauna.list.splice(fauna.list.indexOf(c), 1);
+  if (!c.boss) { try { disposeOwned(c.mesh); } catch (e) { console.error(e); } } // a boss's body may be a shared character model: leave it be
+  const i = fauna.list.indexOf(c); if (i >= 0) fauna.list.splice(i, 1);
 }
 function faunaClear() { for (const c of [...fauna.list]) removeFauna(c); }
 function faunaSpot(p, dmin, dmax) {
@@ -10380,9 +10394,11 @@ function dgnPopulate(f) {
 function dgnClearFloor() {
   if (DGN.boss) dgnBossClear();
   for (const c of [...fauna.list]) if (c.dgn || c.boss) { if (c.boss) fauna.list.splice(fauna.list.indexOf(c), 1); else removeFauna(c); }
-  if (DGN.g) { wScene.remove(DGN.g); DGN.g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); DGN.g = null; }
+  if (DGN.g) { wScene.remove(DGN.g); try { disposeOwned(DGN.g); } catch (e) { console.error(e); } DGN.g = null; } // the floor's walls, lava and lights, and their painted rock
   if (DGN.k && DGN.k.R && DGN.k.R.root.parent) DGN.k.R.root.parent.remove(DGN.k.R.root);
-  if (DGN.lb && DGN.lb.mesh.parent) DGN.lb.mesh.parent.remove(DGN.lb.mesh); DGN.lb = null;
+  if (DGN.lb && DGN.lb.mesh.parent) DGN.lb.mesh.parent.remove(DGN.lb.mesh);
+  if (DGN.lb && !DGN.lb.R) { try { disposeOwned(DGN.lb.mesh); } catch (e) {} } // a lair boss built from its species' body plan is its own
+  DGN.lb = null; DGN.lbFail = 0;
   DGN.k = null; world.khz = null; DGN.warden = null; DGN.barrier = false; DGN.cut = false; DGN.won = false;
 }
 function dgnLookOn() { // inside the mountain: no sky, a red dark, the heat of the rock
@@ -10417,17 +10433,30 @@ function dgnEnter(f, at, quick) { // go to floor f: at = { x, z } (a save), 'top
     else notice(f === 8 ? 'Olympus Mons · the summit' : `Olympus Mons · floor ${f} of 8 · creatures lv ${dgnLv(f)}–${dgnLv(f) + 3}`, DGN_NAMES[f].toUpperCase(), 3600);
     if (!DGN.lair && f === 1 && !(wanderer.ch3 && wanderer.ch3.dgnSeen)) { wanderer.ch3 = Object.assign({}, wanderer.ch3, { dgnSeen: true }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster(); setTimeout(() => lootMsg('Inside the mountain, every XP counts 1.9 ×', '#ffc94a'), 2600); setTimeout(() => lootMsg('Each floor’s warden holds the stairs up · the spring by the stairs heals you', '#cfd6e6'), 5200); }
   };
-  if (quick) { go(); return; }
+  f = Math.max(1, Math.min(dgnTop(), Math.round(+f) || 1)); // a floor that exists (an old or odd save can't ask for floor 9)
+  if (quick) { try { go(); } catch (e) { console.error(e); dgnBail(); } return; }
   const fd = $('#fade'); state = 'loadingCh'; fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.whoosh();
-  setTimeout(() => { go(); state = 'explore'; fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; }, 950); }, 520);
+  setTimeout(() => { try { go(); } catch (e) { console.error(e); dgnBail(); } state = 'explore'; fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; }, 950); }, 520);
+}
+function dgnBail() { // a floor failed to build: back out at the door rather than stuck in the dark
+  const LR = DGN.lair;
+  try { dgnClearFloor(); } catch (e) { console.error(e); }
+  DGN.on = false; DGN.open = null; DGN.lair = null; DGN.boss = null; DGN.downing = false;
+  try { for (const ch of world.chunks.values()) ch.visible = true; dgnRestoreLook(); } catch (e) { console.error(e); }
+  const G = (LR && LR.gate) || world.dgnGate, p = player.position; try { if (G) p.set(G.x, wHeight(G.x, G.z + 2), G.z + 2); else p.set(5, wHeight(5, 14.5), 14.5); } catch (e) { p.set(5, 0, 14.5); }
+  ex.snap = true; vel.set(0, 0, 0); try { updateChunks(99); renderTasks(); } catch (e) {}
+  lootMsg('The way in caved in behind you · you’re back at the entrance (try again)', '#ff8f86');
 }
 function dgnLeave() { // back out onto the slope, by the door
   const fd = $('#fade'); state = 'loadingCh'; fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.whoosh();
   setTimeout(() => {
-    const LR = DGN.lair; dgnClearFloor(); DGN.on = false; DGN.open = null; DGN.lair = null; for (const ch of world.chunks.values()) ch.visible = true; dgnRestoreLook();
-    const G = LR ? LR.gate : world.dgnGate, p = player.position; if (G) p.set(G.x, wHeight(G.x, G.z + 2), G.z + 2); else p.set(5, wHeight(5, 14.5), 14.5);
-    player.rotation.y = 0; ex.yaw = Math.PI; ex.snap = true; vel.set(0, 0, 0); updateChunks(99);
-    placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
+    const LR = DGN.lair;
+    try {
+      dgnClearFloor(); DGN.on = false; DGN.open = null; DGN.lair = null; for (const ch of world.chunks.values()) ch.visible = true; dgnRestoreLook();
+      const G = LR ? LR.gate : world.dgnGate, p = player.position; if (G) p.set(G.x, wHeight(G.x, G.z + 2), G.z + 2); else p.set(5, wHeight(5, 14.5), 14.5);
+      player.rotation.y = 0; ex.yaw = Math.PI; ex.snap = true; vel.set(0, 0, 0); updateChunks(99);
+      placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
+    } catch (e) { console.error(e); DGN.on = false; DGN.open = null; DGN.lair = null; }
     state = 'explore'; fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; }, 950);
     notice(LR ? LR.name : 'Olympus Mons', LR ? 'BACK ON THE SURFACE' : 'BACK ON THE SLOPE', 2400);
   }, 520);
@@ -10479,9 +10508,12 @@ function dgnDown() { // you fell
   notice(fight ? (DGN.lair ? `${DGN.boss.Bd.short} put you down` : 'Khazglar’s hammer put you down') : 'You blacked out', fight ? 'THE FIGHT STARTS AGAIN' : 'ORION DRAGGED YOU BACK TO THE STAIRS', 3200);
   setTimeout(() => {
     const p = player.position;
-    if (fight) { if (DGN.lair) lairBossReset(); else dgnBossReset(); const [gx, gz] = dgnW(DGN.arena.gate[0], DGN.arena.gate[1] - 1.6); p.set(gx, 0, gz); ex.hp = maxHP(); }
-    else { for (const c of fauna.list) if (c.dgn && !c.dead) { c.state = 'idle'; c.tgt = null; } p.set(DGN.down.x, 0, DGN.down.z - 3.5); ex.hp = Math.round(maxHP() * .6); }
-    invState().hp = ex.hp; ex.snap = true; vel.set(0, 0, 0); if (world.orion) world.orion.root.position.set(p.x - 1.5, 0, p.z + 1.2);
+    try {
+      if (!DGN.on) { ex.hp = Math.max(ex.hp, Math.round(maxHP() * .6)); } // left (or loaded) while blacked out: just wake up where you are
+      else if (fight && DGN.arena) { if (DGN.lair) lairBossReset(); else dgnBossReset(); const [gx, gz] = dgnW(DGN.arena.gate[0], DGN.arena.gate[1] - 1.6); p.set(gx, 0, gz); ex.hp = maxHP(); }
+      else { if (DGN.boss) { if (DGN.lair) lairBossReset(); else dgnBossReset(); } for (const c of fauna.list) if (c.dgn && !c.dead) { c.state = 'idle'; c.tgt = null; } if (DGN.down) p.set(DGN.down.x, 0, DGN.down.z - 3.5); ex.hp = Math.round(maxHP() * .6); }
+      invState().hp = ex.hp; ex.snap = true; vel.set(0, 0, 0); if (world.orion) world.orion.root.position.set(p.x - 1.5, 0, p.z + 1.2);
+    } catch (e) { console.error(e); ex.hp = Math.max(1, Math.round(maxHP() * .6)); }
     state = 'explore'; DGN.downing = false; bo.style.opacity = 0; setTimeout(() => { bo.style.transition = ''; }, 1200);
     if (fight && !DGN.lair) setTimeout(() => kbark('Up already? Good. Run again and I’ll break your legs myself.', 3600), 900);
   }, 2600);
@@ -10769,7 +10801,7 @@ function khzTick(dt) {
   lairGateTick();
   if (world.khzFire) { world.khzFire.material.opacity = .75 + Math.sin(time * 9) * .1 + Math.sin(time * 23) * .06; if (world.khzLight) world.khzLight.intensity = 16 + Math.sin(time * 11) * 3; }
   if (world.khzBeacon) world.khzBeacon.visible = khzPending();
-  dgnTick(dt);
+  try { dgnTick(dt); } catch (e) { const k = 'dgn:' + (e && e.message); if (!loopErrs.has(k)) { loopErrs.add(k); console.error('Dungeon tick error (carrying on):', e); } } // one bad tick in the dungeon mustn't take the rest of the frame with it
 }
 function khzJoin() {
   const pdPre = pdStoryIds();
@@ -11070,8 +11102,9 @@ function lairPopulate(f) {
 function lairBossPlace() {
   const L = DGN.lair, A = DGN.arena; if (!L || !A || lairCleared(L) || DGN.lb) return;
   const B = lairBoss(L), [x, z] = A.throne; DGN.barrier = false;
-  if (B.rig) { if (DGN.lbLoading) return; DGN.lbLoading = true; lairRig(B).then(Rg => { DGN.lbLoading = false; if (!Rg || DGN.lair !== L || DGN.lb || !DGN.on) return; Rg.root.position.set(x, 0, z); Rg.mode = 'idle'; wScene.add(Rg.root); DGN.lb = { mesh: Rg.root, R: Rg, x, z: z + 2, B }; }); return; }
-  const holder = new THREE.Group(), body = buildSpecies(B.p); holder.add(body); holder.userData.anim = body.userData.anim;
+  if (B.rig && (DGN.lbFail | 0) < 2) { if (DGN.lbLoading) return; DGN.lbLoading = true; // its own model; if that won't load (twice), it fights in its species' shape rather than the arena retrying every frame
+    lairRig(B).catch(e => { console.error(e); return null; }).then(Rg => { DGN.lbLoading = false; if (!Rg) { DGN.lbFail = (DGN.lbFail | 0) + 1; return; } if (DGN.lair !== L || DGN.lb || !DGN.on) return; Rg.root.position.set(x, 0, z); Rg.mode = 'idle'; wScene.add(Rg.root); DGN.lb = { mesh: Rg.root, R: Rg, x, z: z + 2, B }; }); return; }
+  const holder = new THREE.Group(), body = buildSpecies(B.p || natSp(L.S).p); holder.add(body); holder.userData.anim = body.userData.anim;
   body.traverse(o => { if (o.isMesh) o.castShadow = true; });
   holder.position.set(x, 0, z); wScene.add(holder);
   DGN.lb = { mesh: holder, x, z: z + 2, B };
@@ -11082,7 +11115,7 @@ function lairArenaTick(dt) {
   if (DGN.arenaL) DGN.arenaL.intensity = 60 + Math.sin(time * 2.3) * 10 + (DGN.flashL || 0) * 220; DGN.flashL = Math.max(0, (DGN.flashL || 0) - dt * 2.5);
   if (lairCleared(L)) return;
   if (!DGN.lb) lairBossPlace(); const K = DGN.lb; if (!K) return;
-  if (!DGN.boss) { if (K.R) { K.R.mode = 'idle'; animRig(K.R, dt); } else animSpecies(K.mesh, time, false); K.mesh.position.set(K.x, K.B.hover ? 1.2 + Math.sin(time * 2) * .4 : 0, K.z); const [, gz] = dgnW(A.gate[0], A.gate[1]); if (state === 'explore' && !ex.dlg && player.position.z < gz - DGN.C) lairBossStart(); return; }
+  if (!DGN.boss) { if (K.R) { if (!K.R.static) { try { K.R.mode = 'idle'; animRig(K.R, dt); } catch (e) { K.R.static = true; } } } else animSpecies(K.mesh, time, false); K.mesh.position.set(K.x, K.B.hover ? 1.2 + Math.sin(time * 2) * .4 : 0, K.z); const [, gz] = dgnW(A.gate[0], A.gate[1]); if (state === 'explore' && !ex.dlg && player.position.z < gz - DGN.C) lairBossStart(); return; }
   lairBossTick(dt);
 }
 function lairBossStart() {
@@ -11142,7 +11175,7 @@ function lairBossTick(dt) {
   for (const m of B.tels) m.material.opacity = .35 + .35 * Math.sin(time * 18);
   c.y = 0; K.x = c.x; K.z = c.z;
   K.mesh.position.set(c.x, (B.jy || 0) + (Bd.hover ? 1.2 + Math.sin(time * 2) * .4 : 0), c.z); K.mesh.rotation.y = c.rot; K.mesh.scale.setScalar(c.hurtT > 0 ? 1.04 : 1); c.hurtT = Math.max(0, c.hurtT - dt);
-  if (K.R) { K.R.mode = B.st === 'atk' ? 'attack' : moving ? 'walk' : 'idle'; animRig(K.R, dt); } else animSpecies(K.mesh, time, moving || B.st === 'atk');
+  if (K.R) { if (!K.R.static) { try { K.R.mode = B.st === 'atk' ? 'attack' : moving ? 'walk' : 'idle'; animRig(K.R, dt); } catch (e) { K.R.static = true; } } } else animSpecies(K.mesh, time, moving || B.st === 'atk');
 }
 function lairSummon(B, n) { const sp = natSp(DGN.lair.S), c = B.c, alive = fauna.list.filter(o => o.dgn && !o.dead).length; for (let i = 0; i < Math.min(n, 7 - alive); i++) { const a = Math.random() * Math.PI * 2, o = spawnFauna(spType(sp, 'runner', DGN.lair.lv - 2), c.x + Math.cos(a) * 5, c.z + Math.sin(a) * 5, [c.x, c.z]); o.dgn = dgnTop(); o.state = 'hunt'; } }
 function lairAtkStart(B, A, c, p, tel) {
@@ -11195,7 +11228,7 @@ function lairBossWin() {
   const loot = [['medkit', 2], ['warpcell', 1 + (L.tier > 0)], ['crystal', 2 + L.tier], [L.lv > 40 ? 'obsidian' : 'metal', 2 + L.tier], Math.random() < .5 && ['scrap', 3]];
   if (Bd.armor) setTimeout(() => { const it = ITEMS[Bd.armor], had = have(Bd.armor) > 0; if (!had) giveItem(Bd.armor, 1); notice(had ? 'You already carry it' : 'Endgame armour', it.name.toUpperCase(), 4200); lootMsg(isWorn(Bd.armor) ? `${it.name} · you’re wearing it now` : canWear(Bd.armor) ? `${it.name} · put it on from Inventory → Equipment` : `${it.name} · ${it.desc.split('.')[0]} · it waits in your bag`, '#ffd36a'); armorSync && armorSync(true); }, 2400);
   setTimeout(() => { for (const dr of loot) if (dr) { giveItem(dr[0], dr[1]); lootMsg(`+${dr[1]} ${ITEMS[dr[0]].name}`, ITEMS[dr[0]].color); } const n = lairsAll().list.filter(L => lairOpen(L) && lairCleared(L)).length; lootMsg(`Lairs cleared: ${n} of ${lairsAll().list.filter(lairOpen).length}`, '#d8c8ff'); }, 1200);
-  setTimeout(() => { if (DGN.lb && DGN.lb.mesh.parent) DGN.lb.mesh.parent.remove(DGN.lb.mesh); DGN.lb = null; }, 6000);
+  const lb = DGN.lb; setTimeout(() => { if (!lb || DGN.lb !== lb) return; if (lb.mesh.parent) lb.mesh.parent.remove(lb.mesh); if (!lb.R) { try { disposeOwned(lb.mesh); } catch (e) {} } DGN.lb = null; }, 6000); // only the body that fell (not a boss on another floor by now)
 }
 // ---- wildlife: each generated world that can hold life has its species roaming the surface ----
 function genFauna(p, n) {
@@ -21249,7 +21282,16 @@ function resBuildDone(B, site) {
 
 /* ============ loop ============ */
 const clock = new THREE.Clock();
+// a thrown error must never stop the frame loop: three's animation loop only asks for the next frame after this one returns,
+// so one bad frame used to freeze the whole game. Log it (once per message) and carry on with the next frame.
+const loopErrs = new Set();
 function loop() {
+  try { loopFrame(); } catch (e) {
+    const k = String(e && e.message); if (!loopErrs.has(k)) { loopErrs.add(k); console.error('Frame error (the game carries on):', e); }
+    if (state === 'loadingCh' && !SPC.booting && !DGN.downing && $('#fade') && $('#fade').style.opacity === '1') setTimeout(() => { if (state === 'loadingCh') { state = 'explore'; $('#fade').style.opacity = 0; } }, 1500); // never left stuck behind a black fade
+  }
+}
+function loopFrame() {
   const dt = Math.min(clock.getDelta(), .05);
   time += dt;
   combatTick(dt);
