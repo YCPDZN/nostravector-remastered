@@ -1166,3 +1166,124 @@ After the nightmare in space (whichever of the four you had), the next stop is M
   - Their master today is Draven.
 - **On the stage:** Lord Sevirrus, with Draven beside him from Chapter IV.
 - **What you can see when:** Draven's name and the crypt are blacked out until Chapter IV. Once you've beaten Draven, a last paragraph tells of his death and the wanderer who walked out carrying the Armor of Lord Sevirrus.
+
+## Equipment, ores and the furnace (every chapter)
+- **Equipment slots:** armour now goes on and comes off piece by piece in four slots: **Head, Chest, Legs and Feet**. You can mix pieces from different sets.
+  - **Inventory → Equipment** shows what you're wearing, your total protection and bonus health. Each slot has a **Take off** button, and each piece in your bag has **Put on**, which is greyed out with the reason if you can't wear it.
+  - **New pieces go on by themselves** if their slot is free or they're better than what's there. A single piece never pulls off a suit you're wearing.
+  - **Suits:** the old whole sets (scrap, Frostguard, obsidian, Nostra exo-armour and the five Chapter IV race sets) are **suits**, and a suit fills all four slots. Putting a piece on takes the suit off, and putting a suit on takes the pieces off.
+  - Protection from everything you wear adds up, to a maximum of 85% off every hit.
+  - **Older saves** put on the suit you were already wearing, so nothing changes until you choose.
+  - Each piece shows on your suit: a helmet (a band above the brow, cheek guards, a cap and a crest), a chestplate front and back with shoulder plates, leggings (plates all round the thigh, knee cops) and boots (greaves and armoured toes). Suits look as they did.
+  - **Fix:** armour now shows at the right size on Chompy, Erisian and Grek wanderers. Their arm and leg plates used to shrink to almost nothing inside their models, and that included the old suits' shoulder and shin plates.
+- **Five new armour sets** with four pieces each: helmet, chestplate, leggings and boots. The ingots each piece costs follow the classic 5 / 8 / 7 / 4.
+
+| Set | Made from | Full set | Notes |
+|---|---|---|---|
+| Padded | cloth | 10% · +8 health | early, before any ore |
+| Copper | copper ingots | 20% · +14 | |
+| Iron | iron ingots | 32% · +24 | |
+| Gold | gold ingots | 26% · +45 | less protection, much more health |
+| Titanium | titanium ingots | 46% · +60 | needs a crafting table |
+
+- **The hotbar:** under **Gear · hotbar** in the inventory, every tool, weapon, food and placeable has **Put on** and **Take off** for the hotbar, and shows which slot it's in.
+- **The Craft list** has filters: All, Tools, Armour, Food · med, Build and Materials.
+- **Ores:** new veins appear on every rocky world. Each is a dark boulder shot through with the ore's colour.
+
+| Vein | Gives | You need |
+|---|---|---|
+| Coal seam | coal (furnace fuel) | bare hands |
+| Copper vein | copper ore | bare hands |
+| Iron vein | iron ore | an ice pick |
+| Gold vein | gold ore | an ice pick |
+| Titanium vein | titanium ore | an obsidian pickaxe |
+
+  - **Where:** lush worlds have the most coal, volcanic worlds the most gold, and barren and icy worlds the most titanium. Antarctica has coal, copper and iron in its rock too.
+  - The ores, ingots and alien meat sell to traders.
+- **The furnace** (build menu → Structures; 8 stone and 2 scrap). Walk up and press E (**SMELT**).
+  - **Fuel:** a lump of coal smelts 8 things and a piece of wood smelts 2.
+  - **Smelting:** copper, iron, gold and titanium ore into ingots (4–7 seconds each), and 3 scrap into a metal plate (6 seconds, no crafting table needed).
+  - **Cooking:** raw meat into roast meat, alien meat into a **Seared alien steak** (restores 45 health), and blubber into a seal ration.
+  - **How it works:** queue one, or **All** that you have. The furnace works through the queue one item at a time while it has fuel, and **keeps going while you're away**, so come back and **Collect all**. You can cancel a queued job for its ingredients back. It glows while it burns.
+- **Alien meat:** the native species of the generated worlds now drop alien meat. Matriarchs and bulwarks drop two.
+- **Titanium pickaxe:** upgrades the obsidian pickaxe (3 titanium ingots and 2 wood, at a crafting table). It does four times the mining and melee damage.
+- **Saves:** what you're wearing is kept in `inv.eq` (`head`, `chest`, `legs`, `feet`, or `suit`). Each furnace keeps its fuel, queue and finished items with what you've built.
+
+## Residents: their gear and their guilds
+- **Residents craft armour too.** As they level, they forge the same sets you can, a piece at a time, in their own order, over what they had before:
+  - **Padded** from level 8, **Copper** from 16, **Iron** from 28, **Gold** from 44 (about half of them prefer iron), and **Titanium** from 60.
+  - **At level 90** they wear their own race's endgame suit: Field Marshal Hale's (Human), Lianna's (Erisian), Grekicus I's (Grek), or Shakhak's or Sevirrus's (Chompy; the villains wear Sevirrus's).
+  - They wear it on their own bodies, piece by piece, and tell the zone chat when they finish one ("just forged my iron chestplate!").
+  - Now and then one stops to work at the forge, hammering with sparks flying ("smelting some iron ingot", "hammering out a new helmet").
+  - "What are you up to?" in their talk menu shows their gear and protection.
+  - **Fix:** residents no longer appear wearing a copy of your armour. Their bodies are copied from your model, and your armour used to come along with it.
+- **Guilds.** Residents band together in guilds with other residents, from level 6.
+  - Every guild has a name, a tag (e.g. *The Iron Covenant [IC]*), a leader and up to 10 members.
+  - A guild takes the alignment of its founder. Heroes and villains never share a guild, but neutrals can join either.
+  - Members come and go, a guild passes to a new leader when the old one leaves, and an empty guild disbands.
+  - Joins, departures and new guilds appear in the zone chat with a ⚑, and members' names carry their guild tag there.
+- **Invites.** A resident in a guild may walk over and ask you to join, with three answers:
+  - **Join** the guild.
+  - **Not right now:** that guild won't ask again for 20 minutes.
+  - **Stop asking me:** this turns guild invites off.
+  - A guild only asks if it has room and would take someone of your alignment. Invites are a per-wanderer option and can be turned back on in **Pause → Guilds**.
+- **In their talk menu:** *About <guild>…*, *Ask to join <guild>* (they may turn you down over your alignment, or because they're full), and, if you lead or belong to a guild, *Invite them to <your guild>* (they may prefer to stay solo for now).
+- **Pause → Guilds** (once you have residents):
+  - The invites toggle.
+  - Your guild with its members, and **Leave the guild**.
+  - **Found a guild** of your own, which residents can then be invited to.
+  - Every other guild, with members' levels, alignment and gear, and **Join** where they'd have you.
+  - The recent guild news.
+- **Guildmates:** residents in your guild greet you with the guild tag when they arrive, hand you gifts more often (villains in your guild too), and never grab deposits near you.
+- **Saves:** guilds are saved with the slot (`resGuild`). Your guild and your invite setting are saved on your wanderer (`guild`, `guildInv`).
+
+### Tested on phones
+- Upright and sideways (iPhone size), with no errors: the inventory with its Equipment slots and craft filters, the furnace, the Guilds panel, and a resident's guild invite all fit the screen and scroll.
+
+## Dungeon runs and guild wars
+- **Residents go dungeon exploring.**
+  - **With you:** residents near you fight hostile creatures, including lair creatures and **lair bosses**, running in and trading blows ("BOSS! everyone on it"). Heroes are the keenest, villains the least. They follow you into lairs as they follow you anywhere.
+  - **While you're away:** a resident of level 14 or more sometimes runs a lair on the world they're on (or one at their level), taking up to three guildmates of a similar level. Whether they clear it depends on their level against the lair's and how many of them go.
+  - Runs are announced in the zone chat with ⚔ ("[VW] Drax and Korr cleared The Rooted Thicket of Ryrognor · Ryrognor is dead"), or they wipe.
+  - **Where it shows:** their talk menu ("Lairs cleared: 5"), the Guilds panel (every member's count, and a **Dungeon runs** list), and the galaxy map ("residents cleared 2" beside a system's lairs).
+- **Your companions go dungeon exploring.** There's a new order, **9 · Explore a dungeon · clear a lair here**, in the companion menu. It shows on worlds with a lair, from Chapter III.
+  - The selected companion (or **Everyone**) heads into the nearest lair you haven't cleared (or a cleared one, for the loot) and leaves your party while they're gone.
+  - **How long:** about 1–4 minutes depending on the lair. More companions are faster, and more companions and higher levels give a better chance.
+  - **If they win:** they come back with XP for you (half for a lair you'd already cleared), med kits, crystals, metal or obsidian, ore, alien meat and sometimes a warp cell. The lair counts as cleared.
+  - **If they lose:** they come back empty-handed and tell you the boss was too strong.
+  - The Chapter IV dungeons are yours alone: companions won't take them.
+  - **Saves:** kept in `dungeon` on your wanderer, so a run carries on through a save and finishes when you're next playing.
+- **Guild wars.** When two residents from different guilds come to blows, **their guilds go to war**. A fight can also break out when a hero and a villain from rival guilds argue.
+  - **The brawl:** every member of both guilds who's around piles in, paired off against each other, and anyone left over runs in to back up their guildmate ("GUILD FIGHT", "nobody touches my guild"). A "Guild war" banner shows the two tags.
+  - **During the war:** members of the two guilds fight whenever they meet. Skirmishes play out while you're away, weighted by the guilds' levels, and after 30 minutes the guild that won more of them wins the war (or it's a draw). All of it goes in the zone chat.
+  - **The Guilds panel** shows each war with its score and time left, and a **Broker peace** button (a small good deed).
+  - **Saves:** wars are saved with the guilds (`resGuild.wars`, and runs in `resGuild.dun`).
+
+## Mobile pass (every screen, four phone sizes, both ways up)
+I checked every major screen and mode on four phone sizes, upright and sideways: a small iPhone (375 × 667), a small Android (360 × 740), a standard iPhone (390 × 844) and a large Android (412 × 915).
+- **What was covered:**
+  - **Menus:** the main menu, Wanderers, Settings, Mission brief, Save / Load, character creation (all three tabs), the Nostrapedia (tabs and an entry), and Custom creations (all four tabs and the species, planet and adventure editors).
+  - **On a planet:** the HUD, the companion menu, pause, inventory, build menu, trader, teleporter, map, dialogue and choices, Alignment, Side quests, Diplomacy, Resident empires, Guilds, the furnace and a lair gate.
+  - **Space:** flight, pause, the galaxy map and a system's panel.
+  - **Your ship:** walking the decks.
+- **How:** an automatic check looked for controls you can't reach (off the screen, or covered by another control), text too small to read and sideways page scrolling, and I looked over the screenshots by eye.
+- **Fixed:**
+  - **Space, paused:** the flight controls (FIRE, THRUST, PULSE, BRAKE, the stick) and readouts were drawn on top of the pause menu and covered its buttons. They're hidden while you're paused.
+  - **Companion menu (upright phones):** with two or more companions it ran down over the action buttons, and ORDER, BUILD, BLOCK, SPRINT and DODGE sat on top of it. It's now a panel of its own above the controls, with the companions in one row and the orders two to a row, so all of them fit without scrolling.
+  - **Action button vs hotbar (upright phones):** the ORDER / TAKE / ENTER button sat on top of hotbar slots 5 and 6. It's now just left of the hotbar column.
+  - **Galaxy map (upright phones):** the title's second line ran under the Diplomacy, Residents and Empires buttons, which now sit below it.
+  - **Galaxy map's system panel (phones):** the warp button and its explanation covered most of the panel and you could see the text through them. The footer is now compact and solid, and upright the panel is taller.
+  - **Map:** the place name ran under the Close button.
+  - **Space (upright):** the target's name and distance ran under the DECKS button.
+  - **Sideways on small phones:**
+    - The pause menu's bottom row (Options, Main menu) and the inventory's Close button were off the screen. The pause menu, inventory and furnace now fit, or scroll.
+    - The residents' chat printed over your objectives and health bars. It now sits below the companion button.
+    - The space readout now stays clear of the GALAXY MAP button.
+    - "Drag to rotate" no longer overlaps the character-creation heading.
+  - **Nostrapedia and Custom creations, sideways:** the characters and creations stood hidden behind the text panel, because a sideways phone was being framed as if it were upright. They now stand beside the panel.
+  - **Inventory on phones:** new jump buttons (Equipment · Resources · Gear · Craft) take you straight to each section of the long single column.
+  - **Bigger touch targets:** the furnace's fuel buttons, the craft filters and the inventory's buttons are at least 34 px tall.
+  - **Readable text:** the minimap's distance and weather lines went up from 6–6.5 px to 7.5–8 px.
+  - **Long boss names:** upright, they wrap onto two lines instead of being cut short.
+  - **Very short upright phones:** the small logo on the main menu steps aside to leave room.
+- **Not covered:** this was done in a desktop browser emulating each phone, not on real devices. Touch feel, frame rate, battery and memory on a real phone, and the Chapter I–II story scenes (they need their own saves), weren't checked.
