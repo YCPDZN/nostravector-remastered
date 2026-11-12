@@ -5131,6 +5131,7 @@ function dlgLine(d) {
   if (buf) sfx.playBuf(buf, 1.25); else sfx.stopVoice();
 }
 function openDialog(who, lines, inspect, onDone, bufs) {
+  lines = Array.isArray(lines) && lines.length ? lines.map(l => l == null ? '' : l) : ['']; // a missing line shows as blank instead of breaking every frame
   ex.dlg = { who, lines, i: 0, n: 0, acc: 0, onDone, bufs, rate: .026, inspect: !!inspect };
   dlgLine(ex.dlg);
   xUI.dlg.classList.toggle('inspect', !!inspect); xUI.who.textContent = who;
@@ -5206,7 +5207,7 @@ async function interact() {
     pickUpPlaced(n.ref);
   } else if (n.id === 'dismantle') {
     dismantle(n.ref);
-  } else if (/^dgn/.test(n.id)) {
+  } else if (n.id === 'lairGate' || /^dgn/.test(n.id)) { // the lair gates too (their id doesn't start with dgn: pressing E on one used to fall through to an empty inspect box and freeze the game)
     if (n.id === 'lairGate') lairGateUse(n.ref); else dgnUse(n.id);
   } else if (n.id === 'qgiver') {
     giverTalk(n.ref);
@@ -10436,7 +10437,15 @@ function dgnEnter(f, at, quick) { // go to floor f: at = { x, z } (a save), 'top
   f = Math.max(1, Math.min(dgnTop(), Math.round(+f) || 1)); // a floor that exists (an old or odd save can't ask for floor 9)
   if (quick) { try { go(); } catch (e) { console.error(e); dgnBail(); } return; }
   const fd = $('#fade'); state = 'loadingCh'; fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.whoosh();
-  setTimeout(() => { try { go(); } catch (e) { console.error(e); dgnBail(); } state = 'explore'; fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; }, 950); }, 520);
+  setTimeout(async () => { try { go(); } catch (e) { console.error(e); dgnBail(); } await dgnWarm(); state = 'explore'; fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; }, 950); }, 520);
+}
+// a new floor brings new lights and new creatures, and every material has to be rebuilt for them: on Windows that stalled the
+// game for seconds on every lair. Build them in the background while the screen is still black, then fade in (2.5 s at most).
+async function dgnWarm() {
+  if (!renderer.compileAsync) return;
+  DGN.compiling = true;
+  try { await Promise.race([renderer.compileAsync(wScene, camera), new Promise(r => setTimeout(r, 2500))]); } catch (e) { console.error(e); }
+  DGN.compiling = false;
 }
 function dgnBail() { // a floor failed to build: back out at the door rather than stuck in the dark
   const LR = DGN.lair;
@@ -10449,7 +10458,7 @@ function dgnBail() { // a floor failed to build: back out at the door rather tha
 }
 function dgnLeave() { // back out onto the slope, by the door
   const fd = $('#fade'); state = 'loadingCh'; fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.whoosh();
-  setTimeout(() => {
+  setTimeout(async () => {
     const LR = DGN.lair;
     try {
       dgnClearFloor(); DGN.on = false; DGN.open = null; DGN.lair = null; for (const ch of world.chunks.values()) ch.visible = true; dgnRestoreLook();
@@ -10457,6 +10466,7 @@ function dgnLeave() { // back out onto the slope, by the door
       player.rotation.y = 0; ex.yaw = Math.PI; ex.snap = true; vel.set(0, 0, 0); updateChunks(99);
       placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
     } catch (e) { console.error(e); DGN.on = false; DGN.open = null; DGN.lair = null; }
+    await dgnWarm();
     state = 'explore'; fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; }, 950);
     notice(LR ? LR.name : 'Olympus Mons', LR ? 'BACK ON THE SURFACE' : 'BACK ON THE SLOPE', 2400);
   }, 520);
@@ -21327,7 +21337,7 @@ function loopFrame() {
   if (state === 'flashback') { flashTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'ferryTrip') { ferryTripTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'ferryCut') { updateFerryCut(dt); updateAnim(dt); worldActionPose(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
-  if (state === 'loadingCh' && SPC.booting) { sfx.music(0); renderer.setClearColor(0x000000, 1); renderer.clear(); return; } // a Chapter III save starting up: black, not the last scene built (the Antarctic ice)
+  if (state === 'loadingCh' && (SPC.booting || DGN.compiling)) { sfx.music(0); renderer.setClearColor(0x000000, 1); renderer.clear(); return; } // (or a dungeon floor's shaders still building behind the fade: drawing now would stall the game on them) // a Chapter III save starting up: black, not the last scene built (the Antarctic ice)
   if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh' || state === 'sleeping' || state === 'wcut') {
     if (state === 'explore') updateExplore(dt);
     tickDialog(dt);
