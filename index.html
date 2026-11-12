@@ -1059,7 +1059,7 @@ body.touch .al-key{display:none}
   <div class="mmap" id="mmap"><canvas id="mmapC"></canvas><div class="cap" id="mmapCap"></div><div class="wx" id="mmWx"></div></div>
   <div class="x-obj"><div class="lvl" id="lvl"><b id="lvN">LV 1</b><div class="xpbar"><i id="xpI"></i></div><small id="xpT"></small></div><small id="xChap">CHAPTER I · ANTARCTICA</small><div id="xTasks"></div><div class="x-nav" id="xNav"></div><div class="bars"><div class="bar hp" id="hpBar"><i></i></div><div class="bar sta" id="staBar"><i></i></div><div class="bar jet" id="jetBar"><i></i></div><div class="bar heat" id="heatBar" title="Suit heat"><i></i></div></div>
     <div class="jcmd" id="jcmd"><button class="jbtn" id="jBtn"><span id="jWho">FOLLOWING COMPANIONS</span><b id="jMode"></b><em>▾</em></button>
-      <div class="jopts" id="jOpts"><div class="jwho" id="jWhoRow" style="display:none"></div><button data-m="mine"><kbd>1</kbd>Mine</button><button data-m="explore"><kbd>2</kbd>Explore</button><button data-m="base"><kbd>3</kbd>Meet me back at base</button><button data-m="wander"><kbd>4</kbd>Wander around</button><button data-m="follow"><kbd>5</kbd>Follow me</button><button data-a="share" class="al-deed good"><kbd>6</kbd>Share food</button><button data-a="threat" class="al-deed evil"><kbd>7</kbd>Intimidate</button><button data-m="dismiss" id="jDismiss" class="jdismiss"><kbd>8</kbd>Dismiss · wait aboard the Nostra</button></div>
+      <div class="jopts" id="jOpts"><div class="jwho" id="jWhoRow" style="display:none"></div><button data-m="mine"><kbd>1</kbd>Mine</button><button data-m="explore"><kbd>2</kbd>Explore</button><button data-m="base"><kbd>3</kbd>Meet me back at base</button><button data-m="wander"><kbd>4</kbd>Wander around</button><button data-m="follow"><kbd>5</kbd>Follow me</button><button data-a="share" class="al-deed good"><kbd>6</kbd>Share food</button><button data-a="threat" class="al-deed evil"><kbd>7</kbd>Intimidate</button><button data-m="dismiss" id="jDismiss" class="jdismiss"><kbd>8</kbd>Dismiss · wait aboard the Nostra</button><button data-m="dungeon" id="jDungeon"><kbd>9</kbd>Explore a dungeon · clear a lair here</button></div>
     </div></div>
   <button class="x-menu x-bag" id="xBagBtn" aria-label="Inventory"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 5h10l-1 10H4z" fill="none" stroke="#e6e9f0" stroke-width="1.4"/><path d="M5.5 5V3.5a2.5 2.5 0 0 1 5 0V5" fill="none" stroke="#e6e9f0" stroke-width="1.4"/></svg></button>
   <div class="hotbar" id="hotbar"></div>
@@ -6374,8 +6374,8 @@ function partyNow() {
   if (nicoJoined()) out.push('nico');
   for (const id of wanderer.party || []) if (PARTY[id] && !out.includes(id)) out.push(id);
   const lent = (wanderer.dip && wanderer.dip.lent) || {};
-  const aboard = (wanderer && wanderer.aboard) || {};
-  return out.filter(id => !lent[id] && !aboard[id]); // companions lent to another faction (Diplomacy) are away; dismissed ones wait aboard the Nostra
+  const aboard = (wanderer && wanderer.aboard) || {}, dun = (wanderer && wanderer.dungeon) || {};
+  return out.filter(id => !lent[id] && !aboard[id] && !dun[id]); // away in a dungeon, too // companions lent to another faction (Diplomacy) are away; dismissed ones wait aboard the Nostra
 }
 // ---- every companion, the same way: a level, what they're doing, and (for anyone who joins later) a rig that walks like the rest ----
 function compLevel(id) {
@@ -6393,6 +6393,7 @@ function compJoinNotice(id, wait = 4200) { // someone new is with you: how to gi
 function partySel() { const p = partyNow(), s = ex.cSel; return s === 'all' && p.length > 1 ? 'all' : p.includes(s) ? s : p[0] || null; }
 function cmdCompanion(mode) {
   const sel = partySel();
+  if (mode === 'dungeon') { if (!sel) return; compDungeon(sel === 'all' ? partyNow() : [sel]); return; }
   if (mode === 'dismiss') { if (!sel) return; const ids = sel === 'all' ? partyNow() : [sel]; toggleJamesMenu(false); for (const id of ids) dismissCompanion(id); return; }
   if (!sel || !JCMDS.includes(mode)) return;
   const ids = sel === 'all' ? partyNow() : [sel];
@@ -6503,7 +6504,7 @@ function updateSurvival(dt) {
   const hb = $('#heatBar'), hv = suitHeat(); hb.firstChild.style.transform = `scaleX(${hv / 100})`; hb.classList.toggle('on', hv < 99.5 || (ch1().stormTalk && !ch1().stormOver)); hb.classList.toggle('low', hv < 30);
   const jb = $('#jetBar'); jb.firstChild.style.transform = `scaleX(${(ex.jet == null ? 100 : ex.jet) / 100})`; jb.classList.toggle('on', ex.jet != null && ex.jet < 99.5); jb.classList.toggle('low', ex.jet < 15);
   // placement preview, teleporter rings, merchants
-  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt); hallTick(dt); khzTick(dt); furnaceTick();
+  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt); hallTick(dt); khzTick(dt); furnaceTick(); compDungeonTick();
   for (const b of world.build) if (b.mesh.userData.spin) b.mesh.userData.spin.rotation.z += dt * 1.5;
   if (world.stationTp) world.stationTp.userData.spin.rotation.z += dt * 1.5;
   const it = selItem();
@@ -6761,6 +6762,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyV') { cycleCompanion(); return; }
   if (partyNow().length && /^Digit[1-5]$/.test(e.code)) cmdCompanion(JCMDS[+e.code.slice(5) - 1]);
   else if (partyNow().length && e.code === 'Digit8' && canDismiss()) cmdCompanion('dismiss');
+  else if (partyNow().length && e.code === 'Digit9' && effCh() >= 3) cmdCompanion('dungeon');
   else if (partyNow().length && (e.code === 'Digit6' || e.code === 'Digit7')) partyDeed(e.code === 'Digit6' ? 'share' : 'threat');
   else if (!partyNow().length && /^Digit[1-6]$/.test(e.code)) selectSlot(+e.code.slice(5) - 1);
   else if (e.code === 'Minus' || e.code === 'NumpadSubtract') ex.dist = clamp(ex.dist + .6, 1.8, 9);
@@ -7107,6 +7109,7 @@ function refreshJamesUI() {
   $('#jWho').textContent = 'FOLLOWING COMPANIONS'; $('#jMode').textContent = p.length ? String(p.length) : '';
   for (const b of document.querySelectorAll('#jOpts button[data-m]')) b.classList.toggle('on', b.dataset.m === mode);
   const dz = $('#jDismiss'); if (dz) dz.style.display = canDismiss() && sel !== 'james' ? '' : 'none'; // once you have the Nostra to send them to
+  const dg = $('#jDungeon'); if (dg) dg.style.display = effCh() >= 3 && sel !== 'james' && isPl() && (world.lairGates || []).some(G => G.g.visible && !G.L.ch4) ? '' : 'none'; // only where there's a lair to clear
   const row = $('#jWhoRow'); row.style.display = p.length ? '' : 'none'; // who's with you, their level and what they're doing: tap one to give them orders
   row.innerHTML = [...p, ...(p.length > 1 ? ['all'] : [])].map(id => id === 'all'
     ? `<button data-w="all" class="${sel === 'all' ? 'on' : ''}"><i style="background:#e6e9f0"></i><span>Everyone<small>${p.length} companions</small></span></button>`
@@ -14762,7 +14765,7 @@ function galPanel() {
   else if (n < cost) btn = `<button class="btn gp-warp" disabled><span>Warp · ${cellsTxt(cost)}</span></button><div class="gp-why">${n ? `You have ${cellsTxt(n)} · need ${cost - n} more` : 'No warp cells'} · craft them from 2 metal plates · 2 frost crystals · 2 scrap metal each</div>`;
   else btn = `<button class="btn gp-warp" data-warp="${S.id}"><span>Warp · ${cellsTxt(cost)} (${n - cost} left after)</span></button>`;
   const qHere = Object.entries((wanderer.sq || {}).act || {}).filter(([id, A]) => sqById(id) && sqSysOf(sqById(id), A) === S.id).map(([id]) => sqById(id).t);
-  const LS = (lairsAll().bySys.get(S.id) || []).filter(lairOpen), spH = LS.length ? `<div class="gp-sub" style="color:#d8c8ff">◆ Native species: the ${natSp(S).name} · ${LS.length} lair${LS.length === 1 ? '' : 's'} (lv ${Math.min(...LS.map(L => L.lv))}–${Math.max(...LS.map(L => L.lv))}) · ${LS.filter(lairCleared).length} cleared</div>` : '';
+  const LS = (lairsAll().bySys.get(S.id) || []).filter(lairOpen), spH = LS.length ? `<div class="gp-sub" style="color:#d8c8ff">◆ Native species: the ${natSp(S).name} · ${LS.length} lair${LS.length === 1 ? '' : 's'} (lv ${Math.min(...LS.map(L => L.lv))}–${Math.max(...LS.map(L => L.lv))}) · ${LS.filter(lairCleared).length} cleared${(n => n ? ` · residents cleared ${n}` : '')(LS.filter(L => resGuild.dun && resGuild.dun.cleared && resGuild.dun.cleared[L.id]).length)}</div>` : '';
   $('#galPanel').innerHTML = `${resGalHere(S)}${spH}${qHere.length ? `<div class="gp-sub" style="color:#ffd36a">◆ Side quest: ${qHere.join(' · ')}</div>` : ''}<h3>${S.name.toUpperCase()}</h3><div class="gp-sub">${S.star.type} · ${S.faction}${here ? '' : ` · ${galDist(curSys(), S).toLocaleString()} ly · ${inRange(curSys(), S) ? cellsTxt(cost) : 'out of range'}`}${seen ? ' · visited' : ''}</div><p>${S.desc}</p>
     <ul>${S.bodies.filter(P => !P.minor).map(P => { const m = S.bodies.filter(Q => Q.minor && Q.parent === P.id).length; return `<li><span>${P.name}</span><small>${P.faction.split(' · ')[0]} · ${kind(P)}${m ? ` · +${m} smaller moon${m === 1 ? '' : 's'}` : ''}</small></li>`; }).join('')}</ul><div class="gp-act">${btn}</div>`;
   $('#galPanel').classList.remove('hidden');
@@ -17174,6 +17177,7 @@ const ORION_WAKE = [
 ];
 async function placeOrion() {
   if (wanderer && wanderer.aboard && wanderer.aboard.orion) { if (world.orion) world.orion.root.visible = false; return; } // waiting aboard the Nostra
+  if (wanderer && wanderer.dungeon && wanderer.dungeon.orion) { if (world.orion) world.orion.root.visible = false; return; } // off clearing a lair
   if (orionJoined() && wanderer.dip && wanderer.dip.lent && wanderer.dip.lent.orion) { if (world.orion) world.orion.root.visible = false; return; } // serving another faction
   if (curArea() !== 'africa' && !orionJoined()) { if (world.orion) world.orion.root.visible = false; return; } // once he's joined you, he comes wherever you go
   if (!world.orion) {
@@ -20056,7 +20060,8 @@ function resChoose(B) {
     ['steal', V && dp < 30 && resNodes({ x: p.x, z: p.z }, 14).length ? 1.4 : 0],
     ['jet', .5],
     ['build', resBuildWant(B)],
-    ['craft', .7]
+    ['craft', .7],
+    ['hunt', resHuntTarget(B) ? (H ? 4 : V ? 2 : 3) : 0]
   ];
   const mate = myGuild() && myGuild().members.includes(B.id); if (mate) for (const o of opts) if (o[0] === 'steal') o[1] = 0; // your guildmates leave your deposits alone
   for (const o of opts) o[1] *= resPersonaWeight(B.c, o[0]); // their personality tilts the choice
@@ -20072,6 +20077,7 @@ function resChoose(B) {
   else if (pick === 'follow') { T.dur = 12 + Math.random() * 10; resSay(B, resPick(['following you {player}, lead the way', 'mind if I tag along?', 'where we going?']).replace('{player}', wanderer.name)); }
   else if (pick === 'steal') { const ns = resNodes({ x: p.x, z: p.z }, 14); const n = resPick(ns); T.node = n; T.to = { x: n.x + .9, z: n.z + .9 }; T.dur = 5; T.type = 'mine'; T.steal = true; }
   else if (pick === 'jet') { T.dur = 1.6; }
+  else if (pick === 'hunt') { T.f = resHuntTarget(B); T.dur = 25; if (Math.random() < .5) resSay(B, resPick(T.f && T.f.boss ? ['BOSS! everyone on it', 'focus the boss!', 'I’ve got aggro, hit it!'] : ['incoming!', 'on it', 'pull it to me', 'got this one'])); }
   else if (pick === 'craft') { T.dur = 5 + Math.random() * 4; const g = resGear(B.c), next = Object.values(g)[0], S = next && ITEMS[next] && ARMOR_SETS.find(x => x.id === ITEMS[next].set); if (Math.random() < .55) resSay(B, resPick(['smelting some {m}', 'brb, at the forge', 'hammering out a new {p}', 'need more {m} for this lol']).replace('{m}', S ? ITEMS[S.mat].name.toLowerCase() : 'copper').replace('{p}', next ? PIECE[ITEMS[next].slot || 'chest'][1] : 'helmet')); }
   else if (pick === 'build') { const b = resBasesOf(B.c)[curArea()], site = b ? { x: b.x, z: b.z } : resBaseSite(B); if (!site) { T.type = 'idle'; T.dur = 2; } else { T.site = site; T.to = resSafeSpot(site.x + 4.5, site.z + 4.5); T.dur = 14 + Math.random() * 8; if (Math.random() < .5) resSay(B, b ? 'working on my base' : 'gonna build myself a camp here'); } }
   B.task = T;
@@ -20089,6 +20095,7 @@ function resSocial() {
     const A = free[i], C = free[j]; if (A.partner || C.partner) continue;
     if (Math.hypot(A.x - C.x, A.z - C.z) > 26 || Math.random() > .6) continue;
     if (resAtWar(A.id, C.id) && Math.random() < .75) { resPair(A, C, 'fight'); continue; } // at war: they go for each other
+    { const ga = resGuildOf(A.id), gc = resGuildOf(C.id); if (ga && gc && ga !== gc && resGuildWar(ga.id, gc.id) && Math.random() < .75) { resPair(A, C, 'fight'); continue; } } // their guilds are at war
     const enemies = (A.al === 'villain') !== (C.al === 'villain') && (A.al === 'hero' || C.al === 'hero');
     const w = [['chat', 2], ['trade', 1.5], ['spar', enemies ? 2.5 : A.al === 'villain' || C.al === 'villain' ? 1.5 : .8], ['dance', enemies ? .2 : 1.2], ['race', 1], ['walk', enemies ? 0 : 1.2], ['argue', enemies ? 3 : 0]];
     let sum = 0; for (const o of w) sum += o[1]; let r = Math.random() * sum, k = 'chat'; for (const [n, v] of w) if ((r -= v) <= 0) { k = n; break; }
@@ -20097,7 +20104,9 @@ function resSocial() {
   // three or more in one place: sometimes the whole group gathers
   if (free.length >= 3 && Math.random() < .2) { const c = free[0]; for (const B of free) { B.task = { type: 'gather', t: 0, to: { x: c.x + (Math.random() - .5) * 4, z: c.z + (Math.random() - .5) * 4 }, dur: 8, em: resPick(['dance', 'cheer']) }; } resSay(c, resPick(['group photo!', 'everyone over here', 'party at {place}']).replace('{place}', resCtx(c).place)); }
 }
-function resPair(A, C, kind) {
+function resPair(A, C, kind, rally) {
+  const ga = resGuildOf(A.id), gc = resGuildOf(C.id), rivals = ga && gc && ga !== gc;
+  if (kind === 'argue' && rivals && Math.random() < .35) kind = 'fight'; // words turn to blows
   A.partner = C; C.partner = A;
   const ctxA = resCtx(A, C), wx = kind === 'fight' ? resWarCtx2(A.id, C.id) : null, fx = wx && resExchange('fight', A.c, C.c);
   const [la, lc] = fx ? [resFill(fx[0], wx), resFill(fx[1], Object.assign({}, wx, { a: wx.b, b: wx.a, ea: wx.eb, eb: wx.ea }))] : resPick((RL && RL.pairs[kind === 'fight' ? 'spar' : kind]) || RES_PAIR[kind === 'fight' ? 'spar' : kind]).map(t => resFill(t, ctxA));
@@ -20108,6 +20117,7 @@ function resPair(A, C, kind) {
   else if (kind === 'walk') { const a = Math.random() * 6.28, goal = resSafeSpot(A.anchor.x + Math.cos(a) * 22, A.anchor.z + Math.sin(a) * 22); A.task = T(goal, { dur: 16 }); C.task = T(null, { follow: A, dur: 16 }); }
   else { A.task = T(spotA); C.task = T(spotC); }
   resSay(A, la); setTimeout(() => { if (RES.bots.includes(C)) resSay(C, lc); }, 1600 + Math.random() * 900);
+  if (kind === 'fight' && rivals && !rally) resGuildBrawl(A, C); // their whole guilds pile in
 }
 function resEndPair(B) {
   const P = B.partner, k = B.task && B.task.kind;
@@ -20127,7 +20137,7 @@ function resTalk(B) {
   resLinesLoad(); RES.talking = B; B.task = { type: 'face', t: 0, dur: 4 }; B.em = 'wave'; B.emT = 2.2;
   const x = resCtx(B), V = B.al === 'villain', T = RL && RL.talk, back = () => resTalk(B);
   const opts = [
-    { text: 'What are you up to?', onPick: () => resSayTo(B, [resFill(resPick(T ? T.doing[B.al] : ['Just exploring.']), x), `\u200bLV ${B.lv} · ${SPECIES[B.sp].label} · ${resAlName(B)}${resTravels() ? ` · home: ${resHomeBody(B.c).name}` : ''}`, '\u200bGear: ' + resGearText(B.c) + (resGuildOf(B.id) ? ` · Guild: ${resGuildOf(B.id).name} [${resGuildOf(B.id).tag}]` : ''), resPersonaSummary(B.c) ? '\u200bPersonality: ' + resPersonaSummary(B.c) : null], back) },
+    { text: 'What are you up to?', onPick: () => resSayTo(B, [resFill(resPick(T ? T.doing[B.al] : ['Just exploring.']), x), `\u200bLV ${B.lv} · ${SPECIES[B.sp].label} · ${resAlName(B)}${resTravels() ? ` · home: ${resHomeBody(B.c).name}` : ''}`, '\u200bGear: ' + resGearText(B.c) + ` · Lairs cleared: ${resLairsDone(B.id)}` + (resGuildOf(B.id) ? ` · Guild: ${resGuildOf(B.id).name} [${resGuildOf(B.id).tag}]` : ''), resPersonaSummary(B.c) ? '\u200bPersonality: ' + resPersonaSummary(B.c) : null], back) },
     { text: 'Tell me about this place', onPick: () => { if (resUnsure(B, 'place')) return resSayTo(B, [resUnknownLine(B, x)], back); const k = resExploreKeys(), w = RL && k.world && RL.explore.worlds[k.world]; resSayTo(B, [resFill(resPick(T ? T.place : ['Nice place.']), x), RL ? resFill(resPick(w || RL.explore.kinds[k.kind] || RL.talk.place), x) : null], back); } },
     { text: 'Any tips?', onPick: () => resSayTo(B, resUnsure(B, 'tips') ? [resUnknownLine(B, x)] : T ? resPickN(T.tips, 2) : ['Save often.'], back) },
     { text: 'Ask something…', onPick: () => resAsk(B) }
@@ -20384,6 +20394,11 @@ function resStep(B, dt, p) {
     case 'follow': { const to = { x: p.x - Math.sin(player.rotation.y) * 2.6 + 1.2, z: p.z - Math.cos(player.rotation.y) * 2.6 }; resMoveTo(B, to, dt, dp > 7); if (dp < 3.5) resFace(B, p.x, p.z, dt); if (T.t > T.dur) { B.task = null; B.anchor = { x: B.x, z: B.z }; resSay(B, resPick(['ok I’m off, cya', 'thanks for the tour'])); } break; }
     case 'build': if (!T.at) { if (resMoveTo(B, T.to, dt, true) || T.t > 20) { T.at = true; T.t = 0; } } else { resFace(B, T.site.x, T.site.z, dt); B.em = 'mine'; B.emT = .1; if (Math.random() < dt * 4) emit(T.site.x + (Math.random() - .5) * 4, wHeight(T.site.x, T.site.z) + 1 + Math.random() * 2, T.site.z + (Math.random() - .5) * 4, 0, 1.5, 0, .9, .8, .6, .7); if (T.t > T.dur) { B.task = null; resBuildDone(B, T.site); } } break;
     case 'craft': B.em = 'mine'; B.emT = .1; if (Math.random() < dt * 5) emit(B.x + Math.sin(B.ry) * .9, B.y + .7, B.z + Math.cos(B.ry) * .9, (Math.random() - .5) * 2, 1.5 + Math.random() * 2, (Math.random() - .5) * 2, 1, .65, .25, .5); if (T.t > T.dur) B.task = null; break;
+    case 'hunt': { const f = T.f; if (!f || f.dead || !fauna.list.includes(f) || T.t > T.dur) { B.task = null; break; }
+      const d = Math.hypot(f.x - B.x, f.z - B.z), reach = (f.D.r || 1) + 1.4;
+      if (d > reach) resMoveTo(B, { x: f.x + (B.x - f.x) / Math.max(.1, d) * reach * .8, z: f.z + (B.z - f.z) / Math.max(.1, d) * reach * .8 }, dt, true);
+      else { resFace(B, f.x, f.z, dt); B.em = 'spar'; B.emT = .1; if ((T.hitT = (T.hitT || 0) - dt) <= 0) { T.hitT = 1.1; damageFauna(f, Math.round(6 + B.lv * .5), true); } }
+      break; }
     case 'invite': { const to = { x: p.x + (B.x - p.x) / Math.max(1, dp) * 2.2, z: p.z + (B.z - p.z) / Math.max(1, dp) * 2.2 };
       if (resMoveTo(B, to, dt, dp > 10) || dp < 3) { if (!ex.dlg && state === 'explore' && !RES.talking) { B.em = 'wave'; B.emT = 1.5; resInviteAsk(B, T.G); } else B.task = null; }
       else if (T.t > 20) B.task = null; break; }
@@ -20806,6 +20821,7 @@ function resGuildTick(dt) {
   if (wanderer && wanderer.guild && !resGuild.g[wanderer.guild]) wanderer.guild = null;
   const nG = Object.keys(resGuild.g).length, cap = Math.max(2, Math.ceil(residents.length / 4));
   for (const c of residents) {
+    if (resLevel(c) >= 14 && Math.random() < .015) resDunRun(c); // off on a dungeon run
     if (resLevel(c) < 6) continue;
     const mine = resGuildOf(c.id), al = resAl(c);
     if (mine) { if (Math.random() < .004 && mine.members.length > 1) { resGuildLeave(c.id); resGuildLog(`${c.name} left ${mine.name}`); } continue; }
@@ -20813,6 +20829,7 @@ function resGuildTick(dt) {
     if (open.length && Math.random() < .08) { const G = resPick(open); G.members.push(c.id); resGuildLog(`${c.name} joined ${G.name} [${G.tag}]`); }
     else if (nG < cap && Math.random() < .03) { const G = resGuildFound(c.id, al); resGuildLog(`${c.name} founded the guild ${G.name} [${G.tag}]`); }
   }
+  resGuildWarTick();
   saveRoster();
 }
 // ---- asking you to join ----
@@ -20877,6 +20894,7 @@ function guildEl() {
     const b = e.target.closest('[data-gd]'); if (!b) return; sfx.click(); const [act, id] = b.dataset.gd.split('|');
     if (act === 'inv') { wanderer.guildInv = !guildInvOn(); const c = curChar(); if (c) c.guildInv = wanderer.guildInv; saveRoster(); }
     else if (act === 'leave') guildLeave();
+    else if (act === 'peace') guildPeace(+id);
     else if (act === 'found') guildFoundMine();
     else if (act === 'join') { const G = resGuild.g[id]; if (G && G.members.length < RES_GUILD_MAX && resGuildOk(G, wAlign())) guildJoin(G); else lootMsg(G && !resGuildOk(G, wAlign()) ? 'They won’t take someone with your reputation' : 'That guild is full', '#ff8f86'); }
     guildRender();
@@ -20888,15 +20906,97 @@ function guildClose() { const el = $('#guildPanel'); if (el) el.classList.add('h
 function guildRender() {
   const el = $('#guildPanel'); if (!el || el.classList.contains('hidden')) return;
   const M = myGuild(), Gs = Object.values(resGuild.g), alN = { hero: 'Hero', neutral: 'Neutral', villain: 'Villain' };
-  const row = id => { if (id === 'you') return `<li><b>${reEsc(wanderer.name)}</b> (you)</li>`; const c = residents.find(x => x.id === id); return c ? `<li><b>${reEsc(c.name)}</b> · LV ${resLevel(c)} · ${alN[resAl(c)]} · ${reEsc(resGearText(c))}</li>` : ''; };
+  const row = id => { if (id === 'you') return `<li><b>${reEsc(wanderer.name)}</b> (you)</li>`; const c = residents.find(x => x.id === id); return c ? `<li><b>${reEsc(c.name)}</b> · LV ${resLevel(c)} · ${alN[resAl(c)]} · ${reEsc(resGearText(c))} · ${resLairsDone(c.id)} lairs</li>` : ''; };
   let h = `<button class="re-tog" data-gd="inv">Guild invites from residents: <b>${guildInvOn() ? 'ON' : 'OFF'}</b></button>`;
   h += M ? `<h4>Your guild</h4><div class="re-emp" style="--c:hsl(${M.hue},70%,60%)"><div class="re-emp-t"><b>${reEsc(M.name)} [${reEsc(M.tag)}]</b><small>Led by ${reEsc(resGuildName2(M.leader))} · ${M.members.length} member${M.members.length === 1 ? '' : 's'} · ${alN[M.al]}</small></div><ul class="re-log">${M.members.map(row).join('')}</ul><div class="re-act"><button class="danger" data-gd="leave">Leave the guild</button></div></div>`
     : `<p class="re-empty">You’re not in a guild. A resident in a guild may ask you to join${guildInvOn() ? '' : ' (invites are off)'}, you can ask one yourself in their talk menu, or found your own and invite residents to it.</p><div class="re-act"><button data-gd="found">Found a guild</button></div>`;
   const others = Gs.filter(G => G !== M);
   if (others.length) h += '<h4>Guilds</h4>' + others.map(G => `<div class="re-emp" style="--c:hsl(${G.hue},70%,60%)"><div class="re-emp-t"><b>${reEsc(G.name)} [${reEsc(G.tag)}]</b><small>Led by ${reEsc(resGuildName2(G.leader))} · ${G.members.length}/${RES_GUILD_MAX} · ${alN[G.al]}</small></div><ul class="re-log">${G.members.map(row).join('')}</ul><div class="re-act"><button data-gd="join|${G.id}" ${G.members.length >= RES_GUILD_MAX || !resGuildOk(G, wAlign()) ? 'disabled' : ''}>${!resGuildOk(G, wAlign()) ? 'They won’t take you' : G.members.length >= RES_GUILD_MAX ? 'Full' : 'Join'}</button></div></div>`).join('');
   else if (!M) h += `<p class="re-empty">${residents.length ? 'No guilds yet. Residents start forming them from level 6.' : 'Send a wanderer into the world from the Wanderers screen: residents form guilds with each other.'}</p>`;
+  const W = resGuild.wars || [], gn = id => (resGuild.g[id] || {}).name || '?';
+  if (W.length) h += '<h4>Guild wars</h4>' + W.map((w, i) => `<div class="re-war"><div><b>${reEsc(gn(w.a))}</b> ⚔ <b>${reEsc(gn(w.b))}</b><small>${w.sa}–${w.sb} · ${Math.max(0, Math.ceil((w.until - resNow()) / 60e3))} min left</small></div><div class="re-bar"><i style="width:${clamp(50 + (w.sa - w.sb) * 8, 5, 95)}%"></i></div><button data-gd="peace|${i}">Broker peace</button></div>`).join('');
+  const RN = resDun().recent; if (RN.length) h += '<h4>Dungeon runs</h4><ul class="re-log">' + RN.slice(-6).reverse().map(r => { const L = lairById(r.lair); return `<li>${r.g ? `[${reEsc(r.g)}] ` : ''}${reEsc(r.names.join(', '))} ${r.ok ? 'cleared' : 'wiped in'} ${reEsc(L ? L.name : 'a lair')}</li>`; }).join('') + '</ul>';
   if (resGuild.log.length) h += '<h4>Recent</h4><ul class="re-log">' + resGuild.log.slice(-8).reverse().map(l => `<li>${reEsc(l.text)}</li>`).join('') + '</ul>';
   el.querySelector('.re-body').innerHTML = h;
+}
+/* ============ Dungeon runs and guild wars ============
+   Residents run lairs too: on the ground they fight hostile creatures (and lair bosses) beside you, and while you're away they
+   take on the lairs of whatever world they're on with their guildmates. Your companions can be sent to clear a lair on their own.
+   And when two residents of different guilds come to blows, their guilds go to war: everyone around piles in, and members fight
+   whenever they meet until the war runs its course (or you broker peace). */
+const resDun = () => resGuild.dun || (resGuild.dun = { n: {}, cleared: {}, recent: [] });
+const resLairsDone = id => resDun().n[id] | 0;
+function resDunRun(c) { // a run while you're away: a lair on the world they're on (or one at their level), with up to three guildmates
+  if (!resTravels()) return;
+  const T = resTravel(c); let L = null, all = lairsAll().list.filter(q => !q.ch4);
+  if (T && T.mode === 'at' && T.body) { const here = lairsOn(T.body).filter(q => !q.ch4); if (here.length) L = resPick(here); }
+  const lv = resLevel(c);
+  if (!L) { const fit = all.filter(q => Math.abs(q.lv - lv) < 10); L = fit.length ? resPick(fit) : null; }
+  if (!L) return;
+  const G = resGuildOf(c.id), party = [c];
+  if (G) for (const m of G.members) { if (party.length >= 4) break; const o = residents.find(x => x.id === m); if (o && o !== c && Math.abs(resLevel(o) - lv) < 25) party.push(o); }
+  const avg = party.reduce((t, o) => t + resLevel(o), 0) / party.length, ok = Math.random() < clamp(.5 + (avg - L.lv) * .03 + .08 * (party.length - 1), .1, .95);
+  const D = resDun(), names = party.map(o => o.name);
+  D.recent.push({ lair: L.id, names, ok, t: resNow(), g: G ? G.tag : null }); if (D.recent.length > 30) D.recent.shift();
+  if (ok) { for (const o of party) D.n[o.id] = (D.n[o.id] | 0) + 1; D.cleared[L.id] = { by: names, t: resNow() }; }
+  const who = names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0];
+  resGuildLog(`⚔ ${G && party.length > 1 ? `[${G.tag}] ` : ''}${who} ${ok ? 'cleared' : 'wiped in'} ${L.name}${ok ? ` · ${lairBoss(L).short} is dead` : ''}`);
+}
+// on the ground: residents go for hostile creatures near them, lair creatures and bosses included
+function resHuntTarget(B) { let best = null, bd = 22; for (const f of fauna.list) { if (f.dead || f.D.passive || (f.D.beast === 'prey')) continue; if (!(f.boss || f.dgn || f.state === 'hunt' || f.D.beast === 'pred')) continue; const d = Math.hypot(f.x - B.x, f.z - B.z); if (d < bd) { bd = d; best = f; } } return best; }
+// ---- guild wars ----
+const resGuildWar = (a, b) => (resGuild.wars || []).find(w => (w.a === a && w.b === b) || (w.a === b && w.b === a)) || null;
+function resGuildBrawl(A, C) { // two residents came to blows: if they're in different guilds, it's a guild war, and everyone around piles in
+  const GA = resGuildOf(A.id), GC = resGuildOf(C.id); if (!GA || !GC || GA === GC) return;
+  if (!resGuildWar(GA.id, GC.id)) { (resGuild.wars || (resGuild.wars = [])).push({ a: GA.id, b: GC.id, t: resNow(), until: resNow() + 30 * 60e3, sa: 0, sb: 0 }); resGuildLog(`⚔ ${GA.name} [${GA.tag}] and ${GC.name} [${GC.tag}] are at war: ${A.c.name} and ${C.c.name} came to blows`); saveRoster(); }
+  const side = G => RES.bots.filter(B => B.ready && !B.leaving && B !== A && B !== C && resGuildOf(B.id) === G && RES.talking !== B);
+  const sa = side(GA), sc = side(GC), n = Math.min(sa.length, sc.length);
+  for (let i = 0; i < n; i++) { if (sa[i].partner) resEndPair(sa[i]); if (sc[i].partner) resEndPair(sc[i]); resPair(sa[i], sc[i], 'fight', true); }
+  for (const B of [...sa.slice(n), ...sc.slice(n)]) { if (B.partner) resEndPair(B); const foe = sa.includes(B) ? C : A; B.task = { type: 'gather', t: 0, to: resSafeSpot(foe.x + (Math.random() - .5) * 3, foe.z + (Math.random() - .5) * 3), dur: 8, em: 'spar' }; resSay(B, resPick([`get ${foe.c.name}!`, `[${(sa.includes(B) ? GA : GC).tag}] with you!`, 'GUILD FIGHT', 'nobody touches my guild'])); }
+  if (sa.length + sc.length) setTimeout(() => notice('Guild war', `${GA.tag} ⚔ ${GC.tag}`, 2600), 600);
+}
+function resGuildWarTick() { // skirmishes while you're away; when time's up, the guild that won more of them takes the war
+  const W = resGuild.wars || [], now = resNow();
+  for (const w of [...W]) {
+    const A = resGuild.g[w.a], B = resGuild.g[w.b]; if (!A || !B) { W.splice(W.indexOf(w), 1); continue; }
+    if (Math.random() < .3) { const pa = A.members.reduce((t, m) => t + (m === 'you' ? levelOf(wanderer) : resLevel(residents.find(x => x.id === m) || { xp: 0 })), 0), pb = B.members.reduce((t, m) => t + (m === 'you' ? levelOf(wanderer) : resLevel(residents.find(x => x.id === m) || { xp: 0 })), 0); if (Math.random() < pa / Math.max(1, pa + pb)) w.sa++; else w.sb++; }
+    if (now > w.until) { W.splice(W.indexOf(w), 1); const win = w.sa === w.sb ? null : w.sa > w.sb ? A : B; resGuildLog(win ? `⚔ ${win.name} won the war against ${(win === A ? B : A).name} (${Math.max(w.sa, w.sb)}–${Math.min(w.sa, w.sb)})` : `⚔ ${A.name} and ${B.name} fought to a draw`); }
+  }
+}
+function guildPeace(i) { const w = (resGuild.wars || [])[i]; if (!w) return; resGuild.wars.splice(i, 1); const A = resGuild.g[w.a], B = resGuild.g[w.b]; resGuildLog(`☮ You brokered peace between ${A ? A.name : '?'} and ${B ? B.name : '?'}`); alignAct && alignAct(2, 'Brokered peace between two guilds'); saveRoster(); }
+// ---- your companions: "Explore a dungeon" ----
+function compDungeon(ids) {
+  if (effCh() < 3 || !isPl() || DGN.on) { lootMsg('There are no lairs here · land on a world with lair beacons', '#ff8f86'); return; }
+  const p = player.position, gates = (world.lairGates || []).filter(G => G.g.visible && !G.L.ch4).sort((a, b) => (lairCleared(a.L) - lairCleared(b.L)) || (Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z)));
+  if (!gates.length) { lootMsg(world.lairGates && world.lairGates.some(G => G.L.ch4) ? 'The Chapter IV dungeon is yours to face, not theirs' : 'There are no lairs on this world', '#ff8f86'); return; }
+  ids = ids.filter(id => id !== 'james'); if (!ids.length) return;
+  const G = gates[0], L = G.L, lv = ids.reduce((t, id) => t + compLevel(id), 0) / ids.length, n = ids.length;
+  const dur = (70 + L.floors * 50) / (1 + .3 * (n - 1)), ok = Math.random() < clamp(.55 + (lv - L.lv) * .03 + .1 * (n - 1), .15, .97), now = Date.now();
+  const D = wanderer.dungeon = Object.assign({}, wanderer.dungeon); for (const id of ids) D[id] = { lair: L.id, t0: now, until: now + dur * 1000, ok, party: ids, again: lairCleared(L) };
+  const c = curChar(); if (c) c.dungeon = D; saveRoster();
+  for (const id of ids) { if (id === 'orion' && world.orion) world.orion.root.visible = false; if (CREW[id] && CREW[id].R) CREW[id].R.root.visible = false; }
+  const who = ids.map(compName).join(ids.length > 2 ? ', ' : ' and ');
+  lootMsg(`${who} head${ids.length > 1 ? '' : 's'} into ${L.name} (lv ${L.lv}) · back in about ${Math.ceil(dur / 60)} min`, compColor(ids[0]));
+  ex.cSel = null; toggleJamesMenu(false); refreshJamesUI(); placeCrew().catch(() => null);
+  ui.xhud.classList.toggle('comp', companionOn() || partyNow().length > 0);
+}
+function compDungeonTick() {
+  const D = wanderer && wanderer.dungeon; if (!D) return; const now = Date.now();
+  const due = Object.entries(D).filter(([, r]) => r && now >= r.until); if (!due.length || state !== 'explore') return;
+  const runs = {}; for (const [id, r] of due) { (runs[r.lair + r.t0] || (runs[r.lair + r.t0] = { r, ids: [] })).ids.push(id); delete D[id]; }
+  const c = curChar(); if (c) c.dungeon = D; saveRoster();
+  for (const { r, ids } of Object.values(runs)) {
+    const L = lairById(r.lair), who = ids.map(compName).join(ids.length > 2 ? ', ' : ' and ');
+    if (!L) continue;
+    if (r.ok) {
+      if (!r.again) lairSetProg(L, L.floors + 1);
+      const loot = [['medkit', 1 + (L.tier > 0)], ['crystal', 2 + L.tier], [L.lv > 40 ? 'obsidian' : 'metal', 1 + L.tier], Math.random() < .5 && ['warpcell', 1], ['alienmeat', 2], Math.random() < .5 && [resPick(['feore', 'cuore', 'auore', 'coal']), 3]];
+      gainXP(Math.round((140 + L.lv * 10) * (r.again ? .5 : 1)), `${who} cleared ${L.name}`);
+      setTimeout(() => { for (const d of loot) if (d) { giveItem(d[0], d[1]); lootMsg(`+${d[1]} ${ITEMS[d[0]].name} · from ${compName(ids[0])}`, ITEMS[d[0]].color || '#ffc94a'); } }, 900);
+      notice(`${who} cleared ${L.name}`, `${lairBoss(L).short.toUpperCase()} IS DEAD`, 3600);
+    } else { notice(`${who} came back from ${L.name}`, 'THEY COULDN’T BEAT IT', 3400); lootMsg(`${lairBoss(L).short} was too strong for them · go in yourself, or send more of the crew`, '#ff8f86'); gainXP(40); }
+  }
+  placeOrion().catch(() => null); placeCrew().catch(() => null); refreshJamesUI(); ui.xhud.classList.toggle('comp', companionOn() || partyNow().length > 0);
 }
 // on the galaxy map: their worlds ringed in their colours, the empire's name at its capital
 function resGalEmpires(g, font) {

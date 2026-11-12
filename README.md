@@ -1239,3 +1239,22 @@ After the nightmare in space (whichever of the four you had), the next stop is M
 
 ### Tested on phones
 - Upright and sideways (iPhone size), with no errors: the inventory with its Equipment slots and craft filters, the furnace, the Guilds panel, and a resident's guild invite all fit the screen and scroll.
+
+## Dungeon runs and guild wars
+- **Residents go dungeon exploring.**
+  - **With you:** residents near you fight hostile creatures, including lair creatures and **lair bosses**, running in and trading blows ("BOSS! everyone on it"). Heroes are the keenest, villains the least. They follow you into lairs as they follow you anywhere.
+  - **While you're away:** a resident of level 14 or more sometimes runs a lair on the world they're on (or one at their level), taking up to three guildmates of a similar level. Whether they clear it depends on their level against the lair's and how many of them go.
+  - Runs are announced in the zone chat with ⚔ ("[VW] Drax and Korr cleared The Rooted Thicket of Ryrognor · Ryrognor is dead"), or they wipe.
+  - **Where it shows:** their talk menu ("Lairs cleared: 5"), the Guilds panel (every member's count, and a **Dungeon runs** list), and the galaxy map ("residents cleared 2" beside a system's lairs).
+- **Your companions go dungeon exploring.** There's a new order, **9 · Explore a dungeon · clear a lair here**, in the companion menu. It shows on worlds with a lair, from Chapter III.
+  - The selected companion (or **Everyone**) heads into the nearest lair you haven't cleared (or a cleared one, for the loot) and leaves your party while they're gone.
+  - **How long:** about 1–4 minutes depending on the lair. More companions are faster, and more companions and higher levels give a better chance.
+  - **If they win:** they come back with XP for you (half for a lair you'd already cleared), med kits, crystals, metal or obsidian, ore, alien meat and sometimes a warp cell. The lair counts as cleared.
+  - **If they lose:** they come back empty-handed and tell you the boss was too strong.
+  - The Chapter IV dungeons are yours alone: companions won't take them.
+  - **Saves:** kept in `dungeon` on your wanderer, so a run carries on through a save and finishes when you're next playing.
+- **Guild wars.** When two residents from different guilds come to blows, **their guilds go to war**. A fight can also break out when a hero and a villain from rival guilds argue.
+  - **The brawl:** every member of both guilds who's around piles in, paired off against each other, and anyone left over runs in to back up their guildmate ("GUILD FIGHT", "nobody touches my guild"). A "Guild war" banner shows the two tags.
+  - **During the war:** members of the two guilds fight whenever they meet. Skirmishes play out while you're away, weighted by the guilds' levels, and after 30 minutes the guild that won more of them wins the war (or it's a draw). All of it goes in the zone chat.
+  - **The Guilds panel** shows each war with its score and time left, and a **Broker peace** button (a small good deed).
+  - **Saves:** wars are saved with the guilds (`resGuild.wars`, and runs in `resGuild.dun`).
