@@ -2708,7 +2708,7 @@ const sfx = (() => {
 
 /* ============ state ============ */
 let state = 'loading';
-const DGN = { on: false, f: 0, N: 16, C: 6, open: null, O: null, rooms: [], start: null, end: null, g: null, spawnT: 0, warden: null, boss: null, k: null, fx: [], look: null, wellT: -99, downing: false, cut: false, taunted: false }; // Olympus Mons' dungeon (Chapter III): see 'eight floors, and Khazglar'
+const DGN = { on: false, f: 0, N: 16, C: 6, open: null, O: null, rooms: [], start: null, end: null, g: null, spawnT: 0, warden: null, boss: null, k: null, fx: [], look: null, wellT: -99, downing: false, cut: false, taunted: false, lair: null, lb: null }; // Olympus Mons' dungeon (Chapter III): see 'eight floors, and Khazglar'
 let time = 0, walkPhase = 0, titleYaw = 0;
 const vel = new THREE.Vector3();
 const lookTarget = new THREE.Vector3();
@@ -5158,7 +5158,7 @@ async function interact() {
   } else if (n.id === 'dismantle') {
     dismantle(n.ref);
   } else if (/^dgn/.test(n.id)) {
-    dgnUse(n.id);
+    if (n.id === 'lairGate') lairGateUse(n.ref); else dgnUse(n.id);
   } else if (n.id === 'qgiver') {
     giverTalk(n.ref);
   } else if (n.id === 'bot') {
@@ -6635,7 +6635,7 @@ function questTarget() {
   const c = ch1();
   if (DGN.on) return dgnTarget();
   if (isPl() && world.dgnGate && khzPending()) return { x: world.dgnGate.x, z: world.dgnGate.z, label: 'The way into the mountain' };
-  if (isPl()) return Math.hypot(player.position.x, player.position.z) > 30 ? { x: 0, z: 10, label: 'Your ship' } : null;
+  if (isPl()) { const LT = lairNearestTarget(player.position); if (LT && Math.hypot(player.position.x, player.position.z) < 160) return LT; return Math.hypot(player.position.x, player.position.z) > 30 ? { x: 0, z: 10, label: 'Your ship' } : null; }
   if (curArea() === 'europe') { const c2 = wanderer.ch2 || {}; if (esc.on) return { x: SHIP.hatch[0], z: SHIP.hatch[1], label: 'The ship' }; return c2.arrived && !c2.reportTried ? { x: LON.door.x - 2, z: LON.door.z, label: 'Houses of Parliament' } : null; }
   if (curArea() === 'africa') {
     const c2 = wanderer.ch2 || {};
@@ -7237,12 +7237,16 @@ function beastAI(c, D, u, dt, p, dx, dz, dP, toward, ctl) {
         toward(p.x + ox * Math.min(1, dP / 8), p.z + oz * Math.min(1, dP / 8), D.run * (D.stalk && dP > 12 && c.t < 2 ? .45 : 1)); // a lion stalks before it charges
       } else { ctl.mx = dx / (dP || 1) * .001; ctl.mz = dz / (dP || 1) * .001; ctl.sp = .001; }
       c.cd -= dt;
-      if (dP < D.reach + .3 && c.cd <= 0) { c.cd = D.cd; c.bite = .35; hurtPlayer(D.dmg, c); }
+      if (dP < D.reach + .3 && c.cd <= 0) {
+        if (D.pack && c.dgn && time - (fauna.packT || -9) < .7) c.cd = .35 + Math.random() * .3; // a pack takes turns at you, one bite at a time
+        else { if (D.pack) fauna.packT = time; c.cd = D.cd; c.bite = .35; hurtPlayer(D.dmg, c); }
+      }
     } else if (c.state === 'return') {
       if (toward(c.home[0], c.home[1], D.speed * 2) < 2) { c.state = 'idle'; c.hp = Math.min(D.hp, c.hp + D.hp * .3); }
       if (D.beast === 'pred' && dP < D.aggro * .6 && c.t > 2) { c.state = 'hunt'; c.t = 0; }
     }
   }
+  if (u.anim) { c.bite = Math.max(0, (c.bite || 0) - dt); animSpecies(c.mesh, c.phase, ctl.sp > .05); return threat; } // a native species walks on its own legs
   // gait: trot at walking pace, gallop when running; graze when standing still
   const sp = ctl.sp, moving = sp > .05;
   c.gait = (c.gait || 0) + dt * (moving ? 3 + sp * 1.25 : 0);
@@ -7270,10 +7274,11 @@ function hpBar() {
 }
 function spawnFauna(type, x, z, home) {
   const D = FAUNA[type];
-  const mesh = type === 'penguin' ? buildPenguin() : D.fly ? buildSkua(D.look) : BEASTS[type] ? buildBeast(type) : buildSeal(type);
+  let mesh; if (D.sp) { mesh = new THREE.Group(); const b = buildSpecies(D.sp); mesh.add(b); mesh.userData.anim = b.userData.anim; mesh.userData.spH = ((D.sp.legs === 2 ? D.sp.legLen + D.sp.bodyLen + D.sp.neck + D.sp.head * 2 : D.sp.legLen + D.sp.girth * 1.9 + D.sp.neck + D.sp.head * 1.6) + .25) * D.sp.scale; } // a native species, built from its own body plan
+  else mesh = type === 'penguin' ? buildPenguin() : D.fly ? buildSkua(D.look) : BEASTS[type] ? buildBeast(type) : buildSeal(type);
   const c = { type, D, mesh, x, z, y: wHeight(x, z), rot: Math.random() * 6.28, hp: D.hp, state: 'idle', t: 0, cd: D.cd ? Math.random() * D.cd : 0, home: home || [x, z], tgt: null, wait: rand(1, 4), hurtT: 0, dead: 0, alt: 5 + Math.random() * 2, phase: Math.random() * 6 };
   if (D.fly) c.y += c.alt;
-  c.bar = hpBar(); c.bar.position.y = BEASTS[type] ? BEASTS[type].H + BEASTS[type].W * 2.2 + BEASTS[type].neck : type === 'elephant' ? 2.4 : type === 'leopard' ? 1.6 : D.fly ? .6 * ((D.look && D.look.s) || 1) : 1.4;
+  c.bar = hpBar(); c.bar.position.y = mesh.userData.spH ? mesh.userData.spH : BEASTS[type] ? BEASTS[type].H + BEASTS[type].W * 2.2 + BEASTS[type].neck : type === 'elephant' ? 2.4 : type === 'leopard' ? 1.6 : D.fly ? .6 * ((D.look && D.look.s) || 1) : 1.4;
   mesh.add(c.bar); mesh.position.set(x, c.y, z); mesh.rotation.y = c.rot; wScene.add(mesh);
   fauna.list.push(c);
   return c;
@@ -7296,8 +7301,9 @@ function faunaSpot(p, dmin, dmax) {
   return null;
 }
 function faunaSpawner() {
-  if (curArea() === 'europe' || (isPl() && !world.planet.P.real)) return; // no wildlife in Westminster (or, yet, on the other planets)
+  if (curArea() === 'europe' || DGN.on) return; // no wildlife in Westminster
   const p = player.position, n = t => fauna.list.filter(c => c.type === t && !c.dead).length;
+  if (isPl() && !world.planet.P.real) { genFauna(p, n); for (const c of [...fauna.list]) if (Math.hypot(c.x - p.x, c.z - p.z) > 175 && c.state !== 'hunt') removeFauna(c); return; } // the generated worlds: their own native species
   if (isPl()) earthFauna(p, n); // Earth: each continent's own
   else if (curArea() === 'africa') {
     // a gazelle herd, a few buffalo, a pride pair of lions and a hyena pack
@@ -7479,7 +7485,7 @@ function faunaTick(dt) {
     if (!D.fly && dP < D.r + .5 && dP > .01) { c.x -= dx / dP * (D.r + .5 - dP); c.z -= dz / dP * (D.r + .5 - dP); }
     c.mesh.position.set(c.x, c.y, c.z); c.mesh.rotation.y = c.rot;
     c.hurtT = Math.max(0, c.hurtT - dt);
-    c.mesh.scale.setScalar(c.hurtT > 0 ? 1.06 : 1);
+    c.mesh.scale.setScalar((c.sc || 1) * (c.hurtT > 0 ? 1.06 : 1));
     if (c.barT > 0) { c.barT -= dt; c.bar.visible = true; c.bar.quaternion.copy(camera.quaternion).premultiply(tmpQ.copy(c.mesh.quaternion).invert()); const f = c.bar.userData.fg, k = Math.max(0, c.hp / D.hp); f.scale.x = Math.max(.001, k); f.position.x = -(1 - k) / 2; } else c.bar.visible = false;
   }
   if (threat) combatPulse();
@@ -9978,7 +9984,7 @@ Object.assign(BEASTS, {
   cindercrawler: { L: 2.4, W: .44, H: .22, neck: .2, head: .34, legW: .09, coat: ['spots', '#5a2418', '#ff7a3a'], belly: 0xffa860, tail: 2 }
 });
 const DGN_BASE = {
-  rusthound: { name: 'Rust hound', beast: 'pred', pack: true, hp: 30, dmg: 8, speed: 2, run: 7.2, xp: 48, r: .75, reach: 1.8, aggro: 22, leash: 60, cd: 1.15, spot: 'Rust hounds!', loot: () => [Math.random() < .45 && ['scrap', 1]] },
+  rusthound: { name: 'Rust hound', beast: 'pred', pack: true, hp: 30, dmg: 4, speed: 2, run: 6.4, xp: 48, r: .75, reach: 1.8, aggro: 18, leash: 60, cd: 1.75, spot: 'Rust hounds!', loot: () => [Math.random() < .45 && ['scrap', 1]] },
   duststalker: { name: 'Dust stalker', beast: 'pred', stalk: true, hp: 70, dmg: 14, speed: 1.9, run: 7.2, xp: 95, r: 1.1, reach: 2.3, aggro: 22, leash: 60, cd: 1.5, spot: 'Something is stalking you…', loot: () => [['crystal', 1], Math.random() < .3 && ['cloth', 1]] },
   basaltbrute: { name: 'Basalt brute', beast: 'pred', hp: 150, dmg: 22, speed: 1.6, run: 5.8, xp: 150, r: 1.6, reach: 2.7, aggro: 16, leash: 60, cd: 1.9, spot: 'A basalt brute rears up!', loot: () => [['obsidian', 1 + (Math.random() < .4)], Math.random() < .3 && ['medkit', 1]] },
   cindercrawler: { name: 'Cinder crawler', beast: 'pred', hp: 120, dmg: 24, speed: 1.3, run: 5.6, xp: 130, r: 1.4, reach: 2.6, aggro: 13, leash: 60, cd: 2, spot: 'A cinder crawler lunges!', loot: () => [['metal', 1], Math.random() < .25 && ['medkit', 1]] },
@@ -9989,7 +9995,7 @@ const dgnLv = f => 10 + Math.round((f - 1) * 2.8); // creatures from level 10 on
 function dgnType(base, f, warden) { // a creature for this floor: tougher the higher you climb
   const key = `dgn_${base}_${f}${warden ? 'w' : ''}`; if (FAUNA[key]) return key;
   const B = DGN_BASE[base], k = 1 + (f - 1) * .32, w = warden ? 4.2 : 1, lv = dgnLv(f) + (warden ? 3 : 0);
-  FAUNA[key] = Object.assign({}, B, { name: warden ? `Warden of the ${['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh'][f]} floor · lv ${lv}` : `${B.name} · lv ${lv}`, hp: Math.round(B.hp * k * w), dmg: Math.round(B.dmg * (1 + (f - 1) * .2) * (warden ? 1.5 : 1)), xp: Math.round(B.xp * (1 + (f - 1) * .35) * (warden ? 5 : 1)), aggro: warden ? 18 : B.aggro, pack: warden ? false : B.pack,
+  FAUNA[key] = Object.assign({}, B, { name: warden ? `Warden of the ${['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh'][f]} floor · lv ${lv}` : `${B.name} · lv ${lv}`, hp: Math.round(B.hp * k * w), dmg: Math.round(B.dmg * (1 + (f - 1) * (base === 'rusthound' ? .12 : .2)) * (warden ? 1.5 : 1)), xp: Math.round(B.xp * (1 + (f - 1) * .35) * (warden ? 5 : 1)), aggro: warden ? 18 : B.aggro, pack: warden ? false : B.pack,
     loot: warden ? () => [['medkit', 1], ['obsidian', 2], ['crystal', 2], Math.random() < .5 && ['warpcell', 1]] : B.loot });
   if (BEASTS[base]) BEASTS[key] = BEASTS[base];
   return key;
@@ -10004,11 +10010,11 @@ const dgnCell = (i, j) => i >= 0 && j >= 0 && i < DGN.N && j < DGN.N && DGN.open
 const dgnW = (i, j) => [DGN.O.x + (i - DGN.N / 2 + .5) * DGN.C, DGN.O.z + (j - DGN.N / 2 + .5) * DGN.C]; // a cell's centre in the world
 const dgnIJ = (x, z) => [Math.floor((x - DGN.O.x) / DGN.C + DGN.N / 2), Math.floor((z - DGN.O.z) / DGN.C + DGN.N / 2)];
 function dgnLayout(f) {
-  const N = DGN.N, open = new Uint8Array(N * N), R = dgnRng(9100 + f * 7919), set = (i, j) => { if (i >= 0 && j >= 0 && i < N && j < N) open[j * N + i] = 1; };
+  const N = DGN.N, open = new Uint8Array(N * N), R = dgnRng((DGN.lair ? DGN.lair.seed : 9100) + f * 7919), set = (i, j) => { if (i >= 0 && j >= 0 && i < N && j < N) open[j * N + i] = 1; };
   const room = (sx, sy) => { for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) set(sx * 4 + a, sy * 4 + b); return { sx, sy, c: [sx * 4 + 1, sy * 4 + 1] }; };
   const link = (A, B) => { if (A.sy === B.sy) set(Math.min(A.sx, B.sx) * 4 + 3, A.sy * 4 + 1); else set(A.sx * 4 + 1, Math.min(A.sy, B.sy) * 4 + 3); };
   const rooms = [];
-  if (f === 8) { // the caldera: a short hall up from the stairs, then the round arena and the throne
+  if (f === dgnTop()) { // the caldera (or a lair's heart): a short hall up from the stairs, then the round arena and the throne
     const st = room(1 + (R() < .5), 3); rooms.push(st);
     const cx = 7.5, cy = 5.2, r = 4.7;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) if (Math.hypot(i + .5 - (cx + .5), j + .5 - (cy + .5)) <= r) set(i, j);
@@ -10019,7 +10025,7 @@ function dgnLayout(f) {
   DGN.arena = null;
   const key = (x, y) => x + ',' + y, seen = new Set();
   let cur = room(1 + (R() < .5), 3); rooms.push(cur); seen.add(key(cur.sx, cur.sy));
-  const L = Math.min(10, 5 + Math.ceil(f / 2));
+  const L = DGN.lair ? Math.min(10, 4 + DGN.lair.tier + f) : Math.min(10, 5 + Math.ceil(f / 2));
   while (rooms.length < L) {
     const nb = [[1, 0], [-1, 0], [0, -1], [0, 1]].map(([a, b]) => [cur.sx + a, cur.sy + b]).filter(([x, y]) => x >= 0 && x < 4 && y >= 0 && y < 4 && !seen.has(key(x, y)));
     if (!nb.length) break;
@@ -10047,28 +10053,28 @@ function dgnBuild(f) {
   const N = DGN.N, C = DGN.C, g = new THREE.Group(); DGN.g = g; wScene.add(g); DGN.fx = [];
   const [ox, oz] = dgnW(0, 0); g.position.set(0, 0, 0);
   const tex = (a, b, seed) => { const t = canvasTex(256, 256, (c, w) => { c.fillStyle = a; c.fillRect(0, 0, w, w); const R = dgnRng(seed); for (let i = 0; i < 900; i++) { c.fillStyle = R() < .5 ? b : 'rgba(0,0,0,.25)'; const s = 1 + R() * 5; c.fillRect(R() * w, R() * w, s, s); } c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 2; for (let i = 0; i < 14; i++) { c.beginPath(); c.moveTo(R() * w, R() * w); c.lineTo(R() * w, R() * w); c.stroke(); } }); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
-  const hot = f / 8, floorT = tex('#2a1a16', '#3e2620', 11 + f), wallT = tex('#3a2420', '#522e24', 23 + f);
+  const TH = DGN.lair ? DGN.lair.th : null, hot = TH ? .5 : f / 8, floorT = TH ? tex(TH.floor[0], TH.floor[1], DGN.lair.seed + f) : tex('#2a1a16', '#3e2620', 11 + f), wallT = TH ? tex(TH.wall[0], TH.wall[1], DGN.lair.seed + 7 + f) : tex('#3a2420', '#522e24', 23 + f);
   floorT.repeat.set(N, N); wallT.repeat.set(1, 1.4);
   const fl = new THREE.Mesh(new THREE.PlaneGeometry(N * C, N * C), new THREE.MeshStandardMaterial({ map: floorT, roughness: .95 })); fl.rotation.x = -Math.PI / 2; fl.position.set(DGN.O.x, 0, DGN.O.z); fl.receiveShadow = true; g.add(fl);
   const ce = new THREE.Mesh(new THREE.PlaneGeometry(N * C, N * C), new THREE.MeshStandardMaterial({ color: 0x120a08, roughness: 1 })); ce.rotation.x = Math.PI / 2; ce.position.set(DGN.O.x, 8.6, DGN.O.z); g.add(ce);
   // walls: every closed cell beside an open one
   const walls = []; for (let j = -1; j <= N; j++) for (let i = -1; i <= N; i++) { if (dgnCell(i, j)) continue; let near = false; for (let a = -1; a <= 1 && !near; a++) for (let b = -1; b <= 1; b++) if (dgnCell(i + a, j + b)) { near = true; break; } if (near) walls.push([i, j]); }
-  const wm = new THREE.InstancedMesh(new THREE.BoxGeometry(C, 8.6, C), new THREE.MeshStandardMaterial({ map: wallT, roughness: .9, emissive: new THREE.Color(0x3a0c04), emissiveIntensity: .25 + hot * .4 }), walls.length);
+  const wm = new THREE.InstancedMesh(new THREE.BoxGeometry(C, 8.6, C), new THREE.MeshStandardMaterial({ map: wallT, roughness: .9, emissive: new THREE.Color(TH ? TH.emis : 0x3a0c04), emissiveIntensity: .25 + hot * .4 }), walls.length);
   const mm = new THREE.Matrix4(); walls.forEach(([i, j], k) => { const [x, z] = dgnW(i, j); mm.makeTranslation(x, 4.3, z); wm.setMatrixAt(k, mm); }); wm.castShadow = wm.receiveShadow = true; g.add(wm);
   const R = dgnRng(777 + f * 31);
   // lava: glowing cracks across the floors, brighter the higher you go, and a pool in some rooms
-  const lavaM = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff5a1a).lerp(new THREE.Color(0xffc060), hot * .5) });
+  const lavaM = new THREE.MeshBasicMaterial({ color: TH ? new THREE.Color(TH.glow) : new THREE.Color(0xff5a1a).lerp(new THREE.Color(0xffc060), hot * .5) });
   for (const rm of DGN.rooms) {
     const [cx, cz] = dgnW(rm.c[0], rm.c[1]);
     for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(.18, .04, 3 + R() * 6), lavaM); m.position.set(cx + (R() - .5) * 13, .03, cz + (R() - .5) * 13); m.rotation.y = R() * Math.PI; g.add(m); }
-    if (rm !== DGN.start && rm !== DGN.end && R() < .45) { const m = new THREE.Mesh(new THREE.CircleGeometry(1.6 + R(), 18), lavaM); m.rotation.x = -Math.PI / 2; m.position.set(cx + (R() - .5) * 8, .04, cz + (R() - .5) * 8); g.add(m); const s = glowSprite(0xff6a2a, 5, .55); s.position.set(m.position.x, .8, m.position.z); g.add(s); }
-    for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(.55, .7, 8.6, 7), new THREE.MeshStandardMaterial({ color: 0x2a1a16, roughness: .9 })); p.position.set(cx + a * 7.4, 4.3, cz + b * 7.4); p.castShadow = true; g.add(p); }
-    for (let k = 0; k < 2; k++) { const t = glowSprite(0xff8a3a, 2.2, .85); t.position.set(cx + (k ? 7.9 : -7.9), 3.2, cz); g.add(t); DGN.fx.push(t); }
+    if (rm !== DGN.start && rm !== DGN.end && R() < .45) { const m = new THREE.Mesh(new THREE.CircleGeometry(1.6 + R(), 18), lavaM); m.rotation.x = -Math.PI / 2; m.position.set(cx + (R() - .5) * 8, .04, cz + (R() - .5) * 8); g.add(m); const s = glowSprite(TH ? TH.glow : 0xff6a2a, 5, .55); s.position.set(m.position.x, .8, m.position.z); g.add(s); }
+    for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(.55, .7, 8.6, 7), new THREE.MeshStandardMaterial({ color: TH ? new THREE.Color(TH.wall[0]) : 0x2a1a16, roughness: .9 })); p.position.set(cx + a * 7.4, 4.3, cz + b * 7.4); p.castShadow = true; g.add(p); }
+    for (let k = 0; k < 2; k++) { const t = glowSprite(TH ? TH.glow : 0xff8a3a, 2.2, .85); t.position.set(cx + (k ? 7.9 : -7.9), 3.2, cz); g.add(t); DGN.fx.push(t); }
   }
   // a few lights where it matters: the stairs down, the way up, and the middle of the floor
   const lights = [DGN.start, DGN.end, DGN.rooms[DGN.rooms.length >> 1]].filter(Boolean);
-  for (const rm of lights) { const [x, z] = dgnW(rm.c[0], rm.c[1]); const L = new THREE.PointLight(0xff8a4a, 40, 40, 1.6); L.position.set(x, 6, z); g.add(L); }
-  const amb = new THREE.PointLight(0xff5a2a, 25, 70, 1.4); const [mx, mz] = dgnW(8, 8); amb.position.set(mx, 7, mz); g.add(amb);
+  for (const rm of lights) { const [x, z] = dgnW(rm.c[0], rm.c[1]); const L = new THREE.PointLight(TH ? TH.light : 0xff8a4a, 40, 40, 1.6); L.position.set(x, 6, z); g.add(L); }
+  const amb = new THREE.PointLight(TH ? TH.light : 0xff5a2a, 25, 70, 1.4); const [mx, mz] = dgnW(8, 8); amb.position.set(mx, 7, mz); g.add(amb);
   // the stairs down (and, on the first floor, the way out), and the healing spring beside them
   const [sx, sz] = dgnW(DGN.start.c[0], DGN.start.c[1] + 1);
   const arch = (x, z, col, open) => { const a = new THREE.Group(), st = new THREE.MeshStandardMaterial({ color: 0x3a2420, roughness: .9 });
@@ -10082,21 +10088,23 @@ function dgnBuild(f) {
   const wat = new THREE.Mesh(new THREE.CircleGeometry(.95, 18), new THREE.MeshBasicMaterial({ color: 0x5fe8ff })); wat.rotation.x = -Math.PI / 2; wat.position.set(wx, .35, wz); g.add(wat);
   const ws = glowSprite(0x7fe8ff, 3.4, .6); ws.position.set(wx, 1, wz); g.add(ws); DGN.well = { x: wx, z: wz };
   if (DGN.end) { const [ex2, ez2] = dgnW(DGN.end.c[0], DGN.end.c[1] - 1); DGN.upArch = arch(ex2, ez2 - 1.4, dgnBeaten(f) ? 0xffc94a : 0xff3a2a, dgnBeaten(f)); DGN.up = { x: ex2, z: ez2 }; } else { DGN.upArch = null; DGN.up = null; }
-  if (f === 8) dgnArena(g);
+  if (f === dgnTop()) dgnArena(g);
 }
-const dgnBeaten = f => ((wanderer.ch3 && wanderer.ch3.dgnMax) || 0) >= f;
+const dgnBeaten = f => DGN.lair ? lairProg(DGN.lair) >= f : ((wanderer.ch3 && wanderer.ch3.dgnMax) || 0) >= f;
 function dgnSpawnGroup(rm, f) {
+  if (DGN.lair) { lairSpawnGroup(rm, f); return; }
   const [cx, cz] = dgnW(rm.c[0], rm.c[1]), list = DGN_ROSTER[Math.min(7, f)], base = list[Math.random() * list.length | 0], D = DGN_BASE[base];
-  const n = D.pack ? 2 + (Math.random() < .5) + (f >= 4) : D.fly ? 1 + (f >= 5) : 1 + (Math.random() < .25 + f * .05);
+  const n = D.pack ? 2 + (f >= 3 && Math.random() < .5) : D.fly ? 1 + (f >= 5) : 1 + (Math.random() < .25 + f * .05);
   for (let i = 0; i < n; i++) { const c = spawnFauna(dgnType(base, f), cx + rand(-5, 5), cz + rand(-5, 5), [cx, cz]); c.dgn = f; }
 }
 function dgnPopulate(f) {
+  if (DGN.lair) { lairPopulate(f); return; }
   if (f >= 8) return;
   for (const rm of DGN.rooms) { if (rm === DGN.start) continue; if (rm === DGN.end && !dgnBeaten(f)) continue; if (!rm.side && Math.random() < .3) continue; dgnSpawnGroup(rm, f); } // most rooms hold something; side rooms always do
   DGN.warden = null;
   if (!dgnBeaten(f) && DGN.end) { // the warden, standing between you and the stairs
     const [cx, cz] = dgnW(DGN.end.c[0], DGN.end.c[1]), base = f >= 5 ? 'cindercrawler' : 'basaltbrute';
-    const c = spawnFauna(dgnType(base, f, true), cx, cz + 2, [cx, cz]); c.dgn = f; c.mesh.scale.setScalar(1.6); DGN.warden = c;
+    const c = spawnFauna(dgnType(base, f, true), cx, cz + 2, [cx, cz]); c.dgn = f; c.sc = 1.6; DGN.warden = c;
     dgnSpawnGroup(DGN.end, f);
   }
   DGN.spawnT = 30;
@@ -10106,12 +10114,14 @@ function dgnClearFloor() {
   for (const c of [...fauna.list]) if (c.dgn || c.boss) { if (c.boss) fauna.list.splice(fauna.list.indexOf(c), 1); else removeFauna(c); }
   if (DGN.g) { wScene.remove(DGN.g); DGN.g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); DGN.g = null; }
   if (DGN.k && DGN.k.R && DGN.k.R.root.parent) DGN.k.R.root.parent.remove(DGN.k.R.root);
+  if (DGN.lb && DGN.lb.mesh.parent) DGN.lb.mesh.parent.remove(DGN.lb.mesh); DGN.lb = null;
   DGN.k = null; world.khz = null; DGN.warden = null; DGN.barrier = false; DGN.cut = false; DGN.won = false;
 }
 function dgnLookOn() { // inside the mountain: no sky, a red dark, the heat of the rock
   if (!DGN.sky) DGN.sky = canvasTex(4, 256, (c) => { const gr = c.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#060203'); gr.addColorStop(1, '#1a0704'); c.fillStyle = gr; c.fillRect(0, 0, 4, 256); });
-  wScene.background = DGN.sky; wScene.fog.color.set(0x160805); wScene.fog.density = .022;
-  if (world.hemi) { world.hemi.intensity = .42; world.hemi.color.set(0xffb08a); world.hemi.groundColor.set(0x3a0e06); }
+  const TH = DGN.lair ? DGN.lair.th : null;
+  wScene.background = DGN.sky; wScene.fog.color.set(TH ? TH.fog : 0x160805); wScene.fog.density = .022;
+  if (world.hemi) { world.hemi.intensity = .42; world.hemi.color.set(TH ? TH.hemi[0] : 0xffb08a); world.hemi.groundColor.set(TH ? TH.hemi[1] : 0x3a0e06); }
   if (world.sun) world.sun.intensity = .08;
   if (world.veil) world.veil.visible = false; if (world.snow) world.snow.visible = false; if (world.plSea) world.plSea.visible = false;
   const inv = invState(); inv.heat = 100; // warm in here
@@ -10135,8 +10145,9 @@ function dgnEnter(f, at, quick) { // go to floor f: at = { x, z } (a save), 'top
     placeOrion().then(() => { if (world.orion && DGN.on) world.orion.root.position.set(p.x - 1.5, 0, p.z + 1.2); }).catch(() => null);
     placeCrew().catch(() => null);
     renderTasks(); clock.getDelta();
-    notice(f === 8 ? 'Olympus Mons · the summit' : `Olympus Mons · floor ${f} of 8 · creatures lv ${dgnLv(f)}–${dgnLv(f) + 3}`, DGN_NAMES[f].toUpperCase(), 3600);
-    if (f === 1 && !(wanderer.ch3 && wanderer.ch3.dgnSeen)) { wanderer.ch3 = Object.assign({}, wanderer.ch3, { dgnSeen: true }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster(); setTimeout(() => lootMsg('Inside the mountain, every XP counts 1.9 ×', '#ffc94a'), 2600); setTimeout(() => lootMsg('Each floor’s warden holds the stairs up · the spring by the stairs heals you', '#cfd6e6'), 5200); }
+    if (DGN.lair) { const L = DGN.lair; notice(f === dgnTop() ? (lairCleared(L) ? `${L.name} · the heart, empty now` : `${L.name} · the heart · ${lairBoss(L).name}`) : `${L.name} · floor ${f} of ${L.floors} · the ${natSp(L.S).name}`, f === dgnTop() ? 'THE LAIR’S HEART' : `FLOOR ${f}`, 3600); if (f === 1 && !lairProg(L)) setTimeout(() => lootMsg(natSp(L.S).desc, '#d8c8ff'), 2400); }
+    else notice(f === 8 ? 'Olympus Mons · the summit' : `Olympus Mons · floor ${f} of 8 · creatures lv ${dgnLv(f)}–${dgnLv(f) + 3}`, DGN_NAMES[f].toUpperCase(), 3600);
+    if (!DGN.lair && f === 1 && !(wanderer.ch3 && wanderer.ch3.dgnSeen)) { wanderer.ch3 = Object.assign({}, wanderer.ch3, { dgnSeen: true }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster(); setTimeout(() => lootMsg('Inside the mountain, every XP counts 1.9 ×', '#ffc94a'), 2600); setTimeout(() => lootMsg('Each floor’s warden holds the stairs up · the spring by the stairs heals you', '#cfd6e6'), 5200); }
   };
   if (quick) { go(); return; }
   const fd = $('#fade'); state = 'loadingCh'; fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.whoosh();
@@ -10145,17 +10156,22 @@ function dgnEnter(f, at, quick) { // go to floor f: at = { x, z } (a save), 'top
 function dgnLeave() { // back out onto the slope, by the door
   const fd = $('#fade'); state = 'loadingCh'; fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.whoosh();
   setTimeout(() => {
-    dgnClearFloor(); DGN.on = false; DGN.open = null; for (const ch of world.chunks.values()) ch.visible = true; dgnRestoreLook();
-    const G = world.dgnGate, p = player.position; if (G) p.set(G.x, wHeight(G.x, G.z + 2), G.z + 2); else p.set(5, wHeight(5, 14.5), 14.5);
+    const LR = DGN.lair; dgnClearFloor(); DGN.on = false; DGN.open = null; DGN.lair = null; for (const ch of world.chunks.values()) ch.visible = true; dgnRestoreLook();
+    const G = LR ? LR.gate : world.dgnGate, p = player.position; if (G) p.set(G.x, wHeight(G.x, G.z + 2), G.z + 2); else p.set(5, wHeight(5, 14.5), 14.5);
     player.rotation.y = 0; ex.yaw = Math.PI; ex.snap = true; vel.set(0, 0, 0); updateChunks(99);
     placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
     state = 'explore'; fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; }, 950);
-    notice('Olympus Mons', 'BACK ON THE SLOPE', 2400);
+    notice(LR ? LR.name : 'Olympus Mons', LR ? 'BACK ON THE SURFACE' : 'BACK ON THE SLOPE', 2400);
   }, 520);
 }
 function dgnNear(p) { // what you can use in here
   if (!DGN.on) return null;
   const d = (o, r) => o && Math.hypot(p.x - o.x, p.z - o.z) < r;
+  if (DGN.lair) { const L = DGN.lair, top = dgnTop();
+    if (d(DGN.up, 3)) return { id: 'dgnUp', label: dgnBeaten(DGN.f) ? (DGN.f + 1 === top ? (lairCleared(L) ? 'Down to the lair’s heart' : `Down to the lair’s heart · ${lairBoss(L).short}`) : `Deeper · floor ${DGN.f + 1}`) : 'The way down · the matriarch still stands' };
+    if (d(DGN.down, 3)) return { id: 'dgnDown', label: DGN.f === 1 || (DGN.f === top && lairCleared(L)) ? 'Leave the lair' : `Back up · floor ${DGN.f - 1}` };
+    if (d(DGN.well, 2.4)) return { id: 'dgnWell', label: 'Healing spring' };
+    return null; }
   if (d(DGN.up, 3)) return { id: 'dgnUp', label: dgnBeaten(DGN.f) ? `Stairs up · floor ${DGN.f + 1}${DGN.f + 1 === 8 ? ' · the summit' : ''}` : 'Stairs up · the warden still stands' };
   if (d(DGN.down, 3)) return { id: 'dgnDown', label: DGN.f === 1 ? 'Leave the mountain' : `Stairs down · floor ${DGN.f - 1}` };
   if (d(DGN.well, 2.4)) return { id: 'dgnWell', label: 'Healing spring' };
@@ -10163,10 +10179,10 @@ function dgnNear(p) { // what you can use in here
   return null;
 }
 function dgnUse(id) {
-  if (id === 'dgnUp') { if (!dgnBeaten(DGN.f)) { lootMsg('The way up is sealed · defeat the warden first', '#ff8f86'); return; } dgnEnter(DGN.f + 1); return; }
-  if (id === 'dgnDown') { if (DGN.f === 1 || (DGN.f === 8 && khzJoined())) dgnLeave(); else dgnEnter(DGN.f - 1, 'top'); return; }
+  if (id === 'dgnUp') { if (!dgnBeaten(DGN.f)) { lootMsg(DGN.lair ? 'The way down is sealed · kill the matriarch first' : 'The way up is sealed · defeat the warden first', '#ff8f86'); return; } dgnEnter(DGN.f + 1); return; }
+  if (id === 'dgnDown') { if (DGN.f === 1 || (DGN.lair ? DGN.f === dgnTop() && lairCleared(DGN.lair) : DGN.f === 8 && khzJoined())) dgnLeave(); else dgnEnter(DGN.f - 1, 'top'); return; }
   if (id === 'dgnWell') { if (time - DGN.wellT < 40) { lootMsg(`The spring is still settling · ${Math.ceil(40 - (time - DGN.wellT))} s`, '#cfd6e6'); return; } DGN.wellT = time; ex.hp = maxHP(); invState().hp = ex.hp; sfx.chime(); lootMsg('Healed · the spring needs 40 seconds to fill again', '#7fe8ff'); burst(player.position.x, 1, player.position.z, 30, 3, .5, .9, 1, .8, 1, 1.4); return; }
-  if (id === 'dgnGate') { const top = Math.max(1, Math.min(8, ((wanderer.ch3 && wanderer.ch3.dgnMax) || 0) + 1));
+  if (id === 'dgnGate') { DGN.lair = null; const top = Math.max(1, Math.min(8, ((wanderer.ch3 && wanderer.ch3.dgnMax) || 0) + 1));
     if (top > 1) openChoice('OLYMPUS MONS', [{ text: `Climb to floor ${top} · ${DGN_NAMES[top]}`, onPick: () => dgnEnter(top) }, { text: 'Start from the bottom · floor 1', onPick: () => dgnEnter(1) }, { text: 'Not yet', onPick: () => {} }]);
     else dgnEnter(1); }
 }
@@ -10177,28 +10193,29 @@ function dgnTick(dt) {
   if (DGN.upArch) { const open = dgnBeaten(DGN.f); DGN.upArch.userData.door.material.opacity = open ? .45 + Math.sin(time * 3) * .15 : .25; DGN.upArch.userData.door.material.color.set(open ? 0xffc94a : 0xff3a2a); DGN.upArch.userData.glow.material.color.set(open ? 0xffc94a : 0xff3a2a); }
   // the warden falls: the stairs open
   if (DGN.warden && DGN.warden.dead && !dgnBeaten(DGN.f)) {
-    wanderer.ch3 = Object.assign({}, wanderer.ch3, { dgnMax: DGN.f }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster();
-    DGN.warden = null; sfx.chime(); notice(`Floor ${DGN.f} cleared`, DGN.f === 7 ? 'THE WAY TO THE SUMMIT IS OPEN' : 'THE STAIRS UP ARE OPEN', 3400); renderTasks();
+    if (DGN.lair) { lairSetProg(DGN.lair, DGN.f); DGN.warden = null; sfx.chime(); notice(`Floor ${DGN.f} cleared`, DGN.f + 1 === dgnTop() ? `${lairBoss(DGN.lair).short.toUpperCase()} AWAITS BELOW` : 'THE WAY DOWN IS OPEN', 3400); }
+    else { wanderer.ch3 = Object.assign({}, wanderer.ch3, { dgnMax: DGN.f }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster();
+    DGN.warden = null; sfx.chime(); notice(`Floor ${DGN.f} cleared`, DGN.f === 7 ? 'THE WAY TO THE SUMMIT IS OPEN' : 'THE STAIRS UP ARE OPEN', 3400); } renderTasks();
   }
   // they keep coming: a fresh pack every half a minute or so while there are few about (the grind)
-  if (state === 'explore' && DGN.f < 8 && (DGN.spawnT -= dt) <= 0) {
+  if (state === 'explore' && DGN.f < dgnTop() && (DGN.spawnT -= dt) <= 0) {
     DGN.spawnT = 32; const alive = fauna.list.filter(c => c.dgn && !c.dead).length, p = player.position;
     if (alive < 5 + DGN.f / 2) { const far = DGN.rooms.filter(rm => rm !== DGN.start && Math.hypot(dgnW(rm.c[0], rm.c[1])[0] - p.x, dgnW(rm.c[0], rm.c[1])[1] - p.z) > 26); if (far.length) dgnSpawnGroup(far[Math.random() * far.length | 0], DGN.f); }
   }
-  if (DGN.f === 8) dgnArenaTick(dt);
+  if (DGN.f === dgnTop()) dgnArenaTick(dt);
 }
 function dgnDown() { // you fell
   if (DGN.downing) return; DGN.downing = true;
   const fight = !!DGN.boss; state = 'loadingCh'; vel.set(0, 0, 0);
   const bo = $('#blackout'); bo.style.transition = 'opacity 1.1s'; bo.style.opacity = 1;
-  notice(fight ? 'Khazglar’s hammer put you down' : 'You blacked out', fight ? 'THE FIGHT STARTS AGAIN' : 'ORION DRAGGED YOU BACK TO THE STAIRS', 3200);
+  notice(fight ? (DGN.lair ? `${DGN.boss.Bd.short} put you down` : 'Khazglar’s hammer put you down') : 'You blacked out', fight ? 'THE FIGHT STARTS AGAIN' : 'ORION DRAGGED YOU BACK TO THE STAIRS', 3200);
   setTimeout(() => {
     const p = player.position;
-    if (fight) { dgnBossReset(); const [gx, gz] = dgnW(DGN.arena.gate[0], DGN.arena.gate[1] - 1.6); p.set(gx, 0, gz); ex.hp = maxHP(); }
+    if (fight) { if (DGN.lair) lairBossReset(); else dgnBossReset(); const [gx, gz] = dgnW(DGN.arena.gate[0], DGN.arena.gate[1] - 1.6); p.set(gx, 0, gz); ex.hp = maxHP(); }
     else { for (const c of fauna.list) if (c.dgn && !c.dead) { c.state = 'idle'; c.tgt = null; } p.set(DGN.down.x, 0, DGN.down.z - 3.5); ex.hp = Math.round(maxHP() * .6); }
     invState().hp = ex.hp; ex.snap = true; vel.set(0, 0, 0); if (world.orion) world.orion.root.position.set(p.x - 1.5, 0, p.z + 1.2);
     state = 'explore'; DGN.downing = false; bo.style.opacity = 0; setTimeout(() => { bo.style.transition = ''; }, 1200);
-    if (fight) setTimeout(() => kbark('Up already? Good. Run again and I’ll break your legs myself.', 3600), 900);
+    if (fight && !DGN.lair) setTimeout(() => kbark('Up already? Good. Run again and I’ll break your legs myself.', 3600), 900);
   }, 2600);
 }
 // ---- the summit: the caldera arena, the throne, and the hermit with his hammer ----
@@ -10225,7 +10242,7 @@ function dgnArena(g) {
   const [gx, gz] = dgnW(A.gate[0], A.gate[1]);
   const cur = new THREE.Mesh(new THREE.PlaneGeometry(DGN.C, 6), new THREE.MeshBasicMaterial({ color: 0xff5a1a, transparent: true, opacity: .5, side: THREE.DoubleSide })); cur.position.set(gx, 3, gz - DGN.C / 2 + .2); g.add(cur); DGN.curtain = cur;
   DGN.barrier = true;
-  if (!khzJoined()) dgnKhzPlace();
+  if (DGN.lair) { const k = new THREE.Color(DGN.lair.th.glow); lavaM.color.copy(k); L.color.copy(k); lairBossPlace(); } else if (!khzJoined()) dgnKhzPlace();
 }
 async function dgnKhzPlace() {
   const f = DGN.f, R = await companionRig('khazglar'); if (!R || !DGN.on || DGN.f !== f || khzJoined()) return;
@@ -10236,6 +10253,7 @@ async function dgnKhzPlace() {
 }
 function dgnArenaTick(dt) {
   const A = DGN.arena; if (!A) return;
+  if (DGN.lair) { lairArenaTick(dt); return; }
   const p = player.position, [gi, gj] = A.gate, [gx, gz] = dgnW(gi, gj), K = DGN.k;
   if (DGN.curtain) { DGN.curtain.visible = DGN.barrier; DGN.curtain.material.opacity = .4 + Math.sin(time * 7) * .12; }
   if (DGN.arenaL) DGN.arenaL.intensity = 70 + Math.sin(time * 2.3) * 10 + (DGN.flashL || 0) * 260; DGN.flashL = Math.max(0, (DGN.flashL || 0) - dt * 2.5);
@@ -10324,6 +10342,7 @@ const KB = { hp: 9000, lv: 35 }; // about a minute and a half with Orion and Nic
 function dgnBossBar() {
   const el = $('#bossBar'); if (!el) return;
   const B = DGN.boss; if (!B) { el.classList.remove('on'); return; }
+  if (B.lair) { lairBossBar(); return; }
   const c = B.c, frac = Math.max(0, c.hp / KB.hp), ward = !dgnWardDown();
   el.innerHTML = `<div class="bb-h"><b>KHAZGLAR</b><small>LV ${KB.lv} · RAID BOSS · PHASE ${B.ph} OF 3</small></div><div class="bb"><i style="width:${(frac * 100).toFixed(1)}%"></i></div><em>${ward ? 'His ward holds · fight him together, all three of you' : B.ph === 3 ? 'Watch the sky · get out of the circles' : B.ph === 2 ? 'Rust hounds! · keep moving' : 'Dodge the hammer · stay out of the red rings'}</em>`;
   el.classList.add('on');
@@ -10334,6 +10353,7 @@ function dgnWardDown() { // Orion and Nico both in the fight, near him
   return !!(o && n && Math.hypot(o.x - c.x, o.z - c.z) < 30 && Math.hypot(n.x - c.x, n.z - c.z) < 30);
 }
 function dgnBossDmg(c, dmg) { // what actually gets through
+  if (DGN.lair) return dmg; // a lair's boss has no ward
   if (!dgnWardDown()) { if (time - (DGN.wardMsgT || -9) > 3) { DGN.wardMsgT = time; lootMsg('His ward turns the blow · you need Orion and Nico beside you', '#ff8f86'); } return dmg * .25; }
   return dmg;
 }
@@ -10349,7 +10369,7 @@ function dgnBossStart() {
 }
 function dgnBossClear() {
   const B = DGN.boss; if (!B) return;
-  for (const m of B.tels) wScene.remove(m); for (const m of B.mets) wScene.remove(m.tel);
+  for (const m of B.tels) wScene.remove(m); for (const m of B.mets) wScene.remove(m.tel); if (B.lair) lairBossCleanup(B);
   if (B.proj && B.proj.m) wScene.remove(B.proj.m);
   const i = fauna.list.indexOf(B.c); if (i >= 0) fauna.list.splice(i, 1);
   DGN.boss = null; dgnBossBar(); sfx.combat && sfx.combat(false);
@@ -10461,11 +10481,13 @@ const KHZ_IDS = [...Array.from({ length: 13 }, (_, i) => 'CH3KHAZT' + (i + 1)), 
 const khzClip = id => { const i = KHZ_IDS.indexOf(id); return khzVo && i >= 0 && khzVo[i] ? [khzVo[i]] : undefined; };
 function khzTaskText() { // the objective, as far up the mountain as you've got
   if (khzJoined()) return 'Find Khazglar on Olympus Mons, Mars';
-  if (DGN.on) return DGN.f === 8 ? (DGN.boss ? 'Defeat Khazglar · all three of you' : 'Face Khazglar on the caldera throne') : `Climb Olympus Mons · floor ${DGN.f} of 8${dgnBeaten(DGN.f) ? ' · take the stairs up' : ' · defeat the warden'}`;
+  if (DGN.on && !DGN.lair) return DGN.f === 8 ? (DGN.boss ? 'Defeat Khazglar · all three of you' : 'Face Khazglar on the caldera throne') : `Climb Olympus Mons · floor ${DGN.f} of 8${dgnBeaten(DGN.f) ? ' · take the stairs up' : ' · defeat the warden'}`;
   const top = (wanderer.ch3 && wanderer.ch3.dgnMax) || 0;
   return top ? `Find Khazglar · climb Olympus Mons (${top} of 8 floors cleared)` : 'Find Khazglar on Olympus Mons, Mars';
 }
 function dgnTarget() { // where the marker points inside the mountain
+  if (DGN.lair) { const L = DGN.lair; if (DGN.f === dgnTop()) { if (DGN.lb && !lairCleared(L)) return { x: DGN.lb.x, z: DGN.lb.z, label: lairBoss(L).short }; return DGN.down ? { x: DGN.down.x, z: DGN.down.z, label: 'The way out' } : null; }
+    if (dgnBeaten(DGN.f) && DGN.up) return { x: DGN.up.x, z: DGN.up.z, label: 'The way down' }; if (DGN.warden && !DGN.warden.dead) return { x: DGN.warden.x, z: DGN.warden.z, label: 'The matriarch' }; return DGN.up ? { x: DGN.up.x, z: DGN.up.z, label: 'The way down' } : null; }
   if (DGN.f === 8) { const K = DGN.k; if (khzJoined() && DGN.arena) return { x: DGN.arena.c[0], z: DGN.arena.c[1] - DGN.arena.R + 6, label: 'The way down' }; return K ? { x: K.x, z: K.z, label: 'Khazglar' } : null; }
   if (dgnBeaten(DGN.f) && DGN.up) return { x: DGN.up.x, z: DGN.up.z, label: 'Stairs up' };
   if (DGN.warden && !DGN.warden.dead) return { x: DGN.warden.x, z: DGN.warden.z, label: 'The warden' };
@@ -10473,9 +10495,10 @@ function dgnTarget() { // where the marker points inside the mountain
 }
 function kbark(text, ms = 3000, clip) { showNarr('KHAZGLAR', text); clearTimeout(world.barkT); world.barkT = setTimeout(hideNarr, clip ? Math.max(ms, clip.duration * 1000 + 300) : ms); if (clip) sfx.playNarr(clip, 1.3); }
 function dgnReset() { // out of the mountain at once (a load, a landing elsewhere, the main menu)
-  if (!DGN.on) return; dgnClearFloor(); DGN.on = false; DGN.open = null; for (const ch of world.chunks.values()) ch.visible = true; dgnRestoreLook();
+  if (!DGN.on) return; dgnClearFloor(); DGN.on = false; DGN.lair = null; DGN.open = null; for (const ch of world.chunks.values()) ch.visible = true; dgnRestoreLook();
 }
 function khzTick(dt) {
+  lairGateTick();
   if (world.khzFire) { world.khzFire.material.opacity = .75 + Math.sin(time * 9) * .1 + Math.sin(time * 23) * .06; if (world.khzLight) world.khzLight.intensity = 16 + Math.sin(time * 11) * 3; }
   if (world.khzBeacon) world.khzBeacon.visible = khzPending();
   dgnTick(dt);
@@ -10506,6 +10529,352 @@ function khzFarHint() { // landed on Mars, but nowhere near the mountain
   const W = world.planet; if (!W || W.P.id !== 'mars' || W.khz || !khzPending()) return;
   const km = (Math.acos(clamp(W.D.dot(khzHutDir()), -1, 1)) * 2400 / 1000).toFixed(1);
   setTimeout(() => notice(`Olympus Mons is ${km} km away`, 'TAKE THE HELM TO FLY THERE', 4200), 4200);
+}
+/* ============ Native species and lairs across the galaxy ============
+   Every generated system (and the five uncharted ones) has its own native species, built from a seed with the species editor's
+   body plan: legs, arms, eyes, horns, tails, spikes, patterns, glow. They roam the worlds that can hold life and nest in lairs.
+   Every landable world holds lairs (two on a planet, one on a moon): 1,000+ of them, each a dungeon of one to three floors
+   and a boss of that species with its own name, its own mix of attacks, its own rhythm and a phase-three signature.
+   The lairs reuse Olympus Mons' dungeon (DGN), with DGN.lair set. */
+const LAIR_SKIP = new Set(['sol', 'malana', 'sgra', 'steca', 'janira']); // the story's own systems keep their own content
+const lairHash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+const lairPick = (R, a) => a[R() * a.length | 0];
+const lairHsl = (h, s, l) => '#' + new THREE.Color().setHSL(((h % 360) + 360) % 360 / 360, s / 100, l / 100).getHexString();
+const LAIR_SYL = [['vo', 'ka', 'zu', 'ith', 'or', 'ske', 'ma', 'thr', 'qua', 'yl', 'dra', 'nex', 'ul', 'pho', 'gri', 'sa', 'tev', 'bra', 'xe', 'ry', 'hes', 'mor', 'cal', 'vey'],
+  ['rr', 'l', 'th', 'n', 'x', 'sk', 'v', 'gr', 'm', 'z', 'k', 'ss', 'r', 'dh'], ['ak', 'ix', 'oth', 'una', 'el', 'ar', 'is', 'aan', 'or', 'ith', 'ei', 'um', 'ess', 'yr', 'og', 'ane']];
+const lairWord = R => { const w = lairPick(R, LAIR_SYL[0]) + lairPick(R, LAIR_SYL[1]) + lairPick(R, LAIR_SYL[2]) + (R() < .3 ? lairPick(R, LAIR_SYL[1]) + lairPick(R, LAIR_SYL[2]) : ''); return w[0].toUpperCase() + w.slice(1); };
+// themes for the lairs and the species' colours, by the kind of world they're on
+const LAIR_TH = {
+  lush: { hue: 120, floor: ['#1a2416', '#2a3a1e'], wall: ['#24301c', '#34482a'], emis: 0x0c2a08, glow: 0x7aff6a, light: 0x9aff8a, fog: 0x0a160a, hemi: [0xb0ffb0, 0x0a2a0a], word: ['Overgrown', 'Rooted', 'Verdant', 'Thorned'], place: ['Burrows', 'Root-Halls', 'Warrens', 'Thicket'] },
+  ocean: { hue: 190, floor: ['#142228', '#1e3640'], wall: ['#1a2e36', '#28485a'], emis: 0x08242e, glow: 0x5ae8ff, light: 0x7ff0ff, fog: 0x06141a, hemi: [0xa0f0ff, 0x062a3a], word: ['Drowned', 'Coral', 'Tidal', 'Brine'], place: ['Grottoes', 'Sea-Caves', 'Reef-Halls', 'Hollows'] },
+  arid: { hue: 35, floor: ['#2e2216', '#44321e'], wall: ['#3a2a1a', '#5a4026'], emis: 0x2a1a06, glow: 0xffc860, light: 0xffd890, fog: 0x1a1006, hemi: [0xffe0b0, 0x2a1a06], word: ['Sunken', 'Dust', 'Scoured', 'Sandworn'], place: ['Tombs', 'Dunes-Deep', 'Catacombs', 'Pits'] },
+  lava: { hue: 15, floor: ['#2a1a16', '#3e2620'], wall: ['#3a2420', '#522e24'], emis: 0x3a0c04, glow: 0xff7a2a, light: 0xff8a4a, fog: 0x160805, hemi: [0xffb08a, 0x3a0e06], word: ['Molten', 'Cinder', 'Scorched', 'Ember'], place: ['Forges', 'Magma-Tubes', 'Crucible', 'Vents'] },
+  toxic: { hue: 80, floor: ['#1e2410', '#2e3816'], wall: ['#283014', '#3e4a1e'], emis: 0x1e2a04, glow: 0xc8ff4a, light: 0xd8ff7a, fog: 0x101606, hemi: [0xe0ffa0, 0x1a2a04], word: ['Blighted', 'Spore', 'Festering', 'Caustic'], place: ['Hives', 'Mire-Halls', 'Spawning Pits', 'Blight-Warrens'] },
+  frozen: { hue: 205, floor: ['#1a2230', '#2a3648'], wall: ['#24304a', '#3a4c6a'], emis: 0x0a1a3a, glow: 0x9fd8ff, light: 0xbfe6ff, fog: 0x0a1020, hemi: [0xd0e8ff, 0x0a1a3a], word: ['Frozen', 'Rime', 'Glacial', 'Frostbound'], place: ['Ice-Halls', 'Crevasses', 'Cold Vaults', 'Rime-Caves'] },
+  barren: { hue: 270, floor: ['#1c1a22', '#2a2632'], wall: ['#26222e', '#3a3446'], emis: 0x1a0a2a, glow: 0xb08aff, light: 0xc8a8ff, fog: 0x0c0a12, hemi: [0xd0c0ff, 0x1a0a2a], word: ['Hollow', 'Silent', 'Shattered', 'Starless'], place: ['Vaults', 'Sepulchre', 'Deeps', 'Undercroft'] }
+};
+const lairThOf = P => LAIR_TH[P.gtype] || (P.kind === 'desert' ? LAIR_TH.arid : P.kind === 'earth' ? LAIR_TH.lush : P.kind === 'venus' ? LAIR_TH.toxic : LAIR_TH.barren);
+// ---- a species of its own for each system ----
+const SPC_CACHE = new Map();
+function lairTypeOf(S) { const P = S.bodies.find(Q => Q.land && Q.gtype && Q.gtype !== 'barren') || S.bodies.find(Q => Q.land) || S.bodies[0]; return lairThOf(P); }
+let NAT_NAMES = null;
+function natName(S) { // every species its own name: settled once for the whole galaxy, in the galaxy's own order
+  if (!NAT_NAMES) { NAT_NAMES = new Map(); const used = new Set(); for (const Q of SYSTEMS) { const R = dgnRng(lairHash('spn:' + Q.id)); let n; do n = lairWord(R); while (used.has(n)); used.add(n); NAT_NAMES.set(Q.id, n); } }
+  return NAT_NAMES.get(S.id);
+}
+function natSp(S) {
+  if (SPC_CACHE.has(S.id)) return SPC_CACHE.get(S.id);
+  const R = dgnRng(lairHash('sp:' + S.id)), th = lairTypeOf(S), hue = th.hue + (R() - .5) * 80;
+  const legs = lairPick(R, [2, 4, 4, 4, 6, 6, 0]), up = legs === 2;
+  const p = Object.assign(SP_NEW(), {
+    id: 'nat-' + S.id, legs, legLen: up ? .7 + R() * .35 : legs ? .35 + R() * .45 : 0, arms: up ? lairPick(R, [2, 2, 4]) : lairPick(R, [0, 0, 0, 2]), bodyLen: up ? .7 + R() * .5 : .9 + R() * 1, girth: .3 + R() * .35,
+    neck: R() * .45, head: .26 + R() * .22, snout: R() < .6 ? R() * .45 : 0, eyes: lairPick(R, [1, 2, 2, 2, 3, 4, 6, 8]), eyeSize: .05 + R() * .07, horns: lairPick(R, [0, 0, 1, 2, 2, 3, 4]), hornLen: .15 + R() * .4,
+    ears: lairPick(R, ['pointed', 'round', 'fins', 'none']), tail: R() < .75 ? .3 + R() * 1.3 : 0, spikes: lairPick(R, [0, 0, 2, 3, 5, 7]), pattern: lairPick(R, ['plain', 'spots', 'stripes', 'bands', 'scales']), glow: R() < .35,
+    c1: lairHsl(hue, 30 + R() * 45, 26 + R() * 26), c2: lairHsl(hue + 30 + R() * 60, 20 + R() * 40, 60 + R() * 25), c3: lairHsl(hue + 150 + R() * 60, 70 + R() * 30, 55 + R() * 15), scale: 1
+  });
+  const name = natName(S), flies = R() < .35;
+  const temper = lairPick(R, ['territorial', 'cunning', 'ravenous', 'patient', 'swarming', 'proud', 'skittish until cornered', 'relentless']);
+  const diet = lairPick(R, ['hunts in packs', 'grazes on lichen and fights for it', 'eats rock and metal', 'feeds on heat', 'ambushes from the dark', 'drinks light', 'scavenges the dead']);
+  const home = S.bodies.find(Q => Q.land) || S.bodies[0];
+  const sp = { id: S.id, name, p, flies, th, temper, diet, home: home.name, sys: S, desc: `The ${name} of ${S.name}: ${legs ? `${legs}-legged` : 'legless'}, ${p.eyes} eye${p.eyes > 1 ? 's' : ''}${p.horns ? `, ${p.horns} horn${p.horns > 1 ? 's' : ''}` : ''}${p.glow ? ', glowing' : ''}. ${temper[0].toUpperCase() + temper.slice(1)}; it ${diet}.` };
+  SPC_CACHE.set(S.id, sp); return sp;
+}
+// the castes every species comes in, on the same bodies as Olympus Mons' creatures (gentler numbers, they scale with level)
+const SP_ROLE = {
+  runner: { title: 'runner', base: { beast: 'pred', pack: true, hp: 30, dmg: 5, speed: 2, run: 7, xp: 46, r: .75, reach: 1.8, aggro: 20, leash: 55, cd: 1.6 }, k: { scale: .75, spikes: -2 } },
+  hunter: { title: 'stalker', base: { beast: 'pred', stalk: true, hp: 68, dmg: 12, speed: 1.9, run: 7, xp: 92, r: 1.1, reach: 2.3, aggro: 20, leash: 55, cd: 1.6 }, k: { scale: 1 } },
+  brute: { title: 'bulwark', base: { beast: 'pred', hp: 150, dmg: 20, speed: 1.5, run: 5.6, xp: 145, r: 1.5, reach: 2.7, aggro: 15, leash: 55, cd: 2 }, k: { scale: 1.35, horns: 2, spikes: 2 } },
+  glider: { title: 'glider', base: { fly: true, hp: 34, dmg: 9, speed: 9, xp: 58, r: .9, reach: 2, cd: 3.8 }, k: {} }
+};
+const spRoles = sp => sp.flies ? ['runner', 'hunter', 'brute', 'glider'] : ['runner', 'hunter', 'brute'];
+function spType(sp, role, lv, warden) { // a creature of this species at this level (registered once)
+  const key = `sp~${sp.id}~${role}~${lv}${warden ? '~w' : ''}`; if (FAUNA[key]) return key;
+  const Rl = SP_ROLE[role], B = Rl.base, kh = 1 + (lv - 10) * .08, kd = 1 + (lv - 10) * .035, kx = 1 + (lv - 10) * .06, w = warden ? 4 : 1;
+  const D = Object.assign({}, B, { name: warden ? `${sp.name} matriarch · lv ${lv}` : `${sp.name} ${Rl.title} · lv ${lv}`, hp: Math.round(B.hp * kh * w), dmg: Math.round(B.dmg * kd * (warden ? 1.4 : 1)), xp: Math.round(B.xp * kx * (warden ? 5 : 1)),
+    pack: warden ? false : B.pack, spot: warden ? `The ${sp.name} matriarch rises!` : `${sp.name} ${Rl.title}s!`,
+    loot: warden ? () => [['medkit', 1], ['crystal', 2], ['obsidian', 1], Math.random() < .5 && ['warpcell', 1]] : role === 'brute' ? () => [['metal', 1], Math.random() < .3 && ['medkit', 1]] : () => [Math.random() < .5 && ['scrap', 1], Math.random() < .2 && ['crystal', 1]] });
+  if (B.fly) D.look = { body: new THREE.Color(sp.p.c1).getHex(), dark: new THREE.Color(sp.p.c3).getHex(), s: 1.9 };
+  else { const k = Rl.k; D.sp = Object.assign({}, sp.p, { scale: (k.scale || 1) * (warden ? 1.5 : 1), horns: Math.max(0, Math.min(5, sp.p.horns + (k.horns || 0) + (warden ? 1 : 0))), spikes: Math.max(0, sp.p.spikes + (k.spikes || 0)), glow: sp.p.glow || warden }); }
+  FAUNA[key] = D; return key;
+}
+// ---- the lairs: generated once, from the galaxy itself ----
+let LAIRS = null;
+function lairsAll() {
+  if (LAIRS) return LAIRS;
+  LAIRS = { list: [], byBody: new Map(), bySys: new Map(), byId: new Map() };
+  const sol = sysById('sol'), used = new Set();
+  for (const S of SYSTEMS) {
+    if (LAIR_SKIP.has(S.id)) continue;
+    const d = Math.hypot(S.map.x - sol.map.x, S.map.y - sol.map.y), lv0 = clamp(Math.round(12 + d * 44), 12, 86), arr = [];
+    for (const P of S.bodies) {
+      if (!P.land || P.kind === 'station' || P.dock || P.minor) continue;
+      const n = P.parent ? 1 : 2, list = [];
+      for (let k = 0; k < n; k++) {
+        const id = `${P.id}~${k}`, R = dgnRng(lairHash('lair:' + id)), tier = P.parent ? 0 : k + (R() < .35 ? 1 : 0), th = lairThOf(P);
+        const L = { id, S, P, k, seed: lairHash(id) % 900000, tier: Math.min(2, tier), floors: 1 + Math.min(2, tier), lv: Math.min(100, lv0 + k * 6 + Math.min(2, tier) * 3 + (R() * 3 | 0)), th, ang: (lairHash(id + 'a') % 6283) / 1000 + k * 2.4, dist: 62 + R() * 46 };
+        do L.bossName = lairWord(R); while (used.has(L.bossName)); used.add(L.bossName); L.name = `The ${lairPick(R, th.word)} ${lairPick(R, th.place)} of ${L.bossName}`;
+        list.push(L); arr.push(L); LAIRS.list.push(L); LAIRS.byId.set(id, L);
+      }
+      LAIRS.byBody.set(P.id, list);
+    }
+    LAIRS.bySys.set(S.id, arr);
+  }
+  return LAIRS;
+}
+const lairById = id => lairsAll().byId.get(id) || null;
+const lairsOn = P => (P && lairsAll().byBody.get(P.id)) || [];
+const lairProg = L => ((wanderer && wanderer.lairs) || {})[L.id] | 0; // the highest floor cleared (floors + 1 = the boss is down)
+const lairCleared = L => lairProg(L) > L.floors;
+function lairSetProg(L, f) { const m = Object.assign({}, wanderer.lairs); if ((m[L.id] | 0) >= f) return; m[L.id] = f; wanderer.lairs = m; const c = curChar(); if (c) c.lairs = m; saveRoster(); }
+const dgnTop = () => DGN.lair ? DGN.lair.floors + 1 : 8; // the arena's floor
+// ---- the bosses: each one its own mix of attacks, its own rhythm, its own phase-three signature ----
+const LB_ATK = { // what the boss bar warns about
+  slam: 'Slam · step out of the red ring', nova: 'Nova · jump it or get well clear', leap: 'Leap · keep moving', charge: 'Charge · step off the line', volley: 'Volley · strafe sideways',
+  spiral: 'Spiral · weave through the gaps', rain: 'Falling stars · get out of the circles', pools: 'Pools · don’t stand in them', sweep: 'Sweep · get behind it', cross: 'Eruptions · stand between the lines',
+  summon: 'Brood · deal with the young', pull: 'Vortex · run outward, then jump', blink: 'Blink · it reappears behind you'
+};
+const LB_MELEE = ['slam', 'leap', 'charge', 'blink'], LB_RANGED = ['nova', 'volley', 'rain', 'pools', 'cross', 'summon', 'pull'], LB_SIG = ['spiral', 'sweep', 'cross', 'rain', 'pull'];
+const LB_EPI = ['the Hollow Maw', 'Who Waits Below', 'the Brood-Mother', 'the Unblinking', 'of the Thousand Teeth', 'the Last of the First', 'Who Eats the Light', 'the Crowned', 'the Starving King', 'the Old Hunger', 'the Patient', 'the Many-Eyed', 'Breaker of Ships', 'the Deep Choir', 'the Shrike', 'Who Never Sleeps', 'the Grave-Warden', 'the Hollow Queen', 'the Storm-Hide', 'the Mountain’s Heart'];
+function lairBoss(L) { // decided once, from the lair's own seed
+  if (L.boss) return L.boss;
+  const R = dgnRng(L.seed * 7 + 13), sp = natSp(L.S), kd = 1 + (L.lv - 10) * .035, J = (a, b) => a + R() * (b - a);
+  const mk = id => { const A = { id };
+    if (id === 'slam') Object.assign(A, { wind: J(.75, 1.1), r: J(3, 4.6), dmg: 32 });
+    if (id === 'nova') Object.assign(A, { wind: J(1.3, 1.8), r: J(8, 12), dmg: 26 });
+    if (id === 'leap') Object.assign(A, { wind: J(.6, .9), r: J(3.8, 5.2), dmg: 40 });
+    if (id === 'charge') Object.assign(A, { wind: J(.8, 1.1), len: J(18, 26), dmg: 36, sp: J(22, 30) });
+    if (id === 'volley') Object.assign(A, { n: 3 + (R() * 5 | 0), spread: J(.4, 1.2), sp: J(13, 20), dmg: 15, bursts: 1 + (R() * 3 | 0) });
+    if (id === 'spiral') Object.assign(A, { dur: J(2.2, 3.2), arms: 2 + (R() * 3 | 0), rate: J(.09, .14), rot: J(1.6, 3.2) * (R() < .5 ? -1 : 1), sp: J(9, 13), dmg: 12 });
+    if (id === 'rain') Object.assign(A, { n: 4 + (R() * 6 | 0), r: J(2.2, 3.1), delay: J(1.3, 1.7), dmg: 28 });
+    if (id === 'pools') Object.assign(A, { n: 3 + (R() * 3 | 0), r: J(2.4, 3.4), life: J(7, 10), dmg: 7 });
+    if (id === 'sweep') Object.assign(A, { wind: J(.8, 1.1), len: J(14, 18), arc: J(2.4, 3.6), dur: J(1.8, 2.6), dmg: 26 });
+    if (id === 'cross') Object.assign(A, { dirs: R() < .5 ? 4 : 8, steps: 5 + (R() * 3 | 0), gap: J(2.4, 3.2), dmg: 26 });
+    if (id === 'summon') Object.assign(A, { n: 2 + (R() * 3 | 0) });
+    if (id === 'pull') Object.assign(A, { dur: J(1.6, 2.2), r: J(6, 8), force: J(5, 8), dmg: 30 });
+    if (id === 'blink') Object.assign(A, { r: J(3, 3.8), dmg: 34 });
+    if (A.dmg) A.dmg = Math.round(A.dmg * kd); return A; };
+  const pool = [...LB_MELEE, ...LB_RANGED], core = [lairPick(R, LB_MELEE)];
+  while (core.length < 4) { const a = lairPick(R, pool); if (!core.includes(a)) core.push(a); }
+  const p2 = []; while (p2.length < 1 + (R() < .5)) { const a = lairPick(R, pool); if (!core.includes(a) && !p2.includes(a)) p2.push(a); }
+  let sig = lairPick(R, LB_SIG); if (core.includes(sig) || p2.includes(sig)) sig = LB_SIG.find(a => !core.includes(a) && !p2.includes(a)) || sig;
+  const seq = []; const n = 5 + (R() * 3 | 0); for (let i = 0; i < n; i++) seq.push(i < core.length ? core[i] : lairPick(R, core)); // its rhythm
+  for (let i = seq.length - 1; i > 0; i--) { const j = R() * (i + 1) | 0; [seq[i], seq[j]] = [seq[j], seq[i]]; }
+  const atk = {}; for (const id of new Set([...core, ...p2, sig])) atk[id] = mk(id);
+  const epi = lairPick(R, LB_EPI), name = `${L.bossName} ${epi}`, hp = Math.round((1800 + L.lv * 58) * (1 + L.tier * .18));
+  const p = Object.assign({}, sp.p, { scale: J(2.4, 3.2), horns: Math.min(6, sp.p.horns + 1 + (R() * 2 | 0)), hornLen: sp.p.hornLen * 1.4, spikes: sp.p.spikes + 2 + (R() * 3 | 0), glow: true, c3: lairHsl(L.th.hue + 180 + R() * 40, 90, 60) });
+  const say = (a) => lairPick(R, a);
+  L.boss = { name, short: L.bossName, hp, lv: Math.min(100, L.lv + 3), p, sp: J(3.2, 4.6), hover: R() < .25, seq, p2, sig, atk, cd: J(1.2, 2),
+    lines: { intro: say([`You walked into the ${sp.name}’s nest. You will not walk out.`, `Little warm thing. ${L.bossName} has been hungry for a very long time.`, `The young told me you were coming. They were delicious too.`, `Kneel, star-walker. This world belongs to the ${sp.name}.`, `I heard your ship land. I have been sharpening myself ever since.`]),
+      p2: say(['You bleed slower than the others. Interesting.', 'Children! To me!', 'Now I am awake.', 'Enough. Feel the deep.', 'You think that hurt? Let me show you hurt.']),
+      p3: say(['THE WHOLE WORLD SCREAMS WITH ME.', 'I WILL NOT BE THE LAST!', 'Burn, then. Burn with me.', 'Look up, little thing. LOOK UP.', 'I am the dark under this world!']),
+      win: say(['…The nest… is yours…', 'Go, then. Tell the stars what you killed.', 'The young… will remember your smell…', 'I was old when your sun was young…', 'Finally… quiet…']) } };
+  return L.boss;
+}
+const lbark = (who, text, ms = 3000) => { showNarr(who.toUpperCase(), text); clearTimeout(world.barkT); world.barkT = setTimeout(hideNarr, ms); };
+// ---- on the ground: the gates down into the lairs, around wherever you land ----
+function lairPlan(W) { // decided with the hermitage, before the ground is laid out
+  for (const G of world.lairGates || []) if (G.g && G.g.parent) G.g.parent.remove(G.g);
+  world.lairGates = []; W.lairs = [];
+  if (!W || W.P.real) return;
+  for (const L of lairsOn(W.P)) {
+    let x = Math.cos(L.ang) * L.dist, z = Math.sin(L.ang) * L.dist;
+    if (Math.hypot(x - 5, z - 14.5) < 30) { x *= 1.6; z *= 1.6; }
+    const y = planetH(W.P, plDir(x, z)) - W.h0; W.lairs.push({ L, x, z, y }); (W.pads || (W.pads = [])).push({ x, z, r: 7, y });
+  }
+}
+function buildLairGates() {
+  const W = world.planet; if (!W || !W.lairs || !W.lairs.length) return;
+  for (const { L, x, z, y } of W.lairs) {
+    const g = new THREE.Group(), th = L.th, st = new THREE.MeshStandardMaterial({ color: new THREE.Color(th.wall[1]), roughness: .9 }), R = dgnRng(L.seed);
+    g.position.set(x, y, z); g.rotation.y = Math.atan2(-x, -z); // facing your ship
+    for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(1.2, 5, 1.4), st); p.position.set(s * 2.1, 2.5, 0); p.castShadow = true; g.add(p); }
+    const top = new THREE.Mesh(new THREE.BoxGeometry(5.6, 1.2, 1.7), st); top.position.y = 5.4; g.add(top);
+    for (let i = 0; i < 7; i++) { const r = new THREE.Mesh(new THREE.DodecahedronGeometry(.8 + R() * .9, 0), st); const a = i / 6 * Math.PI; r.position.set(Math.cos(a) * 4, Math.sin(a) * 3 + 1.2, -.8 - R()); r.rotation.set(R() * 3, R() * 3, 0); g.add(r); }
+    const door = new THREE.Mesh(new THREE.PlaneGeometry(3, 4.6), new THREE.MeshBasicMaterial({ color: th.glow, transparent: true, opacity: .55, side: THREE.DoubleSide })); door.position.set(0, 2.4, .1); g.add(door);
+    const gl = glowSprite(th.glow, 6, .7); gl.position.set(0, 2.6, .8); g.add(gl);
+    const beacon = glowSprite(lairCleared(L) ? 0x7fffa0 : th.glow, 16, .55); beacon.position.set(0, 16, 0); g.add(beacon);
+    wScene.add(g); world.lairGates.push({ L, x, z, g, door, beacon, P: W.P });
+  }
+  const sp = natSp(lairsOn(W.P)[0].S), n = W.lairs.length;
+  setTimeout(() => lootMsg(`${n} lair${n > 1 ? 's' : ''} nearby (beacons) · native species: the ${sp.name}`, '#d8c8ff'), 3200);
+}
+function lairGateTick() {
+  const on = isPl() && !DGN.on && world.planet;
+  for (const G of world.lairGates || []) {
+    G.g.visible = !!(on && world.planet.P === G.P); if (!G.g.visible) continue;
+    G.door.material.opacity = .45 + Math.sin(time * 3 + G.x) * .12; G.beacon.material.color.set(lairCleared(G.L) ? 0x7fffa0 : G.L.th.glow);
+  }
+}
+function lairGateNear(p) { if (DGN.on || !isPl()) return null; for (const G of world.lairGates || []) if (G.g.visible && Math.hypot(p.x - G.x, p.z - G.z) < 3.4) return G; return null; }
+function lairNearestTarget(p) {
+  let best = null, bd = 420; for (const G of world.lairGates || []) { if (!G.g.visible || lairCleared(G.L)) continue; const d = Math.hypot(p.x - G.x, p.z - G.z); if (d < bd) { bd = d; best = G; } }
+  return best ? { x: best.x, z: best.z, label: `${best.L.name} · lv ${best.L.lv}` } : null;
+}
+function lairGateUse(G) {
+  const L = G.L, B = lairBoss(L), pr = lairProg(L), top = L.floors + 1, sp = natSp(L.S);
+  const head = `${L.name.toUpperCase()} · LV ${L.lv}`;
+  const opts = [];
+  if (lairCleared(L)) opts.push({ text: `Go back in · ${B.name} is dead · the brood still breeds (floor 1 of ${L.floors})`, onPick: () => lairEnter(L, G, 1) });
+  else {
+    opts.push({ text: `Enter · ${L.floors} floor${L.floors > 1 ? 's' : ''} of ${sp.name}, then ${B.name} (lv ${B.lv})`, onPick: () => lairEnter(L, G, 1) });
+    if (pr > 0) opts.push({ text: pr >= L.floors ? `Go straight down to ${B.short}’s lair` : `Go down to floor ${pr + 1}`, onPick: () => lairEnter(L, G, Math.min(top, pr + 1)) });
+  }
+  opts.push({ text: 'Not yet', onPick: () => {} });
+  openChoice(head, opts);
+}
+function lairEnter(L, G, f, at, quick) { for (const c of [...fauna.list]) if (!c.dgn && !c.boss) removeFauna(c); DGN.lair = L; L.gate = G ? { x: G.x, z: G.z } : L.gate || { x: 5, z: 14.5 }; lairBoss(L); dgnEnter(f, at, quick); }
+function lairSpawnGroup(rm, f) {
+  const L = DGN.lair, sp = natSp(L.S), roles = spRoles(sp).filter(r => f > 1 || r !== 'brute'), role = lairPick(Math.random, roles), lv = L.lv - (L.floors - f) * 2 - 2;
+  const [cx, cz] = dgnW(rm.c[0], rm.c[1]), n = role === 'runner' ? 2 + (Math.random() < .4) : role === 'glider' ? 1 + (f > 1) : 1 + (Math.random() < .2);
+  for (let i = 0; i < n; i++) { const c = spawnFauna(spType(sp, role, lv), cx + rand(-5, 5), cz + rand(-5, 5), [cx, cz]); c.dgn = f; }
+}
+function lairPopulate(f) {
+  const L = DGN.lair; DGN.warden = null; DGN.spawnT = 30;
+  if (f >= dgnTop()) return;
+  for (const rm of DGN.rooms) { if (rm === DGN.start) continue; if (rm === DGN.end && !dgnBeaten(f)) continue; if (!rm.side && Math.random() < .3) continue; lairSpawnGroup(rm, f); }
+  if (!dgnBeaten(f) && DGN.end) {
+    const [cx, cz] = dgnW(DGN.end.c[0], DGN.end.c[1]), c = spawnFauna(spType(natSp(L.S), 'brute', L.lv - (L.floors - f) * 2, true), cx, cz + 2, [cx, cz]); c.dgn = f; DGN.warden = c;
+    lairSpawnGroup(DGN.end, f);
+  }
+}
+// ---- the boss fight ----
+function lairBossPlace() {
+  const L = DGN.lair, A = DGN.arena; if (!L || !A || lairCleared(L) || DGN.lb) return;
+  const B = lairBoss(L), holder = new THREE.Group(), body = buildSpecies(B.p); holder.add(body); holder.userData.anim = body.userData.anim;
+  body.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  const [x, z] = A.throne; holder.position.set(x, 0, z); wScene.add(holder);
+  DGN.lb = { mesh: holder, x, z: z + 2, B };
+  DGN.barrier = false;
+}
+function lairArenaTick(dt) {
+  const A = DGN.arena, L = DGN.lair; if (!A || !L) return;
+  if (DGN.curtain) DGN.curtain.visible = false; DGN.barrier = false;
+  if (DGN.arenaL) DGN.arenaL.intensity = 60 + Math.sin(time * 2.3) * 10 + (DGN.flashL || 0) * 220; DGN.flashL = Math.max(0, (DGN.flashL || 0) - dt * 2.5);
+  if (lairCleared(L)) return;
+  if (!DGN.lb) lairBossPlace(); const K = DGN.lb; if (!K) return;
+  if (!DGN.boss) { animSpecies(K.mesh, time, false); K.mesh.position.set(K.x, K.B.hover ? 1.2 + Math.sin(time * 2) * .4 : 0, K.z); const [, gz] = dgnW(A.gate[0], A.gate[1]); if (state === 'explore' && !ex.dlg && player.position.z < gz - DGN.C) lairBossStart(); return; }
+  lairBossTick(dt);
+}
+function lairBossStart() {
+  const K = DGN.lb, Bd = K.B; if (DGN.boss) return;
+  const D = { name: Bd.name, hp: Bd.hp, r: 1.6 + Bd.p.girth * Bd.p.scale * .6, xp: 0, dmg: 0, loot: () => [] };
+  const c = { type: 'lairboss', D, mesh: K.mesh, x: K.x, z: K.z, y: 0, rot: 0, hp: Bd.hp, state: 'hunt', t: 0, cd: 0, home: [K.x, K.z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, boss: true, bar: null };
+  fauna.list.push(c);
+  DGN.boss = { lair: true, c, Bd, st: 'chase', t: 0, cd: Bd.cd + 1, ph: 1, seq: [...Bd.seq], si: 0, tels: [], mets: [], proj: null, shots: [], pools: [], A: null, chaseT: 0 };
+  sfx.combat(true, COMBAT_TRACKS.indexOf('Predator II'));
+  notice(`Lair boss · level ${Bd.lv}`, Bd.name.toUpperCase(), 3200); lbark(Bd.short, Bd.lines.intro, 3600); lairBossBar();
+}
+function lairBossBar() {
+  const el = $('#bossBar'), B = DGN.boss; if (!el) return; if (!B) { el.classList.remove('on'); return; }
+  const Bd = B.Bd, frac = Math.max(0, B.c.hp / Bd.hp), a = B.A ? B.A.id : B.seq[B.si % B.seq.length];
+  el.innerHTML = `<div class="bb-h"><b>${Bd.name.toUpperCase()}</b><small>LV ${Bd.lv} · LAIR BOSS · PHASE ${B.ph} OF 3</small></div><div class="bb"><i style="width:${(frac * 100).toFixed(1)}%"></i></div><em>${B.A ? 'Now: ' : 'Next: '}${LB_ATK[a]}</em>`;
+  el.classList.add('on');
+}
+function lairBossCleanup(B) {
+  for (const s of B.shots || []) wScene.remove(s.m); for (const q of B.pools || []) wScene.remove(q.m); B.shots = []; B.pools = [];
+  if (B.A && B.A.extra) for (const m of B.A.extra) wScene.remove(m);
+  if (DGN.lb && DGN.lb.mesh) DGN.lb.mesh.visible = true;
+}
+function lairBossReset() { // a wipe: the boss back on its perch at full strength, its brood gone
+  dgnBossClear();
+  for (const c of [...fauna.list]) if (c.dgn) removeFauna(c);
+  if (DGN.lb) { const [x, z] = DGN.arena.throne; DGN.lb.x = x; DGN.lb.z = z + 2; DGN.lb.mesh.visible = true; DGN.lb.mesh.rotation.set(0, 0, 0); }
+}
+function lairShot(B, x, z, ang, sp, dmg, col) { const m = glowSprite(col, 1.6, .95); m.position.set(x, 1.2, z); wScene.add(m); B.shots.push({ m, x, z, vx: Math.sin(ang) * sp, vz: Math.cos(ang) * sp, t: 0, dmg }); }
+function lairBossTick(dt) {
+  const B = DGN.boss, K = DGN.lb; if (!B || !K) return;
+  const c = B.c, Bd = B.Bd, p = player.position, col = DGN.lair.th.glow; B.t += dt;
+  if (c.dead || c.hp <= 0) { lairBossWin(); return; }
+  if ((B.barT = (B.barT || 0) - dt) <= 0) { B.barT = .15; lairBossBar(); }
+  const frac = c.hp / Bd.hp, sp = Bd.sp * (B.ph === 1 ? 1 : B.ph === 2 ? 1.15 : 1.3), fast = B.ph === 3 ? .8 : B.ph === 2 ? .9 : 1;
+  if (B.ph === 1 && frac < .66) { B.ph = 2; B.seq.push(...Bd.p2); sfx.thud(); ex.shake = .8; DGN.flashL = 1.5; lbark(Bd.short, Bd.lines.p2, 3000); notice('Phase two', `${Bd.short.toUpperCase()} GROWS ANGRY`, 2400); lairSummon(B, 2); }
+  if (B.ph === 2 && frac < .33) { B.ph = 3; B.seq.push(Bd.sig, Bd.sig); sfx.boom && sfx.boom(); ex.shake = 1.2; DGN.flashL = 2; lbark(Bd.short, Bd.lines.p3, 3200); notice('Phase three', LB_ATK[Bd.sig].split(' · ')[0].toUpperCase(), 2400); }
+  const live = state === 'explore' && !ex.dlg;
+  const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz) || .01;
+  const face = (x, z, k = 8) => { c.rot = angLerp(c.rot, Math.atan2(x - c.x, z - c.z), Math.min(1, dt * k)); };
+  const tel = (x, z, r) => { const m = telegraph(x, z, r); B.tels.push(m); return m; };
+  const hit = (x, z, r, dmg, jump) => { if (Math.hypot(p.x - x, p.z - z) < r && !(jump && ex.air)) hurtPlayer(dmg, { x, z }); };
+  const boom = (x, z, n = 40, s = 5) => { const k = new THREE.Color(col); burst(x, .4, z, n, s, k.r, k.g, k.b, .8, 1, 1.4); };
+  const done = () => { for (const m of B.tels) wScene.remove(m); B.tels = []; if (B.A && B.A.extra) for (const m of B.A.extra) wScene.remove(m); B.A = null; B.st = 'chase'; B.t = 0; B.cd = (1.1 + Math.random() * .7) * fast; B.chaseT = 0; K.mesh.visible = true; };
+  let moving = false;
+  if (live) {
+    if (B.st === 'chase') {
+      B.cd -= dt; face(p.x, p.z);
+      const next = B.seq[B.si % B.seq.length], A = Bd.atk[next], melee = next === 'slam';
+      if (d > (melee ? A.r + .5 : 3)) { dgnBossMove(c, p.x, p.z, sp, dt); moving = true; }
+      if (B.cd <= 0) { B.chaseT += dt; if (!melee || d < A.r + 1.2) { B.si++; B.A = Object.assign({ t: 0, k: 0, extra: [] }, A); B.st = 'atk'; B.t = 0; lairAtkStart(B, B.A, c, p, tel); } else if (B.chaseT > 3) { B.si++; B.chaseT = 0; } }
+    } else lairAtkTick(B, B.A, c, p, dt, fast, { face, tel, hit, boom, done, col });
+  }
+  // the bolts in flight, and the pools left behind
+  for (const s of [...B.shots]) { s.t += dt; s.x += s.vx * dt; s.z += s.vz * dt; s.m.position.set(s.x, 1.2, s.z); if (Math.hypot(p.x - s.x, p.z - s.z) < 1 && !(ex.air && p.y > 1.4)) { hurtPlayer(s.dmg, { x: s.x, z: s.z }); s.t = 99; } if (s.t > 3.2 || dgnBlocked(s.x, s.z)) { wScene.remove(s.m); B.shots.splice(B.shots.indexOf(s), 1); } }
+  for (const q of [...B.pools]) { q.t += dt; q.m.material.opacity = .45 + Math.sin(time * 6) * .12; if (q.t > .6 && Math.hypot(p.x - q.x, p.z - q.z) < q.r && (q.tick = (q.tick || 0) - dt) <= 0) { q.tick = .6; hurtPlayer(q.dmg, null); } if (q.t > q.life) { wScene.remove(q.m); B.pools.splice(B.pools.indexOf(q), 1); } }
+  for (const M of [...B.mets]) { M.t += dt; M.tel.material.opacity = .35 + .35 * Math.sin(time * 22); if (M.t > M.delay) { boom(M.x, M.z, 30, 5); sfx.thud(); ex.shake = Math.max(ex.shake || 0, .35); hit(M.x, M.z, M.r, M.dmg); wScene.remove(M.tel); B.mets.splice(B.mets.indexOf(M), 1); } }
+  for (const m of B.tels) m.material.opacity = .35 + .35 * Math.sin(time * 18);
+  c.y = 0; K.x = c.x; K.z = c.z;
+  K.mesh.position.set(c.x, (B.jy || 0) + (Bd.hover ? 1.2 + Math.sin(time * 2) * .4 : 0), c.z); K.mesh.rotation.y = c.rot; K.mesh.scale.setScalar(c.hurtT > 0 ? 1.04 : 1); c.hurtT = Math.max(0, c.hurtT - dt);
+  animSpecies(K.mesh, time, moving || B.st === 'atk');
+}
+function lairSummon(B, n) { const sp = natSp(DGN.lair.S), c = B.c, alive = fauna.list.filter(o => o.dgn && !o.dead).length; for (let i = 0; i < Math.min(n, 7 - alive); i++) { const a = Math.random() * Math.PI * 2, o = spawnFauna(spType(sp, 'runner', DGN.lair.lv - 2), c.x + Math.cos(a) * 5, c.z + Math.sin(a) * 5, [c.x, c.z]); o.dgn = dgnTop(); o.state = 'hunt'; } }
+function lairAtkStart(B, A, c, p, tel) {
+  sfx.whoosh();
+  if (A.id === 'slam') { const d = Math.hypot(p.x - c.x, p.z - c.z) || 1; A.x = c.x + (p.x - c.x) / d * Math.min(d, A.r * .7); A.z = c.z + (p.z - c.z) / d * Math.min(d, A.r * .7); tel(A.x, A.z, A.r); }
+  else if (A.id === 'nova') tel(c.x, c.z, A.r);
+  else if (A.id === 'leap') { A.sx = c.x; A.sz = c.z; A.x = p.x; A.z = p.z; tel(p.x, p.z, A.r); }
+  else if (A.id === 'charge') { const d = Math.hypot(p.x - c.x, p.z - c.z) || 1; A.ux = (p.x - c.x) / d; A.uz = (p.z - c.z) / d; for (let k = 1; k <= 6; k++) tel(c.x + A.ux * A.len * k / 6, c.z + A.uz * A.len * k / 6, 1.6); }
+  else if (A.id === 'sweep') { A.a0 = Math.atan2(p.x - c.x, p.z - c.z) - A.arc / 2; for (let k = 1; k <= 6; k++) A.extra.push(tel(c.x + Math.sin(A.a0) * A.len * k / 6, c.z + Math.cos(A.a0) * A.len * k / 6, 1.3)); B.tels = B.tels.filter(m => !A.extra.includes(m)); }
+  else if (A.id === 'rain') { for (let k = 0; k < A.n; k++) { const x = p.x + (k ? rand(-7, 7) : 0), z = p.z + (k ? rand(-7, 7) : 0); B.mets.push({ x, z, t: -k * .12, delay: A.delay, r: A.r, dmg: A.dmg, tel: telegraph(x, z, A.r) }); } }
+  else if (A.id === 'pools') { for (let k = 0; k < A.n; k++) { const x = (k % 2 ? p.x : c.x) + rand(-6, 6), z = (k % 2 ? p.z : c.z) + rand(-6, 6); if (dgnBlocked(x, z)) continue; const m = new THREE.Mesh(new THREE.CircleGeometry(A.r, 24), new THREE.MeshBasicMaterial({ color: DGN.lair.th.glow, transparent: true, opacity: .5, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, .05, z); wScene.add(m); B.pools.push({ m, x, z, r: A.r, t: 0, life: A.life, dmg: A.dmg }); } }
+  else if (A.id === 'cross') { A.a0 = A.dirs === 4 && Math.random() < .5 ? Math.PI / 4 : 0; A.cx = c.x; A.cz = c.z; }
+  else if (A.id === 'summon') lbark(B.Bd.short, 'Come, little ones. Feed.', 1800);
+  else if (A.id === 'blink') { A.x = p.x; A.z = p.z; }
+}
+function lairAtkTick(B, A, c, p, dt, fast, U) {
+  A.t += dt; const t = A.t;
+  if (A.id === 'slam') { U.face(A.x, A.z, 3); if (!A.k && t > A.wind * fast) { A.k = 1; sfx.swing(); sfx.thud(); ex.shake = .6; U.boom(A.x, A.z); U.hit(A.x, A.z, A.r, A.dmg); } if (t > A.wind * fast + .5) U.done(); }
+  else if (A.id === 'nova') { if (!A.k && t > A.wind * fast) { A.k = 1; sfx.boom && sfx.boom(); sfx.thud(); ex.shake = 1; DGN.flashL = 1.2; U.boom(c.x, c.z, 90, A.r); U.hit(c.x, c.z, A.r, A.dmg, true); } if (t > A.wind * fast + .7) U.done(); }
+  else if (A.id === 'leap') { const k = clamp((t - A.wind * fast) / .7, 0, 1); U.face(A.x, A.z, 4); if (k > 0) { c.x = lerp(A.sx, A.x, k); c.z = lerp(A.sz, A.z, k); B.jy = Math.sin(k * Math.PI) * 6; if (dgnBlocked(c.x, c.z)) { c.x = lerp(A.sx, A.x, k - .05); c.z = lerp(A.sz, A.z, k - .05); } }
+    if (k >= 1 && !A.k) { A.k = 1; B.jy = 0; sfx.boom && sfx.boom(); ex.shake = .9; U.boom(c.x, c.z, 70, 7); U.hit(c.x, c.z, A.r, A.dmg); } if (t > A.wind * fast + 1.3) { B.jy = 0; U.done(); } }
+  else if (A.id === 'charge') { if (t > A.wind * fast) { const st = A.sp * dt, nx = c.x + A.ux * st, nz = c.z + A.uz * st; A.run = (A.run || 0) + st; if (!dgnBlocked(nx, nz)) { c.x = nx; c.z = nz; } else A.run = 1e9; U.face(c.x + A.ux, c.z + A.uz, 20);
+      if (!A.k && Math.hypot(p.x - c.x, p.z - c.z) < c.D.r + 1) { A.k = 1; hurtPlayer(A.dmg, { x: c.x, z: c.z }); } if (A.run >= A.len) { ex.shake = .5; U.done(); } } }
+  else if (A.id === 'volley') { U.face(p.x, p.z, 6); const per = .5; while (A.k < A.bursts && t > .55 * fast + A.k * per) { const base = Math.atan2(p.x - c.x, p.z - c.z); for (let i = 0; i < A.n; i++) lairShot(B, c.x, c.z, base + (A.n > 1 ? (i / (A.n - 1) - .5) * A.spread : 0), A.sp, A.dmg, U.col); A.k++; sfx.whoosh(); } if (t > .55 * fast + A.bursts * per + .3) U.done(); }
+  else if (A.id === 'spiral') { while (t > .5 + A.k * A.rate && A.k * A.rate < A.dur) { const a = A.k * A.rate * A.rot; for (let i = 0; i < A.arms; i++) lairShot(B, c.x, c.z, a + i / A.arms * Math.PI * 2, A.sp, A.dmg, U.col); A.k++; } if (t > .5 + A.dur + .3) U.done(); }
+  else if (A.id === 'rain') { if (t > A.delay + .8) U.done(); }
+  else if (A.id === 'pools') { if (t > .8) U.done(); }
+  else if (A.id === 'sweep') { const k = clamp((t - A.wind * fast) / A.dur, 0, 1), a = A.a0 + A.arc * k; A.extra.forEach((m, i) => { const r = A.len * (i + 1) / 6; m.position.x = c.x + Math.sin(a) * r; m.position.z = c.z + Math.cos(a) * r; m.material.opacity = k > 0 ? .9 : .35 + .35 * Math.sin(time * 18); });
+    if (k > 0 && !A.k) { const vx = Math.sin(a), vz = Math.cos(a), qx = p.x - c.x, qz = p.z - c.z, along = qx * vx + qz * vz, off = Math.abs(qx * vz - qz * vx); if (along > 0 && along < A.len && off < 1.4) { A.k = 1; hurtPlayer(A.dmg, { x: c.x, z: c.z }); } }
+    U.face(c.x + Math.sin(a), c.z + Math.cos(a), 20); if (k >= 1) U.done(); }
+  else if (A.id === 'cross') { while (A.k < A.steps && t > .3 + A.k * .18) { A.k++; for (let i = 0; i < A.dirs; i++) { const a = A.a0 + i / A.dirs * Math.PI * 2, x = A.cx + Math.sin(a) * A.gap * A.k, z = A.cz + Math.cos(a) * A.gap * A.k; if (!dgnBlocked(x, z)) B.mets.push({ x, z, t: 0, delay: .65, r: 1.9, dmg: A.dmg, tel: telegraph(x, z, 1.9) }); } } if (t > .3 + A.steps * .18 + .9) U.done(); }
+  else if (A.id === 'summon') { if (!A.k && t > .8) { A.k = 1; lairSummon(B, A.n); DGN.flashL = 1; } if (t > 1.4) U.done(); }
+  else if (A.id === 'pull') { if (t < A.dur * fast) { const dx = c.x - p.x, dz = c.z - p.z, d = Math.hypot(dx, dz) || 1; if (d > 1.5) { vel.x += dx / d * A.force * dt * 3; vel.z += dz / d * A.force * dt * 3; } if (!A.tm) A.tm = (B.tels.push(telegraph(c.x, c.z, A.r)), 1); }
+    else if (!A.k) { A.k = 1; sfx.boom && sfx.boom(); ex.shake = 1; U.boom(c.x, c.z, 80, A.r); U.hit(c.x, c.z, A.r, A.dmg, true); } if (t > A.dur * fast + .6) U.done(); }
+  else if (A.id === 'blink') { const DG = DGN.lb;
+    if (t < .5) DG.mesh.visible = Math.sin(t * 60) > 0;
+    else if (!A.k) { A.k = 1; DG.mesh.visible = true; const a = player.rotation.y + Math.PI; let x = p.x + Math.sin(a) * 3, z = p.z + Math.cos(a) * 3; if (dgnBlocked(x, z)) { x = p.x - Math.sin(a) * 3; z = p.z - Math.cos(a) * 3; } if (!dgnBlocked(x, z)) { c.x = x; c.z = z; } A.x = p.x; A.z = p.z; U.tel(A.x, A.z, A.r); sfx.whoosh(); }
+    else { U.face(A.x, A.z, 6); if (A.k === 1 && t > .5 + .6 * fast) { A.k = 2; sfx.thud(); ex.shake = .6; U.boom(A.x, A.z); U.hit(A.x, A.z, A.r, A.dmg); } if (t > 1.6) U.done(); } }
+  else U.done();
+}
+function lairBossWin() {
+  const B = DGN.boss, L = DGN.lair; if (!B || B.won) return; B.won = true;
+  const Bd = B.Bd;
+  for (const o of [...fauna.list]) if (o.dgn && !o.dead) removeFauna(o);
+  dgnBossClear(); sfx.chime(); ex.shake = .6; DGN.flashL = 1.5;
+  notice('Lair boss defeated', `${Bd.short.toUpperCase()} IS DEAD`, 3600); lbark(Bd.short, Bd.lines.win, 3200);
+  if (DGN.lb) { DGN.lb.mesh.rotation.z = Math.PI / 2; DGN.lb.mesh.position.y = .4; }
+  lairSetProg(L, L.floors + 1);
+  gainXP(Math.round(260 + L.lv * 18), `Defeated ${Bd.name}`);
+  const loot = [['medkit', 2], ['warpcell', 1 + (L.tier > 0)], ['crystal', 2 + L.tier], [L.lv > 40 ? 'obsidian' : 'metal', 2 + L.tier], Math.random() < .5 && ['scrap', 3]];
+  setTimeout(() => { for (const dr of loot) if (dr) { giveItem(dr[0], dr[1]); lootMsg(`+${dr[1]} ${ITEMS[dr[0]].name}`, ITEMS[dr[0]].color); } const n = lairsAll().list.filter(lairCleared).length; lootMsg(`Lairs cleared: ${n} of ${lairsAll().list.length}`, '#d8c8ff'); }, 1200);
+  setTimeout(() => { if (DGN.lb && DGN.lb.mesh.parent) DGN.lb.mesh.parent.remove(DGN.lb.mesh); DGN.lb = null; }, 6000);
+}
+// ---- wildlife: each generated world that can hold life has its species roaming the surface ----
+function genFauna(p, n) {
+  const P = world.planet.P; if (!P.gtype || P.gtype === 'barren' || P.gtype === 'lava') return;
+  const S = sysById(P.sys); if (!S || LAIR_SKIP.has(S.id)) return; const sp = natSp(S), Ls = lairsOn(P), lv = Math.max(8, (Ls[0] ? Ls[0].lv : 12) - 4);
+  const T = r => spType(sp, r, lv), cnt = t => n(t);
+  if (cnt(T('runner')) < 3) { const s = faunaSpot(p, 70, 120); if (s) for (let i = 0; i < 3; i++) spawnFauna(T('runner'), s[0] + rand(-5, 5), s[1] + rand(-5, 5), s); }
+  else if (cnt(T('brute')) < 1) { const s = faunaSpot(p, 70, 120); if (s) { const c = spawnFauna(T('brute'), s[0], s[1], s); void c; } }
+  else if (cnt(T('hunter')) < 1) { const s = faunaSpot(p, 75, 120); if (s) spawnFauna(T('hunter'), s[0], s[1], s); }
+  else if (sp.flies && cnt(T('glider')) < 2) { const s = faunaSpot(p, 60, 110); if (s) spawnFauna(T('glider'), s[0], s[1]); }
 }
 const shipX = () => world.adVisit && !isPl() ? world.shipAt.x : 0, shipZ = () => world.adVisit && !isPl() ? world.shipAt.z : 0;
 /* ---- Chapter II: New London, capital of the Human Federation of Sol (Europe) ----
@@ -14026,7 +14395,7 @@ function galImage() {
 function galEl() {
   let el = $('#galMap'); if (el) return el;
   el = document.createElement('div'); el.id = 'galMap'; el.className = 'gal hidden';
-  el.innerHTML = `<canvas id="galCv"></canvas><div class="gal-top"><b>GALAXY MAP</b><small id="galSub"></small></div>
+  el.innerHTML = `<canvas id="galCv"></canvas><div class="gal-top"><b>MILKY WAY GALAXY</b><small id="galSub"></small></div>
     <button class="gal-close" id="galX">✕</button><button class="gal-dip" id="galDip">DIPLOMACY</button><button class="gal-res" id="galRes">RESIDENTS</button><button class="gal-emp" id="galEmp">EMPIRES</button><div class="gal-zoom"><button data-z="1.3">+</button><button data-z="0.77">−</button></div>
     <div class="gal-panel hidden" id="galPanel"></div><div class="gal-hint">${SYSTEMS.length} systems · zoom in to name them all · drag to pan · tap a system · M or ESC to close</div>`;
   document.body.appendChild(el);
@@ -14064,7 +14433,7 @@ function galOpen() {
   applyChapterFactions(); const el = galEl(); galImage(); GAL.open = true; SPC.keys.clear(); SPC.btn = {}; el.classList.remove('hidden'); $('#spaceHud').classList.add('hidden');
   if (!GAL.zoomed) { GAL.zoomed = true; GAL.zoom = innerWidth < 600 ? 2.3 : 1.6; }
   GAL.sel = GAL.sel && GAL.sel !== SPC.sys ? GAL.sel : SPC.sys; const q = galQ(sysById(GAL.sel)); GAL.pan.x = q.x; GAL.pan.y = q.y; GAL.panTo = null;
-  $('#galSub').textContent = `You are in ${curSys().name} · ${((wanderer.ch3 && wanderer.ch3.visited) || []).length} of ${SYSTEMS.length} systems visited`; galPanel(); sfx.chime();
+  $('#galSub').textContent = `You are in ${curSys().name} · ${((wanderer.ch3 && wanderer.ch3.visited) || []).length} of ${SYSTEMS.length} systems visited · ${lairsAll().list.filter(lairCleared).length} of ${lairsAll().list.length} lairs cleared`; galPanel(); sfx.chime();
   $('#galRes').style.display = residents.length ? '' : 'none'; $('#galEmp').style.display = residents.length ? '' : 'none'; RES.galI = null;
 }
 function galClose(silent) {
@@ -14082,7 +14451,8 @@ function galPanel() {
   else if (n < cost) btn = `<button class="btn gp-warp" disabled><span>Warp · ${cellsTxt(cost)}</span></button><div class="gp-why">${n ? `You have ${cellsTxt(n)} · need ${cost - n} more` : 'No warp cells'} · craft them from 2 metal plates · 2 frost crystals · 2 scrap metal each</div>`;
   else btn = `<button class="btn gp-warp" data-warp="${S.id}"><span>Warp · ${cellsTxt(cost)} (${n - cost} left after)</span></button>`;
   const qHere = Object.entries((wanderer.sq || {}).act || {}).filter(([id, A]) => sqById(id) && sqSysOf(sqById(id), A) === S.id).map(([id]) => sqById(id).t);
-  $('#galPanel').innerHTML = `${resGalHere(S)}${qHere.length ? `<div class="gp-sub" style="color:#ffd36a">◆ Side quest: ${qHere.join(' · ')}</div>` : ''}<h3>${S.name.toUpperCase()}</h3><div class="gp-sub">${S.star.type} · ${S.faction}${here ? '' : ` · ${galDist(curSys(), S).toLocaleString()} ly · ${inRange(curSys(), S) ? cellsTxt(cost) : 'out of range'}`}${seen ? ' · visited' : ''}</div><p>${S.desc}</p>
+  const LS = lairsAll().bySys.get(S.id) || [], spH = LS.length ? `<div class="gp-sub" style="color:#d8c8ff">◆ Native species: the ${natSp(S).name} · ${LS.length} lair${LS.length === 1 ? '' : 's'} (lv ${Math.min(...LS.map(L => L.lv))}–${Math.max(...LS.map(L => L.lv))}) · ${LS.filter(lairCleared).length} cleared</div>` : '';
+  $('#galPanel').innerHTML = `${resGalHere(S)}${spH}${qHere.length ? `<div class="gp-sub" style="color:#ffd36a">◆ Side quest: ${qHere.join(' · ')}</div>` : ''}<h3>${S.name.toUpperCase()}</h3><div class="gp-sub">${S.star.type} · ${S.faction}${here ? '' : ` · ${galDist(curSys(), S).toLocaleString()} ly · ${inRange(curSys(), S) ? cellsTxt(cost) : 'out of range'}`}${seen ? ' · visited' : ''}</div><p>${S.desc}</p>
     <ul>${S.bodies.filter(P => !P.minor).map(P => { const m = S.bodies.filter(Q => Q.minor && Q.parent === P.id).length; return `<li><span>${P.name}</span><small>${P.faction.split(' · ')[0]} · ${kind(P)}${m ? ` · +${m} smaller moon${m === 1 ? '' : 's'}` : ''}</small></li>`; }).join('')}</ul><div class="gp-act">${btn}</div>`;
   $('#galPanel').classList.remove('hidden');
 }
@@ -15448,14 +15818,14 @@ async function landOn(P, dir, place) {
   if ((!place || fresh) && P.sea) dryLandDir(P, D); // over the sea (Earth's oceans, Europa's cracks): she sets down on the nearest shore
   const E = new THREE.Vector3(0, 1, 0).cross(D); if (E.lengthSq() < .01) E.set(1, 0, 0); E.normalize(); const N = new THREE.Vector3().crossVectors(E, D).normalize(); // x east, z south: the world seen from above
   world.planet = { P, D, E, N, R: atmRg(P), h0: planetH(P, D) }; wxReset(); world.adVisit = false;
-  cityPlan(world.planet); hallPlan(world.planet); khazPlan(world.planet); // Alphinos on Aridaxx, Karribassa on Janira Prime, Khazglar's hermitage on Olympus Mons
+  cityPlan(world.planet); hallPlan(world.planet); khazPlan(world.planet); lairPlan(world.planet); // Alphinos on Aridaxx, Karribassa on Janira Prime, Khazglar's hermitage on Olympus Mons
   AREA_INFO[key] = { planet: P.name, name: P.name, space: true, stationTp: { x: 1e5, z: 1e5, name: '' } };
   AREA_FOG[key] = new THREE.Color(P.fog).getHex();
   world.area = key; world.builtArea = null; // a new landing spot: the ground is laid out afresh around it
   const nt = planetTraders(P); for (const m of MERCHANTS[key] || []) if (!nt.includes(m) && m.stall) { wScene.remove(m.stall); m.stall = null; } // a stall whose world changed hands goes
   MERCHANTS[key] = nt; for (const m of MERCHANTS[key]) m.seed = null; // its stall finds dry ground near the new spot
   const pl = place || { mode: 'explore', area: 'world', where: key, x: 5, z: 14.5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI }; // by the ramp, clear of the wings
-  enterWorld(pl); buildCity(); buildHall(); buildHermitage(); khzFarHint(); try { earthGroundBuild(world.planet); } catch (e) { console.error(e); } await placeOrion().catch(() => null); placeGivers().catch(() => null);
+  enterWorld(pl); buildCity(); buildHall(); buildHermitage(); buildLairGates(); khzFarHint(); try { earthGroundBuild(world.planet); } catch (e) { console.error(e); } await placeOrion().catch(() => null); placeGivers().catch(() => null);
   // your ship, set down on the ground
   if (!world.landShip) world.landShip = makeShip();
   setShipRig(world.landShip, 1, 1);
@@ -15463,7 +15833,7 @@ async function landOn(P, dir, place) {
   for (const f of world.landShip.userData.flames) f.visible = false;
   const W3 = wanderer.ch3 = Object.assign({}, wanderer.ch3, { landed: true, lastPlanet: P.id }); const c = curChar(); if (c) c.ch3 = W3; saveRoster();
   const f = $('#shFlash'); if (f) f.classList.remove('on');
-  if (place) { state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks(); if (place.dgn && P.id === 'mars') { dgnEnter(+place.dgn.f || 1, place.dgn, true); return; } notice(wxTag(P), P.name.toUpperCase(), 3600); setTimeout(() => lootMsg(P.faction, '#9fe6ff'), 1400); sqOnLand(P); return; } // a save made inside Olympus Mons goes straight back in
+  if (place) { state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks(); if (place.dgn && place.dgn.lair) { const L = lairById(place.dgn.lair); if (L) { const G = (world.lairGates || []).find(q => q.L === L) || { x: +place.x, z: +place.z }; lairEnter(L, G, Math.min(L.floors + 1, +place.dgn.f || 1), place.dgn, true); return; } } if (place.dgn && P.id === 'mars') { DGN.lair = null; dgnEnter(+place.dgn.f || 1, place.dgn, true); return; } notice(wxTag(P), P.name.toUpperCase(), 3600); setTimeout(() => lootMsg(P.faction, '#9fe6ff'), 1400); sqOnLand(P); return; } // a save made inside Olympus Mons goes straight back in
   // the ship comes down out of the sky onto the spot
   SPC.descent = { t: 0 }; state = 'shipLand'; show(ui.xhud, false); player.visible = false; for (const fl of world.landShip.userData.flames) fl.visible = true;
 }
@@ -16932,6 +17302,7 @@ function updateWorldMode(dt) {
   }
   if (!ex.near && DGN.on) ex.near = dgnNear(p); // inside Olympus Mons: the stairs, the spring
   if (!ex.near && isPl() && !DGN.on && world.dgnGate && Math.hypot(p.x - world.dgnGate.x, p.z - world.dgnGate.z) < 3.2) ex.near = { id: 'dgnGate', label: 'Enter Olympus Mons' };
+  if (!ex.near && isPl() && !DGN.on) { const G = lairGateNear(p); if (G) ex.near = { id: 'lairGate', ref: G, label: `${G.L.name} · lv ${G.L.lv}${lairCleared(G.L) ? ' · cleared' : ''}` }; } // the lairs
   if (!ex.near && isPl()) { const G = giverNear(p); if (G) ex.near = { id: 'qgiver', ref: G, label: titleName(G.name) }; } // quest givers
   if (!ex.near && RES.bots.length) { const B = resNear(p); if (B) ex.near = { id: 'bot', ref: B, label: B.c.name }; } // residents (wanderers you sent into the world)
   if (!ex.near) for (const m of merchantsHere()) if (m.px != null && Math.hypot(m.px - p.x, m.pz - p.z) < 3) ex.near = { id: 'merchant', ref: m, label: m.who };
@@ -16969,7 +17340,7 @@ function updateWorldMode(dt) {
   // where's home, and your nearest beacon
   const dist = Math.hypot(p.x - 8, p.z), dirs = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
   const brg = (x, z) => dirs[((Math.round(Math.atan2(-(z - p.z), x - p.x) / (Math.PI / 4)) % 8) + 8) % 8];
-  let nav = DGN.on ? `Olympus Mons · ${DGN.f === 8 ? 'the summit' : `floor ${DGN.f} of 8`} · ${DGN_NAMES[DGN.f]}` : isPl() || (world.adVisit && curArea() === 'africa') ? (d => d < 8 ? 'At your ship' : `Your ship · ${Math.round(d)} m · ${brg(shipX(), shipZ() + 10)}`)(Math.hypot(p.x - shipX(), p.z - shipZ() - 10)) : curArea() === 'europe' ? (d => d < 6 ? 'At the Houses of Parliament' : `Parliament · ${Math.round(d)} m · ${brg(LON.door.x, LON.door.z)}`)(Math.hypot(p.x - LON.door.x, p.z - LON.door.z)) : dist < 6 ? 'At the station' : `Station · ${Math.round(dist)} m · ${brg(8, 0)}`;
+  let nav = DGN.on && DGN.lair ? `${DGN.lair.name} · ${DGN.f === dgnTop() ? 'the heart' : `floor ${DGN.f} of ${DGN.lair.floors}`}` : DGN.on ? `Olympus Mons · ${DGN.f === 8 ? 'the summit' : `floor ${DGN.f} of 8`} · ${DGN_NAMES[DGN.f]}` : isPl() || (world.adVisit && curArea() === 'africa') ? (d => d < 8 ? 'At your ship' : `Your ship · ${Math.round(d)} m · ${brg(shipX(), shipZ() + 10)}`)(Math.hypot(p.x - shipX(), p.z - shipZ() - 10)) : curArea() === 'europe' ? (d => d < 6 ? 'At the Houses of Parliament' : `Parliament · ${Math.round(d)} m · ${brg(LON.door.x, LON.door.z)}`)(Math.hypot(p.x - LON.door.x, p.z - LON.door.z)) : dist < 6 ? 'At the station' : `Station · ${Math.round(dist)} m · ${brg(8, 0)}`;
   if (ex.vehicle) nav = `Rover · ${Math.round(Math.abs(ex.vehicle.speed) * 3.6)} km/h<br>` + nav;
   let bb = null, bdist = 1e9;
   for (const o of world.placed) if (o.data.t === 'beacon') { const dd = Math.hypot(o.data.x - p.x, o.data.z - p.z); if (dd < bdist) { bdist = dd; bb = o; } }
@@ -17264,7 +17635,7 @@ function openSlots(mode, from) {
 }
 function closeSlots() { show(slotUI.root, false); refreshMenu(); refreshDirty(); }
 function currentPlace() {
-  if (DGN.on && ex.mode === 'world' && isPl()) { const G = world.dgnGate || { x: 5, z: 14.5 }; return { mode: 'explore', area: 'world', where: curArea(), x: +G.x.toFixed(2), z: +(G.z + 2).toFixed(2), y: 0, rot: 0, yaw: Math.PI, dir: world.planet.D.toArray().map(v => +v.toFixed(6)), nf: 1, ev: world.planet.P.real ? EARTH_V : 0, dgn: { f: DGN.f, x: +player.position.x.toFixed(2), z: +player.position.z.toFixed(2) } }; } // inside Olympus Mons: the floor, and where on it
+  if (DGN.on && ex.mode === 'world' && isPl()) { const G = (DGN.lair ? DGN.lair.gate : world.dgnGate) || { x: 5, z: 14.5 }; return { mode: 'explore', area: 'world', where: curArea(), x: +G.x.toFixed(2), z: +(G.z + 2).toFixed(2), y: 0, rot: 0, yaw: Math.PI, dir: world.planet.D.toArray().map(v => +v.toFixed(6)), nf: 1, ev: world.planet.P.real ? EARTH_V : 0, dgn: { f: DGN.f, x: +player.position.x.toFixed(2), z: +player.position.z.toFixed(2), lair: DGN.lair ? DGN.lair.id : undefined } }; } // inside Olympus Mons: the floor, and where on it
   if (ex.mode === 'ship' && SHIPI.outside) return Object.assign({}, SHIPI.outside, { aboard: true, deck: SHIPI.deck, ax: +player.position.x.toFixed(2), az: +player.position.z.toFixed(2) }); // aboard: where the ship is, and where you are inside her
   if (ex.mode === 'space' && ATM.on) return atmoPlace();
   if (ex.mode === 'space') return { mode: 'explore', area: 'space', where: 'space', sys: SPC.sys, sp: SPC.pos.toArray().map(v => +v.toFixed(1)), sq: SPC.q.toArray().map(v => +v.toFixed(5)) };
