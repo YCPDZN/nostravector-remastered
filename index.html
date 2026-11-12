@@ -865,6 +865,16 @@ button.bm-c.no{opacity:.45}
 .boss-bar .bb i{display:block;height:100%;background:linear-gradient(90deg,#8a1414,#ff3b2f)}
 .boss-bar em{display:block;font-style:normal;font-size:8px;letter-spacing:.3em;color:var(--mute);margin-top:6px;text-transform:uppercase}
 .slot-io{margin:4px 0 10px;gap:10px}
+#furnace{z-index:26}#furnace .panel{max-width:860px;align-items:stretch;text-align:left}
+.eq-stats{font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:var(--mute);margin:0 0 8px}.eq-stats b{color:var(--ink);font-family:var(--display);font-weight:500}
+.eq-slot{display:flex;align-items:center;gap:12px;padding:9px 10px;margin-bottom:6px;border:1px solid var(--faint);background:rgba(255,255,255,.03);font-size:10px;letter-spacing:.16em;text-transform:uppercase}
+.eq-slot small{width:56px;flex:none;font-size:8px;letter-spacing:.3em;color:var(--mute)}.eq-slot span{flex:1}.eq-slot.empty span{opacity:.4}.eq-slot.suit{border-color:rgba(var(--accRGB,169,220,255),.45)}.eq-slot.suit small{width:auto}
+.res-row span small{display:block;font-size:7.5px;letter-spacing:.16em;color:var(--mute);margin-top:3px;text-transform:none}
+.craft-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}.craft-tabs .mini.on{border-color:var(--ink);color:var(--ink);background:rgba(255,255,255,.08)}
+.fn-prog{height:5px;margin:2px 4px 10px;background:rgba(255,140,60,.15);border:1px solid rgba(255,140,60,.4)}.fn-prog i{display:block;height:100%;background:linear-gradient(90deg,#c84a1a,#ffb04a)}
+.fn-fuel{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
+#fnOut .btn{margin-top:10px}
+@media (pointer:coarse){ .eq-slot{padding:11px 10px} .res-row .mini,.eq-slot .mini{padding:8px 10px} }
 /* phones: the boss bar keeps clear of the objectives, the minimap, the hotbar and the buttons; long boss names stay on one line */
 @media (pointer:coarse){
   .boss-bar .bb-h{display:block}
@@ -1272,8 +1282,8 @@ body.touch .al-key{display:none}
   <div class="panel">
     <div class="eyebrow">Inventory · crafting</div>
     <div class="inv-grid">
-      <div><div class="inv-h">Resources</div><div id="invRes"></div><div class="inv-h" style="margin-top:22px">Gear</div><div id="invGear"></div></div>
-      <div><div class="inv-h">Craft</div><div id="invCraft"></div></div>
+      <div><div class="inv-h">Equipment</div><div id="invEq"></div><div class="inv-h" style="margin-top:22px">Resources</div><div id="invRes"></div><div class="inv-h" style="margin-top:22px">Gear · hotbar</div><div id="invGear"></div></div>
+      <div><div class="inv-h">Craft</div><div class="craft-tabs" id="craftTabs"></div><div id="invCraft"></div></div>
     </div>
     <button class="btn small" id="invClose" style="align-self:center"><span>Close</span></button>
   </div>
@@ -1304,6 +1314,18 @@ body.touch .al-key{display:none}
     </div>
     <div class="shop-jobs" id="shopJobsWrap"><div class="inv-h">Jobs</div><div id="shopJobs"></div></div>
     <button class="btn small" id="shopClose" style="align-self:center"><span>Close</span></button>
+  </div>
+</section>
+
+<!-- Furnace -->
+<section class="screen dim hidden" id="furnace">
+  <div class="panel">
+    <div class="eyebrow">Furnace · smelting and cooking</div>
+    <div class="inv-grid">
+      <div><div class="inv-h">Fire</div><div id="fnStatus"></div><div class="inv-h" style="margin-top:18px">Queue</div><div id="fnQueue"></div><div class="inv-h" style="margin-top:18px">Ready</div><div id="fnOut"></div></div>
+      <div><div class="inv-h">Smelt · cook</div><div id="fnRecipes"></div></div>
+    </div>
+    <button class="btn small" id="fnClose" style="align-self:center"><span>Close</span></button>
   </div>
 </section>
 
@@ -3931,7 +3953,7 @@ function levelInfo(xp) {
   return { level: L, into: rest, need: L >= MAX_LEVEL ? 0 : xpNeed(L) };
 }
 const levelOf = c => levelInfo((c && c.xp) || 0).level;
-const maxHP = () => 100 + (levelOf(wanderer) - 1) * 2 + (wanderer && wanderer.inv && wanderer.inv.bag && wanderer.inv.bag.lining ? 20 : 0) + (wornArmor() ? ITEMS[wornArmor()].hp : 0);               // +2 max health per level (298 at 100)
+const maxHP = () => 100 + (levelOf(wanderer) - 1) * 2 + (wanderer && wanderer.inv && wanderer.inv.bag && wanderer.inv.bag.lining ? 20 : 0) + armorHP();               // +2 max health per level (298 at 100)
 const lvDmg = () => { const L = levelOf(wanderer); return (L >= 20) + (L >= 50) + (L >= 80); };   // extra mining damage
 function gainXP(n, why) {
   const dgnX = DGN.on && n > 0; if (dgnX) n *= DGN_XP; // inside Olympus Mons: 1.9 ×
@@ -5176,6 +5198,8 @@ async function interact() {
     openShop(n.ref);
   } else if (n.id === 'tele') {
     openTp(n.ref);
+  } else if (n.id === 'furnace') {
+    openFurnace(n.ref);
   } else if (n.id === 'bench') {
     openInv(true);
   } else if (n.id === 'bed') {
@@ -5464,7 +5488,7 @@ const GUN_IDS = ['rifle1', 'rifle2', 'rifle3'], ARMOR_BASE = ['armor1', 'armor2'
 const KEEPS = k => k === 'tool' || k === 'gun' || k === 'armor'; // owned once, not counted
 const gearOwned = id => { const L = GUN_IDS.includes(id) ? GUN_IDS : ARMOR_BASE.includes(id) ? ARMOR_BASE : null; return L ? L.slice(L.indexOf(id)).some(x => have(x)) : have(id) > 0; }; // you own it, or a better one
 const canWear = id => { const it = ITEMS[id]; return !it.race || ((wanderer.species || 'human') === it.race && levelOf(wanderer) >= (it.lv || 0)); }; // a Chompy can't wear an Erisian's armour, and so on
-const wornArmor = () => { if (!wanderer || !wanderer.inv || !wanderer.inv.bag) return null; for (let i = ARMOR_IDS.length - 1; i >= 0; i--) if (wanderer.inv.bag[ARMOR_IDS[i]] && canWear(ARMOR_IDS[i])) return ARMOR_IDS[i]; return null; };
+const wornArmor = () => { if (!wanderer || !wanderer.inv || !wanderer.inv.bag) return null; return eqWorn().suit || null; }; // the suit you have on, if any (pieces go in eqWorn)
 const LOOT = {
   rock: () => [['stone', 2 + (Math.random() < .5)], Math.random() < .2 && ['scrap', 1]],
   ice: () => [['ice', 2], Math.random() < .3 && ['crystal', 1]],
@@ -5492,6 +5516,7 @@ const have = id => invState().bag[id] | 0;
 function giveItem(id, n) {
   const inv = invState(); inv.bag[id] = (inv.bag[id] | 0) + n;
   if (ITEMS[id].kind !== 'res' && ITEMS[id].kind !== 'ship' && ITEMS[id].kind !== 'armor' && !inv.bar.includes(id)) { const i = inv.bar.indexOf(null); if (i >= 0) inv.bar[i] = id; }
+  if (ITEMS[id].kind === 'armor') eqAuto(id); // a free slot takes it straight away
   saveRoster(); renderHotbar();
 }
 function takeItem(id, n) {
@@ -5500,6 +5525,165 @@ function takeItem(id, n) {
   saveRoster(); renderHotbar();
 }
 const selItem = () => { const inv = invState(); return inv.bar[inv.sel] || null; };
+/* ============ Equipment, ores and the furnace ============
+   Armour goes on and comes off piece by piece, in four slots (head, chest, legs, feet). The old whole sets are suits: one
+   suit fills all four. Five new four-piece sets are forged from ingots, which a furnace smelts from the ores in new veins
+   (coal, copper, iron, gold, titanium). The furnace burns coal or wood, works through its queue over time even while you're
+   away, and cooks food too. */
+const EQ_SLOTS = ['head', 'chest', 'legs', 'feet'], EQ_NAME = { head: 'Head', chest: 'Chest', legs: 'Legs', feet: 'Feet', suit: 'Suit' };
+const ARMOR_SETS = [ // four pieces each: helmet, chestplate, leggings, boots (def and health split 20 / 40 / 27 / 13)
+  { id: 'pad', name: 'Padded', mat: 'cloth', def: .10, hp: 8, col: [0x6a5a48, 0xb8a27a], lore: 'cloth quilted over your suit' },
+  { id: 'cu', name: 'Copper', mat: 'cuing', def: .20, hp: 14, col: [0xb8683a, 0xe8a070], lore: 'hammered copper plate' },
+  { id: 'fe', name: 'Iron', mat: 'feing', def: .32, hp: 24, col: [0x8a8f96, 0xc8ccd2], lore: 'forged iron plate' },
+  { id: 'au', name: 'Gold', mat: 'auing', def: .26, hp: 45, col: [0xd8a830, 0xfff0a0], lore: 'soft gold, heavy with wards that keep you standing' },
+  { id: 'ti', name: 'Titanium', mat: 'tiing', def: .46, hp: 60, col: [0x5a6a80, 0x9fd8ff], lore: 'titanium plate on a woven frame', bench: true }
+];
+const PIECE = { head: ['H', 'helmet', .2, 5], chest: ['C', 'chestplate', .4, 8], legs: ['L', 'leggings', .27, 7], feet: ['B', 'boots', .13, 4] };
+const ARMOR_PIECES = [];
+for (const S of ARMOR_SETS) for (const slot of EQ_SLOTS) {
+  const [suf, word, k, n] = PIECE[slot], id = S.id + suf, def = +(S.def * k).toFixed(3), hp = Math.round(S.hp * k);
+  ITEMS[id] = { name: `${S.name} ${word}`, kind: 'armor', slot, set: S.id, def, hp, col: S.col, cost: { [S.mat]: n }, bench: !!S.bench,
+    desc: `${EQ_NAME[slot]} · ${S.lore}. Takes ${Math.round(def * 100)}% off every hit, +${hp} max health. Wear all four for the full set (${Math.round(S.def * 100)}%, +${S.hp}).` };
+  ARMOR_PIECES.push(id);
+}
+Object.assign(ITEMS, {
+  coal: { name: 'Coal', kind: 'res', color: '#2e2e33', desc: 'Furnace fuel: one lump smelts eight things.' },
+  cuore: { name: 'Copper ore', kind: 'res', color: '#c87a4a' }, feore: { name: 'Iron ore', kind: 'res', color: '#b08a78' },
+  auore: { name: 'Gold ore', kind: 'res', color: '#e8c050' }, tiore: { name: 'Titanium ore', kind: 'res', color: '#8aa8c8' },
+  cuing: { name: 'Copper ingot', kind: 'res', color: '#e0905a' }, feing: { name: 'Iron ingot', kind: 'res', color: '#d0d4da' },
+  auing: { name: 'Gold ingot', kind: 'res', color: '#ffd84a' }, tiing: { name: 'Titanium ingot', kind: 'res', color: '#a8d0f0' },
+  alienmeat: { name: 'Alien meat', kind: 'res', color: '#8a4a7a' },
+  steak: { name: 'Seared alien steak', kind: 'use', short: 'STEAK', desc: 'Alien meat seared in a furnace. Restores 45 health.', heal: 45 },
+  tpick: { name: 'Titanium pickaxe', kind: 'tool', short: 'TITAN', desc: 'Upgrades your obsidian pickaxe (it is used up): a titanium head that quadruples your mining and melee damage.', cost: { opick: 1, tiing: 3, wood: 2 }, bench: true }
+});
+RES_IDS.push('coal', 'cuore', 'feore', 'auore', 'tiore', 'cuing', 'feing', 'auing', 'tiing', 'alienmeat');
+CRAFT_IDS.splice(CRAFT_IDS.indexOf('opick') + 1, 0, 'tpick'); CRAFT_IDS.push(...ARMOR_PIECES);
+ARMOR_IDS.push(...ARMOR_PIECES);
+const pickTier = () => ({ pick: 1, opick: 2, tpick: 3 })[selItem()] || 0;
+// ---- what you're wearing ----
+const isSuit = id => ITEMS[id] && ITEMS[id].kind === 'armor' && !ITEMS[id].slot;
+function eqState() {
+  const inv = invState();
+  if (!inv.eq) { // a save from before: you put on the best suit you could wear, as before
+    inv.eq = {}; for (let i = ARMOR_IDS.length - 1; i >= 0; i--) { const id = ARMOR_IDS[i]; if (isSuit(id) && inv.bag[id] && canWear(id)) { inv.eq.suit = id; break; } }
+  }
+  return inv.eq;
+}
+function eqWorn() { // only what you still carry and can wear counts
+  const eq = eqState(), out = {}; for (const [s, id] of Object.entries(eq)) if (id && ITEMS[id] && have(id) > 0 && canWear(id)) out[s] = id;
+  if (out.suit) return { suit: out.suit }; return out;
+}
+const armorDef = () => Math.min(.85, Object.values(eqWorn()).reduce((t, id) => t + (ITEMS[id].def || 0), 0));
+const armorHP = () => Object.values(eqWorn()).reduce((t, id) => t + (ITEMS[id].hp || 0), 0);
+const isWorn = id => Object.values(eqWorn()).includes(id);
+function wearWhy(id) { const it = ITEMS[id]; if (!it.race) return ''; if ((wanderer.species || 'human') !== it.race) return `${SPECIES[it.race] ? SPECIES[it.race].label : it.race} only`; if (levelOf(wanderer) < (it.lv || 0)) return `needs level ${it.lv}`; return ''; }
+function equip(id, quiet) {
+  const it = ITEMS[id]; if (!it || it.kind !== 'armor' || have(id) < 1) return false;
+  if (!canWear(id)) { if (!quiet) lootMsg(`${it.name} · ${wearWhy(id)}`, '#ff8f86'); return false; }
+  const eq = eqState();
+  if (it.slot) { delete eq.suit; eq[it.slot] = id; } else { for (const s of EQ_SLOTS) delete eq[s]; eq.suit = id; }
+  saveRoster(); armorSync(true); ex.hp = Math.min(maxHP(), ex.hp || maxHP()); if (!quiet) { sfx.chime(); lootMsg(`Put on ${it.name}`, '#a9dcff'); }
+  return true;
+}
+function unequip(slot) {
+  const eq = eqState(), id = eq[slot]; if (!id) return; delete eq[slot];
+  saveRoster(); armorSync(true); ex.hp = Math.min(maxHP(), ex.hp || 0); sfx.click(); lootMsg(`Took off ${ITEMS[id].name}`, '#cfd6e6');
+}
+function eqAuto(id) { // a new piece goes on by itself if that slot is free (or it beats what's there); it never takes a suit off for a lone piece
+  const it = ITEMS[id]; if (!it || it.kind !== 'armor' || !canWear(id)) return false; const w = eqWorn();
+  if (it.slot) { if (w.suit) return false; const cur = w[it.slot]; if (!cur || (ITEMS[cur].def || 0) < it.def) return equip(id, true); return false; }
+  if (!Object.keys(w).length || it.def > armorDef()) return equip(id, true); return false;
+}
+// ---- the hotbar: put things on it and take them off ----
+function toggleBar(id) {
+  const inv = invState(), i = inv.bar.indexOf(id);
+  if (i >= 0) { inv.bar[i] = null; lootMsg(`${ITEMS[id].name} taken off the hotbar`, '#cfd6e6'); }
+  else { const j = inv.bar.indexOf(null); if (j < 0) { lootMsg('Your hotbar is full · take something off first', '#ff8f86'); return; } inv.bar[j] = id; lootMsg(`${ITEMS[id].name} put on the hotbar (slot ${j + 1})`, '#a9dcff'); }
+  sfx.click(); saveRoster(); renderHotbar(); renderInv();
+}
+// ---- ore veins ----
+const VEINS = {
+  coal: { name: 'Coal seam', col: 0x1a1a1e, emis: 0x000000, tier: 0, xp: 12, loot: () => [['coal', 2 + (Math.random() < .5)], Math.random() < .3 && ['stone', 1]] },
+  cu: { name: 'Copper vein', col: 0xc87a4a, emis: 0x2a1004, tier: 0, xp: 14, loot: () => [['cuore', 1 + (Math.random() < .6)], Math.random() < .25 && ['stone', 1]] },
+  fe: { name: 'Iron vein', col: 0xb89480, emis: 0x1a0c06, tier: 1, xp: 18, loot: () => [['feore', 1 + (Math.random() < .5)], Math.random() < .2 && ['coal', 1]] },
+  au: { name: 'Gold vein', col: 0xffcc40, emis: 0x5a3a04, tier: 1, xp: 26, loot: () => [['auore', 1 + (Math.random() < .3)]] },
+  ti: { name: 'Titanium vein', col: 0x9fc8f0, emis: 0x10304a, tier: 2, xp: 34, loot: () => [['tiore', 1 + (Math.random() < .3)]] }
+};
+const VEIN_TOOL = ['by hand', 'an ice pick', 'an obsidian pickaxe', 'a titanium pickaxe'];
+const veinMat = {};
+const veinMatOf = k => veinMat[k] || (veinMat[k] = new THREE.MeshStandardMaterial({ color: VEINS[k].col, roughness: k === 'coal' ? .9 : .25, metalness: k === 'coal' ? .1 : .85, emissive: VEINS[k].emis, emissiveIntensity: .6, flatShading: true }));
+function veinNode(k, key, x, z, y, s, rockMat, grp, nodes, R) { // a dark boulder shot through with the ore's own colour
+  const ms = []; let m;
+  if (hdW.rockGeo) { m = new THREE.Mesh(hdW.rockGeo, rockMat); m.scale.set(s * 1.05, s * .75, s * 1.05); m.position.set(x, y - s * .15, z); } else { m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), rockMat); m.scale.y = .7; m.position.set(x, y + s * .3, z); }
+  ms.push(m);
+  for (let i = 0; i < 6; i++) { const a = i * 1.05 + R(i) * 2, v = new THREE.Mesh(new THREE.OctahedronGeometry(s * (.16 + R(i + 9) * .14), 0), veinMatOf(k)); v.position.set(x + Math.cos(a) * s * .55, y + s * (.15 + R(i + 3) * .4), z + Math.sin(a) * s * .55); v.rotation.set(a, a * 2, 0); ms.push(v); }
+  for (const q of ms) { q.castShadow = true; q.receiveShadow = true; grp.add(q); }
+  nodes.push({ key, type: 'vein', ore: k, x, z, y: y + s * .4, r: s * .9, hp: 4 + Math.round(s) + VEINS[k].tier * 2, meshes: ms });
+}
+const nodeLoot = q => q.type === 'vein' ? VEINS[q.ore].loot() : LOOT[q.type]();
+// ---- the furnace ----
+const FURN = { // what it smelts and cooks: one in, one out, seconds each
+  cuing: { in: 'cuore', t: 4, kind: 'Smelt' }, feing: { in: 'feore', t: 5, kind: 'Smelt' }, auing: { in: 'auore', t: 5, kind: 'Smelt' }, tiing: { in: 'tiore', t: 7, kind: 'Smelt' },
+  metal: { in: 'scrap', inN: 3, t: 6, kind: 'Smelt' }, roast: { in: 'meat', t: 3, kind: 'Cook' }, steak: { in: 'alienmeat', t: 3, kind: 'Cook' }, ration: { in: 'blubber', t: 3, kind: 'Cook' }
+};
+const FUEL = { coal: 8, wood: 2 };
+function furnState(b) { return b.data.f || (b.data.f = { fuel: 0, q: [], out: {}, t: Date.now(), prog: 0 }); }
+function furnStep(b) { // catch the furnace up to now: it keeps going while you're away, as long as it has fuel
+  const F = furnState(b), now = Date.now(); let el = Math.min(86400, Math.max(0, (now - (F.t || now)) / 1000)); F.t = now; let changed = false;
+  while (el > 0 && F.q.length) {
+    const job = F.q[0], R = FURN[job.r]; if (!R) { F.q.shift(); continue; }
+    if (F.prog <= 0 && F.fuel < 1) break;
+    const need = R.t - F.prog;
+    if (el >= need) { el -= need; F.prog = 0; F.fuel -= 1; F.out[job.r] = (F.out[job.r] | 0) + 1; job.n--; changed = true; if (job.n <= 0) F.q.shift(); }
+    else { F.prog += el; el = 0; }
+  }
+  if (!F.q.length) F.prog = 0;
+  return changed;
+}
+const furnLit = b => { const F = furnState(b); return F.q.length && (F.fuel >= 1 || F.prog > 0); };
+let furnOpen = null;
+function openFurnace(b) { furnOpen = b; furnStep(b); openModal('#furnace', true); renderFurnace(); }
+function renderFurnace(lite) { // lite: the fire, the queue and what's ready (the recipe buttons stay put)
+  const b = furnOpen; if (!b) return; const F = furnState(b), job = F.q[0], R = job && FURN[job.r]; b.sig = JSON.stringify([F.q, F.out, F.fuel, furnLit(b)]);
+  const fuelTxt = `${F.fuel} smelt${F.fuel === 1 ? '' : 's'} of fuel`;
+  const outN = Object.values(F.out).reduce((t, n) => t + n, 0);
+  $('#fnStatus').innerHTML = `<div class="res-row"><b style="--c:${furnLit(b) ? '#ff8a3a' : '#555'}"></b><span>${furnLit(b) ? `Burning · ${ITEMS[job.r].name}` : F.q.length ? 'Out of fuel · add coal or wood' : 'Cold · queue something'}</span><em>${fuelTxt}</em></div>` +
+    (R ? `<div class="fn-prog"><i style="width:${Math.min(100, F.prog / R.t * 100).toFixed(0)}%"></i></div>` : '') +
+    `<div class="fn-fuel">${Object.entries(FUEL).map(([id, n]) => `<button class="mini" data-fuel="${id}"${have(id) ? '' : ' disabled'}>+1 ${ITEMS[id].name} (${have(id)}) · ${n} smelts</button>`).join('')}</div>`;
+  $('#fnQueue').innerHTML = F.q.length ? F.q.map((j, i) => `<div class="res-row"><b style="--c:${ITEMS[j.r].color || '#ffc94a'}"></b><span>${ITEMS[j.r].name}${i === 0 ? ' · now' : ''}</span><em>×${j.n}</em><button class="mini" data-cancel="${i}">Cancel</button></div>`).join('') : '<div class="res-row zero"><span>Nothing queued</span></div>';
+  $('#fnOut').innerHTML = outN ? Object.entries(F.out).filter(([, n]) => n).map(([id, n]) => `<div class="res-row"><b style="--c:${ITEMS[id].color || '#ffc94a'}"></b><span>${ITEMS[id].name}</span><em>${n}</em></div>`).join('') + `<button class="btn small" data-collect="1"><span>Collect all</span></button>` : '<div class="res-row zero"><span>Nothing ready yet</span></div>';
+  if (lite) return;
+  $('#fnRecipes').innerHTML = Object.entries(FURN).map(([out, Rr]) => { const n = Rr.inN || 1, can = Math.floor(have(Rr.in) / n);
+    return `<div class="recipe"><h4>${ITEMS[out].name}<small>${Rr.kind} · ${Rr.t} s · 1 fuel</small></h4><p>${n} ${ITEMS[Rr.in].name} → 1 ${ITEMS[out].name}${ITEMS[out].heal ? ` (restores ${ITEMS[out].heal} health)` : ''}</p><div class="cost"><span class="${can ? 'ok' : 'no'}">${have(Rr.in)} ${ITEMS[Rr.in].name}</span><button class="btn small" data-add="${out}" data-n="1"${can ? '' : ' disabled'}><span>+1</span></button><button class="btn small" data-add="${out}" data-n="all"${can > 1 ? '' : ' disabled'}><span>All ${can > 1 ? can : ''}</span></button></div></div>`; }).join('');
+}
+function furnaceClick(e) {
+  const b = furnOpen; if (!b) return; const F = furnState(b), t = e.target.closest('button'); if (!t) return;
+  furnStep(b);
+  if (t.dataset.fuel) { const id = t.dataset.fuel; if (have(id) < 1) return; takeItem(id, 1); F.fuel += FUEL[id]; sfx.thud(); }
+  else if (t.dataset.add) { const out = t.dataset.add, Rr = FURN[out], n = Rr.inN || 1, k = t.dataset.n === 'all' ? Math.floor(have(Rr.in) / n) : 1; if (k < 1) return; takeItem(Rr.in, k * n); const last = F.q[F.q.length - 1]; if (last && last.r === out) last.n += k; else F.q.push({ r: out, n: k }); F.t = Date.now(); sfx.click(); }
+  else if (t.dataset.cancel != null) { const i = +t.dataset.cancel, j = F.q[i]; if (!j) return; giveItem(FURN[j.r].in, j.n * (FURN[j.r].inN || 1)); F.q.splice(i, 1); if (i === 0) F.prog = 0; sfx.click(); }
+  else if (t.dataset.collect) { let n = 0; for (const [id, k] of Object.entries(F.out)) if (k) { giveItem(id, k); lootMsg(`+${k} ${ITEMS[id].name}`, ITEMS[id].color || '#ffc94a'); n += k; } F.out = {}; if (n) { gainXP(Math.min(60, n * 3)); sfx.chime(); } }
+  saveRoster(); renderFurnace();
+}
+function furnaceTick() { // the glow, and the queue moving while you watch
+  if (!world.build) return;
+  for (const b of world.build) { if (b.data.k !== 'furnace') continue; if (b.data.f) furnStep(b); const gl = b.mesh && b.mesh.userData.fglow; if (gl) { const on = furnLit(b); gl.visible = on; gl.material.opacity = .55 + Math.sin(time * 9 + b.data.x) * .15; } }
+  if (furnOpen && ex.modal === '#furnace') { // only redraw when something changed (so a button never vanishes under your finger); the bar moves in place
+    const F = furnState(furnOpen), sig = JSON.stringify([F.q, F.out, F.fuel, furnLit(furnOpen)]);
+    if (sig !== furnOpen.sig) renderFurnace(true); else { const bar = document.querySelector('#fnStatus .fn-prog i'), job = F.q[0]; if (bar && job && FURN[job.r]) bar.style.width = Math.min(100, F.prog / FURN[job.r].t * 100).toFixed(0) + '%'; } }
+}
+// ---- the inventory: equipment, then what you carry ----
+function renderEquip() {
+  const w = eqWorn(), slotRow = s => { const id = w.suit || w[s]; return `<div class="eq-slot${id ? '' : ' empty'}"><small>${EQ_NAME[s]}</small><span>${id ? ITEMS[id].name : '— empty —'}</span>${id && !w.suit ? `<button class="mini" data-off="${s}">Take off</button>` : ''}</div>`; };
+  const bagArmor = ARMOR_IDS.filter(id => have(id) && !isWorn(id));
+  return `<div class="eq-stats">Armour <b>${Math.round(armorDef() * 100)}%</b> · <b>+${armorHP()}</b> health</div>` +
+    (w.suit ? `<div class="eq-slot suit"><small>Suit · all four slots</small><span>${ITEMS[w.suit].name}</span><button class="mini" data-off="suit">Take off</button></div>` : '') +
+    EQ_SLOTS.map(slotRow).join('') +
+    (bagArmor.length ? `<div class="inv-h" style="margin-top:14px">Armour in your bag</div>` + bagArmor.map(id => { const why = wearWhy(id); return `<div class="res-row"><b style="--c:#${ITEMS[id].col[1].toString(16).padStart(6, '0')}"></b><span>${ITEMS[id].name}<small>${ITEMS[id].slot ? EQ_NAME[ITEMS[id].slot] : 'Suit'} · ${Math.round(ITEMS[id].def * 100)}% · +${ITEMS[id].hp}${why ? ' · ' + why : ''}</small></span><button class="mini" data-on="${id}"${why ? ' disabled' : ''}>Put on</button></div>`; }).join('') : '');
+}
+let craftFilter = 'all';
+const CRAFT_TABS = [['all', 'All'], ['tool', 'Tools'], ['armor', 'Armour'], ['use', 'Food · med'], ['place', 'Build'], ['res', 'Materials']];
+const craftTab = id => { const k = ITEMS[id].kind; return k === 'gun' ? 'tool' : k === 'ship' ? 'res' : k; };
 function lootMsg(text, color) {
   const el = document.createElement('div');
   el.innerHTML = `<b style="--c:${color}"></b>${text}`;
@@ -5520,11 +5704,14 @@ $('#hotbar').addEventListener('click', e => { const b = e.target.closest('button
 function canCraft(id) { const it = ITEMS[id]; if (it.kind === 'tool' && have(id)) return false; if ((it.kind === 'gun' || it.kind === 'armor') && gearOwned(id)) return false; if (it.kind === 'ship' && driveTier() >= +id.slice(-1)) return false; if (it.bench && !benchNear()) return false; return Object.entries(it.cost).every(([r, n]) => have(r) >= n); }
 function renderInv() {
   $('#invRes').innerHTML = `<div class="res-row"><b style="--c:#ffc94a"></b><span>Units</span><em>${units()}</em></div>` + RES_IDS.map(id => `<div class="res-row${have(id) ? '' : ' zero'}"><b style="--c:${ITEMS[id].color}"></b><span>${ITEMS[id].name}</span><em>${have(id)}</em></div>`).join('');
-  const gear = CRAFT_IDS.filter(id => have(id) && ITEMS[id].kind !== 'res');
-  $('#invGear').innerHTML = gear.length ? gear.map(id => `<div class="res-row"><b style="--c:var(--ink)"></b><span>${ITEMS[id].name}</span><em>${ITEMS[id].kind === 'armor' ? 'WORN' : KEEPS(ITEMS[id].kind) ? '✓' : have(id)}</em></div>`).join('') : '<div class="res-row zero"><span>Nothing crafted yet</span></div>';
-  $('#invCraft').innerHTML = CRAFT_IDS.map(id => {
+  $('#invEq').innerHTML = renderEquip();
+  const inv = invState(), gear = Object.keys(ITEMS).filter(id => have(id) && !['res', 'armor'].includes(ITEMS[id].kind));
+  $('#invGear').innerHTML = gear.length ? gear.map(id => { const it = ITEMS[id], bar = it.kind !== 'ship', on = inv.bar.includes(id);
+    return `<div class="res-row"><b style="--c:${on ? '#7fe8ff' : 'var(--ink)'}"></b><span>${it.name}${bar ? `<small>${on ? `On the hotbar · slot ${inv.bar.indexOf(id) + 1}` : 'Not on the hotbar'}</small>` : ''}</span><em>${KEEPS(it.kind) || it.kind === 'ship' ? '✓' : have(id)}</em>${bar ? `<button class="mini" data-bar="${id}">${on ? 'Take off' : 'Put on'}</button>` : ''}</div>`; }).join('') : '<div class="res-row zero"><span>Nothing crafted yet</span></div>';
+  $('#craftTabs').innerHTML = CRAFT_TABS.map(([k, t]) => `<button class="mini${craftFilter === k ? ' on' : ''}" data-ct="${k}">${t}</button>`).join('');
+  $('#invCraft').innerHTML = CRAFT_IDS.filter(id => craftFilter === 'all' || craftTab(id) === craftFilter).map(id => {
     const it = ITEMS[id], owned = (it.kind === 'tool' && have(id)) || ((it.kind === 'gun' || it.kind === 'armor') && gearOwned(id)) || (it.kind === 'ship' && driveTier() >= +id.slice(-1));
-    const kind = { tool: 'Tool', place: 'Placeable', use: 'Consumable', res: 'Material', ship: 'Ship upgrade', gun: 'Weapon', armor: 'Armour' }[it.kind] + (it.bench ? (benchNear() ? ' · table ✓' : ' · needs crafting table') : '');
+    const kind = { tool: 'Tool', place: 'Placeable', use: 'Consumable', res: 'Material', ship: 'Ship upgrade', gun: 'Weapon', armor: it.slot ? `Armour · ${EQ_NAME[it.slot]}` : 'Armour · suit' }[it.kind] + (it.bench ? (benchNear() ? ' · table ✓' : ' · needs crafting table') : '');
     const cost = Object.entries(it.cost).map(([r, n]) => `<span class="${have(r) >= n ? 'ok' : 'no'}">${n} ${ITEMS[r].name}</span>`).join('');
     return `<div class="recipe"><h4>${it.name}<small>${kind}</small></h4><p>${it.desc}</p><div class="cost">${cost}<button class="btn small" data-c="${id}"${canCraft(id) ? '' : ' disabled'}><span>${owned ? 'Owned' : 'Craft'}</span></button></div></div>`;
   }).join('');
@@ -5533,9 +5720,12 @@ $('#invCraft').addEventListener('click', e => {
   const b = e.target.closest('button[data-c]'); if (!b) return;
   const id = b.dataset.c; if (!canCraft(id)) return;
   for (const [r, n] of Object.entries(ITEMS[id].cost)) takeItem(r, n);
-  giveItem(id, 1); sfx.chime(); lootMsg(`Crafted ${ITEMS[id].name}${ITEMS[id].kind === 'armor' ? ' · now wearing it' : ''}`, '#a9dcff'); gainXP(KEEPS(ITEMS[id].kind) ? 30 : 20); renderInv();
-  if (ITEMS[id].kind === 'armor') { armorSync(true); ex.hp = Math.min(maxHP(), (ex.hp || 0) + (ITEMS[id].hp || 0)); }
+  giveItem(id, 1); sfx.chime(); lootMsg(`Crafted ${ITEMS[id].name}${ITEMS[id].kind === 'armor' ? (isWorn(id) ? ' · now wearing it' : ' · put it on from Equipment') : ''}`, '#a9dcff'); gainXP(KEEPS(ITEMS[id].kind) ? 30 : 20); renderInv();
+  if (ITEMS[id].kind === 'armor') armorSync(true);
 });
+$('#invEq').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.off) unequip(b.dataset.off); else if (b.dataset.on) equip(b.dataset.on); renderInv(); });
+$('#invGear').addEventListener('click', e => { const b = e.target.closest('button[data-bar]'); if (b) toggleBar(b.dataset.bar); });
+$('#craftTabs').addEventListener('click', e => { const b = e.target.closest('button[data-ct]'); if (!b) return; craftFilter = b.dataset.ct; sfx.blip(); renderInv(); });
 /* ============ alignment (KOTOR / Mass Effect style) ============
    -100 AWAKENED VILLAIN · 0 NEUTRAL · +100 ENLIGHTENED HERO. Every wanderer starts grey (0).
    Companions in your party react: heroes favour good deeds and dislike evil ones, villains the reverse.
@@ -5808,7 +5998,8 @@ const MAT_IDS = Object.keys(MATS);
 const PIECES = { floor: { name: 'Floor', n: 3 }, wall: { name: 'Wall', n: 3 }, door: { name: 'Doorway', n: 2 }, roof: { name: 'Roof', n: 3 }, ramp: { name: 'Ramp', n: 3 } };
 const SPECIALS = {
   bench: { name: 'Crafting table', desc: 'Refined recipes (metal plates, teleporters) need one within 5 m.', cost: { wood: 4, stone: 2, scrap: 2 } },
-  tele: { name: 'Teleporter', desc: 'Joins this base to your teleporter network, like the one outside the station.', cost: { metal: 4, crystal: 3, obsidian: 2 }, bench: true }
+  tele: { name: 'Teleporter', desc: 'Joins this base to your teleporter network, like the one outside the station.', cost: { metal: 4, crystal: 3, obsidian: 2 }, bench: true },
+  furnace: { name: 'Furnace', desc: 'Smelts ore into ingots and cooks food. Burns coal (8 smelts a lump) or wood (2), and keeps working while you’re away.', cost: { stone: 8, scrap: 2 } }
 };
 const GS = 3, WH = 3;
 const pieceCost = (k, m) => SPECIALS[k] ? SPECIALS[k].cost : { [m]: PIECES[k].n };
@@ -5843,6 +6034,12 @@ function makePiece(o) {
     box('benchShelf', 1.4, .06, .6, 0, .3, 0, wood);
     box('benchVice', .26, .22, .2, .52, 1.07, -.18, metal);
     const scr = new THREE.Mesh(bGeo('benchScreen', () => new THREE.PlaneGeometry(.5, .3)), new THREE.MeshBasicMaterial({ color: 0x7fd8ff })); scr.position.set(-.35, 1.2, -.3); scr.rotation.x = -.35; g.add(scr);
+  } else if (o.k === 'furnace') {
+    const st = bMat('stone'), dark = new THREE.MeshStandardMaterial({ color: 0x141012, roughness: .9 });
+    box('furnBody', 1.2, 1.3, 1.1, 0, .65, 0, st); box('furnTop', 1.3, .12, 1.2, 0, 1.36, 0, st); box('furnChim', .32, .7, .32, .3, 1.75, -.3, st);
+    box('furnMouth', .6, .45, .04, 0, .45, .56, dark); box('furnGrate', .64, .06, .06, 0, .7, .57, bMat('metal'));
+    const fire = new THREE.Mesh(bGeo('furnFire', () => new THREE.PlaneGeometry(.5, .32)), new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, opacity: .9 })); fire.position.set(0, .42, .585); g.add(fire);
+    const gl = glowSprite(0xff8a3a, 2.4, .6); gl.position.set(0, .5, .75); g.add(gl); g.userData.fglow = gl; fire.visible = true; gl.userData.fire = fire;
   } else if (o.k === 'tele') {
     const base = new THREE.Mesh(bGeo('teleBase', () => new THREE.CylinderGeometry(1.1, 1.25, .25, 28)), bMat('metal')); base.position.y = .12; g.add(base);
     const ring = new THREE.Mesh(bGeo('teleRing', () => new THREE.TorusGeometry(.85, .05, 8, 40)), new THREE.MeshBasicMaterial({ color: 0x7fd8ff, transparent: true, opacity: .9 }));
@@ -5860,6 +6057,7 @@ function pieceShape(o) {
   if (o.k === 'wall') seg(-GS / 2, GS / 2, 0, WH);
   else if (o.k === 'door') { seg(-GS / 2, -.65, 0, WH); seg(.65, GS / 2, 0, WH); seg(-.65, .65, WH - .7, WH); }
   else if (o.k === 'bench') { seg(-.7, .7, 0, 1); surf.push({ hx: .85, hz: .45, top: o.y + .96 }); }
+  else if (o.k === 'furnace') { seg(-.6, .6, 0, 1.4); surf.push({ hx: .65, hz: .6, top: o.y + 1.42 }); }
   else if (o.k === 'floor' || o.k === 'roof') surf.push({ half: GS / 2 + (o.k === 'roof' ? .1 : 0), top: o.y });
   else if (o.k === 'ramp') surf.push({ half: GS / 2, ramp: true, top: o.y });
   else if (o.k === 'tele') surf.push({ half: .9, top: o.y + .25 });
@@ -6012,7 +6210,8 @@ $('#bmSpecial').addEventListener('click', e => { const b = e.target.closest('but
 $('#bmStop').addEventListener('click', () => { sfx.click(); stopBuild(); openBuild(false); });
 $('#bmClose').addEventListener('click', () => openBuild(false));
 // ---- modals share one flag so movement and actions pause while any is open ----
-const MODALS = ['#inv', '#buildMenu', '#shop', '#tpMenu', '#alignScr'];
+const MODALS = ['#inv', '#buildMenu', '#shop', '#tpMenu', '#alignScr', '#furnace'];
+$('#furnace').addEventListener('click', furnaceClick); $('#fnClose').addEventListener('click', () => { openModal('#furnace', false); furnOpen = null; });
 function openModal(id, on) {
   for (const m of MODALS) if (m !== id) show($(m), false);
   show($(id), on); ex.invOpen = on; ex.modal = on ? id : null; ui.xhud.classList.toggle('modal', on && id !== '#buildMenu');
@@ -6033,7 +6232,7 @@ const MERCHANTS = {
     buy: { wood: 8, metal: 40, obsidian: 60, crystal: 28, scrap: 10, medkit: 55, ration: 20 }
   }]
 };
-const SELL = { stone: 2, ice: 1, scrap: 5, crystal: 12, cloth: 6, blubber: 4, feather: 3, wood: 4, metal: 18, obsidian: 22, warpcell: 60 };
+const SELL = { stone: 2, ice: 1, scrap: 5, crystal: 12, cloth: 6, blubber: 4, feather: 3, wood: 4, metal: 18, obsidian: 22, warpcell: 60, coal: 3, cuore: 6, feore: 8, auore: 16, tiore: 24, cuing: 14, feing: 18, auing: 34, tiing: 50, alienmeat: 5 };
 const sellPrice = id => Math.max(1, Math.round(SELL[id] * ((ex.shop && ex.shop.sellMult) || 1)));
 const merchantsHere = () => MERCHANTS[curArea()] || [];
 function makeCathFigure() { // a tall robed shape with violet eyes and a hood of spines (the Catharsis has no rigged model)
@@ -6249,9 +6448,9 @@ function doAttack() {
 }
 function strike() {
   const p = player.position, a = player.rotation.y, fx_ = Math.sin(a), fz = Math.cos(a);
-  const tool = selItem(), dmg = (tool === 'opick' ? 3 : tool === 'pick' ? 2 : 1) + lvDmg();
+  const tool = selItem(), dmg = [1, 2, 3, 4][pickTier()] + lvDmg(); void tool;
   if (esc.on && strikeEsc(6 + lvDmg() * 3)) { sfx.swing(); return; }
-  if (strikeFauna((tool === 'opick' ? 14 : tool === 'pick' ? 10 : 6) + lvDmg() * 3)) { sfx.swing(); return; }
+  if (strikeFauna([6, 10, 14, 18][pickTier()] + lvDmg() * 3)) { sfx.swing(); return; }
   let best = null, bd = 1e9;
   for (const n of nodesNear(p.x, p.z)) {
     if (n.dead) continue;
@@ -6262,18 +6461,19 @@ function strike() {
   }
   sfx.swing();
   if (!best) return;
-  if (best.type === 'obsidian' && selItem() !== 'pick' && selItem() !== 'opick') { best.shake = .15; sfx.hit('rock'); lootMsg('Too hard to break by hand · select an ice pick', '#ff8f86'); return; }
+  if (best.type === 'vein' && pickTier() < VEINS[best.ore].tier) { best.shake = .15; sfx.hit('rock'); lootMsg(`${VEINS[best.ore].name} · too hard · you need ${VEIN_TOOL[VEINS[best.ore].tier]}`, '#ff8f86'); return; }
+  if (best.type === 'obsidian' && pickTier() < 1) { best.shake = .15; sfx.hit('rock'); lootMsg('Too hard to break by hand · select an ice pick', '#ff8f86'); return; }
   best.hp -= dmg; best.shake = .25;
-  const col = best.type === 'tree' ? [.45, .3, .18] : best.type === 'obsidian' ? [.3, .22, .42] : best.type === 'rock' ? [.55, .57, .62] : best.type === 'ice' ? [.75, .9, 1] : best.type === 'ore' ? [.85, .66, .35] : best.type === 'crystal' ? (c => [c.r, c.g, c.b])(world.planet ? plMats().cry.color : new THREE.Color('#7fd8ff')) : best.type === 'pod' ? [.85, .87, .9] : [.8, .45, .25];
+  const col = best.type === 'tree' ? [.45, .3, .18] : best.type === 'obsidian' ? [.3, .22, .42] : best.type === 'rock' ? [.55, .57, .62] : best.type === 'ice' ? [.75, .9, 1] : best.type === 'ore' ? [.85, .66, .35] : best.type === 'crystal' ? (c => [c.r, c.g, c.b])(world.planet ? plMats().cry.color : new THREE.Color('#7fd8ff')) : best.type === 'pod' ? [.85, .87, .9] : best.type === 'vein' ? (c => [c.r, c.g, c.b])(new THREE.Color(VEINS[best.ore].col)) : [.8, .45, .25];
   burst(best.x - fx_ * best.r * .6, best.y, best.z - fz * best.r * .6, 14, 3.5, col[0], col[1], col[2], .7, .8, 1);
-  sfx.hit(best.type === 'tree' || best.type === 'pod' ? 'crate' : best.type === 'crystal' ? 'ice' : best.type === 'ore' ? 'rock' : best.type);
+  sfx.hit(best.type === 'tree' || best.type === 'pod' ? 'crate' : best.type === 'crystal' ? 'ice' : best.type === 'ore' || best.type === 'vein' ? 'rock' : best.type);
   if (best.hp <= 0) {
     best.dead = true;
     for (const m of best.meshes) m.parent && m.parent.remove(m);
     wsState().mined[best.key] = 1; saveRoster();
-    gainXP({ rock: 12, ice: 10, crate: 15, obsidian: 22, tree: 14, ore: 16, crystal: 18, pod: 20 }[best.type] || 10);
+    gainXP(best.type === 'vein' ? VEINS[best.ore].xp : { rock: 12, ice: 10, crate: 15, obsidian: 22, tree: 14, ore: 16, crystal: 18, pod: 20 }[best.type] || 10);
     burst(best.x, best.y, best.z, 30, 5, col[0], col[1], col[2], 1, 1, 2);
-    for (const drop of LOOT[best.type]()) if (drop) { giveItem(drop[0], drop[1]); lootMsg(`+${drop[1]} ${ITEMS[drop[0]].name}`, ITEMS[drop[0]].color); }
+    for (const drop of nodeLoot(best)) if (drop) { giveItem(drop[0], drop[1]); lootMsg(`+${drop[1]} ${ITEMS[drop[0]].name}`, ITEMS[drop[0]].color); }
     sfx.thud();
   }
 }
@@ -6300,7 +6500,7 @@ function updateSurvival(dt) {
   const hb = $('#heatBar'), hv = suitHeat(); hb.firstChild.style.transform = `scaleX(${hv / 100})`; hb.classList.toggle('on', hv < 99.5 || (ch1().stormTalk && !ch1().stormOver)); hb.classList.toggle('low', hv < 30);
   const jb = $('#jetBar'); jb.firstChild.style.transform = `scaleX(${(ex.jet == null ? 100 : ex.jet) / 100})`; jb.classList.toggle('on', ex.jet != null && ex.jet < 99.5); jb.classList.toggle('low', ex.jet < 15);
   // placement preview, teleporter rings, merchants
-  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt); hallTick(dt); khzTick(dt);
+  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt); hallTick(dt); khzTick(dt); furnaceTick();
   for (const b of world.build) if (b.mesh.userData.spin) b.mesh.userData.spin.rotation.z += dt * 1.5;
   if (world.stationTp) world.stationTp.userData.spin.rotation.z += dt * 1.5;
   const it = selItem();
@@ -6436,29 +6636,45 @@ function fireRifle() {
 }
 // ---- armour: shoulder plates, a chest plate and shin guards in the set's colours, over your suit ----
 const armorFx = { id: null, parts: [] };
-function armorSync(force) {
-  const id = ex.mode === 'world' || ex.mode === 'station' ? wornArmor() : null;
-  if (!force && armorFx.id === id && armorFx.rig === rig.ra) return;
+function armorSync(force) { // what you wear, piece by piece: a helmet, a chestplate (with shoulder plates), leggings, boots; a suit looks as it always has
+  const w = ex.mode === 'world' || ex.mode === 'station' ? eqWorn() : {}, key = JSON.stringify(w);
+  if (!force && armorFx.id === key && armorFx.rig === rig.ra) return;
   for (const o of armorFx.parts) if (o.parent) o.parent.remove(o);
-  armorFx.parts = []; armorFx.id = id; armorFx.rig = rig.ra;
-  if (!id || !rig.ra) return;
-  const [cBase, cTrim] = ITEMS[id].col, k = headYFor(wanderer) / 1.66;
-  const base = new THREE.MeshStandardMaterial({ color: cBase, metalness: .75, roughness: .35 }), trim = new THREE.MeshStandardMaterial({ color: cTrim, metalness: .8, roughness: .3, emissive: id === 'armor1' ? 0 : cTrim, emissiveIntensity: id === 'armor1' ? 0 : .35 });
-  const part = (parent, build) => { const g = new THREE.Group(); build(g); g.scale.setScalar(k); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); parent.add(g); armorFx.parts.push(g); return g; };
-  const box = (g, w, h2, d, m, x, y, z, rx = 0, rz = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h2, d), m); o.position.set(x, y, z); o.rotation.set(rx, 0, rz); g.add(o); return o; };
-  // shoulder plates (they turn with the arms)
-  for (const [arm, s] of [[rig.ra, -1], [rig.la, 1]]) part(arm, g => { box(g, .22, .07, .24, base, s * .02, .0, .02, 0, s * -.12); box(g, .23, .022, .25, trim, s * .02, .038, .02, 0, s * -.12); box(g, .17, .055, .21, base, s * .08, -.07, .02, 0, s * -.45); box(g, .17, .018, .215, trim, s * .08, -.043, .02, 0, s * -.45); });
-  // shin guards
-  for (const leg of [rig.rl, rig.ll]) part(leg, g => { box(g, .14, .3, .05, base, 0, -.5, .1); box(g, .15, .03, .055, trim, 0, -.36, .1); box(g, .12, .08, .06, trim, 0, -.33, .12); });
-  // chest plate and collar, on the body
-  part(inner, g => { const y = headYFor(wanderer) / k - .42; box(g, .44, .36, .07, base, 0, y, .225); box(g, .46, .035, .075, trim, 0, y + .17, .23); box(g, .065, .28, .075, trim, 0, y - .02, .24); box(g, .36, .05, .07, base, 0, y - .22, .215); for (const s of [-1, 1]) box(g, .09, .3, .06, base, s * .2, y - .01, .2, 0, s * .15); if (id === 'armor4') { const core = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, .02, 16), new THREE.MeshStandardMaterial({ color: 0xffd36a, emissive: 0xffb02a, emissiveIntensity: 2 })); core.rotation.x = Math.PI / 2; core.position.set(0, y + .05, .195); g.add(core); } });
+  armorFx.parts = []; armorFx.id = key; armorFx.rig = rig.ra;
+  if (!rig.ra || !Object.keys(w).length) return;
+  const k = headYFor(wanderer) / 1.66, mc = {};
+  const mats = id => mc[id] || (mc[id] = (() => { const [cBase, cTrim] = ITEMS[id].col, dull = id === 'armor1' || ITEMS[id].set === 'pad';
+    return [new THREE.MeshStandardMaterial({ color: cBase, metalness: dull ? .1 : .75, roughness: dull ? .85 : .35 }), new THREE.MeshStandardMaterial({ color: cTrim, metalness: dull ? .1 : .8, roughness: .3, emissive: dull ? 0 : cTrim, emissiveIntensity: dull ? 0 : .35 })]; })());
+  const ws = o => { o.updateMatrixWorld(true); return o.getWorldScale(new THREE.Vector3()).x || 1; }, wIn = ws(inner);
+  const part = (parent, build) => { const g = new THREE.Group(); build(g); g.scale.setScalar(k * wIn / ws(parent)); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); parent.add(g); armorFx.parts.push(g); return g; }; // the same size on every species (their limbs sit inside a scaled model)
+  const box = (g, w2, h2, d, m, x, y, z, rx = 0, rz = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w2, h2, d), m); o.position.set(x, y, z); o.rotation.set(rx, 0, rz); g.add(o); return o; };
+  const S = w.suit, chest = S || w.chest, legs = S || w.legs, feet = w.feet, head = w.head, lw = ({ chompy: 1.05, grek: 1.1 })[spOf(wanderer)] || 1; // the bulkier species need slightly wider leg plates
+  if (chest) { const [base, trim] = mats(chest);
+    for (const [arm, s] of [[rig.ra, -1], [rig.la, 1]]) part(arm, g => { box(g, .22, .07, .24, base, s * .02, .0, .02, 0, s * -.12); box(g, .23, .022, .25, trim, s * .02, .038, .02, 0, s * -.12); box(g, .17, .055, .21, base, s * .08, -.07, .02, 0, s * -.45); box(g, .17, .018, .215, trim, s * .08, -.043, .02, 0, s * -.45); });
+    part(inner, g => { const y = headYFor(wanderer) / k - .42; box(g, .44, .36, .07, base, 0, y, .225); box(g, .46, .035, .075, trim, 0, y + .17, .23); box(g, .065, .28, .075, trim, 0, y - .02, .24); box(g, .36, .05, .07, base, 0, y - .22, .215); for (const s of [-1, 1]) box(g, .09, .3, .06, base, s * .2, y - .01, .2, 0, s * .15); if (chest === 'armor4') { const core = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, .02, 16), new THREE.MeshStandardMaterial({ color: 0xffd36a, emissive: 0xffb02a, emissiveIntensity: 2 })); core.rotation.x = Math.PI / 2; core.position.set(0, y + .05, .195); g.add(core); } }); }
+  if (chest && !S) { const [base, trim] = mats(chest); part(inner, g => { const y = headYFor(wanderer) / k - .42; box(g, .42, .34, .06, base, 0, y, -.2); box(g, .44, .035, .065, trim, 0, y + .16, -.205); box(g, .065, .26, .065, trim, 0, y - .02, -.215); }); } // a chestplate wraps round the back too
+  if (legs) { const [base, trim] = mats(legs);
+    if (S) for (const leg of [rig.rl, rig.ll]) part(leg, g => { box(g, .14, .3, .05, base, 0, -.5, .1); box(g, .15, .03, .055, trim, 0, -.36, .1); box(g, .12, .08, .06, trim, 0, -.33, .12); }); // a suit's shin guards, as before
+    else for (const leg of [rig.rl, rig.ll]) part(leg, g => { box(g, .25 * lw, .28, .25 * lw, base, 0, -.17, .02); box(g, .26 * lw, .035, .26 * lw, trim, 0, -.03, .02); box(g, .15 * lw, .07, .08, trim, 0, -.33, .13 * lw); }); } // leggings: plates all round the thigh and a knee cop
+  if (feet) { const [base, trim] = mats(feet);
+    for (const leg of [rig.rl, rig.ll]) part(leg, g => { box(g, .23 * lw, .22, .23 * lw, base, 0, -.6, .03); box(g, .24 * lw, .03, .24 * lw, trim, 0, -.49, .03); box(g, .22 * lw, .13, .3 * lw, base, 0, -.8, .06); box(g, .23 * lw, .03, .31 * lw, trim, 0, -.735, .06); }); } // boots: greaves all round the shin and armoured toes
+  if (head) { const [base, trim] = mats(head);
+    part(inner, g => { const y = headYFor(wanderer) / k + .13, r = .25; // helmet: a ring round the head (outside a suit's helmet), cheek guards, a cap and a crest
+      box(g, r * 2, .08, .05, base, 0, y, r); box(g, r * 2, .08, .05, base, 0, y, -r); for (const s of [-1, 1]) { box(g, .05, .08, r * 2, base, s * r, y, 0); box(g, .045, .2, .12, base, s * r, y - .14, r * .45); }
+      box(g, r * 1.7, .04, r * 1.7, base, 0, y + .2, 0); box(g, .06, .12, r * 2.1, trim, 0, y + .26, 0); box(g, r * 2.05, .025, .055, trim, 0, y - .045, r + .005); }); }
 }
-const HELD_KINDS = new Set(['pick', 'opick', 'medkit', 'lamp', 'wall', 'heater', 'beacon', 'rifle1', 'rifle2', 'rifle3']);
+const HELD_KINDS = new Set(['pick', 'opick', 'tpick', 'steak', 'medkit', 'lamp', 'wall', 'heater', 'beacon', 'rifle1', 'rifle2', 'rifle3']);
 function heldModel(id) {
   if (GUN_IDS.includes(id)) return rifleModel(id);
   const g = new THREE.Group(), M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .6 }, o));
   const add = (geo, mat, x = 0, y = 0, z = 0, rx = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.x = rx; m.castShadow = true; g.add(m); return m; };
-  if (id === 'opick') {
+  if (id === 'tpick') {
+    add(new THREE.CylinderGeometry(.024, .028, .66, 8), M(0x2a2e36, { roughness: .6, metalness: .4 }), 0, 0, .22, Math.PI / 2);
+    const ti = M(0x8aa8c8, { metalness: .9, roughness: .22, emissive: 0x10304a, emissiveIntensity: .5 });
+    add(new THREE.BoxGeometry(.05, .08, .1), ti, 0, 0, .53); add(new THREE.ConeGeometry(.03, .34, 6), ti, 0, -.2, .55, Math.PI); add(new THREE.ConeGeometry(.026, .18, 6), ti, 0, .12, .55);
+  } else if (id === 'steak') {
+    add(new THREE.SphereGeometry(.07, 10, 8), M(0x6a2a3a, { roughness: .7 }), 0, 0, .12).scale.set(1.3, .5, 1);
+  } else if (id === 'opick') {
     // dark handle, a black volcanic-glass head with a faint violet edge
     add(new THREE.CylinderGeometry(.024, .028, .66, 8), M(0x1d1712, { roughness: .9 }), 0, 0, .22, Math.PI / 2);
     const glass = M(0x15101c, { roughness: .1, metalness: .4, emissive: 0x2a1040, emissiveIntensity: .5, flatShading: true });
@@ -6968,7 +7184,7 @@ function jamesHit(n) {
     wsState().mined[n.key] = 1; saveRoster();
     gainXP(Math.round(({ rock: 12, ice: 10, crate: 15 }[n.type] || 10) / 2));
     burst(n.x, n.y, n.z, 24, 4.5, col[0], col[1], col[2], 1, 1, 2);
-    for (const drop of LOOT[n.type]()) if (drop) { giveItem(drop[0], drop[1]); lootMsg(`James · +${drop[1]} ${ITEMS[drop[0]].name}`, '#7fe0a0'); }
+    for (const drop of nodeLoot(n)) if (drop) { giveItem(drop[0], drop[1]); lootMsg(`James · +${drop[1]} ${ITEMS[drop[0]].name}`, '#7fe0a0'); }
     if (heard) sfx.thud();
   }
 }
@@ -7345,7 +7561,7 @@ function hurtPlayer(n, src) {
       if (n <= 0) return;
     }
   }
-  const arm = wornArmor(); if (arm) n = Math.max(1, Math.round(n * (1 - ITEMS[arm].def))); // your armour takes its share
+  const ad = armorDef(); if (ad) n = Math.max(1, Math.round(n * (1 - ad))); // what you're wearing takes its share
   ex.hp = Math.max(0, ex.hp - n); invState().hp = Math.round(ex.hp);
   sfx.thud(); sfx.hit('crate'); combatPulse();
   const fx = $('#hurtFx'); fx.classList.remove('on'); void fx.offsetWidth; fx.classList.add('on');
@@ -7890,6 +8106,10 @@ function buildChunk(cx, cz) {
       nodes.push({ key, type: 'obsidian', x, z, y: y + sz * .8, r: sz * .8, hp: 5, meshes: [ob] });
     }
   }
+  if (curArea() === 'antarctica' && wHash(cx, cz, 320) > .72) { // coal, copper and iron in the Antarctic rock
+    const vk = ['coal', 'coal', 'cu', 'fe'][Math.floor(wHash(cx, cz, 321) * 4)], key = `v${cx}_${cz}`, x = ox + (wHash(cx, cz, 322) - .5) * CH * .7, z = oz + (wHash(cx, cz, 323) - .5) * CH * .7;
+    if (!mined[key] && Math.hypot(x, z) > 30 && !worldBlocked(x, z, true) && lakeAmt(x, z) < .3 && !nearJames(x, z)) veinNode(vk, key, x, z, wHeight(x, z), .9 + wHash(cx, cz, 324) * .8, wObsMat, grp, nodes, j => wHash(cx, cz, 330 + j));
+  }
   grp.userData.nodes = nodes;
   wScene.add(grp);
   return grp;
@@ -7901,7 +8121,8 @@ const CRY_COLS = ['#7fd8ff', '#c08aff', '#7fffb8', '#ffd36a', '#ff8ab0', '#9ab8f
 function planetRes(P) {
   if (P.res) return P.res;
   const lum = P.c && P.c.low ? (P.c.low.r + P.c.low.g + P.c.low.b) / 3 : .3, lava = !!P.seaGlow, lush = P.kind === 'earth', icy = P.kind === 'rock' && lum > .45;
-  return P.res = { rock: 3.2, ore: lava ? 2.4 : 1.5, crystal: icy ? 2 : 1.3, ice: icy ? 2.2 : 0, obsidian: lava || P.kind === 'venus' ? 1.4 : P.kind === 'rock' ? .3 : 0, tree: lush ? 1 : 0, pod: .16 };
+  return P.res = { rock: 3.2, ore: lava ? 2.4 : 1.5, crystal: icy ? 2 : 1.3, ice: icy ? 2.2 : 0, obsidian: lava || P.kind === 'venus' ? 1.4 : P.kind === 'rock' ? .3 : 0, tree: lush ? 1 : 0, pod: .16,
+    coal: lush ? 1.3 : P.kind === 'desert' ? .9 : .5, cu: 1, fe: .85, au: lava ? .55 : .28, ti: P.kind === 'rock' ? .5 : .2 }; // the ore veins: coal, copper, iron, gold, titanium
 }
 function plMats() {
   const W = world.planet, P = W.P; if (W.mats) return W.mats;
@@ -7930,6 +8151,10 @@ function plScatter(cx, cz, ox, oz, grp) {
     const s = 1.1 + wHash(cx, cz, 730 + i) * 1.4, y = wHeight(x, z), ms = [boulder(M.oreRock, x, z, s, 740 + i * 3)];
     for (let k = 0; k < 4; k++) { const v = new THREE.Mesh(new THREE.OctahedronGeometry(s * (.22 + wHash(cx, cz, 760 + i * 4 + k) * .18), 0), M.ore), a = k * 1.7 + i; v.position.set(x + Math.cos(a) * s * .55, y + s * (.25 + k * .12), z + Math.sin(a) * s * .55); v.rotation.set(a, a * 2, 0); ms.push(v); }
     add(key, 'ore', x, z, y + s * .4, s * .9, 4 + Math.round(s), ms);
+  }
+  for (const [vk, salt] of [['coal', 1200], ['cu', 1300], ['fe', 1400], ['au', 1500], ['ti', 1600]]) for (let i = 0, n = count(R[vk] || 0, salt); i < n; i++) { // ore veins
+    const key = `pv${vk}${cx}_${cz}_${i}`, [x, z] = spot(salt + 10, i); if (mined[key] || !ok(x, z)) continue;
+    veinNode(vk, key, x, z, wHeight(x, z), 1 + wHash(cx, cz, salt + 40 + i) * 1.2, M.oreRock, grp, nodes, j => wHash(cx, cz, salt + 60 + i * 13 + j));
   }
   for (let i = 0, n = count(R.crystal, 800); i < n; i++) { // crystals: a glowing cluster
     const key = `pc${cx}_${cz}_${i}`, [x, z] = spot(810, i); if (mined[key] || !ok(x, z)) continue;
@@ -10607,7 +10832,7 @@ function spType(sp, role, lv, warden) { // a creature of this species at this le
   const Rl = SP_ROLE[role], B = Rl.base, kh = 1 + (lv - 10) * .08, kd = 1 + (lv - 10) * .035, kx = 1 + (lv - 10) * .06, w = warden ? 4 : 1;
   const D = Object.assign({}, B, { name: warden ? `${sp.name} matriarch · lv ${lv}` : `${sp.name} ${Rl.title} · lv ${lv}`, hp: Math.round(B.hp * kh * w), dmg: Math.round(B.dmg * kd * (warden ? 1.4 : 1)), xp: Math.round(B.xp * kx * (warden ? 5 : 1)),
     pack: warden ? false : B.pack, spot: warden ? `The ${sp.name} matriarch rises!` : `${sp.name} ${Rl.title}s!`,
-    loot: warden ? () => [['medkit', 1], ['crystal', 2], ['obsidian', 1], Math.random() < .5 && ['warpcell', 1]] : role === 'brute' ? () => [['metal', 1], Math.random() < .3 && ['medkit', 1]] : () => [Math.random() < .5 && ['scrap', 1], Math.random() < .2 && ['crystal', 1]] });
+    loot: warden ? () => [['medkit', 1], ['crystal', 2], ['obsidian', 1], ['alienmeat', 2], Math.random() < .5 && ['warpcell', 1]] : role === 'brute' ? () => [['metal', 1], ['alienmeat', 2], Math.random() < .3 && ['medkit', 1]] : () => [Math.random() < .6 && ['alienmeat', 1], Math.random() < .4 && ['scrap', 1], Math.random() < .2 && ['crystal', 1]] });
   if (B.fly) D.look = { body: new THREE.Color(sp.p.c1).getHex(), dark: new THREE.Color(sp.p.c3).getHex(), s: 1.9 };
   else { const k = Rl.k; D.sp = Object.assign({}, sp.p, { scale: (k.scale || 1) * (warden ? 1.5 : 1), horns: Math.max(0, Math.min(5, sp.p.horns + (k.horns || 0) + (warden ? 1 : 0))), spikes: Math.max(0, sp.p.spikes + (k.spikes || 0)), glow: sp.p.glow || warden }); }
   FAUNA[key] = D; return key;
@@ -10940,7 +11165,7 @@ function lairBossWin() {
   lairSetProg(L, L.floors + 1);
   gainXP(Math.round(260 + L.lv * 18), `Defeated ${Bd.name}`);
   const loot = [['medkit', 2], ['warpcell', 1 + (L.tier > 0)], ['crystal', 2 + L.tier], [L.lv > 40 ? 'obsidian' : 'metal', 2 + L.tier], Math.random() < .5 && ['scrap', 3]];
-  if (Bd.armor) setTimeout(() => { const it = ITEMS[Bd.armor], had = have(Bd.armor) > 0; if (!had) giveItem(Bd.armor, 1); notice(had ? 'You already carry it' : 'Endgame armour', it.name.toUpperCase(), 4200); lootMsg(canWear(Bd.armor) ? `${it.name} · you’re wearing it now` : `${it.name} · ${it.desc.split('.')[0]} · it waits in your bag`, '#ffd36a'); armorSync && armorSync(true); }, 2400);
+  if (Bd.armor) setTimeout(() => { const it = ITEMS[Bd.armor], had = have(Bd.armor) > 0; if (!had) giveItem(Bd.armor, 1); notice(had ? 'You already carry it' : 'Endgame armour', it.name.toUpperCase(), 4200); lootMsg(isWorn(Bd.armor) ? `${it.name} · you’re wearing it now` : canWear(Bd.armor) ? `${it.name} · put it on from Inventory → Equipment` : `${it.name} · ${it.desc.split('.')[0]} · it waits in your bag`, '#ffd36a'); armorSync && armorSync(true); }, 2400);
   setTimeout(() => { for (const dr of loot) if (dr) { giveItem(dr[0], dr[1]); lootMsg(`+${dr[1]} ${ITEMS[dr[0]].name}`, ITEMS[dr[0]].color); } const n = lairsAll().list.filter(L => lairOpen(L) && lairCleared(L)).length; lootMsg(`Lairs cleared: ${n} of ${lairsAll().list.filter(lairOpen).length}`, '#d8c8ff'); }, 1200);
   setTimeout(() => { if (DGN.lb && DGN.lb.mesh.parent) DGN.lb.mesh.parent.remove(DGN.lb.mesh); DGN.lb = null; }, 6000);
 }
@@ -15415,7 +15640,7 @@ function crewTick(dt) {
       if (n && walkTo(n.x, n.z, (n.r || .8) + .9, true)) {
         R.mode = 'attack'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(n.x - o.x, n.z - o.z), Math.min(1, dt * 6));
         if ((C.swingT -= dt) <= 0) { C.swingT = 1.1; n.hp -= 1 + levelInfo(wanderer.xp || 0).level / 25; n.shake = .25; sfx.hit(n.type === 'tree' || n.type === 'pod' ? 'crate' : 'rock');
-          if (n.hp <= 0) { n.dead = true; for (const m of n.meshes) m.parent && m.parent.remove(m); wsState().mined[n.key] = 1; saveRoster(); gainXP(6); for (const drop of LOOT[n.type]()) if (drop) { giveItem(drop[0], drop[1]); lootMsg(`${name} · +${drop[1]} ${ITEMS[drop[0]].name}`, compColor(id)); } C.node = null; } }
+          if (n.hp <= 0) { n.dead = true; for (const m of n.meshes) m.parent && m.parent.remove(m); wsState().mined[n.key] = 1; saveRoster(); gainXP(6); for (const drop of nodeLoot(n)) if (drop) { giveItem(drop[0], drop[1]); lootMsg(`${name} · +${drop[1]} ${ITEMS[drop[0]].name}`, compColor(id)); } C.node = null; } }
       }
     }
     animRig(R, dt);
@@ -17040,7 +17265,7 @@ function orionHit(n) {
   if (n.hp <= 0) {
     n.dead = true; for (const m of n.meshes) m.parent && m.parent.remove(m);
     wsState().mined[n.key] = 1; saveRoster(); gainXP(6);
-    for (const drop of LOOT[n.type]()) if (drop) { giveItem(drop[0], drop[1]); lootMsg(`Orion · +${drop[1]} ${ITEMS[drop[0]].name}`, '#ffc94a'); }
+    for (const drop of nodeLoot(n)) if (drop) { giveItem(drop[0], drop[1]); lootMsg(`Orion · +${drop[1]} ${ITEMS[drop[0]].name}`, '#ffc94a'); }
     if (heard) sfx.thud();
     return true;
   }
@@ -17388,6 +17613,7 @@ function updateWorldMode(dt) {
     const net = tpNetwork().filter(t => t.area === curArea());
     for (const t of net) if (Math.hypot(t.x - p.x, t.z - p.z) < 1.6 && (t.y == null || Math.abs(t.y - p.y) < 1.5)) ex.near = { id: 'tele', ref: t, label: t.name };
   }
+  if (!ex.near) for (const b of world.build) if (b.data.k === 'furnace' && Math.hypot(b.data.x - p.x, b.data.z - p.z) < 2.3 && Math.abs(b.data.y - p.y) < 1.5) ex.near = { id: 'furnace', ref: b, label: 'Furnace' };
   if (!ex.near) for (const b of world.build) if (b.data.k === 'bench' && Math.hypot(b.data.x - p.x, b.data.z - p.z) < 2 && Math.abs(b.data.y - p.y) < 1.5) ex.near = { id: 'bench', label: 'Crafting table' };
   if (!ex.near && ch1().bed && !ch1().slept2) { const B = ch1().bed; if (Math.hypot(B.x - p.x, B.z - p.z) < 1.9 && Math.abs(B.y - p.y) < 1.5) ex.near = { id: 'bed', label: 'Bed' }; }
   if (!ex.near && world.rover && !ex.vehicle && world.rover.visible && Math.hypot(world.rover.position.x - p.x, world.rover.position.z - p.z) < 3.4) ex.near = { id: 'rover', label: 'Rover' };
@@ -17411,7 +17637,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'] }[ex.near.id];
+    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give James orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }

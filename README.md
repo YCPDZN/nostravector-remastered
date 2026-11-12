@@ -1166,3 +1166,45 @@ After the nightmare in space (whichever of the four you had), the next stop is M
   - Their master today is Draven.
 - **On the stage:** Lord Sevirrus, with Draven beside him from Chapter IV.
 - **What you can see when:** Draven's name and the crypt are blacked out until Chapter IV. Once you've beaten Draven, a last paragraph tells of his death and the wanderer who walked out carrying the Armor of Lord Sevirrus.
+
+## Equipment, ores and the furnace (every chapter)
+- **Equipment slots:** armour now goes on and comes off piece by piece in four slots: **Head, Chest, Legs and Feet**. You can mix pieces from different sets.
+  - **Inventory → Equipment** shows what you're wearing, your total protection and bonus health. Each slot has a **Take off** button, and each piece in your bag has **Put on**, which is greyed out with the reason if you can't wear it.
+  - **New pieces go on by themselves** if their slot is free or they're better than what's there. A single piece never pulls off a suit you're wearing.
+  - **Suits:** the old whole sets (scrap, Frostguard, obsidian, Nostra exo-armour and the five Chapter IV race sets) are **suits**, and a suit fills all four slots. Putting a piece on takes the suit off, and putting a suit on takes the pieces off.
+  - Protection from everything you wear adds up, to a maximum of 85% off every hit.
+  - **Older saves** put on the suit you were already wearing, so nothing changes until you choose.
+  - Each piece shows on your suit: a helmet (a band above the brow, cheek guards, a cap and a crest), a chestplate front and back with shoulder plates, leggings (plates all round the thigh, knee cops) and boots (greaves and armoured toes). Suits look as they did.
+  - **Fix:** armour now shows at the right size on Chompy, Erisian and Grek wanderers. Their arm and leg plates used to shrink to almost nothing inside their models, and that included the old suits' shoulder and shin plates.
+- **Five new armour sets** with four pieces each: helmet, chestplate, leggings and boots. The ingots each piece costs follow the classic 5 / 8 / 7 / 4.
+
+| Set | Made from | Full set | Notes |
+|---|---|---|---|
+| Padded | cloth | 10% · +8 health | early, before any ore |
+| Copper | copper ingots | 20% · +14 | |
+| Iron | iron ingots | 32% · +24 | |
+| Gold | gold ingots | 26% · +45 | less protection, much more health |
+| Titanium | titanium ingots | 46% · +60 | needs a crafting table |
+
+- **The hotbar:** under **Gear · hotbar** in the inventory, every tool, weapon, food and placeable has **Put on** and **Take off** for the hotbar, and shows which slot it's in.
+- **The Craft list** has filters: All, Tools, Armour, Food · med, Build and Materials.
+- **Ores:** new veins appear on every rocky world. Each is a dark boulder shot through with the ore's colour.
+
+| Vein | Gives | You need |
+|---|---|---|
+| Coal seam | coal (furnace fuel) | bare hands |
+| Copper vein | copper ore | bare hands |
+| Iron vein | iron ore | an ice pick |
+| Gold vein | gold ore | an ice pick |
+| Titanium vein | titanium ore | an obsidian pickaxe |
+
+  - **Where:** lush worlds have the most coal, volcanic worlds the most gold, and barren and icy worlds the most titanium. Antarctica has coal, copper and iron in its rock too.
+  - The ores, ingots and alien meat sell to traders.
+- **The furnace** (build menu → Structures; 8 stone and 2 scrap). Walk up and press E (**SMELT**).
+  - **Fuel:** a lump of coal smelts 8 things and a piece of wood smelts 2.
+  - **Smelting:** copper, iron, gold and titanium ore into ingots (4–7 seconds each), and 3 scrap into a metal plate (6 seconds, no crafting table needed).
+  - **Cooking:** raw meat into roast meat, alien meat into a **Seared alien steak** (restores 45 health), and blubber into a seal ration.
+  - **How it works:** queue one, or **All** that you have. The furnace works through the queue one item at a time while it has fuel, and **keeps going while you're away**, so come back and **Collect all**. You can cancel a queued job for its ingredients back. It glows while it burns.
+- **Alien meat:** the native species of the generated worlds now drop alien meat. Matriarchs and bulwarks drop two.
+- **Titanium pickaxe:** upgrades the obsidian pickaxe (3 titanium ingots and 2 wood, at a crafting table). It does four times the mining and melee damage.
+- **Saves:** what you're wearing is kept in `inv.eq` (`head`, `chest`, `legs`, `feet`, or `suit`). Each furnace keeps its fuel, queue and finished items with what you've built.
