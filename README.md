@@ -1128,3 +1128,27 @@ After the nightmare in space (whichever of the four you had), the next stop is M
   - **Beaten:** XP (260 + 18 per level), med kits, warp cells, frost crystals and metal or obsidian. The beacon turns green. You can go back in to grind the brood.
 - **The galaxy map** lists each system's native species, how many lairs it has, their level range and how many you've cleared.
 - **Saves:** cleared floors are kept per lair in `lairs` on your wanderer (`{ "<lair id>": highest floor cleared }`, and floors + 1 means the boss is dead). A save made inside a lair loads back onto the same floor.
+
+### Lairs on the story worlds (optional, Chapters III–V)
+- **20 optional lairs** on the story's own worlds, one each, playable from Chapter III to Chapter V. None of them is needed for the story.
+  - **Sol:** Mercury, Venus, the Moon, Mars (separate from Olympus Mons), Phobos, Ceres, Io, Europa, Ganymede, Callisto, Enceladus, Titan, Triton, Pluto and Eris.
+  - **Beyond Sol:** Malana, Carax, Aridaxx, Steca and Janira Prime.
+- They range from level 16 (the Moon) to level 60 (Carax), with the same procedural bosses and themes as the rest of the galaxy. The galaxy now has 3,080 lairs.
+
+### Chapter IV: five endgame dungeons and race armour
+- **Five dungeons that open only in Chapter IV.** Each is marked with a large gold beacon near where you land, and a message names the dungeon, its boss and its armour.
+- **Inside:** three floors of level 88 creatures, then a **level 90 boss** (14,000 health) on that boss's own model, at 1.45 × size. The ghosts are pale and glowing, and float.
+- **Each boss has a fixed fight:** its own attacks, its own rhythm, its own phase-three signature and its own lines.
+
+| Where | Dungeon | Boss | Fight (core · phase 2 · signature) | Armour (level 90) | Who can wear it |
+|---|---|---|---|---|---|
+| Aridaxx | The Usurper's Crypt | Draven, Disciple of Sevirrus (in Lord Sevirrus's own armour) | slam, charge, blink, volley · his legion, nova · sweep | Armor of Lord Sevirrus: 62% off every hit, +85 health | Chompy |
+| Eris | The Tomb of Lianna | Ghost of Lianna Erisconos | blink, spiral, falling stars, pools · eruptions, vortex · spiral | Armor of Lianna Erisconos: 60%, +100 | Erisian |
+| Malana | The Halls of Grekicus | Grekicus I | slam, leap, nova, charge · brood, falling stars · eruptions | Armor of Grekicus I: 60%, +105 | Grek |
+| Janira Prime | The Founder's Vault | Ghost of Shakhak Chompjak | charge, slam, volley, leap · nova, sweep · falling stars | Armor of Shakhak Chompjak: 58%, +115 | Chompy |
+| Earth | The Last Marshal's Bunker | Field Marshal Konrad Hale (Third World War) | volley, artillery, charge, gas pools · reinforcements, minefield · minigun spiral | Armor of Field Marshal Hale: 60%, +100 | Human |
+
+- **The armour is locked to one race.** A Chompy can't wear an Erisian's set, and so on, and each set also needs level 90. You always get the set when you beat its boss. If you can't wear it yet, it waits in your bag and goes on as soon as you can.
+- If you own two sets you can wear (a Chompy with both Chompy sets), the one later in the armour list (Sevirrus's) is the one you wear.
+- These sets are the best armour in the game. They show on your suit in their own colours.
+- The Earth dungeon's gate stands near wherever you land on Earth.
