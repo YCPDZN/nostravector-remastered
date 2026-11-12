@@ -1152,3 +1152,8 @@ After the nightmare in space (whichever of the four you had), the next stop is M
 - If you own two sets you can wear (a Chompy with both Chompy sets), the one later in the armour list (Sevirrus's) is the one you wear.
 - These sets are the best armour in the game. They show on your suit in their own colours.
 - The Earth dungeon's gate stands near wherever you land on Earth.
+
+### Mobile: lairs and dungeons on phones
+- **The boss bar on phones:** held upright, it sits under the companions button, clear of the objectives, the minimap and the side hotbar. Held sideways, it sits low in the middle, between the joystick and the buttons. Long boss names stay on one line and end in "…", and the level, phase and next attack are smaller.
+- **The right button label:** the action button now reads **ENTER** at a lair's gate (and at Olympus Mons's door), **GO** at the stairs and **DRINK** at the healing spring. Before, it said "Pick up · …" and **TAKE**.
+- **Lair names before you choose:** using a lair's gate shows its name, level and species on a card above the choice. The choice box has no title of its own, so on a phone you couldn't see which lair it was.
