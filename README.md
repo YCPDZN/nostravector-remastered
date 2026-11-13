@@ -1084,6 +1084,12 @@ After the nightmare in space (whichever of the four you had), the next stop is M
 - About three minutes, with no dead air: his voice and model load while you walk out of the mountain, each paragraph follows straight on from the last, and the army arrives, chants and fades out in about six seconds. **Skip** (or Escape) ends it. It plays once (`ch3.hawMars`).
 - **Voiced:** Hawthorne's ten paragraphs are `CH3HAWTHORNEMARS1`–`10` in `assets/audio/hawthorne_mars_ch3`, packed into `data/hawMarsVoices.js`.
 
+### After the speech: two new quests
+- When Hawthorne's cutscene ends, two cards come up and both join your objectives:
+  - **Main quest · Head to Charon.** Charon is Pluto's moon, at the edge of Sol. In space it's marked in **gold** (with its distance), and the goal line reads *Head to Charon*. Landing on Charon completes it (*YOU HAVE REACHED CHARON*). Chapter III only.
+  - **Side quest (optional) · Recruit Nyrexia Erisconos on Eris.** Eris is marked in **violet** in space. Land on Eris and Nyrexia is waiting a few steps from your ship (*Talk · Nyrexia Erisconos*). She's heard Hawthorne's speech, her sister has sealed the Citadel, and she wants to come with you. Say *Welcome aboard* and she **joins your crew** (+300 XP) with the same five orders as everyone else; say *Not yet* and she waits.
+- Saves: `ch3.charonLanded`, `ch3.nyxJoined`. A save that has already seen the cutscene gets both quests straight away.
+
 ### Khalmar, brother of Khazglar (the mountain refills every 7 days)
 - **7 in-game days** after the summit is cleared (a day is 20 minutes of play, so about 2 hours 20 minutes; time on the ground and in space both count, pauses don't), Olympus Mons fills again:
   - Every floor's **warden is back**, and the climb starts from floor 1.
