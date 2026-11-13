@@ -1359,7 +1359,7 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 |---|---|---|---|---|
 | Emperor Hak Chompjak V | 95 | 26,200 | Aridaxx | *The Descendant of Shakhak* |
 | Archamus (Order of Archamus, Chapter III) | 100 | 30,000 | Archiostal | *The Prime Good* while hooded; at phase two **he unmasks** (his unhooded model) and *The Light Egg* begins |
-| Am-Grek (Grek Empire) | 85 | 17,000 | Carax in Chapter III (alone); Archiostal in IV–V | *The Prime Good* |
+| Am-Grek (Grek Empire) | 85 | 17,000 | Carax in Chapter III (alone); Archiostal in IV–V | *Wonders of Laniakea (Combat)*, for now |
 | Archamus, unmasked (Grek co-leader, IV–V) | 100 | 30,000 | Archiostal, straight after Am-Grek falls | *The Light Egg* |
 | Vishara Erisconos | 80 | 14,800 | Eris | *The Child of Eris* |
 | Alexia Erisconos (Chapter III, once she's taken the throne) | 80 | 14,800 | Eris | combat music |
