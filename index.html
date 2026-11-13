@@ -2118,7 +2118,7 @@ function loadSlotData(sl) {
   activeId = sl && roster.some(c => c.id === sl.activeId) ? sl.activeId : (roster[0] ? roster[0].id : null);
   residents = (sl && Array.isArray(sl.residents) ? sl.residents : []).filter(c => c && c.id).map(c => JSON.parse(JSON.stringify(c)));
   resGuild = Object.assign({ g: {}, log: [] }, sl && sl.resGuild ? JSON.parse(JSON.stringify(sl.resGuild)) : {}); // residents' guilds
-  resEmp = Object.assign({ emp: {}, wars: [], cool: {}, log: [] }, sl && sl.resEmp ? JSON.parse(JSON.stringify(sl.resEmp)) : {}); // resident empires and their wars
+  resEmp = Object.assign({ emp: {}, wars: [], cool: {}, log: [], on: false }, sl && sl.resEmp ? JSON.parse(JSON.stringify(sl.resEmp)) : {}); // resident empires and their wars (off unless you switch them on)
   resumePlace = sl && sl.place && sl.place.mode === 'explore' ? Object.assign({}, sl.place, { who: activeId }) : null;
 }
 {
@@ -2306,7 +2306,8 @@ function headYFor(c) {
   return (info ? info.headY : 1.66) * (IDENT[c.identity] || IDENT.nb).h;
 }
 const lieYFor = c => (speciesInfo[spOf(c)] || {}).lieY || .26;
-const MAX_WANDERERS = 100;
+const MAX_WANDERERS = 500;
+const MAX_RESIDENTS = 500; // residents living in the world at once
 const CHAPTERS = [{ short: 'Prologue', full: 'Prologue' }, { short: 'Ch. I · Antarctica', full: 'Chapter I · Antarctica' }];
 const CHN_ROMAN = ['Prologue', 'I', 'II', 'III', 'IV', 'V'], CH_HOME = ['', 'Antarctica', 'Africa'];
 // "Chapter II · Africa", but named after wherever you actually are (go back to Antarctica in Chapter II and it says so)
@@ -3408,9 +3409,10 @@ function renderRoster() {
   $('#rNew').disabled = roster.length >= MAX_WANDERERS;
   $('#rNew span').textContent = roster.length >= MAX_WANDERERS ? `Roster full (${MAX_WANDERERS})` : 'New wanderer';
   $('#rEdit').disabled = !roster.length; $('#rDel').disabled = !roster.length;
-  $('#rSend').disabled = roster.length < 2; // someone has to stay behind to play
+  $('#rSend').disabled = roster.length < 2 || residents.length >= MAX_RESIDENTS; // someone has to stay behind to play, and the world holds 500
+  if (residents.length >= MAX_RESIDENTS) $('#rSend span').textContent = `World full (${MAX_RESIDENTS} residents)`;
   // the wanderers you sent away: still here, living their own lives, never playable again
-  if (residents.length) list.insertAdjacentHTML('beforeend', `<div class="sub-head res-head">Living in this world · never playable again</div>` + residents.map(c => {
+  if (residents.length) list.insertAdjacentHTML('beforeend', `<div class="sub-head res-head">Living in this world · ${residents.length}/${MAX_RESIDENTS} · never playable again</div>` + residents.map(c => {
     const where = resWhereLabel(c);
     return `<div class="mi resident" data-res="${c.id}" role="button" tabindex="0"><i>·</i><span><b class="swc" style="--c:${SUITC[c.suit] || SUITC[0]}"></b>${String(c.name).replace(/[<>&"]/g, '')}<small>LV ${resLevel(c)} · ${SPECIES[spOf(c)].label} · ${where}</small></span></div>`;
   }).join(''));
@@ -3429,7 +3431,7 @@ $('#rEdit').addEventListener('click', () => {
   sfx.click(); enterCreate('edit', c);
 });
 $('#rSend').addEventListener('click', () => {
-  if (roster.length < 2) return;
+  if (roster.length < 2 || residents.length >= MAX_RESIDENTS) return;
   sfx.click();
   const c = roster.find(x => x.id === activeId); if (!c) return;
   const draft = { name: c.name, persona: c.persona || null };
@@ -13058,6 +13060,7 @@ function applyChapterFactions() {
     for (const P of S.bodies) { if (P.fac4) P.faction = pick(P); if (!P.fac0) P.fac0 = P.faction; P.baseFac = P.fac4 ? P.faction : P.fac0; P.faction = P.baseFac; P.traders = null; }
   }
   try { dipOverlay(); } catch (e) { console.error(e); } // your colonies, puppets and restorations (Diplomacy)
+  try { resEmpOverlay(); } catch (e) { console.error(e); } // worlds residents' empires have taken: no longer 'Unclaimed'
   const Gd = bodyById('archiostal-gardens'), St = bodyById('archiostal'); if (Gd && St) { Gd.faction = St.faction; Gd.baseFac = St.baseFac || St.faction; Gd.traders = null; } // the gardens fly the station's flag
 }
 const bodyById = id => ALL_BODIES.find(P => P.id === id);
@@ -20660,7 +20663,9 @@ const RES_SWEAR = /\b(damn(ed)?|hell|bloody|bastards?|arse(hole)?|arsed|shit|pis
 let resSwearOn = store.get('nv_resSwear', true);
 const resClean = t => resSwearOn ? String(t) : String(t).replace(RES_SWEAR, m => '#@!%&'.slice(0, Math.min(5, Math.max(3, m.length))));
 const resEmpOf = id => resEmp.emp[id] || null;
-const resRuler = e => residents.find(c => c.id === e.id) || null;
+const RES_IDX = { src: null, n: -1, m: new Map() };
+function resById(id) { if (RES_IDX.src !== residents || RES_IDX.n !== residents.length) { RES_IDX.src = residents; RES_IDX.n = residents.length; RES_IDX.m = new Map(residents.map(c => [c.id, c])); } return RES_IDX.m.get(id) || null; }
+const resRuler = e => resById(e.id);
 const resAtWar = (a, b) => resEmp.wars.find(w => (w.a === a && w.b === b) || (w.a === b && w.b === a)) || null;
 const RES_EMP_COL = { hero: [195, 80], neutral: [48, 75], villain: [352, 80] };
 function resEmpCol(e) { const c = resRuler(e), [h, s] = RES_EMP_COL[c ? resAl(c) : 'neutral']; return `hsl(${(h + (resHash(e.id) - .5) * 40 + 360) % 360},${s}%,62%)`; }
@@ -20749,22 +20754,33 @@ function resDisband(id) {
   if (RW && c) resWarSay(c, resPick(RW.disband[resAl(c)]), { ea: e.name, player: wanderer.name });
   saveRoster();
 }
+const RES_EMP_ON = () => !!resEmp.on; // residents only found empires if you switch it on (Resident empires panel)
 function resEmpTick(dt) {
   if (!residents.length || effCh() < 3) return;
+  const E = resEmp; if (!E.on && !Object.keys(E.emp).length) return; // off and nothing standing: no work at all
   resWarLoad();
   RES.empT = (RES.empT == null ? 8 : RES.empT) - dt; if (RES.empT > 0) return; RES.empT = 15;
-  const E = resEmp, now = resNow(), D = wanderer.dip ? wanderer.dip.col || {} : {};
+  const now = resNow(), D = wanderer.dip ? wanderer.dip.col || {} : {};
   for (const id in E.emp) { const e = E.emp[id]; if (!resRuler(e)) { delete E.emp[id]; continue; } e.col = e.col.filter(w => !D[w]); } // gone, or you colonised one of their worlds
   E.wars = E.wars.filter(w => E.emp[w.a] && E.emp[w.b]);
-  for (const c of residents) if (!E.emp[c.id] && resLevel(c) >= 35 && !(E.cool[c.id] > now) && Math.random() < ({ villain: .06, neutral: .03, hero: .025 })[resAl(c)]) resFound(c);
-  for (const e of Object.values(E.emp)) if (!e.res && e.col.length < 12 && Math.random() < .25) resExpand(e);
-  const es = Object.values(E.emp);
-  for (const a of es) for (const b of es) {
-    if (a === b || resAtWar(a.id, b.id) || a.over === b.id || b.over === a.id) continue;
-    const al = resAl(resRuler(a)), bl = resAl(resRuler(b)), p = a.res ? .05 : al === 'villain' ? .02 : al === 'neutral' ? .008 : bl === 'villain' ? .012 : .003;
-    if (Math.random() < p) resDeclare(a, b, a.res && (a.lostTo[b.id] || []).length ? 'restoration' : null);
+  const nE = Object.keys(E.emp).length, capE = Math.min(24, Math.max(4, Math.ceil(residents.length / 25)));
+  // founding: only when switched on, at most one new empire a tick, a galaxy-wide cooldown, and a cap on how many can stand
+  if (E.on && nE < capE && !(E.nextFound > now)) {
+    const cand = []; for (let k = 0; k < 40 && residents.length; k++) { const c = residents[Math.floor(Math.random() * residents.length)]; if (!E.emp[c.id] && !(E.cool[c.id] > now) && resLevel(c) >= 35 && !cand.includes(c)) cand.push(c); }
+    const c = cand.find(o => Math.random() < ({ villain: .5, neutral: .3, hero: .2 })[resAl(o)]);
+    if (c) { resFound(c); E.nextFound = now + (90 + Math.random() * 90) * 1000; }
   }
-  for (const w of [...E.wars]) resWarStep(w);
+  if (E.on) for (const e of Object.values(E.emp)) if (!e.res && e.col.length < 12 && Math.random() < .25) resExpand(e);
+  const es = Object.values(E.emp);
+  if (E.on && E.wars.length < 6) { // at most one new war a tick
+    outer: for (const a of es) for (const b of es) {
+      if (a === b || resAtWar(a.id, b.id) || a.over === b.id || b.over === a.id) continue;
+      const al = resAl(resRuler(a)), bl = resAl(resRuler(b)), p = a.res ? .05 : al === 'villain' ? .02 : al === 'neutral' ? .008 : bl === 'villain' ? .012 : .003;
+      if (Math.random() < p && resDeclare(a, b, a.res && (a.lostTo[b.id] || []).length ? 'restoration' : null)) break outer;
+    }
+  }
+  for (const w of [...E.wars]) resWarStep(w); // wars already under way still play out
+  if (state === 'space' || GAL.open) { applyChapterFactions(); if (GAL.open && GAL.sel) galPanel(); } // the galaxy map follows who holds what
 }
 
 // ---- the RESIDENT EMPIRES panel (pause menu, galaxy map, or a ruler's own talk menu) ----
@@ -20779,6 +20795,7 @@ function resEmpEl() {
     const b = e.target.closest('[data-re]'); if (!b) return; sfx.click();
     const [act, a1, a2] = b.dataset.re.split('|');
     if (act === 'swear') { resSwearOn = !resSwearOn; store.set('nv_resSwear', resSwearOn); resChatRender(); }
+    else if (act === 'on') { resEmp.on = !resEmp.on; saveRoster(); lootMsg(resEmp.on ? 'Residents may now found empires' : 'Residents will no longer found empires', '#cfd6e6'); }
     else if (act === 'incite') RES.reIncite = { a: a1, b: null, cb: '' };
     else if (act === 'tgt') RES.reIncite.b = a1;
     else if (act === 'cb') RES.reIncite.cb = a1;
@@ -20797,8 +20814,8 @@ function resEmpRender() {
   const el = $('#resEmpPanel'); if (!el || el.classList.contains('hidden')) return;
   const E = resEmp, es = Object.values(E.emp), I = RES.reIncite, nm = id => { const e = E.emp[id]; return e ? reEsc(e.name) : '?'; };
   const alN = { hero: 'Hero', neutral: 'Neutral', villain: 'Villain' };
-  let h = `<button class="re-tog" data-re="swear">Swearing in their fights: <b>${resSwearOn ? 'ON' : 'OFF'}</b></button>`;
-  if (!es.length) h += `<p class="re-empty">No resident has founded an empire yet. Residents found empires on unclaimed worlds once they reach level 35 (villains first). ${residents.length ? '' : 'Send a wanderer into the world from the Wanderers screen to get started.'}</p>`;
+  let h = `<button class="re-tog" data-re="on">Residents found empires: <b>${E.on ? 'ON' : 'OFF'}</b></button><button class="re-tog" data-re="swear">Swearing in their fights: <b>${resSwearOn ? 'ON' : 'OFF'}</b></button>`;
+  if (!es.length) h += `<p class="re-empty">${E.on ? 'No resident has founded an empire yet. Residents found empires on unclaimed worlds once they reach level 35 (villains first), one at a time.' : 'Empire founding is off: residents stick to their guilds. Switch it on above if you want them to carve up the frontier.'} ${residents.length ? '' : 'Send a wanderer into the world from the Wanderers screen to get started.'}</p>`;
   else h += '<h4>Empires</h4>' + es.map(e => {
     const c = resRuler(e), al = c ? resAl(c) : 'neutral', st = e.res ? 'Resistance (no worlds)' : e.over ? `Puppet of ${nm(e.over)}` : e.trib ? `Pays tribute to ${nm(e.trib)}` : '';
     const sel = I && I.a === e.id, wars = E.wars.filter(w => w.a === e.id || w.b === e.id).length;
@@ -20814,6 +20831,7 @@ function resEmpRender() {
   if (E.wars.length) h += '<h4>Wars</h4>' + E.wars.map((w, i) => { const k = clamp(50 + w.score / 2, 0, 100); return `<div class="re-war"><div><b>${nm(w.a)}</b> ⚔ <b>${nm(w.b)}</b><small>${CBS[w.cb].name}</small></div><div class="re-bar"><i style="width:${k}%"></i></div><button data-re="peace|${i}">Broker peace</button></div>`; }).join('');
   if (E.log.length) h += '<h4>Recent</h4><ul class="re-log">' + E.log.slice(-8).reverse().map(l => `<li>${reEsc(l.text)}</li>`).join('') + '</ul>';
   el.querySelector('.re-body').innerHTML = h;
+  if (GAL.open) { applyChapterFactions(); if (GAL.sel) galPanel(); } // disbanded, at war, at peace: the map shows it straight away
 }
 /* ============ Residents: their gear, and their guilds ============
    Residents mine, smelt and forge as they level, the same armour you can: Padded, then Copper, Iron, Gold and Titanium, piece by
@@ -20854,9 +20872,16 @@ function resGearCheck(B) { // they levelled into a new piece: they say so, and p
 // ---- guilds ----
 const RES_GUILD_A = ['Iron', 'Void', 'Crimson', 'Silver', 'Starfall', 'Ember', 'Frost', 'Golden', 'Hollow', 'Thunder', 'Obsidian', 'Lantern', 'Comet', 'Night', 'Dawn', 'Rust', 'Azure', 'Wild'];
 const RES_GUILD_B = ['Comets', 'Wardens', 'Wolves', 'Anvils', 'Drifters', 'Lanterns', 'Ravens', 'Forge', 'Vanguard', 'Covenant', 'Nomads', 'Reavers', 'Order', 'Syndicate', 'Pact', 'Company', 'Fang', 'Circle'];
-const RES_GUILD_MAX = 10;
+const RES_GUILD_MAX = 30; // big guilds for a big world
 const resGuilds = () => resGuild.g;
-const resGuildOf = id => Object.values(resGuild.g).find(G => G.members.includes(id)) || null;
+// who's in which guild: an index rebuilt only when membership changes (or every couple of seconds as a safety net)
+const GIDX = { m: null, at: 0, g: null };
+const resGuildDirty = () => { GIDX.m = null; };
+function resGuildOf(id) {
+  const now = performance.now();
+  if (!GIDX.m || GIDX.g !== resGuild.g || now - GIDX.at > 2000) { GIDX.m = new Map(); GIDX.g = resGuild.g; GIDX.at = now; for (const G of Object.values(resGuild.g)) for (const m of G.members) GIDX.m.set(m, G); }
+  const G = GIDX.m.get(id); return G && resGuild.g[G.id] === G && G.members.includes(id) ? G : null;
+}
 const myGuild = () => (wanderer && wanderer.guild && resGuild.g[wanderer.guild]) || null;
 const guildInvOn = () => !(wanderer && wanderer.guildInv === false);
 const resGuildOk = (G, al) => !((G.al === 'hero' && al === 'villain') || (G.al === 'villain' && al === 'hero')); // heroes and villains don't share a guild
@@ -20865,30 +20890,38 @@ function resGuildName() { let n, tries = 0; const used = new Set(Object.values(r
 function resGuildFound(leaderId, al, name) {
   const id = 'g' + resNow().toString(36) + Math.floor(Math.random() * 999), nm = name || resGuildName(), tag = nm.replace(/^The /, '').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 4);
   const G = { id, name: nm, tag, leader: leaderId, members: [leaderId], made: resNow(), al, hue: Math.floor(resHash(id) * 360) };
-  resGuild.g[id] = G; return G;
+  resGuild.g[id] = G; resGuildDirty(); return G;
 }
 function resGuildLeave(memberId) {
-  const G = resGuildOf(memberId); if (!G) return; G.members = G.members.filter(m => m !== memberId);
+  const G = resGuildOf(memberId); if (!G) return; G.members = G.members.filter(m => m !== memberId); resGuildDirty();
   if (!G.members.length) { delete resGuild.g[G.id]; return; }
   if (G.leader === memberId) G.leader = G.members.find(m => m !== 'you') || G.members[0];
 }
-const resGuildName2 = id => id === 'you' ? (wanderer ? wanderer.name : 'You') : ((residents.find(c => c.id === id) || {}).name || '?');
+const resGuildName2 = id => id === 'you' ? (wanderer ? wanderer.name : 'You') : ((resById(id) || {}).name || '?');
 function resGuildTick(dt) {
   if (!residents.length) return;
-  RES.guildT = (RES.guildT == null ? 10 : RES.guildT) - dt; if (RES.guildT > 0) return; RES.guildT = 20;
+  RES.guildT = (RES.guildT == null ? 10 : RES.guildT) - dt; if (RES.guildT > 0) return; RES.guildT = 12;
   const ids = new Set(residents.map(c => c.id).concat(['you']));
   for (const G of Object.values(resGuild.g)) { G.members = G.members.filter(m => ids.has(m) && (m !== 'you' || (wanderer && wanderer.guild === G.id))); if (!G.members.length) delete resGuild.g[G.id]; else if (!G.members.includes(G.leader)) G.leader = G.members[0]; }
+  resGuildDirty();
   if (wanderer && wanderer.guild && !resGuild.g[wanderer.guild]) wanderer.guild = null;
-  const nG = Object.keys(resGuild.g).length, cap = Math.max(2, Math.ceil(residents.length / 4));
-  for (const c of residents) {
-    if (resLevel(c) >= 14 && Math.random() < .015) resDunRun(c); // off on a dungeon run
-    if (resLevel(c) < 6) continue;
+  // a big world: a rotating slice of residents each tick, and a cap on how much happens at once, so 500 of them never flood the chat or the frame
+  let nG = Object.keys(resGuild.g).length; const cap = Math.max(2, Math.ceil(residents.length / 12)), N = residents.length, SLICE = Math.min(N, 60);
+  let joins = 0, founds = 0, leaves = 0, runs = 0; const JOIN_MAX = 6, FOUND_MAX = 1, LEAVE_MAX = 2, RUN_MAX = 2;
+  const open = Object.values(resGuild.g).filter(G => G.members.length < RES_GUILD_MAX);
+  RES.guildI = (RES.guildI || 0) % Math.max(1, N);
+  for (let k = 0; k < SLICE; k++) {
+    const c = residents[(RES.guildI + k) % N]; if (!c) continue;
+    const lv = resLevel(c);
+    if (runs < RUN_MAX && lv >= 14 && Math.random() < .015 * (N / SLICE)) { runs++; resDunRun(c); } // off on a dungeon run
+    if (lv < 6) continue;
     const mine = resGuildOf(c.id), al = resAl(c);
-    if (mine) { if (Math.random() < .004 && mine.members.length > 1) { resGuildLeave(c.id); resGuildLog(`${c.name} left ${mine.name}`); } continue; }
-    const open = Object.values(resGuild.g).filter(G => G.members.length < RES_GUILD_MAX && resGuildOk(G, al));
-    if (open.length && Math.random() < .08) { const G = resPick(open); G.members.push(c.id); resGuildLog(`${c.name} joined ${G.name} [${G.tag}]`); }
-    else if (nG < cap && Math.random() < .03) { const G = resGuildFound(c.id, al); resGuildLog(`${c.name} founded the guild ${G.name} [${G.tag}]`); }
+    if (mine) { if (leaves < LEAVE_MAX && Math.random() < .004 && mine.members.length > 1) { leaves++; resGuildLeave(c.id); resGuildLog(`${c.name} left ${mine.name}`); } continue; }
+    const fit = open.filter(G => G.members.length < RES_GUILD_MAX && resGuildOk(G, al));
+    if (joins < JOIN_MAX && fit.length && Math.random() < .12) { const G = resPick(fit); G.members.push(c.id); resGuildDirty(); joins++; resGuildLog(`${c.name} joined ${G.name} [${G.tag}]`); }
+    else if (founds < FOUND_MAX && nG < cap && Math.random() < .03) { const G = resGuildFound(c.id, al); open.push(G); nG++; founds++; resGuildLog(`${c.name} founded the guild ${G.name} [${G.tag}]`); }
   }
+  RES.guildI = (RES.guildI + SLICE) % Math.max(1, N);
   resGuildWarTick();
   saveRoster();
 }
@@ -20915,7 +20948,7 @@ function resInviteAsk(B, G) {
 }
 function guildJoin(G) {
   if (myGuild()) resGuildLeave('you');
-  if (!G.members.includes('you')) G.members.push('you');
+  if (!G.members.includes('you')) G.members.push('you'); resGuildDirty();
   wanderer.guild = G.id; const c = curChar(); if (c) c.guild = G.id; saveRoster();
   sfx.chime(); notice('Guild joined', G.name.toUpperCase(), 3000); resGuildLog(`${wanderer.name} joined ${G.name} [${G.tag}]`);
 }
@@ -20939,7 +20972,7 @@ function resGuildTalkOpts(B, back) {
   if (M && !G && M.members.length < RES_GUILD_MAX) out.push({ text: `Invite them to ${M.name}`, onPick: () => {
     if (!resGuildOk(M, B.al)) return resSayTo(B, [B.al === 'villain' ? 'Your guild? Full of do-gooders. No.' : 'Not with the company you keep. No thanks.'], back);
     if (resLevel(B.c) < 6 || Math.random() < .25) return resSayTo(B, ['maybe later, I like going solo for now'], back);
-    M.members.push(B.id); saveRoster(); resGuildLog(`${B.c.name} joined ${M.name} [${M.tag}]`); resSayTo(B, ['sure, count me in!'], back); } });
+    M.members.push(B.id); resGuildDirty(); saveRoster(); resGuildLog(`${B.c.name} joined ${M.name} [${M.tag}]`); resSayTo(B, ['sure, count me in!'], back); } });
   return out;
 }
 // ---- the GUILDS panel (pause menu) ----
@@ -20966,13 +20999,13 @@ function guildClose() { const el = $('#guildPanel'); if (el) el.classList.add('h
 function guildRender() {
   const el = $('#guildPanel'); if (!el || el.classList.contains('hidden')) return;
   const M = myGuild(), Gs = Object.values(resGuild.g), alN = { hero: 'Hero', neutral: 'Neutral', villain: 'Villain' };
-  const row = id => { if (id === 'you') return `<li><b>${reEsc(wanderer.name)}</b> (you)</li>`; const c = residents.find(x => x.id === id); return c ? `<li><b>${reEsc(c.name)}</b> · LV ${resLevel(c)} · ${alN[resAl(c)]} · ${reEsc(resGearText(c))} · ${resLairsDone(c.id)} lairs</li>` : ''; };
+  const row = id => { if (id === 'you') return `<li><b>${reEsc(wanderer.name)}</b> (you)</li>`; const c = resById(id); return c ? `<li><b>${reEsc(c.name)}</b> · LV ${resLevel(c)} · ${alN[resAl(c)]} · ${reEsc(resGearText(c))} · ${resLairsDone(c.id)} lairs</li>` : ''; };
   let h = `<button class="re-tog" data-gd="inv">Guild invites from residents: <b>${guildInvOn() ? 'ON' : 'OFF'}</b></button>`;
   h += M ? `<h4>Your guild</h4><div class="re-emp" style="--c:hsl(${M.hue},70%,60%)"><div class="re-emp-t"><b>${reEsc(M.name)} [${reEsc(M.tag)}]</b><small>Led by ${reEsc(resGuildName2(M.leader))} · ${M.members.length} member${M.members.length === 1 ? '' : 's'} · ${alN[M.al]}</small></div><ul class="re-log">${M.members.map(row).join('')}</ul><div class="re-act"><button class="danger" data-gd="leave">Leave the guild</button></div></div>`
     : `<p class="re-empty">You’re not in a guild. A resident in a guild may ask you to join${guildInvOn() ? '' : ' (invites are off)'}, you can ask one yourself in their talk menu, or found your own and invite residents to it.</p><div class="re-act"><button data-gd="found">Found a guild</button></div>`;
   const others = Gs.filter(G => G !== M);
-  if (others.length) h += '<h4>Guilds</h4>' + others.map(G => `<div class="re-emp" style="--c:hsl(${G.hue},70%,60%)"><div class="re-emp-t"><b>${reEsc(G.name)} [${reEsc(G.tag)}]</b><small>Led by ${reEsc(resGuildName2(G.leader))} · ${G.members.length}/${RES_GUILD_MAX} · ${alN[G.al]}</small></div><ul class="re-log">${G.members.map(row).join('')}</ul><div class="re-act"><button data-gd="join|${G.id}" ${G.members.length >= RES_GUILD_MAX || !resGuildOk(G, wAlign()) ? 'disabled' : ''}>${!resGuildOk(G, wAlign()) ? 'They won’t take you' : G.members.length >= RES_GUILD_MAX ? 'Full' : 'Join'}</button></div></div>`).join('');
-  else if (!M) h += `<p class="re-empty">${residents.length ? 'No guilds yet. Residents start forming them from level 6.' : 'Send a wanderer into the world from the Wanderers screen: residents form guilds with each other.'}</p>`;
+  if (others.length) h += '<h4>Guilds</h4>' + others.map(G => `<div class="re-emp" style="--c:hsl(${G.hue},70%,60%)"><div class="re-emp-t"><b>${reEsc(G.name)} [${reEsc(G.tag)}]</b><small>Led by ${reEsc(resGuildName2(G.leader))} · ${G.members.length}/${RES_GUILD_MAX} · ${alN[G.al]}</small></div><ul class="re-log">${G.members.slice(0, 8).map(row).join('')}${G.members.length > 8 ? `<li>…and ${G.members.length - 8} more</li>` : ''}</ul><div class="re-act"><button data-gd="join|${G.id}" ${G.members.length >= RES_GUILD_MAX || !resGuildOk(G, wAlign()) ? 'disabled' : ''}>${!resGuildOk(G, wAlign()) ? 'They won’t take you' : G.members.length >= RES_GUILD_MAX ? 'Full' : 'Join'}</button></div></div>`).join('');
+  else if (!M) h += `<p class="re-empty">${residents.length ? 'No guilds yet. Residents start forming them from level 6 (up to 30 members each).' : 'Send a wanderer into the world from the Wanderers screen: residents form guilds with each other.'}</p>`;
   const W = resGuild.wars || [], gn = id => (resGuild.g[id] || {}).name || '?';
   if (W.length) h += '<h4>Guild wars</h4>' + W.map((w, i) => `<div class="re-war"><div><b>${reEsc(gn(w.a))}</b> ⚔ <b>${reEsc(gn(w.b))}</b><small>${w.sa}–${w.sb} · ${Math.max(0, Math.ceil((w.until - resNow()) / 60e3))} min left</small></div><div class="re-bar"><i style="width:${clamp(50 + (w.sa - w.sb) * 8, 5, 95)}%"></i></div><button data-gd="peace|${i}">Broker peace</button></div>`).join('');
   const RN = resDun().recent; if (RN.length) h += '<h4>Dungeon runs</h4><ul class="re-log">' + RN.slice(-6).reverse().map(r => { const L = lairById(r.lair); return `<li>${r.g ? `[${reEsc(r.g)}] ` : ''}${reEsc(r.names.join(', '))} ${r.ok ? 'cleared' : 'wiped in'} ${reEsc(L ? L.name : 'a lair')}</li>`; }).join('') + '</ul>';
@@ -21019,7 +21052,7 @@ function resGuildWarTick() { // skirmishes while you're away; when time's up, th
   const W = resGuild.wars || [], now = resNow();
   for (const w of [...W]) {
     const A = resGuild.g[w.a], B = resGuild.g[w.b]; if (!A || !B) { W.splice(W.indexOf(w), 1); continue; }
-    if (Math.random() < .3) { const pa = A.members.reduce((t, m) => t + (m === 'you' ? levelOf(wanderer) : resLevel(residents.find(x => x.id === m) || { xp: 0 })), 0), pb = B.members.reduce((t, m) => t + (m === 'you' ? levelOf(wanderer) : resLevel(residents.find(x => x.id === m) || { xp: 0 })), 0); if (Math.random() < pa / Math.max(1, pa + pb)) w.sa++; else w.sb++; }
+    if (Math.random() < .3) { const pw = G => G.members.reduce((t, m) => t + (m === 'you' ? levelOf(wanderer) : resLevel(resById(m) || { xp: 0 })), 0), pa = pw(A), pb = pw(B); if (Math.random() < pa / Math.max(1, pa + pb)) w.sa++; else w.sb++; }
     if (now > w.until) { W.splice(W.indexOf(w), 1); const win = w.sa === w.sb ? null : w.sa > w.sb ? A : B; resGuildLog(win ? `⚔ ${win.name} won the war against ${(win === A ? B : A).name} (${Math.max(w.sa, w.sb)}–${Math.min(w.sa, w.sb)})` : `⚔ ${A.name} and ${B.name} fought to a draw`); }
   }
 }
@@ -21065,6 +21098,26 @@ function resGalEmpires(g, font) {
     for (const id of e.col) { const P = bodyById(id); if (!P || seen.has(P.sys)) continue; seen.add(P.sys); const p = galXY(sysById(P.sys)); if (p.x < -40 || p.x > innerWidth + 40 || p.y < -40 || p.y > innerHeight + 40) continue; g.strokeStyle = col; g.lineWidth = 1.6; g.globalAlpha = .85; g.beginPath(); g.arc(p.x, p.y, 11, 0, 7); g.stroke(); g.globalAlpha = 1; }
     const C = bodyById(e.cap) && e.col.includes(e.cap) ? bodyById(e.cap) : bodyById(e.col[0]); if (!C) continue;
     const p = galXY(sysById(C.sys)); g.textAlign = 'center'; g.font = `600 8px ${font}`; g.fillStyle = col; g.fillText(e.name.toUpperCase(), p.x, p.y - 15);
+  }
+}
+// the galaxy names whoever holds a world: resident empires' worlds carry their empire's name, and an unclaimed system takes the
+// name of whoever holds the most of it (a resident empire, or your realm if you've colonised one of its worlds)
+function resHex(css) { const m = /hsl\((\d+(?:\.\d+)?),(\d+)%,(\d+)%\)/.exec(css); if (!m) return css; const c = new THREE.Color().setHSL(+m[1] / 360, +m[2] / 100, +m[3] / 100); return '#' + c.getHexString(); }
+function resEmpOverlay() {
+  if (!wanderer || (wanderer.chapter | 0) < 3) return;
+  const D = wanderer.dip ? wanderer.dip.col || {} : {}, held = new Map(), realm = typeof realmName === 'function' ? realmName() : 'Your realm';
+  for (const e of Object.values(resEmp.emp)) {
+    const c = resRuler(e); if (!c) continue;
+    const st = e.over && resEmp.emp[e.over] ? ` · puppet of ${resEmp.emp[e.over].name}` : e.trib && resEmp.emp[e.trib] ? ` · tributary of ${resEmp.emp[e.trib].name}` : ` · resident empire of ${c.name}`;
+    for (const id of e.col) { const P = bodyById(id); if (!P || D[id]) continue; P.faction = `${e.name}${id === e.cap ? ' · capital' : ''}${st}`; P.traders = null; held.set(id, e); }
+  }
+  for (const S of SYSTEMS) {
+    if (!String(S.faction || '').startsWith('Unclaimed')) continue;
+    const n = new Map(); let mine = 0;
+    for (const P of S.bodies) { if (D[P.id]) mine++; const e = held.get(P.id); if (e) n.set(e, (n.get(e) || 0) + 1); }
+    const top = [...n.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (top && top[1] >= mine) { const e = top[0]; S.faction = n.size > 1 ? `${e.name} · contested with ${[...n.keys()].filter(o => o !== e).map(o => o.name).join(', ')}` : `${e.name} · resident empire`; S.facCol = resHex(resEmpCol(e)); }
+    else if (mine) { S.faction = `${realm} · your colony`; S.facCol = '#ffd36a'; }
   }
 }
 const resEmpHere = S => Object.values(resEmp.emp).filter(e => e.col.some(id => { const P = bodyById(id); return P && P.sys === S.id; }));
@@ -21229,16 +21282,24 @@ const RES_BASE_MAX = 3;
 const resBasesOf = c => c.bases || (c.bases = {});
 // how much they feel like building right now: nothing once their base here is a fortress, or they already have three elsewhere
 function resBuildWant(B) { if (ex.mode !== 'world') return 0; const bs = resBasesOf(B.c), b = bs[curArea()]; if (b && b.tier >= 3) return 0; if (!b && Object.keys(bs).length >= RES_BASE_MAX) return 0; return resEmpOf(B.id) ? 1 : .5; }
+// every base in this area, cached (500 residents: don't scan them all for every collision check)
+const RBX = { A: null, src: null, n: -1, at: 0, list: [] };
+function resBasesHere() {
+  const A = curArea(), now = performance.now();
+  if (RBX.A !== A || RBX.src !== residents || RBX.n !== residents.length || now - RBX.at > 1000) { RBX.A = A; RBX.src = residents; RBX.n = residents.length; RBX.at = now; RBX.list = []; for (const c of residents) { const b = c.bases && c.bases[A]; if (b) RBX.list.push([c, b]); } }
+  return RBX.list;
+}
+const resBasesDirty = () => { RBX.at = 0; };
 function resBaseBlocked(x, z) { // walls are solid for you too
-  if (!residents.length || ex.mode !== 'world') return false; const A = curArea();
-  for (const c of residents) { const b = c.bases && c.bases[A]; if (b && (x - b.x) ** 2 + (z - b.z) ** 2 < (b.tier >= 3 ? 16 : 12)) return true; }
+  if (!residents.length || ex.mode !== 'world') return false;
+  for (const [, b] of resBasesHere()) if ((x - b.x) ** 2 + (z - b.z) ** 2 < (b.tier >= 3 ? 16 : 12)) return true;
   return false;
 }
 function resBaseSiteOk(x, z) {
   if (Math.hypot(x, z - (isPl() ? 10 : 0)) < 38) return false; // well clear of the station, Orion's house or your ship
   for (const [dx, dz] of [[0, 0], [5, 0], [-5, 0], [0, 5], [0, -5]]) if (resBlocked(x + dx, z + dz, wHeight(x + dx, z + dz))) return false;
   if (merchantsHere().some(m => m.px != null && Math.hypot(m.px - x, m.pz - z) < 25)) return false;
-  const A = curArea(); for (const c of residents) { const b = c.bases && c.bases[A]; if (b && Math.hypot(b.x - x, b.z - z) < 20) return false; }
+  for (const [, b] of resBasesHere()) if (Math.hypot(b.x - x, b.z - z) < 20) return false;
   const h = [[0, 0], [3, 3], [-3, 3], [3, -3], [-3, -3]].map(([dx, dz]) => wHeight(x + dx, z + dz)); if (Math.max(...h) - Math.min(...h) > 2.5) return false; // not on a cliff
   return true;
 }
@@ -21274,8 +21335,15 @@ function resBaseMesh(c, b) {
 }
 function resBaseSync() {
   if (!RES.baseG) RES.baseG = new Map();
-  const A = ex.mode === 'world' ? curArea() : null, want = new Map();
-  if (A && A !== 'europe') for (const c of residents) { const b = c.bases && c.bases[A]; if (b) want.set(c.id, [c, b]); }
+  const A = ex.mode === 'world' ? curArea() : null;
+  const nowB = performance.now();
+  if (RES.baseWant && RES.baseWantA === A && nowB < (RES.baseSyncT || 0)) { for (const g of RES.baseG.values()) if (g.userData.flag) g.userData.flag.rotation.y = Math.sin(time * 2) * .25; return; }
+  RES.baseSyncT = nowB + 500; RES.baseWantA = A;
+  const want = new Map(); RES.baseWant = want;
+  if (A && A !== 'europe') { // only the nearest 40 are built (the rest are still solid)
+    const p = player.position, all = resBasesHere().map(([c, b]) => [c, b, (b.x - p.x) ** 2 + (b.z - p.z) ** 2]).sort((u, v) => u[2] - v[2]).slice(0, 40);
+    for (const [c, b] of all) want.set(c.id, [c, b]);
+  }
   for (const [id, g] of RES.baseG) { const w = want.get(id); if (!w || g.userData.key !== `${id}|${w[1].tier}|${!!resEmpOf(id)}` || g.userData.area !== A) { wScene.remove(g); RES.baseG.delete(id); } }
   if (want.size) resUi(); // their labels need the overlay even when nobody is around to talk
   for (const [id, [c, b]] of want) if (!RES.baseG.has(id)) { const g = resBaseMesh(c, b); g.userData.area = A; wScene.add(g); RES.baseG.set(id, g); }
@@ -21285,7 +21353,7 @@ function resBuildDone(B, site) {
   const A = curArea(), bs = resBasesOf(B.c), b = bs[A];
   if (b) b.tier = Math.min(3, b.tier + 1);
   else { if (Object.keys(bs).length >= RES_BASE_MAX) return; bs[A] = { x: site.x, z: site.z, ry: Math.random() * 6.28, tier: 1, at: resNow() }; }
-  saveRoster(); resBaseSync();
+  saveRoster(); resBasesDirty(); RES.baseSyncT = 0; resBaseSync();
   const tier = bs[A].tier, line = tier === 1 ? resPick(['camp’s up! not much, but it’s mine', 'built a little camp over here', 'home sweet... two walls']) : tier === 2 ? resPick(['my house is finished!', 'roof’s on, come visit', 'finally, four walls and a door']) : resPick(['the tower is DONE', 'fortified and flying my colours', 'let them come. my base is ready']);
   resSay(B, resVoice(B.c, line));
 }
