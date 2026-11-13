@@ -1343,3 +1343,34 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **Residents:** phones build the 16 nearest resident bases as 3D models (40 on computers); Taredesibans are drawn without shadows like every other resident on a phone.
 - **Nyrexia, Khalmar and the new panels** use the game's existing touch prompts (*TALK*) and the panels' own wrap-around buttons, so they work by tap.
 
+## Diplomacy: the Republic of Timpur and the resident empires
+- **The Republic of Timpur is a diplomacy faction** (Chapters III–V), like the story's factions: led by *the First Consul, answering to Aridaxx*, teal, with its 38 worlds and its capital Timpur Prime (+25 war score when occupied). You can lend it companions, and declare any casus belli on it (Annihilation, Subjugation, Vassalisation, Tribute; Restoration afterwards). Its fleet is the **Timpur Republic Guard**. It's a separate faction from the Chompy Empire: a war on one isn't a war on the other.
+- **Resident empires in the Factions tab:** a *Resident empires* card (how many stand, or that founding is off, with **Open Resident empires**), then a card per empire: its ruler (level and alignment), its worlds, whether it's a puppet, a tributary or a resistance, who it's at war with, which of your companions serve it, and **Demand they disband** (tap twice).
+- **Offer companions to resident empires:** in the Crew tab, the *Offer to a faction…* list has the story factions and, below them, every resident empire. A companion serving a resident empire:
+  - leaves your crew and fights in its wars: each one adds a lot to its war strength (+10 power, about as much as two and a half worlds), so they swing who wins.
+  - shows up on its card in Diplomacy and on its row in the Resident empires panel (*serving them: …*), and the empire's log notes their arrival.
+  - comes home when you call them back, or by themselves if the empire is annihilated or disbanded.
+
+## Faction leaders: fight them in their halls (Chapters III–V)
+- **At war with a faction?** Land on the world where its leader holds court and a **hall** stands near your ship (gold beacon, *Enter · The Hall of …*). Inside is a lair arena with the leader on the throne. **Beat them and the war is won** (100 war score); then settle it in Diplomacy as usual. Each war has its own hall, so a new war means a new fight. Diplomacy's war card says who waits and where. Fall, and the fight starts again from the top, as in any lair.
+- **The leaders** (level · health · where · theme):
+
+| Leader | Level | Health | Where | Theme |
+|---|---|---|---|---|
+| Emperor Hak Chompjak V | 95 | 26,200 | Aridaxx | *The Descendant of Shakhak* |
+| Archamus (Order of Archamus, Chapter III) | 100 | 30,000 | Archiostal | *The Prime Good* while hooded; at phase two **he unmasks** (his unhooded model) and *The Light Egg* begins |
+| Am-Grek (Grek Empire) | 85 | 17,000 | Carax in Chapter III (alone); Archiostal in IV–V | *Wonders of Laniakea (Combat)*, for now |
+| Archamus, unmasked (Grek co-leader, IV–V) | 100 | 30,000 | Archiostal, straight after Am-Grek falls | *The Light Egg* |
+| Vishara Erisconos | 80 | 14,800 | Eris | *The Child of Eris* |
+| Alexia Erisconos (Chapter III, once she's taken the throne) | 80 | 14,800 | Eris | combat music |
+| President Darius Ancin | 75 | 11,000 | Earth | *The Guardian of Humanity* |
+| Taredesiba VI, First Consul of Timpur | 90 | 22,400 | Timpur Prime | combat music |
+| Lord Zark (Catharsis, Chapter III) | 100 | 30,000 | the Catharsis's capital world | *The Prime Evil* |
+| A companion you put on a puppet's throne | their own level | | the puppet's capital | *The Wrong Enemy* |
+
+- Hak is far tougher than Draven (level 90, 14,000 health). Each leader has their own moves, words for the start, phase two, phase three and their defeat, and their own model (Taredesiba VI is a Taredesiban), a little larger than life. Leaders **yield**, they don't die.
+- **Resident empire rulers:** each resident empire's card in Diplomacy has **Challenge <ruler> (lv …)**. Use it on any world's surface: you face the ruler (at their level, as their species or a Taredesiban) to *The Wrong Enemy*. Win and their empire falls: its worlds are unclaimed again.
+- **Your own companions in an enemy fleet:** when a companion you lent to a faction you're at war with comes at you in space, *The Wrong Enemy* plays until they're shot down.
+- **Not yet:** the **Final Boss theme** (`data/thFinal.js`) is stored for Lord Zark's Chapter IV story battle (level 60, on Carax), which isn't built yet. Hawthorne (Terra Imperia) has no hall.
+- Files: themes in `data/thHak.js`, `thPrimeGood.js`, `thEris.js`, `thDarius.js`, `thLightEgg.js`, `thWrong.js`, `thPrimeEvil.js`, `thFinal.js` (originals in `assets/audio/leaders_themes`); Archamus unhooded in `data/prArchamusU.js` (`assets/models/primes/archamus_unhooded.glb`). They load only when needed.
+
