@@ -1035,12 +1035,12 @@ After the nightmare in space (whichever of the four you had), the next stop is M
   - **Ash wings**, which fly
   - **Basalt brutes** (heavy)
   - **Cinder crawlers**
-- **Getting harder:** creatures run from **level 10** on the first floor to **level 30** on the seventh. Each floor brings in new kinds.
+- **Getting harder:** creatures run from **level 5** on the first floor to **level 14** on the seventh. Each floor brings in new kinds.
 - **Wardens:** each floor's stairs up are held by a **warden**, a huge elite brute or crawler (4 × the health, better loot). Kill it and the stairs open, and stay open.
 - **The stairs:**
   - The stairs down take you back a floor. On the first floor they lead out of the mountain.
   - Coming back later, the door asks whether to climb to the highest floor you've reached or start from the bottom.
-- **Healing spring:** by the stairs down on every floor. It heals you fully and needs 40 seconds to refill.
+- **Healing spring:** by the stairs down on every floor. It heals you fully and needs 15 seconds to refill.
 - **Grinding:** **XP is worth 1.9 × inside the mountain** (the XP toasts show "×1.9"). Everywhere else it's normal. Creatures keep coming back: a fresh pack turns up every half a minute or so, away from you, while there are few about.
 - **Falling:** if you go down on a floor, Orion drags you back to its stairs with 60% health. The floor's progress is kept.
 - The objective tracks the climb (*Climb Olympus Mons · floor 3 of 8 · defeat the warden*), and the minimap and marker point to the warden, then the stairs. The location line reads *Olympus Mons · floor 3 of 8 · The Obsidian Halls*.
@@ -1056,11 +1056,11 @@ After the nightmare in space (whichever of the four you had), the next stop is M
     - A line for your species.
     - Orion carries his past "like a stone in your pocket", and Nico's luck "does not climb mountains".
   - Each line lands with something: thuds, red flashes, the arena lights flaring, a quake, his hammer raised. It ends on **"COME. AND. FACE ME."** with a hammer slam that whites out the screen.
-- **The fight** (9,000 health, about a minute and a half with Orion and Nico pulling their weight):
-  - **Hammer slam** in front of him (red ring, 46 damage)
-  - **Quake**: hammer high, then a shockwave across 11 m. Jump it, dodge it, or be well clear (34 damage).
-  - **Leap** onto whoever he's after, which isn't always you (58 damage)
-  - **Hammer throw**: it flies end over end along a line of rings straight at you, then comes back (38 damage).
+- **The fight** (5,000 health, under a minute with Orion and Nico pulling their weight):
+  - **Hammer slam** in front of him (red ring, 25 damage)
+  - **Quake**: hammer high, then a shockwave across 11 m. Jump it, dodge it, or be well clear (19 damage).
+  - **Leap** onto whoever he's after, which isn't always you (32 damage)
+  - **Hammer throw**: it flies end over end along a line of rings straight at you, then comes back (21 damage).
   - He switches targets every few seconds, between you, Nico and Orion. Blows that land on them make them stagger and say so.
   - **Phase 2 (60%):** *"Hounds of Olympus! Wake, and hunt!"* Three rust hounds join, and he speeds up.
   - **Phase 3 (30%):** *"Feel that? The mountain is angry. Look to the sky."* Two dust stalkers join, rock falls out of the dark on all three of you (red circles: get out), and he gets faster still.
@@ -1089,7 +1089,7 @@ After the nightmare in space (whichever of the four you had), the next stop is M
   - **Khalmar**, Khazglar's older brother, sits on the throne: Khazglar's build, a head taller, darker stone and a cold blue glow, with an iron hammer of his own.
   - You hear about it wherever you are, and if Khazglar is with you he feels it ("My brother is home").
   - It never happens while you're inside the mountain; it waits until you leave.
-- **The fight:** level 30, 11,000 health, the same moves as his brother but 15% harder hits. He has **no ward** and the fire lets anyone through, so you don't need Orion and Nico (bring Khazglar: he'll fight his brother). His barks: *"Children of the deep! To me!"* at 60%, *"The fire answers ME. Look up!"* at 30%.
+- **The fight:** level 22, 6,500 health, the same moves as his brother with harder hits (70% of their original damage, where Khazglar's are 55%). He has **no ward** and the fire lets anyone through, so you don't need Orion and Nico (bring Khazglar: he'll fight his brother). His barks: *"Children of the deep! To me!"* at 60%, *"The fire answers ME. Look up!"* at 30%.
 - **What he says:** the first time, six lines (he's Khazglar's brother, "older by a winter, and wiser by a lifetime", and he wants to see why Khazglar chose you; he greets his brother if Khazglar is in your party). After that, a short greeting each time he's back. Retry line: *"Again. And this time, try to last."*
 - **Beaten:** he yields, says three lines, and goes back into the fire. +1,500 XP and his hoard (obsidian, crystals, warp cells, medkits). The clock restarts: he's back in another 7 days.
 - **Saves:** `wanderer.playS` (seconds of play), `ch3.khzBase`, `ch3.olyNext` (when the mountain refills), `ch3.khal` (he's on the throne), `ch3.khalMet`, `ch3.khalWins`. A save from before this update starts its 7-day clock the first time you play it.
@@ -1305,6 +1305,14 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - **Long boss names:** upright, they wrap onto two lines instead of being cut short.
   - **Very short upright phones:** the small logo on the main menu steps aside to leave room.
 - **Not covered:** this was done in a desktop browser emulating each phone, not on real devices. Touch feel, frame rate, battery and memory on a real phone, and the Chapter I–II story scenes (they need their own saves), weren't checked.
+
+### Olympus Mons, made easier
+- Creatures are **level 5–14** (were 10–30), with about a quarter less health on the first floor, much slower growth up the mountain, and roughly **half the damage**.
+- **Wardens** have about half the health they did and hit only a little harder than their floor.
+- **Fewer creatures:** fewer rooms hold anything, packs are smaller, and fresh ones trickle back about every minute (was every half minute), with fewer alive at once.
+- **Khazglar:** 5,000 health (was 9,000) and 55% of his old damage. His ward without Orion and Nico now lets half of each blow through (was a quarter).
+- **Khalmar:** level 22, 6,500 health (was 11,000) and 70% of the old damage.
+- The **healing spring** refills in 15 seconds (was 40).
 
 ## The Taredesibans (residents only)
 - A people of their own that only **residents** can belong to: they're **not a playable race**, so they never appear in the wanderer creator.

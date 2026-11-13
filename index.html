@@ -10283,11 +10283,11 @@ const DGN_BASE = {
   ashwing: { name: 'Ash wing', fly: true, hp: 36, dmg: 10, speed: 9, xp: 60, r: .9, reach: 2, cd: 3.8, look: { body: 0x3a2220, dark: 0x1a0e0c, s: 1.8 }, loot: () => [Math.random() < .5 && ['scrap', 1]] }
 };
 const DGN_XP = 1.9; // every XP you earn inside the mountain
-const dgnLv = f => 10 + Math.round((f - 1) * 2.8); // creatures from level 10 on the first floor to 30 on the seventh
+const dgnLv = f => 5 + Math.round((f - 1) * 1.5); // creatures from level 5 on the first floor to 14 on the seventh (Khazglar, at the top, is 15)
 function dgnType(base, f, warden) { // a creature for this floor: tougher the higher you climb
   const key = `dgn_${base}_${f}${warden ? 'w' : ''}`; if (FAUNA[key]) return key;
-  const B = DGN_BASE[base], k = 1 + (f - 1) * .32, w = warden ? 4.2 : 1, lv = dgnLv(f) + (warden ? 3 : 0);
-  FAUNA[key] = Object.assign({}, B, { name: warden ? `Warden of the ${['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh'][f]} floor · lv ${lv}` : `${B.name} · lv ${lv}`, hp: Math.round(B.hp * k * w), dmg: Math.round(B.dmg * (1 + (f - 1) * (base === 'rusthound' ? .12 : .2)) * (warden ? 1.5 : 1)), xp: Math.round(B.xp * (1 + (f - 1) * .35) * (warden ? 5 : 1)), aggro: warden ? 18 : B.aggro, pack: warden ? false : B.pack,
+  const B = DGN_BASE[base], k = .75 + (f - 1) * .15, w = warden ? 2.4 : 1, lv = dgnLv(f) + (warden ? 2 : 0); // easier: less health, slower growth, softer wardens
+  FAUNA[key] = Object.assign({}, B, { name: warden ? `Warden of the ${['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh'][f]} floor · lv ${lv}` : `${B.name} · lv ${lv}`, hp: Math.round(B.hp * k * w), dmg: Math.max(2, Math.round(B.dmg * .55 * (1 + (f - 1) * (base === 'rusthound' ? .06 : .1)) * (warden ? 1.2 : 1))), xp: Math.round(B.xp * (1 + (f - 1) * .35) * (warden ? 5 : 1)), aggro: warden ? 18 : B.aggro, pack: warden ? false : B.pack,
     loot: warden ? () => [['medkit', 1], ['obsidian', 2], ['crystal', 2], Math.random() < .5 && ['warpcell', 1]] : B.loot });
   if (BEASTS[base]) BEASTS[key] = BEASTS[base];
   return key;
@@ -10386,13 +10386,13 @@ const dgnBeaten = f => DGN.lair ? lairProg(DGN.lair) >= f : ((wanderer.ch3 && wa
 function dgnSpawnGroup(rm, f) {
   if (DGN.lair) { lairSpawnGroup(rm, f); return; }
   const [cx, cz] = dgnW(rm.c[0], rm.c[1]), list = DGN_ROSTER[Math.min(7, f)], base = list[Math.random() * list.length | 0], D = DGN_BASE[base];
-  const n = D.pack ? 2 + (f >= 3 && Math.random() < .5) : D.fly ? 1 + (f >= 5) : 1 + (Math.random() < .25 + f * .05);
+  const n = D.pack ? 1 + (f >= 4 && Math.random() < .4) : D.fly ? 1 : 1 + (f >= 5 && Math.random() < .2);
   for (let i = 0; i < n; i++) { const c = spawnFauna(dgnType(base, f), cx + rand(-5, 5), cz + rand(-5, 5), [cx, cz]); c.dgn = f; }
 }
 function dgnPopulate(f) {
   if (DGN.lair) { lairPopulate(f); return; }
   if (f >= 8) return;
-  for (const rm of DGN.rooms) { if (rm === DGN.start) continue; if (rm === DGN.end && !dgnBeaten(f)) continue; if (!rm.side && Math.random() < .3) continue; dgnSpawnGroup(rm, f); } // most rooms hold something; side rooms always do
+  for (const rm of DGN.rooms) { if (rm === DGN.start) continue; if (rm === DGN.end && !dgnBeaten(f)) continue; if (Math.random() < (rm.side ? .3 : .55)) continue; dgnSpawnGroup(rm, f); } // fewer rooms hold anything now // most rooms hold something; side rooms always do
   DGN.warden = null;
   if (!dgnBeaten(f) && DGN.end) { // the warden, standing between you and the stairs
     const [cx, cz] = dgnW(DGN.end.c[0], DGN.end.c[1]), base = f >= 5 ? 'cindercrawler' : 'basaltbrute';
@@ -10498,7 +10498,7 @@ function dgnNear(p) { // what you can use in here
 function dgnUse(id) {
   if (id === 'dgnUp') { if (!dgnBeaten(DGN.f)) { lootMsg(DGN.lair ? 'The way down is sealed · kill the matriarch first' : 'The way up is sealed · defeat the warden first', '#ff8f86'); return; } dgnEnter(DGN.f + 1); return; }
   if (id === 'dgnDown') { if (DGN.f === 1 || (DGN.lair ? DGN.f === dgnTop() && lairCleared(DGN.lair) : DGN.f === 8 && !sumBoss())) dgnLeave(); else dgnEnter(DGN.f - 1, 'top'); return; }
-  if (id === 'dgnWell') { if (time - DGN.wellT < 40) { lootMsg(`The spring is still settling · ${Math.ceil(40 - (time - DGN.wellT))} s`, '#cfd6e6'); return; } DGN.wellT = time; ex.hp = maxHP(); invState().hp = ex.hp; sfx.chime(); lootMsg('Healed · the spring needs 40 seconds to fill again', '#7fe8ff'); burst(player.position.x, 1, player.position.z, 30, 3, .5, .9, 1, .8, 1, 1.4); return; }
+  if (id === 'dgnWell') { if (time - DGN.wellT < 15) { lootMsg(`The spring is still settling · ${Math.ceil(15 - (time - DGN.wellT))} s`, '#cfd6e6'); return; } DGN.wellT = time; ex.hp = maxHP(); invState().hp = ex.hp; sfx.chime(); lootMsg('Healed · the spring needs 15 seconds to fill again', '#7fe8ff'); burst(player.position.x, 1, player.position.z, 30, 3, .5, .9, 1, .8, 1, 1.4); return; }
   if (id === 'dgnGate') { DGN.lair = null; const top = Math.max(1, Math.min(8, ((wanderer.ch3 && wanderer.ch3.dgnMax) || 0) + 1));
     if (top > 1) openChoice('OLYMPUS MONS', [{ text: `Climb to floor ${top} · ${DGN_NAMES[top]}`, onPick: () => dgnEnter(top) }, { text: 'Start from the bottom · floor 1', onPick: () => dgnEnter(1) }, { text: 'Not yet', onPick: () => {} }]);
     else dgnEnter(1); }
@@ -10516,8 +10516,8 @@ function dgnTick(dt) {
   }
   // they keep coming: a fresh pack every half a minute or so while there are few about (the grind)
   if (state === 'explore' && DGN.f < dgnTop() && (DGN.spawnT -= dt) <= 0) {
-    DGN.spawnT = 32; const alive = fauna.list.filter(c => c.dgn && !c.dead).length, p = player.position;
-    if (alive < 5 + DGN.f / 2) { const far = DGN.rooms.filter(rm => rm !== DGN.start && Math.hypot(dgnW(rm.c[0], rm.c[1])[0] - p.x, dgnW(rm.c[0], rm.c[1])[1] - p.z) > 26); if (far.length) dgnSpawnGroup(far[Math.random() * far.length | 0], DGN.f); }
+    DGN.spawnT = 55; const alive = fauna.list.filter(c => c.dgn && !c.dead).length, p = player.position;
+    if (alive < 3 + DGN.f / 3) { const far = DGN.rooms.filter(rm => rm !== DGN.start && Math.hypot(dgnW(rm.c[0], rm.c[1])[0] - p.x, dgnW(rm.c[0], rm.c[1])[1] - p.z) > 26); if (far.length) dgnSpawnGroup(far[Math.random() * far.length | 0], DGN.f); }
   }
   if (DGN.f === dgnTop()) dgnArenaTick(dt);
 }
@@ -10661,8 +10661,8 @@ function khzSayAll(list, done) { // one line at a time, each with its moment, an
 }
 // ---- the fight: a raid boss. All three of you, or his ward holds ----
 const KHZ_LV = 15; // Khazglar's level: the boss you fight, and the companion who joins you
-const KB = { name: 'KHAZGLAR', short: 'Khazglar', hp: 9000, lv: KHZ_LV, dm: 1, ward: true }; // about a minute and a half with Orion and Nico pulling their weight
-const KHB = { name: 'KHALMAR', short: 'Khalmar', hp: 11000, lv: 30, dm: 1.15, ward: false }; // his brother, on the throne every 7 days once Khazglar is with you
+const KB = { name: 'KHAZGLAR', short: 'Khazglar', hp: 5000, lv: KHZ_LV, dm: .55, ward: true }; // about a minute and a half with Orion and Nico pulling their weight
+const KHB = { name: 'KHALMAR', short: 'Khalmar', hp: 6500, lv: 22, dm: .7, ward: false }; // his brother, on the throne every 7 days once Khazglar is with you
 const sumKB = () => khalUp() ? KHB : KB;
 function dgnBossBar() {
   const el = $('#bossBar'); if (!el) return;
@@ -10679,7 +10679,7 @@ function dgnWardDown() { // Orion and Nico both in the fight, near him
 }
 function dgnBossDmg(c, dmg) { // what actually gets through
   if (DGN.lair) return dmg; // a lair's boss has no ward
-  if (!dgnWardDown()) { if (time - (DGN.wardMsgT || -9) > 3) { DGN.wardMsgT = time; lootMsg('His ward turns the blow · you need Orion and Nico beside you', '#ff8f86'); } return dmg * .25; }
+  if (!dgnWardDown()) { if (time - (DGN.wardMsgT || -9) > 3) { DGN.wardMsgT = time; lootMsg('His ward turns the blow · you need Orion and Nico beside you', '#ff8f86'); } return dmg * .5; }
   return dmg;
 }
 function dgnBossStart() {
