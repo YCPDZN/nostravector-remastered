@@ -3414,7 +3414,7 @@ function renderRoster() {
   // the wanderers you sent away: still here, living their own lives, never playable again
   if (residents.length) list.insertAdjacentHTML('beforeend', `<div class="sub-head res-head">Living in this world · ${residents.length}/${MAX_RESIDENTS} · never playable again</div>` + residents.map(c => {
     const where = resWhereLabel(c);
-    return `<div class="mi resident" data-res="${c.id}" role="button" tabindex="0"><i>·</i><span><b class="swc" style="--c:${SUITC[c.suit] || SUITC[0]}"></b>${String(c.name).replace(/[<>&"]/g, '')}<small>LV ${resLevel(c)} · ${SPECIES[spOf(c)].label} · ${where}</small></span></div>`;
+    return `<div class="mi resident" data-res="${c.id}" role="button" tabindex="0"><i>·</i><span><b class="swc" style="--c:${SUITC[c.suit] || SUITC[0]}"></b>${String(c.name).replace(/[<>&"]/g, '')}<small>LV ${resLevel(c)} · ${resSpLabel(c)} · ${where}</small></span></div>`;
   }).join(''));
 }
 let sendArmed = false;
@@ -3436,7 +3436,7 @@ $('#rSend').addEventListener('click', () => {
   const c = roster.find(x => x.id === activeId); if (!c) return;
   const draft = { name: c.name, persona: c.persona || null };
   resPersonaOpen(draft, () => { // describe who they are, then they go
-  residents.push(Object.assign(JSON.parse(JSON.stringify(c)), { sentAt: Date.now(), persona: draft.persona }));
+  residents.push(Object.assign(JSON.parse(JSON.stringify(c)), { sentAt: Date.now(), persona: draft.persona, resSp: draft.resSp || null }));
   roster = roster.filter(x => x.id !== c.id);
   setActive(roster[0].id); sfx.chime();
   renderRoster(); refreshMenu();
@@ -13023,6 +13023,7 @@ SOL.push(
 /* ---- the galaxy: ten star systems. Sol, four from the lore, five uncharted. map: x, y on the galaxy map (the core at 0, 0;
    the disc's edge at 1), ly: light-years from the core. Each system's first `home` world is where a warp drops you. ---- */
 const UNCLAIMED = 'Unclaimed · no faction';
+const TIMPUR = 'The Republic of Timpur · puppet of the Chompy Empire'; // the far tip of the outer arm beyond Janira Proxima
 const CATH_LAND = 'Former Catharsis space'; // Chapter V: these worlds become the wanderer's colonies (Diplomacy)
 const SYSTEMS = [
   { id: 'sol', name: 'Sol', star: { kind: 'star', name: 'The Sun', r: 3800, col: '#fff3c8', glow: ['rgba(255,240,200,1)', 'rgba(255,200,120,.55)', 'rgba(255,160,60,0)'], light: '#fff2dc', type: 'Yellow dwarf · G2V' },
@@ -13126,8 +13127,8 @@ const SYSTEMS = [
     const bh = R() < .5 ? 30 : 220; return Object.assign(P, { kind: 'rock', c: { low: hsl(bh, 8 + R() * 10, 32 + R() * 15), mid: hsl(bh, 8, 55 + R() * 15), rock: hsl(bh, 8, 22) }, atmo: null, sky: ['#030305', '#0e0e12'], fog: '#18181c' }); // barren
   };
   for (let n = 0; n < 490; n++) {
-    let x, y, tries = 0; const gap = n < 90 ? .05 : .028; // the later systems pack in closer
-    do { const arm = Math.floor(R() * 4), major = arm < 2, t = .1 + Math.pow(R(), .8) * .85, a = arm * Math.PI / 2 + (major ? 0 : .35) + Math.log(t * 9 + 1) * 2.25 + G() * (.22 + .25 * (1 - t)), rr = t * .96 + G() * .05; x = Math.cos(a) * rr; y = Math.sin(a) * rr; }
+    let x, y, tries = 0, armL = 0, tL = 0; const gap = n < 90 ? .05 : .028; // the later systems pack in closer
+    do { const arm = Math.floor(R() * 4), major = arm < 2, t = .1 + Math.pow(R(), .8) * .85; armL = arm; tL = t; const a = arm * Math.PI / 2 + (major ? 0 : .35) + Math.log(t * 9 + 1) * 2.25 + G() * (.22 + .25 * (1 - t)), rr = t * .96 + G() * .05; x = Math.cos(a) * rr; y = Math.sin(a) * rr; }
     while (SYSTEMS.some(S => Math.hypot(S.map.x - x, S.map.y - y) < gap) && ++tries < 80);
     let name; do name = pick(A) + pick(B) + pick(SUF); while (used.has(name)); used.add(name);
     const base = name.replace(/ \w+$/, m => SUF.includes(m) ? '' : m), id = 'g' + (n + 1), st = starOf();
@@ -13136,7 +13137,8 @@ const SYSTEMS = [
     const coreD = Math.hypot(x, y), stecaD = Math.hypot(x + .09, y + .07), janD = Math.hypot(x + .5, y + .12);
     const cath = coreD < .14 && stecaD > .09, grek = !cath && coreD < .27 && stecaD > .17 && janD > .22;
     const chompy = !cath && !grek && (stecaD < .3 || janD < .22);
-    const fac = cath ? 'The Catharsis · puppet of the Grek Empire' : grek ? 'The Grek Empire' : chompy ? 'The Chompy Empire' : UNCLAIMED, fac4 = cath || grek ? 'The Catharsis' : null;
+    const timpur = !cath && !grek && !chompy && armL === 3 && tL > .72; // the far tip of the outer arm beyond Janira: the Republic of Timpur
+    const fac = cath ? 'The Catharsis · puppet of the Grek Empire' : grek ? 'The Grek Empire' : chompy ? 'The Chompy Empire' : timpur ? TIMPUR : UNCLAIMED, fac4 = cath || grek ? 'The Catharsis' : null;
     const cls = st[2] === 'D' ? 'DA' : `${st[2]}${Math.floor(R() * 9)}${/giant/.test(st[1]) ? 'III' : 'V'}`;
     const [r0, g0, b0] = st[4];
     const S = { id, name, gen: true, faction: fac, map: { x: +x.toFixed(3), y: +y.toFixed(3) }, bodies: [],
@@ -13155,7 +13157,7 @@ const SYSTEMS = [
     const parts = [rocky && `${NUM[rocky] || rocky} rocky world${rocky > 1 ? 's' : ''}`, gas && `${gas > 1 ? NUM[gas] + ' gas giants' : 'a gas giant'}`, moons && `${moons > 1 ? NUM[moons] + ' moons' : 'a moon'}`].filter(Boolean);
     const list = parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
     const tail = `${/^[AEIOU]/.test(st[1]) ? 'An' : 'A'} ${st[1].toLowerCase()} with ${list}.`;
-    S.desc = `${cath ? 'Catharsis space near the core, held for the Grek Empire.' : grek ? 'A system of the Grek Empire.' : chompy ? 'A system of the Chompy Empire.' : 'Uncharted.'} ${tail}`;
+    S.desc = `${cath ? 'Catharsis space near the core, held for the Grek Empire.' : grek ? 'A system of the Grek Empire.' : chompy ? 'A system of the Chompy Empire.' : timpur ? 'A system of the Republic of Timpur, out at the far edge of the galaxy. Its senate meets freely, and votes as Aridaxx tells it to.' : 'Uncharted.'} ${tail}`;
     if (fac4) { // Chapter IV
       S.fac3 = fac; S.fac4 = fac4; S.desc3 = S.desc; S.desc4 = `${cath ? 'Catharsis space, the heart of their new empire.' : 'Once the Grek Empire’s; the Catharsis took it.'} ${tail}`;
       S.fac5 = CATH_LAND; S.desc5 = `Your space now: the Catharsis fell at the siege of Carax, and everything it held came to you. ${tail}`; // Chapter V
@@ -13163,6 +13165,10 @@ const SYSTEMS = [
     }
     SYSTEMS.push(S);
   }
+  // Timpur itself: the outermost of the Republic's systems is its capital
+  const T = SYSTEMS.filter(S => S.faction === TIMPUR).sort((a, b) => Math.hypot(b.map.x, b.map.y) - Math.hypot(a.map.x, a.map.y))[0];
+  if (T) { const H = T.bodies.find(P => P.id === T.home); T.name = 'Timpur'; T.star.name = 'Timpur'; if (H) { H.name = 'Timpur Prime'; H.faction = TIMPUR + ' · the capital'; }
+    T.desc = `The capital of the Republic of Timpur, at the very edge of the galaxy. The Republic elects its own senate and its own First Consul, and has been a puppet of the Chompy Empire for as long as anyone can remember: Aridaxx decides its wars and its treaties. ${T.desc.replace(/^.*?\. (?=An? )/, '')}`; }
 })();
 const ALL_BODIES = SYSTEMS.flatMap(S => S.bodies.map(P => (P.sys = S.id, P)));
 // inside Archiostal: you dock with the station and walk its gardens (forests and rivers under an artificial sky)
@@ -15063,7 +15069,7 @@ function galEl() {
   el.querySelector('#galPanel').addEventListener('click', e => { const b = e.target.closest('[data-warp]'); if (b && !b.disabled) galWarp(b.dataset.warp); });
   return el;
 }
-const FAC_COL = { 'Terra Imperia': '#d0343a', 'The Erisian Empire': '#eda8d4', 'The Chompy Empire': '#ffb060', 'The Grek': '#7fe0a0', 'The Grek Empire': '#7fe0a0', 'The Catharsis': '#a070ff', 'The Order of Archamus': '#ffd88a', 'Human Federation of Sol': '#7fb6ff' };
+const FAC_COL = { 'The Republic of Timpur': '#58d8c0', 'Terra Imperia': '#d0343a', 'The Erisian Empire': '#eda8d4', 'The Chompy Empire': '#ffb060', 'The Grek': '#7fe0a0', 'The Grek Empire': '#7fe0a0', 'The Catharsis': '#a070ff', 'The Order of Archamus': '#ffd88a', 'Human Federation of Sol': '#7fb6ff' };
 const galScale = () => Math.min(innerWidth, innerHeight) * .46 * GAL.zoom;
 function galQ(S) { const c = Math.cos(GAL.rot), s = Math.sin(GAL.rot), x = S.map.x * c - S.map.y * s, y = (S.map.x * s + S.map.y * c) * GAL.tilt; return { x, y }; }
 function galXY(S) { const q = galQ(S), k = galScale(); return { x: innerWidth / 2 + (q.x - GAL.pan.x) * k, y: innerHeight / 2 + (q.y - GAL.pan.y) * k }; }
@@ -20250,7 +20256,19 @@ function resGroundOk() {
 }
 
 // ---- their bodies: the player's own model wearing their look, copied with its own materials ----
+// ---- the Taredesibans: a people only residents can belong to (not a playable race). Their body is a rigged model of its own
+// (data/taredGlb.js, built by nightmare/tools/build_taredesiban.py): blue skin, dark armour with teal inlays, a sheer cape. ----
+const RES_TARED = { label: 'Taredesiban', src: null };
+function resIsTared(c) { return !!(c && c.resSp === 'taredesiban'); } // function declarations: the roster can ask before this part of the file has run
+function resSpLabel(c) { return resIsTared(c) ? 'Taredesiban' : SPECIES[spOf(c)].label; }
+async function resTaredModel() {
+  if (!RES_TARED.src) RES_TARED.src = loadDataScript('taredGlb', 'glb').then(() => embGlb('taredGlb'));
+  const src = await RES_TARED.src; if (!src) return null;
+  const R = autoRig(SkeletonUtils.clone(src), 1.98); armRig(R, 'none');
+  return { m: R.root, L: { ra: R.ra, la: R.la, rl: R.rl, ll: R.ll }, human: false, tared: true };
+}
 async function resModel(c) {
+  if (resIsTared(c)) return resTaredModel();
   const sp = spOf(c);
   if (sp === 'human') { if (!look.ready) return null; } else if (!(await loadSpecies(sp))) return null;
   const held = ex.held && ex.held.parent ? ex.held : null, hp = held && held.parent; if (hp) hp.remove(held);
@@ -20328,7 +20346,7 @@ function resCtx(B, other) {
   const otherPl = resPick(ALL_BODIES.filter(b => b.land && b.sys === (P ? P.sys : 'sol') && (!P || b.id !== P.id)).concat([bodyById('malana'), bodyById('aridaxx')]).filter(Boolean));
   const fac = facShort((P && P.faction) || S.faction) || 'the Federation';
   const T = B && resTravels() ? resTravel(B.c) : null, nxt = T && T.mode === 'warp' ? T.to.name : null;
-  return { home: B ? resHomeBody(B.c).name : 'home', species: B ? SPECIES[B.sp].label : '', realm: effCh() >= 3 && wanderer.dip ? realmName() : 'the Federation', enemy: 'pirates', place: P ? P.name : (AREA_INFO[A] && AREA_INFO[A].name) || 'here', other: nxt || (otherPl ? otherPl.name : 'Malana'), player: wanderer.name, b: other ? other.c.name : (residents.find(o => !B || o.id !== B.id) || {}).name || 'anyone', res, n: 2 + Math.floor(Math.random() * 6), lv: B ? B.lv : 1, sys: S.name, faction: fac, threat: (wanderer.chapter | 0) >= 4 ? 'Catharsis patrol' : 'pirates' };
+  return { home: B ? resHomeBody(B.c).name : 'home', species: B ? resSpLabel(B.c) : '', realm: effCh() >= 3 && wanderer.dip ? realmName() : 'the Federation', enemy: 'pirates', place: P ? P.name : (AREA_INFO[A] && AREA_INFO[A].name) || 'here', other: nxt || (otherPl ? otherPl.name : 'Malana'), player: wanderer.name, b: other ? other.c.name : (residents.find(o => !B || o.id !== B.id) || {}).name || 'anyone', res, n: 2 + Math.floor(Math.random() * 6), lv: B ? B.lv : 1, sys: S.name, faction: fac, threat: (wanderer.chapter | 0) >= 4 ? 'Catharsis patrol' : 'pirates' };
 }
 const resFill = (t, x) => t.replace(/\{(\w+)\}/g, (_, k) => x[k] != null ? x[k] : '');
 // the full dialogue pack (1,600+ lines) lives in data/resLines.js and loads the first time a resident is around
@@ -20473,7 +20491,7 @@ function resTalk(B) {
   resLinesLoad(); RES.talking = B; B.task = { type: 'face', t: 0, dur: 4 }; B.em = 'wave'; B.emT = 2.2;
   const x = resCtx(B), V = B.al === 'villain', T = RL && RL.talk, back = () => resTalk(B);
   const opts = [
-    { text: 'What are you up to?', onPick: () => resSayTo(B, [resFill(resPick(T ? T.doing[B.al] : ['Just exploring.']), x), `\u200bLV ${B.lv} · ${SPECIES[B.sp].label} · ${resAlName(B)}${resTravels() ? ` · home: ${resHomeBody(B.c).name}` : ''}`, '\u200bGear: ' + resGearText(B.c) + ` · Lairs cleared: ${resLairsDone(B.id)}` + (resGuildOf(B.id) ? ` · Guild: ${resGuildOf(B.id).name} [${resGuildOf(B.id).tag}]` : ''), resPersonaSummary(B.c) ? '\u200bPersonality: ' + resPersonaSummary(B.c) : null], back) },
+    { text: 'What are you up to?', onPick: () => resSayTo(B, [resFill(resPick(T ? T.doing[B.al] : ['Just exploring.']), x), `\u200bLV ${B.lv} · ${resSpLabel(B.c)} · ${resAlName(B)}${resTravels() ? ` · home: ${resHomeBody(B.c).name}` : ''}`, '\u200bGear: ' + resGearText(B.c) + ` · Lairs cleared: ${resLairsDone(B.id)}` + (resGuildOf(B.id) ? ` · Guild: ${resGuildOf(B.id).name} [${resGuildOf(B.id).tag}]` : ''), resPersonaSummary(B.c) ? '\u200bPersonality: ' + resPersonaSummary(B.c) : null], back) },
     { text: 'Tell me about this place', onPick: () => { if (resUnsure(B, 'place')) return resSayTo(B, [resUnknownLine(B, x)], back); const k = resExploreKeys(), w = RL && k.world && RL.explore.worlds[k.world]; resSayTo(B, [resFill(resPick(T ? T.place : ['Nice place.']), x), RL ? resFill(resPick(w || RL.explore.kinds[k.kind] || RL.talk.place), x) : null], back); } },
     { text: 'Any tips?', onPick: () => resSayTo(B, resUnsure(B, 'tips') ? [resUnknownLine(B, x)] : T ? resPickN(T.tips, 2) : ['Save often.'], back) },
     { text: 'Ask something…', onPick: () => resAsk(B) }
@@ -21131,7 +21149,7 @@ function resGearText(c) { const g = resGear(c), ids = Object.values(g); if (!ids
   return Object.entries(sets).map(([n, k]) => `${n} ×${k}`).join(' · ') + ` (${Math.round(resGearDef(g) * 100)}%)`; }
 function resGearDress(B) { // their armour on their own body
   for (const o of B.armor || []) if (o.parent) o.parent.remove(o);
-  B.armor = []; if (!B.body || !B.L) return;
+  B.armor = []; if (!B.body || !B.L || resIsTared(B.c)) return; // a Taredesiban wears their people's armour
   B.gearKey = resGearKey(B.c);
   try { B.armor = armorBuild(resGear(B.c), B.c, B.body, B.L); } catch (e) { console.error(e); }
 }
@@ -21474,6 +21492,12 @@ function resPersonaOpen(c, onSend) {
     el.querySelector('.rp-text').addEventListener('keydown', e => e.stopPropagation());
   }
   const ta = el.querySelector('.rp-text'); ta.value = (c.persona && c.persona.text) || '';
+  // their people: who they were made as, or a Taredesiban (only residents can be; it isn't a playable race)
+  let race = el.querySelector('.rp-race'); if (!race) { race = document.createElement('div'); race.className = 're-chips rp-race'; el.querySelector('.rp-read').after(race); }
+  let raceSel = resIsTared(c) ? 'taredesiban' : '';
+  const own = SPECIES[spOf(c.species ? c : (roster.find(x => x.id === activeId) || c))].label;
+  const drawRace = () => { race.innerHTML = `<small style="width:100%">Their people</small><button data-race="" class="${raceSel ? '' : 'on'}">${reEsc(own)} (as made)</button><button data-race="taredesiban" class="${raceSel ? 'on' : ''}">Taredesiban</button>`; };
+  drawRace(); race.onclick = e => { const b = e.target.closest('[data-race]'); if (!b) return; sfx.click(); raceSel = b.dataset.race; drawRace(); };
   el.querySelector('.rp-title').textContent = onSend ? `SEND ${String(c.name).toUpperCase()} INTO THE WORLD` : `EDIT ${String(c.name).toUpperCase()}`;
   el.querySelector('.rp-sub').textContent = onSend ? 'Describe who they are. They can never be played again after this.' : 'Their personality: how they talk, what they love, how they react when you roleplay with them. Or change their name, looks and species.';
   const act = el.querySelector('.rp-act');
@@ -21483,6 +21507,8 @@ function resPersonaOpen(c, onSend) {
     if (b.hasAttribute('data-cancel')) { el.classList.add('hidden'); return; }
     if (b.hasAttribute('data-look')) { c.persona = { text: ta.value.trim().slice(0, 400), at: Date.now() }; el.classList.add('hidden'); enterCreate('resEdit', c); return; } // the full editor, species and all
     c.persona = { text: ta.value.trim().slice(0, 400), at: Date.now() };
+    const was = resIsTared(c); c.resSp = raceSel || null;
+    if (!onSend && was !== resIsTared(c)) { try { RES.bots = RES.bots.filter(B => { if (B.id !== c.id) return true; if (B.root && B.root.parent) B.root.parent.remove(B.root); return false; }); } catch (e) {} } // they'll turn up again as who they are now
     el.classList.add('hidden'); if (onSend) onSend(); else { saveRoster(); renderRoster(); }
   };
   ta.dispatchEvent(new Event('input')); el.classList.remove('hidden'); setTimeout(() => ta.focus(), 60);

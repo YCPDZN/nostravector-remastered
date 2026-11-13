@@ -1305,3 +1305,18 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - **Long boss names:** upright, they wrap onto two lines instead of being cut short.
   - **Very short upright phones:** the small logo on the main menu steps aside to leave room.
 - **Not covered:** this was done in a desktop browser emulating each phone, not on real devices. Touch feel, frame rate, battery and memory on a real phone, and the Chapter I–II story scenes (they need their own saves), weren't checked.
+
+## The Taredesibans (residents only)
+- A people of their own that only **residents** can belong to: they're **not a playable race**, so they never appear in the wanderer creator.
+- **Their look:** tall (about 1.98 m), smooth pale-blue skin, a tall cranium with swept-back pointed ears, a short dark beard, and dark indigo armour engraved with curves, with glowing teal inlays (a V across the chest, a gem at the heart, lines down the gauntlets and greaves), violet lines on the thighs and spine, three flared plates on each shoulder, and a sheer teal cape.
+- **The model** is fully rigged (the same 18-bone skeleton as the other rigged characters), so they walk, wave, dance, mine and spar like every other resident. It's built by `nightmare/tools/build_taredesiban.py` (`python3 build_taredesiban.py out.glb`) and lives in `data/taredGlb.js` (the GLB is also in `assets/models/characters/taredesiban.glb`). It only loads when a Taredesiban is around.
+- **Making one:** in the personality panel, when you **send a wanderer into the world** or **edit a resident**, pick **Their people: Taredesiban** (or keep the species they were made as). Changing it on an existing resident takes effect the next time they turn up.
+- They keep their own armour (crafted armour isn't put on over it), and their talk menu and the resident list say *Taredesiban*.
+
+## The Republic of Timpur
+- A faction at the **far edge of the galaxy**: the tip of the outer spiral arm beyond Janira Proxima, on the opposite side of the galaxy from Sol (38 systems).
+- **A puppet of the Chompy Empire:** it elects its own senate and First Consul, but Aridaxx decides its wars and treaties.
+- Its capital is **Timpur** (the outermost of its systems), with its capital world **Timpur Prime**.
+- On the galaxy map its space is washed in teal, and its systems and worlds read *The Republic of Timpur · puppet of the Chompy Empire*. Its traders are Chompy traders.
+- Resident empires never expand into it (it isn't unclaimed).
+
