@@ -2924,7 +2924,7 @@ $('#setCombat').addEventListener('click', () => {
 });
 // in play, anything hostile calls combatPulse(); the music fades out a few seconds after the last threat
 const combat = { t: 0, on: false };
-function combatPulse() { combat.t = 7; if (!combat.on) { combat.on = true; sfx.combat(true); } }
+function combatPulse() { combat.t = 7; if (sfx.leadOn) return; if (!combat.on) { combat.on = true; sfx.combat(true); } } // a leader's theme isn't interrupted
 function combatTick(dt) {
   if (world.boss && world.betrayal && world.betrayal.phase === 'chase') return; // the boss theme plays until the fight ends
   if (esc.on && (esc.phase === 'run' || esc.phase === 'summon' || esc.phase === 'fight')) return; // and the escape's, until the way to the ship is clear
@@ -5214,6 +5214,8 @@ async function interact() {
     if (n.id === 'lairGate') lairGateUse(n.ref); else dgnUse(n.id);
   } else if (n.id === 'nyx') {
     nyxTalk();
+  } else if (n.id === 'leadGate') {
+    leaderHallUse();
   } else if (n.id === 'qgiver') {
     giverTalk(n.ref);
   } else if (n.id === 'bot') {
@@ -6529,7 +6531,7 @@ function updateSurvival(dt) {
   const hb = $('#heatBar'), hv = suitHeat(); hb.firstChild.style.transform = `scaleX(${hv / 100})`; hb.classList.toggle('on', hv < 99.5 || (ch1().stormTalk && !ch1().stormOver)); hb.classList.toggle('low', hv < 30);
   const jb = $('#jetBar'); jb.firstChild.style.transform = `scaleX(${(ex.jet == null ? 100 : ex.jet) / 100})`; jb.classList.toggle('on', ex.jet != null && ex.jet < 99.5); jb.classList.toggle('low', ex.jet < 15);
   // placement preview, teleporter rings, merchants
-  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt); hallTick(dt); khzTick(dt); nyxTick(dt); furnaceTick(); compDungeonTick();
+  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt); hallTick(dt); khzTick(dt); nyxTick(dt); leaderHallTick(); furnaceTick(); compDungeonTick();
   for (const b of world.build) if (b.mesh.userData.spin) b.mesh.userData.spin.rotation.z += dt * 1.5;
   if (world.stationTp) world.stationTp.userData.spin.rotation.z += dt * 1.5;
   const it = selItem();
@@ -10704,7 +10706,7 @@ function dgnBossClear() {
   for (const m of B.tels) wScene.remove(m); for (const m of B.mets) wScene.remove(m.tel); if (B.lair) lairBossCleanup(B);
   if (B.proj && B.proj.m) wScene.remove(B.proj.m);
   const i = fauna.list.indexOf(B.c); if (i >= 0) fauna.list.splice(i, 1);
-  DGN.boss = null; dgnBossBar(); sfx.combat && sfx.combat(false);
+  DGN.boss = null; dgnBossBar(); sfx.combat && sfx.combat(false); if (sfx.leadOn) { sfx.leadOn = false; sfx.stopSong(1.2); } // a leader's theme ends with the fight
 }
 function dgnBossReset() { // a wipe: everything back as it was before the fight, Khazglar on his throne
   dgnBossClear();
@@ -11061,7 +11063,7 @@ const LB_EPI = ['the Hollow Maw', 'Who Waits Below', 'the Brood-Mother', 'the Un
 function lairBoss(L) { // decided once, from the lair's own seed
   if (L.boss) return L.boss;
   const R = dgnRng(L.seed * 7 + 13), sp = natSp(L.S), kd = 1 + (L.lv - 10) * .035, J = (a, b) => a + R() * (b - a);
-  if (L.ch4) return (L.boss = lairFixedBoss(L, R, kd, J));
+  if (L.ch4 || L.lead) return (L.boss = lairFixedBoss(L, R, kd, J)); // the Chapter IV bosses, and the faction leaders in their halls
   const mk = id => lbMk(id, R, kd, J);
   void mk; return (L.boss = lairRandBoss(L, R, sp, kd, J, mk));
 }
@@ -11081,8 +11083,8 @@ function lbMk(id, R, kd, J) { const A = { id };
     if (id === 'blink') Object.assign(A, { r: J(3, 3.8), dmg: 34 });
     if (A.dmg) A.dmg = Math.round(A.dmg * kd); return A; }
 function lairFixedBoss(L, R, kd, J) {
-  const X = L.ch4, atk = {}; for (const id of new Set([...X.core, ...X.p2, X.sig])) atk[id] = lbMk(id, R, kd, J);
-  return { name: X.full, short: X.boss, hp: 14000, lv: 90, rig: X.rig, ghost: X.ghost, hover: X.hover, sp: 4.2, seq: [...X.seq], p2: X.p2, sig: X.sig, atk, cd: 1.4, armor: X.armor, lines: X.lines, p: null };
+  const X = L.ch4 || L.lead, atk = {}; for (const id of new Set([...X.core, ...X.p2, X.sig])) atk[id] = lbMk(id, R, kd, J);
+  return { name: X.full, short: X.boss, hp: X.hp || 14000, lv: X.lv || 90, rig: X.rig || (X.load ? { load: X.load } : null), theme: X.theme || null, unmask: !!X.unmask, leader: !!L.lead, ghost: X.ghost, hover: X.hover, sp: 4.2, seq: [...X.seq], p2: X.p2, sig: X.sig, atk, cd: 1.4, armor: X.armor, lines: X.lines, p: null };
 }
 function lairRandBoss(L, R, sp, kd, J, mk) {
   const pool = [...LB_MELEE, ...LB_RANGED], core = [lairPick(R, LB_MELEE)];
@@ -11117,6 +11119,7 @@ async function dravenRig(X) { // Draven: a Chompy of his own, bearded, in his ma
 }
 async function lairRig(Bd) { // the endgame bosses: their own models, larger than life; the ghosts pale and glowing
   const X = Bd.rig; let R = null;
+  if (X && X.load) { R = await X.load(); if (!R) return null; R.root.scale.multiplyScalar(1.3); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); return R; } // a faction leader: their own model, a little larger than life
   try { R = X.comp ? await loadCharRig(X.tag ? { id: X.comp, builtin: true, tag: X.tag, weapon: 'sword' } : charById(X.comp), 1.95) : X.human ? await humanRig({ name: Bd.name, c: X.c, skin: 1, female: false }, 1.85) : X.beard ? await dravenRig(X) : await brawlRig({ sp: X.sp, c: X.c, name: Bd.name }); } catch (e) { console.error(e); }
   if (!R) return null;
   if (X.beard) { const a = glowSprite(0xd0343a, 5, .35); a.position.y = 1.2; R.root.add(a); }
@@ -11220,13 +11223,14 @@ function lairBossStart() {
   const c = { type: 'lairboss', D, mesh: K.mesh, x: K.x, z: K.z, y: 0, rot: 0, hp: Bd.hp, state: 'hunt', t: 0, cd: 0, home: [K.x, K.z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, boss: true, bar: null };
   fauna.list.push(c);
   DGN.boss = { lair: true, c, Bd, st: 'chase', t: 0, cd: Bd.cd + 1, ph: 1, seq: [...Bd.seq], si: 0, tels: [], mets: [], proj: null, shots: [], pools: [], A: null, chaseT: 0 };
-  sfx.combat(true, COMBAT_TRACKS.indexOf('Predator II'));
-  notice(`Lair boss · level ${Bd.lv}`, Bd.name.toUpperCase(), 3200); lbark(Bd.short, Bd.lines.intro, 3600); lairBossBar();
+  if (Bd.theme) leaderPlay(Bd.theme).then(ok => { if (!ok) sfx.combat(true, COMBAT_TRACKS.indexOf('Predator II')); }); else sfx.combat(true, COMBAT_TRACKS.indexOf('Predator II'));
+  if (Bd.unmask) DGN.boss.unP = leadArchamusU().catch(() => null); // the face under the hood, ready for phase two
+  notice(`${Bd.leader ? 'Faction leader' : 'Lair boss'} · level ${Bd.lv}`, Bd.name.toUpperCase(), 3200); lbark(Bd.short, Bd.lines.intro, 3600); lairBossBar();
 }
 function lairBossBar() {
   const el = $('#bossBar'), B = DGN.boss; if (!el) return; if (!B) { el.classList.remove('on'); return; }
   const Bd = B.Bd, frac = Math.max(0, B.c.hp / Bd.hp), a = B.A ? B.A.id : B.seq[B.si % B.seq.length];
-  el.innerHTML = `<div class="bb-h"><b>${Bd.name.toUpperCase()}</b><small>LV ${Bd.lv} · LAIR BOSS · PHASE ${B.ph} OF 3</small></div><div class="bb"><i style="width:${(frac * 100).toFixed(1)}%"></i></div><em>${B.A ? 'Now: ' : 'Next: '}${LB_ATK[a]}</em>`;
+  el.innerHTML = `<div class="bb-h"><b>${Bd.name.toUpperCase()}</b><small>LV ${Bd.lv} · ${Bd.leader ? 'FACTION LEADER' : 'LAIR BOSS'} · PHASE ${B.ph} OF 3</small></div><div class="bb"><i style="width:${(frac * 100).toFixed(1)}%"></i></div><em>${B.A ? 'Now: ' : 'Next: '}${LB_ATK[a]}</em>`;
   el.classList.add('on');
 }
 function lairBossCleanup(B) {
@@ -11246,7 +11250,7 @@ function lairBossTick(dt) {
   if (c.dead || c.hp <= 0) { lairBossWin(); return; }
   if ((B.barT = (B.barT || 0) - dt) <= 0) { B.barT = .15; lairBossBar(); }
   const frac = c.hp / Bd.hp, sp = Bd.sp * (B.ph === 1 ? 1 : B.ph === 2 ? 1.15 : 1.3), fast = B.ph === 3 ? .8 : B.ph === 2 ? .9 : 1;
-  if (B.ph === 1 && frac < .66) { B.ph = 2; B.seq.push(...Bd.p2); sfx.thud(); ex.shake = .8; DGN.flashL = 1.5; lbark(Bd.short, Bd.lines.p2, 3000); notice('Phase two', `${Bd.short.toUpperCase()} GROWS ANGRY`, 2400); lairSummon(B, 2); }
+  if (B.ph === 1 && frac < .66) { B.ph = 2; B.seq.push(...Bd.p2); sfx.thud(); ex.shake = .8; DGN.flashL = 1.5; lbark(Bd.short, Bd.lines.p2, 3000); notice('Phase two', Bd.unmask ? 'ARCHAMUS UNMASKED' : `${Bd.short.toUpperCase()} GROWS ANGRY`, 2400); lairSummon(B, 2); if (Bd.unmask) leaderUnmask(B); }
   if (B.ph === 2 && frac < .33) { B.ph = 3; B.seq.push(Bd.sig, Bd.sig); sfx.boom && sfx.boom(); ex.shake = 1.2; DGN.flashL = 2; lbark(Bd.short, Bd.lines.p3, 3200); notice('Phase three', LB_ATK[Bd.sig].split(' · ')[0].toUpperCase(), 2400); }
   const live = state === 'explore' && !ex.dlg;
   const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz) || .01;
@@ -11314,6 +11318,7 @@ function lairAtkTick(B, A, c, p, dt, fast, U) {
 }
 function lairBossWin() {
   const B = DGN.boss, L = DGN.lair; if (!B || B.won) return; B.won = true;
+  if (L && L.lead) { leaderBossWin(B); return; } // a faction leader: the war, not loot
   const Bd = B.Bd;
   for (const o of [...fauna.list]) if (o.dgn && !o.dead) removeFauna(o);
   dgnBossClear(); sfx.chime(); ex.shake = .6; DGN.flashL = 1.5;
@@ -11326,6 +11331,147 @@ function lairBossWin() {
   setTimeout(() => { for (const dr of loot) if (dr) { giveItem(dr[0], dr[1]); lootMsg(`+${dr[1]} ${ITEMS[dr[0]].name}`, ITEMS[dr[0]].color); } const n = lairsAll().list.filter(L => lairOpen(L) && lairCleared(L)).length; lootMsg(`Lairs cleared: ${n} of ${lairsAll().list.filter(lairOpen).length}`, '#d8c8ff'); }, 1200);
   const lb = DGN.lb; setTimeout(() => { if (!lb || DGN.lb !== lb) return; if (lb.mesh.parent) lb.mesh.parent.remove(lb.mesh); if (!lb.R) { try { disposeOwned(lb.mesh); } catch (e) {} } DGN.lb = null; }, 6000); // only the body that fell (not a boss on another floor by now)
 }
+/* ============ Faction leaders: fight them in their halls (Chapters III–V) ============
+   At war with a faction, land on the world where its leader holds court and a hall stands near your ship (a gold beacon). Go in and
+   you face the leader in a lair arena, at their level, to their own theme. Beat them and the war is won (100 war score): then settle
+   it in Diplomacy as usual. Each war has its own hall (a new war, a new fight).
+     Hak Chompjak V 95 (Aridaxx) · Vishara Erisconos 80 (Eris; Alexia once she's taken the throne) · Darius Ancin 75 (Earth)
+     Taredesiba VI 90 (Timpur Prime) · Archamus 100 (Archiostal, Chapter III: hooded, then unmasked at phase two)
+     Am-Grek 85 (Carax in Chapter III; Archiostal in IV–V, then Archamus, unmasked, as co-leader) · Lord Zark 100 (Chapter III, the
+     Catharsis capital) · a companion you put on a puppet's throne: at their own level, to "The Wrong Enemy".
+   A resident empire's ruler can be challenged from Diplomacy (on any world's surface): win and their empire falls.
+   Themes (data/th*.js): Descendant of Shakhak (Hak), The Child of Eris (Vishara), The Guardian of Humanity (Darius), The Light Egg
+   (Archamus unmasked), The Prime Evil (Zark), The Wrong Enemy (your own people, and resident rulers). The Prime Good (Archamus hooded
+   and Am-Grek) isn't in the game yet: they fight to the usual combat music until it is. The Final Boss theme is kept for Zark's
+   Chapter IV story battle. ---- */
+const LEAD_TH = {}; // theme buffers, loaded on first use
+async function leaderTheme(k) {
+  if (!k) return null; const id = { hak: 'thHak', eris: 'thEris', darius: 'thDarius', lightEgg: 'thLightEgg', wrong: 'thWrong', primeEvil: 'thPrimeEvil', final: 'thFinal' }[k]; if (!id) return null;
+  if (!LEAD_TH[k]) LEAD_TH[k] = loadDataScript(id).then(() => sfx.loadClips(id)).then(c => (c && c[0]) || null).catch(() => null);
+  return LEAD_TH[k];
+}
+async function leaderPlay(k) { const b = await leaderTheme(k); if (!b) return false; sfx.combat && sfx.combat(false); sfx.leadOn = true; sfx.playSong(b, .8); return true; }
+function leaderUnmask(B) { // Archamus at phase two: the hood comes off, and the Light Egg begins
+  const K = DGN.lb; if (!K || !B.unP) return;
+  B.unP.then(R => { if (!R || DGN.boss !== B || DGN.lb !== K) return; R.root.scale.multiplyScalar(1.3); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    R.root.position.copy(K.mesh.position); R.root.rotation.copy(K.mesh.rotation); wScene.add(R.root); if (K.mesh.parent) K.mesh.parent.remove(K.mesh);
+    K.mesh = R.root; K.R = R; B.c.mesh = R.root; B.Bd.name = 'Archamus, unmasked'; burst(K.x, 1.5, K.z, 90, 8, 1, .85, .45, 1, 1.4, 2); DGN.flashL = 2.5; ex.shake = .9; leaderPlay('lightEgg'); lairBossBar(); });
+}
+const leadTag = (tag, h, weapon) => () => loadCharRig({ id: 'lead-' + tag, builtin: true, tag, weapon: weapon || 'sword' }, h);
+async function leadTared(name) { await loadDataScript('taredGlb', 'glb'); const src = await embGlb('taredGlb'); if (!src) return null; const R = autoRig(SkeletonUtils.clone(src), 1.98); armRig(R, 'sword'); return R; }
+async function leadArchamusU() { await loadDataScript('prArchamusU', 'glb'); return loadCharRig({ id: 'lead-prArchamusU', builtin: true, tag: 'prArchamusU', weapon: 'sword' }, 3.1); }
+const LEAD_HP = lv => Math.round(11000 + (lv - 75) * 760); // 75 → 11,000 · 80 → 14,800 · 90 → 22,400 · 95 → 26,200 · 100 → 30,000
+function leadSpec(key) { // the leaders: their moves, their words, their model, their theme
+  const L = {
+    hak: { boss: 'Hak', full: 'Emperor Hak Chompjak V', lv: 95, theme: 'hak', load: leadTag('leader_chompy', 2.05), core: ['charge', 'slam', 'blink', 'volley'], p2: ['sweep', 'nova'], sig: 'cross', seq: ['charge', 'slam', 'volley', 'blink', 'slam', 'charge'],
+      lines: { intro: 'I swore my worlds would never be divided again. You came to divide them. Then come.', p2: 'I have held this throne through worse than you.', p3: 'FOR THE HOUSE OF CHOMPJAK!', win: 'Enough… my people have bled enough. Take your peace.' } },
+    vishara: { boss: 'Vishara', full: 'Vishara Erisconos, Matriarch of Eris', lv: 80, theme: 'eris', load: leadTag('leader_erisian', 2.0), core: ['blink', 'spiral', 'volley', 'pools'], p2: ['rain', 'pull'], sig: 'spiral', seq: ['spiral', 'blink', 'volley', 'pools', 'blink'],
+      lines: { intro: 'A billion years I have kept Eris. I will not lose it to a wanderer.', p2: 'The cold remembers everyone who crossed it.', p3: 'ERIS ENDURES.', win: 'Then Eris kneels. For now.' } },
+    alexia: { boss: 'Alexia', full: 'Alexia Erisconos, usurper of Eris', lv: 80, theme: null, load: leadTag('tiAlexia', 1.85), core: ['blink', 'charge', 'volley', 'slam'], p2: ['spiral', 'pools'], sig: 'sweep', seq: ['charge', 'blink', 'volley', 'slam', 'blink'],
+      lines: { intro: 'I took this throne from my own sister. You think I will hand it to you?', p2: 'Hawthorne promised me an army. I never needed one.', p3: 'THE CITADEL IS MINE!', win: 'Vishara… will laugh at this…' } },
+    darius: { boss: 'Darius', full: 'President Darius Ancin', lv: 75, theme: 'darius', load: leadTag('leader_human', 1.86, 'rifle'), core: ['volley', 'charge', 'rain', 'slam'], p2: ['summon', 'cross'], sig: 'sweep', seq: ['volley', 'rain', 'charge', 'volley', 'slam'],
+      lines: { intro: 'I have spent my life keeping humanity alive. I will not stop for you.', p2: 'Federation! To me!', p3: 'FOR EARTH. FOR ALL OF US.', win: 'Then… let it be peace. Whatever it costs.' } },
+    taredesiba: { boss: 'Taredesiba', full: 'Taredesiba VI, First Consul of Timpur', lv: 90, theme: null, load: () => leadTared(), core: ['blink', 'volley', 'spiral', 'charge'], p2: ['pools', 'nova'], sig: 'pull', seq: ['volley', 'blink', 'spiral', 'charge', 'volley'],
+      lines: { intro: 'Timpur answers to Aridaxx. It does not answer to you.', p2: 'The Republic has outlived empires. It will outlive you.', p3: 'FOR THE REPUBLIC!', win: 'The senate… will vote for peace…' } },
+    archamus: { boss: 'Archamus', full: 'Archamus, the Prime Good', lv: 100, theme: null, load: leadTag('prArchamus', 3.1), core: ['nova', 'rain', 'blink', 'spiral'], p2: ['pull', 'cross'], sig: 'rain', seq: ['nova', 'blink', 'rain', 'spiral', 'blink'], unmask: true,
+      lines: { intro: 'I have guided the Grek since before their stars were named. Kneel, and be guided.', p2: 'Then see me as I am.', p3: 'I AM THE PRIME GOOD.', win: 'Even good… must yield… sometimes…' } },
+    archamusU: { boss: 'Archamus', full: 'Archamus, unmasked', lv: 100, theme: 'lightEgg', load: leadArchamusU, core: ['nova', 'rain', 'blink', 'spiral'], p2: ['pull', 'cross'], sig: 'rain', seq: ['rain', 'nova', 'blink', 'spiral', 'nova'],
+      lines: { intro: 'My champion has fallen. Then I will stand in his place, as I am.', p2: 'Look at me. Few ever have.', p3: 'I AM THE PRIME GOOD.', win: 'Even good… must yield… sometimes…' } },
+    amgrek: { boss: 'Am-Grek', full: 'Am-Grek, High Hierarch', lv: 85, theme: null, load: async () => { const R = await brawlRig({ sp: 'grek', c: [0x3a4a2e, 0xd8b060], name: 'AM-GREK' }); if (R) armRig(R, 'sword'); return R; }, core: ['slam', 'leap', 'charge', 'nova'], p2: ['summon', 'rain'], sig: 'cross', seq: ['leap', 'slam', 'nova', 'charge', 'slam'],
+      lines: { intro: 'Archamus guides my hand. It has never missed.', p2: 'Grek! The faithful stand with me!', p3: 'BY ARCHAMUS’S WILL!', win: 'Forgive me… Prime Good…' } },
+    zark: { boss: 'Zark', full: 'Lord Zark, the Prime Evil', lv: 100, theme: 'primeEvil', load: leadTag('prZark', 3.6), core: ['nova', 'spiral', 'pull', 'blink'], p2: ['rain', 'cross'], sig: 'sweep', seq: ['spiral', 'blink', 'nova', 'pull', 'spiral'],
+      lines: { intro: 'I made Sevirrus. I can unmake you.', p2: 'The dark has teeth, little thing.', p3: 'I AM THE PRIME EVIL.', win: 'This changes… nothing…' } }
+  }[key];
+  return L ? Object.assign({ key }, L, { hp: LEAD_HP(L.lv) }) : null;
+}
+function leadCompSpec(id) { const lv = compLevel(id); return { key: 'comp:' + id, boss: compName(id), full: `${compName(id)}, on the throne you gave them`, lv, hp: Math.round(4000 + lv * 160), theme: 'wrong', load: () => companionRig(id), core: ['slam', 'charge', 'volley', 'blink'], p2: ['nova'], sig: 'spiral', seq: ['charge', 'slam', 'volley', 'blink'],
+  lines: { intro: 'You put me on this throne. Don’t make me defend it against you.', p2: 'I learned this from you, you know.', p3: 'I WON’T GO EASY!', win: 'Alright… alright. You win. You always do.' } }; }
+function leadResSpec(c) { const lv = resLevel(c), sp = spOf(c); return { key: 'res:' + c.id, boss: c.name, full: `${c.name}, ruler of ${(resEmpOf(c.id) || {}).name || 'a resident empire'}`, lv, hp: Math.round(3500 + lv * 150), theme: 'wrong',
+  load: resIsTared(c) ? () => leadTared() : async () => { const R = await brawlRig({ sp, c: [0x2e3440, 0x8fe3ff], name: c.name, female: c.identity === 'female' }); if (R) armRig(R, 'sword'); return R; },
+  core: ['slam', 'charge', 'volley', 'blink'], p2: ['nova', 'pools'], sig: 'spiral', seq: ['charge', 'volley', 'slam', 'blink'],
+  lines: { intro: `You want my empire, ${wanderer ? wanderer.name : 'wanderer'}? Come and take it.`, p2: 'I built this from nothing!', p3: 'NOT LIKE THIS!', win: 'Fine… it’s yours. It was always going to be.' } }; }
+// who you'd face, and where, in a war with faction F
+function leaderOf(F) {
+  const ch = dipCh(), r = dip().res[F.id] || {};
+  if (r.st === 'vassal' && r.leader && r.leader !== 'own') return { at: F.capital, list: [leadCompSpec(r.leader)] };
+  if (F.id === 'chompy') return { at: 'aridaxx', list: [leadSpec('hak')] };
+  if (F.id === 'erisian') return { at: 'eris', list: [leadSpec(ch === 3 && wanderer.ch3 && wanderer.ch3.alexiaCoup ? 'alexia' : 'vishara')] };
+  if (F.id === 'hfos') return { at: 'earth', list: [leadSpec('darius')] };
+  if (F.id === 'timpur') return { at: F.capital, list: [leadSpec('taredesiba')] };
+  if (F.id === 'order') return { at: 'archiostal', list: [leadSpec('archamus')] };
+  if (F.id === 'grek') return ch === 3 ? { at: 'carax', list: [leadSpec('amgrek')] } : { at: 'archiostal', list: [leadSpec('amgrek'), leadSpec('archamusU')] };
+  if (F.id === 'catharsis' && ch === 3) { const P = ALL_BODIES.find(o => o.land && String(o.fac3 || o.faction || '').startsWith('The Catharsis') && sysById(o.sys).home === o.id); return P ? { at: P.id, list: [leadSpec('zark')] } : null; }
+  return null; // Terra Imperia's Hawthorne, and the Catharsis in Chapter IV (a story battle), have no hall
+}
+function leaderHere() { // a war whose leader holds court on the world you're standing on
+  if (!isPl() || !world.planet || (wanderer.chapter | 0) < 3) return null; const P = world.planet.P, D = dip();
+  for (const F of dipFacsNow()) { const W = D.wars[F.id]; if (!W || W.won) continue; const Lo = leaderOf(F); if (Lo && (P.id === Lo.at || P.dock === Lo.at)) return { F, W, Lo }; }
+  return null;
+}
+function leaderLair(F, W, Lo, P, G) { // a one-room "lair": straight into the arena, with the leader on the throne
+  if (!W.lid) { W.lid = Date.now().toString(36); dipSave(); }
+  const X = Lo.list[0], id = `lead~${F ? F.id : 'res'}~${W.lid}`, th = lairThOf(P.dock ? bodyById(P.dock) || P : P);
+  return { id, S: sysById(P.sys), P, k: 8, lead: Object.assign({}, X), leadNext: Lo.list.slice(1), war: F ? F.id : null, resEmp: Lo.resEmp || null, seed: lairHash(id) % 900000, tier: 2, floors: 0, lv: X.lv, th, ang: 0, dist: 0, bossName: X.boss, name: `The Hall of ${X.boss}` };
+}
+// the hall on the ground: a gate of their own, gold beacon, near your ship
+const LHALL = { g: null, at: null, x: -18, z: 24 };
+function leaderHallBuild() {
+  if (LHALL.g && LHALL.g.parent) LHALL.g.parent.remove(LHALL.g); LHALL.g = null; LHALL.at = null;
+  const H = leaderHere(); if (!H) return;
+  const x = LHALL.x, z = LHALL.z, y = wHeight(x, z), g = new THREE.Group(), st = new THREE.MeshStandardMaterial({ color: 0x2a2630, roughness: .6, metalness: .4 }), gold = new THREE.MeshStandardMaterial({ color: 0xd8b060, metalness: .8, roughness: .3, emissive: 0x3a2808, emissiveIntensity: .6 });
+  g.position.set(x, y, z); g.rotation.y = Math.atan2(-x, -z);
+  for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(1.4, 7, 1.4), st); p.position.set(s * 2.6, 3.5, 0); p.castShadow = true; g.add(p); const c = new THREE.Mesh(new THREE.ConeGeometry(.9, 1.6, 4), gold); c.position.set(s * 2.6, 7.8, 0); g.add(c); }
+  const top = new THREE.Mesh(new THREE.BoxGeometry(7, 1.2, 1.8), gold); top.position.y = 7.2; g.add(top);
+  const door = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 6.2), new THREE.MeshBasicMaterial({ color: new THREE.Color(H.F.col), transparent: true, opacity: .55, side: THREE.DoubleSide })); door.position.set(0, 3.2, .1); g.add(door);
+  const beacon = glowSprite(0xffc94a, 26, .65); beacon.position.set(0, 20, 0); g.add(beacon);
+  wScene.add(g); Object.assign(LHALL, { g, door, at: curArea(), H });
+  setTimeout(() => lootMsg(`${H.Lo.list[0].full} holds court here · the hall by your ship (gold beacon) · beat them to win the war`, '#ffd36a'), 3800);
+}
+function leaderHallTick() {
+  const g = LHALL.g; if (!g) return;
+  if (curArea() !== LHALL.at || !leaderHere()) { if (g.parent) g.parent.remove(g); LHALL.g = null; return; }
+  g.visible = !DGN.on; LHALL.door.material.opacity = .45 + Math.sin(time * 3) * .12;
+}
+function leaderHallUse() {
+  const H = leaderHere(); if (!H) return; const X = H.Lo.list[0], more = H.Lo.list.slice(1);
+  notice(`${dipFacName(H.F)} · at war`, `THE HALL OF ${X.boss.toUpperCase()}`, 3200);
+  openChoice(`${X.full.toUpperCase()} · LV ${X.lv}`, [
+    { text: `Face ${X.full} (lv ${X.lv})${more.length ? `, then ${more.map(o => `${o.full} (lv ${o.lv})`).join(', ')}` : ''} · win the war`, onPick: () => { const L = leaderLair(H.F, H.W, H.Lo, world.planet.P); lairEnter(L, { x: LHALL.x, z: LHALL.z }, 1); } },
+    { text: 'Not yet', onPick: () => {} }]);
+}
+// a resident empire's ruler, challenged from Diplomacy wherever you stand
+function leaderResChallenge(eid) {
+  const e = resEmp.emp[eid], c = e && resRuler(e); if (!c) return;
+  if (!isPl() || DGN.on || state !== 'explore') { lootMsg('Challenge them from a planet’s surface (not inside a lair)', '#ff8f86'); return; }
+  const W = { lid: 'r' + eid + Date.now().toString(36) }, p = player.position, L = leaderLair(null, W, { list: [leadResSpec(c)], resEmp: eid }, world.planet.P);
+  lairEnter(L, { x: p.x, z: p.z }, 1);
+}
+function leaderBossWin(B) { // a leader falls: the war is won (or the resident empire falls), or the co-leader steps up
+  const L = DGN.lair, Bd = B.Bd;
+  for (const o of [...fauna.list]) if (o.dgn && !o.dead) removeFauna(o);
+  dgnBossClear(); sfx.chime(); ex.shake = .6; DGN.flashL = 1.5;
+  notice('Faction leader defeated', `${Bd.short.toUpperCase()} YIELDS`, 3600); lbark(Bd.short, Bd.lines.win, 3400);
+  if (DGN.lb) { DGN.lb.mesh.rotation.x = .35; DGN.lb.mesh.position.y = -.3; } // down on one knee: leaders yield, they don't die
+  gainXP(Math.round(500 + Bd.lv * 22), `Defeated ${Bd.name}`);
+  const lb = DGN.lb;
+  if (L.leadNext && L.leadNext.length) { // Archamus steps in for his champion
+    const X = L.leadNext.shift(); setTimeout(() => {
+      if (DGN.lair !== L) return; if (lb && lb.mesh.parent) lb.mesh.parent.remove(lb.mesh); DGN.lb = null;
+      L.lead = Object.assign({}, X); L.lv = X.lv; L.bossName = X.boss; L.boss = null; lairBoss(L); DGN.lbFail = 0;
+      notice('The co-leader steps forward', X.full.toUpperCase(), 3400); sfx.thud(); DGN.flashL = 2; lairBossPlace(); setTimeout(() => { if (DGN.lair === L && DGN.lb && !DGN.boss) lairBossStart(); }, 2600);
+    }, 4200); return;
+  }
+  lairSetProg(L, L.floors + 1);
+  if (L.war) { dipScore(L.war, 100, `${Bd.short} defeated in their hall`); setTimeout(() => lootMsg('The war is won · settle it in Diplomacy', '#ffd36a'), 2400); }
+  if (L.resEmp && resEmp.emp[L.resEmp]) { const e = resEmp.emp[L.resEmp]; delete resEmp.emp[L.resEmp]; resEmp.cool[L.resEmp] = resNow() + 30 * 60e3; resEmp.wars = resEmp.wars.filter(w => w.a !== L.resEmp && w.b !== L.resEmp); for (const o of Object.values(resEmp.emp)) { if (o.over === L.resEmp) o.over = null; if (o.trib === L.resEmp) o.trib = null; } resEmpLog(`${wanderer.name} defeated ${Bd.short}; ${e.name} has fallen`); saveRoster(); setTimeout(() => lootMsg(`${e.name} has fallen · its worlds are unclaimed again`, '#ffd36a'), 2400); }
+  setTimeout(() => { if (!lb || DGN.lb !== lb) return; if (lb.mesh.parent) lb.mesh.parent.remove(lb.mesh); DGN.lb = null; }, 6000);
+}
+// space: your own companions flying against you get "The Wrong Enemy"
+setInterval(() => { try {
+  if (state !== 'space' || !SC.foes) { if (SC.wrongOn) { SC.wrongOn = false; sfx.stopSong(1.5); } return; }
+  const aces = SC.foes.some(f => f.ace && f.hp > 0);
+  if (aces && !SC.wrongOn) { SC.wrongOn = true; leaderPlay('wrong'); } else if (!aces && SC.wrongOn) { SC.wrongOn = false; sfx.stopSong(2); }
+} catch (e) {} }, 1000);
 // ---- wildlife: each generated world that can hold life has its species roaming the surface ----
 function genFauna(p, n) {
   const P = world.planet.P; if (!P.gtype || P.gtype === 'barren' || P.gtype === 'lava') return;
@@ -16122,6 +16268,7 @@ function dipRender() {
           <div class="dip-row"><select class="dip-in" data-a="setLeader" data-f="${F.id}"><option value="own"${sel.leader === 'own' ? ' selected' : ''}>${F.lead(ch)} (their own leader)</option>${comps.filter(id => !D.lent[id]).map(id => `<option value="${id}"${sel.leader === id ? ' selected' : ''}>${compName(id)} (your companion)</option>`).join('')}</select>
           <input class="dip-in" data-a="setName" data-f="${F.id}" value="${sel.name.replace(/"/g, '&quot;')}" maxlength="40"><button class="btn small primary" data-a="settle" data-f="${F.id}"><span>Make them your puppet</span></button></div>`;
       } else if (W) {
+        { const Lo = leaderOf(F), X = Lo && Lo.list[0], at = Lo && bodyById(Lo.at); if (X && at && !W.won) h += `<p style="color:#ffd36a">${X.full} (lv ${X.lv})${Lo.list[1] ? ` and ${Lo.list[1].full} (lv ${Lo.list[1].lv})` : ''} wait${Lo.list[1] ? '' : 's'} in their hall on ${at.name}. Land there and beat them to win the war outright.</p>`; }
         h += `<div class="dip-bar"><i style="width:${W.score | 0}%"></i></div><p>War score ${W.score | 0}/100 · ${W.cb === 'crush' ? `shoot down resistance fighters in their old space (+6).` : `shoot down the ${F.fleet.toLowerCase()} in their space (+6), occupy their worlds by landing and holding the ground by your ship (+15, capital +25).`} ${(W.held || []).length ? `Occupied: ${W.held.map(id => bodyById(id).name).join(', ')}.` : ''}${lentHere.length ? ` ${lentHere.map(compName).join(' and ')} fly${lentHere.length === 1 ? 's' : ''} for them: shoot ${lentHere.length === 1 ? 'that ship' : 'those ships'} down and ${lentHere.length === 1 ? 'they come' : 'they come'} home.` : ''}</p><div class="dip-row"><button class="btn small" data-a="peace" data-f="${F.id}"><span>Make peace (occupied worlds go back)</span></button></div>`;
       } else {
         if (r.st === 'tributary') h += `<div class="dip-row"><button class="btn small" data-a="release" data-f="${F.id}"><span>End the tribute</span></button></div>`;
@@ -16138,7 +16285,7 @@ function dipRender() {
       for (const e of es) {
         const c = resRuler(e), st = e.res ? 'A resistance, with no worlds' : e.over && resEmp.emp[e.over] ? `Puppet of ${resEmp.emp[e.over].name}` : e.trib && resEmp.emp[e.trib] ? `Pays tribute to ${resEmp.emp[e.trib].name}` : 'Independent';
         const wars = resEmp.wars.filter(w => w.a === e.id || w.b === e.id).map(w => (resEmp.emp[w.a === e.id ? w.b : w.a] || {}).name).filter(Boolean), lentHere = Object.keys(D.lent).filter(k => D.lent[k] === 'res:' + e.id);
-        h += `<div class="dip-card" style="--fc:${resHex(resEmpCol(e))}"><h4>${reEsc(e.name).toUpperCase()}<small>${st}${wars.length ? ' · at war' : ' · at peace'}</small></h4><p>Led by <b>${reEsc(c.name)}</b> (resident, LV ${resLevel(c)}, ${alN[resAl(c)]}) · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars.length ? ` · at war with ${wars.map(reEsc).join(' and ')}` : ''}${lentHere.length ? ` · serving them: ${lentHere.map(compName).join(', ')}` : ''}</p><div class="dip-row"><button class="btn small" data-a="resDisband" data-r="${e.id}"><span>${DIPV.resDisband === e.id ? 'Tap again: demand they disband' : 'Demand they disband'}</span></button></div></div>`;
+        h += `<div class="dip-card" style="--fc:${resHex(resEmpCol(e))}"><h4>${reEsc(e.name).toUpperCase()}<small>${st}${wars.length ? ' · at war' : ' · at peace'}</small></h4><p>Led by <b>${reEsc(c.name)}</b> (resident, LV ${resLevel(c)}, ${alN[resAl(c)]}) · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars.length ? ` · at war with ${wars.map(reEsc).join(' and ')}` : ''}${lentHere.length ? ` · serving them: ${lentHere.map(compName).join(', ')}` : ''}</p><div class="dip-row"><button class="btn small" data-a="resChallenge" data-r="${e.id}"><span>Challenge ${reEsc(c.name)} (lv ${resLevel(c)})</span></button><button class="btn small" data-a="resDisband" data-r="${e.id}"><span>${DIPV.resDisband === e.id ? 'Tap again: demand they disband' : 'Demand they disband'}</span></button></div></div>`;
       }
     }
     if (DIPV.tab === 'factions') h += `<div class="dip-card" style="--fc:#ffd36a"><h4>CASUS BELLI</h4>${Object.values(CBS).filter(c => c !== CBS.crush).map(c => `<p><b>${c.name}.</b> ${c.desc}</p>`).join('')}</div>`;
@@ -16190,6 +16337,7 @@ function dipClick(e) {
   else if (a === 'govSet') { const n = $(`#dipBody input[data-a="govName"][data-p="${pid}"]`).value.trim(); if (n) { D.col[pid].gov = 'name:' + n; dipSave(); sfx.chime(); } }
   else if (a === 'lend') { const v = $(`#dipBody select[data-a="lendTo"][data-c="${id}"]`).value; if (!v) return; D.lent[id] = v; dipSave(); sfx.click(); if (id === 'orion' && world.orion) world.orion.root.visible = false; placeCrew(); refreshJamesUI(); lootMsg(`${compName(id)} leaves to serve ${dipLentName(v)}`, compColor(id)); if (dipLentRes(v)) { const e = resEmp.emp[dipLentRes(v)]; if (e) resEmpLog(`${compName(id)} joined ${e.name}, sent by ${wanderer.name}`); } }
   else if (a === 'resOpen') { dipOpen(false); resEmpOpen(); return; }
+  else if (a === 'resChallenge') { dipOpen(false); if (state === 'xpaused' && !SPC.paused) pauseExplore(false); leaderResChallenge(b.dataset.r); return; }
   else if (a === 'resDisband') { const r = b.dataset.r; if (DIPV.resDisband === r) { resDisband(r); DIPV.resDisband = null; } else DIPV.resDisband = r; }
   else if (a === 'recall') { delete D.lent[id]; dipSave(); if (id === 'orion') placeOrion().catch(() => null); placeCrew(); refreshJamesUI(); lootMsg(`${compName(id)} is back with you`, compColor(id)); }
   else if (a === 'recruit') { wanderer.party = [...new Set([...(wanderer.party || []), id])]; syncCrewParty(); dipSave(); placeCrew(); ui.xhud.classList.add('comp'); refreshJamesUI(); sfx.chime(); lootMsg(`${PARTY[id].full} joins your crew`, compColor(id)); compJoinNotice(id, 900); }
@@ -16571,7 +16719,7 @@ async function landOn(P, dir, place) {
   const nt = planetTraders(P); for (const m of MERCHANTS[key] || []) if (!nt.includes(m) && m.stall) { wScene.remove(m.stall); m.stall = null; } // a stall whose world changed hands goes
   MERCHANTS[key] = nt; for (const m of MERCHANTS[key]) m.seed = null; // its stall finds dry ground near the new spot
   const pl = place || { mode: 'explore', area: 'world', where: key, x: 5, z: 14.5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI }; // by the ramp, clear of the wings
-  enterWorld(pl); buildCity(); buildHall(); buildHermitage(); buildLairGates(); khzFarHint(); try { earthGroundBuild(world.planet); } catch (e) { console.error(e); } await placeOrion().catch(() => null); placeGivers().catch(() => null);
+  enterWorld(pl); buildCity(); buildHall(); buildHermitage(); buildLairGates(); leaderHallBuild(); khzFarHint(); try { earthGroundBuild(world.planet); } catch (e) { console.error(e); } await placeOrion().catch(() => null); placeGivers().catch(() => null);
   // your ship, set down on the ground
   if (!world.landShip) world.landShip = makeShip();
   setShipRig(world.landShip, 1, 1);
@@ -18085,6 +18233,7 @@ function updateWorldMode(dt) {
   if (!ex.near && DGN.on) ex.near = dgnNear(p); // inside Olympus Mons: the stairs, the spring
   if (!ex.near && isPl() && !DGN.on && world.dgnGate && Math.hypot(p.x - world.dgnGate.x, p.z - world.dgnGate.z) < 3.2) ex.near = { id: 'dgnGate', label: 'Enter Olympus Mons' };
   if (!ex.near && NYX.R && NYX.R.root.parent && Math.hypot(p.x - NYX.x, p.z - NYX.z) < 3.2) ex.near = { id: 'nyx', label: 'Nyrexia Erisconos' };
+  if (!ex.near && !DGN.on && LHALL.g && LHALL.g.visible && Math.hypot(p.x - LHALL.x, p.z - LHALL.z) < 3.6) ex.near = { id: 'leadGate', label: `The Hall of ${LHALL.H.Lo.list[0].boss}` };
   if (!ex.near && isPl() && !DGN.on) { const G = lairGateNear(p); if (G) ex.near = { id: 'lairGate', ref: G, label: `${G.L.name} · lv ${G.L.lv}${lairCleared(G.L) ? ' · cleared' : ''}` }; } // the lairs
   if (!ex.near && isPl()) { const G = giverNear(p); if (G) ex.near = { id: 'qgiver', ref: G, label: titleName(G.name) }; } // quest givers
   if (!ex.near && RES.bots.length) { const B = resNear(p); if (B) ex.near = { id: 'bot', ref: B, label: B.c.name }; } // residents (wanderers you sent into the world)
@@ -18117,7 +18266,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'] }[ex.near.id];
+    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give James orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }

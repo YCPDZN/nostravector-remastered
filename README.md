@@ -1351,3 +1351,26 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - shows up on its card in Diplomacy and on its row in the Resident empires panel (*serving them: …*), and the empire's log notes their arrival.
   - comes home when you call them back, or by themselves if the empire is annihilated or disbanded.
 
+## Faction leaders: fight them in their halls (Chapters III–V)
+- **At war with a faction?** Land on the world where its leader holds court and a **hall** stands near your ship (gold beacon, *Enter · The Hall of …*). Inside is a lair arena with the leader on the throne. **Beat them and the war is won** (100 war score); then settle it in Diplomacy as usual. Each war has its own hall, so a new war means a new fight. Diplomacy's war card says who waits and where. Fall, and the fight starts again from the top, as in any lair.
+- **The leaders** (level · health · where · theme):
+
+| Leader | Level | Health | Where | Theme |
+|---|---|---|---|---|
+| Emperor Hak Chompjak V | 95 | 26,200 | Aridaxx | *The Descendant of Shakhak* |
+| Archamus (Order of Archamus, Chapter III) | 100 | 30,000 | Archiostal | hooded at first; at phase two **he unmasks** (his unhooded model) and *The Light Egg* begins |
+| Am-Grek (Grek Empire) | 85 | 17,000 | Carax in Chapter III (alone); Archiostal in IV–V | (*The Prime Good*, once it's added) |
+| Archamus, unmasked (Grek co-leader, IV–V) | 100 | 30,000 | Archiostal, straight after Am-Grek falls | *The Light Egg* |
+| Vishara Erisconos | 80 | 14,800 | Eris | *The Child of Eris* |
+| Alexia Erisconos (Chapter III, once she's taken the throne) | 80 | 14,800 | Eris | combat music |
+| President Darius Ancin | 75 | 11,000 | Earth | *The Guardian of Humanity* |
+| Taredesiba VI, First Consul of Timpur | 90 | 22,400 | Timpur Prime | combat music |
+| Lord Zark (Catharsis, Chapter III) | 100 | 30,000 | the Catharsis's capital world | *The Prime Evil* |
+| A companion you put on a puppet's throne | their own level | | the puppet's capital | *The Wrong Enemy* |
+
+- Hak is far tougher than Draven (level 90, 14,000 health). Each leader has their own moves, words for the start, phase two, phase three and their defeat, and their own model (Taredesiba VI is a Taredesiban), a little larger than life. Leaders **yield**, they don't die.
+- **Resident empire rulers:** each resident empire's card in Diplomacy has **Challenge <ruler> (lv …)**. Use it on any world's surface: you face the ruler (at their level, as their species or a Taredesiban) to *The Wrong Enemy*. Win and their empire falls: its worlds are unclaimed again.
+- **Your own companions in an enemy fleet:** when a companion you lent to a faction you're at war with comes at you in space, *The Wrong Enemy* plays until they're shot down.
+- **Not yet:** *The Prime Good* (Archamus hooded, and Am-Grek) isn't in the game; they fight to the usual combat music until it's added. The **Final Boss theme** (`data/thFinal.js`) is stored for Lord Zark's Chapter IV story battle (level 60, on Carax), which isn't built yet. Hawthorne (Terra Imperia) has no hall.
+- Files: themes in `data/thHak.js`, `thEris.js`, `thDarius.js`, `thLightEgg.js`, `thWrong.js`, `thPrimeEvil.js`, `thFinal.js` (originals in `assets/audio/leaders_themes`); Archamus unhooded in `data/prArchamusU.js` (`assets/models/primes/archamus_unhooded.glb`). They load only when needed.
+
