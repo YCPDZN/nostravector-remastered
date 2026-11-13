@@ -15498,7 +15498,8 @@ const DIP_FAC = [
   { id: 'catharsis', name: 'The Catharsis', species: 'Catharsis', fleet: 'CATHARSIS', style: 'cath', col: '#a070ff', ch: [3, 4], capital: 'carax', lead: () => 'Lord Zark', locked: ch => ch === 4 ? 'Lord Zark is a story boss in Chapter IV. The Catharsis can’t be defeated yet.' : null, match: f => /^The Catharsis/.test(f) }, // destroyed at the siege of Carax: gone in Chapter V
   { id: 'erisian', name: 'The Erisian Empire', species: 'Erisian', fleet: 'ERISIAN GUARD', style: 'erisian', col: '#eda8d4', ch: [3, 4, 5], capital: 'eris', lead: ch => ch === 3 && wanderer.ch3 && wanderer.ch3.alexiaCoup ? 'Alexia Erisconos (usurper)' : 'Vishara Erisconos, Matriarch', match: f => /^The Erisian Empire/.test(f) },
   { id: 'hfos', name: 'Human Federation of Sol', species: 'Human', fleet: 'FEDERATION NAVY', style: 'hfos', col: '#7fb6ff', ch: [3, 4, 5], capital: 'earth', lead: () => 'President Darius Ancin', match: f => /^Human Federation of Sol/.test(f) },
-  { id: 'ti', name: 'Terra Imperia', species: 'Human', fleet: 'TERRA IMPERIA', style: 'ti', col: '#d0343a', ch: [3], capital: 'venus', lead: () => 'Thomas Hawthorne, Grand Imperarch', match: f => /^Terra Imperia/.test(f) }
+  { id: 'ti', name: 'Terra Imperia', species: 'Human', fleet: 'TERRA IMPERIA', style: 'ti', col: '#d0343a', ch: [3], capital: 'venus', lead: () => 'Thomas Hawthorne, Grand Imperarch', match: f => /^Terra Imperia/.test(f) },
+  { id: 'timpur', name: 'The Republic of Timpur', species: 'Timpur', fleet: 'TIMPUR REPUBLIC GUARD', style: 'chompy', col: '#58d8c0', ch: [3, 4, 5], get capital() { const P = ALL_BODIES.find(o => o.name === 'Timpur Prime'); return P ? P.id : null; }, lead: () => 'The First Consul, answering to Aridaxx', match: f => /^The Republic of Timpur/.test(f) } // a puppet of the Chompy Empire, at the far edge of the galaxy
 ];
 const CBS = {
   annihilation: { name: 'Annihilation', desc: 'Destroy them completely. Every world they hold becomes one of your colonies.' },
@@ -15519,6 +15520,9 @@ const dipFacsNow = () => DIP_FAC.filter(F => F.ch.includes(dipCh()));
 const dipFacOf = f => DIP_FAC.find(F => F.ch.includes(dipCh()) && F.match(f || ''));
 const dipWar = id => dip().wars[id];
 const dipRes = id => (dip().res[id] || {}).st || null;
+// where a lent companion is: a story faction (its id), ruling one for you ('lead:' + id), or serving a resident empire ('res:' + ruler id)
+const dipLentRes = to => to && to.startsWith('res:') ? to.slice(4) : null;
+function dipLentName(to) { const r = dipLentRes(to); if (r) return (resEmp.emp[r] || {}).name || 'a fallen resident empire'; const F = to && DIP_FAC.find(f => f.id === to.replace('lead:', '')); return F ? dipFacName(F) : '?'; }
 const dipFacName = F => { const r = dip().res[F.id]; return r && r.st === 'subjugated' && r.resist ? `The ${F.species} Resistance` : r && r.name ? r.name : F.name; };
 const govName = g => !g ? null : g.startsWith('comp:') ? compName(g.slice(5)) : g.slice(5);
 const titleName = n => String(n).toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
@@ -16128,6 +16132,15 @@ function dipRender() {
       }
       h += `</div>`;
     }
+    if (DIPV.tab === 'factions') { // the resident empires, beside the story's factions
+      const es = Object.values(resEmp.emp).filter(e => resRuler(e)), alN = { hero: 'Hero', neutral: 'Neutral', villain: 'Villain' };
+      h += `<div class="dip-card" style="--fc:#9fe6ff"><h4>RESIDENT EMPIRES<small>${es.length ? es.length + ' standing' : resEmp.on ? 'none yet' : 'founding is off'}</small></h4><p>${es.length ? 'Empires your residents have carved out of the frontier. Offer them a companion from the Crew tab, set them on each other, or make them stand down.' : resEmp.on ? 'Residents found empires on unclaimed worlds from level 35. None has yet.' : 'Residents only found empires if you switch it on.'}</p><div class="dip-row"><button class="btn small" data-a="resOpen"><span>Open Resident empires</span></button></div></div>`;
+      for (const e of es) {
+        const c = resRuler(e), st = e.res ? 'A resistance, with no worlds' : e.over && resEmp.emp[e.over] ? `Puppet of ${resEmp.emp[e.over].name}` : e.trib && resEmp.emp[e.trib] ? `Pays tribute to ${resEmp.emp[e.trib].name}` : 'Independent';
+        const wars = resEmp.wars.filter(w => w.a === e.id || w.b === e.id).map(w => (resEmp.emp[w.a === e.id ? w.b : w.a] || {}).name).filter(Boolean), lentHere = Object.keys(D.lent).filter(k => D.lent[k] === 'res:' + e.id);
+        h += `<div class="dip-card" style="--fc:${resHex(resEmpCol(e))}"><h4>${reEsc(e.name).toUpperCase()}<small>${st}${wars.length ? ' · at war' : ' · at peace'}</small></h4><p>Led by <b>${reEsc(c.name)}</b> (resident, LV ${resLevel(c)}, ${alN[resAl(c)]}) · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars.length ? ` · at war with ${wars.map(reEsc).join(' and ')}` : ''}${lentHere.length ? ` · serving them: ${lentHere.map(compName).join(', ')}` : ''}</p><div class="dip-row"><button class="btn small" data-a="resDisband" data-r="${e.id}"><span>${DIPV.resDisband === e.id ? 'Tap again: demand they disband' : 'Demand they disband'}</span></button></div></div>`;
+      }
+    }
     if (DIPV.tab === 'factions') h += `<div class="dip-card" style="--fc:#ffd36a"><h4>CASUS BELLI</h4>${Object.values(CBS).filter(c => c !== CBS.crush).map(c => `<p><b>${c.name}.</b> ${c.desc}</p>`).join('')}</div>`;
   } else if (DIPV.tab === 'colonies') {
     const cur = isPl() && world.planet ? world.planet.P : null, curF = cur && dipFacOf(cur.baseFac);
@@ -16145,11 +16158,13 @@ function dipRender() {
   } else if (DIPV.tab === 'crew') {
     h += `<div class="dip-card" style="--fc:#9fe6ff"><h4>YOUR COMPANIONS</h4><p>Offer a companion to another faction and they serve it until you call them back. If you go to war with that faction, they fly in its fleet. When you beat it, or shoot their ship down, they rejoin your crew. They never die.</p></div>`;
     for (const id of comps) {
-      const to = D.lent[id], lead = to && to.startsWith('lead:'), F = to && DIP_FAC.find(f => f.id === to.replace('lead:', ''));
-      h += `<div class="dip-card" style="--fc:${compColor(id)}"><h4>${(PARTY[id] ? PARTY[id].full || PARTY[id].name : compName(id)).toUpperCase()}<small>${to ? (lead ? `Ruling ${dipFacName(F)} for you` : `Serving ${dipFacName(F)}`) : 'With you'}</small></h4><div class="dip-row">`;
-      if (!to) h += `<select class="dip-in" data-a="lendTo" data-c="${id}"><option value="">Offer to a faction…</option>${dipFacsNow().filter(f => dipRes(f.id) !== 'destroyed').map(f => `<option value="${f.id}">${dipFacName(f)}</option>`).join('')}</select><button class="btn small" data-a="lend" data-c="${id}"><span>Offer</span></button>`;
+      const to = D.lent[id], lead = to && to.startsWith('lead:'), F = to && DIP_FAC.find(f => f.id === to.replace('lead:', '')), resTo = dipLentRes(to);
+      h += `<div class="dip-card" style="--fc:${compColor(id)}"><h4>${(PARTY[id] ? PARTY[id].full || PARTY[id].name : compName(id)).toUpperCase()}<small>${to ? (lead ? `Ruling ${dipLentName(to)} for you` : `Serving ${dipLentName(to)}`) : 'With you'}</small></h4><div class="dip-row">`;
+      const resOpts = Object.values(resEmp.emp).filter(e => resRuler(e)); // the resident empires take companions too
+      if (!to) h += `<select class="dip-in" data-a="lendTo" data-c="${id}"><option value="">Offer to a faction…</option><optgroup label="Factions">${dipFacsNow().filter(f => dipRes(f.id) !== 'destroyed').map(f => `<option value="${f.id}">${dipFacName(f)}</option>`).join('')}</optgroup>${resOpts.length ? `<optgroup label="Resident empires">${resOpts.map(e => `<option value="res:${e.id}">${reEsc(e.name)}</option>`).join('')}</optgroup>` : ''}</select><button class="btn small" data-a="lend" data-c="${id}"><span>Offer</span></button>`;
       else if (lead) h += `<p>They'll come home if you annihilate the puppet or ever release it.</p><button class="btn small" data-a="release" data-f="${F.id}"><span>Release ${dipFacName(F)}</span></button>`;
-      else if (dipWar(F.id)) h += `<p>You're at war with them. Shoot ${compName(id)}'s ship down, or win the war, to bring them home.</p>`;
+      else if (resTo) h += `<p>They fight in ${dipLentName(to)}'s wars and make it stronger. They come home if it falls or disbands.</p><button class="btn small" data-a="recall" data-c="${id}"><span>Call ${compName(id)} home</span></button>`;
+      else if (F && dipWar(F.id)) h += `<p>You're at war with them. Shoot ${compName(id)}'s ship down, or win the war, to bring them home.</p>`;
       else h += `<button class="btn small" data-a="recall" data-c="${id}"><span>Call ${compName(id)} home</span></button>`;
       if (!to && PARTY[id] && PARTY[id].imported) h += `<button class="btn small" data-a="dismiss" data-c="${id}"><span>Send home</span></button>`;
       h += `</div></div>`;
@@ -16173,7 +16188,9 @@ function dipClick(e) {
   else if (a === 'release') { const was = (D.res[f] || {}).st; delete D.res[f]; if (was === 'vassal') dipReturnLent(f, 'They hand back the throne and come home'); dipSave(); }
   else if (a === 'colonise') { if (units() < COLONY_COST) return; addUnits(-COLONY_COST); D.col[pid] = { gov: null, from: null }; dipSave(); sfx.chime(); notice(realmName(), `${bodyById(pid).name.toUpperCase()} COLONISED`, 3200); }
   else if (a === 'govSet') { const n = $(`#dipBody input[data-a="govName"][data-p="${pid}"]`).value.trim(); if (n) { D.col[pid].gov = 'name:' + n; dipSave(); sfx.chime(); } }
-  else if (a === 'lend') { const v = $(`#dipBody select[data-a="lendTo"][data-c="${id}"]`).value; if (!v) return; D.lent[id] = v; dipSave(); sfx.click(); if (id === 'orion' && world.orion) world.orion.root.visible = false; placeCrew(); refreshJamesUI(); lootMsg(`${compName(id)} leaves to serve ${dipFacName(DIP_FAC.find(o => o.id === v))}`, compColor(id)); }
+  else if (a === 'lend') { const v = $(`#dipBody select[data-a="lendTo"][data-c="${id}"]`).value; if (!v) return; D.lent[id] = v; dipSave(); sfx.click(); if (id === 'orion' && world.orion) world.orion.root.visible = false; placeCrew(); refreshJamesUI(); lootMsg(`${compName(id)} leaves to serve ${dipLentName(v)}`, compColor(id)); if (dipLentRes(v)) { const e = resEmp.emp[dipLentRes(v)]; if (e) resEmpLog(`${compName(id)} joined ${e.name}, sent by ${wanderer.name}`); } }
+  else if (a === 'resOpen') { dipOpen(false); resEmpOpen(); return; }
+  else if (a === 'resDisband') { const r = b.dataset.r; if (DIPV.resDisband === r) { resDisband(r); DIPV.resDisband = null; } else DIPV.resDisband = r; }
   else if (a === 'recall') { delete D.lent[id]; dipSave(); if (id === 'orion') placeOrion().catch(() => null); placeCrew(); refreshJamesUI(); lootMsg(`${compName(id)} is back with you`, compColor(id)); }
   else if (a === 'recruit') { wanderer.party = [...new Set([...(wanderer.party || []), id])]; syncCrewParty(); dipSave(); placeCrew(); ui.xhud.classList.add('comp'); refreshJamesUI(); sfx.chime(); lootMsg(`${PARTY[id].full} joins your crew`, compColor(id)); compJoinNotice(id, 900); }
   else if (a === 'dismiss') { wanderer.party = (wanderer.party || []).filter(x => x !== id); delete D.lent[id]; dipSave(); placeCrew(); refreshJamesUI(); sfx.click(); }
@@ -21117,7 +21134,7 @@ function resDeclare(a, b, cb, incited) {
   setTimeout(() => resBanter('declare', ca, cbr, x), incited ? 1800 : 0);
   saveRoster(); return true;
 }
-const resPower = e => { const c = resRuler(e); return (c ? resLevel(c) : 30) + e.col.length * 4 + Object.values(resEmp.emp).filter(o => o.over === e.id).length * 6; };
+const resPower = e => { const c = resRuler(e), L = (wanderer && wanderer.dip && wanderer.dip.lent) || {}; return (c ? resLevel(c) : 30) + e.col.length * 4 + Object.values(resEmp.emp).filter(o => o.over === e.id).length * 6 + Object.values(L).filter(v => v === 'res:' + e.id).length * 10; }; // your companions serving them count for a lot
 function resWarStep(w) {
   const A = resEmpOf(w.a), B = resEmpOf(w.b); if (!A || !B) { resEmp.wars = resEmp.wars.filter(o => o !== w); return; }
   w.score += (resPower(A) - resPower(B)) * .15 + (Math.random() * 36 - 18);
@@ -21156,7 +21173,12 @@ function resDisband(id) {
   saveRoster();
 }
 const RES_EMP_ON = () => !!resEmp.on; // residents only found empires if you switch it on (Resident empires panel)
+function resLentSweep() { // a resident empire that's gone sends your companions home
+  const L = wanderer && wanderer.dip && wanderer.dip.lent; if (!L) return;
+  for (const [id, v] of Object.entries(L)) { const r = dipLentRes(v); if (r && !resEmp.emp[r]) { delete L[id]; const c = curChar(); if (c) c.dip = wanderer.dip; saveRoster(); lootMsg(`${compName(id)} is back with you · the empire they served is gone`, compColor(id)); try { placeCrew(); refreshJamesUI(); if (id === 'orion') placeOrion().catch(() => null); } catch (e) {} } }
+}
 function resEmpTick(dt) {
+  try { resLentSweep(); } catch (e) { console.error(e); }
   if (!residents.length || effCh() < 3) return;
   const E = resEmp; if (!E.on && !Object.keys(E.emp).length) return; // off and nothing standing: no work at all
   resWarLoad();
@@ -21220,7 +21242,8 @@ function resEmpRender() {
   else h += '<h4>Empires</h4>' + es.map(e => {
     const c = resRuler(e), al = c ? resAl(c) : 'neutral', st = e.res ? 'Resistance (no worlds)' : e.over ? `Puppet of ${nm(e.over)}` : e.trib ? `Pays tribute to ${nm(e.trib)}` : '';
     const sel = I && I.a === e.id, wars = E.wars.filter(w => w.a === e.id || w.b === e.id).length;
-    let row = `<div class="re-emp" style="--c:${resEmpCol(e)}"><div class="re-emp-t"><b>${reEsc(e.name)}</b><small>${reEsc(c ? c.name : '?')} · ${alN[al]} · LV ${c ? resLevel(c) : '?'} · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars ? ` · ${wars} war${wars === 1 ? '' : 's'}` : ''}${st ? ' · ' + st : ''}</small></div>`;
+    const served = Object.entries((wanderer.dip && wanderer.dip.lent) || {}).filter(([, v]) => v === 'res:' + e.id).map(([k]) => compName(k));
+    let row = `<div class="re-emp" style="--c:${resEmpCol(e)}"><div class="re-emp-t"><b>${reEsc(e.name)}</b><small>${reEsc(c ? c.name : '?')} · ${alN[al]} · LV ${c ? resLevel(c) : '?'} · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars ? ` · ${wars} war${wars === 1 ? '' : 's'}` : ''}${st ? ' · ' + st : ''}${served.length ? ' · serving them: ' + served.join(', ') : ''}</small></div>`;
     if (!sel) row += `<div class="re-act"><button data-re="incite|${e.id}" ${es.length < 2 ? 'disabled' : ''}>Set on another empire</button><button class="danger" data-re="disband|${e.id}">${RES.reDisband === e.id ? 'Tap again: demand they disband' : 'Demand they disband'}</button></div>`;
     else {
       row += `<div class="re-pick"><small>Who should ${reEsc(c ? c.name : '')} go to war with?</small><div class="re-chips">${es.filter(o => o.id !== e.id).map(o => `<button class="${I.b === o.id ? 'on' : ''}" data-re="tgt|${o.id}" ${resAtWar(e.id, o.id) ? 'disabled' : ''}>${reEsc(o.name)}${resAtWar(e.id, o.id) ? ' (at war)' : ''}</button>`).join('')}</div>`;

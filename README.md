@@ -1343,3 +1343,11 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **Residents:** phones build the 16 nearest resident bases as 3D models (40 on computers); Taredesibans are drawn without shadows like every other resident on a phone.
 - **Nyrexia, Khalmar and the new panels** use the game's existing touch prompts (*TALK*) and the panels' own wrap-around buttons, so they work by tap.
 
+## Diplomacy: the Republic of Timpur and the resident empires
+- **The Republic of Timpur is a diplomacy faction** (Chapters III–V), like the story's factions: led by *the First Consul, answering to Aridaxx*, teal, with its 38 worlds and its capital Timpur Prime (+25 war score when occupied). You can lend it companions, and declare any casus belli on it (Annihilation, Subjugation, Vassalisation, Tribute; Restoration afterwards). Its fleet is the **Timpur Republic Guard**. It's a separate faction from the Chompy Empire: a war on one isn't a war on the other.
+- **Resident empires in the Factions tab:** a *Resident empires* card (how many stand, or that founding is off, with **Open Resident empires**), then a card per empire: its ruler (level and alignment), its worlds, whether it's a puppet, a tributary or a resistance, who it's at war with, which of your companions serve it, and **Demand they disband** (tap twice).
+- **Offer companions to resident empires:** in the Crew tab, the *Offer to a faction…* list has the story factions and, below them, every resident empire. A companion serving a resident empire:
+  - leaves your crew and fights in its wars: each one adds a lot to its war strength (+10 power, about as much as two and a half worlds), so they swing who wins.
+  - shows up on its card in Diplomacy and on its row in the Resident empires panel (*serving them: …*), and the empire's log notes their arrival.
+  - comes home when you call them back, or by themselves if the empire is annihilated or disbanded.
+
