@@ -1078,7 +1078,7 @@ After the nightmare in space (whichever of the four you had), the next stop is M
 ### Meanwhile: Hawthorne on Mars
 - The first time you come out of Olympus Mons with Khazglar (Chapter III), the screen goes dark and cuts away to the plain below the mountain.
 - **The scene:** a red dust storm at dusk, lightning in the dust, widescreen bars and a dark vignette. The **Cygnus Terra Imperius**, Terra Imperia's capital ship, stands on its struts in the dust: a long gunmetal hull, a crescent of armour round its prow, a ring at its heart burning orange and teal, three engines, the bridge tower with its red beacon and her name in crimson on her flank. Banners of Terra Imperia stand either side of the ramp.
-- **The speech:** Thomas Hawthorne, alone at the foot of the ramp under a red spotlight, gives ten paragraphs to an empty plain. The xenos go: first **Hak Chompjak**, then **Alexia Erisconos** (his own ally: "When she has served her purpose…"), then anyone else who dares to challenge Terra Imperia. It ends: *"Sol. Is. MINE!"*
+- **The speech:** Thomas Hawthorne, alone at the foot of the ramp under a red spotlight, gives ten paragraphs to an empty plain. The xenos go: first **Hak Chompjak**, then **Vishara Erisconos**, Matriarch of Eris, then anyone else who dares to challenge Terra Imperia. It ends: *"Sol. Is. MINE!"*
 - **The army:** a white flash, and the plain behind him fills, rank after rank, in violet flashes: Terra Imperia's infantry in black and crimson armour with red eyes, rifles raised. *"HAIL THE GRAND IMPERARCH! HAIL TERRA IMPERIA!"*
 - About four minutes; **Skip** (or Escape) ends it. It plays once (`ch3.hawMars`). Hawthorne's lines are text only for now.
 
