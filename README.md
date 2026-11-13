@@ -1337,3 +1337,9 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - On the galaxy map its space is washed in teal, and its systems and worlds read *The Republic of Timpur · puppet of the Chompy Empire*. Its traders are Chompy traders.
 - Resident empires never expand into it (it isn't unclaimed).
 
+## Phones and tablets (today's additions)
+- **Hawthorne on Mars:** on a phone the widescreen bars are thinner (thinner still held upright) and sit under the game's controls, so **Skip** is always visible (this also fixes Skip being hidden behind the bottom bar on computers). Held upright, the camera uses a wider lens so Hawthorne and his ship stay in frame. Phones get a lighter scene: a smaller army (4 ranks of 7 instead of 6 of 9, built a few at a time, without shadows), less dust, fewer rocks, a simpler ground and smaller shadows.
+- **Main menu:** held upright, Khazglar and Nyrexia (the outermost of your crew) step in closer so they stay on screen.
+- **Residents:** phones build the 16 nearest resident bases as 3D models (40 on computers); Taredesibans are drawn without shadows like every other resident on a phone.
+- **Nyrexia, Khalmar and the new panels** use the game's existing touch prompts (*TALK*) and the panels' own wrap-around buttons, so they work by tap.
+
