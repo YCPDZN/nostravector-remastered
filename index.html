@@ -6900,6 +6900,7 @@ function mapTiles(x0, z0, x1, z1, budget) {
 function questTarget() {
   const c = ch1();
   if (DGN.on) return dgnTarget();
+  if (NYX.R && NYX.R.root.parent && isPl()) return { x: NYX.x, z: NYX.z, label: 'Nyrexia Erisconos' };
   if (isPl() && world.dgnGate && khzPending()) return { x: world.dgnGate.x, z: world.dgnGate.z, label: 'The way into the mountain' };
   if (isPl()) { const LT = lairNearestTarget(player.position); if (LT && Math.hypot(player.position.x, player.position.z) < 160) return LT; return Math.hypot(player.position.x, player.position.z) > 30 ? { x: 0, z: 10, label: 'Your ship' } : null; }
   if (curArea() === 'europe') { const c2 = wanderer.ch2 || {}; if (esc.on) return { x: SHIP.hatch[0], z: SHIP.hatch[1], label: 'The ship' }; return c2.arrived && !c2.reportTried ? { x: LON.door.x - 2, z: LON.door.z, label: 'Houses of Parliament' } : null; }
@@ -12050,28 +12051,37 @@ function hwmSay(who, text, clip, army) {
   return clip ? clip.duration : text.split(/\s+/).length * .34;
 }
 const hwmSubTick = () => fbSubTick(), hwmSubHide = () => fbSubHide();
-// ---- the side quest: Nyrexia Erisconos waits on Eris, by wherever you land ----
-const NYX = { R: null, x: 0, z: 0, area: null };
+// ---- the side quest: Nyrexia Erisconos, in the Citadel el Erisconos on Eris, in the plaza before the Matriarch's hall with her
+// sisters Vishara and Alexia (Alexia hasn't turned on them yet). Voiced: data/nyxVoices.js, RECRUITNYREXIA1–5. ----
+const NYX = { R: null, V: null, A: null, x: 0, z: 0, area: null, vo: null };
+function nyxClear() { for (const k of ['R', 'V', 'A']) { const R = NYX[k]; if (R && R.root.parent) R.root.parent.remove(R.root); NYX[k] = null; } }
 async function nyxPlace() {
-  if (NYX.R && NYX.R.root.parent) NYX.R.root.parent.remove(NYX.R.root); NYX.R = null;
-  const area = curArea(), R = await companionRig('nyrexia').catch(() => null); if (!R || curArea() !== area || !nyxQ()) return;
-  const x = 9, z = 15; R.root.position.set(x, wHeight(x, z), z); R.root.rotation.y = Math.atan2(-x, -z); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); wScene.add(R.root);
-  Object.assign(NYX, { R, x, z, area });
+  nyxClear(); const area = curArea(), W = world.planet, C = W && W.city;
+  if (!C) { setTimeout(() => lootMsg('Nyrexia is in the Citadel el Erisconos · fly there from the sky (its marker) and land', '#dccbff'), 4600); return; } // you came down somewhere else on Eris
+  if (!NYX.vo) NYX.vo = loadDataScript('nyxVoices').then(() => sfx.loadClips('nyxVoices')).catch(() => []);
+  const coup = !!(wanderer.ch3 && wanderer.ch3.alexiaCoup);
+  const [R, V, A] = await Promise.all([companionRig('nyrexia').catch(() => null), glbRig('leader_erisian', 1.9).catch(() => null), coup ? null : glbRig('tiAlexia', 1.85, 'sword').catch(() => null)]);
+  if (!R || curArea() !== area || !nyxQ()) return;
+  const sx = C.cx, sz = C.cz + 44, put = (Q, x, z) => { if (!Q) return; Q.root.position.set(x, wHeight(x, z), z); Q.root.rotation.y = 0; Q.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); wScene.add(Q.root); };
+  put(V, sx, sz - 2); put(A, sx - 3.2, sz - .8); put(R, sx + 3.2, sz + .4); // the Matriarch in the middle, her sisters either side, facing the way in
+  Object.assign(NYX, { R, V, A, x: sx + 3.2, z: sz + .4, area });
 }
 function nyxTick(dt) {
-  const R = NYX.R; if (!R) return;
-  if (curArea() !== NYX.area || !nyxQ() || !R.root.parent) { if (R.root.parent) R.root.parent.remove(R.root); NYX.R = null; return; }
-  const p = player.position; R.mode = 'idle'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - NYX.x, p.z - NYX.z), Math.min(1, dt * 3)); animRig(R, dt);
+  if (!NYX.R) return;
+  if (curArea() !== NYX.area || !nyxQ() || !NYX.R.root.parent) { nyxClear(); return; }
+  const p = player.position, R = NYX.R; R.mode = 'idle'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - NYX.x, p.z - NYX.z), Math.min(1, dt * 3)); animRig(R, dt);
+  for (const Q of [NYX.V, NYX.A]) if (Q) { Q.mode = 'idle'; animRig(Q, dt); }
 }
-function nyxTalk() {
+async function nyxTalk() {
+  const vo = (await NYX.vo) || [], clip = i => vo[i] ? [vo[i]] : undefined;
   const lines = [
     'You’re the wanderer. The one Khazglar finally came down off his mountain for. Word travels fast, even this far out.',
     'Hawthorne’s speech reached Eris within the hour. My sister has sealed the Citadel and called in the great houses. She will sit behind the ice and wait, the way she always does.',
     'I won’t. Take me with you. I can fight, I know every Erisian code worth knowing, and it will drive my family absolutely mad.'
   ];
-  const run = i => { if (i < lines.length) { openDialog('NYREXIA ERISCONOS', [lines[i]], false, () => run(i + 1)); return; }
-    openChoice('NYREXIA ERISCONOS', [{ text: 'Welcome aboard, Princess', onPick: () => openDialog('NYREXIA ERISCONOS', ['Princess. Ugh. Just Nyrexia. Let’s go before someone from the Citadel sees me.'], false, nyxJoin) },
-      { text: 'Not yet', onPick: () => openDialog('NYREXIA ERISCONOS', ['Then I’ll be right here. Don’t take too long.'], false, () => {}) }]); };
+  const run = i => { if (i < lines.length) { openDialog('NYREXIA ERISCONOS', [lines[i]], false, () => run(i + 1), clip(i)); return; }
+    openChoice('NYREXIA ERISCONOS', [{ text: 'Welcome aboard, Princess', onPick: () => openDialog('NYREXIA ERISCONOS', ['Princess. Ugh. Just Nyrexia. Let’s go before someone from the Citadel sees me.'], false, nyxJoin, clip(3)) },
+      { text: 'Not yet', onPick: () => openDialog('NYREXIA ERISCONOS', ['Then I’ll be right here. Don’t take too long.'], false, () => {}, clip(4)) }]); };
   run(0);
 }
 function nyxJoin() {
@@ -12080,7 +12090,7 @@ function nyxJoin() {
   wanderer.party = [...new Set([...(wanderer.party || []), 'nyrexia'])];
   const c = curChar(); if (c) { c.ch3 = wanderer.ch3; c.party = wanderer.party; }
   saveRoster(); pdStoryNote(pdPre);
-  if (NYX.R && NYX.R.root.parent) NYX.R.root.parent.remove(NYX.R.root); NYX.R = null;
+  nyxClear(); // she leaves her sisters behind
   syncCrewParty(); placeCrew().catch(() => null);
   ui.xhud.classList.add('comp'); refreshJamesUI(); renderTasks();
   sfx.chime(); gainXP(300, 'Nyrexia joined you');
@@ -16552,7 +16562,7 @@ async function landOn(P, dir, place) {
   const toCharon = P.id === 'charon' && charonQ();
   const W3 = wanderer.ch3 = Object.assign({}, wanderer.ch3, { landed: true, lastPlanet: P.id }, toCharon ? { charonLanded: true } : {}); const c = curChar(); if (c) c.ch3 = W3; saveRoster();
   if (toCharon) setTimeout(() => { notice('Main quest complete', 'YOU HAVE REACHED CHARON', 3800); sfx.chime(); renderTasks(); }, place ? 600 : 4200);
-  if (P.id === 'eris' && nyxQ()) nyxPlace().catch(e => console.error(e)); // Nyrexia is waiting by the landing site
+  if (P.id === 'eris' && nyxQ()) nyxPlace().catch(e => console.error(e)); // Nyrexia is in the Citadel, with her sisters
   const f = $('#shFlash'); if (f) f.classList.remove('on');
   if (place) { state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks(); if (place.dgn && place.dgn.lair) { const L = lairById(place.dgn.lair); if (L) { const G = (world.lairGates || []).find(q => q.L === L) || { x: +place.x, z: +place.z }; lairEnter(L, G, Math.min(L.floors + 1, +place.dgn.f || 1), place.dgn, true); return; } } if (place.dgn && P.id === 'mars') { DGN.lair = null; dgnEnter(+place.dgn.f || 1, place.dgn, true); return; } notice(wxTag(P), P.name.toUpperCase(), 3600); setTimeout(() => lootMsg(P.faction, '#9fe6ff'), 1400); sqOnLand(P); return; } // a save made inside Olympus Mons goes straight back in
   // the ship comes down out of the sky onto the spot
