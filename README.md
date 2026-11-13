@@ -1081,7 +1081,7 @@ After the nightmare in space (whichever of the four you had), the next stop is M
 - **The speech:** Thomas Hawthorne, alone at the foot of the ramp under a red spotlight, gives ten paragraphs to an empty plain. The xenos go: first **Hak Chompjak**, then **Vishara Erisconos**, Matriarch of Eris, then anyone else who dares to challenge Terra Imperia. It ends: *"Sol. Is. MINE!"*
 - **The army:** a white flash, and the plain behind him fills, rank after rank, in violet flashes: Terra Imperia's infantry in black and crimson armour with red eyes, rifles raised. *"HAIL THE GRAND IMPERARCH! HAIL TERRA IMPERIA!"*
 - **Subtitles:** plain and steady (it's not a nightmare): his name above, his words in **cyan**, a sentence at a time in step with his voice. The army's chant is in white.
-- About three minutes; **Skip** (or Escape) ends it. It plays once (`ch3.hawMars`).
+- About three minutes, with no dead air: his voice and model load while you walk out of the mountain, each paragraph follows straight on from the last, and the army arrives, chants and fades out in about six seconds. **Skip** (or Escape) ends it. It plays once (`ch3.hawMars`).
 - **Voiced:** Hawthorne's ten paragraphs are `CH3HAWTHORNEMARS1`–`10` in `assets/audio/hawthorne_mars_ch3`, packed into `data/hawMarsVoices.js`.
 
 ### Khalmar, brother of Khazglar (the mountain refills every 7 days)
