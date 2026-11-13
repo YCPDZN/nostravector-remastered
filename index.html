@@ -753,7 +753,7 @@ button.bm-c.no{opacity:.45}
 .sh-land{display:none;position:absolute;left:50%;bottom:calc(var(--sb) + 22px);transform:translateX(-50%);pointer-events:auto;padding:12px 22px;min-width:150px;border-radius:12px;border:1px solid var(--ice);background:rgba(7,10,17,.55);color:var(--ink);font-family:var(--display);font-size:10px;letter-spacing:.22em;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .space-hud.atmo .sh-land.on{display:block}.space-hud.atmo .sh-map,.space-hud.atmo .sh-decks,.space-hud.atmo .sh-cells,.space-hud.atmo .sh-btns button[data-b="fire"],.space-hud.atmo .sh-def{display:none}
 .sh-mk.nf i{border-color:#ff6a5a}.sh-mk.nf span{color:#ffb3a8}
-.sh-mk.gold i{border-color:#ffc94a;background:rgba(255,201,74,.25)}.sh-mk.gold span{color:#ffe2a0}
+.sh-mk.gold i{border-color:#ffc94a;background:rgba(255,201,74,.25)}.sh-mk.gold span{color:#ffe2a0}.sh-mk.nyx i{border-color:#b893ff;background:rgba(184,147,255,.25)}.sh-mk.nyx span{color:#dccbff}
 .sh-region{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);text-align:center;opacity:0;transition:opacity 1.2s;pointer-events:none;width:min(92vw,900px)}.sh-region.on{opacity:1}
 .sh-region small{display:block;font-size:9px;letter-spacing:.42em;color:var(--mute);margin-bottom:8px}.sh-region b{font-family:var(--display);font-weight:500;font-size:clamp(22px,5vw,46px);letter-spacing:.3em;color:#eef7ff;text-shadow:0 0 18px rgba(0,0,0,.7)}
 @media (pointer:coarse){.sh-land{bottom:calc(var(--sb) + 200px);font-size:11px;padding:14px 22px}}
@@ -5029,7 +5029,7 @@ function renderTasks() {
   if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
   if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? campTasks(p, task) : '');
   if (curArea() === 'africa' || ((wanderer.chapter | 0) >= 2 && p.escaped)) h = ch2Tasks(task); // Chapter II's objectives follow you, even back to Antarctica
-  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
+  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (c3.hawMars && (wanderer.chapter | 0) === 3 ? task(!!c3.charonLanded, 'Main quest · Head to Charon') : '') + (c3.hawMars ? task(!!c3.nyxJoined, 'Side quest (optional) · Recruit Nyrexia Erisconos on Eris') : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
   if ((wanderer.chapter | 0) >= 3) { const tq = sqTracked(); if (tq) h += `<div class="x-task sq-task"><i></i><span>${tq}</span></div>`; } // the side quest you're tracking
   xUI.tasks.innerHTML = h;
   $('#xChap').textContent = liveChapterLabel().toUpperCase();
@@ -5212,6 +5212,8 @@ async function interact() {
     dismantle(n.ref);
   } else if (n.id === 'lairGate' || /^dgn/.test(n.id)) { // the lair gates too (their id doesn't start with dgn: pressing E on one used to fall through to an empty inspect box and freeze the game)
     if (n.id === 'lairGate') lairGateUse(n.ref); else dgnUse(n.id);
+  } else if (n.id === 'nyx') {
+    nyxTalk();
   } else if (n.id === 'qgiver') {
     giverTalk(n.ref);
   } else if (n.id === 'bot') {
@@ -6527,7 +6529,7 @@ function updateSurvival(dt) {
   const hb = $('#heatBar'), hv = suitHeat(); hb.firstChild.style.transform = `scaleX(${hv / 100})`; hb.classList.toggle('on', hv < 99.5 || (ch1().stormTalk && !ch1().stormOver)); hb.classList.toggle('low', hv < 30);
   const jb = $('#jetBar'); jb.firstChild.style.transform = `scaleX(${(ex.jet == null ? 100 : ex.jet) / 100})`; jb.classList.toggle('on', ex.jet != null && ex.jet < 99.5); jb.classList.toggle('low', ex.jet < 15);
   // placement preview, teleporter rings, merchants
-  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt); hallTick(dt); khzTick(dt); furnaceTick(); compDungeonTick();
+  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt); hallTick(dt); khzTick(dt); nyxTick(dt); furnaceTick(); compDungeonTick();
   for (const b of world.build) if (b.mesh.userData.spin) b.mesh.userData.spin.rotation.z += dt * 1.5;
   if (world.stationTp) world.stationTp.userData.spin.rotation.z += dt * 1.5;
   const it = selItem();
@@ -6898,6 +6900,7 @@ function mapTiles(x0, z0, x1, z1, budget) {
 function questTarget() {
   const c = ch1();
   if (DGN.on) return dgnTarget();
+  if (NYX.R && NYX.R.root.parent && isPl()) return { x: NYX.x, z: NYX.z, label: 'Nyrexia Erisconos' };
   if (isPl() && world.dgnGate && khzPending()) return { x: world.dgnGate.x, z: world.dgnGate.z, label: 'The way into the mountain' };
   if (isPl()) { const LT = lairNearestTarget(player.position); if (LT && Math.hypot(player.position.x, player.position.z) < 160) return LT; return Math.hypot(player.position.x, player.position.z) > 30 ? { x: 0, z: 10, label: 'Your ship' } : null; }
   if (curArea() === 'europe') { const c2 = wanderer.ch2 || {}; if (esc.on) return { x: SHIP.hatch[0], z: SHIP.hatch[1], label: 'The ship' }; return c2.arrived && !c2.reportTried ? { x: LON.door.x - 2, z: LON.door.z, label: 'Houses of Parliament' } : null; }
@@ -10204,7 +10207,10 @@ function olympusH(d) { // the volcano's height above the plains, for a direction
 }
 const khzPending = () => !!(wanderer && (wanderer.chapter | 0) === 3 && wanderer.ch3 && wanderer.ch3.nightmare && !wanderer.ch3.khzMet);
 const khzJoined = () => !!(wanderer && wanderer.ch3 && wanderer.ch3.khzMet);
-const khalUp = () => khzJoined() && !!wanderer.ch3.khal; // Khalmar holds the summit (and the wardens are back)
+const khalUp = () => khzJoined() && !!wanderer.ch3.khal;
+// after Hawthorne's speech on Mars: the main quest (head to Charon) and an optional side quest (recruit Nyrexia on Eris)
+function charonQ() { const c = wanderer && wanderer.ch3; return !!(c && c.hawMars && (wanderer.chapter | 0) === 3 && !c.charonLanded); }
+function nyxQ() { const c = wanderer && wanderer.ch3; return !!(c && c.hawMars && !c.nyxJoined); } // Khalmar holds the summit (and the wardens are back)
 const sumBoss = () => !khzJoined() || khalUp(); // someone is waiting on the throne
 function khzLocal(W, dir) { // a direction on the world, in the landing spot's metres (x east, z south)
   const td = dir.dot(W.D); if (td < .5) return null; const R = W.R || W.P.r;
@@ -12045,6 +12051,52 @@ function hwmSay(who, text, clip, army) {
   return clip ? clip.duration : text.split(/\s+/).length * .34;
 }
 const hwmSubTick = () => fbSubTick(), hwmSubHide = () => fbSubHide();
+// ---- the side quest: Nyrexia Erisconos, in the Citadel el Erisconos on Eris, in the plaza before the Matriarch's hall with her
+// sisters Vishara and Alexia (Alexia hasn't turned on them yet). Voiced: data/nyxVoices.js, RECRUITNYREXIA1–5. ----
+const NYX = { R: null, V: null, A: null, x: 0, z: 0, area: null, vo: null };
+function nyxClear() { for (const k of ['R', 'V', 'A']) { const R = NYX[k]; if (R && R.root.parent) R.root.parent.remove(R.root); NYX[k] = null; } }
+async function nyxPlace() {
+  nyxClear(); const area = curArea(), W = world.planet, C = W && W.city;
+  if (!C) { setTimeout(() => lootMsg('Nyrexia is in the Citadel el Erisconos · fly there from the sky (its marker) and land', '#dccbff'), 4600); return; } // you came down somewhere else on Eris
+  if (!NYX.vo) NYX.vo = loadDataScript('nyxVoices').then(() => sfx.loadClips('nyxVoices')).catch(() => []);
+  const coup = !!(wanderer.ch3 && wanderer.ch3.alexiaCoup);
+  const [R, V, A] = await Promise.all([companionRig('nyrexia').catch(() => null), glbRig('leader_erisian', 1.9).catch(() => null), coup ? null : glbRig('tiAlexia', 1.85, 'sword').catch(() => null)]);
+  if (!R || curArea() !== area || !nyxQ()) return;
+  const sx = C.cx, sz = C.cz + 44, put = (Q, x, z) => { if (!Q) return; Q.root.position.set(x, wHeight(x, z), z); Q.root.rotation.y = 0; Q.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); wScene.add(Q.root); };
+  put(V, sx, sz - 2); put(A, sx - 3.2, sz - .8); put(R, sx + 3.2, sz + .4); // the Matriarch in the middle, her sisters either side, facing the way in
+  Object.assign(NYX, { R, V, A, x: sx + 3.2, z: sz + .4, area });
+}
+function nyxTick(dt) {
+  if (!NYX.R) return;
+  if (curArea() !== NYX.area || !nyxQ() || !NYX.R.root.parent) { nyxClear(); return; }
+  const p = player.position, R = NYX.R; R.mode = 'idle'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - NYX.x, p.z - NYX.z), Math.min(1, dt * 3)); animRig(R, dt);
+  for (const Q of [NYX.V, NYX.A]) if (Q) { Q.mode = 'idle'; animRig(Q, dt); }
+}
+async function nyxTalk() {
+  const vo = (await NYX.vo) || [], clip = i => vo[i] ? [vo[i]] : undefined;
+  const lines = [
+    'You’re the wanderer. The one Khazglar finally came down off his mountain for. Word travels fast, even this far out.',
+    'Hawthorne’s speech reached Eris within the hour. My sister has sealed our gates and called in the great houses. She will sit behind the ice and wait, the way she always does.',
+    'I won’t. Take me with you. I can fight, I know every Erisian code worth knowing, and it will drive my family absolutely mad.'
+  ];
+  const run = i => { if (i < lines.length) { openDialog('NYREXIA ERISCONOS', [lines[i]], false, () => run(i + 1), clip(i)); return; }
+    openChoice('NYREXIA ERISCONOS', [{ text: 'Welcome aboard, Princess', onPick: () => openDialog('NYREXIA ERISCONOS', ['Princess. Ugh. Just Nyrexia. Let’s go before someone from the Citadel sees me.'], false, nyxJoin, clip(3)) },
+      { text: 'Not yet', onPick: () => openDialog('NYREXIA ERISCONOS', ['Then I’ll be right here. Don’t take too long.'], false, () => {}, clip(4)) }]); };
+  run(0);
+}
+function nyxJoin() {
+  const pdPre = pdStoryIds();
+  wanderer.ch3 = Object.assign({}, wanderer.ch3, { nyxJoined: true });
+  wanderer.party = [...new Set([...(wanderer.party || []), 'nyrexia'])];
+  const c = curChar(); if (c) { c.ch3 = wanderer.ch3; c.party = wanderer.party; }
+  saveRoster(); pdStoryNote(pdPre);
+  nyxClear(); // she leaves her sisters behind
+  syncCrewParty(); placeCrew().catch(() => null);
+  ui.xhud.classList.add('comp'); refreshJamesUI(); renderTasks();
+  sfx.chime(); gainXP(300, 'Nyrexia joined you');
+  notice('Side quest complete', 'NYREXIA ERISCONOS JOINS YOUR CREW', 4200);
+  setTimeout(() => lootMsg('Nyrexia takes the same five orders as the rest of your crew', compColor('nyrexia')), 1600);
+}
 function hwmPreload() { // his voice and his model, fetched and decoded before the screen goes dark
   if (!HWM.voP) HWM.voP = loadDataScript('hawMarsVoices').then(() => sfx.loadClips('hawMarsVoices')).then(v => (HWM.vo = v || [])).catch(() => (HWM.vo = []));
   if (!HWM.rigP) HWM.rigP = hawthorneRig().catch(() => null);
@@ -12109,6 +12161,8 @@ function hwmEnd() {
   wanderer.ch3 = Object.assign({}, wanderer.ch3, { hawMars: true }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster();
   state = 'explore'; ex.snap = true; clock.getDelta();
   const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0;
+  setTimeout(() => { notice('Main quest', 'HEAD TO CHARON', 3600); sfx.chime(); renderTasks(); }, 1600);
+  setTimeout(() => { notice('Side quest · optional', 'RECRUIT NYREXIA ERISCONOS ON ERIS', 3600); renderTasks(); }, 5600);
   setTimeout(() => { lootMsg('Hawthorne’s capital ship is on Mars · Terra Imperia is coming for every xeno in Sol', '#d0343a'); if (partyNow().includes('khazglar')) setTimeout(() => lootMsg('Khazglar · “I felt that ship land. Whatever he wants on my world, he will not have it.”', compColor('khazglar')), 2600); }, 1200);
 }
 // where he comes from: out of St Stephen's entrance if you're close to the Palace, otherwise up the street towards you
@@ -13822,9 +13876,14 @@ function spaceHudTick(P, alt, fwd) {
     if (M) { const wp = tmpVs.copy(khzDir()).multiplyScalar(M.r + spaceH(M, khzDir())).add(M.pos), d = SPC.pos.distanceTo(wp), v3 = wp.project(camera);
       if (v3.z < 1) { const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; h += `<div class="sh-mk gold${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>OLYMPUS MONS<br><small>KHAZGLAR · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`; } }
   }
+  if (SPC.sys === 'sol') for (const [on, id, label, sub, cls] of [[charonQ(), 'charon', 'CHARON', 'MAIN QUEST', 'gold'], [nyxQ(), 'eris', 'ERIS', 'NYREXIA · OPTIONAL', 'nyx']]) { // the quests' destinations
+    if (!on) continue; const Q = SPC.bodies.find(o => o.id === id); if (!Q) continue;
+    const d = SPC.pos.distanceTo(Q.pos) - Q.r, v3 = tmpVs.copy(Q.pos).project(camera); if (v3.z >= 1) continue;
+    const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; h += `<div class="sh-mk ${cls}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${label}<br><small>${sub} · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`;
+  }
   box.innerHTML = h;
 }
-function ch3Goal() { const c = wanderer.ch3 || {}; if (khzPending()) return SPC.atmo && ATM.P && ATM.P.id === 'mars' ? 'Find Khazglar · fly to Olympus Mons and land' : khzTaskText();
+function ch3Goal() { const c = wanderer.ch3 || {}; if (charonQ()) return SPC.atmo && ATM.P && ATM.P.id === 'charon' ? 'Head to Charon · land on it' : SPC.sys === 'sol' ? 'Head to Charon · Pluto’s moon, at the edge of Sol (the gold marker)' : 'Head to Charon · warp back to Sol'; if (khzPending()) return SPC.atmo && ATM.P && ATM.P.id === 'mars' ? 'Find Khazglar · fly to Olympus Mons and land' : khzTaskText();
   return ch3GoalRest(c); }
 function ch3GoalRest(c) { return c.warped ? `Explore ${curSys().name}` : !c.landed ? 'Land on a planet in Sol' : 'Warp to another star system · open the galaxy map'; }
 /* ============ Into the atmosphere, No Man's Sky style ============
@@ -16500,7 +16559,10 @@ async function landOn(P, dir, place) {
   setShipRig(world.landShip, 1, 1);
   wScene.add(world.landShip); world.landShip.position.set(0, wHeight(0, 0) + 2.7, 0); world.landShip.rotation.set(0, 0, 0); world.landShip.visible = true;
   for (const f of world.landShip.userData.flames) f.visible = false;
-  const W3 = wanderer.ch3 = Object.assign({}, wanderer.ch3, { landed: true, lastPlanet: P.id }); const c = curChar(); if (c) c.ch3 = W3; saveRoster();
+  const toCharon = P.id === 'charon' && charonQ();
+  const W3 = wanderer.ch3 = Object.assign({}, wanderer.ch3, { landed: true, lastPlanet: P.id }, toCharon ? { charonLanded: true } : {}); const c = curChar(); if (c) c.ch3 = W3; saveRoster();
+  if (toCharon) setTimeout(() => { notice('Main quest complete', 'YOU HAVE REACHED CHARON', 3800); sfx.chime(); renderTasks(); }, place ? 600 : 4200);
+  if (P.id === 'eris' && nyxQ()) nyxPlace().catch(e => console.error(e)); // Nyrexia is in the Citadel, with her sisters
   const f = $('#shFlash'); if (f) f.classList.remove('on');
   if (place) { state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks(); if (place.dgn && place.dgn.lair) { const L = lairById(place.dgn.lair); if (L) { const G = (world.lairGates || []).find(q => q.L === L) || { x: +place.x, z: +place.z }; lairEnter(L, G, Math.min(L.floors + 1, +place.dgn.f || 1), place.dgn, true); return; } } if (place.dgn && P.id === 'mars') { DGN.lair = null; dgnEnter(+place.dgn.f || 1, place.dgn, true); return; } notice(wxTag(P), P.name.toUpperCase(), 3600); setTimeout(() => lootMsg(P.faction, '#9fe6ff'), 1400); sqOnLand(P); return; } // a save made inside Olympus Mons goes straight back in
   // the ship comes down out of the sky onto the spot
@@ -17972,6 +18034,7 @@ function updateWorldMode(dt) {
   }
   if (!ex.near && DGN.on) ex.near = dgnNear(p); // inside Olympus Mons: the stairs, the spring
   if (!ex.near && isPl() && !DGN.on && world.dgnGate && Math.hypot(p.x - world.dgnGate.x, p.z - world.dgnGate.z) < 3.2) ex.near = { id: 'dgnGate', label: 'Enter Olympus Mons' };
+  if (!ex.near && NYX.R && NYX.R.root.parent && Math.hypot(p.x - NYX.x, p.z - NYX.z) < 3.2) ex.near = { id: 'nyx', label: 'Nyrexia Erisconos' };
   if (!ex.near && isPl() && !DGN.on) { const G = lairGateNear(p); if (G) ex.near = { id: 'lairGate', ref: G, label: `${G.L.name} · lv ${G.L.lv}${lairCleared(G.L) ? ' · cleared' : ''}` }; } // the lairs
   if (!ex.near && isPl()) { const G = giverNear(p); if (G) ex.near = { id: 'qgiver', ref: G, label: titleName(G.name) }; } // quest givers
   if (!ex.near && RES.bots.length) { const B = resNear(p); if (B) ex.near = { id: 'bot', ref: B, label: B.c.name }; } // residents (wanderers you sent into the world)
@@ -18004,7 +18067,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'] }[ex.near.id];
+    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give James orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
