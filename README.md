@@ -1046,7 +1046,7 @@ After the nightmare in space (whichever of the four you had), the next stop is M
 - The objective tracks the climb (*Climb Olympus Mons · floor 3 of 8 · defeat the warden*), and the minimap and marker point to the warden, then the stairs. The location line reads *Olympus Mons · floor 3 of 8 · The Obsidian Halls*.
 - **No weather or cold inside.** The mountain is warm, and the planet's sky and weather are switched off while you're in it.
 
-### The summit: Khazglar, level 35 raid boss
+### The summit: Khazglar, level 15 raid boss
 - **All three of you, or not at all:**
   - A curtain of fire blocks the way into the caldera, and it only parts when **Orion and Nico are both with you**. If either is dismissed to the Nostra, call them back.
   - In the fight, his hammer's **ward** turns aside three quarters of every blow unless Orion and Nico are both close by and fighting.
@@ -1071,8 +1071,21 @@ After the nightmare in space (whichever of the four you had), the next stop is M
   - Five lines, all his. Not one of you broke, he's waited a long time for someone worth the climb, and whatever calls from the core will need more than luck. Then: "So I will come down from my mountain. Lead on. I will follow."
   - Then he **joins your crew** (+1,200 XP for the fight and +200 for joining, both at 1.9 ×).
   - He fights with his **legendary hammer**: an obsidian head bound in brass, runes burning in it.
+  - **As a companion he's level 15** when he joins (the level you fought him at) and rises with you after. His hammer swings slowly but hits hard (14 + 1.1 × his level), and every blow also lands at half strength on anything within 3 m of its target.
   - The way back down is at the foot of the throne. His Nostrapedia file opens, and his old side quest is retired.
 - **Next objective:** Warp to another star system.
+
+### Khalmar, brother of Khazglar (the mountain refills every 7 days)
+- **7 in-game days** after the summit is cleared (a day is 20 minutes of play, so about 2 hours 20 minutes; time on the ground and in space both count, pauses don't), Olympus Mons fills again:
+  - Every floor's **warden is back**, and the climb starts from floor 1.
+  - **Khalmar**, Khazglar's older brother, sits on the throne: Khazglar's build, a head taller, darker stone and a cold blue glow, with an iron hammer of his own.
+  - You hear about it wherever you are, and if Khazglar is with you he feels it ("My brother is home").
+  - It never happens while you're inside the mountain; it waits until you leave.
+- **The fight:** level 30, 11,000 health, the same moves as his brother but 15% harder hits. He has **no ward** and the fire lets anyone through, so you don't need Orion and Nico (bring Khazglar: he'll fight his brother). His barks: *"Children of the deep! To me!"* at 60%, *"The fire answers ME. Look up!"* at 30%.
+- **What he says:** the first time, six lines (he's Khazglar's brother, "older by a winter, and wiser by a lifetime", and he wants to see why Khazglar chose you; he greets his brother if Khazglar is in your party). After that, a short greeting each time he's back. Retry line: *"Again. And this time, try to last."*
+- **Beaten:** he yields, says three lines, and goes back into the fire. +1,500 XP and his hoard (obsidian, crystals, warp cells, medkits). The clock restarts: he's back in another 7 days.
+- **Saves:** `wanderer.playS` (seconds of play), `ch3.khzBase`, `ch3.olyNext` (when the mountain refills), `ch3.khal` (he's on the throne), `ch3.khalMet`, `ch3.khalWins`. A save from before this update starts its 7-day clock the first time you play it.
+- Khalmar's lines are text only for now.
 
 ### Saves and voices
 - **Saves:** flags `ch3.khzCall`, `ch3.dgnMax` (the highest floor whose warden has fallen) and `ch3.khzMet`. A save made inside the mountain loads back onto the same floor, where you stood. A boss fight saved partway through starts that fight again.
