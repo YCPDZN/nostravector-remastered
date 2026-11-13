@@ -6402,6 +6402,7 @@ function compLevel(id) {
   const pl = levelInfo((wanderer && wanderer.xp) || 0).level;
   if (id === 'orion') return orionLevel(); if (id === 'nico') return nicoLevel();
   if (id === 'james') return clamp(pl + 2, 3, 100); // James has been out on the ice longer than you
+  if (id === 'khazglar') { const b = (wanderer && wanderer.ch3 && wanderer.ch3.khzBase) || pl; return clamp(KHZ_LV + pl - b, KHZ_LV, 110); } // level 15 when he joins (the level he fought you at), rising with you after
   const L = COMPANIONS.find(c => c.id === id); if (L && L.lv) return clamp(L.lv + pl - 1, L.lv, 110);
   const c = charById(id); return c && c.level ? clamp(+c.level || pl, 1, 110) : pl;
 }
@@ -10166,7 +10167,7 @@ function shipFlyToAdNostra() {
    After the nightmare in space (whichever of the four you had), the next stop is Mars: Khazglar, the hermit of Olympus Mons.
    He isn't waiting by his fire. The hermitage is empty, and a door in the rock behind it leads into the mountain: eight floors
    of lava tubes and halls full of Martian creatures, each floor's stairs held by a warden, and on the caldera's throne at the
-   top, Khazglar himself (level 35), who has watched you run all the way here and has nothing kind to say about it.
+   top, Khazglar himself (level 15), who has watched you run all the way here and has nothing kind to say about it.
    - Olympus Mons is a real feature of Mars, at its real latitude and longitude (olympusH, added to planetH).
    - The dungeon: DGN. Floors are laid out from a seed (rooms on a 4 × 4 grid joined by corridors) and built far from the
      surface in the same world, with the planet's ground switched off while you're inside (wHeight, worldBlocked,
@@ -10177,6 +10178,8 @@ function shipFlyToAdNostra() {
      throw; hounds at 60 %, falling rock at 30 %). Fall and the fight starts again.
    - The meeting is his alone: an intense, mocking monologue. Beaten, he kneels, says his piece, and joins your crew.
    Flags: ch3.khzCall (objective given), ch3.dgnMax (highest floor whose warden has fallen), ch3.khzMet (he's with you).
+   Once he's with you he fights with his hammer (level 15 when he joins, ch3.khzBase), and every 7 in-game days (ch3.olyNext,
+   counted in wanderer.playS) the mountain fills again: wardens back (dgnMax 0) and his brother Khalmar on the throne (ch3.khal).
    Voices: data/khazVoices.js, 23 recordings named CH3KHAZ01–CH3KHAZ23, in play order: 01–02 opening, 03–06 the species line
    (human, Chompy, Erisian, Grek), 07–15 the rest of the speech, 16 the retry, 17–18 phase barks, 19–23 beaten. */
 const KHZ = { lat: 18.65, lon: -133.8, R: 650, H: 130, cal: 72, calD: 26, cliff: 24, hut: [0, -150], pad: [0, -205] }; // metres on Mars's ground (2.4 km radius)
@@ -10198,6 +10201,8 @@ function olympusH(d) { // the volcano's height above the plains, for a direction
 }
 const khzPending = () => !!(wanderer && (wanderer.chapter | 0) === 3 && wanderer.ch3 && wanderer.ch3.nightmare && !wanderer.ch3.khzMet);
 const khzJoined = () => !!(wanderer && wanderer.ch3 && wanderer.ch3.khzMet);
+const khalUp = () => khzJoined() && !!wanderer.ch3.khal; // Khalmar holds the summit (and the wardens are back)
+const sumBoss = () => !khzJoined() || khalUp(); // someone is waiting on the throne
 function khzLocal(W, dir) { // a direction on the world, in the landing spot's metres (x east, z south)
   const td = dir.dot(W.D); if (td < .5) return null; const R = W.R || W.P.r;
   return { x: R * dir.dot(W.E) / td, z: R * dir.dot(W.N) / td };
@@ -10484,12 +10489,12 @@ function dgnNear(p) { // what you can use in here
   if (d(DGN.up, 3)) return { id: 'dgnUp', label: dgnBeaten(DGN.f) ? `Stairs up · floor ${DGN.f + 1}${DGN.f + 1 === 8 ? ' · the summit' : ''}` : 'Stairs up · the warden still stands' };
   if (d(DGN.down, 3)) return { id: 'dgnDown', label: DGN.f === 1 ? 'Leave the mountain' : `Stairs down · floor ${DGN.f - 1}` };
   if (d(DGN.well, 2.4)) return { id: 'dgnWell', label: 'Healing spring' };
-  if (DGN.f === 8 && khzJoined() && DGN.arena && d({ x: DGN.arena.c[0], z: DGN.arena.c[1] - DGN.arena.R + 6 }, 3)) return { id: 'dgnDown', label: 'The way back down' };
+  if (DGN.f === 8 && !sumBoss() && DGN.arena && d({ x: DGN.arena.c[0], z: DGN.arena.c[1] - DGN.arena.R + 6 }, 3)) return { id: 'dgnDown', label: 'The way back down' };
   return null;
 }
 function dgnUse(id) {
   if (id === 'dgnUp') { if (!dgnBeaten(DGN.f)) { lootMsg(DGN.lair ? 'The way down is sealed · kill the matriarch first' : 'The way up is sealed · defeat the warden first', '#ff8f86'); return; } dgnEnter(DGN.f + 1); return; }
-  if (id === 'dgnDown') { if (DGN.f === 1 || (DGN.lair ? DGN.f === dgnTop() && lairCleared(DGN.lair) : DGN.f === 8 && khzJoined())) dgnLeave(); else dgnEnter(DGN.f - 1, 'top'); return; }
+  if (id === 'dgnDown') { if (DGN.f === 1 || (DGN.lair ? DGN.f === dgnTop() && lairCleared(DGN.lair) : DGN.f === 8 && !sumBoss())) dgnLeave(); else dgnEnter(DGN.f - 1, 'top'); return; }
   if (id === 'dgnWell') { if (time - DGN.wellT < 40) { lootMsg(`The spring is still settling · ${Math.ceil(40 - (time - DGN.wellT))} s`, '#cfd6e6'); return; } DGN.wellT = time; ex.hp = maxHP(); invState().hp = ex.hp; sfx.chime(); lootMsg('Healed · the spring needs 40 seconds to fill again', '#7fe8ff'); burst(player.position.x, 1, player.position.z, 30, 3, .5, .9, 1, .8, 1, 1.4); return; }
   if (id === 'dgnGate') { DGN.lair = null; const top = Math.max(1, Math.min(8, ((wanderer.ch3 && wanderer.ch3.dgnMax) || 0) + 1));
     if (top > 1) openChoice('OLYMPUS MONS', [{ text: `Climb to floor ${top} · ${DGN_NAMES[top]}`, onPick: () => dgnEnter(top) }, { text: 'Start from the bottom · floor 1', onPick: () => dgnEnter(1) }, { text: 'Not yet', onPick: () => {} }]);
@@ -10531,13 +10536,13 @@ function dgnDown() { // you fell
   }, 2600);
 }
 // ---- the summit: the caldera arena, the throne, and the hermit with his hammer ----
-function makeKhzHammer() { // the hammer: obsidian head bound in brass, runes burning in it, a haft taller than a man
-  const g = new THREE.Group(), brassM = new THREE.MeshStandardMaterial({ color: 0xd8b060, metalness: .5, roughness: .35, emissive: 0x3a2808, emissiveIntensity: .5 });
+function makeKhzHammer(kh) { // the hammer: obsidian head bound in brass, runes burning in it, a haft taller than a man (Khalmar's: iron, and a cold blue fire)
+  const g = new THREE.Group(), brassM = new THREE.MeshStandardMaterial({ color: kh ? 0x8a94a8 : 0xd8b060, metalness: .5, roughness: .35, emissive: 0x3a2808, emissiveIntensity: .5 });
   const haft = new THREE.Mesh(new THREE.CylinderGeometry(.05, .06, 1.7, 8), new THREE.MeshStandardMaterial({ color: 0x2a1a12, roughness: .8 })); haft.position.y = .55; g.add(haft);
-  const head = new THREE.Mesh(new THREE.BoxGeometry(.75, .42, .42), new THREE.MeshStandardMaterial({ color: 0x141016, roughness: .3, metalness: .6, emissive: 0x5a1a06, emissiveIntensity: .7 })); head.position.y = 1.42; g.add(head);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(.75, .42, .42), new THREE.MeshStandardMaterial({ color: 0x141016, roughness: .3, metalness: .6, emissive: kh ? 0x0a2a5a : 0x5a1a06, emissiveIntensity: .7 })); head.position.y = 1.42; g.add(head);
   for (const s of [-1, 1]) { const b = new THREE.Mesh(new THREE.BoxGeometry(.06, .46, .46), brassM); b.position.set(s * .25, 1.42, 0); g.add(b); }
-  const rune = new THREE.Mesh(new THREE.PlaneGeometry(.34, .2), new THREE.MeshBasicMaterial({ color: 0xff8a3a, transparent: true, opacity: .95 })); rune.position.set(0, 1.42, .215); g.add(rune);
-  const glow = glowSprite(0xff7a2a, 1.3, .8); glow.position.y = 1.42; g.add(glow); g.userData.glow = glow; g.userData.rune = rune;
+  const rune = new THREE.Mesh(new THREE.PlaneGeometry(.34, .2), new THREE.MeshBasicMaterial({ color: kh ? 0x6ac8ff : 0xff8a3a, transparent: true, opacity: .95 })); rune.position.set(0, 1.42, .215); g.add(rune);
+  const glow = glowSprite(kh ? 0x4aa8ff : 0xff7a2a, 1.3, .8); glow.position.y = 1.42; g.add(glow); g.userData.glow = glow; g.userData.rune = rune;
   g.rotation.x = Math.PI / 2; return g;
 }
 function dgnArena(g) {
@@ -10554,12 +10559,14 @@ function dgnArena(g) {
   const [gx, gz] = dgnW(A.gate[0], A.gate[1]);
   const cur = new THREE.Mesh(new THREE.PlaneGeometry(DGN.C, 6), new THREE.MeshBasicMaterial({ color: 0xff5a1a, transparent: true, opacity: .5, side: THREE.DoubleSide })); cur.position.set(gx, 3, gz - DGN.C / 2 + .2); g.add(cur); DGN.curtain = cur;
   DGN.barrier = true;
-  if (DGN.lair) { const k = new THREE.Color(DGN.lair.th.glow); lavaM.color.copy(k); L.color.copy(k); lairBossPlace(); } else if (!khzJoined()) dgnKhzPlace();
+  if (DGN.lair) { const k = new THREE.Color(DGN.lair.th.glow); lavaM.color.copy(k); L.color.copy(k); lairBossPlace(); } else if (sumBoss()) dgnKhzPlace();
 }
 async function dgnKhzPlace() {
-  const f = DGN.f, R = await companionRig('khazglar'); if (!R || !DGN.on || DGN.f !== f || khzJoined()) return;
+  const f = DGN.f, R = await companionRig('khazglar'), kh = khalUp(); if (!R || !DGN.on || DGN.f !== f || !sumBoss()) return;
   R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  const sock = R.rh ? boneSocket(R.rh) : R.ra ? handSocket(R.ra) : null, H = makeKhzHammer(); if (sock) sock.add(H); else { H.position.set(.5, 1, 0); R.root.add(H); }
+  for (const g0 of R.gear || []) if (g0.parent) g0.parent.remove(g0); R.gear = []; // the companion rig comes with a hammer: the throne's own goes in its place
+  if (kh) { khalLook(R); } // his brother: Khazglar's build, darker, bigger, with a hammer of his own
+  const sock = R.rh ? boneSocket(R.rh) : R.ra ? handSocket(R.ra) : null, H = makeKhzHammer(kh); if (sock) sock.add(H); else { H.position.set(.5, 1, 0); R.root.add(H); }
   const [x, z] = DGN.arena.throne; R.root.position.set(x, .9, z); R.root.rotation.y = 0; R.mode = 'idle'; wScene.add(R.root);
   DGN.k = { R, x, z, H }; world.khz = DGN.k;
 }
@@ -10570,11 +10577,11 @@ function dgnArenaTick(dt) {
   if (DGN.curtain) { DGN.curtain.visible = DGN.barrier; DGN.curtain.material.opacity = .4 + Math.sin(time * 7) * .12; }
   if (DGN.arenaL) DGN.arenaL.intensity = 70 + Math.sin(time * 2.3) * 10 + (DGN.flashL || 0) * 260; DGN.flashL = Math.max(0, (DGN.flashL || 0) - dt * 2.5);
   if (K && K.H) K.H.userData.glow.material.opacity = .6 + Math.sin(time * 5) * .25;
-  if (khzJoined() || !K || DGN.won) { DGN.barrier = DGN.won && !khzJoined(); if (K && K.R && !K.R.static) { try { animRig(K.R, dt); } catch (e) { K.R.static = true; } } return; }
+  if (!sumBoss() || !K || DGN.won) { DGN.barrier = DGN.won && sumBoss(); if (K && K.R && !K.R.static) { try { animRig(K.R, dt); } catch (e) { K.R.static = true; } } return; }
   // the curtain parts only for all three of you
   const atGate = Math.hypot(p.x - gx, p.z - (gz + DGN.C / 2)) < 4.5;
   if (!DGN.boss && !DGN.cut) {
-    DGN.barrier = !dgnCrewReady();
+    DGN.barrier = !khalUp() && !dgnCrewReady(); // Khalmar will fight anyone
     if (atGate && DGN.barrier && time - (DGN.gateMsgT || -9) > 4) { DGN.gateMsgT = time; lootMsg('The fire won’t part · Khazglar will only face all three of you: bring Orion and Nico', '#ff8f86'); }
     if (!DGN.barrier && p.z < gz - DGN.C) dgnTaunt(); // through the curtain and into the arena
   }
@@ -10625,10 +10632,10 @@ function dgnTaunt() {
   if (!K.lamp) { K.lamp = new THREE.PointLight(0xff7a3a, 30, 9, 1.5); K.lamp.position.set(0, 2.6, .9); K.R.root.add(K.lamp); } // the forge-light on him
   vel.set(0, 0, 0); ex.keys.clear(); sfx.whoosh();
   if (DGN.taunted) { // a second try: no speech this time
-    setTimeout(() => { khzFx('land'); setTimeout(() => khzSayAll([['Up again? Good. The mountain is not finished with you.', 'K16', 'slam']], dgnBossStart), 500); }, 900); return;
+    setTimeout(() => { khzFx('land'); setTimeout(() => khzSayAll([khalUp() ? ['Again. And this time, try to last.', null, 'slam'] : ['Up again? Good. The mountain is not finished with you.', 'K16', 'slam']], dgnBossStart), 500); }, 900); return;
   }
   setTimeout(async () => {
-    await khzVoices(); const lines = khzTauntLines(); DGN.taunted = true;
+    await khzVoices(); const lines = khalUp() ? khalTauntLines() : khzTauntLines(); DGN.taunted = true;
     khzSayAll(lines, dgnBossStart);
   }, 950);
 }
@@ -10644,23 +10651,26 @@ function khzSayAll(list, done) { // one line at a time, each with its moment, an
   const run = i => {
     if (i >= list.length) { done && done(); return; }
     const [text, id, fx] = list[i]; khzFx(fx);
-    openDialog('KHAZGLAR', [text], false, () => run(i + 1), khzClip(id));
+    openDialog(sumKB().name, [text], false, () => run(i + 1), id ? khzClip(id) : undefined);
     if (K && K.R) K.R.root.rotation.y = Math.atan2(player.position.x - K.x, player.position.z - K.z);
   };
   run(0);
 }
 // ---- the fight: a raid boss. All three of you, or his ward holds ----
-const KB = { hp: 9000, lv: 35 }; // about a minute and a half with Orion and Nico pulling their weight
+const KHZ_LV = 15; // Khazglar's level: the boss you fight, and the companion who joins you
+const KB = { name: 'KHAZGLAR', short: 'Khazglar', hp: 9000, lv: KHZ_LV, dm: 1, ward: true }; // about a minute and a half with Orion and Nico pulling their weight
+const KHB = { name: 'KHALMAR', short: 'Khalmar', hp: 11000, lv: 30, dm: 1.15, ward: false }; // his brother, on the throne every 7 days once Khazglar is with you
+const sumKB = () => khalUp() ? KHB : KB;
 function dgnBossBar() {
   const el = $('#bossBar'); if (!el) return;
   const B = DGN.boss; if (!B) { el.classList.remove('on'); return; }
   if (B.lair) { lairBossBar(); return; }
-  const c = B.c, frac = Math.max(0, c.hp / KB.hp), ward = !dgnWardDown();
-  el.innerHTML = `<div class="bb-h"><b>KHAZGLAR</b><small>LV ${KB.lv} · RAID BOSS · PHASE ${B.ph} OF 3</small></div><div class="bb"><i style="width:${(frac * 100).toFixed(1)}%"></i></div><em>${ward ? 'His ward holds · fight him together, all three of you' : B.ph === 3 ? 'Watch the sky · get out of the circles' : B.ph === 2 ? 'Rust hounds! · keep moving' : 'Dodge the hammer · stay out of the red rings'}</em>`;
+  const P = sumKB(), c = B.c, frac = Math.max(0, c.hp / P.hp), ward = !dgnWardDown();
+  el.innerHTML = `<div class="bb-h"><b>${P.name}</b><small>LV ${P.lv} · RAID BOSS · PHASE ${B.ph} OF 3</small></div><div class="bb"><i style="width:${(frac * 100).toFixed(1)}%"></i></div><em>${ward ? 'His ward holds · fight him together, all three of you' : B.ph === 3 ? 'Watch the sky · get out of the circles' : B.ph === 2 ? 'Rust hounds! · keep moving' : 'Dodge the hammer · stay out of the red rings'}</em>`;
   el.classList.add('on');
 }
 function dgnWardDown() { // Orion and Nico both in the fight, near him
-  const B = DGN.boss; if (!B) return true; const c = B.c;
+  const B = DGN.boss; if (!B || !sumKB().ward) return true; const c = B.c; // Khalmar has no ward
   const o = world.orion && world.orion.root.visible ? world.orion.root.position : null, n = CREW.nico && CREW.nico.R && CREW.nico.R.root.visible ? CREW.nico.R.root.position : null;
   return !!(o && n && Math.hypot(o.x - c.x, o.z - c.z) < 30 && Math.hypot(n.x - c.x, n.z - c.z) < 30);
 }
@@ -10672,12 +10682,12 @@ function dgnBossDmg(c, dmg) { // what actually gets through
 function dgnBossStart() {
   const K = DGN.k; if (!K || DGN.boss) return;
   DGN.cut = false; K.R.root.position.y = 0;
-  const D = { name: 'Khazglar', hp: KB.hp, r: 1.8, xp: 0, dmg: 0, loot: () => [] };
-  const c = { type: 'khazboss', D, mesh: K.R.root, x: K.x, z: K.z, y: 0, rot: 0, hp: KB.hp, state: 'hunt', t: 0, cd: 0, home: [K.x, K.z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, boss: true, bar: null };
+  const P = sumKB(), D = { name: P.short, hp: P.hp, r: 1.8, xp: 0, dmg: 0, loot: () => [] };
+  const c = { type: 'khazboss', D, mesh: K.R.root, x: K.x, z: K.z, y: 0, rot: 0, hp: P.hp, state: 'hunt', t: 0, cd: 0, home: [K.x, K.z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, boss: true, bar: null };
   fauna.list.push(c);
   DGN.boss = { c, R: K.R, st: 'chase', t: 0, cd: 2, quakeCd: 11, leapCd: 6, throwCd: 8, metT: 4, aggroT: 0, tgt: 'you', ph: 1, tels: [], mets: [], proj: null };
   sfx.combat(true, COMBAT_TRACKS.indexOf('Predator II'));
-  notice('Raid boss · level 35', 'KHAZGLAR', 3200); dgnBossBar(); renderTasks();
+  notice(`Raid boss · level ${P.lv}`, P.name, 3200); dgnBossBar(); renderTasks();
 }
 function dgnBossClear() {
   const B = DGN.boss; if (!B) return;
@@ -10702,19 +10712,20 @@ function dgnBossMove(c, tx, tz, sp, dt) {
 function dgnHitCompanions(x, z, r, what) { // his blows land on your friends too: they stagger, and they say so
   for (const id of ['orion', 'nico']) { const q = dgnTgtPos(id); if (q && Math.hypot(q.x - x, q.z - z) < r) { burst(q.x, 1, q.z, 16, 3, 1, .5, .2, .6, 1, 1); if (time - (DGN.compMsgT || -9) > 4) { DGN.compMsgT = time; lootMsg(`${compName(id)} takes ${what} · still standing`, compColor(id)); } } }
 }
+const hurtPlayerRaw = (n, o) => hurtPlayer(n, o);
 function dgnBossTick(dt) {
   const B = DGN.boss, K = DGN.k; if (!B || !K) return;
   const c = B.c, R = B.R, p = player.position; B.t += dt;
   if (c.dead || c.hp <= 0) { dgnBossWin(); return; }
   if ((B.barT = (B.barT || 0) - dt) <= 0) { B.barT = .15; dgnBossBar(); }
-  const frac = c.hp / KB.hp;
+  const PB = sumKB(), frac = c.hp / PB.hp, KH = PB === KHB; const hurtPlayer = (n, o) => hurtPlayerRaw(Math.round(n * PB.dm), o); // Khalmar hits harder
   if (B.ph === 1 && frac < .6) { // phase two: he calls the hounds
-    B.ph = 2; sfx.thud(); ex.shake = .8; DGN.flashL = 1.5; kbark('Hounds of Olympus! Wake, and hunt!', 3200, khzClip('K17') && khzClip('K17')[0]);
+    B.ph = 2; sfx.thud(); ex.shake = .8; DGN.flashL = 1.5; if (KH) kbark('Children of the deep! To me!', 3200); else kbark('Hounds of Olympus! Wake, and hunt!', 3200, khzClip('K17') && khzClip('K17')[0]);
     for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2, cc = spawnFauna(dgnType('rusthound', 7), c.x + Math.cos(a) * 6, c.z + Math.sin(a) * 6, [c.x, c.z]); cc.dgn = 8; cc.state = 'hunt'; }
     notice('Phase two', 'THE HOUNDS OF OLYMPUS', 2600);
   }
   if (B.ph === 2 && frac < .3) { // phase three: the mountain itself
-    B.ph = 3; sfx.boom && sfx.boom(); ex.shake = 1.2; DGN.flashL = 2; kbark('Feel that? The mountain is angry. Look to the sky.', 3400, khzClip('K18') && khzClip('K18')[0]);
+    B.ph = 3; sfx.boom && sfx.boom(); ex.shake = 1.2; DGN.flashL = 2; if (KH) kbark('The fire answers ME. Look up!', 3400); else kbark('Feel that? The mountain is angry. Look to the sky.', 3400, khzClip('K18') && khzClip('K18')[0]);
     for (let i = 0; i < 2; i++) { const cc = spawnFauna(dgnType('duststalker', 7), c.x + (i ? 7 : -7), c.z + 4, [c.x, c.z]); cc.dgn = 8; cc.state = 'hunt'; }
     notice('Phase three', 'THE MOUNTAIN WAKES', 2600);
   }
@@ -10728,7 +10739,7 @@ function dgnBossTick(dt) {
   const tel = (x, z, r) => { const m = telegraph(x, z, r); B.tels.push(m); return m; };
   const endMove = () => { for (const m of B.tels) wScene.remove(m); B.tels = []; B.st = 'chase'; B.t = 0; R.mode = 'walk'; K.raise = 0; };
   if (B.st === 'chase') {
-    if (B.quakeCd <= 0 && dP < 13) { B.st = 'quake'; B.t = 0; R.mode = 'idle'; K.raise = 1; tel(c.x, c.z, 11); sfx.whoosh(); kbark('KNEEL!', 1400); }
+    if (B.quakeCd <= 0 && dP < 13) { B.st = 'quake'; B.t = 0; R.mode = 'idle'; K.raise = 1; tel(c.x, c.z, 11); sfx.whoosh(); kbark(KH ? 'BOW!' : 'KNEEL!', 1400); }
     else if (B.leapCd <= 0 && d > 8) { B.st = 'leap'; B.t = 0; B.lx = T.x; B.lz = T.z; B.sx = c.x; B.sz = c.z; tel(T.x, T.z, 4.4); R.mode = 'idle'; sfx.whoosh(); }
     else if (B.throwCd <= 0 && dP > 7 && dP < 28) { B.st = 'throw'; B.t = 0; B.tx = p.x; B.tz = p.z; R.mode = 'attack'; R.t = 0; const L = Math.hypot(p.x - c.x, p.z - c.z); for (let k = 1; k <= 5; k++) tel(lerp(c.x, p.x, k / 5), lerp(c.z, p.z, k / 5), 1.5); }
     else if (d < 3.6 && B.cd <= 0) { B.st = 'slam'; B.t = 0; R.mode = 'attack'; R.t = 0; B.hit = false; B.sx = c.x + dx / d * 2.4; B.sz = c.z + dz / d * 2.4; tel(B.sx, B.sz, 3.4); }
@@ -10748,7 +10759,7 @@ function dgnBossTick(dt) {
     if (B.t > 2.2 * fast) { endMove(); B.landed = false; B.leapCd = (B.ph === 3 ? 6 : 9) + Math.random() * 3; B.cd = .8; }
   } else if (B.st === 'throw') { // the hammer, end over end, straight at you, and back
     face(B.tx, B.tz, 6);
-    if (!B.proj && B.t > .7 * fast) { const m = makeKhzHammer(); m.scale.setScalar(1.4); wScene.add(m); B.proj = { m, x: c.x, z: c.z, t: 0, back: false, hit: false }; if (K.H) K.H.visible = false; sfx.whoosh(); }
+    if (!B.proj && B.t > .7 * fast) { const m = makeKhzHammer(KH); m.scale.setScalar(1.4); wScene.add(m); B.proj = { m, x: c.x, z: c.z, t: 0, back: false, hit: false }; if (K.H) K.H.visible = false; sfx.whoosh(); }
     if (B.proj) {
       const P = B.proj, tx = P.back ? c.x : B.tx, tz = P.back ? c.z : B.tz, ddx = tx - P.x, ddz = tz - P.z, dd = Math.hypot(ddx, ddz); P.t += dt;
       const st = Math.min(dd, 26 * dt); if (dd > .01) { P.x += ddx / dd * st; P.z += ddz / dd * st; }
@@ -10773,6 +10784,7 @@ function dgnBossWin() {
   const B = DGN.boss, K = DGN.k; if (!B || B.won) return; B.won = true; DGN.won = true;
   for (const c of [...fauna.list]) if (c.dgn && !c.dead) removeFauna(c);
   dgnBossClear(); if (K && K.H) K.H.visible = true;
+  if (khalUp()) { khalWin(K); return; }
   sfx.chime(); ex.shake = .6; DGN.flashL = 1.5; notice('Raid boss defeated', 'KHAZGLAR KNEELS', 3600);
   gainXP(1200, 'Defeated Khazglar');
   if (K) { K.R.mode = 'idle'; K.R.root.rotation.x = .35; K.R.root.position.y = -.35; } // down on one knee
@@ -10788,10 +10800,71 @@ function dgnBossWin() {
   }, 2400);
 }
 let khzVo = null;
+// ---- Khalmar, brother of Khazglar: every 7 in-game days (a day is 20 minutes of play) after the summit is cleared, the
+// mountain fills again: the wardens are back on every floor and Khalmar sits on the throne. Beat him and the clock restarts. ----
+const OLY_RESPAWN = 7 * DAY_LEN; // seconds of play
+const playSec = () => (wanderer && wanderer.playS) || 0;
+function khalLook(R) { // darker stone, a cold blue glow, a head taller
+  R.root.scale.multiplyScalar(1.12);
+  R.root.traverse(o => { if (!o.isMesh || !o.material) return; const ms = Array.isArray(o.material) ? o.material : [o.material];
+    o.material = ms.map(m => { const n = m.clone(); n.onBeforeCompile = m.onBeforeCompile; if (n.color) n.color.multiplyScalar(.55).lerp(new THREE.Color(0x3a4a6a), .25); if (n.emissive) { n.emissive.set(0x0a1a3a); n.emissiveIntensity = .5; } return n; });
+    if (o.material.length === 1) o.material = o.material[0]; });
+}
+function khalTauntLines() {
+  const first = !(wanderer.ch3 && wanderer.ch3.khalMet), withHim = partyNow().includes('khazglar');
+  if (!first) return [
+    ['Back for another lesson? The mountain remembers you.', null, 'land'],
+    [withHim ? 'And you brought my brother again. Good. He can watch.' : 'Seven days. Long enough to forget how much the last time hurt.', null, 'thud'],
+    ['COME, THEN.', null, 'slam']
+  ];
+  return [
+    ['So my brother came down from his mountain. Then the mountain is mine.', null, 'land'],
+    ['I am Khalmar. Khazglar’s brother. Older by a winter, and wiser by a lifetime.', null, 'thud'],
+    ['He spent his years up here tending a garden. I spent mine in the deep tubes, learning what the fire can do.', null, 'quake'],
+    [withHim ? 'Brother. You look well. Soft, but well.' : 'He chose you over me. I want to see why.', null, 'thud'],
+    ['Every creature on these eight floors answers to me now. You walked through them. You will not walk out past me.', null, 'raise'],
+    ['COME, THEN. SHOW ME.', null, 'slam']
+  ];
+}
+function khalWin(K) {
+  sfx.chime(); ex.shake = .6; DGN.flashL = 1.5; notice('Raid boss defeated', 'KHALMAR YIELDS', 3600);
+  gainXP(1500, 'Defeated Khalmar');
+  for (const [id, n] of [['obsidian', 4], ['crystal', 5], ['warpcell', 2], ['medkit', 2]]) if (ITEMS[id]) { giveItem(id, n); lootMsg(`+${n} ${ITEMS[id].name} · from Khalmar's hoard`, ITEMS[id].color || '#ffc94a'); }
+  if (K) { K.R.mode = 'idle'; K.R.root.rotation.x = .35; K.R.root.position.y = -.35; }
+  const withHim = partyNow().includes('khazglar');
+  setTimeout(() => { vel.set(0, 0, 0);
+    khzSayAll([
+      ['…Enough. You fight like he does. Stubborn.', null, 'thud'],
+      [withHim ? 'Keep him close, wanderer. He is the better of us, though I will never tell him.' : 'Tell my brother he chose well. Do not tell him I said so.', null, null],
+      ['The mountain will call me back. It always does. Come again in seven days, and we will see.', null, 'flash']
+    ], () => {
+      if (K && K.R.root.parent) { burst(K.x, .5, K.z, 80, 8, 1, .5, .2, 1, 1.4, 2); K.R.root.parent.remove(K.R.root); } // into the fire, and gone
+      DGN.k = null; world.khz = null; DGN.barrier = false; DGN.won = false;
+      wanderer.ch3 = Object.assign({}, wanderer.ch3, { khal: false, khalMet: true, khalWins: ((wanderer.ch3 && wanderer.ch3.khalWins) || 0) + 1, dgnMax: 8, olyNext: playSec() + OLY_RESPAWN });
+      const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster(); renderTasks();
+      if (withHim) setTimeout(() => lootMsg('Khazglar · “He will be back. He always is. Thank you for not killing him.”', compColor('khazglar')), 1200);
+      setTimeout(() => lootMsg('The way back down is at the foot of the throne · Khalmar returns in 7 days', '#cfd6e6'), 3600);
+    });
+  }, 2400);
+}
+// the clock: play time counts while you're on the ground or in space; when it runs out (and you're not inside the mountain), Khalmar takes the summit
+setInterval(() => {
+  if (!wanderer || (state !== 'explore' && state !== 'space')) return;
+  wanderer.playS = playSec() + 5; const c = curChar(); if (c) c.playS = wanderer.playS;
+  if (!khzJoined() || DGN.on) return;
+  const C3 = wanderer.ch3; if (C3.olyNext == null) { C3.olyNext = playSec() + OLY_RESPAWN; if (c) c.ch3 = C3; return; } // a save from before the respawn: the clock starts now
+  if (C3.khal || playSec() < C3.olyNext) return;
+  wanderer.ch3 = Object.assign({}, C3, { khal: true, dgnMax: 0 }); if (c) c.ch3 = wanderer.ch3; saveRoster();
+  const msg = 'Olympus Mons stirs · Khalmar, brother of Khazglar, has taken the throne, and the wardens are back';
+  if (state === 'space') spaceMsg(msg); else { notice('Olympus Mons', 'KHALMAR HAS TAKEN THE MOUNTAIN', 4200); lootMsg(msg, '#6ac8ff'); }
+  if (partyNow().includes('khazglar')) setTimeout(() => { const t = 'Khazglar · “I can feel him in the rock. My brother is home.”'; if (state === 'space') spaceMsg(t); else lootMsg(t, compColor('khazglar')); }, 3000);
+  renderTasks();
+}, 5000);
 async function khzVoices() { if (khzVo) return khzVo; khzVo = await loadDataScript('khazVoices').then(() => sfx.loadClips('khazVoices')).catch(() => null) || []; return khzVo; }
 const KHZ_IDS = Array.from({ length: 23 }, (_, i) => 'K' + String(i + 1).padStart(2, '0')); // K01–K23: recordings CH3KHAZ01.mp3–CH3KHAZ23.mp3, in this order
 const khzClip = id => { const i = KHZ_IDS.indexOf(id); return khzVo && i >= 0 && khzVo[i] ? [khzVo[i]] : undefined; };
 function khzTaskText() { // the objective, as far up the mountain as you've got
+  if (khalUp()) return DGN.on && !DGN.lair && DGN.f === 8 ? 'Defeat Khalmar, brother of Khazglar' : 'Khalmar holds Olympus Mons · climb the eight floors';
   if (khzJoined()) return 'Find Khazglar on Olympus Mons, Mars';
   if (DGN.on && !DGN.lair) return DGN.f === 8 ? (DGN.boss ? 'Defeat Khazglar · all three of you' : 'Face Khazglar on the caldera throne') : `Climb Olympus Mons · floor ${DGN.f} of 8${dgnBeaten(DGN.f) ? ' · take the stairs up' : ' · defeat the warden'}`;
   const top = (wanderer.ch3 && wanderer.ch3.dgnMax) || 0;
@@ -10800,12 +10873,12 @@ function khzTaskText() { // the objective, as far up the mountain as you've got
 function dgnTarget() { // where the marker points inside the mountain
   if (DGN.lair) { const L = DGN.lair; if (DGN.f === dgnTop()) { if (DGN.lb && !lairCleared(L)) return { x: DGN.lb.x, z: DGN.lb.z, label: lairBoss(L).short }; return DGN.down ? { x: DGN.down.x, z: DGN.down.z, label: 'The way out' } : null; }
     if (dgnBeaten(DGN.f) && DGN.up) return { x: DGN.up.x, z: DGN.up.z, label: 'The way down' }; if (DGN.warden && !DGN.warden.dead) return { x: DGN.warden.x, z: DGN.warden.z, label: 'The matriarch' }; return DGN.up ? { x: DGN.up.x, z: DGN.up.z, label: 'The way down' } : null; }
-  if (DGN.f === 8) { const K = DGN.k; if (khzJoined() && DGN.arena) return { x: DGN.arena.c[0], z: DGN.arena.c[1] - DGN.arena.R + 6, label: 'The way down' }; return K ? { x: K.x, z: K.z, label: 'Khazglar' } : null; }
+  if (DGN.f === 8) { const K = DGN.k; if (!sumBoss() && DGN.arena) return { x: DGN.arena.c[0], z: DGN.arena.c[1] - DGN.arena.R + 6, label: 'The way down' }; return K ? { x: K.x, z: K.z, label: sumKB().short } : null; }
   if (dgnBeaten(DGN.f) && DGN.up) return { x: DGN.up.x, z: DGN.up.z, label: 'Stairs up' };
   if (DGN.warden && !DGN.warden.dead) return { x: DGN.warden.x, z: DGN.warden.z, label: 'The warden' };
   return DGN.up ? { x: DGN.up.x, z: DGN.up.z, label: 'Stairs up' } : null;
 }
-function kbark(text, ms = 3000, clip) { showNarr('KHAZGLAR', text); clearTimeout(world.barkT); world.barkT = setTimeout(hideNarr, clip ? Math.max(ms, clip.duration * 1000 + 300) : ms); if (clip) sfx.playNarr(clip, 1.3); }
+function kbark(text, ms = 3000, clip) { showNarr(sumKB().name, text); clearTimeout(world.barkT); world.barkT = setTimeout(hideNarr, clip ? Math.max(ms, clip.duration * 1000 + 300) : ms); if (clip) sfx.playNarr(clip, 1.3); }
 function dgnReset() { // out of the mountain at once (a load, a landing elsewhere, the main menu)
   if (!DGN.on) return; dgnClearFloor(); DGN.on = false; DGN.lair = null; DGN.open = null; for (const ch of world.chunks.values()) ch.visible = true; dgnRestoreLook();
 }
@@ -10817,7 +10890,7 @@ function khzTick(dt) {
 }
 function khzJoin() {
   const pdPre = pdStoryIds();
-  wanderer.ch3 = Object.assign({}, wanderer.ch3, { khzMet: true });
+  wanderer.ch3 = Object.assign({}, wanderer.ch3, { khzMet: true, khzBase: levelInfo(wanderer.xp || 0).level, olyNext: playSec() + OLY_RESPAWN });
   wanderer.party = [...new Set([...(wanderer.party || []), 'khazglar'])];
   const c = curChar(); if (c) { c.ch3 = wanderer.ch3; c.party = wanderer.party; }
   saveRoster(); pdStoryNote(pdPre);
@@ -10827,6 +10900,7 @@ function khzJoin() {
   notice('The Hermit of Olympus Mons', 'KHAZGLAR JOINS YOUR CREW', 4200);
   setTimeout(() => lootMsg('Khazglar takes the same five orders as Orion and Nico · his file is open in the Nostrapedia', compColor('khazglar')), 1600);
   setTimeout(() => lootMsg('The way back down is at the foot of the throne', '#cfd6e6'), 4200);
+  setTimeout(() => lootMsg('The mountain will not stay empty · in 7 days something else will sit on that throne', '#ffb36e'), 7400);
 }
 function khzFly() { // from anywhere on Mars: the helm takes you up the mountain
   const f = $('#fade'); f.style.transition = 'opacity .6s'; f.style.opacity = 1; sfx.whoosh();
@@ -15691,10 +15765,15 @@ function crewTick(dt) {
     for (const c of fauna.list) { if (c.dead || c.D.passive || (c.D.neutral && c.state !== 'hunt')) continue; const d = Math.hypot(c.x - o.x, c.z - o.z); if (d < fd) { fd = d; foe = c; } }
     C.atkT -= dt;
     if (foe) {
-      const reach = guns ? 22 : 2.2;
+      const reach = guns ? 22 : id === 'khazglar' ? 2.8 : 2.2;
       if (fd > reach) walkTo(foe.x, foe.z, reach * .9, true);
       else { if (isN) nicoGear(R, 'pistols'); R.mode = 'attack'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(foe.x - o.x, foe.z - o.z), Math.min(1, dt * 6));
-        if (C.atkT <= 0) { C.atkT = isN ? .5 : guns ? .9 : 1.2; if (guns) { sfx.shot(); compTracer(R, foe); } else sfx.swing(); damageFauna(foe, isN ? 6 + nicoLevel() * .25 : 8 + levelInfo(wanderer.xp || 0).level * .4, true); } }
+        if (C.atkT <= 0 && id === 'khazglar') { // his hammer: slow, heavy, and it hits everything around whatever it lands on
+          C.atkT = 1.35; const lv = compLevel('khazglar'), dmg = 14 + lv * 1.1; sfx.swing(); setTimeout(() => { try { sfx.thud(); } catch (e) {} }, 180);
+          burst(foe.x, .4, foe.z, 18, 3, 1, .5, .15, .6, .8, 1); damageFauna(foe, dmg, true);
+          for (const o of fauna.list) if (o !== foe && !o.dead && !o.D.passive && Math.hypot(o.x - foe.x, o.z - foe.z) < 3) damageFauna(o, dmg * .5, true);
+          if (Math.hypot(player.position.x - foe.x, player.position.z - foe.z) < 8) ex.shake = Math.max(ex.shake || 0, .18);
+        } else if (C.atkT <= 0) { C.atkT = isN ? .5 : guns ? .9 : 1.2; if (guns) { sfx.shot(); compTracer(R, foe); } else sfx.swing(); damageFauna(foe, isN ? 6 + nicoLevel() * .25 : 8 + levelInfo(wanderer.xp || 0).level * .4, true); } }
       animRig(R, dt); continue;
     }
     const dp = Math.hypot(p.x - o.x, p.z - o.z);
