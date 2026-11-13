@@ -1791,7 +1791,7 @@ function setMenuLook(kind) {
 // James joins you in the main menu once he's your companion
 function menuCompanion() {
   if (!(state === 'title' || state === 'loading')) return;
-  menuOrion(); menuNico();
+  menuOrion(); menuNico(); menuCrewShow();
   const want = companionOn() && !isCh4Menu();
   if (!want) { if (james.ready && james.root.parent === scene) james.root.visible = false; return; }
   ensureJames().then(() => {
@@ -1804,7 +1804,7 @@ function menuCompanion() {
   });
 }
 function menuTick(dt) {
-  menuOrionTick(dt); menuNicoTick(dt);
+  menuOrionTick(dt); menuNicoTick(dt); menuCrewTick(dt);
   if (aurora.visible) auroraTick();
   if (menuSnow.visible) snowTick(dt);
   const J = james;
@@ -17783,6 +17783,37 @@ function menuNicoTick(dt) {
   else { R.mode = 'idle'; R.root.rotation.y = angLerp(R.root.rotation.y, a, Math.min(1, dt * 3)); }
   R.root.position.y = height(R.root.position.x, R.root.position.z);
   animRig(R, dt);
+}
+// Khazglar and Nyrexia join you on the main menu once they've joined you: Khazglar beyond Orion on your left, Nyrexia beyond
+// James and Nico on your right. [to your right (negative: left), behind you]
+const MENU_CREW = [
+  { id: 'khazglar', joined: () => !!(wanderer && wanderer.ch3 && wanderer.ch3.khzMet), side: () => orionJoined() ? [-3.4, 1.2] : [-1.7, .4], R: null, load: null },
+  { id: 'nyrexia', joined: () => !!(wanderer && wanderer.ch3 && wanderer.ch3.nyxJoined), side: () => { const n = (companionOn() ? 1 : 0) + (nicoJoined() ? 1 : 0); return [1.7 + n * 1.6, .4 + n * .7]; }, R: null, load: null }
+];
+function menuCrewShow() {
+  for (const M of MENU_CREW) {
+    const want = state === 'title' && M.joined() && !isCh4Menu();
+    if (!want) { if (M.R) M.R.root.visible = false; continue; }
+    if (!M.load) M.load = companionRig(M.id).then(R => { R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); M.R = R; return R; }).catch(() => null);
+    M.load.then(R => {
+      if (!R || state !== 'title' || !M.joined() || isCh4Menu()) return;
+      const p = player.position, a = player.rotation.y, fx = Math.sin(a), fz = Math.cos(a), [sd, b] = M.side(), x = p.x + fz * sd - fx * b, z = p.z - fx * sd - fz * b;
+      scene.add(R.root); R.root.visible = true; R.root.position.set(x, height(x, z), z); R.root.rotation.y = a; R.mode = 'idle';
+    });
+  }
+}
+function menuCrewTick(dt) {
+  for (const M of MENU_CREW) {
+    const R = M.R; if (!R || !R.root.visible || R.root.parent !== scene) continue;
+    if (state !== 'title') { R.root.visible = false; continue; }
+    const p = player.position, a = player.rotation.y, fx = Math.sin(a), fz = Math.cos(a), [sd, b] = M.side();
+    const tx = p.x + fz * sd - fx * b, tz = p.z - fx * sd - fz * b, dx = tx - R.root.position.x, dz = tz - R.root.position.z, d = Math.hypot(dx, dz);
+    if (R.menuWalk ? d < .3 : d > .95) R.menuWalk = !R.menuWalk; // the same steady walk as Orion's and Nico's
+    if (R.menuWalk) { const sp = clamp(d * 1.8, 1.1, 2.8); R.root.position.x += dx / d * Math.min(d, sp * dt); R.root.position.z += dz / d * Math.min(d, sp * dt); R.mode = 'walk'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 6)); }
+    else { R.mode = 'idle'; R.root.rotation.y = angLerp(R.root.rotation.y, a, Math.min(1, dt * 3)); }
+    R.root.position.y = height(R.root.position.x, R.root.position.z);
+    animRig(R, dt);
+  }
 }
 function talkOrion() {
   sfx.loadClips('orionWake').then(clips => {
