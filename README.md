@@ -1050,28 +1050,25 @@ After the nightmare in space (whichever of the four you had), the next stop is M
 - **All three of you, or not at all:**
   - A curtain of fire blocks the way into the caldera, and it only parts when **Orion and Nico are both with you**. If either is dismissed to the Nostra, call them back.
   - In the fight, his hammer's **ward** turns aside three quarters of every blow unless Orion and Nico are both close by and fighting.
-- **The meeting is his alone, and it's brutal:**
+- **The meeting is his alone, and he tests you:**
   - He leaps down off his throne and lands in front of you.
-  - Twelve lines, with only him speaking: he mocks all three of you for running.
-    - You crawled off the ice, fled New London with Hawthorne's dogs at your heels, and ran from Earth "like rats off a burning ship".
+  - Twelve lines, with only him speaking: he heard every step of your climb, sizes up all three of you, and says the voice from the core wants whoever is still standing at the end.
     - A line for your species.
-    - Orion's thirty years of running from his son.
-    - Nico sleeping through a century.
-    - "Eight floors… You think climbing them makes you brave? Rats climb."
-  - Each line lands with something: thuds, red flashes, the arena lights flaring, a quake, his hammer raised. It ends on **"STAND. AND. FIGHT."** with a hammer slam that whites out the screen.
+    - Orion carries his past "like a stone in your pocket", and Nico's luck "does not climb mountains".
+  - Each line lands with something: thuds, red flashes, the arena lights flaring, a quake, his hammer raised. It ends on **"COME. AND. FACE ME."** with a hammer slam that whites out the screen.
 - **The fight** (9,000 health, about a minute and a half with Orion and Nico pulling their weight):
   - **Hammer slam** in front of him (red ring, 46 damage)
   - **Quake**: hammer high, then a shockwave across 11 m. Jump it, dodge it, or be well clear (34 damage).
   - **Leap** onto whoever he's after, which isn't always you (58 damage)
   - **Hammer throw**: it flies end over end along a line of rings straight at you, then comes back (38 damage).
   - He switches targets every few seconds, between you, Nico and Orion. Blows that land on them make them stagger and say so.
-  - **Phase 2 (60%):** *"Hounds! To me!"* Three rust hounds join, and he speeds up.
-  - **Phase 3 (30%):** *"LOOK UP."* Two dust stalkers join, rock falls out of the dark on all three of you (red circles: get out), and he gets faster still.
+  - **Phase 2 (60%):** *"Hounds of Olympus! Wake, and hunt!"* Three rust hounds join, and he speeds up.
+  - **Phase 3 (30%):** *"Feel that? The mountain is angry. Look to the sky."* Two dust stalkers join, rock falls out of the dark on all three of you (red circles: get out), and he gets faster still.
   - The boss bar shows his level, the phase, and what to watch for.
-- **Wipe and retry:** fall and the fight starts again from the top, with his health full and you back at the arena's edge. He skips the speech the second time: *"Back again. Then stand still this time."*
+- **Wipe and retry:** fall and the fight starts again from the top, with his health full and you back at the arena's edge. He skips the speech the second time: *"Up again? Good. The mountain is not finished with you."*
 - **Beaten:**
-  - He kneels: *"…Enough. Enough. You didn't run. Not one of you."*
-  - Five lines, all his. He was wrong about you, the thing in the core only cares whether you stand, and "someone has to teach you how".
+  - He kneels: *"…Hold. Hold. That is enough."*
+  - Five lines, all his. Not one of you broke, he's waited a long time for someone worth the climb, and whatever calls from the core will need more than luck. Then: "So I will come down from my mountain. Lead on. I will follow."
   - Then he **joins your crew** (+1,200 XP for the fight and +200 for joining, both at 1.9 ×).
   - He fights with his **legendary hammer**: an obsidian head bound in brass, runes burning in it.
   - The way back down is at the foot of the throne. His Nostrapedia file opens, and his old side quest is retired.
@@ -1079,11 +1076,9 @@ After the nightmare in space (whichever of the four you had), the next stop is M
 
 ### Saves and voices
 - **Saves:** flags `ch3.khzCall`, `ch3.dgnMax` (the highest floor whose warden has fallen) and `ch3.khzMet`. A save made inside the mountain loads back onto the same floor, where you stood. A boss fight saved partway through starts that fight again.
-- **Voices:** the scenes are text for now, and every line has an id. Drop in a `data/khazVoices.js` pack with these, in this order, and they play:
-  - `CH3KHAZT1–13`: the monologue, then the retry line. T3 is the human line.
-  - `CH3KHAZB1–2`: the phase barks.
-  - `CH3KHAZW1–5`: beaten.
-  - `CH3KHAZT3CH`, `T3ER`, `T3GR`: the Chompy, Erisian and Grek lines.
+- **Voices:** every line is voiced: 23 clips, `CH3KHAZ01`–`CH3KHAZ23` in `assets/audio/khazglar_ch3`, packed in play order into `data/khazVoices.js`:
+  - `01–02`: the opening. `03–06`: the species line (human, Chompy, Erisian, Grek). `07–15`: the rest of the speech.
+  - `16`: the retry line. `17–18`: the phase barks. `19–23`: beaten.
 
 ### Fix: Mars's rust hounds
 - The hounds inside Olympus Mons were killing players in a few seconds. They now bite for half as much (4 at floor 1), bite less often, and run a little slower.
