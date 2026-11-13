@@ -486,6 +486,7 @@ body.touch .touch-ui{display:block}
 #fbSub .t span.new{filter:brightness(1.6)}
 #fbSub.james{color:#dfe9ff;--g1:rgba(80,170,255,.75);--g2:rgba(255,255,255,.35)}
 #fbSub.crox{color:#ff2b2b;--g1:rgba(255,0,0,.85);--g2:rgba(0,0,0,.9)}
+#fbSub.haw{color:#5fe8ff;--g1:rgba(0,220,255,.8);--g2:rgba(0,0,0,.9)}
 #fbSub.orion{color:#ffcf8a;--g1:rgba(255,150,40,.7);--g2:rgba(0,0,0,.8)}
 #fbSub.sev{color:#ffd27a;--g1:rgba(255,40,0,.85);--g2:rgba(0,0,0,.9)}
 #fbSub.eris{color:#e6ccff;--g1:rgba(170,80,255,.8);--g2:rgba(0,0,0,.85)}
@@ -9171,7 +9172,7 @@ function fbSubTick() {
     if (S.kind !== 'james') { fb.shake = Math.max(fb.shake, .05); }
   }
   // shake with the heartbeat; Croxian's words shudder hardest, and now and then one glitches
-  const k = (S.kind === 'crox' ? 1 : S.kind === 'orion' ? .8 : .45) * (1 + fb.beat * 1.5);
+  const k = (S.kind === 'crox' || S.kind === 'haw' ? 1 : S.kind === 'orion' ? .8 : .45) * (1 + fb.beat * 1.5);
   for (const sp of t.children) {
     sp.style.transform = `translate(${((Math.random() - .5) * 5 * k).toFixed(1)}px,${((Math.random() - .5) * 4 * k).toFixed(1)}px) rotate(${((Math.random() - .5) * 2.4 * k).toFixed(2)}deg) scale(${sp.classList.contains('new') ? (1.08 + Math.random() * .06 * k).toFixed(3) : 1})`;
     if (!sp.dataset.w) sp.dataset.w = sp.textContent;
@@ -10478,7 +10479,7 @@ function dgnLeave() { // back out onto the slope, by the door
     await dgnWarm();
     state = 'explore'; fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; }, 950);
     notice(LR ? LR.name : 'Olympus Mons', LR ? 'BACK ON THE SURFACE' : 'BACK ON THE SLOPE', 2400);
-    if (!LR && khzJoined() && (wanderer.chapter | 0) === 3 && !(wanderer.ch3 && wanderer.ch3.hawMars)) setTimeout(() => { if (state === 'explore' && !DGN.on) startHawMars().catch(e => { console.error(e); hwmEnd(); }); }, 2600); // meanwhile, on the plain below
+    if (!LR && khzJoined() && (wanderer.chapter | 0) === 3 && !(wanderer.ch3 && wanderer.ch3.hawMars)) { hwmPreload(); setTimeout(() => { if (state === 'explore' && !DGN.on) startHawMars().catch(e => { console.error(e); hwmEnd(); }); }, 1200); } // meanwhile, on the plain below
   }, 520);
 }
 function dgnNear(p) { // what you can use in here
@@ -12021,7 +12022,7 @@ async function hwmBuild() {
   const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(dp, 3));
   HWM.dust = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0xa0502a, size: .35, transparent: true, opacity: .55, depthWrite: false })); S.add(HWM.dust);
   // Hawthorne
-  const R = await hawthorneRig(); if (R) { R.root.position.set(-10, .6, -6); R.root.rotation.y = 0; R.root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); S.add(R.root); HWM.haw = R; }
+  const R = await (HWM.rigP || (HWM.rigP = hawthorneRig().catch(() => null))); HWM.rigP = null; if (R) { R.root.position.set(-10, .6, -6); R.root.rotation.y = 0; R.root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); S.add(R.root); HWM.haw = R; }
   hwmTroops().catch(e => console.error(e)); // his army loads while he talks
 }
 async function hwmTroops() { // ranks of Terra Imperia infantry: Federation armour gone black and crimson, eyes burning red
@@ -12037,40 +12038,51 @@ async function hwmTroops() { // ranks of Terra Imperia infantry: Federation armo
     if ((r * 9 + k) % 6 === 5) await new Promise(res => setTimeout(res, 0)); // don't stall a frame building them
   }
 }
+// his lines in the shaking, word-by-word subtitle of the nightmares, in cyan (the army's chant in crimson)
+function hwmSay(who, text, clip, army) {
+  fbSay(who, text, clip, 1.3); const kind = army ? 'crox' : 'haw';
+  if (fb.sub) { fb.sub.kind = kind; fbSubEl.className = 'on ' + kind; }
+  return clip ? clip.duration : text.split(/\s+/).length * .34;
+}
+const hwmSubTick = () => fbSubTick(), hwmSubHide = () => fbSubHide();
+function hwmPreload() { // his voice and his model, fetched and decoded before the screen goes dark
+  if (!HWM.voP) HWM.voP = loadDataScript('hawMarsVoices').then(() => sfx.loadClips('hawMarsVoices')).then(v => (HWM.vo = v || [])).catch(() => (HWM.vo = []));
+  if (!HWM.rigP) HWM.rigP = hawthorneRig().catch(() => null);
+  return Promise.all([HWM.voP, HWM.rigP]);
+}
 async function startHawMars() {
   if (HWM.on) return; HWM.on = true; HWM.phase = 'load'; HWM.t = 0; HWM.li = -1; HWM.lineEnd = 0; HWM.troops = [];
   state = 'hawMars'; ex.keys.clear(); vel.set(0, 0, 0); if (ex.dlg) closeDialog();
-  const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 1; sfx.thud(); sfx.drone(.5);
+  const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.thud(); sfx.drone(.5);
   if (!HWM.bars) { HWM.bars = document.createElement('div'); HWM.bars.id = 'hwmBars'; HWM.bars.innerHTML = '<i></i><i></i><b></b>'; document.body.appendChild(HWM.bars); const st = document.createElement('style'); st.textContent = '#hwmBars{position:fixed;inset:0;pointer-events:none;z-index:30;display:none}#hwmBars.on{display:block}#hwmBars i{position:absolute;left:0;right:0;height:11vh;background:#000}#hwmBars i:first-child{top:0}#hwmBars i:nth-child(2){bottom:0}#hwmBars b{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(20,0,0,.85) 100%);mix-blend-mode:multiply}'; document.head.appendChild(st); }
-  try { await Promise.all([hwmBuild(), loadDataScript('hawMarsVoices').then(() => sfx.loadClips('hawMarsVoices')).then(v => { HWM.vo = v || []; }).catch(() => { HWM.vo = []; })]); } catch (e) { console.error(e); hwmEnd(); return; } // his voice: CH3HAWTHORNEMARS1–10
+  try { await Promise.all([hwmBuild(), hwmPreload()]); } catch (e) { console.error(e); hwmEnd(); return; } // his voice: CH3HAWTHORNEMARS1–10
   HWM.saveCam = { near: camera.near, far: camera.far, fov: camera.fov }; camera.near = .1; camera.far = 2400; camera.fov = 42; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
   renderer.domElement.style.filter = 'contrast(1.18) saturate(.82) brightness(.92)';
   HWM.bars.classList.add('on'); show(ui.xhud, true); ui.xhud.classList.add('cutting');
-  HWM.phase = 'speech'; HWM.t = 0; HWM.li = -1; HWM.lineEnd = 3.2; HWM.shot = [[150, 30, 180], [90, 14, 120], [0, 24, -60]];
-  fd.style.transition = 'opacity 2.4s'; fd.style.opacity = 0;
-  setTimeout(() => notice('Mars · the plain below Olympus Mons', 'MEANWHILE', 3200), 900);
+  HWM.phase = 'speech'; HWM.t = 0; HWM.li = -1; HWM.lineEnd = 2; HWM.shot = [[150, 30, 180], [90, 14, 120], [0, 24, -60]];
+  fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 0;
+  setTimeout(() => notice('Mars · the plain below Olympus Mons', 'MEANWHILE', 2400), 300);
 }
 function hwmTick(dt) {
   if (HWM.phase === 'load' || !HWM.scene) return;
   dt = Math.min(dt, .05); HWM.t += dt; const t = HWM.t;
-  fbSubTick(); HWM.flashA = Math.max(0, (HWM.flashA || 0) - dt * 1.8); fbFlash(HWM.flashA, HWM.flashC || '#ff2a1a');
+  hwmSubTick(); HWM.flashA = Math.max(0, (HWM.flashA || 0) - dt * 1.8); fbFlash(HWM.flashA, HWM.flashC || '#ff2a1a');
   if (HWM.phase === 'speech' && t >= HWM.lineEnd) {
     HWM.li++;
     if (HWM.li < HWM_LINES.length) {
-      const text = HWM_LINES[HWM.li], clip = (HWM.vo || [])[HWM.li] || null; HWM.shot = HWM_SHOTS[HWM.li]; HWM.shotT = t; fbSay('THOMAS HAWTHORNE', text, clip, 1.3); if (fbSubEl) fbSubEl.className = 'on crox';
-      const dur = clip ? clip.duration : text.split(/\s+/).length * .34; HWM.lineEnd = t + dur + 1.1; HWM.shotDur = dur + 1.1;
+      const text = HWM_LINES[HWM.li], clip = (HWM.vo || [])[HWM.li] || null; HWM.shot = HWM_SHOTS[HWM.li]; HWM.shotT = t; const dur = hwmSay('THOMAS HAWTHORNE', text, clip); HWM.lineEnd = t + dur + .35; HWM.shotDur = dur + .35;
       if (HWM.li === 3 || HWM.li === 6) { HWM.flashA = .6; HWM.flashC = '#ff2a1a'; sfx.thud(); HWM.shake = .5; }
       if (HWM.li === 9) HWM.raise = true;
     } else { // SOL IS MINE: the flash, and then his army
-      HWM.phase = 'army'; HWM.t = 0; HWM.flashA = 1; HWM.flashC = '#ffffff'; sfx.boom && sfx.boom(); sfx.thud(); HWM.shake = 1.2; fbSubHide();
-      HWM.shot = [[46, 14, 64], [16, 8, 40], [-10, 3, 6]]; HWM.shotT = 0; HWM.shotDur = 12;
+      HWM.phase = 'army'; HWM.t = 0; HWM.flashA = 1; HWM.flashC = '#ffffff'; sfx.boom && sfx.boom(); sfx.thud(); HWM.shake = 1.2; hwmSubHide();
+      HWM.shot = [[46, 14, 64], [16, 8, 40], [-10, 3, 6]]; HWM.shotT = 0; HWM.shotDur = 7;
     }
   }
   if (HWM.phase === 'army') {
-    for (const T of HWM.troops) if (!T.shown && t > .8 + T.r * .75 + T.k * .06) { T.shown = true; T.R.root.visible = true; const p = T.R.root.position; burst(p.x, 1, p.z, 14, 2, .5, .3, 1, .6, .9, 1.2); if (T.k === 4) { HWM.flashA = Math.max(HWM.flashA, .35); HWM.flashC = '#a070ff'; sfx.thud(); } }
-    if (t > 6.2 && !HWM.hail) { HWM.hail = true; fbSay('TERRA IMPERIA', 'HAIL THE GRAND IMPERARCH! HAIL TERRA IMPERIA!', null); if (fbSubEl) fbSubEl.className = 'on crox'; HWM.shake = .6; sfx.thud(); }
-    if (t > 7) for (const T of HWM.troops) T.salute = true;
-    if (t > 11.5 && !HWM.ending) { HWM.ending = true; notice('Terra Imperia', 'THE GRAND IMPERARCH HAS COME TO MARS', 3600); const fd = $('#fade'); fd.style.transition = 'opacity 2.2s'; fd.style.opacity = 1; setTimeout(hwmEnd, 2400); }
+    for (const T of HWM.troops) if (!T.shown && t > .35 + T.r * .38 + T.k * .03) { T.shown = true; T.R.root.visible = true; const p = T.R.root.position; burst(p.x, 1, p.z, 14, 2, .5, .3, 1, .6, .9, 1.2); if (T.k === 4) { HWM.flashA = Math.max(HWM.flashA, .35); HWM.flashC = '#a070ff'; sfx.thud(); } }
+    if (t > 3 && !HWM.hail) { HWM.hail = true; hwmSay('TERRA IMPERIA', 'HAIL THE GRAND IMPERARCH! HAIL TERRA IMPERIA!', null, true); HWM.shake = .6; sfx.thud(); }
+    if (t > 3.4) for (const T of HWM.troops) T.salute = true;
+    if (t > 6.2 && !HWM.ending) { HWM.ending = true; notice('Terra Imperia', 'THE GRAND IMPERARCH HAS COME TO MARS', 3000); const fd = $('#fade'); fd.style.transition = 'opacity 1.2s'; fd.style.opacity = 1; setTimeout(hwmEnd, 1300); }
   }
   // Hawthorne
   const R = HWM.haw; if (R) { R.mode = 'idle'; animRig(R, dt); if (HWM.raise) { R.ra.rotation.x = -2.7; R.ra.rotation.z = .1; } else if (HWM.phase === 'speech' && HWM.li >= 0) { R.ra.rotation.x = -.35 + Math.sin(t * 1.7) * .25; } }
@@ -12089,14 +12101,14 @@ function hwmTick(dt) {
   renderer.render(HWM.scene, camera);
 }
 function hwmEnd() {
-  if (!HWM.on) return; HWM.on = false; HWM.phase = null; fbSubHide(); fbFlash(0); sfx.drone(0); try { sfx.stopNarr(); } catch (e) {} // cut him off if you skip
+  if (!HWM.on) return; HWM.on = false; HWM.phase = null; hwmSubHide(); fbFlash(0); sfx.drone(0); try { sfx.stopNarr(); } catch (e) {} // cut him off if you skip
   if (HWM.saveCam) { camera.near = HWM.saveCam.near; camera.far = HWM.saveCam.far; camera.fov = HWM.saveCam.fov; camera.updateProjectionMatrix(); }
   renderer.domElement.style.filter = ''; if (HWM.bars) HWM.bars.classList.remove('on'); ui.xhud.classList.remove('cutting');
   if (HWM.scene) { if (HWM.haw) HWM.scene.remove(HWM.haw.root); for (const T of HWM.troops) HWM.scene.remove(T.R.root); try { disposeOwned(HWM.scene); } catch (e) {} } // the people share their models with the rest of the game: only the set is thrown away
   HWM.scene = null; HWM.haw = null; HWM.ship = null; HWM.troops = []; HWM.dust = null; HWM.hail = false; HWM.ending = false; HWM.raise = false;
   wanderer.ch3 = Object.assign({}, wanderer.ch3, { hawMars: true }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster();
   state = 'explore'; ex.snap = true; clock.getDelta();
-  const fd = $('#fade'); fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 0;
+  const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0;
   setTimeout(() => { lootMsg('Hawthorne’s capital ship is on Mars · Terra Imperia is coming for every xeno in Sol', '#d0343a'); if (partyNow().includes('khazglar')) setTimeout(() => lootMsg('Khazglar · “I felt that ship land. Whatever he wants on my world, he will not have it.”', compColor('khazglar')), 2600); }, 1200);
 }
 // where he comes from: out of St Stephen's entrance if you're close to the Palace, otherwise up the street towards you
@@ -15905,7 +15917,8 @@ async function companionRig(id) { // the rig any companion walks and fights with
   const L = COMPANIONS.find(o => o.id === id && o.tag);
   if (L) { const el = document.getElementById(L.tag); if (!el) throw new Error('no model for ' + id); const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     const sc = await parseGlb(u8.buffer); if (L.mod === 'kizna') feminiseRobot(sc); const R = autoRig(SkeletonUtils.clone(sc), L.h || 1.9); armRig(R, L.weapon || 'none');
-    if (id === 'khazglar') { const sock = R.rh ? boneSocket(R.rh) : R.ra ? handSocket(R.ra) : null; if (sock) { const H = makeKhzHammer(); sock.add(H); R.gear.push(H); } R.weapon = 'sword'; } // his legendary hammer
+    if (id === 'khazglar') { const own = []; R.model.traverse(o => { if (/^weapon$/i.test(o.name || '')) own.push(o); }); for (const o of own) if (o.parent) o.parent.remove(o); // the model carries a hammer of its own: one hammer, not two
+      const sock = R.rh ? boneSocket(R.rh) : R.ra ? handSocket(R.ra) : null; if (sock) { const H = makeKhzHammer(); sock.add(H); R.gear.push(H); } R.weapon = 'sword'; } // his legendary hammer
     return R; }
   return loadCharRig(charById(id), 1.85);
 }
