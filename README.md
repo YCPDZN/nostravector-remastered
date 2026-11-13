@@ -1358,8 +1358,8 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 | Leader | Level | Health | Where | Theme |
 |---|---|---|---|---|
 | Emperor Hak Chompjak V | 95 | 26,200 | Aridaxx | *The Descendant of Shakhak* |
-| Archamus (Order of Archamus, Chapter III) | 100 | 30,000 | Archiostal | hooded at first; at phase two **he unmasks** (his unhooded model) and *The Light Egg* begins |
-| Am-Grek (Grek Empire) | 85 | 17,000 | Carax in Chapter III (alone); Archiostal in IV–V | (*The Prime Good*, once it's added) |
+| Archamus (Order of Archamus, Chapter III) | 100 | 30,000 | Archiostal | *The Prime Good* while hooded; at phase two **he unmasks** (his unhooded model) and *The Light Egg* begins |
+| Am-Grek (Grek Empire) | 85 | 17,000 | Carax in Chapter III (alone); Archiostal in IV–V | *The Prime Good* |
 | Archamus, unmasked (Grek co-leader, IV–V) | 100 | 30,000 | Archiostal, straight after Am-Grek falls | *The Light Egg* |
 | Vishara Erisconos | 80 | 14,800 | Eris | *The Child of Eris* |
 | Alexia Erisconos (Chapter III, once she's taken the throne) | 80 | 14,800 | Eris | combat music |
@@ -1371,6 +1371,6 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - Hak is far tougher than Draven (level 90, 14,000 health). Each leader has their own moves, words for the start, phase two, phase three and their defeat, and their own model (Taredesiba VI is a Taredesiban), a little larger than life. Leaders **yield**, they don't die.
 - **Resident empire rulers:** each resident empire's card in Diplomacy has **Challenge <ruler> (lv …)**. Use it on any world's surface: you face the ruler (at their level, as their species or a Taredesiban) to *The Wrong Enemy*. Win and their empire falls: its worlds are unclaimed again.
 - **Your own companions in an enemy fleet:** when a companion you lent to a faction you're at war with comes at you in space, *The Wrong Enemy* plays until they're shot down.
-- **Not yet:** *The Prime Good* (Archamus hooded, and Am-Grek) isn't in the game; they fight to the usual combat music until it's added. The **Final Boss theme** (`data/thFinal.js`) is stored for Lord Zark's Chapter IV story battle (level 60, on Carax), which isn't built yet. Hawthorne (Terra Imperia) has no hall.
-- Files: themes in `data/thHak.js`, `thEris.js`, `thDarius.js`, `thLightEgg.js`, `thWrong.js`, `thPrimeEvil.js`, `thFinal.js` (originals in `assets/audio/leaders_themes`); Archamus unhooded in `data/prArchamusU.js` (`assets/models/primes/archamus_unhooded.glb`). They load only when needed.
+- **Not yet:** the **Final Boss theme** (`data/thFinal.js`) is stored for Lord Zark's Chapter IV story battle (level 60, on Carax), which isn't built yet. Hawthorne (Terra Imperia) has no hall.
+- Files: themes in `data/thHak.js`, `thPrimeGood.js`, `thEris.js`, `thDarius.js`, `thLightEgg.js`, `thWrong.js`, `thPrimeEvil.js`, `thFinal.js` (originals in `assets/audio/leaders_themes`); Archamus unhooded in `data/prArchamusU.js` (`assets/models/primes/archamus_unhooded.glb`). They load only when needed.
 
