@@ -761,7 +761,12 @@ button.bm-c.no{opacity:.45}
 .sh-keys{position:absolute;right:calc(var(--sr) + 22px);bottom:calc(var(--sb) + 22px);font-size:8px;letter-spacing:.24em;color:var(--mute);text-transform:uppercase}
 .sh-menu{position:absolute;top:calc(var(--st) + 14px);right:calc(var(--sr) + 16px);width:46px;height:40px;pointer-events:auto;background:rgba(7,10,17,.5);border:1px solid var(--line);color:var(--ink);font-size:16px;cursor:pointer}
 .sh-land{display:none;position:absolute;left:50%;bottom:calc(var(--sb) + 22px);transform:translateX(-50%);pointer-events:auto;padding:12px 22px;min-width:150px;border-radius:12px;border:1px solid var(--ice);background:rgba(7,10,17,.55);color:var(--ink);font-family:var(--display);font-size:10px;letter-spacing:.22em;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-.space-hud.atmo .sh-land.on{display:block}.space-hud.atmo .sh-map,.space-hud.atmo .sh-decks,.space-hud.atmo .sh-cells,.space-hud.atmo .sh-btns button[data-b="fire"],.space-hud.atmo .sh-def{display:none}
+.space-hud.atmo .sh-land.on{display:block}
+.sh-bomb{border-color:#ff4a4a;background:rgba(48,6,10,.72);color:#ffd0c8;min-width:min(78vw,260px);min-height:54px;padding:12px 22px;bottom:calc(var(--sb) + 150px);display:none;flex-direction:column;align-items:center;justify-content:center;gap:3px;box-shadow:0 0 18px rgba(255,60,60,.35)}
+.sh-bomb.on{display:flex}.sh-bomb b{font-size:13px;letter-spacing:.26em;font-weight:500}.sh-bomb small{font-size:8.5px;letter-spacing:.18em;color:#ff9f96;opacity:.9}
+.sh-bomb:active{background:rgba(110,12,18,.85)}
+@media (pointer:coarse){ .sh-land.sh-bomb{bottom:calc(var(--sb) + 310px);min-height:58px} } /* above the FIRE/THRUST/PULSE/BRAKE stack */
+@media (pointer:coarse) and (orientation:landscape) and (max-height:520px){ .sh-land.sh-bomb{bottom:calc(var(--sb) + 96px);min-width:220px;min-height:50px} } /* above the row of buttons */.space-hud.atmo .sh-map,.space-hud.atmo .sh-decks,.space-hud.atmo .sh-cells,.space-hud.atmo .sh-btns button[data-b="fire"],.space-hud.atmo .sh-def{display:none}
 .sh-mk.ally i{border-color:#4aff7a;background:rgba(74,255,122,.22)}.sh-mk.ally span{color:#a8ffbe}.sh-mk.enemy i{border-color:#ff3a3a;background:rgba(255,58,58,.22)}.sh-mk.enemy span{color:#ffa8a8}.sh-foe.ally i{border-color:#4aff7a}.sh-foe.ally span{color:#a8ffbe}.sh-foe.tiP i{border-color:#ff3a3a}.sh-foe.tiP span{color:#ffa8a8}
 .sh-mk.nf i{border-color:#ff6a5a}.sh-mk.nf span{color:#ffb3a8}
 .sh-mk.gold i{border-color:#ffc94a;background:rgba(255,201,74,.25)}.sh-mk.gold span{color:#ffe2a0}.sh-mk.nyx i{border-color:#b893ff;background:rgba(184,147,255,.25)}.sh-mk.nyx span{color:#dccbff}
@@ -12539,7 +12544,7 @@ function tiLanded(P) {
   if (CH3S().charonMet && !CH3S().jamesRev && ch3Now()) jrvWhenFree(3200); // you left before it played: it finds you on the next world
   if (P.sys === 'sol' && !P.dock) tiEncounters(P);
   if (ch3Now() && CH3S().hawMars && !dip().tiWar && !dipRes('ti')) setTimeout(tiWarStart, 3000); // a save from before the war
-  if (P.sys === 'sol' && tiWarOn() && ((dip().wars.ti.bombed || []).includes(P.id)) && !dip().col[P.id]) govPlace(P);
+  if (warBombed(P)) govPlace(P, warFacOf(P));
 }
 function tiTick(dt) {
   if (!TIW.area) return;
@@ -12550,9 +12555,9 @@ function tiTick(dt) {
     if (o.beacon) o.beacon.material.opacity = .5 + Math.sin(time * 3) * .2; }
 }
 // Terra Imperia soldiers on the ground are hostile: they close in, open fire, and can be shot or cut down like anything else
-function tiArm(R, lead) {
+function tiArm(R, lead, who) {
   const lv = Math.max(8, plvNow()), hp = Math.round(80 + lv * 6), q = R.root.position;
-  const D = { name: `Terra Imperia soldier · lv ${lv}`, hp, r: .7, xp: Math.round(60 + lv * 4), dmg: 0, beast: 'pred', loot: () => [['scrap', 1], Math.random() < .3 && ['medkit', 1]] };
+  const D = { name: `${who || 'Terra Imperia soldier'} · lv ${lv}`, hp, r: .7, xp: Math.round(60 + lv * 4), dmg: 0, beast: 'pred', loot: () => [['scrap', 1], Math.random() < .3 && ['medkit', 1]] };
   const c = { type: 'tisoldier', D, lv, mesh: R.root, x: q.x, z: q.z, y: q.y, rot: R.root.rotation.y, hp, state: 'idle', t: 0, cd: 1 + Math.random(), home: [q.x, q.z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, ext: true, bar: hpBar() };
   c.bar.position.y = 2.25; c.bar.visible = false; R.root.add(c.bar); R.cb = c; R.lead = !!lead; fauna.list.push(c); return c;
 }
@@ -12743,7 +12748,15 @@ function tiBossWin(B) {
    Saved in dip().tiWar { chompy: 'ally' | 'refused' | null, ask } and dip().wars.ti { theirs, bombed: [] }. ---- */
 const TI_WORLDS = ['mercury', 'venus'];
 function tiWarOn() { if (!wanderer || (wanderer.chapter | 0) !== 3) return false; const W = dip().wars.ti; return !!(W && W.theirs && !W.won); }
-const tiBanned = P => !!P && P.sys === 'sol' && TI_WORLDS.includes(P.id) && tiWarOn() && !dip().col[P.id] && !(dip().wars.ti.bombed || []).includes(P.id);
+function warFacOf(P) { // the story faction you're at war with that holds this world (if it's still theirs to take)
+  if (!P || !P.land || P.dock || !wanderer || (wanderer.chapter | 0) < 3) return null; const D = dip();
+  if (D.col[P.id] || resHeldBy(P.id)) return null; const F = dipFacOf(P.baseFac || P.faction || ''), W = F && D.wars[F.id];
+  if (!W || W.won || W.cb === 'crush' || (W.held || []).includes(P.id)) return null;
+  if (F.id === 'ti' && W.theirs && !TI_WORLDS.includes(P.id)) return null;
+  return F;
+}
+const warBombed = P => { const F = warFacOf(P); return !!F && (dip().wars[F.id].bombed || []).includes(P.id); };
+const tiBanned = P => !!warFacOf(P) && !warBombed(P); // closed to you until bombarded
 const chompyAlly = () => !!(wanderer && dip().tiWar && dip().tiWar.chompy === 'ally');
 function tiWarStart() {
   if (!wanderer || (wanderer.chapter | 0) !== 3 || dipRes('ti')) return; const D = dip(); if (D.tiWar) return;
@@ -12773,7 +12786,7 @@ function chompyAsk() {
 // bombarding a Terra Imperia world from orbit: stay close for 25 s while their defenders come up to stop you
 function tiBombStart(P) {
   if (SPC.bomb) return; SPC.bomb = { P, t: 0, dur: 25, fx: [], next: 0, msg: 0 };
-  spaceMsg(`Bombardment of ${P.name} begins · stay in orbit`); sfx.alarm(); try { scSpawn(); } catch (e) { console.error(e); }
+  spaceMsg(`Bombardment of ${P.name} begins · stay in orbit`); sfx.alarm(); try { if (curSys().id === 'sol' || !SC.foes.length) scSpawn(); } catch (e) { console.error(e); }
 }
 function tiBombTick(dt, alt) {
   const B = SPC.bomb; if (!B) return; const P = B.P, Q = SPC.bodies.find(o => o.id === P.id) || P;
@@ -12786,28 +12799,41 @@ function tiBombTick(dt, alt) {
     const sp = glowSprite(Math.random() < .5 ? 0xffa040 : 0xff4020, Q.r * (.04 + Math.random() * .05), 1); sp.position.copy(Q.pos).addScaledVector(d, Q.r * 1.01); SPC.scene.add(sp); B.fx.push({ s: sp, t: 0 });
     if (Math.random() < .25) sfx.thud(); }
   if (B.t - B.msg > 5) { B.msg = B.t; spaceMsg(`Bombarding ${P.name} · ${Math.min(100, Math.round(B.t / B.dur * 100))}%`); }
-  if (B.t >= B.dur) { B.done = true; const W = dip().wars.ti; W.bombed = [...new Set([...(W.bombed || []), P.id])]; dipSave(); sfx.chime();
+  if (B.t >= B.dur) { B.done = true; const F = warFacOf(P), W = F && dip().wars[F.id]; if (!W) return; W.bombed = [...new Set([...(W.bombed || []), P.id])]; dipSave(); sfx.chime();
     spaceMsg(`${P.name}'s defences are down · land and defeat the governor to take it`); notice(P.name, 'DEFENCES DOWN · LAND AND DEFEAT THE GOVERNOR', 4200); }
 }
-function tiBombBtn(show) {
-  let b = $('#shBomb');
-  if (!show) { if (b) b.style.display = 'none'; return; }
-  if (!b) { b = document.createElement('button'); b.id = 'shBomb'; b.className = 'btn small'; b.textContent = 'BOMBARD (B)'; b.style.cssText = 'position:fixed;left:50%;bottom:22vh;transform:translateX(-50%);z-index:30;border-color:#ff4a4a;color:#ffb3a8;background:rgba(40,6,8,.75);padding:10px 18px;letter-spacing:.2em';
-    b.addEventListener('click', e => { e.stopPropagation(); SPC.bombReq = true; }); document.body.appendChild(b); }
-  b.style.display = '';
+function tiBombBtn(show, P) {
+  const b = $('#shBomb'); if (!b) return; b.classList.toggle('on', !!show); if (!show) return;
+  const t = document.body.classList.contains('touch') ? `TAP · ${P ? P.name.toUpperCase() : ''}` : `PRESS B · ${P ? P.name.toUpperCase() : ''}`;
+  const sm = b.querySelector('small'); if (sm.textContent !== t) sm.textContent = t;
 }
 // the governor, waiting by your ship on a bombarded world, with his guard
 const GOV_NAMES = { mercury: 'Aurelian Voss', venus: 'Septimus Crane' };
-function govPlace(P) {
-  const area = curArea(), [x, z] = tiSpot(14, 20), g = new THREE.Group(); wScene.add(g);
-  const G = TIW.gov = { g, R: [], x, z, P, name: GOV_NAMES[P.id] || pick(TI_NAMES), face: true, beacon: tiBeacon(g, x, z, 0xff2a2a, 9) };
-  Promise.all([tiSoldierRig('m'), tiSoldierRig(), tiSoldierRig()]).then(Rs => { if (curArea() !== area || TIW.gov !== G) return; Rs.forEach((R, i) => { if (!R) return; const a = i * 2.1, px = i ? x + Math.cos(a) * 2.4 : x, pz = i ? z + Math.sin(a) * 2.4 : z; if (!i) R.root.scale.multiplyScalar(1.12); R.root.position.set(px, wHeight(px, pz), pz); g.add(R.root); G.R.push(R); if (i) tiArm(R); }); }).catch(() => null);
-  setTimeout(() => { if (TIW.gov === G) { notice(`${P.name} · Terra Imperia base`, `GOVERNOR ${G.name.toUpperCase()} AWAITS`, 3600); lootMsg(`Defeat Governor ${G.name} (crimson beacon) and ${P.name} is yours`, '#ff6a6e'); } }, 3000);
+const FAC_SP = { ti: 'hfos', hfos: 'hfos', chompy: 'chompy', timpur: 'taredesiban', grek: 'grek', order: 'grek', erisian: 'erisian', catharsis: 'human' };
+const GOV_FIRST = { chompy: ['Kraxa', 'Hiss-Tamar', 'Vorro', 'Chazzik', 'Ombrel'], timpur: ['Senator Ivaro', 'Senator Quellith', 'Senator Darsa'], grek: ['Hierarch Ur-Kel', 'Hierarch Om-Vash', 'Hierarch Ka-Dren'], order: ['Brother Om-Tesh', 'Sister Ur-Ven'], erisian: ['Lady Seraveth', 'Lord Aldrecai', 'Lady Ysmira'], hfos: ['Marshal Okafor', 'Marshal Brandt', 'Marshal Reyes'], catharsis: ['Herald Vyx', 'Herald Ossen'] };
+async function govRig(F, lead) {
+  if (!F || F.id === 'ti') return tiSoldierRig(lead ? 'm' : undefined);
+  const sp = FAC_SP[F.id] || 'human', src = await townModel(sp); if (!src) return null;
+  const m = dressTownsfolk(src, { sp }), R = autoRig(m, lead ? 2.0 : 1.85); armRig(R, 'rifle');
+  const col = new THREE.Color(F.col); R.root.traverse(o => { if (!o.isMesh || !o.material) return; for (const q of Array.isArray(o.material) ? o.material : [o.material]) if (q.emissive) { q.emissive.copy(col); q.emissiveIntensity = .12; } o.castShadow = !tiPhone(); });
+  return R;
 }
-function govSpec(G) { const cap = G.P.id === 'venus', lv = Math.max(12, plvNow() + (cap ? 4 : 2)); return { key: 'ti:soldier', boss: G.name.split(' ')[0], full: `Governor ${G.name} of ${G.P.name}, Terra Imperia`, hall: `The governor’s base · ${G.P.name}`, lv, hp: Math.round((cap ? 4600 : 3800) + lv * 150), theme: null, load: () => tiSoldierRig('m'),
+const govNameFor = (P, F) => GOV_NAMES[P.id] && (!F || F.id === 'ti') ? GOV_NAMES[P.id] : F && GOV_FIRST[F.id] ? GOV_FIRST[F.id][resHash(P.id) * GOV_FIRST[F.id].length | 0] : pick(TI_NAMES);
+function govPlace(P, F) {
+  const area = curArea(), [x, z] = tiSpot(14, 20), g = new THREE.Group(); wScene.add(g);
+  const G = TIW.gov = { g, R: [], x, z, P, F, name: govNameFor(P, F), face: true, beacon: tiBeacon(g, x, z, F ? new THREE.Color(F.col).getHex() : 0xff2a2a, 9) };
+  Promise.all([govRig(F, true), govRig(F), govRig(F)]).then(Rs => { if (curArea() !== area || TIW.gov !== G) return; Rs.forEach((R, i) => { if (!R) return; const a = i * 2.1, px = i ? x + Math.cos(a) * 2.4 : x, pz = i ? z + Math.sin(a) * 2.4 : z; if (!i) R.root.scale.multiplyScalar(1.12); R.root.position.set(px, wHeight(px, pz), pz); g.add(R.root); G.R.push(R); if (i) tiArm(R, false, F && F.id !== 'ti' ? `${F.species} guard` : null); }); }).catch(() => null);
+  setTimeout(() => { if (TIW.gov === G) { notice(`${P.name} · ${F ? dipFacName(F) : 'Terra Imperia'} base`, `GOVERNOR ${G.name.toUpperCase()} AWAITS`, 3600); lootMsg(`Defeat Governor ${G.name} (the beacon) and ${P.name} is ${F && F.id === 'ti' && dip().wars.ti.theirs ? 'yours' : 'occupied'}`, '#ff6a6e'); } }, 3000);
+}
+function govSpec(G) { const F = G.F || DIP_FAC.find(o => o.id === 'ti'), cap = G.P.id === (F.id === 'ti' ? 'venus' : F.capital), lv = Math.max(12, plvNow() + (cap ? 4 : 2)); return { key: 'ti:soldier', boss: G.name.split(' ')[0], full: `Governor ${G.name} of ${G.P.name}, ${dipFacName(F)}`, hall: `The governor’s base · ${G.P.name}`, lv, hp: Math.round((cap ? 4600 : 3800) + lv * 150), theme: null, load: () => govRig(F, true),
   core: ['charge', 'volley', 'slam', 'blink'], p2: ['rain', 'sweep'], sig: 'spiral', seq: ['volley', 'charge', 'slam', 'volley'],
-  lines: { intro: `${G.P.name} belongs to the Grand Imperarch. You'll have to take it from my hands.`, p2: 'All guns on the xeno-lover!', p3: `${G.P.name.toUpperCase()} WILL NOT FALL!`, win: 'Take it, then… he will only take it back.' } }; }
+  lines: { intro: F.id === 'ti' ? `${G.P.name} belongs to the Grand Imperarch. You'll have to take it from my hands.` : `${G.P.name} is ours. You burned our sky, and you'll get no further.`, p2: F.id === 'ti' ? 'All guns on the xeno-lover!' : 'Guards! Hold the base!', p3: `${G.P.name.toUpperCase()} WILL NOT FALL!`, win: F.id === 'ti' ? 'Take it, then… he will only take it back.' : 'Enough… the base is yours.' } }; }
 function tiCapture(pid) {
+  const P0 = bodyById(pid), F0 = warFacOf(P0);
+  if (F0 && !(F0.id === 'ti' && dip().wars.ti.theirs)) { // your own war: the world is occupied (it goes back if you make peace)
+    const W = dip().wars[F0.id]; if (TIW.gov) { for (const R of TIW.gov.R) if (R.cb) { const i = fauna.list.indexOf(R.cb); if (i >= 0) fauna.list.splice(i, 1); } if (TIW.gov.g.parent) TIW.gov.g.parent.remove(TIW.gov.g); TIW.gov = null; }
+    W.held = [...new Set([...(W.held || []), pid])]; dipSave(); sfx.chime(); notice(dipFacName(F0), `${P0.name.toUpperCase()} OCCUPIED`, 4200);
+    setTimeout(() => dipScore(F0.id, pid === F0.capital ? 25 : 15, pid === F0.capital ? 'their capital taken' : `${P0.name} taken`), 1400); return; }
   const D = dip(), W = D.wars.ti, P = bodyById(pid); if (!P || D.col[pid]) return;
   if (TIW.gov) { for (const R of TIW.gov.R) if (R.cb) { const i = fauna.list.indexOf(R.cb); if (i >= 0) fauna.list.splice(i, 1); } if (TIW.gov.g.parent) TIW.gov.g.parent.remove(TIW.gov.g); TIW.gov = null; }
   D.col[pid] = { gov: null, from: 'ti' }; if (W) W.held = [...new Set([...(W.held || []), pid])];
@@ -12818,6 +12844,7 @@ function tiCapture(pid) {
 function bodyRel(Q) {
   if (!wanderer || (wanderer.chapter | 0) < 3) return ''; const D = dip(), id = Q.id;
   if (D.col[id]) return 'ally';
+  if (resHeldBy(id)) return '';
   const F = dipFacOf(Q.baseFac || Q.faction || ''); if (!F) return '';
   const W = D.wars[F.id]; if (W && !W.won) return (W.held || []).includes(id) ? 'ally' : 'enemy';
   const r = D.res[F.id]; if (r && ['vassal', 'tributary'].includes(r.st)) return 'ally';
@@ -15518,7 +15545,7 @@ function spaceHud() {
     <button class="sh-menu" id="shMenu">☰</button><button class="sh-map" id="shMap"><span>GALAXY </span>MAP</button><button class="sh-map sh-decks" id="shDecks">DECKS</button>
     <div class="sh-stick" id="shStick"><div class="sh-knob" id="shKnob"></div></div>
     <div class="sh-btns"><button data-b="fire">FIRE</button><button data-b="thrust">THRUST</button><button data-b="pulse">PULSE</button><button data-b="brake">BRAKE</button></div>
-    <button class="sh-land" id="shLand">LAND</button><div class="sh-region" id="shRegion"><small></small><b></b></div>
+    <button class="sh-land" id="shLand">LAND</button><button class="sh-land sh-bomb" id="shBomb"><b>BOMBARD</b><small></small></button><div class="sh-region" id="shRegion"><small></small><b></b></div>
     <div class="sh-flash" id="shFlash"></div>
     <div class="sh-warp" id="shWarp"><b id="shWarpTxt"></b></div>`;
   document.body.appendChild(el);
@@ -15526,6 +15553,7 @@ function spaceHud() {
   el.querySelector('#shMap').addEventListener('click', () => { sfx.click(); galOpen(); });
   el.querySelector('#shDecks').addEventListener('click', () => { sfx.click(); spaceWalkShip(); });
   el.querySelector('#shLand').addEventListener('click', e => { e.preventDefault(); sfx.click(); atmLand(); });
+  { const bb = el.querySelector('#shBomb'), go = e => { e.preventDefault(); e.stopPropagation(); SPC.bombReq = true; sfx.click(); }; bb.addEventListener('pointerdown', go); bb.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); }); }
   for (const b of el.querySelectorAll('.sh-btns button')) {
     const k = b.dataset.b, on = v => e => { e.preventDefault(); SPC.btn[k] = v; b.classList.toggle('on', v); };
     b.addEventListener('pointerdown', on(true)); b.addEventListener('pointerup', on(false)); b.addEventListener('pointercancel', on(false)); b.addEventListener('pointerleave', on(false));
@@ -15645,8 +15673,8 @@ function spaceTick(dt) {
   if (P.kind === 'station' && alt < 600 && bodyById(P.id + '-gardens')) { spaceMsg(`Docking with ${P.name}`); startLanding(bodyById(P.id + '-gardens'), new THREE.Vector3(0, 1, 0)); return; } // dock and walk the station
   const keepOff = P.kind === 'station' ? P.r * .5 : 900;
   if (!P.land && alt < keepOff) { SPC.pos.copy(P.pos).addScaledVector(dirP, ground + keepOff); SPC.vel *= .5; if (time - (SPC.gasMsgT || -9) > 3) { SPC.gasMsgT = time; spaceMsg(P.kind === 'station' ? `${P.name} · ${P.faction.split(' · ')[0]} · docking comes in a later update` : `${P.name}'s atmosphere is too dense to fly into · no surface`); } }
-  if (P.land && alt < 420 && tiBanned(P)) { SPC.pos.copy(P.pos).addScaledVector(dirP, ground + 1400); SPC.vel *= .3; if (time - (SPC.banMsgT || -9) > 3) { SPC.banMsgT = time; spaceMsg(`${P.name} · Terra Imperia territory · closed to you while you're at war · press B or tap BOMBARD to begin a bombardment`); sfx.thud && sfx.thud(); } }
-  { const can = tiBanned(P) && alt < 9000 && !SPC.bomb; tiBombBtn(can); if (can && (K.has('KeyB') || SPC.bombReq)) tiBombStart(P); SPC.bombReq = false; tiBombTick(dt, alt); }
+  if (P.land && alt < 420 && tiBanned(P)) { SPC.pos.copy(P.pos).addScaledVector(dirP, ground + 1400); SPC.vel *= .3; if (time - (SPC.banMsgT || -9) > 3) { SPC.banMsgT = time; { const F = warFacOf(P); spaceMsg(`${P.name} · ${F ? dipFacName(F) : 'enemy'} territory · closed to you while you're at war · press B or tap BOMBARD to begin a bombardment`); } sfx.thud && sfx.thud(); } }
+  { const can = tiBanned(P) && alt < 9000 && !SPC.bomb; tiBombBtn(can, P); if (can && (K.has('KeyB') || SPC.bombReq)) tiBombStart(P); SPC.bombReq = false; tiBombTick(dt, alt); }
   if (P.land && alt < 420 && !tiBanned(P)) { tiBombBtn(false); atmoEnter(P, dirP.clone(), fwd); return; } // into its sky (No Man's Sky style): you land where you choose
   updateLods();
   for (const Q of SPC.bodies) { if (Q.cloud) Q.cloud.rotation.y += dt * .004; if (Q.spin) Q.spin.rotation.z += dt * .05; }
@@ -17455,7 +17483,7 @@ function dipGroundTick(dt) {
   tiWarTick();
   if (!isPl() || state !== 'explore' || (wanderer.chapter | 0) < 3) { dipHoldUI(null); return; }
   const P = world.planet.P, F = dipFacOf(P.baseFac), W = F && dipWar(F.id);
-  if (!W || W.won || W.cb === 'crush' || W.theirs || (W.held || []).includes(P.id)) { dipHoldUI(null); return; } // Terra Imperia's worlds: bombard and beat the governor instead
+  if (true || !W || W.won || W.cb === 'crush' || (W.held || []).includes(P.id)) { dipHoldUI(null); return; } // worlds are taken by bombardment and the governor now (warFacOf) // Terra Imperia's worlds: bombard and beat the governor instead
   const near = Math.hypot(player.position.x, player.position.z - 2) < 26;
   W.holdP = W.holdP === P.id ? P.id : (W.holdT = 0, P.id);
   if (near) W.holdT = (W.holdT || 0) + dt;
@@ -17968,7 +17996,7 @@ function dipRender() {
           <input class="dip-in" data-a="setName" data-f="${F.id}" value="${sel.name.replace(/"/g, '&quot;')}" maxlength="40"><button class="btn small primary" data-a="settle" data-f="${F.id}"><span>Make them your puppet</span></button></div>`;
       } else if (W) {
         { const Lo = leaderOf(F), X = Lo && Lo.list[0], at = Lo && bodyById(Lo.at); if (X && at && !W.won) h += `<p style="color:#ffd36a">${X.full} (lv ${X.lv})${Lo.list[1] ? ` and ${Lo.list[1].full} (lv ${Lo.list[1].lv})` : ''} wait${Lo.list[1] ? '' : 's'} in their hall on ${at.name}. Land there and beat them to win the war outright.</p>`; }
-        h += `<div class="dip-bar"><i style="width:${W.score | 0}%"></i></div><p>War score ${W.score | 0}/100 · ${W.cb === 'crush' ? `shoot down resistance fighters in their old space (+6).` : `shoot down the ${F.fleet.toLowerCase()} in their space (+6), occupy their worlds by landing and holding the ground by your ship (+15, capital +25).`} ${(W.held || []).length ? `Occupied: ${W.held.map(id => bodyById(id).name).join(', ')}.` : ''}${lentHere.length ? ` ${lentHere.map(compName).join(' and ')} fly${lentHere.length === 1 ? 's' : ''} for them: shoot ${lentHere.length === 1 ? 'that ship' : 'those ships'} down and ${lentHere.length === 1 ? 'they come' : 'they come'} home.` : ''}</p>${W.theirs ? `<p>Terra Imperia declared this war on you. Bombard Mercury or Venus from orbit, land, and beat its governor to take it (+15, Venus +25). Hawthorne will not make peace.</p>` : `<div class="dip-row"><button class="btn small" data-a="peace" data-f="${F.id}"><span>Make peace (occupied worlds go back)</span></button></div>`}`;
+        h += `<div class="dip-bar"><i style="width:${W.score | 0}%"></i></div><p>War score ${W.score | 0}/100 · ${W.cb === 'crush' ? `shoot down resistance fighters in their old space (+6).` : `shoot down the ${F.fleet.toLowerCase()} in their space (+6). Their worlds are closed to you: bombard one from orbit, land, and defeat its governor to take it (+15, capital +25).`} ${(W.held || []).length ? `Occupied: ${W.held.map(id => bodyById(id).name).join(', ')}.` : ''}${lentHere.length ? ` ${lentHere.map(compName).join(' and ')} fly${lentHere.length === 1 ? 's' : ''} for them: shoot ${lentHere.length === 1 ? 'that ship' : 'those ships'} down and ${lentHere.length === 1 ? 'they come' : 'they come'} home.` : ''}</p>${W.theirs ? `<p>Terra Imperia declared this war on you. Bombard Mercury or Venus from orbit, land, and beat its governor to take it (+15, Venus +25). Hawthorne will not make peace.</p>` : `<div class="dip-row"><button class="btn small" data-a="peace" data-f="${F.id}"><span>Make peace (occupied worlds go back)</span></button></div>`}`;
       } else {
         if (r.st === 'tributary') h += `<div class="dip-row"><button class="btn small" data-a="release" data-f="${F.id}"><span>End the tribute</span></button></div>`;
         if (r.st === 'vassal') h += `<div class="dip-row"><input class="dip-in" data-a="rename" data-f="${F.id}" value="${(r.name || F.name).replace(/"/g, '&quot;')}" maxlength="40"><button class="btn small" data-a="doRename" data-f="${F.id}"><span>Rename</span></button></div>`;
@@ -23147,6 +23175,34 @@ function resLentSweep() { // a resident empire that's gone sends your companions
   const L = wanderer && wanderer.dip && wanderer.dip.lent; if (!L) return;
   for (const [id, v] of Object.entries(L)) { const r = dipLentRes(v); if (r && !resEmp.emp[r]) { delete L[id]; const c = curChar(); if (c) c.dip = wanderer.dip; saveRoster(); lootMsg(`${compName(id)} is back with you · the empire they served is gone`, compColor(id)); try { placeCrew(); refreshJamesUI(); if (id === 'orion') placeOrion().catch(() => null); } catch (e) {} } }
 }
+/* Resident empires go to war with the story factions too, the same way you do: they bombard a world from orbit, land, and beat
+   its governor, and the world flies their flag (resEmp.sw: [{ e, f, took, since }]). The faction can win worlds back. */
+const resHeldBy = id => Object.values(resEmp.emp).find(e => e.col.includes(id)) || null;
+function resStoryWars(E, es) {
+  E.sw = (E.sw || []).filter(w => E.emp[w.e]);
+  const facOk = F => !F.locked?.(dipCh()) && !['destroyed', 'subjugated'].includes(dipRes(F.id)) && !(F.id === 'ti' && (wanderer.chapter | 0) !== 3);
+  if (E.on && E.sw.length < 3) for (const e of es) {
+    if (e.res || E.sw.some(w => w.e === e.id)) continue; const al = resAl(resRuler(e)), p = al === 'villain' ? .02 : al === 'neutral' ? .008 : .003;
+    if (Math.random() >= p) continue; const fs = dipFacsNow().filter(facOk); if (!fs.length) break;
+    const F = pick(fs); E.sw.push({ e: e.id, f: F.id, took: 0, since: resNow() }); resEmpLog(`${e.name} declares war on ${dipFacName(F)}`);
+    if (state === 'explore' || state === 'space') lootMsg(`${e.name} declares war on ${dipFacName(F)}`, '#ffb36e'); break;
+  }
+  const Dc = (wanderer.dip && wanderer.dip.col) || {};
+  for (const w of [...E.sw]) {
+    const e = E.emp[w.e], F = DIP_FAC.find(o => o.id === w.f); if (!e || !F || !facOk(F)) { E.sw = E.sw.filter(o => o !== w); continue; }
+    const r = Math.random();
+    if (r < .22) { // a world bombarded and its governor beaten
+      const left = ALL_BODIES.filter(P => P.land && !P.dock && F.match(P.baseFac || P.fac0 || '') && !Dc[P.id] && !resHeldBy(P.id));
+      if (!left.length) { resEmpLog(`${dipFacName(F)} has no worlds left to lose to ${e.name}`); E.sw = E.sw.filter(o => o !== w); continue; }
+      const P = left.find(o => o.id !== F.capital) || left[0]; e.col.push(P.id); w.took++;
+      const msg = `${e.name} bombarded ${P.name} and defeated its governor · ${P.name} flies their flag now`; resEmpLog(msg);
+      if (state === 'explore' || state === 'space') { if (state === 'space') spaceMsg(msg); else lootMsg(msg, '#ffb36e'); }
+    } else if (r < .3) { // the faction strikes back
+      const mine = e.col.filter(id => { const P = bodyById(id); return P && F.match(P.baseFac || P.fac0 || '') && id !== e.cap; });
+      if (mine.length) { const id = pick(mine); e.col = e.col.filter(o => o !== id); resEmpLog(`${dipFacName(F)} retakes ${bodyById(id).name} from ${e.name}`); }
+    } else if (r < .345 || w.took >= 4) { resEmpLog(`${e.name} and ${dipFacName(F)} make peace`); E.sw = E.sw.filter(o => o !== w); }
+  }
+}
 function resEmpTick(dt) {
   try { resLentSweep(); } catch (e) { console.error(e); }
   if (!residents.length || effCh() < 3) return;
@@ -23173,6 +23229,7 @@ function resEmpTick(dt) {
     }
   }
   for (const w of [...E.wars]) resWarStep(w); // wars already under way still play out
+  try { resStoryWars(E, es); } catch (e) { console.error(e); } // and resident empires against the story factions
   if (state === 'space' || GAL.open) { applyChapterFactions(); if (GAL.open && GAL.sel) galPanel(); } // the galaxy map follows who holds what
 }
 
