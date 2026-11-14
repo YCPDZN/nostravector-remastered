@@ -1374,3 +1374,8 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **Not yet:** the **Final Boss theme** (`data/thFinal.js`) is stored for Lord Zark's Chapter IV story battle (level 60, on Carax), which isn't built yet. Hawthorne (Terra Imperia) has no hall.
 - Files: themes in `data/thHak.js`, `thPrimeGood.js`, `thEris.js`, `thDarius.js`, `thLightEgg.js`, `thWrong.js`, `thPrimeEvil.js`, `thFinal.js` (originals in `assets/audio/leaders_themes`); Archamus unhooded in `data/prArchamusU.js` (`assets/models/primes/archamus_unhooded.glb`). They load only when needed.
 
+## Croxian, without his helmet
+- **As your companion**, Croxian Mascar no longer wears his helmet. Under it he has his father's face (Orion's, without the beard or the cybernetic eye) and Orion's short brushed hair, cut shorter and **black**. He keeps his armour, collar, cloak and scythe.
+- This is the companion's model only (`data/cpCroxianU.js`, also `assets/models/companions/croxian_unhelmeted.glb`): wherever your companion Croxian appears (your crew, the menu, his Nostrapedia companion page). The story's Croxian (Chapters I and II, the nightmare, Terra Imperia's general) keeps his helmet.
+- Built from the two original models by `nightmare/tools/croxian_unhelmet.py` (`python3 croxian_unhelmet.py data/cpCroxian.js data/cpOrion.js out.glb`).
+
