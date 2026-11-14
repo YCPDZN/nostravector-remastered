@@ -5829,7 +5829,13 @@ function alignAct(d, why) {
   const st = alState(); st.p = clamp(st.p + d, -100, 100);
   lootMsg(`${d > 0 ? 'Heroic' : 'Villainous'} ${d > 0 ? '+' : '−'}${Math.abs(d)} · ${why}`, d > 0 ? '#7fe3ff' : '#ff7a6e');
   for (const id of partyNow()) {
-    const L = COMPANIONS.find(c => c.id === id); if (!L) continue;
+    const L = COMPANIONS.find(c => c.id === id) || (String(id).startsWith('pont:') && pontById(id.slice(5)) ? pontAlL(pontById(id.slice(5))) : null); if (!L) continue;
+    if (L.pont) { // a Pontifex or a Sister: evil pleases them and pulls them further; good can sway them, slowly, and they resent it
+      const C = st.c[id] || (st.c[id] = { a: alBaseOf(L), inf: 30 }), nm = (PARTY[id] || { name: L.name }).name;
+      if (d < 0) { C.inf = clamp(C.inf + Math.abs(d) * 2.5, 0, 100); C.a = clamp(C.a + d * .3, -100, 100); lootMsg(`${nm} approves · influence gained`, '#ff9f86'); }
+      else { C.inf = clamp(C.inf - Math.abs(d) * 1.5, 0, 100); C.a = clamp(C.a + d * (.12 + C.inf / 400), -100, 100); lootMsg(`${nm} disapproves${C.inf > 60 ? ', but listens' : ''}`, '#ffb36e'); }
+      continue;
+    }
     const b = alBaseOf(L), C = st.c[id] || (st.c[id] = { a: b == null ? 0 : b, inf: 50 }), nm = (PARTY[id] || { name: id }).name;
     if (b == null) { C.inf = clamp(C.inf + Math.abs(d) * 1.5, 0, 100); lootMsg(`${nm} approves`, '#cfd6e6'); continue; } // James tells you what you want to hear
     const lean = C.a >= 15 ? 1 : C.a <= -15 ? -1 : 0;
@@ -5844,7 +5850,8 @@ const alView = { sel: null, R: null, scene: null, cam: null, obj: null, tok: 0, 
 // only the companions travelling with you now; characters from other games appear only once they've been brought into your party
 function alCompList() {
   const party = partyNow(), mine = wanderer.party || [];
-  return COMPANIONS.filter(L => party.includes(L.id)).map(L => ({ L, sub: L.title })).concat(AL_EXTRA.filter(L => mine.includes(L.id)).map(L => ({ L, sub: L.sub })));
+  return COMPANIONS.filter(L => party.includes(L.id)).map(L => ({ L, sub: L.title })).concat(AL_EXTRA.filter(L => mine.includes(L.id)).map(L => ({ L, sub: L.sub })))
+    .concat(party.filter(id => String(id).startsWith('pont:') && pontById(id.slice(5))).map(id => { const P = pontById(id.slice(5)); return { L: pontAlL(P), sub: pontTitle(P) }; })); // your Pontifexes and Sisters
 }
 function renderAlign() {
   const st = alState(), party = partyNow(), comps = alCompList();
@@ -10541,7 +10548,8 @@ function dgnTick(dt) {
 }
 function dgnDown() { // you fell
   if (DGN.downing) return; DGN.downing = true;
-  const fight = !!DGN.boss; state = 'loadingCh'; vel.set(0, 0, 0);
+  const fight = !!DGN.boss;
+  if (fight && DGN.lair && DGN.lair.tiKind === 'pont') { const id = DGN.lair.tiRef; pontKilledYou(id); if (TIW.hunt && TIW.hunt.P && TIW.hunt.P.id === id) { if (TIW.hunt.g.parent) TIW.hunt.g.parent.remove(TIW.hunt.g); TIW.hunt = null; } setTimeout(() => { if (DGN.on && DGN.lair && DGN.lair.tiKind === 'pont') { try { dgnBossClear(); } catch (e) {} dgnLeave(); } }, 3000); } // they leave you for dead, and come back stronger state = 'loadingCh'; vel.set(0, 0, 0);
   const bo = $('#blackout'); bo.style.transition = 'opacity 1.1s'; bo.style.opacity = 1;
   notice(fight ? (DGN.lair ? `${DGN.boss.Bd.short} put you down` : 'Khazglar’s hammer put you down') : 'You blacked out', fight ? 'THE FIGHT STARTS AGAIN' : 'ORION DRAGGED YOU BACK TO THE STAIRS', 3200);
   setTimeout(() => {
@@ -11396,7 +11404,7 @@ function leadSpec(key) { // the leaders: their moves, their words, their model, 
 function leadCompSpec(id) { const lv = compLevel(id); return { key: 'comp:' + id, boss: compName(id), full: `${compName(id)}, on the throne you gave them`, lv, hp: Math.round(4000 + lv * 160), theme: 'wrong', load: () => companionRig(id), core: ['slam', 'charge', 'volley', 'blink'], p2: ['nova'], sig: 'spiral', seq: ['charge', 'slam', 'volley', 'blink'],
   lines: { intro: 'You put me on this throne. Don’t make me defend it against you.', p2: 'I learned this from you, you know.', p3: 'I WON’T GO EASY!', win: 'Alright… alright. You win. You always do.' } }; }
 function leadResSpec(c) { const lv = resLevel(c), sp = spOf(c); return { key: 'res:' + c.id, boss: c.name, full: `${c.name}, ruler of ${(resEmpOf(c.id) || {}).name || 'a resident empire'}`, lv, hp: Math.round(3500 + lv * 150), theme: 'wrong',
-  load: resIsTared(c) ? () => leadTared() : async () => { const R = await brawlRig({ sp, c: [0x2e3440, 0x8fe3ff], name: c.name, female: c.identity === 'female' }); if (R) armRig(R, 'sword'); return R; },
+  load: resIsPont(c) ? () => pontRig({ col: c.pontCol, sex: c.resSp === 'sister' ? 'f' : 'm' }) : resIsTared(c) ? () => leadTared() : async () => { const R = await brawlRig({ sp, c: [0x2e3440, 0x8fe3ff], name: c.name, female: c.identity === 'female' }); if (R) armRig(R, 'sword'); return R; },
   core: ['slam', 'charge', 'volley', 'blink'], p2: ['nova', 'pools'], sig: 'spiral', seq: ['charge', 'volley', 'slam', 'blink'],
   lines: { intro: `You want my empire, ${wanderer ? wanderer.name : 'wanderer'}? Come and take it.`, p2: 'I built this from nothing!', p3: 'NOT LIKE THIS!', win: 'Fine… it’s yours. It was always going to be.' } }; }
 // who you'd face, and where, in a war with faction F
@@ -11454,6 +11462,7 @@ function leaderResChallenge(eid) {
   const e = resEmp.emp[eid], c = e && resRuler(e); if (!c) return;
   if (!isPl() || DGN.on || state !== 'explore') { lootMsg('Challenge them from a planet’s surface (not inside a lair)', '#ff8f86'); return; }
   const W = { lid: 'r' + eid + Date.now().toString(36) }, p = player.position, L = leaderLair(null, W, { list: [leadResSpec(c)], resEmp: eid }, world.planet.P);
+  if (resIsPont(c)) L.pontRuler = c.name; // beat them and their guard can be anointed
   lairEnter(L, { x: p.x, z: p.z }, 1);
 }
 function leaderBossWin(B) { // a leader falls: the war is won (or the resident empire falls), or the co-leader steps up
@@ -11474,6 +11483,7 @@ function leaderBossWin(B) { // a leader falls: the war is won (or the resident e
   }
   lairSetProg(L, L.floors + 1);
   if (L.war) { dipScore(L.war, 100, `${Bd.short} defeated in their hall`); setTimeout(() => lootMsg('The war is won · settle it in Diplomacy', '#ffd36a'), 2400); }
+  if (L.pontRuler) setTimeout(() => pontTroopChoice(L.pontRuler), 3200);
   if (L.resEmp && resEmp.emp[L.resEmp]) { const e = resEmp.emp[L.resEmp]; delete resEmp.emp[L.resEmp]; resEmp.cool[L.resEmp] = resNow() + 30 * 60e3; resEmp.wars = resEmp.wars.filter(w => w.a !== L.resEmp && w.b !== L.resEmp); for (const o of Object.values(resEmp.emp)) { if (o.over === L.resEmp) o.over = null; if (o.trib === L.resEmp) o.trib = null; } resEmpLog(`${wanderer.name} defeated ${Bd.short}; ${e.name} has fallen`); saveRoster(); setTimeout(() => lootMsg(`${e.name} has fallen · its worlds are unclaimed again`, '#ffd36a'), 2400); }
   setTimeout(() => { if (!lb || DGN.lb !== lb) return; if (lb.mesh.parent) lb.mesh.parent.remove(lb.mesh); DGN.lb = null; }, 6000);
 }
@@ -12357,9 +12367,18 @@ async function pontRig(P) {
   await glbReady('cpPontifex');
   if (!pontSrcP) pontSrcP = embGlb('cpPontifex');
   const src = await pontSrcP; if (!src) return null;
-  const R = autoRig(gearNoMeasure(SkeletonUtils.clone(src)), 1.95); armRig(R, 'none'); // his polearm is part of the model, and doesn't count toward his height
+  const m = SkeletonUtils.clone(src), sis = !!(P && P.sex === 'f'); if (sis) sisterShape(m);
+  const R = autoRig(gearNoMeasure(m), sis ? 1.86 : 1.95); armRig(R, 'none'); // the polearm is part of the model, and doesn't count toward their height
   pontPaint(R.root, P && P.col); return R;
 }
+function sisterShape(m) { // a Sister of Hawthorne: the same armour, cut slimmer, the great horns taken off the helm
+  m.scale.x *= .86; m.scale.z *= .9; const drop = [];
+  m.traverse(o => { if (/horn/i.test((o.name || '').replace(/_/g, ' '))) drop.push(o); }); for (const o of drop) if (o.parent) o.parent.remove(o);
+}
+const pontTitle = P => P && P.sex === 'f' ? 'Sister of Hawthorne' : 'Pontifex Maximus';
+const pontHe = P => P && P.sex === 'f' ? ['she', 'her', 'her'] : ['he', 'him', 'his'];
+const huntSlotFree = sex => !PONTS().some(o => o.st === 'hunt' && (o.sex || 'm') === sex); // one Pontifex and one Sister hunting you at a time
+const PONT_MAX_LV = 100;
 function pontPaint(root, col) { // the armour plates take his colour; the crimson trim, the reactor heart and the visor stay Terra Imperia's
   if (!col) return; const c = new THREE.Color(col), dk = c.clone().multiplyScalar(.55);
   const near = (m, r, g, b) => Math.abs(m.color.r - r) < .02 && Math.abs(m.color.g - g) < .02 && Math.abs(m.color.b - b) < .02;
@@ -12367,15 +12386,17 @@ function pontPaint(root, col) { // the armour plates take his colour; the crimso
   root.traverse(o => { if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map(fix) : fix(o.material); });
 }
 const pontCol = P => (P && P.col) || '#d0343a';
-async function tiSoldierRig() { // Terra Imperia infantry: Federation armour gone black and crimson, eyes burning red
+async function tiSoldierRig(sex) { // Terra Imperia infantry: Federation armour gone black and crimson, eyes burning red
   const src = await townModel('hfos'); if (!src) return null;
-  const R = autoRig(dressTownsfolk(src, { sp: 'hfos' }), 1.88); armRig(R, 'rifle');
+  const m = dressTownsfolk(src, { sp: 'hfos' }); if (sex === 'f') { m.scale.x *= .88; m.scale.z *= .9; }
+  const R = autoRig(m, sex === 'f' ? 1.78 : 1.88); armRig(R, 'rifle');
   const black = new THREE.Color(0x15161a), crimson = new THREE.Color(0xd0343a);
   R.root.traverse(o => { if (!o.isMesh || !o.material) return; for (const m of Array.isArray(o.material) ? o.material : [o.material]) { if (m.color) m.color.lerp(black, .78); if (m.emissive) { m.emissive.copy(crimson); m.emissiveIntensity = .08; } } o.castShadow = !tiPhone(); });
   const eye = glowSprite(0xff2a2a, .55, .95); eye.position.set(0, 1.72, .18); R.root.add(eye);
   return R;
 }
 const TI_RANKS = ['Centurion', 'Legionary', 'Decurion', 'Optio', 'Praetorian', 'Sergeant'];
+const TI_NAMES_F = ['Livia Vale', 'Aurelia Crane', 'Seraphine Holt', 'Cassia Wren', 'Octavia Rook', 'Marisol Hale', 'Imogen Steele', 'Valeria Quill', 'Juno Ashford', 'Petra Calloway', 'Elara Voss', 'Sabine Morrow', 'Lucia Thorne', 'Drusilla Kade', 'Nerissa Brennan', 'Tamsin Harrow'];
 const TI_NAMES = ['Marcus Vale', 'Corvin Hale', 'Silas Brennan', 'Dorian Kade', 'Lucan Thorne', 'Galen Ashford', 'Tobias Rook', 'Cassius Wren', 'Bram Holloway', 'Evander Crane', 'Rhys Calloway', 'Magnus Sterling', 'Aldric Voss', 'Owen Harrow', 'Felix Morrow', 'Victor Hask', 'Damon Reyes', 'Elias Fenwick', 'Conrad Steele', 'Jasper Quill'];
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
@@ -12402,14 +12423,14 @@ function tiNear(p) {
   if (TIW.chn && d(TIW.chn.x, TIW.chn.z) < 3.6) return { id: 'chn', label: 'Charon and Kizna' };
   if (TIW.st && d(TIW.st.dx, TIW.st.dz) < 4) return { id: 'tiStation', label: 'The station · Terra Imperia stronghold' };
   if (TIW.pat && d(TIW.pat.x, TIW.pat.z) < 5) return { id: 'tiPatrol', label: `Terra Imperia patrol · ${TIW.pat.rank} ${TIW.pat.name}` };
-  if (TIW.hunt && d(TIW.hunt.x, TIW.hunt.z) < 4.2) return { id: 'pontHunt', label: `${TIW.hunt.P.name} · Pontifex Maximus` };
+  if (TIW.hunt && d(TIW.hunt.x, TIW.hunt.z) < 4.2) return { id: 'pontHunt', label: `${TIW.hunt.P.name} · ${pontTitle(TIW.hunt.P)}` };
   return null;
 }
 function tiUse(n) {
   if (n.id === 'chn') chnTalk();
   else if (n.id === 'tiStation') { const X = jamesSpec(); openChoice('THE ANTARCTIC STATION · TERRA IMPERIA', [{ text: `Go in and face ${X.full} (lv ${X.lv})`, onPick: () => tiFight('james', X) }, { text: 'Not yet', onPick: () => {} }]); }
-  else if (n.id === 'tiPatrol') { const T = TIW.pat, X = soldierSpec(T); openChoice(`${T.rank.toUpperCase()} ${T.name.toUpperCase()} · TERRA IMPERIA`, [{ text: `Fight ${T.rank} ${T.name} (lv ${X.lv})`, onPick: () => tiFight('soldier', X, { name: T.name, rank: T.rank }) }, { text: 'Leave them be', onPick: () => {} }]); }
-  else if (n.id === 'pontHunt') { const P = TIW.hunt.P, X = pontSpec(P); openChoice(`${P.name.toUpperCase()} · PONTIFEX MAXIMUS`, [{ text: `Face him (lv ${X.lv}) · beat him to make him yours`, onPick: () => tiFight('pont', X, P.id) }, { text: 'Not now (he keeps hunting you)', onPick: () => {} }]); }
+  else if (n.id === 'tiPatrol') { const T = TIW.pat, X = soldierSpec(T); openChoice(`${T.rank.toUpperCase()} ${T.name.toUpperCase()} · TERRA IMPERIA`, [{ text: `Fight ${T.rank} ${T.name} (lv ${X.lv})`, onPick: () => tiFight('soldier', X, { name: T.name, rank: T.rank, sex: T.sex }) }, { text: 'Leave them be', onPick: () => {} }]); }
+  else if (n.id === 'pontHunt') { const P = TIW.hunt.P, X = pontSpec(P), [he, him] = pontHe(P); openChoice(`${P.name.toUpperCase()} · ${pontTitle(P).toUpperCase()}`, [{ text: `Face ${him} (lv ${X.lv}) · beat ${him} to make ${him} yours`, onPick: () => tiFight('pont', X, P.id) }, { text: `Not now (${he} keeps hunting you, and grows stronger every time ${he} kills you)`, onPick: () => {} }]); }
 }
 const tiSpot = (r0, r1) => { for (let k = 0; k < 24; k++) { const a = Math.random() * Math.PI * 2, r = r0 + Math.random() * (r1 - r0), x = Math.cos(a) * r, z = Math.sin(a) * r; if (!worldBlocked(x, z)) return [x, z]; } return [r0, r0 * .4]; };
 function tiBeacon(g, x, z, col, h) { const b = glowSprite(col, 14, .6); b.position.set(x, wHeight(x, z) + h, z); g.add(b); return b; }
@@ -12474,28 +12495,34 @@ function tiEncounters(P) {
 }
 function patrolPlace() {
   const area = curArea(), [x, z] = tiSpot(22, 32), g = new THREE.Group(); wScene.add(g);
-  const T = TIW.pat = { g, R: [], x, z, name: pick(TI_NAMES), rank: pick(TI_RANKS), beacon: tiBeacon(g, x, z, 0xff2a2a, 7) };
+  const sex = Math.random() < .5 ? 'm' : 'f', T = TIW.pat = { g, R: [], x, z, sex, name: pick(sex === 'f' ? TI_NAMES_F : TI_NAMES), rank: pick(TI_RANKS), beacon: tiBeacon(g, x, z, 0xff2a2a, 7) };
   const n = tiPhone() ? 2 : 3;
-  Promise.all(Array.from({ length: n }, tiSoldierRig)).then(Rs => { if (curArea() !== area || TIW.pat !== T) return; Rs.forEach((R, i) => { if (!R) return; const a = i / n * Math.PI * 2, px = x + Math.cos(a) * 1.6, pz = z + Math.sin(a) * 1.6; R.root.position.set(px, wHeight(px, pz), pz); R.root.rotation.y = Math.atan2(-px, -pz); g.add(R.root); T.R.push(R); }); }).catch(() => null);
+  Promise.all(Array.from({ length: n }, (_, i) => tiSoldierRig(i ? (Math.random() < .5 ? 'm' : 'f') : sex))).then(Rs => { if (curArea() !== area || TIW.pat !== T) return; Rs.forEach((R, i) => { if (!R) return; const a = i / n * Math.PI * 2, px = x + Math.cos(a) * 1.6, pz = z + Math.sin(a) * 1.6; R.root.position.set(px, wHeight(px, pz), pz); R.root.rotation.y = Math.atan2(-px, -pz); g.add(R.root); T.R.push(R); }); }).catch(() => null);
   setTimeout(() => { if (TIW.pat === T) lootMsg(`A Terra Imperia patrol has landed nearby (crimson beacon) · ${T.rank} ${T.name} leads it`, '#ff6a6e'); }, 3400);
 }
 function hunterPlace(P) {
   const area = curArea(), [x, z] = tiSpot(16, 22), g = new THREE.Group(); wScene.add(g);
   const H = TIW.hunt = { g, R: [], x, z, P, face: true, beacon: tiBeacon(g, x, z, new THREE.Color(pontCol(P)).getHex(), 8) };
   pontRig(P).then(R => { if (!R || curArea() !== area || TIW.hunt !== H) return; R.root.position.set(x, wHeight(x, z), z); R.root.traverse(o => { if (o.isMesh) o.castShadow = !tiPhone(); }); g.add(R.root); H.R.push(R); }).catch(() => null);
-  setTimeout(() => { if (TIW.hunt !== H) return; notice('Pontifex Maximus', `${P.name.toUpperCase()} HAS FOUND YOU`, 3600); sfx.thud(); lootMsg(`${P.name} is waiting for you · beat him to take him into your crew`, pontCol(P)); }, 3000);
+  setTimeout(() => { if (TIW.hunt !== H) return; const [, him] = pontHe(P); notice(`${pontTitle(P)} · lv ${P.lv}`, `${P.name.toUpperCase()} HAS FOUND YOU`, 3600); sfx.thud(); lootMsg(`${P.name} is waiting for you · beat ${him} to take ${him} into your crew, or kill ${him} before ${pontHe(P)[0]} grows too strong`, pontCol(P)); }, 3000);
 }
 
 // ---- the fights: the faction leaders' arena, with James, a soldier or a Pontifex on the far side of it ----
 function jamesSpec() { const lv = Math.max(22, plvNow() + 2); return { key: 'ti:james', boss: 'James', full: 'James Brown, Pontifex Maximus', hall: 'The Antarctic station', lv, hp: Math.round(6000 + lv * 190), theme: null, load: leadTag('cpJamesTI', 1.95, 'sword'),
   core: ['charge', 'slam', 'volley', 'blink'], p2: ['sweep', 'nova'], sig: 'spiral', seq: ['charge', 'slam', 'volley', 'blink', 'slam'],
   lines: { intro: 'You pushed me into the sea. He pulled me out. I am not the man you left on that pier.', p2: 'Do you know how long it takes to freeze? I do. I counted.', p3: 'FOR THE GRAND IMPERARCH!', win: 'Enough… do it, then. Or don’t. I stopped being afraid of the cold.' } }; }
-function soldierSpec(T) { const lv = Math.max(8, plvNow() + 1); return { key: 'ti:soldier', boss: T.name.split(' ')[0], full: `${T.rank} ${T.name}, Terra Imperia`, hall: 'A Terra Imperia patrol', lv, hp: Math.round(2600 + lv * 120), theme: null, load: tiSoldierRig,
+function soldierSpec(T) { const lv = Math.max(8, plvNow() + 1); return { key: 'ti:soldier', boss: T.name.split(' ')[0], full: `${T.rank} ${T.name}, Terra Imperia`, hall: 'A Terra Imperia patrol', lv, hp: Math.round(2600 + lv * 120), theme: null, load: () => tiSoldierRig(T.sex),
   core: ['charge', 'volley', 'slam', 'blink'], p2: ['rain'], sig: 'sweep', seq: ['volley', 'charge', 'slam'],
   lines: { intro: 'By order of the Grand Imperarch, you are under arrest. Or dead. Your choice.', p2: 'Squad, hold the line!', p3: 'FOR TERRA IMPERIA!', win: 'Finish it… go on…' } }; }
-function pontSpec(P) { P.lv = Math.max(P.lv || 0, plvNow() + 3); const lv = P.lv; return { key: 'ti:pont', boss: P.name.split(' ')[0], full: `${P.name}, Pontifex Maximus`, hall: 'A Pontifex on your trail', lv, hp: Math.round(4500 + lv * 170), theme: null, load: () => pontRig(P),
-  core: ['charge', 'slam', 'blink', 'volley'], p2: ['nova', 'sweep'], sig: 'spiral', seq: ['blink', 'slam', 'charge', 'volley'],
-  lines: { intro: 'I was a soldier. You made me this. Now I will make you kneel.', p2: 'The heart they gave me does not tire.', p3: 'I AM THE PONTIFEX!', win: 'Then… I am yours. As the anointing demands.' } }; }
+function pontSpec(P) { P.lv = Math.min(PONT_MAX_LV, Math.max(P.lv || 0, plvNow() + 3)); const lv = P.lv, sis = P.sex === 'f'; return { key: 'ti:pont', boss: P.name.split(' ')[0], full: `${P.name}, ${pontTitle(P)}`, hall: sis ? 'A Sister on your trail' : 'A Pontifex on your trail', lv, hp: Math.round(4500 + lv * 170), theme: null, load: () => pontRig(P),
+  core: ['charge', 'slam', 'blink', 'volley'], p2: ['nova', 'sweep'], sig: 'spiral', seq: sis ? ['blink', 'volley', 'blink', 'charge', 'slam'] : ['blink', 'slam', 'charge', 'volley'],
+  lines: sis ? { intro: 'I was a soldier. You made me a Sister of Hawthorne. Now kneel to what you made.', p2: 'The heart they gave me sings when you bleed.', p3: 'FOR THE GRAND IMPERARCH!', win: 'Then… I am yours. As the anointing demands.' }
+    : { intro: 'I was a soldier. You made me this. Now I will make you kneel.', p2: 'The heart they gave me does not tire.', p3: 'I AM THE PONTIFEX!', win: 'Then… I am yours. As the anointing demands.' } }; }
+function pontKilledYou(id, where) { // every time they kill you they come back far stronger (lv 100 at most), and leave you for dead
+  const P = pontById(id); if (!P || P.st !== 'hunt') return;
+  const was = P.lv || 1; P.lv = Math.min(PONT_MAX_LV, was + 8 + Math.round(was * .12)); P.kills = (P.kills | 0) + 1; pontSave();
+  setTimeout(() => { notice(`${P.name} left you for dead${where ? ' · ' + where : ''}`, `${pontTitle(P).toUpperCase()} · LV ${was} → ${P.lv}`, 4200); lootMsg(`${P.name} grows stronger every time ${pontHe(P)[0]} kills you · finish ${pontHe(P)[1]} early`, '#ff6a6e'); }, where ? 1200 : 3000);
+}
 function tiFight(kind, X, ref) {
   if (!isPl() || DGN.on || state !== 'explore') { lootMsg('Not here', '#ff8f86'); return; }
   const p = player.position, L = leaderLair(null, { lid: kind + Date.now().toString(36) }, { list: [X] }, world.planet.P);
@@ -12530,31 +12557,44 @@ function jamesChoice(gone) {
       renderTasks(); notice('James Brown', 'IS DEAD · FOR GOOD THIS TIME', 4200); pontUnlockNote();
     } }]);
 }
+function pontAnoint(T, gone) { // a beaten soldier rises as a Pontifex Maximus (a man) or a Sister of Hawthorne (a woman), and hunts you
+  const sex = T.sex || 'm', sis = sex === 'f';
+  const P = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: T.name, sex, col: sis ? '#d8d2c0' : '', lv: Math.min(PONT_MAX_LV, plvNow() + 3), st: 'hunt', made: Date.now() };
+  wanderer.ponts = [...PONTS(), P]; const st = alState(); st.c['pont:' + P.id] = { a: sis ? AL_BASE['Neutral Evil'] : AL_BASE['Lawful Evil'], inf: 30 }; alSave(); pontSave();
+  sfx.thud(); ex.shake = .8; if (DGN.on) DGN.flashL = 2.2; if (gone) gone();
+  notice('Anointed', `${T.name.toUpperCase()} RISES AS A ${pontTitle(P).toUpperCase()}`, 4200);
+  setTimeout(() => lootMsg(`${T.name} will hunt you across Sol, on the ground and in space · beat ${pontHe(P)[1]} again and ${pontHe(P)[0]}’s yours`, '#ff6a6e'), 1800);
+}
+function anointOpt(T, gone) { // only one Pontifex and one Sister can hunt you at once
+  const sis = T.sex === 'f', [he, him] = sis ? ['she', 'her'] : ['he', 'him'];
+  return huntSlotFree(T.sex || 'm') ? { text: `Anoint ${him} · ${he} rises as a ${sis ? 'Sister of Hawthorne' : 'Pontifex Maximus'} and hunts you`, onPick: () => pontAnoint(T, gone) }
+    : { text: `(A ${sis ? 'Sister' : 'Pontifex'} is already hunting you · deal with ${sis ? 'her' : 'him'} first)`, onPick: () => { lootMsg(`Only one ${sis ? 'Sister of Hawthorne' : 'Pontifex Maximus'} can hunt you at a time`, '#ff8f86'); if (gone) gone(); } };
+}
 function soldierChoice(T, gone) {
   if (TIW.pat) { if (TIW.pat.g.parent) TIW.pat.g.parent.remove(TIW.pat.g); TIW.pat = null; } // the patrol is broken
-  openChoice(`${T.rank.toUpperCase()} ${T.name.toUpperCase()}`, [
-    { text: 'Anoint him · he rises as a Pontifex Maximus and hunts you', onPick: () => {
-      const P = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: T.name, col: '', lv: plvNow() + 3, st: 'hunt', made: Date.now() };
-      wanderer.ponts = [...PONTS(), P]; pontSave();
-      sfx.thud(); ex.shake = .8; DGN.flashL = 2.2; gone();
-      notice('Anointed', `${T.name.toUpperCase()} RISES AS A PONTIFEX MAXIMUS`, 4200);
-      setTimeout(() => lootMsg(`${T.name} will hunt you across Sol · beat him again and he’s yours`, '#ff6a6e'), 1800);
-    } },
-    { text: 'Finish him', onPick: () => { sfx.thud(); DGN.flashL = 1.6; if (DGN.lb && DGN.lb.mesh.parent) { DGN.lb.mesh.parent.remove(DGN.lb.mesh); DGN.lb = null; } notice('Terra Imperia', `${T.rank.toUpperCase()} ${T.name.toUpperCase()} IS DEAD`, 3000); } }]);
+  const him = T.sex === 'f' ? 'her' : 'him';
+  openChoice(`${T.rank.toUpperCase()} ${T.name.toUpperCase()}`, [anointOpt(T, gone),
+    { text: `Finish ${him}`, onPick: () => { sfx.thud(); DGN.flashL = 1.6; if (DGN.lb && DGN.lb.mesh.parent) { DGN.lb.mesh.parent.remove(DGN.lb.mesh); DGN.lb = null; } notice('Terra Imperia', `${T.rank.toUpperCase()} ${T.name.toUpperCase()} IS DEAD`, 3000); } }]);
+}
+function pontTroopChoice(sp) { // a Pontifex or Sister ruling a resident empire falls: their guard can be anointed too (the only way left once Terra Imperia is gone)
+  const pickT = sex => ({ sex, name: pick(sex === 'f' ? TI_NAMES_F : TI_NAMES), rank: pick(TI_RANKS) }), m = pickT('m'), f = pickT('f');
+  openChoice(`${sp.toUpperCase()}'S GUARD`, [anointOpt(m), anointOpt(f), { text: 'Leave them', onPick: () => {} }]);
 }
 function pontChoice(id, gone) {
   const P = pontById(id); if (!P) return; if (TIW.hunt && TIW.hunt.P === P) { if (TIW.hunt.g.parent) TIW.hunt.g.parent.remove(TIW.hunt.g); TIW.hunt = null; }
-  openChoice(`${P.name.toUpperCase()} · PONTIFEX MAXIMUS`, [
-    { text: 'Take him into your crew', onPick: () => {
+  const [he, him, his] = pontHe(P);
+  openChoice(`${P.name.toUpperCase()} · ${pontTitle(P).toUpperCase()}`, [
+    { text: `Take ${him} into your crew`, onPick: () => {
       P.st = 'ally'; wanderer.party = [...new Set([...(wanderer.party || []), 'pont:' + P.id])]; pontSave(); syncCrewParty(); refreshJamesUI(); gone(); sfx.chime();
-      notice('Pontifex Maximus', `${P.name.toUpperCase()} JOINS YOUR CREW`, 4200); compJoinNotice('pont:' + P.id, 4800);
-      setTimeout(() => lootMsg('Rename him, change his armour colour or make him a resident: Diplomacy → Crew', pontCol(P)), 2600);
+      notice(pontTitle(P), `${P.name.toUpperCase()} JOINS YOUR CREW`, 4200); compJoinNotice('pont:' + P.id, 4800);
+      setTimeout(() => lootMsg(`Rename ${him}, change ${his} armour colour or make ${him} a resident: Diplomacy → Crew`, pontCol(P)), 2600);
     } },
-    { text: 'Let him go (he keeps hunting you)', onPick: () => { gone(); pontSave(); } }]);
+    { text: `Kill ${him} for good`, onPick: () => { wanderer.ponts = PONTS().filter(o => o !== P); pontSave(); sfx.thud(); DGN.flashL = 2; if (DGN.lb && DGN.lb.mesh.parent) { DGN.lb.mesh.parent.remove(DGN.lb.mesh); DGN.lb = null; } notice(pontTitle(P), `${P.name.toUpperCase()} IS DEAD`, 3400); } },
+    { text: `Let ${him} go (${he} keeps hunting you)`, onPick: () => { gone(); pontSave(); } }]);
 }
 
 // ---- your Pontifexes, in your crew ----
-function pontParty() { for (const id of (wanderer && wanderer.party) || []) if (String(id).startsWith('pont:') && !PARTY[id]) { const P = pontById(id.slice(5)); if (P) PARTY[id] = { name: P.name.split(' ')[0], full: `${P.name}, Pontifex Maximus`, crew: true }; } }
+function pontParty() { for (const id of (wanderer && wanderer.party) || []) if (String(id).startsWith('pont:') && !PARTY[id]) { const P = pontById(id.slice(5)); if (P) PARTY[id] = { name: P.name.split(' ')[0], full: `${P.name}, ${pontTitle(P)}`, crew: true }; } }
 function pontDrop(id) { const C = CREW[id]; if (C && C.R && C.R.root.parent) C.R.root.parent.remove(C.R.root); delete CREW[id]; delete PARTY[id]; }
 function pontRefresh(id) { pontDrop('pont:' + id); syncCrewParty(); placeCrew().catch(() => null); refreshJamesUI(); }
 function pontToResident(id) {
@@ -12562,28 +12602,29 @@ function pontToResident(id) {
   if (residents.length >= MAX_RESIDENTS) { lootMsg(`The world already has ${MAX_RESIDENTS} residents`, '#ff8f86'); return; }
   const base = JSON.parse(JSON.stringify(curChar() || wanderer));
   for (const k of ['party', 'ponts', 'dip', 'place', 'lairs', 'cmds', 'aboard', 'dungeon', 'ch1', 'ch2', 'ch3', 'persona', 'resSp', 'look', 'gear']) delete base[k];
-  residents.push(Object.assign(base, { id: ccId(), name: P.name, species: 'human', identity: 'male', resSp: 'pontifex', pontCol: P.col || '', sentAt: Date.now(), persona: null }));
+  residents.push(Object.assign(base, { id: ccId(), name: P.name, species: 'human', identity: P.sex === 'f' ? 'female' : 'male', resSp: P.sex === 'f' ? 'sister' : 'pontifex', pontCol: P.col || '', sentAt: Date.now(), persona: null, align: undefined }));
   wanderer.ponts = PONTS().filter(o => o !== P); wanderer.party = (wanderer.party || []).filter(x => x !== 'pont:' + id); pontDrop('pont:' + id); pontSave(); refreshJamesUI();
-  sfx.chime(); notice('Pontifex Maximus', `${P.name.toUpperCase()} NOW LIVES IN THIS WORLD`, 3600);
+  sfx.chime(); notice(pontTitle(P), `${P.name.toUpperCase()} NOW LIVES IN THIS WORLD · A RESIDENT`, 3600);
 }
 async function resPontModel(c) {
-  const R = await pontRig({ col: c.pontCol }); if (!R) return null;
+  const R = await pontRig({ col: c.pontCol, sex: c.resSp === 'sister' ? 'f' : 'm' }); if (!R) return null;
   if (tiPhone()) R.root.traverse(o => { if (o.isMesh) o.castShadow = false; });
   return { m: R.root, L: { ra: R.ra, la: R.la, rl: R.rl, ll: R.ll }, human: false, tared: true };
 }
 function dipPontCard() {
   const all = PONTS(); if (!pontOpen() && !all.length) return '';
   const allies = all.filter(o => o.st === 'ally'), hunters = all.filter(o => o.st === 'hunt'), esc = s => String(s).replace(/[<>&"]/g, '');
-  let h = `<div class="dip-card" style="--fc:#d0343a"><h4>PONTIFEX MAXIMUS<small>${allies.length} in your service${hunters.length ? ` · ${hunters.length} hunting you` : ''}</small></h4><p>Beat a male Terra Imperia soldier anywhere in Sol and anoint him. He rises as a Pontifex Maximus and hunts you; beat him again and he’s yours. Make as many as you like.</p>`;
+  let h = `<div class="dip-card" style="--fc:#d0343a"><h4>PONTIFEX MAXIMUS · SISTERS OF HAWTHORNE<small>${allies.length} in your service${hunters.length ? ` · ${hunters.length} hunting you` : ''}</small></h4><p>Beat a Terra Imperia soldier anywhere in Sol and anoint them: a man rises as a Pontifex Maximus, a woman as a Sister of Hawthorne. One of each can hunt you at a time, on the ground and in space, and they grow far stronger every time they kill you (up to lv 100), so deal with them early. Beat them again to take them into your crew, as many as you like. Once Terra Imperia is gone, the guard of a resident empire ruled by one of them can still be anointed.</p>`;
   for (const P of allies) {
-    const on = (wanderer.party || []).includes('pont:' + P.id);
-    h += `<div style="border-top:1px solid var(--faint);padding:10px 0"><div class="dip-row" style="flex-wrap:wrap"><input class="dip-in" data-a="pontNameIn" data-p="${P.id}" value="${esc(P.name)}" maxlength="28" style="min-width:0;flex:1 1 140px"><button class="btn small" data-a="pontRename" data-p="${P.id}"><span>Rename</span></button></div>
+    const on = (wanderer.party || []).includes('pont:' + P.id), A = alComp(pontAlL(P));
+    h += `<div style="border-top:1px solid var(--faint);padding:10px 0"><div style="font-size:8px;letter-spacing:.22em;color:var(--mute);margin-bottom:6px;text-transform:uppercase">${pontTitle(P)} · lv ${compLevel('pont:' + P.id)} · <b style="color:${alColor(A.a)};font-weight:500">${alRank(A.a)} ${A.a > 0 ? '+' : ''}${Math.round(A.a)}</b> · influence ${Math.round(A.inf)}</div><div class="dip-row" style="flex-wrap:wrap"><input class="dip-in" data-a="pontNameIn" data-p="${P.id}" value="${esc(P.name)}" maxlength="28" style="min-width:0;flex:1 1 140px"><button class="btn small" data-a="pontRename" data-p="${P.id}"><span>Rename</span></button></div>
       <div class="dip-row" style="flex-wrap:wrap;gap:7px;margin-top:8px">${PONT_PAL.map(([n, c]) => `<button data-a="pontCol" data-p="${P.id}" data-col="${c}" title="${n}" aria-label="${n}" style="width:30px;height:30px;border-radius:50%;padding:0;cursor:pointer;background:${c || '#2b2f36'};border:2px solid ${(P.col || '') === c ? '#fff' : 'rgba(255,255,255,.18)'}"></button>`).join('')}<input type="color" data-a="pontColPick" data-p="${P.id}" value="${P.col || '#2b2f36'}" title="Any colour" style="width:34px;height:30px;padding:0;border:0;background:none;cursor:pointer"></div>
-      <div class="dip-row" style="flex-wrap:wrap;margin-top:8px"><button class="btn small" data-a="pontParty" data-p="${P.id}"><span>${on ? 'Leave him on the Nostra' : 'Bring him aboard'}</span></button><button class="btn small" data-a="pontRes" data-p="${P.id}"><span>${DIPV.pontRes === P.id ? 'Tap again: he lives in the world for good' : 'Make him a resident'}</span></button></div></div>`;
+      <div class="dip-row" style="flex-wrap:wrap;margin-top:8px"><button class="btn small" data-a="pontParty" data-p="${P.id}"><span>${on ? `Leave ${pontHe(P)[1]} on the Nostra` : `Bring ${pontHe(P)[1]} aboard`}</span></button><button class="btn small" data-a="pontRes" data-p="${P.id}"><span>${DIPV.pontRes === P.id ? `Tap again: ${pontHe(P)[0]} lives in the world for good (takes a resident slot)` : `Make ${pontHe(P)[1]} a resident`}</span></button></div></div>`;
   }
-  for (const P of hunters) h += `<div class="dip-row" style="border-top:1px solid var(--faint);padding:8px 0;justify-content:space-between"><span style="font-size:10px;letter-spacing:.16em">${esc(P.name).toUpperCase()}<br><small style="color:#ff8f86;letter-spacing:.2em;font-size:8px">HUNTING YOU · LV ${P.lv}</small></span></div>`;
+  for (const P of hunters) h += `<div class="dip-row" style="border-top:1px solid var(--faint);padding:8px 0;justify-content:space-between"><span style="font-size:10px;letter-spacing:.16em">${esc(P.name).toUpperCase()}<br><small style="color:#ff8f86;letter-spacing:.2em;font-size:8px">${pontTitle(P).toUpperCase()} · HUNTING YOU · LV ${P.lv}${P.kills ? ` · HAS KILLED YOU ${P.kills}×` : ''}</small></span></div>`;
   return h + `</div>`;
 }
+const pontAlL = P => ({ id: 'pont:' + P.id, name: P.name.toUpperCase(), al: P.sex === 'f' ? 'Neutral Evil' : 'Lawful Evil', tag: 'cpPontifex', h: P.sex === 'f' ? 1.86 : 1.95, mod: P.sex === 'f' ? 'sister' : '', pcol: P.col || '', pont: true });
 function dipPontClick(a, b) {
   const id = b.dataset.p, P = pontById(id); if (!P) return false;
   if (a === 'pontRename') { const v = ($(`#dipBody input[data-a="pontNameIn"][data-p="${id}"]`).value || '').trim().slice(0, 28); if (!v) return true; P.name = v; pontSave(); pontRefresh(id); sfx.chime(); }
@@ -15913,6 +15954,12 @@ function scSpawn() {
     m.scale.setScalar(1.35); const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(pos, SPC.pos, SCV.c.set(0, 1, 0))); m.position.copy(pos); m.quaternion.copy(q); SPC.scene.add(m);
     SC.foes.push({ m, pos, q, hp: 150, max: 150, speed: 240, cd: 2, burst: 0, mode: 'attack', modeT: 0, brk: new THREE.Vector3(), name: `${compName(cid).toUpperCase()} · ${DIP_FAC.find(f => f.id === K.war).fleet}`, ace: cid, war: K.war, cath: !!K.cath });
   }
+  const hunt = curSys().id === 'sol' && PONTS().filter(o => o.st === 'hunt'); // a Pontifex or a Sister on your trail can come for you out here too
+  if (hunt && hunt.length && Math.random() < .35) { const P = pick(hunt), dir = SCV.b.set(Math.random() - .5, (Math.random() - .5) * .4, Math.random() - .5).normalize().addScaledVector(fwd, .9).normalize(), pos = SPC.pos.clone().addScaledVector(dir, 2500), m = makeFighter('ti');
+    m.scale.setScalar(1.45); m.traverse(o => { if (o.isMesh && o.material && o.material.emissive) { o.material = o.material.clone(); o.material.color.set(pontCol(P)); } });
+    const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(pos, SPC.pos, SCV.c.set(0, 1, 0))); m.position.copy(pos); m.quaternion.copy(q); SPC.scene.add(m);
+    const hp = Math.round(120 + P.lv * 2.2); SC.foes.push({ m, pos, q, hp, max: hp, speed: 250, cd: 1.6, burst: 0, mode: 'attack', modeT: 0, brk: new THREE.Vector3(), name: `${P.name.toUpperCase()} · ${pontTitle(P).toUpperCase()} · LV ${P.lv}`, hunter: P.id, ti: true });
+    setTimeout(() => spaceMsg(`${P.name}, ${pontTitle(P)}, has found you in space`), 900); }
   sfx.alarm(); setTimeout(() => sfx.alarm(), 300); combatPulse();
   if (K.resist) { spaceMsg(`${K.who} · ${n} fighters · they haven't forgotten`); return; }
   if (K.war) { spaceMsg(`The ${DIP_FAC.find(f => f.id === K.war).fleet.toLowerCase()} · ${n} ships · you're at war`); return; }
@@ -15950,6 +15997,7 @@ function scHurtPlayer(n) {
   if (SC.hull <= 0) scShipDown();
 }
 function scShipDown() {
+  for (const f of SC.foes) if (f.hunter && f.hp > 0) pontKilledYou(f.hunter, 'in space'); // a Pontifex or Sister shot you down
   scBoom(SPC.pos, 2.4); sfx.boom(1.4); scClear();
   const lost = Math.floor(units() * .25); if (lost) addUnits(-lost);
   const S = curSys(); SC.hull = 100; SC.shield = 100; SC.nextT = SPC.t + 90 + Math.random() * 60;
@@ -15963,6 +16011,7 @@ function scKill(f) {
   const drops = [['scrap', 1 + Math.floor(Math.random() * 3)], Math.random() < .5 && ['crystal', 1], Math.random() < .15 && ['warpcell', 1]].filter(Boolean);
   for (const [id, n] of drops) giveItem(id, n);
   const W3 = wanderer.ch3; if (W3) { W3.kills = (W3.kills | 0) + 1; const c = curChar(); if (c) c.ch3 = W3; }
+  if (f.hunter) { const P = pontById(f.hunter); if (P) setTimeout(() => spaceMsg(`${P.name} ejects and escapes · ${pontHe(P)[0]}’ll find you again on the ground`), 1800); }
   if (f.ace) { delete dip().lent[f.ace]; dipSave(); setTimeout(() => spaceMsg(`${compName(f.ace)} ejects and is picked up · back in your crew, safe`), 1800); if (f.ace === 'orion') placeOrion().catch(() => null); }
   if (f.war) dipScore(f.war, f.ace ? 10 : 6, f.ace ? `${compName(f.ace)}'s ship down` : 'ship down');
   if (f.bot) { const who = residents.find(c => c.id === f.bot); if (who) setTimeout(() => resDie(who), 1200); }
@@ -20638,13 +20687,13 @@ const COMPANIONS = [
       'The explorer was a cover. James Brown’s true allegiance has always been to Terra Imperia, and the armour he now wears marks him as its Pontifex Maximus.',
       'Everything at the bottom of the world (the rescue, the station, the meeting in the storm) was part of an arrangement made long before you arrived. You were never part of the plan. That is exactly why Terra Imperia became so interested in you.'
     ] },
-  { id: 'pontifex', tag: 'cpPontifex', h: 1.95, unlockAt: 3, metIf: () => pontOpen() || chNow() > 3, name: 'PONTIFEX MAXIMUS', title: 'Terra Imperia’s anointed · as many as you make', // data/cpPontifex.js
-    facts: [['Species', 'Human (male soldiers of Terra Imperia only)'], ['Made by', 'Anointing a beaten soldier'], ['Heart', 'A reactor of Terra Imperia, in place of his own'], ['How many', 'As many as you make'], ['Yours to', 'Rename, recolour, bring aboard or settle as a resident'], ['Alignment', 'Lawful Neutral (to whoever beat him last)']],
-    align: 'Obedience with a burning heart. A Pontifex serves whoever beat him last, and serves them completely.',
+  { id: 'pontifex', tag: 'cpPontifex', h: 1.95, unlockAt: 3, metIf: () => pontOpen() || chNow() > 3, name: 'PONTIFEX MAXIMUS · SISTERS OF HAWTHORNE', title: 'Terra Imperia’s anointed · as many as you make', // data/cpPontifex.js (a Sister: the same armour, slimmer, without the horns)
+    facts: [['Species', 'Human soldiers of Terra Imperia'], ['Men', 'Rise as a Pontifex Maximus'], ['Women', 'Rise as a Sister of Hawthorne'], ['Made by', 'Anointing a beaten soldier'], ['Heart', 'A reactor of Terra Imperia, in place of their own'], ['Hunting you', 'One Pontifex and one Sister at a time'], ['Strength', 'Grows every time they kill you, up to lv 100'], ['Alignment', 'Evil by preference · Pontifex Lawful Evil, Sister Neutral Evil']],
+    align: 'Obedience with a burning heart. They serve whoever beat them last, and they would rather that you were cruel.',
     paras: [
       'The Pontifex Maximus was James Brown’s title, until Hawthorne pulled him out of the Southern Ocean and gave him a new heart. Whatever became of James at the Antarctic station, the title is no longer his alone.',
-      'Beat a male soldier of Terra Imperia anywhere in Sol and you can anoint him. He rises as a Pontifex Maximus, reactor heart burning in his chest, and he hunts you across the system. When you beat him a second time, he kneels, and he is yours.',
-      'Every one is different: his own name, his own armour colour, and his own place, in your crew or living in the world as a resident. There is no limit. Terra Imperia has a great many soldiers.'
+      'Beat a soldier of Terra Imperia anywhere in Sol and you can anoint them. A man rises as a Pontifex Maximus, a woman as a Sister of Hawthorne, reactor hearts burning in their chests, and they hunt you across the system, on the ground and in space. One of each can be on your trail at once. Every time they kill you they come back far stronger, so the wise deal with them early.',
+      'Beat them a second time and they kneel. Each keeps their own name, armour colour and alignment: evil pleases them, and good can sway them, slowly. Keep them in your crew, or settle them in the world as residents. A Pontifex or a Sister who rules a resident empire keeps a guard of their own, and when Terra Imperia is gone, that guard is the last place new ones can come from.'
     ] },
   { id: 'josiah2', tag: 'cpJosiah2', h: 1.85, unlockAt: 4, name: 'JOSIAH WILLIAMS II', title: 'Heir of two families',
     facts: [['Species', 'Human'], ['Grandfather', 'Gareth Williams'], ['Great-grandfather', 'Josiah Richards (died 2047 AD)'], ['Alignment', 'Neutral Good']],
@@ -20723,7 +20772,7 @@ function figSlasherTick(dt) {
   }
 }
 function loadFigure(c) {
-  const key = c.tag + (c.mod || '') + (c.sil ? ':sil' : '');
+  const key = c.tag + (c.mod || '') + (c.sil ? ':sil' : '') + (c.pcol || '');
   if (figCache[key]) return figCache[key];
   figCache[key] = (async () => {
     await glbReady(c.tag);
@@ -20732,6 +20781,7 @@ function loadFigure(c) {
     const sc = await parseGlb(u8.buffer), holder = new THREE.Group(); holder.add(sc);
     if (c.mod === 'kizna') feminiseRobot(sc);
     if (c.mod === 'jaximus') redSkinGrob(sc);
+    if (c.mod === 'sister') sisterShape(sc); if (c.pcol) pontPaint(sc, c.pcol);
     if (c.tag === 'chSevirrus') { sinisterEyes(sc); holder.userData.slasher = figSlasher(sc); }
     if (c.sil) { const black = new THREE.MeshBasicMaterial({ color: 0x000000 }); sc.traverse(o => { if (o.isMesh) o.material = black; }); }
     sc.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
@@ -21024,7 +21074,8 @@ function resGroundOk() {
 // (data/taredGlb.js, built by nightmare/tools/build_taredesiban.py): blue skin, dark armour with teal inlays, a sheer cape. ----
 const RES_TARED = { label: 'Taredesiban', src: null };
 function resIsTared(c) { return !!(c && c.resSp === 'taredesiban'); } // function declarations: the roster can ask before this part of the file has run
-function resSpLabel(c) { return resIsTared(c) ? 'Taredesiban' : c && c.resSp === 'pontifex' ? 'Pontifex Maximus' : SPECIES[spOf(c)].label; }
+function resIsPont(c) { return !!(c && (c.resSp === 'pontifex' || c.resSp === 'sister')); }
+function resSpLabel(c) { return resIsTared(c) ? 'Taredesiban' : c && c.resSp === 'pontifex' ? 'Pontifex Maximus' : c && c.resSp === 'sister' ? 'Sister of Hawthorne' : SPECIES[spOf(c)].label; }
 async function resTaredModel() {
   if (!RES_TARED.src) RES_TARED.src = loadDataScript('taredGlb', 'glb').then(() => embGlb('taredGlb'));
   const src = await RES_TARED.src; if (!src) return null;
@@ -21034,7 +21085,7 @@ async function resTaredModel() {
 }
 async function resModel(c) {
   if (resIsTared(c)) return resTaredModel();
-  if (c && c.resSp === 'pontifex') return resPontModel(c);
+  if (resIsPont(c)) return resPontModel(c);
   const sp = spOf(c);
   if (sp === 'human') { if (!look.ready) return null; } else if (!(await loadSpecies(sp))) return null;
   const held = ex.held && ex.held.parent ? ex.held : null, hp = held && held.parent; if (hp) hp.remove(held);
@@ -21921,7 +21972,7 @@ function resGearText(c) { const g = resGear(c), ids = Object.values(g); if (!ids
   return Object.entries(sets).map(([n, k]) => `${n} ×${k}`).join(' · ') + ` (${Math.round(resGearDef(g) * 100)}%)`; }
 function resGearDress(B) { // their armour on their own body
   for (const o of B.armor || []) if (o.parent) o.parent.remove(o);
-  B.armor = []; if (!B.body || !B.L || resIsTared(B.c) || B.c.resSp === 'pontifex') return; // a Taredesiban wears their people's armour (and a Pontifex his own)
+  B.armor = []; if (!B.body || !B.L || resIsTared(B.c) || resIsPont(B.c)) return; // a Taredesiban wears their people's armour (and a Pontifex his own)
   B.gearKey = resGearKey(B.c);
   try { B.armor = armorBuild(resGear(B.c), B.c, B.body, B.L); } catch (e) { console.error(e); }
 }
@@ -22279,7 +22330,7 @@ function resPersonaOpen(c, onSend) {
     if (b.hasAttribute('data-cancel')) { el.classList.add('hidden'); return; }
     if (b.hasAttribute('data-look')) { c.persona = { text: ta.value.trim().slice(0, 400), at: Date.now() }; el.classList.add('hidden'); enterCreate('resEdit', c); return; } // the full editor, species and all
     c.persona = { text: ta.value.trim().slice(0, 400), at: Date.now() };
-    const was = resIsTared(c); if (c.resSp !== 'pontifex') c.resSp = raceSel || null; // a Pontifex stays one
+    const was = resIsTared(c); if (!resIsPont(c)) c.resSp = raceSel || null; // a Pontifex or a Sister stays one
     if (!onSend && was !== resIsTared(c)) { try { RES.bots = RES.bots.filter(B => { if (B.id !== c.id) return true; if (B.root && B.root.parent) B.root.parent.remove(B.root); return false; }); } catch (e) {} } // they'll turn up again as who they are now
     el.classList.add('hidden'); if (onSend) onSend(); else { saveRoster(); renderRoster(); }
   };

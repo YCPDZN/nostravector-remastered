@@ -1426,3 +1426,14 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   They level with you, take the same five orders as the rest of your crew, and can be lent to other factions like any companion. Hunters still on your trail are listed there too.
 - **Nostrapedia:** a new **Pontifex Maximus** companion entry, open once James's fate is decided.
 - **Phones:** the model (`data/cpPontifex.js`, 1.7 MB) only downloads the first time it's needed. Patrols are two soldiers instead of three. The cutscene uses a lighter sea, fewer floes, less snow and fewer soldiers. The Diplomacy controls wrap, and the colour swatches are thumb-sized.
+
+### Sisters of Hawthorne, hunters and alignment
+
+- **Sisters of Hawthorne.** Patrol leaders can be men or women. Anoint a woman and she rises as a **Sister of Hawthorne**: the same armour cut slimmer, the great horns off the helm, ivory by default. She hunts you and joins you exactly like a Pontifex. Rename her, recolour her, bring her aboard, or make her a resident (it takes a resident slot).
+- **One of each at a time.** One Pontifex and one Sister can hunt you at once. While a slot is taken, a beaten soldier of that sex can't be anointed.
+- **They hunt you in space too.** In Sol, a hunter can join any attack on your ship (a bigger fighter in their armour colour). Shoot them down and they eject and escape, and you still have to beat them on the ground.
+- **Every time they kill you they get much stronger.** On the ground or in space, each kill adds about 8 levels plus 12% of their current level (lv 20 → 30 → 42 → 55…), capped at **lv 100**. They then leave you for dead. Kill them early: when you beat one you can **take them into your crew**, **kill them for good**, or **let them go**.
+- **Their own alignments.** Each has their own alignment chart (a Pontifex starts Lawful Evil, a Sister Neutral Evil), shown in the Alignment screen and in Diplomacy → Crew.
+  - Evil acts please them, raise influence and pull them further.
+  - Good acts cost influence and only sway them slowly. The more they trust you, the more they listen.
+- **After Terra Imperia.** Terra Imperia is gone by 2127, and the Catharsis is the threat in Chapter IV, so patrols only come in Chapter III. But a Pontifex or Sister who is a resident and **rules a resident empire** keeps a guard of their own. Challenge them from Diplomacy and beat them, and you can anoint one of their guard, a man or a woman, if that slot is free. That's how you keep making them in later chapters.
