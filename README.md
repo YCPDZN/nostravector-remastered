@@ -1496,3 +1496,6 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - With the phone on its side, the header shrinks so the list and Close both fit.
   - Planet bases are labelled simply, e.g. *Kepler-442 b · Your base*.
 
+
+### Fix: the Mission brief on desktop
+- **On desktop the Mission brief was one endless line** running off the screen. The title screen takes the class `sub` while a sub-menu is open, and that's also the name of the logo's subtitle style, which forbids wrapping, so every sub-menu inherited it. The subtitle style now applies only to the subtitle under the logo, so the brief wraps into the menu column as it does on phones. The Wanderers, Save / Load and Settings menus wrap again too.
