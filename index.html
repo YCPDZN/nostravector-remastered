@@ -12726,13 +12726,15 @@ async function jrvBuild() {
   const NS = phone ? 900 : 2200, sp = new Float32Array(NS * 3); for (let i = 0; i < NS; i++) sp.set([(Math.random() - .5) * 80, Math.random() * 30, (Math.random() - .5) * 80], i * 3);
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3)); JRV.snow = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xdfefff, size: .12, transparent: true, opacity: .7, depthWrite: false })); S.add(JRV.snow);
   // the people: Hawthorne, his men, James as the sea left him, and James as Hawthorne makes him
-  const [H, Jd, Jp, ...T] = await Promise.all([hawthorneRig().catch(() => null), companionRig('james').catch(() => null), companionRig('james-ti').catch(() => null), ...Array.from({ length: phone ? 2 : 4 }, () => tiSoldierRig().catch(() => null))]);
+  const croxRig = async () => { const src = await embGlb('cpCroxian'); if (!src) return null; const R = autoRig(gearNoMeasure(SkeletonUtils.clone(src)), 1.85); armRig(R, 'none'); return R; }; // Croxian as Terra Imperia's soldier: helmet on, scythe and all
+  const [H, Jd, Jp, Cx, Ma, ...T] = await Promise.all([hawthorneRig().catch(() => null), companionRig('james').catch(() => null), companionRig('james-ti').catch(() => null), croxRig().catch(() => null), companionRig('malia').catch(() => null), ...Array.from({ length: phone ? 2 : 4 }, () => tiSoldierRig().catch(() => null))]);
   const add = (R, x, y, z, ry) => { if (!R) return null; R.root.position.set(x, y, z); R.root.rotation.y = ry; R.root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); S.add(R.root); return R; };
   JRV.haw = add(H, -2.2, 0, -3.4, Math.PI / 2 - .3);
   if (Jd) { jrvFrost(Jd); add(Jd, 0, -.5, 8, 0); Jd.root.rotation.x = Math.PI / 2; } JRV.dead = Jd; // face down in the water
   if (Jp) { add(Jp, 0, 1.2, -1.1, 0); Jp.root.rotation.x = -Math.PI / 2; Jp.root.visible = false; Jp.root.traverse(o => { if (o.isMesh && o.material && o.material.emissive) { o.material = o.material.clone(); o.userData.e0 = o.material.emissiveIntensity; } }); } JRV.pont = Jp;
-  JRV.troops = T.filter(Boolean).map((R, i) => add(R, (i % 2 ? 1 : -1) * (3.4 + Math.floor(i / 2) * 1.8), 0, -4.5 - Math.floor(i / 2) * 1.4, i % 2 ? -Math.PI / 2 - .3 : Math.PI / 2 + .3));
-  JRV.troop0 = JRV.troops.map(R => R && R.root.position.clone());
+  // Croxian Mascar and Malia de Toro stand at Hawthorne's side (he never names them), and they're the ones who hold James down; his soldiers keep back
+  JRV.troops = [add(Cx, -1.15, 0, -4.3, .55), add(Ma, 1.35, 0, -4.1, -.6), ...T.filter(Boolean).map((R, i) => add(R, (i % 2 ? 1 : -1) * (3.6 + Math.floor(i / 2) * 1.8), 0, -5.2 - Math.floor(i / 2) * 1.4, i % 2 ? -Math.PI / 2 - .3 : Math.PI / 2 + .3))];
+  JRV.troop0 = JRV.troops.map(R => R && R.root.position.clone()); JRV.troopR0 = JRV.troops.map(R => R && R.root.rotation.y);
 }
 async function startJamesRev() {
   if (JRV.on || HWM.on) return; JRV.on = true; JRV.phase = 'load';
@@ -12823,7 +12825,7 @@ function jrvTick(dt) {
   const Hr = JRV.haw; if (Hr) { Hr.mode = 'idle'; animRig(Hr, dt); if (JRV.step === 1 || act === 'open' || act === 'shock' || act === 'rebuild') Hr.ra.rotation.x = -1.2 + Math.sin(t * 2) * .1; if (act === 'thrash' && JRV.step === 7) Hr.ra.rotation.x = -1.6 + Math.sin(t * 6) * .2; }
   (JRV.troops || []).forEach((R, i) => { if (!R) return; R.mode = 'idle'; animRig(R, dt); const o0 = JRV.troop0[i], hold = act === 'thrash' || act === 'rebuild' || act === 'wake', tx = hold && i < 2 ? (i % 2 ? .95 : -.95) : o0.x, tz = hold && i < 2 ? -1.8 - i * .3 : o0.z;
     R.root.position.x += (tx - R.root.position.x) * Math.min(1, dt * 3); R.root.position.z += (tz - R.root.position.z) * Math.min(1, dt * 3);
-    if (hold && i < 2) { R.root.rotation.y = i % 2 ? -Math.PI / 2 : Math.PI / 2; if (R.ra) R.ra.rotation.x = -1.3 + Math.sin(t * 12 + i) * .15; if (R.la) R.la.rotation.x = -1.3 + Math.sin(t * 11 + i) * .15; } });
+    if (hold && i < 2) { R.root.rotation.y = i % 2 ? -Math.PI / 2 : Math.PI / 2; if (R.ra) R.ra.rotation.x = -1.3 + Math.sin(t * 12 + i) * .15; if (R.la) R.la.rotation.x = -1.3 + Math.sin(t * 11 + i) * .15; } else if (i < 2) R.root.rotation.y = angLerp(R.root.rotation.y, JRV.troopR0[i], Math.min(1, dt * 3)); });
   // the water, the snow, the searchlight
   if (JRV.sea) { const P = JRV.sea.geometry.attributes.position, a0 = JRV.sea0; for (let i = 0; i < P.count; i++) { const x = a0[i * 3], z = a0[i * 3 + 2]; P.array[i * 3 + 1] = -.6 + Math.sin(x * .18 + t * 1.1) * .18 + Math.sin(z * .23 - t * .9) * .22; } P.needsUpdate = true; if ((JRV.nT = (JRV.nT || 0) + dt) > .5) { JRV.nT = 0; JRV.sea.geometry.computeVertexNormals(); } }
   if (JRV.snow) { const P = JRV.snow.geometry.attributes.position; for (let i = 0; i < P.count; i++) { let y = P.array[i * 3 + 1] - dt * 2.2; if (y < 0) y += 30; P.array[i * 3 + 1] = y; P.array[i * 3] += dt * 1.6; if (P.array[i * 3] > 40) P.array[i * 3] -= 80; } P.needsUpdate = true; }

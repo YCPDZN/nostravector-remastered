@@ -1449,4 +1449,5 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - Charon and Kizna's talk uses **CH3CHARON1–5** (`data/chnVoices.js`), one per line.
   - The revival cutscene uses **CH3HAWTHORNE1–13** (`data/jrvVoices.js`), every spoken line in order, Hawthorne's and James's: 1–5 Hawthorne, 6 James's scream, 7 *"Hold him down"*, 8 James *"STOP— please…"*, 9 *"Pain means the heart has taken…"*, 10 James's scream, 11 *"There. Breathe, James…"*, 12 James *"…Grand… Imperarch."*, 13 the final order.
   - The synthesised scream now only plays if the voices fail to load. Both packs download only when they're needed.
+- **Croxian Mascar and Malia de Toro** stand at Hawthorne's side through the revival: Croxian helmeted with his scythe, as Terra Imperia's soldier, and Malia in her armour. Hawthorne never names them or speaks to them. When James wakes screaming, **they're the ones who step in and pin him to the slab** (Croxian on the left, Malia on the right). They let go when the heart takes, and return to Hawthorne's side. His soldiers keep further back.
 
