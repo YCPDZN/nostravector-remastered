@@ -1454,3 +1454,7 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 ### Fix: twitching arms
 - Humans carrying a rifle or pistols (Peter Chambers, soldiers, armed residents and townsfolk) kept twitching their supporting arm. The game decided which way that arm swings in by comparing the two arms' positions **in the world**, so whenever someone faced sideways the arms were almost level and the answer flipped every frame. It now compares them in the character's own space and remembers the result, so the arm holds steady whichever way they face.
 
+### James Brown's scythe
+- **James now carries the Pontifex scythe** (the crescent polearm with its crimson reactor channel) in his right hand, everywhere his Terra Imperia armour appears: the revival cutscene, the Antarctic station fight, as your companion if you spare him, the Nostrapedia and Adventures. It was copied from the Pontifex model into his own (`data/cpJamesTI.js`, built by `nightmare/tools/james_scythe.py`). In the station fight he swings it instead of the sword he used to get.
+- A weapon built into a model now never counts toward that character's height however they're loaded, so the scythe doesn't shrink him.
+
