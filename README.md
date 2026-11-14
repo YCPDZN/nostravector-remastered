@@ -1405,3 +1405,24 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **Javek's Ancient Figures file** now gives his birth (7,000,000,000 BC) and his family: his mother **Marissa** (deceased), his father **Jaximus, the Destroyer of Haeca** (deceased) and his grandfather **Roximus, the Builder of Haeca** (deceased). It also says he met **Maraxos II** as a child, rose to be his trusted royal chancellor, and then overthrew him.
 - **Jaximus has his own Ancient Figures file**, redacted until Chapter IV like Javek's. He was a subordinate of the Xyperion Communist Grob Republic who destroyed the Haecan Republic by causing a nuclear winter, and was killed by Maragroxis VIII. The file also covers his father Roximus, the Builder of Haeca, killed by Maragroxis VII. Jaximus is shown with **red skin, like Roximus**, and a dark red coat over his torso instead of Javek's navy one: it's Javek's model recoloured in the game, so there's nothing extra to download.
 
+
+## Chapter III: Charon, James Brown's revival, and the Pontifex Maximus
+
+- **Charon and Kizna.** When you land on Charon, the two robots are waiting by your ship. Talk to them: they can't leave yet (the moon's reactor needs them until the next alignment) and **they'll join you later**. Their Nostrapedia files open when you meet them.
+- **The cutscene.** Straight after, a dark, cold scene (its own stage, letterboxed, skippable): off the Antarctic coast, Hawthorne's gunship hangs over the black water with searchlights on the waves. His men winch **James Brown's frozen body** out of the sea, where the wanderer pushed him off the pier and he died of hypothermia. Hawthorne lays him on a steel slab, has his chest opened, and burns him back to life with a **Terra Imperia reactor heart**. James rises in the Pontifex Maximus's armour. Hawthorne's lines use the cyan nightmare subtitle style and James's the crimson one. There's no voice yet: send recordings and I'll wire them in.
+- **The Antarctic station.** New main quest: *Defeat James Brown at the Antarctic station.* Fly to Earth (gold marker) and land anywhere on Antarctica. The old research station is a Terra Imperia stronghold now, with barricades, crimson banners, red floodlights, guards at the door and a crimson beacon. Go in to fight **James Brown, Pontifex Maximus** (level: yours + 2, at least 22). Beat him and choose:
+  - **Spare him:** he joins your crew as James Brown of Terra Imperia.
+  - **Kill him:** he's gone for good. He never joins you, and he disappears from the Nostrapedia's Companions section.
+  - Either way, the title of Pontifex is free.
+- **The Pontifex Maximus (works like Warframe's Kuva Liches).** From then on, whenever you land anywhere in Sol in Chapter III there's a chance a **Terra Imperia patrol** has landed nearby (crimson beacon). Beat its leader, a male soldier, then:
+  - **Anoint him:** he rises as a Pontifex Maximus and **hunts you across Sol**. On later landings he may find you (a beacon in his armour's colour). Beat him again and **take him into your crew**, or let him go and he keeps hunting.
+  - **Finish him:** he dies.
+- **As many as you like.** In **Diplomacy → Crew → Pontifex Maximus**, each one you've won has:
+  - **rename**;
+  - **armour colour**: ten swatches or any colour you pick. The plates change colour; the crimson trim, reactor heart and visor stay Terra Imperia's;
+  - **bring aboard / leave on the Nostra**;
+  - **make him a resident**: he lives in the world for good, in his armour and colour.
+
+  They level with you, take the same five orders as the rest of your crew, and can be lent to other factions like any companion. Hunters still on your trail are listed there too.
+- **Nostrapedia:** a new **Pontifex Maximus** companion entry, open once James's fate is decided.
+- **Phones:** the model (`data/cpPontifex.js`, 1.7 MB) only downloads the first time it's needed. Patrols are two soldiers instead of three. The cutscene uses a lighter sea, fewer floes, less snow and fewer soldiers. The Diplomacy controls wrap, and the colour swatches are thumb-sized.
