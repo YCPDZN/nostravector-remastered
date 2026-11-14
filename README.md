@@ -1459,3 +1459,40 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - A weapon built into a model now never counts toward that character's height however they're loaded, so the scythe doesn't shrink him.
 - **A realistic recovery:** James is no longer flung into the air. A recovery crane (a davit on the edge of the ice) lowers its cable, and a rescue litter is slid under him in the water. He's hoisted slowly out of the sea, face down, swaying and turning a little on the cable. The boom swings in over the ice and lowers him onto the slab; on the next shot he's on his back. The camera pulls wide to follow it.
 
+### Back to Antarctica: the real station, your Chapter I camp, and a furious James
+- **Fly to your Chapter I base.** From Chapter III, Chapter I's Antarctica (the research station and everything you built there) can be reached from the sky, like Ad-Nostra: fly to the **research station landmark** on the Antarctic plateau and LAND there. You can also pick **Fly to Antarctica** at your ship's helm when you're landed on Earth. The Nostra parks on the ice, your camp is as you left it, and taking off puts you back in Earth's sky over the station.
+- **Trackers.** From Chapter III, a marker shows the station from space and while flying over Earth: **ANTARCTICA · YOUR BASE · CHAPTER I CAMP**, or in gold **ANTARCTICA · THE STATION · JAMES BROWN · MAIN QUEST** while that quest is on. The old gold marker on the Earth planet itself is gone.
+- **James's stronghold is now the real station,** the same one where he first met you, not a copy on Earth's generated ground. While he holds it: crimson banners on the door, barricades, red floodlights, guards outside and a crimson beacon over the roof. The door is his: landing anywhere else on Earth just points you to the marker.
+- **James is furious.** Through the door, before the fight:
+  - *"I can hear you out there. I'd know those footsteps anywhere. I listened to them walk away down that pier while the water filled my lungs."*
+  - *"Do you know what the cold does? It takes your fingers. Then your voice. Then you can't even scream. I screamed for you anyway. Every second, until I couldn't."*
+  - *"Hawthorne cut me open and put a furnace where my heart used to be. It burns every time I think of you. So come in. Come in and let me show you what you made."*
+  - If you walk away: *"Run, then. You're good at that."*
+- **In the fight:**
+  - *"You shoved me off that pier and walked away while I drowned. I'm going to rip you apart for every second of it."*
+  - *"I FROZE in that water! I felt my own heart STOP! And you didn't even look back!"*
+  - *"I'LL DRAG YOU DOWN INTO THE DARK WITH ME!"*
+  - Beaten: *"Go on… finish it. You've killed me once already."*
+  - Spared: *"Why…? I'd have gutted you. I'd have enjoyed it. …Fine. I owe you a life, wanderer. Don't make me regret paying it back."*
+
+### Teleporting between your bases
+- **From Chapter III on (and in Chapters IV and V), the teleporter network reaches all your bases,** not just the ones in the area you're standing in. Use any teleporter (yours, the station's, Orion's or Ad-Nostra's) and the list now lets you jump to:
+  - **Chapter I's Antarctica**: the station teleporter and your camp's teleporters;
+  - **Africa**: Orion's teleporter, Ad-Nostra's, and any you built there;
+  - **every planet where you've built a teleporter**, in any star system.
+  Destinations in another area are marked *across the network · the Nostra follows you*. You arrive by the teleporter, with your ship set down nearby and your crew with you. New London's teleporter still can't be reached this way.
+- **Planet bases stay where you built them.** A teleporter built on a planet now remembers the ground it stands on, so teleporting back puts you, and the base, in the same place. Teleporters built before this update land on a fixed dry spot on that planet, with your base laid out around you.
+
+### Mission brief, and the teleporter on phones
+- **The Mission brief follows your chapter.** It used to show only the opening (2125, Antarctica) or the 2127 time skip, so Chapters II and III, and Chapter IV before the time skip, read like Chapter I, out of step with the year shown in the corner. It now has its own text for each part of the story:
+  - Chapter I: Antarctica.
+  - Chapter II: Africa, Orion and New London.
+  - Chapter III: Hawthorne on Mars and the hunt for allies across Sol, with no spoilers past where you are.
+  - Chapter IV after the time skip: the Catharsis.
+  - Chapter V: Lord Zark and Carax.
+- **The teleporter menu on phones:**
+  - Thumb-sized Teleport buttons, and the name field fits the screen.
+  - The list scrolls inside the menu without dragging the page.
+  - With the phone on its side, the header shrinks so the list and Close both fit.
+  - Planet bases are labelled simply, e.g. *Kepler-442 b · Your base*.
+
