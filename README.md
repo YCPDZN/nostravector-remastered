@@ -1541,3 +1541,10 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **Skip** (or Esc) jumps straight to the outcome. Skipping the bad ending still ends in game over and still erases the save.
 - **Watch them now:** add `?ending=good`, `?ending=neutral` or `?ending=bad` to the game's address, then tap once the title screen is up. **A preview never erases a save** and returns to the title when it ends.
 - The lines have no voices yet: send recordings and I'll wire them in.
+- **You're in the good and neutral endings too.** Once Zark falls, your wanderer walks up to him.
+  - **Neutral:** Archamus comes down beside you, turns to you and speaks to you face to face. The last shot pulls away from the two of you standing over Zark.
+  - **Good:** you take your place in the ring with Archamus, Hak, Vishara and Darius, all five looking down at him. He sees you from the floor too.
+- **Hak looks like himself:**
+  - No stray sword in his hand.
+  - Once Zark is down, a clean light comes up on everyone in the good and neutral endings, so the hall's red firelight no longer turns Hak (or anyone else) pink.
+  - His line is shot square on, with Darius beside him.
