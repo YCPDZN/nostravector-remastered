@@ -12771,6 +12771,7 @@ function tiWarStart() {
 }
 function tiWarTick() { // Hak Chompjak's offer, on the ground, when you're free to answer
   tiBombBtn(false);
+  if (wanderer && state === 'explore' && !ex.dlg && !DGN.on && erisCoupDue()) { if ((NM.coupT = (NM.coupT || 0) + 1) > 240) { NM.coupT = 0; erisCoupStart(); } return; } // a few seconds after you're back on your feet
   if (!wanderer || !tiWarOn() || state !== 'explore' || ex.dlg || DGN.on) return; const T = dip().tiWar;
   if (!T || T.chompy === 'ally' || Date.now() < (T.ask || 0)) return;
   T.ask = Date.now() + 10 * 60 * 1000; dipSave(); chompyAsk();
@@ -12848,6 +12849,7 @@ function bodyRel(Q) {
   const F = dipFacOf(Q.baseFac || Q.faction || ''); if (!F) return '';
   const W = D.wars[F.id]; if (W && !W.won) return (W.held || []).includes(id) ? 'ally' : 'enemy';
   const r = D.res[F.id]; if (r && ['vassal', 'tributary'].includes(r.st)) return 'ally';
+  if (tiWarOn() && F.id === 'erisian' && c3f('alexiaCoup')) return 'enemy'; // Terra Imperia's puppet now
   if (tiWarOn() && (F.id === 'hfos' || F.id === 'erisian' || (chompyAlly() && (F.id === 'chompy' || F.id === 'timpur')))) return 'ally';
   return '';
 }
@@ -17219,11 +17221,11 @@ function scSpawn() {
 }
 // neutral Catharsis ships patrolling their own systems in Chapter III: they ignore you, and you can't lock on to them
 function scNeutrals() {
-  const S = curSys(), solWar = S.id === 'sol' && tiWarOn() ? `sol-war${chompyAlly() ? '-c' : ''}${TI_WORLDS.filter(id => !dip().col[id]).join('')}` : null, want = solWar || (/^The Catharsis/.test(S.baseFac || S.faction) && (wanderer.chapter | 0) < 4 && !dipWar('catharsis') && !dipRes('catharsis') ? S.id : null);
+  const S = curSys(), solWar = S.id === 'sol' && tiWarOn() ? `sol-war${chompyAlly() ? '-c' : ''}${c3f('alexiaCoup') ? '-e' : ''}${TI_WORLDS.filter(id => !dip().col[id]).join('')}` : null, want = solWar || (/^The Catharsis/.test(S.baseFac || S.faction) && (wanderer.chapter | 0) < 4 && !dipWar('catharsis') && !dipRes('catharsis') ? S.id : null);
   if (SC.neutSys === want) return;
   for (const n of SC.neut) SPC.scene.remove(n.m); SC.neut = []; SC.neutSys = want; if (!want) return;
   if (solWar) { // the war in Sol: allied navies over Earth and Eris (and the Chompy fleet, if you're allied), Terra Imperia's over its worlds
-    const fl = [['earth', 'hfos', 4, 'ALLY · FEDERATION NAVY', 'ally'], ['eris', 'erisian', 3, 'ALLY · ERISIAN GUARD', 'ally'], ...(chompyAlly() ? [['moon', 'chompy', 3, 'ALLY · CHOMPY NAVY', 'ally'], ['mars', 'chompy', 2, 'ALLY · TIMPUR REPUBLIC GUARD', 'ally']] : []), ...TI_WORLDS.filter(id => !dip().col[id]).map(id => [id, 'ti', id === 'venus' ? 5 : 3, 'TERRA IMPERIA · ENEMY', 'tiP'])];
+    const fl = [['earth', 'hfos', 4, 'ALLY · FEDERATION NAVY', 'ally'], c3f('alexiaCoup') ? ['eris', 'erisian', 3, 'ERISIAN GUARD · TERRA IMPERIA PUPPET', 'tiP'] : ['eris', 'erisian', 3, 'ALLY · ERISIAN GUARD', 'ally'], ...(chompyAlly() ? [['moon', 'chompy', 3, 'ALLY · CHOMPY NAVY', 'ally'], ['mars', 'chompy', 2, 'ALLY · TIMPUR REPUBLIC GUARD', 'ally']] : []), ...TI_WORLDS.filter(id => !dip().col[id]).map(id => [id, 'ti', id === 'venus' ? 5 : 3, 'TERRA IMPERIA · ENEMY', 'tiP'])];
     for (const [id, style, k, label, cls] of fl) { const H = SPC.bodies.find(o => o.id === id); if (!H) continue;
       for (let i = 0; i < k; i++) { const m = makeFighter(style); SPC.scene.add(m); SC.neut.push({ m, c: H.pos, r: H.r * (1.8 + i * .35), a: i * 1.3 + Math.random(), w: (.05 + i * .01) * (i % 2 ? 1 : -1), tilt: (i - k / 2) * .2, pos: new THREE.Vector3(), label, cls }); } }
     return; }
@@ -17405,6 +17407,7 @@ function dipOverlay() {
     for (const id of Object.keys(D.lent)) if (D.lent[id] === 'catharsis' || D.lent[id] === 'lead:catharsis') delete D.lent[id];
     if (!D.cathLand) { D.cathLand = true; for (const P of ALL_BODIES) if ((P.land || P.kind === 'station') && String(P.fac5 || '').startsWith(CATH_LAND) && !D.col[P.id]) D.col[P.id] = { gov: null, from: 'catharsis', siege: true }; const c = curChar(); if (c) c.dip = D; }
   }
+  if ((wanderer.chapter | 0) === 3 && wanderer.ch3 && wanderer.ch3.alexiaCoup) { const E = bodyById('eris'); if (E && !D.col.eris) E.faction = 'The Erisian Empire · puppet of Terra Imperia'; }
   for (const S of SYSTEMS) {
     for (const P of S.bodies) {
       const C = D.col[P.id];
@@ -19114,6 +19117,7 @@ function spaceViewOnly(dt) { // the ship hangs there while they talk you down
   SPC.ship.position.copy(SPC.pos); SPC.ship.quaternion.copy(SPC.q); if (SPC.stars) SPC.stars.position.copy(camera.position);
 }
 async function nmWake() {
+  if (NM.coup) { erisCoupEnd(); return; } // the coup on Eris, for real
   if (CUT.on === 'nightmare') { cutNmEnd(); return; } // replayed from Cutscenes
   NM.phase = 'wake'; fbSubHide(); sfx.drone(0); if (NM.vo.music) sfx.stopSong(1.5);
   if (NM.saveCam) { camera.near = NM.saveCam.near; camera.far = NM.saveCam.far; camera.fov = NM.saveCam.fov; camera.updateProjectionMatrix(); }
@@ -19130,6 +19134,49 @@ async function nmWake() {
     openDialog(lines[i][0], [lines[i][1]], false, () => run(i + 1), c ? [c] : undefined);
   };
   setTimeout(() => run(0), 700);
+}
+/* ---- Chapter III, after James: the coup on Eris, for real ----
+   The nightmare showed it; now it happens. Terra Imperia's war of Vassalisation has worked on Eris: Alexia walks into the Citadel,
+   the guards turn, and Vishara is taken below. Eris becomes Terra Imperia's puppet (ch3.alexiaCoup). If you never recruited
+   Nyrexia, she is there beside her sister, and Alexia kills her (ch3.nyxDead). Plays on the nightmare's stage, without its tint. */
+function erisCoupDue() { const c = (wanderer && wanderer.ch3) || {}; return (wanderer.chapter | 0) === 3 && !!c.jamesFate && !c.alexiaCoup && !!(dip().tiWar) && !NM.on; }
+function erisCoupScript(nyx) {
+  const E = NM_SCRIPTS.erisian.beats, L = E[0].lines.slice(1); // the vision's opening line is the only thing that isn't real
+  const b0 = Object.assign({}, E[0], { lines: L, fx: [[-1, 'walkTo', 'alexia', [0, -7]], [1, 'turn', 'g1', 'vishara'], [1, 'turn', 'g2', 'vishara']] });
+  if (nyx) b0.actors = Object.assign({}, E[0].actors, { nyx: [3.2, -11.8, -.3, 'idle'] });
+  const b1 = Object.assign({}, E[1]); if (nyx) b1.actors = Object.assign({}, E[1].actors, { nyx: [2.6, -11, -.9, 'idle'] });
+  const beats = [b0, b1];
+  if (nyx) beats.push({ set: 'citadel', actors: { alexia: [0, -8.5, Math.PI, 'idle'], nyx: [1.6, -10.4, -2.4, 'idle'], vishara: [-1.2, -10.5, 0, 'kneel'], g1: [-1.4, -11.6, .6, 'idle'], g2: [1.4, -11.6, -.6, 'idle'] }, cam: [[3.4, 1.8, -6.5], [2.6, 1.7, -7.4]], at: [.8, 1.6, -9.6],
+    lines: [['NYREXIA ERISCONOS', 'Alexia, stop! She is our sister!'], ['ALEXIA ERISCONOS', 'So are you. It never stopped either of you looking down at me.'], ['NYREXIA ERISCONOS', 'You would hand Eris to Hawthorne? To a man who wants every one of us dead?'], ['ALEXIA ERISCONOS', 'I already have. And he does not want me dead. Only you.'], ['VISHARA ERISCONOS', 'NYREXIA!']],
+    fx: [[3, 'strike', 'alexia', 'nyx']] });
+  beats.push({ set: 'citadel', actors: { alexia: [0, -13, 0, 'idle'], vishara: [-1.2, -10.5, 0, 'kneel'], ...(nyx ? { nyx: [1.5, -10.2, .4, 'down'] } : {}) }, cam: [[0, 1.8, -8.5], [0, 1.75, -10]], at: [0, 1.75, -13],
+    lines: [['ALEXIA ERISCONOS', 'Send word to the Grand Imperarch. The Erisian Empire is his.'], E[2].lines[0]] });
+  return { tint: 'contrast(1.06) saturate(1.05)', kind: 'eris', beats };
+}
+async function erisCoupStart() {
+  if (NM.on) return; const nyx = !c3f('nyxJoined');
+  for (const R of Object.values(NM.actors || {})) if (R.root.parent) R.root.parent.remove(R.root);
+  Object.assign(NM, { on: true, coup: { nyx }, race: 'erisian', phase: 'load', t: 0, bi: -1, ready: false, vo: {}, actors: {}, sevM: null, script: erisCoupScript(nyx) });
+  state = 'nightmare'; ex.keys.clear(); vel.set(0, 0, 0); if (ex.dlg) closeDialog();
+  const fd = $('#fade'); fd.style.transition = 'opacity .6s'; fd.style.opacity = 1; sfx.thud(); sfx.drone(.4);
+  setTimeout(() => notice('Eris · the Citadel el Erisconos', 'MEANWHILE', 2400), 400);
+  nmStage();
+  try { await nmCast('erisian'); if (nyx) { const R = await companionRig('nyrexia').catch(() => null); if (R) { if (R.root.parent) R.root.parent.remove(R.root); if (!R.gear) armRig(R, 'none'); R.root.visible = false; R.root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); NM.scene.add(R.root); NM.actors.nyx = R; } } } catch (e) { console.error(e); }
+  if (!NM.on) return;
+  NM.phase = 'mem'; NM.saveCam = { near: camera.near, far: camera.far, fov: camera.fov }; camera.near = .1; camera.far = 700; camera.fov = 55; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
+  renderer.domElement.style.filter = NM.script.tint; nmBeat(0);
+  show(ui.xhud, true); ui.xhud.classList.add('cutting'); fd.style.transition = 'opacity 1.2s'; fd.style.opacity = 0;
+}
+function erisCoupEnd() {
+  const nyx = NM.coup && NM.coup.nyx; NM.coup = null; NM.on = false; NM.phase = null; fbSubHide(); sfx.drone(0);
+  if (NM.saveCam) { camera.near = NM.saveCam.near; camera.far = NM.saveCam.far; camera.fov = NM.saveCam.fov; camera.updateProjectionMatrix(); }
+  renderer.domElement.style.filter = ''; for (const R of Object.values(NM.actors)) R.root.visible = false;
+  const pdPre = pdStoryIds(); setC3(Object.assign({ alexiaCoup: true }, nyx ? { nyxDead: true, nyxFailed: true } : {})); pdStoryNote(pdPre);
+  try { applyChapterFactions(); } catch (e) {} SC.neutSys = '?';
+  ui.xhud.classList.remove('cutting'); state = 'explore'; ex.snap = true; clock.getDelta(); renderTasks();
+  const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0;
+  setTimeout(() => { notice('The war of Vassalisation', 'ERIS FALLS · A PUPPET OF TERRA IMPERIA', 4400); sfx.thud(); lootMsg('Alexia Erisconos has overthrown Vishara · the Erisian Empire serves Terra Imperia now', '#eda8d4'); }, 900);
+  if (nyx) setTimeout(() => { notice('Nyrexia Erisconos', 'IS DEAD', 4200); sfx.thud(); }, 5600);
 }
 function nmEnd() {
   ui.xhud.classList.remove('cutting'); show(ui.xhud, false); NM.on = false; NM.phase = null;
