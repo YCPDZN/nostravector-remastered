@@ -22377,8 +22377,9 @@ function resGroundOk() {
 }
 
 // ---- their bodies: the player's own model wearing their look, copied with its own materials ----
-// ---- the Taredesibans: a people only residents can belong to (not a playable race). Their body is a rigged model of its own
-// (data/taredGlb.js, built by nightmare/tools/build_taredesiban.py): blue skin, dark armour with teal inlays, a sheer cape. ----
+// ---- the Taredesibans: a playable race now, so a Taredesiban wanderer sent into the world is built like any other (their own
+// colours, from data/sp_taredesiban.js). Residents from before that, made Taredesiban with the old 'Their people' button, keep the
+// older model (data/taredGlb.js): blue skin, dark armour with teal inlays, a sheer cape. ----
 const RES_TARED = { label: 'Taredesiban', src: null };
 function resIsTared(c) { return !!(c && (c.resSp === 'taredesiban' || (!c.resSp && c.species === 'taredesiban'))); } // a resident made Taredesiban, or a Taredesiban wanderer sent into the world // function declarations: the roster can ask before this part of the file has run
 function resIsPont(c) { return !!(c && (c.resSp === 'pontifex' || c.resSp === 'sister')); }
@@ -22391,7 +22392,7 @@ async function resTaredModel() {
   return { m: R.root, L: { ra: R.ra, la: R.la, rl: R.rl, ll: R.ll }, human: false, tared: true };
 }
 async function resModel(c) {
-  if (resIsTared(c)) return resTaredModel();
+  if (c && c.resSp === 'taredesiban' && c.species !== 'taredesiban') return resTaredModel(); // an old-style Taredesiban resident
   if (resIsPont(c)) return resPontModel(c);
   const sp = spOf(c);
   if (sp === 'human') { if (!look.ready) return null; } else if (!(await loadSpecies(sp))) return null;
@@ -23652,12 +23653,7 @@ function resPersonaOpen(c, onSend) {
     el.querySelector('.rp-text').addEventListener('keydown', e => e.stopPropagation());
   }
   const ta = el.querySelector('.rp-text'); ta.value = (c.persona && c.persona.text) || '';
-  // their people: who they were made as, or a Taredesiban (only residents can be; it isn't a playable race)
-  let race = el.querySelector('.rp-race'); if (!race) { race = document.createElement('div'); race.className = 're-chips rp-race'; el.querySelector('.rp-read').after(race); }
-  let raceSel = resIsTared(c) ? 'taredesiban' : '';
-  const own = SPECIES[spOf(c.species ? c : (roster.find(x => x.id === activeId) || c))].label;
-  const drawRace = () => { race.innerHTML = `<small style="width:100%">Their people</small><button data-race="" class="${raceSel ? '' : 'on'}">${reEsc(own)} (as made)</button><button data-race="taredesiban" class="${raceSel ? 'on' : ''}">Taredesiban</button>`; };
-  drawRace(); race.onclick = e => { const b = e.target.closest('[data-race]'); if (!b) return; sfx.click(); raceSel = b.dataset.race; drawRace(); };
+  { const old = el.querySelector('.rp-race'); if (old) old.remove(); } // their people come from who they were made as (Taredesiban is a playable race now)
   el.querySelector('.rp-title').textContent = onSend ? `SEND ${String(c.name).toUpperCase()} INTO THE WORLD` : `EDIT ${String(c.name).toUpperCase()}`;
   el.querySelector('.rp-sub').textContent = onSend ? 'Describe who they are. They can never be played again after this.' : 'Their personality: how they talk, what they love, how they react when you roleplay with them. Or change their name, looks and species.';
   const act = el.querySelector('.rp-act');
@@ -23667,8 +23663,6 @@ function resPersonaOpen(c, onSend) {
     if (b.hasAttribute('data-cancel')) { el.classList.add('hidden'); return; }
     if (b.hasAttribute('data-look')) { c.persona = { text: ta.value.trim().slice(0, 400), at: Date.now() }; el.classList.add('hidden'); enterCreate('resEdit', c); return; } // the full editor, species and all
     c.persona = { text: ta.value.trim().slice(0, 400), at: Date.now() };
-    const was = resIsTared(c); if (!resIsPont(c)) c.resSp = raceSel || null; // a Pontifex or a Sister stays one
-    if (!onSend && was !== resIsTared(c)) { try { RES.bots = RES.bots.filter(B => { if (B.id !== c.id) return true; if (B.root && B.root.parent) B.root.parent.remove(B.root); return false; }); } catch (e) {} } // they'll turn up again as who they are now
     el.classList.add('hidden'); if (onSend) onSend(); else { saveRoster(); renderRoster(); }
   };
   ta.dispatchEvent(new Event('input')); el.classList.remove('hidden'); setTimeout(() => ta.focus(), 60);
