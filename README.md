@@ -1380,3 +1380,13 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - Built from the two original models by `nightmare/tools/croxian_unhelmet.py` (`python3 croxian_unhelmet.py data/cpCroxian.js data/cpOrion.js out.glb`).
 - **His height:** your companion Croxian now stands **1.85 m, the same as his father Orion**. He used to come out at about 1.34 m: the game sized characters by everything in their model, and his scythe reaches far above his head, so the scythe was being fitted to his height (and pulled him off-centre). A first fix missed most of the scythe's parts (the loader spells their names with underscores), so he still came out short; now the whole scythe is left out of the measurement. Carried weapons no longer count toward anyone's height, in the game and in the Nostrapedia; Croxian was the only character affected. (The story's Croxian in Chapters I and II is unchanged.)
 - **Nostrapedia too:** Croxian's entry in the Companions section of the Nostrapedia now shows him at 1.85 m, beside Orion at the same height (it sized him by his scythe as well).
+
+## Javek, and meeting Chapter III's people
+
+- **Javek** joins the Nostrapedia twice: under **Companions** and under **Ancient Figures**. Both files stay **[Redacted] until Chapter IV**, when he appears. He's the last leader of the Grob Robotic Collective, the one Shakhak Chompjak beat at Steca, written to fit the lore already in the Nostrapedia (Shakhak, Lianna, Obsidnia).
+- **His model** (`data/cpJavek.js`, `assets/models/companions/javek.glb`) is your rigged Javek with the **red optical sensor and the smoked lens taken out** (and their glints). **Green eyes** now sit in both goggle rings: a white eyeball, a glowing green iris and a dark pupil, skinned to his head bone so they move with him. Built by `nightmare/tools/javek_green_eyes.py`.
+- **Chapter III's people are classified until you meet them.** Reaching Chapter III no longer opens their files on its own. Each file reads *"Unlocks in Chapter III, when you meet them"* until you do:
+  - **Terra Imperia:** Hawthorne opens at the trial, in the Human nightmare or after his Mars speech. Alexia opens in the Erisian vision or at the Citadel. James, Malia and Croxian open where the story put you face to face with them.
+  - **Companions:** Charon and Kizna open once you land on Charon. Nyrexia opens when you speak to her in the Citadel. Croxian, Malia and James open as above.
+  - **The four leaders** open when you meet them (a dream, the story, the Citadel for Vishara) or face them in their hall. Your own race's leader still opens after Chapter I's first night.
+  - Once you're past Chapter III, everyone from it is open, apart from leaders you have never met or fought.

@@ -1453,6 +1453,7 @@ body.touch .al-key{display:none}
 <script type="application/octet-stream" id="cpKhaz"></script><script src="data/cpKhaz.js"></script>
 <script type="application/octet-stream" id="cpCharon"></script><script src="data/cpCharon.js"></script>
 <script type="application/octet-stream" id="cpNyrexia"></script><script src="data/cpNyrexia.js"></script>
+<script type="application/octet-stream" id="cpJavek"></script><script src="data/cpJavek.js"></script>
 <script type="application/octet-stream" id="cpCroxian"></script><script src="data/cpCroxian.js"></script>
 <script type="application/octet-stream" id="cpCroxianU"></script><script src="data/cpCroxianU.js"></script>
 <script type="application/octet-stream" id="cpMalia"></script><script src="data/cpMalia.js"></script>
@@ -6935,7 +6936,7 @@ function compRoot(id) {
   if (id === 'orion') return orionJoined() && world.orion ? world.orion.root : null;
   try { return COMP_RIGS[id] ? COMP_RIGS[id]() : null; } catch { return null; }
 }
-const COMP_COLS = { james: '#7fe0a0', orion: '#ffb36e', nico: '#e8a0c0', khazglar: '#d6b27a', charon: '#9fb4ff', kizna: '#f3a6d6', nyrexia: '#b893ff', croxian: '#ff7a6e', malia: '#e6e9f0', 'james-ti': '#e0c160', josiah2: '#7fd8ff', tyrotaronus: '#c4cad6' };
+const COMP_COLS = { javek: '#5dff7a', james: '#7fe0a0', orion: '#ffb36e', nico: '#e8a0c0', khazglar: '#d6b27a', charon: '#9fb4ff', kizna: '#f3a6d6', nyrexia: '#b893ff', croxian: '#ff7a6e', malia: '#e6e9f0', 'james-ti': '#e0c160', josiah2: '#7fd8ff', tyrotaronus: '#c4cad6' };
 function compColor(id) {
   if (COMP_COLS[id]) return COMP_COLS[id];
   let h = 0; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; // custom companions get a steady colour of their own
@@ -11410,6 +11411,7 @@ function leaderHere() { // a war whose leader holds court on the world you're st
   return null;
 }
 function leaderLair(F, W, Lo, P, G) { // a one-room "lair": straight into the arena, with the leader on the throne
+  pdMeet(...Lo.list.map(X => LEAD_MEET[X.boss])); // facing them in their hall counts as meeting them
   if (!W.lid) { W.lid = Date.now().toString(36); dipSave(); }
   const X = Lo.list[0], id = `lead~${F ? F.id : 'res'}~${W.lid}`, th = lairThOf(P.dock ? bodyById(P.dock) || P : P);
   return { id, S: sysById(P.sys), P, k: 8, lead: Object.assign({}, X), leadNext: Lo.list.slice(1), war: F ? F.id : null, resEmp: Lo.resEmp || null, seed: lairHash(id) % 900000, tier: 2, floors: 0, lv: X.lv, th, ang: 0, dist: 0, bossName: X.boss, name: `The Hall of ${X.boss}` };
@@ -12221,6 +12223,7 @@ function nyxTick(dt) {
   for (const Q of [NYX.V, NYX.A]) if (Q) { Q.mode = 'idle'; animRig(Q, dt); }
 }
 async function nyxTalk() {
+  pdMeet('nyrexia', 'alexia', 'leader:erisian'); // she stands in the Citadel beside Vishara and Alexia
   const vo = (await NYX.vo) || [], clip = i => vo[i] ? [vo[i]] : undefined;
   const lines = [
     'You’re the wanderer. The one Khazglar finally came down off his mountain for. Word travels fast, even this far out.',
@@ -19755,13 +19758,26 @@ const PRIME_TABS = { primes: () => PEDIA_PRIMES, vectors: () => PEDIA_VECTORS };
 // classified files: leaders open in Chapter III (except the one you met in your dream), Primes and Vectors in Chapter IV
 const PEDIA_UNLOCK_AT = { leaders: 3, primes: 4, vectors: 4 };
 const CH_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-const pdUnlockText = (tab, L) => { if (L && L.unlockLabel) return L.unlockLabel; const at = L && L.unlockAt ? L.unlockAt : PEDIA_UNLOCK_AT[tab]; return `Chapter ${CH_ROMAN[at] || at}`; };
+const pdUnlockText = (tab, L) => { if (L && L.unlockLabel) return L.unlockLabel; if (L && (L.metIf || tab === 'leaders') && chNow() >= (L.unlockAt || PEDIA_UNLOCK_AT[tab] || 0)) return tab === 'leaders' ? 'Chapter III, when you meet or fight them' : 'Chapter III, when you meet them'; const at = L && L.unlockAt ? L.unlockAt : PEDIA_UNLOCK_AT[tab]; return `Chapter ${CH_ROMAN[at] || at}`; };
+// ---- who you've met: Chapter III's people stay classified until you meet them (in the story, a dream, their hall) ----
+function pdMeet(...keys) {
+  if (!wanderer) return; const m = Object.assign({}, (wanderer.ch3 && wanderer.ch3.met) || {}); let nu = false;
+  for (const k of keys) if (k && !m[k]) { m[k] = 1; nu = true; } if (!nu) return;
+  wanderer.ch3 = Object.assign({}, wanderer.ch3, { met: m }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; try { saveRoster(); } catch (e) {}
+}
+const pdMet = k => !!wanderer && (!!(wanderer.ch3 && wanderer.ch3.met && wanderer.ch3.met[k]) || PEDIA_EVENTS.some(E => E.story && E.cast && E.cast.includes(k) && (!E.showIf || E.showIf())));
+const c3f = k => !!(wanderer && wanderer.ch3 && wanderer.ch3[k]);
+const pdMetCh3 = f => () => chNow() > 3 || f(); // past Chapter III you've met them all
+const LEAD_MEET = { Hak: 'leader:chompy', Vishara: 'leader:erisian', Alexia: 'alexia', Darius: 'leader:human', 'Am-Grek': 'leader:grek' };
+const pdOwnLeader = L => !!(wanderer && wanderer.ch1 && wanderer.ch1.slept && spOf(wanderer) === L.sp);
 function pdEntryLocked(L, tab = pedia.tab) {
   if (L.unlockIf && L.unlockIf()) return false; // opens the moment you meet them
-  const at = L.unlockAt || PEDIA_UNLOCK_AT[tab]; if (!at) return false;
-  if (chNow() >= at) return false;
-  if (tab === 'leaders' && wanderer.ch1 && wanderer.ch1.slept && spOf(wanderer) === L.sp) return false;
-  return true;
+  const at = L.unlockAt || PEDIA_UNLOCK_AT[tab];
+  if (tab === 'leaders' && pdOwnLeader(L)) return false;
+  if (at && chNow() < at) return true;
+  if (L.metIf) return !L.metIf(); // the chapter has come, but you haven't met them yet
+  if (tab === 'leaders') return !pdMet('leader:' + L.sp); // a leader opens when you meet them (a dream, the story) or face them in their hall
+  return false;
 }
 const pdSet = () => pedia.tab === 'leaders' ? PEDIA_LEADERS : pedia.tab === 'companions' ? companionsNow() : pedia.tab === 'ti' ? (chNow() >= 3 ? PEDIA_TI : []) : pedia.tab === 'ancient' ? PEDIA_ANCIENT : pedia.tab === 'events' ? pdEvents() : PRIME_TABS[pedia.tab] ? PRIME_TABS[pedia.tab]() : [];
 const pdLocked = () => { const set = pdSet(); return set.length > 0 && set.every(L => pdEntryLocked(L)); };
@@ -19788,6 +19804,14 @@ const PEDIA_ANCIENT = [
       'His greatest victory came at Steca, close to Aridaxx. There he defeated Javek, the leader of the Grob Robotic Collective, and broke the machines’ hold on the region. Javek was not destroyed; he was forced into hiding, and Chompy legend insists he never stopped planning his return.',
       'Erisian records say that Vishara Erisconos fought beside him in those campaigns, and the alliance between Eris and the house of Chompjak dates from that war.',
       'Shakhak ruled for longer than most stars have lived, and died in 199,999,998 BC. Every emperor since, including Hak Chompjak V, has been crowned with his name spoken first.'
+    ] },
+  { id: 'javek', tag: 'cpJavek', h: 1.9, unlockAt: 4, name: 'JAVEK', title: 'Leader of the Grob Robotic Collective', // classified until Chapter IV, when he appears
+    facts: [['Species', 'Grob, part machine and part flesh'], ['Once led', 'The Grob Robotic Collective'], ['Defeated', 'At Steca, by Shakhak Chompjak'], ['Eyes', 'Green; the red optic is gone'], ['Fate', 'Forced into hiding; never destroyed'], ['Alignment', 'Lawful Evil']],
+    align: 'Order without mercy. Javek ran the Grob as a machine runs: every part in its place, and every part replaceable.',
+    paras: [
+      'Javek rose to lead the Grob Robotic Collective in the long age after the machines overthrew Obsidnia, the Vector of Destruction who built them. Under him the Collective held worlds across the region around Steca and Aridaxx, and its governors ruled as far as Eris.',
+      'He was never entirely a machine. Behind his goggles was a living face, blue-skinned and long-eared, and he kept a hand of flesh beside his mechanical arm, as if to remind himself of something.',
+      'At Steca, close to Aridaxx, Shakhak Chompjak defeated him and broke the Grob’s hold on the region. Javek was not destroyed. He was forced into hiding, and Chompy legend insists he never stopped planning his return.'
     ] },
   { id: 'lianna', tag: 'anLianna', h: 2, name: 'LIANNA ERISCONOS', title: 'Former Grob Governor of Eris',
     facts: [['Species', 'Erisian'], ['Born', 'c. 2,500,000,000 BC'], ['Died', '1,000,000,000 BC, of a plague'], ['Children', 'Vishara, Alexia and Nyrexia Erisconos'], ['Formerly', 'Grob Governor of Eris, alongside Reaper Drox and Demolisher Grab'], ['Alignment', 'Chaotic Good (formerly Lawful Evil)']],
@@ -20026,7 +20050,7 @@ const PEDIA_EVENTS = [
     ] }
 ];
 const PEDIA_TI = [
-  { id: 'hawthorne', tag: 'tiHaw', h: 1.9, name: 'THOMAS HAWTHORNE', title: 'Grand Imperarch of Terra Imperia',
+  { id: 'hawthorne', tag: 'tiHaw', h: 1.9, metIf: pdMetCh3(() => pdMet('hawthorne') || c3f('hawMars')), name: 'THOMAS HAWTHORNE', title: 'Grand Imperarch of Terra Imperia',
     facts: [['Species', 'Human'], ['Rank', 'Grand Imperarch'], ['Formerly', 'Head of Government, Human Federation of Sol'], ['Rival', 'Darius Ancin'], ['Allegiance', 'Terra Imperia'], ['Alignment', 'Lawful Evil']],
     align: 'Order through strength. Hawthorne believes humanity needs a master, not a president, and he has always assumed the master would be him.',
     paras: [
@@ -20053,7 +20077,7 @@ const PEDIA_TI = [
         'He died at the siege of Carax, at the end of Chapter IV, when the Catharsis was destroyed and everything it held passed to the wanderer. He despised Darius Ancin to his last breath. It may have been the last human thing about him.'
       ]
     } : null },
-  { id: 'alexia', tag: 'tiAlexia', h: 2, name: 'ALEXIA ERISCONOS', title: 'Princess of Eris · ally of Terra Imperia',
+  { id: 'alexia', tag: 'tiAlexia', h: 2, metIf: pdMetCh3(() => pdMet('alexia')), name: 'ALEXIA ERISCONOS', title: 'Princess of Eris · ally of Terra Imperia',
     facts: [['Species', 'Erisian'], ['Homeworld', 'Eris, outer Sol system'], ['Mother', 'Lianna Erisconos'], ['Sisters', 'Vishara Erisconos, Matriarch of Eris · Nyrexia Erisconos'], ['Allegiance', 'Terra Imperia'], ['Alignment', 'Lawful Evil']],
     align: 'Patient, proud and done waiting. Alexia believes Eris has slept behind her sister’s caution for long enough.',
     paras: [
@@ -20067,21 +20091,21 @@ const PEDIA_TI = [
       facts: [['Species', 'Erisian'], ['Homeworld', 'Eris, outer Sol system'], ['Mother', 'Lianna Erisconos'], ['Sisters', 'Vishara Erisconos (overthrown) · Nyrexia Erisconos'], ['Rules', 'Eris, in the name of Terra Imperia'], ['Allegiance', 'Terra Imperia'], ['Alignment', 'Lawful Evil']],
       paras2: 'She found her chance in Terra Imperia. Hawthorne offered what Vishara never would: a place for Eris at the head of a new order, and an army to take it. With Terra Imperia behind her, Alexia overthrew her own sister and seized Eris. Vishara Erisconos, Matriarch for a billion years, was cast down by her own blood, and Alexia now rules in her place, in Hawthorne’s name.'
     } : null },
-  { id: 'james', tag: 'cpJamesTI', h: 1.95, name: 'JAMES BROWN', title: 'Pontifex Maximus of Terra Imperia',
+  { id: 'james', tag: 'cpJamesTI', h: 1.95, metIf: pdMetCh3(() => pdMet('james')), name: 'JAMES BROWN', title: 'Pontifex Maximus of Terra Imperia',
     facts: [['Species', 'Human'], ['Rank', 'Pontifex Maximus'], ['Cover', 'Explorer, Human Federation of Sol'], ['Answers to', 'Thomas Hawthorne'], ['Alignment', 'Lawful Evil']],
     align: 'Faithful to the order, never to people. James keeps his oaths to Terra Imperia and none of the promises he made to you.',
     paras: [
       'James Brown is the Pontifex Maximus of Terra Imperia, its highest priest and Hawthorne’s keeper of oaths. The friendly explorer from New London was a cover, worn well enough that it fooled you for two chapters.',
       'His meeting in the Antarctic storm, his interest in the signal under the ice, and his interest in you were all Terra Imperia business.'
     ] },
-  { id: 'malia', tag: 'cpMalia', h: 1.75, name: 'MALIA DE TORO', title: 'General of Terra Imperia',
+  { id: 'malia', tag: 'cpMalia', h: 1.75, metIf: pdMetCh3(() => pdMet('malia')), name: 'MALIA DE TORO', title: 'General of Terra Imperia',
     facts: [['Species', 'Human'], ['Born', '2096 AD, Spain'], ['Rank', 'General'], ['Serves under', 'Thomas Hawthorne'], ['Partner', 'Croxian Mascar'], ['Alignment', 'Lawful Neutral']],
     align: 'Professional to the bone. Malia follows orders well and questions them quietly.',
     paras: [
       'Malia de Toro is a general under Thomas Hawthorne, one of the youngest Terra Imperia has ever had. She earned the rank through organisation rather than bravado: her campaigns run on time, and her soldiers come home.',
       'She serves alongside Croxian Mascar, her partner, and the two are known across Terra Imperia as Hawthorne’s most reliable commanders.'
     ] },
-  { id: 'croxian', tag: 'cpCroxian', h: 1.85, name: 'CROXIAN MASCAR', title: 'General of Terra Imperia',
+  { id: 'croxian', tag: 'cpCroxian', h: 1.85, metIf: pdMetCh3(() => pdMet('croxian')), name: 'CROXIAN MASCAR', title: 'General of Terra Imperia',
     facts: [['Species', 'Human'], ['Born', '2094 AD, England'], ['Rank', 'General'], ['Serves under', 'Thomas Hawthorne'], ['Father', 'Orion Mascar'], ['Partner', 'Malia de Toro'], ['Alignment', 'Lawful Neutral']],
     align: 'Duty first. Croxian believes in his soldiers more than in the cause they fight for.',
     paras: [
@@ -20130,7 +20154,7 @@ const COMPANIONS = [
       'He has lived there longer than anyone can remember, tending a small, strange garden and watching the sky. Those who make the climb find him patient, oddly funny and far better informed about the rest of the solar system than a hermit has any right to be.',
       'Khazglar does not like crowds, cities or questions about his past. He does like company, as long as it is quiet.'
     ] },
-  { id: 'charon', tag: 'cpCharon', h: 2.3, unlockAt: 3, name: 'CHARON', title: 'The Robot of Charon',
+  { id: 'charon', tag: 'cpCharon', h: 2.3, unlockAt: 3, metIf: pdMetCh3(() => c3f('charonLanded')), name: 'CHARON', title: 'The Robot of Charon',
     facts: [['Type', 'Industrial humanoid robot'], ['Origin', 'Charon, moon of Pluto'], ['Sister', 'Kizna'], ['Alignment', 'Neutral Good']],
     align: 'Built for work, chooses kindness. Charon has no orders telling him to be good; he simply decided to be.',
     paras: [
@@ -20138,7 +20162,7 @@ const COMPANIONS = [
       'Who built him, and why they left, is a question Charon answers differently every time he is asked. His chassis is scratched and his paint is chipped, but every bolt is tight, and his dry sense of humour has survived a very long time alone.',
       'He is fiercely protective of his sister, Kizna, and of anyone she decides to trust.'
     ] },
-  { id: 'kizna', tag: 'cpCharon', mod: 'kizna', h: 2.15, unlockAt: 3, name: 'KIZNA', title: 'Loyal guardian',
+  { id: 'kizna', tag: 'cpCharon', mod: 'kizna', h: 2.15, unlockAt: 3, metIf: pdMetCh3(() => c3f('charonLanded')), name: 'KIZNA', title: 'Loyal guardian',
     facts: [['Type', 'Humanoid robot'], ['Origin', 'Charon, moon of Pluto'], ['Brother', 'Charon'], ['Serves', 'You, the wanderer'], ['Alignment', 'Lawful Good']],
     align: 'Duty with a heart. Once Kizna gives her loyalty, she keeps it, and she keeps you alive.',
     paras: [
@@ -20146,7 +20170,7 @@ const COMPANIONS = [
       'She serves you loyally. She will not explain why she chose you, only that she did, and that the choice is final. She follows your lead in every fight, warns you before you walk into danger, and quietly corrects your maths when you get it wrong.',
       'Charon calls her the sensible one. Kizna has never argued with that.'
     ] },
-  { id: 'nyrexia', tag: 'cpNyrexia', h: 2.0, unlockAt: 3, name: 'NYREXIA ERISCONOS', title: 'Princess of the Erisian Empire',
+  { id: 'nyrexia', tag: 'cpNyrexia', h: 2.0, unlockAt: 3, metIf: pdMetCh3(() => pdMet('nyrexia') || c3f('nyxJoined')), name: 'NYREXIA ERISCONOS', title: 'Princess of the Erisian Empire',
     facts: [['Species', 'Erisian'], ['Homeworld', 'Eris, outer Sol system'], ['Rank', 'Princess of the Erisian Empire'], ['Sisters', 'Vishara Erisconos, Matriarch of Eris · Alexia Erisconos'], ['Alignment', 'Chaotic Good']],
     align: 'Royal blood, restless heart. Nyrexia keeps her oaths, but not always her family’s rules.',
     paras: [
@@ -20154,7 +20178,7 @@ const COMPANIONS = [
       'Where her sisters are patient and unreadable in the Erisian way, Nyrexia is curious and impatient, and far too interested in the rest of the galaxy for a princess of the oldest court in the solar system. She has slipped her bodyguards more times than the great houses like to admit.',
       'She travels with you partly out of loyalty, partly out of curiosity, and partly, she admits, because it annoys her family.'
     ] },
-  { id: 'croxian', tag: 'cpCroxianU', h: 1.85, unlockAt: 3, name: 'CROXIAN MASCAR', title: 'Former soldier of Terra Imperia', // as your companion his helmet is off (data/cpCroxianU.js, built by nightmare/tools/croxian_unhelmet.py); the story's Croxian keeps it
+  { id: 'croxian', tag: 'cpCroxianU', h: 1.85, unlockAt: 3, metIf: pdMetCh3(() => pdMet('croxian')), name: 'CROXIAN MASCAR', title: 'Former soldier of Terra Imperia', // as your companion his helmet is off (data/cpCroxianU.js, built by nightmare/tools/croxian_unhelmet.py); the story's Croxian keeps it
     facts: [['Species', 'Human'], ['Born', '2094 AD, England, Earth'], ['Father', 'Orion Mascar'], ['Partner', 'Malia de Toro'], ['Formerly', 'A soldier of Terra Imperia'], ['Alignment', 'Neutral Good']],
     align: 'A good man who served a bad cause, and is trying to make up for it one decision at a time.',
     paras: [
@@ -20162,7 +20186,7 @@ const COMPANIONS = [
       'He rose quickly as a soldier of Terra Imperia, and he was good at it. He is a former soldier now. He does not talk about why he left, or about what he saw before he did.',
       'His girlfriend, Malia de Toro, is the one person he never lies to. His father is the one person he cannot bring himself to call.'
     ] },
-  { id: 'malia', tag: 'cpMalia', h: 1.75, unlockAt: 3, name: 'MALIA DE TORO', title: 'Terra Imperia',
+  { id: 'malia', tag: 'cpMalia', h: 1.75, unlockAt: 3, metIf: pdMetCh3(() => pdMet('malia')), name: 'MALIA DE TORO', title: 'Terra Imperia',
     facts: [['Species', 'Human'], ['Born', '2096 AD, Spain'], ['Works for', 'Terra Imperia'], ['Partner', 'Croxian Mascar'], ['Alignment', 'Lawful Neutral']],
     align: 'Professional to the bone. Malia does her job, keeps her word, and keeps her opinions about her employer to herself.',
     paras: [
@@ -20170,7 +20194,7 @@ const COMPANIONS = [
       'She met Croxian Mascar while they were both in Terra Imperia’s service, and they have been together ever since, even now that he has left and she has not.',
       'Whether she stays out of loyalty, ambition or something she is not ready to say aloud is the question that hangs over everyone who travels with her.'
     ] },
-  { id: 'james-ti', tag: 'cpJamesTI', h: 1.95, unlockAt: 3, name: 'JAMES BROWN', title: 'Pontifex Maximus of Terra Imperia',
+  { id: 'james-ti', tag: 'cpJamesTI', h: 1.95, unlockAt: 3, metIf: pdMetCh3(() => pdMet('james')), name: 'JAMES BROWN', title: 'Pontifex Maximus of Terra Imperia',
     facts: [['True allegiance', 'Terra Imperia'], ['Rank', 'Pontifex Maximus'], ['Former cover', 'Explorer, Human Federation of Sol'], ['Alignment', 'Lawful Evil']],
     align: 'Loyal to a cause, not to people. James keeps every promise he makes to Terra Imperia, and none of the ones he made to you.',
     paras: [
@@ -20184,6 +20208,14 @@ const COMPANIONS = [
       'Josiah Williams II is the grandson of this timeline’s Gareth Williams and the great-grandson of this timeline’s Josiah Richards. In this world both were ordinary men, a cheerful, clumsy civil servant and a quiet, careful one, and Josiah Richards died in 2047 AD, long before his great-grandson was born.',
       'He grew up hearing stories about both of them, and he has inherited a little of each: Gareth’s good humour and, thankfully, not his balance; Richards’s sharp mind and his habit of noticing everything.',
       'Lately he has been having dreams about a version of his great-grandfather he never knew, and a title he has never heard anyone say aloud.'
+    ] },
+  { id: 'javek', tag: 'cpJavek', h: 1.9, unlockAt: 4, name: 'JAVEK', title: 'Last leader of the Grob', // data/cpJavek.js (nightmare/tools/javek_green_eyes.py)
+    facts: [['Species', 'Grob, part machine and part flesh'], ['Once led', 'The Grob Robotic Collective'], ['Defeated', 'At Steca, by Shakhak Chompjak'], ['Eyes', 'Green; the red optic is gone'], ['Alignment', 'True Neutral (formerly Lawful Evil)']],
+    align: 'A machine-king who lost everything and kept his patience. Javek fights beside you now, and nobody, perhaps not even Javek, knows how long that will last.',
+    paras: [
+      'Javek once led the Grob Robotic Collective, the machines that cast down their own maker and ruled worlds from Steca to Eris. Shakhak Chompjak broke his hold at Steca, close to Aridaxx, and Javek vanished into hiding.',
+      'He has resurfaced, older than empires and stranger than the legends: a blue-skinned face behind brass goggles, a mechanical arm, and patience measured in hundreds of millions of years. The red optic the Chompy told stories about is gone. His eyes are green now.',
+      'Why he walks beside you is a question he answers politely and never the same way twice. The house of Chompjak would very much like to know.'
     ] },
   { id: 'tyrotaronus', tag: 'vcTaro', h: 2.6, unlockAt: 4, name: 'TYROTARONUS', title: 'The stranded traveller',
     facts: [['Origin', 'A galaxy far from our own'], ['Now', 'Stranded in the Milky Way'], ['Sides with', 'No one'], ['Alignment', 'True Neutral']],
@@ -20308,7 +20340,7 @@ function pediaList() {
     pUI.title.textContent = allLocked && pedia.tab !== 'leaders' && pedia.tab !== 'companions' ? '[REDACTED]' : pedia.tab === 'leaders' ? 'THE FOUR LEADERS' : pedia.tab === 'companions' ? 'YOUR COMPANIONS' : pedia.tab === 'ti' ? 'TERRA IMPERIA' : pedia.tab === 'ancient' ? 'ANCIENT FIGURES' : pedia.tab === 'events' ? 'LORE EVENTS' : pedia.tab === 'vectors' ? 'THE OILKOUMENE VECTORS' : 'THE PRIMES';
     const note = !anyLocked ? (pedia.tab === 'vectors' ? '<div class="sp-card cc-desc"><p>Five brothers born in the Big Bang in the Cyrannus Galaxy, five galaxies from the Milky Way. All are sons of Lord Zark.</p></div>' : '')
       : pedia.tab === 'companions' ? '<div class="sp-card cc-desc rd-card"><p><b>CLASSIFIED.</b> Files marked [Redacted] will be declassified as your story continues.</p></div>'
-      : `<div class="sp-card cc-desc rd-card"><p><b>CLASSIFIED.</b> ${allLocked ? 'These files' : 'Files marked [Redacted]'} will be declassified in ${when}.${pedia.tab === 'leaders' && !allLocked ? ' The leader you met in your dream has been declassified.' : pedia.tab === 'leaders' ? ' Meet a leader in your dreams to open their file early.' : ''}</p></div>`;
+      : `<div class="sp-card cc-desc rd-card"><p><b>CLASSIFIED.</b> ${allLocked ? 'These files' : 'Files marked [Redacted]'} will be declassified in ${when}.${pedia.tab === 'leaders' ? ' A leader’s file opens when you meet them, in a dream or in person, or face them in their hall.' : ''}</p></div>`;
     pUI.list.innerHTML = note + set.map((L, i) => pdEntryLocked(L)
       ? `<button class="mi" data-i="${i}"><i>${pad(i + 1)}</i><span>${bar(L.name.length * 1.05)}<small>[Redacted] · Unlocks in ${pdUnlockText(pedia.tab, L)}</small></span><em class="arr">›</em></button>`
       : (R => `<button class="mi" data-i="${i}"><i>${pad(i + 1)}</i><span>${R.name}<small>${R.title} · ${R.sub || (R.facts.find(f => f[0] === 'Alignment') || ['', ''])[1]}</small></span><em class="arr">›</em></button>`)(pdResolve(L))).join('');
