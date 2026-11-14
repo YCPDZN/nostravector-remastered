@@ -1454,7 +1454,8 @@ body.touch .al-key{display:none}
 <script type="application/octet-stream" id="cpCharon"></script><script src="data/cpCharon.js"></script>
 <script type="application/octet-stream" id="cpNyrexia"></script><script src="data/cpNyrexia.js"></script>
 <script type="application/octet-stream" id="cpJavek"></script><!-- data/cpJavek.js loads when first shown (LAZY_GLB) -->
-<script type="application/octet-stream" id="cpJavekC"></script><!-- data/cpJavekC.js loads when first shown (LAZY_GLB) -->
+<script type="application/octet-stream" id="cpJavekC"></script>
+<script type="application/octet-stream" id="cpPontifex"></script><!-- data/cpPontifex.js loads when first shown (LAZY_GLB) --><!-- data/cpJavekC.js loads when first shown (LAZY_GLB) -->
 <script type="application/octet-stream" id="cpCroxian"></script><script src="data/cpCroxian.js"></script>
 <script type="application/octet-stream" id="cpCroxianU"></script><!-- data/cpCroxianU.js loads when first shown (LAZY_GLB) -->
 <script type="application/octet-stream" id="cpMalia"></script><script src="data/cpMalia.js"></script>
@@ -5032,7 +5033,7 @@ function renderTasks() {
   if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
   if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? campTasks(p, task) : '');
   if (curArea() === 'africa' || ((wanderer.chapter | 0) >= 2 && p.escaped)) h = ch2Tasks(task); // Chapter II's objectives follow you, even back to Antarctica
-  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (c3.hawMars && (wanderer.chapter | 0) === 3 ? task(!!c3.charonLanded, 'Main quest · Head to Charon') : '') + (c3.hawMars ? task(!!c3.nyxJoined, 'Side quest (optional) · Recruit Nyrexia Erisconos on Eris') : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
+  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (c3.hawMars && (wanderer.chapter | 0) === 3 ? task(!!c3.charonLanded, 'Main quest · Head to Charon') : '') + (c3.charonLanded && (wanderer.chapter | 0) === 3 ? task(!!c3.charonMet, 'Meet Charon and Kizna on Charon') : '') + (c3.jamesRev ? task(!!c3.jamesFate, 'Main quest · Defeat James Brown at the Antarctic station') : '') + (c3.hawMars ? task(!!c3.nyxJoined, 'Side quest (optional) · Recruit Nyrexia Erisconos on Eris') : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
   if ((wanderer.chapter | 0) >= 3) { const tq = sqTracked(); if (tq) h += `<div class="x-task sq-task"><i></i><span>${tq}</span></div>`; } // the side quest you're tracking
   xUI.tasks.innerHTML = h;
   $('#xChap').textContent = liveChapterLabel().toUpperCase();
@@ -5217,6 +5218,8 @@ async function interact() {
     if (n.id === 'lairGate') lairGateUse(n.ref); else dgnUse(n.id);
   } else if (n.id === 'nyx') {
     nyxTalk();
+  } else if (['chn', 'tiStation', 'tiPatrol', 'pontHunt'].includes(n.id)) {
+    tiUse(n);
   } else if (n.id === 'leadGate') {
     leaderHallUse();
   } else if (n.id === 'qgiver') {
@@ -5379,7 +5382,7 @@ function exploreCamera(dt) {
 // input (exploration only)
 addEventListener('keydown', e => {
   if (e.code === 'Escape' && !slotUI.root.classList.contains('hidden')) { closeSlots(); return; }
-  if (state === 'hawMars') { if (e.code === 'Escape') skipMeeting(); return; }
+  if (state === 'hawMars' || state === 'jamesRev') { if (e.code === 'Escape') skipMeeting(); return; }
   if (state === 'dream') { if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } return; }
   if (state === 'wcut') { if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } else if (e.code === 'Escape') skipMeeting(); return; }
   if (state === 'farmCut') { if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } return; }
@@ -5826,7 +5829,13 @@ function alignAct(d, why) {
   const st = alState(); st.p = clamp(st.p + d, -100, 100);
   lootMsg(`${d > 0 ? 'Heroic' : 'Villainous'} ${d > 0 ? '+' : '−'}${Math.abs(d)} · ${why}`, d > 0 ? '#7fe3ff' : '#ff7a6e');
   for (const id of partyNow()) {
-    const L = COMPANIONS.find(c => c.id === id); if (!L) continue;
+    const L = COMPANIONS.find(c => c.id === id) || (String(id).startsWith('pont:') && pontById(id.slice(5)) ? pontAlL(pontById(id.slice(5))) : null); if (!L) continue;
+    if (L.pont) { // a Pontifex or a Sister: evil pleases them and pulls them further; good can sway them, slowly, and they resent it
+      const C = st.c[id] || (st.c[id] = { a: alBaseOf(L), inf: 30 }), nm = (PARTY[id] || { name: L.name }).name;
+      if (d < 0) { C.inf = clamp(C.inf + Math.abs(d) * 2.5, 0, 100); C.a = clamp(C.a + d * .3, -100, 100); lootMsg(`${nm} approves · influence gained`, '#ff9f86'); }
+      else { C.inf = clamp(C.inf - Math.abs(d) * 1.5, 0, 100); C.a = clamp(C.a + d * (.12 + C.inf / 400), -100, 100); lootMsg(`${nm} disapproves${C.inf > 60 ? ', but listens' : ''}`, '#ffb36e'); }
+      continue;
+    }
     const b = alBaseOf(L), C = st.c[id] || (st.c[id] = { a: b == null ? 0 : b, inf: 50 }), nm = (PARTY[id] || { name: id }).name;
     if (b == null) { C.inf = clamp(C.inf + Math.abs(d) * 1.5, 0, 100); lootMsg(`${nm} approves`, '#cfd6e6'); continue; } // James tells you what you want to hear
     const lean = C.a >= 15 ? 1 : C.a <= -15 ? -1 : 0;
@@ -5841,7 +5850,8 @@ const alView = { sel: null, R: null, scene: null, cam: null, obj: null, tok: 0, 
 // only the companions travelling with you now; characters from other games appear only once they've been brought into your party
 function alCompList() {
   const party = partyNow(), mine = wanderer.party || [];
-  return COMPANIONS.filter(L => party.includes(L.id)).map(L => ({ L, sub: L.title })).concat(AL_EXTRA.filter(L => mine.includes(L.id)).map(L => ({ L, sub: L.sub })));
+  return COMPANIONS.filter(L => party.includes(L.id)).map(L => ({ L, sub: L.title })).concat(AL_EXTRA.filter(L => mine.includes(L.id)).map(L => ({ L, sub: L.sub })))
+    .concat(party.filter(id => String(id).startsWith('pont:') && pontById(id.slice(5))).map(id => { const P = pontById(id.slice(5)); return { L: pontAlL(P), sub: pontTitle(P) }; })); // your Pontifexes and Sisters
 }
 function renderAlign() {
   const st = alState(), party = partyNow(), comps = alCompList();
@@ -6411,6 +6421,7 @@ function compLevel(id) {
   const pl = levelInfo((wanderer && wanderer.xp) || 0).level;
   if (id === 'orion') return orionLevel(); if (id === 'nico') return nicoLevel();
   if (id === 'james') return clamp(pl + 2, 3, 100); // James has been out on the ice longer than you
+  if (String(id).startsWith('pont:')) { const P = pontById(id.slice(5)); return P ? clamp(Math.max(P.lv || 1, pl), 1, 110) : pl; } // a Pontifex keeps pace with you
   if (id === 'khazglar') { const b = (wanderer && wanderer.ch3 && wanderer.ch3.khzBase) || pl; return clamp(KHZ_LV + pl - b, KHZ_LV, 110); } // level 15 when he joins (the level he fought you at), rising with you after
   const L = COMPANIONS.find(c => c.id === id); if (L && L.lv) return clamp(L.lv + pl - 1, L.lv, 110);
   const c = charById(id); return c && c.level ? clamp(+c.level || pl, 1, 110) : pl;
@@ -6534,7 +6545,7 @@ function updateSurvival(dt) {
   const hb = $('#heatBar'), hv = suitHeat(); hb.firstChild.style.transform = `scaleX(${hv / 100})`; hb.classList.toggle('on', hv < 99.5 || (ch1().stormTalk && !ch1().stormOver)); hb.classList.toggle('low', hv < 30);
   const jb = $('#jetBar'); jb.firstChild.style.transform = `scaleX(${(ex.jet == null ? 100 : ex.jet) / 100})`; jb.classList.toggle('on', ex.jet != null && ex.jet < 99.5); jb.classList.toggle('low', ex.jet < 15);
   // placement preview, teleporter rings, merchants
-  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt); hallTick(dt); khzTick(dt); nyxTick(dt); leaderHallTick(); furnaceTick(); compDungeonTick();
+  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt); hallTick(dt); khzTick(dt); nyxTick(dt); tiTick(dt); leaderHallTick(); furnaceTick(); compDungeonTick();
   for (const b of world.build) if (b.mesh.userData.spin) b.mesh.userData.spin.rotation.z += dt * 1.5;
   if (world.stationTp) world.stationTp.userData.spin.rotation.z += dt * 1.5;
   const it = selItem();
@@ -6937,9 +6948,10 @@ function compRoot(id) {
   if (id === 'orion') return orionJoined() && world.orion ? world.orion.root : null;
   try { return COMP_RIGS[id] ? COMP_RIGS[id]() : null; } catch { return null; }
 }
-const COMP_COLS = { javek: '#5dff7a', james: '#7fe0a0', orion: '#ffb36e', nico: '#e8a0c0', khazglar: '#d6b27a', charon: '#9fb4ff', kizna: '#f3a6d6', nyrexia: '#b893ff', croxian: '#ff7a6e', malia: '#e6e9f0', 'james-ti': '#e0c160', josiah2: '#7fd8ff', tyrotaronus: '#c4cad6' };
+const COMP_COLS = { pontifex: '#d0343a', javek: '#5dff7a', james: '#7fe0a0', orion: '#ffb36e', nico: '#e8a0c0', khazglar: '#d6b27a', charon: '#9fb4ff', kizna: '#f3a6d6', nyrexia: '#b893ff', croxian: '#ff7a6e', malia: '#e6e9f0', 'james-ti': '#e0c160', josiah2: '#7fd8ff', tyrotaronus: '#c4cad6' };
 function compColor(id) {
   if (COMP_COLS[id]) return COMP_COLS[id];
+  if (String(id).startsWith('pont:')) return pontCol(pontById(id.slice(5)));
   let h = 0; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; // custom companions get a steady colour of their own
   return `hsl(${h % 360},70%,66%)`;
 }
@@ -7943,6 +7955,7 @@ function endMeeting() {
   meet.active = false;
 }
 function skipMeeting() {
+  if (state === 'jamesRev' && JRV.on) { jrvSkip(); return; }
   if (state === 'hawMars' && HWM.on) { const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(hwmEnd, 450); return; }
   if (state === 'nightmare' && NM.on) { if (NM.phase === 'sev') { const now = performance.now(); sevSkip(now - (NM.skipAt || 0) < 700); NM.skipAt = now; return; } if (NM.phase === 'mem') nmWake(); else if (NM.phase === 'wake') { closeDialog(); nmEnd(); } return; } // Skip: out of the memories, then past the wake-up
   if (state === 'trial' && trial.on && !trial.skipped) { trial.skipped = true; closeDialog(); endTrial(); return; }
@@ -10535,7 +10548,8 @@ function dgnTick(dt) {
 }
 function dgnDown() { // you fell
   if (DGN.downing) return; DGN.downing = true;
-  const fight = !!DGN.boss; state = 'loadingCh'; vel.set(0, 0, 0);
+  const fight = !!DGN.boss;
+  if (fight && DGN.lair && DGN.lair.tiKind === 'pont') { const id = DGN.lair.tiRef; pontKilledYou(id); if (TIW.hunt && TIW.hunt.P && TIW.hunt.P.id === id) { if (TIW.hunt.g.parent) TIW.hunt.g.parent.remove(TIW.hunt.g); TIW.hunt = null; } setTimeout(() => { if (DGN.on && DGN.lair && DGN.lair.tiKind === 'pont') { try { dgnBossClear(); } catch (e) {} dgnLeave(); } }, 3000); } // they leave you for dead, and come back stronger state = 'loadingCh'; vel.set(0, 0, 0);
   const bo = $('#blackout'); bo.style.transition = 'opacity 1.1s'; bo.style.opacity = 1;
   notice(fight ? (DGN.lair ? `${DGN.boss.Bd.short} put you down` : 'Khazglar’s hammer put you down') : 'You blacked out', fight ? 'THE FIGHT STARTS AGAIN' : 'ORION DRAGGED YOU BACK TO THE STAIRS', 3200);
   setTimeout(() => {
@@ -11390,7 +11404,7 @@ function leadSpec(key) { // the leaders: their moves, their words, their model, 
 function leadCompSpec(id) { const lv = compLevel(id); return { key: 'comp:' + id, boss: compName(id), full: `${compName(id)}, on the throne you gave them`, lv, hp: Math.round(4000 + lv * 160), theme: 'wrong', load: () => companionRig(id), core: ['slam', 'charge', 'volley', 'blink'], p2: ['nova'], sig: 'spiral', seq: ['charge', 'slam', 'volley', 'blink'],
   lines: { intro: 'You put me on this throne. Don’t make me defend it against you.', p2: 'I learned this from you, you know.', p3: 'I WON’T GO EASY!', win: 'Alright… alright. You win. You always do.' } }; }
 function leadResSpec(c) { const lv = resLevel(c), sp = spOf(c); return { key: 'res:' + c.id, boss: c.name, full: `${c.name}, ruler of ${(resEmpOf(c.id) || {}).name || 'a resident empire'}`, lv, hp: Math.round(3500 + lv * 150), theme: 'wrong',
-  load: resIsTared(c) ? () => leadTared() : async () => { const R = await brawlRig({ sp, c: [0x2e3440, 0x8fe3ff], name: c.name, female: c.identity === 'female' }); if (R) armRig(R, 'sword'); return R; },
+  load: resIsPont(c) ? () => pontRig({ col: c.pontCol, sex: c.resSp === 'sister' ? 'f' : 'm' }) : resIsTared(c) ? () => leadTared() : async () => { const R = await brawlRig({ sp, c: [0x2e3440, 0x8fe3ff], name: c.name, female: c.identity === 'female' }); if (R) armRig(R, 'sword'); return R; },
   core: ['slam', 'charge', 'volley', 'blink'], p2: ['nova', 'pools'], sig: 'spiral', seq: ['charge', 'volley', 'slam', 'blink'],
   lines: { intro: `You want my empire, ${wanderer ? wanderer.name : 'wanderer'}? Come and take it.`, p2: 'I built this from nothing!', p3: 'NOT LIKE THIS!', win: 'Fine… it’s yours. It was always going to be.' } }; }
 // who you'd face, and where, in a war with faction F
@@ -11448,9 +11462,11 @@ function leaderResChallenge(eid) {
   const e = resEmp.emp[eid], c = e && resRuler(e); if (!c) return;
   if (!isPl() || DGN.on || state !== 'explore') { lootMsg('Challenge them from a planet’s surface (not inside a lair)', '#ff8f86'); return; }
   const W = { lid: 'r' + eid + Date.now().toString(36) }, p = player.position, L = leaderLair(null, W, { list: [leadResSpec(c)], resEmp: eid }, world.planet.P);
+  if (resIsPont(c)) L.pontRuler = c.name; // beat them and their guard can be anointed
   lairEnter(L, { x: p.x, z: p.z }, 1);
 }
 function leaderBossWin(B) { // a leader falls: the war is won (or the resident empire falls), or the co-leader steps up
+  if (DGN.lair && DGN.lair.tiKind) { tiBossWin(B); return; } // James Brown, a Terra Imperia soldier, or a Pontifex
   const L = DGN.lair, Bd = B.Bd;
   for (const o of [...fauna.list]) if (o.dgn && !o.dead) removeFauna(o);
   dgnBossClear(); sfx.chime(); ex.shake = .6; DGN.flashL = 1.5;
@@ -11467,6 +11483,7 @@ function leaderBossWin(B) { // a leader falls: the war is won (or the resident e
   }
   lairSetProg(L, L.floors + 1);
   if (L.war) { dipScore(L.war, 100, `${Bd.short} defeated in their hall`); setTimeout(() => lootMsg('The war is won · settle it in Diplomacy', '#ffd36a'), 2400); }
+  if (L.pontRuler) setTimeout(() => pontTroopChoice(L.pontRuler), 3200);
   if (L.resEmp && resEmp.emp[L.resEmp]) { const e = resEmp.emp[L.resEmp]; delete resEmp.emp[L.resEmp]; resEmp.cool[L.resEmp] = resNow() + 30 * 60e3; resEmp.wars = resEmp.wars.filter(w => w.a !== L.resEmp && w.b !== L.resEmp); for (const o of Object.values(resEmp.emp)) { if (o.over === L.resEmp) o.over = null; if (o.trib === L.resEmp) o.trib = null; } resEmpLog(`${wanderer.name} defeated ${Bd.short}; ${e.name} has fallen`); saveRoster(); setTimeout(() => lootMsg(`${e.name} has fallen · its worlds are unclaimed again`, '#ffd36a'), 2400); }
   setTimeout(() => { if (!lb || DGN.lb !== lb) return; if (lb.mesh.parent) lb.mesh.parent.remove(lb.mesh); DGN.lb = null; }, 6000);
 }
@@ -12249,6 +12266,9 @@ function nyxJoin() {
   notice('Side quest complete', 'NYREXIA ERISCONOS JOINS YOUR CREW', 4200);
   setTimeout(() => lootMsg('Nyrexia takes the same five orders as the rest of your crew', compColor('nyrexia')), 1600);
 }
+function hwmBarsMake() {
+  if (!HWM.bars) { HWM.bars = document.createElement('div'); HWM.bars.id = 'hwmBars'; HWM.bars.innerHTML = '<i></i><i></i><b></b>'; document.body.appendChild(HWM.bars); const st = document.createElement('style'); st.textContent = '#hwmBars{position:fixed;inset:0;pointer-events:none;z-index:11;display:none}#hwmBars.on{display:block}#hwmBars i{position:absolute;left:0;right:0;height:11vh;background:#000}body.touch #hwmBars i{height:7vh}@media (orientation:portrait){#hwmBars i{height:5vh}}#hwmBars i:first-child{top:0}#hwmBars i:nth-child(2){bottom:0}#hwmBars b{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(20,0,0,.85) 100%);mix-blend-mode:multiply}'; document.head.appendChild(st); }
+}
 function hwmPreload() { // his voice and his model, fetched and decoded before the screen goes dark
   if (!HWM.voP) HWM.voP = loadDataScript('hawMarsVoices').then(() => sfx.loadClips('hawMarsVoices')).then(v => (HWM.vo = v || [])).catch(() => (HWM.vo = []));
   if (!HWM.rigP) HWM.rigP = hawthorneRig().catch(() => null);
@@ -12258,7 +12278,7 @@ async function startHawMars() {
   if (HWM.on) return; HWM.on = true; HWM.phase = 'load'; HWM.t = 0; HWM.li = -1; HWM.lineEnd = 0; HWM.troops = [];
   state = 'hawMars'; ex.keys.clear(); vel.set(0, 0, 0); if (ex.dlg) closeDialog();
   const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.thud(); sfx.drone(.5);
-  if (!HWM.bars) { HWM.bars = document.createElement('div'); HWM.bars.id = 'hwmBars'; HWM.bars.innerHTML = '<i></i><i></i><b></b>'; document.body.appendChild(HWM.bars); const st = document.createElement('style'); st.textContent = '#hwmBars{position:fixed;inset:0;pointer-events:none;z-index:11;display:none}#hwmBars.on{display:block}#hwmBars i{position:absolute;left:0;right:0;height:11vh;background:#000}body.touch #hwmBars i{height:7vh}@media (orientation:portrait){#hwmBars i{height:5vh}}#hwmBars i:first-child{top:0}#hwmBars i:nth-child(2){bottom:0}#hwmBars b{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(20,0,0,.85) 100%);mix-blend-mode:multiply}'; document.head.appendChild(st); }
+  hwmBarsMake();
   try { await Promise.all([hwmBuild(), hwmPreload()]); } catch (e) { console.error(e); hwmEnd(); return; } // his voice: CH3HAWTHORNEMARS1–10
   HWM.saveCam = { near: camera.near, far: camera.far, fov: camera.fov }; camera.near = .1; camera.far = 2400; camera.fov = camera.aspect < 1 ? 64 : 42; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0); // a phone held upright: a wider lens, so he and his ship stay in frame
   renderer.domElement.style.filter = 'contrast(1.18) saturate(.82) brightness(.92)';
@@ -12317,6 +12337,440 @@ function hwmEnd() {
   setTimeout(() => { notice('Side quest · optional', 'RECRUIT NYREXIA ERISCONOS ON ERIS', 3600); renderTasks(); }, 5600);
   setTimeout(() => { lootMsg('Hawthorne’s capital ship is on Mars · Terra Imperia is coming for every xeno in Sol', '#d0343a'); if (partyNow().includes('khazglar')) setTimeout(() => lootMsg('Khazglar · “I felt that ship land. Whatever he wants on my world, he will not have it.”', compColor('khazglar')), 2600); }, 1200);
 }
+/* ---- Chapter III, after Charon ----
+   You meet Charon and Kizna on Charon (they'll join later). Then Hawthorne pulls James Brown's frozen body out of the
+   Southern Ocean and drags him back to life as his Pontifex Maximus (JRV: its own scene, state 'jamesRev', Skip ends it).
+   The Antarctic station is a Terra Imperia stronghold now: land anywhere on Antarctica and face James there. Spare him
+   and he joins you; kill him and he's gone for good, from your crew and from the Nostrapedia's companions.
+   Either way the title is free, and the Pontifex Maximus works like Warframe's Kuva Liches: beat a male Terra Imperia
+   soldier anywhere in Sol in Chapter III (their patrols land near you), anoint him, and he rises as a Pontifex who hunts you
+   across Sol until you beat him again. Then he's yours: as many as you like, each with his own name and armour colour,
+   in your crew or living in the world as a resident (Diplomacy → Crew).
+   Saves: ch3.charonMet, ch3.jamesRev, ch3.jamesFate ('spared' | 'killed'), wanderer.ponts [{ id, name, col, lv, st: 'hunt' | 'ally' }] ---- */
+const CH3S = () => (wanderer && wanderer.ch3) || {};
+function setC3(o) { wanderer.ch3 = Object.assign({}, wanderer.ch3, o); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster(); }
+const ch3Now = () => !!wanderer && (wanderer.chapter | 0) === 3;
+function chnQ() { const c = CH3S(); return ch3Now() && !!c.charonLanded && !c.charonMet; }
+function jamesQ() { const c = CH3S(); return !!c.jamesRev && !c.jamesFate; }
+function pontOpen() { return !!CH3S().jamesFate; }
+function jamesKilled() { return CH3S().jamesFate === 'killed'; }
+const PONTS = () => (wanderer && wanderer.ponts) || [];
+const pontById = id => PONTS().find(o => o.id === id);
+function pontSave() { const c = curChar(); if (c) { c.ponts = wanderer.ponts; c.party = wanderer.party; } saveRoster(); }
+const plvNow = () => levelInfo((wanderer && wanderer.xp) || 0).level;
+const tiPhone = () => document.body.classList.contains('touch');
+
+// ---- the Pontifex Maximus: the armour, in whatever colour you give it ----
+const PONT_PAL = [['Imperial black', ''], ['Crimson', '#8a1018'], ['Gold', '#b8902c'], ['Silver', '#9aa3ad'], ['Ivory', '#d8d2c0'], ['Cobalt', '#1f4fa8'], ['Cyan', '#2aa8b8'], ['Emerald', '#1f7a44'], ['Violet', '#5a2a8a'], ['Ash', '#4a4d52']];
+let pontSrcP = null;
+async function pontRig(P) {
+  await glbReady('cpPontifex');
+  if (!pontSrcP) pontSrcP = embGlb('cpPontifex');
+  const src = await pontSrcP; if (!src) return null;
+  const m = SkeletonUtils.clone(src), sis = !!(P && P.sex === 'f'); if (sis) sisterShape(m);
+  const R = autoRig(gearNoMeasure(m), sis ? 1.86 : 1.95); armRig(R, 'none'); // the polearm is part of the model, and doesn't count toward their height
+  pontPaint(R.root, P && P.col); return R;
+}
+function sisterShape(m) { // a Sister of Hawthorne: the same armour, cut slimmer, the great horns taken off the helm
+  m.scale.x *= .86; m.scale.z *= .9; const drop = [];
+  m.traverse(o => { if (/horn/i.test((o.name || '').replace(/_/g, ' '))) drop.push(o); }); for (const o of drop) if (o.parent) o.parent.remove(o);
+}
+const pontTitle = P => P && P.sex === 'f' ? 'Sister of Hawthorne' : 'Pontifex Maximus';
+const pontHe = P => P && P.sex === 'f' ? ['she', 'her', 'her'] : ['he', 'him', 'his'];
+const huntSlotFree = sex => !PONTS().some(o => o.st === 'hunt' && (o.sex || 'm') === sex); // one Pontifex and one Sister hunting you at a time
+const PONT_MAX_LV = 100;
+function pontPaint(root, col) { // the armour plates take his colour; the crimson trim, the reactor heart and the visor stay Terra Imperia's
+  if (!col) return; const c = new THREE.Color(col), dk = c.clone().multiplyScalar(.55);
+  const near = (m, r, g, b) => Math.abs(m.color.r - r) < .02 && Math.abs(m.color.g - g) < .02 && Math.abs(m.color.b - b) < .02;
+  const fix = m => { if (!m || !m.color) return m; if (near(m, .17, .19, .22)) { const n = m.clone(); n.color.copy(c); return n; } if (near(m, .09, .1, .12)) { const n = m.clone(); n.color.copy(dk); return n; } return m; };
+  root.traverse(o => { if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map(fix) : fix(o.material); });
+}
+const pontCol = P => (P && P.col) || '#d0343a';
+async function tiSoldierRig(sex) { // Terra Imperia infantry: Federation armour gone black and crimson, eyes burning red
+  const src = await townModel('hfos'); if (!src) return null;
+  const m = dressTownsfolk(src, { sp: 'hfos' }); if (sex === 'f') { m.scale.x *= .88; m.scale.z *= .9; }
+  const R = autoRig(m, sex === 'f' ? 1.78 : 1.88); armRig(R, 'rifle');
+  const black = new THREE.Color(0x15161a), crimson = new THREE.Color(0xd0343a);
+  R.root.traverse(o => { if (!o.isMesh || !o.material) return; for (const m of Array.isArray(o.material) ? o.material : [o.material]) { if (m.color) m.color.lerp(black, .78); if (m.emissive) { m.emissive.copy(crimson); m.emissiveIntensity = .08; } } o.castShadow = !tiPhone(); });
+  const eye = glowSprite(0xff2a2a, .55, .95); eye.position.set(0, 1.72, .18); R.root.add(eye);
+  return R;
+}
+const TI_RANKS = ['Centurion', 'Legionary', 'Decurion', 'Optio', 'Praetorian', 'Sergeant'];
+const TI_NAMES_F = ['Livia Vale', 'Aurelia Crane', 'Seraphine Holt', 'Cassia Wren', 'Octavia Rook', 'Marisol Hale', 'Imogen Steele', 'Valeria Quill', 'Juno Ashford', 'Petra Calloway', 'Elara Voss', 'Sabine Morrow', 'Lucia Thorne', 'Drusilla Kade', 'Nerissa Brennan', 'Tamsin Harrow'];
+const TI_NAMES = ['Marcus Vale', 'Corvin Hale', 'Silas Brennan', 'Dorian Kade', 'Lucan Thorne', 'Galen Ashford', 'Tobias Rook', 'Cassius Wren', 'Bram Holloway', 'Evander Crane', 'Rhys Calloway', 'Magnus Sterling', 'Aldric Voss', 'Owen Harrow', 'Felix Morrow', 'Victor Hask', 'Damon Reyes', 'Elias Fenwick', 'Conrad Steele', 'Jasper Quill'];
+const pick = a => a[Math.floor(Math.random() * a.length)];
+
+// ---- what's on the ground near you: Charon and Kizna, the stronghold, a patrol, a Pontifex on your trail ----
+const TIW = { area: null, chn: null, st: null, pat: null, hunt: null };
+function tiWorldClear() { for (const k of ['chn', 'st', 'pat', 'hunt']) { const o = TIW[k]; if (o && o.g && o.g.parent) o.g.parent.remove(o.g); TIW[k] = null; } }
+function tiLanded(P) {
+  tiWorldClear(); TIW.area = curArea(); if (!P) return;
+  if (P.id === 'charon' && chnQ()) chnPlace().catch(e => console.error(e));
+  if (P.id === 'earth' && jamesQ()) stationPlace();
+  if (CH3S().charonMet && !CH3S().jamesRev && ch3Now()) jrvWhenFree(3200); // you left before it played: it finds you on the next world
+  if (P.sys === 'sol' && !P.dock) tiEncounters(P);
+}
+function tiTick(dt) {
+  if (!TIW.area) return;
+  if (curArea() !== TIW.area) { tiWorldClear(); TIW.area = null; return; }
+  const p = player.position;
+  for (const k of ['chn', 'st', 'pat', 'hunt']) { const o = TIW[k]; if (!o) continue; o.g.visible = !DGN.on;
+    for (const R of o.R || []) { if (!R) continue; R.mode = 'idle'; if (o.face) { const q = R.root.position; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - q.x, p.z - q.z), Math.min(1, dt * 3)); } animRig(R, dt); }
+    if (o.beacon) o.beacon.material.opacity = .5 + Math.sin(time * 3) * .2; }
+}
+function tiNear(p) {
+  if (DGN.on) return null; const d = (x, z) => Math.hypot(p.x - x, p.z - z);
+  if (TIW.chn && d(TIW.chn.x, TIW.chn.z) < 3.6) return { id: 'chn', label: 'Charon and Kizna' };
+  if (TIW.st && d(TIW.st.dx, TIW.st.dz) < 4) return { id: 'tiStation', label: 'The station · Terra Imperia stronghold' };
+  if (TIW.pat && d(TIW.pat.x, TIW.pat.z) < 5) return { id: 'tiPatrol', label: `Terra Imperia patrol · ${TIW.pat.rank} ${TIW.pat.name}` };
+  if (TIW.hunt && d(TIW.hunt.x, TIW.hunt.z) < 4.2) return { id: 'pontHunt', label: `${TIW.hunt.P.name} · ${pontTitle(TIW.hunt.P)}` };
+  return null;
+}
+function tiUse(n) {
+  if (n.id === 'chn') chnTalk();
+  else if (n.id === 'tiStation') { const X = jamesSpec(); openChoice('THE ANTARCTIC STATION · TERRA IMPERIA', [{ text: `Go in and face ${X.full} (lv ${X.lv})`, onPick: () => tiFight('james', X) }, { text: 'Not yet', onPick: () => {} }]); }
+  else if (n.id === 'tiPatrol') { const T = TIW.pat, X = soldierSpec(T); openChoice(`${T.rank.toUpperCase()} ${T.name.toUpperCase()} · TERRA IMPERIA`, [{ text: `Fight ${T.rank} ${T.name} (lv ${X.lv})`, onPick: () => tiFight('soldier', X, { name: T.name, rank: T.rank, sex: T.sex }) }, { text: 'Leave them be', onPick: () => {} }]); }
+  else if (n.id === 'pontHunt') { const P = TIW.hunt.P, X = pontSpec(P), [he, him] = pontHe(P); openChoice(`${P.name.toUpperCase()} · ${pontTitle(P).toUpperCase()}`, [{ text: `Face ${him} (lv ${X.lv}) · beat ${him} to make ${him} yours`, onPick: () => tiFight('pont', X, P.id) }, { text: `Not now (${he} keeps hunting you, and grows stronger every time ${he} kills you)`, onPick: () => {} }]); }
+}
+const tiSpot = (r0, r1) => { for (let k = 0; k < 24; k++) { const a = Math.random() * Math.PI * 2, r = r0 + Math.random() * (r1 - r0), x = Math.cos(a) * r, z = Math.sin(a) * r; if (!worldBlocked(x, z)) return [x, z]; } return [r0, r0 * .4]; };
+function tiBeacon(g, x, z, col, h) { const b = glowSprite(col, 14, .6); b.position.set(x, wHeight(x, z) + h, z); g.add(b); return b; }
+
+// Charon and Kizna, by your ship
+async function chnPlace() {
+  const area = curArea(), [C, K] = await Promise.all([companionRig('charon').catch(() => null), companionRig('kizna').catch(() => null)]);
+  if (curArea() !== area || !chnQ() || !C) return;
+  const g = new THREE.Group(), x = -5, z = 11; wScene.add(g);
+  const put = (R, px, pz) => { if (!R) return; R.root.position.set(px, wHeight(px, pz), pz); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); g.add(R.root); };
+  put(C, x, z); put(K, x - 2.4, z + .6);
+  TIW.chn = { g, R: [C, K], face: true, x: x - 1.2, z: z + .3 };
+  setTimeout(() => lootMsg('Two robots are waiting by your ship · go and talk to them', compColor('charon')), 2600);
+}
+function chnTalk() {
+  pdMeet('charon', 'kizna');
+  const L = [
+    ['CHARON', 'Visitors. On Charon. Kizna, put the kettle on. Oh, wait. We don’t drink, and we don’t own a kettle.'],
+    ['KIZNA', 'Ignore him. You’re the wanderer from Hawthorne’s broadcast. His people came through here a month ago, drilling under the ice for something.'],
+    ['CHARON', 'They didn’t find it. I may have dropped a small mountain on their drill.'],
+    ['KIZNA', 'We can’t leave yet. This moon’s reactor needs both of us until the next alignment. When it’s done, we’ll find you.'],
+    ['CHARON', 'She means it. She’s already decided she likes you. It’s very annoying.']
+  ];
+  const run = i => { if (i < L.length) { openDialog(L[i][0], [L[i][1]], false, () => run(i + 1)); return; }
+    setC3({ charonMet: true }); renderTasks(); sfx.chime(); gainXP(200, 'Met Charon and Kizna');
+    notice('Charon and Kizna', 'THEY WILL JOIN YOU LATER', 3400);
+    jrvWhenFree(4000);
+  };
+  run(0);
+}
+
+// the stronghold: the old research station, fortified, in Terra Imperia's crimson
+function stationPlace() {
+  const [la] = earthLL(plDir(0, 0));
+  if (la > -60) { setTimeout(() => lootMsg('James Brown holds the old station in Antarctica · take off and land anywhere on the ice at the bottom of the world', '#ff6a6e'), 3200); return; }
+  const sx = 20, sz = 26, y = wHeight(sx, sz), g = new THREE.Group(), base = new THREE.Group(); g.add(base); wScene.add(g);
+  base.position.set(sx, y, sz); base.rotation.y = Math.atan2(-sx, -sz); // facing your ship
+  const white = new THREE.MeshStandardMaterial({ color: 0xb4b8be, roughness: .7, metalness: .2 }), dark = new THREE.MeshStandardMaterial({ color: 0x1a1c20, roughness: .6, metalness: .6 }), red = new THREE.MeshStandardMaterial({ color: 0x8a0e14, roughness: .7, side: THREE.DoubleSide, emissive: 0x3a0406, emissiveIntensity: .8 });
+  const box = (w, h, d, x, y0, z, m) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y0 + h / 2, z); o.castShadow = o.receiveShadow = true; base.add(o); return o; };
+  for (const [x, z] of [[-4, -2.4], [4, -2.4], [-4, 2.4], [4, 2.4]]) box(.3, .9, .3, x, 0, z, dark); // stilts
+  box(9, 3.4, 5.5, 0, .9, 0, white); box(9.4, .35, 5.9, 0, 4.3, 0, dark); // the hut and its roof
+  const door = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 2.2), new THREE.MeshBasicMaterial({ color: 0xff3a3a, transparent: true, opacity: .55 })); door.position.set(0, 2.05, 2.77); base.add(door);
+  box(2, .3, 1.2, 0, .3, 3.4, dark); // the step
+  box(.12, 9, .12, 3.4, 4.6, -1.6, dark); box(1.6, .1, .1, 3.4, 12.6, -1.6, dark); // the old antenna
+  for (const s of [-1, 1]) { box(.15, 6, .15, s * 3.2, 0, 3.4, dark); const b = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 3.6), red); b.position.set(s * 3.2, 4, 3.5); base.add(b); } // Terra Imperia's banners
+  for (let i = 0; i < 7; i++) { const a = -1 + i / 6 * 2, o = box(2.8, 1.1, .5, Math.sin(a) * 9, 0, Math.cos(a) * 9 + 1, dark); o.rotation.y = a; } // barricades
+  for (const s of [-1, 1]) { box(.25, 7, .25, s * 7, 0, -3, dark); const L = new THREE.PointLight(0xff2a2a, 60, 26, 1.6); L.position.set(s * 7, 7.2, -3); base.add(L); const sp = glowSprite(0xff3a2a, 3, .9); sp.position.set(s * 7, 7.2, -3); base.add(sp); }
+  const beacon = glowSprite(0xff2a2a, 16, .6); beacon.position.set(0, 18, 0); base.add(beacon);
+  base.updateMatrixWorld(true); const dp = base.localToWorld(new THREE.Vector3(0, 0, 3.8));
+  TIW.st = { g, R: [], dx: dp.x, dz: dp.z, beacon };
+  const area = curArea();
+  Promise.all([tiSoldierRig(), tiSoldierRig()]).then(Rs => { if (curArea() !== area || !TIW.st) return; Rs.forEach((R, i) => { if (!R) return; const q = base.localToWorld(new THREE.Vector3(i ? 1.8 : -1.8, 0, 4.6)); R.root.position.set(q.x, wHeight(q.x, q.z), q.z); R.root.rotation.y = base.rotation.y; g.add(R.root); TIW.st.R.push(R); }); }).catch(() => null);
+  setTimeout(() => { notice('Antarctica', 'THE STATION · A TERRA IMPERIA STRONGHOLD', 3600); lootMsg('The old research station, under the crimson beacon · James Brown is inside', '#ff6a6e'); }, 3600);
+}
+
+// a patrol, or a Pontifex who has tracked you down
+function tiEncounters(P) {
+  if (!isPl() || DGN.on) return;
+  const hunters = PONTS().filter(o => o.st === 'hunt');
+  if (hunters.length && Math.random() < .6) { hunterPlace(pick(hunters)); return; }
+  if (ch3Now() && pontOpen() && Math.random() < .5 && !(P.id === 'charon' && chnQ()) && !(P.id === 'earth' && jamesQ())) patrolPlace();
+}
+function patrolPlace() {
+  const area = curArea(), [x, z] = tiSpot(22, 32), g = new THREE.Group(); wScene.add(g);
+  const sex = Math.random() < .5 ? 'm' : 'f', T = TIW.pat = { g, R: [], x, z, sex, name: pick(sex === 'f' ? TI_NAMES_F : TI_NAMES), rank: pick(TI_RANKS), beacon: tiBeacon(g, x, z, 0xff2a2a, 7) };
+  const n = tiPhone() ? 2 : 3;
+  Promise.all(Array.from({ length: n }, (_, i) => tiSoldierRig(i ? (Math.random() < .5 ? 'm' : 'f') : sex))).then(Rs => { if (curArea() !== area || TIW.pat !== T) return; Rs.forEach((R, i) => { if (!R) return; const a = i / n * Math.PI * 2, px = x + Math.cos(a) * 1.6, pz = z + Math.sin(a) * 1.6; R.root.position.set(px, wHeight(px, pz), pz); R.root.rotation.y = Math.atan2(-px, -pz); g.add(R.root); T.R.push(R); }); }).catch(() => null);
+  setTimeout(() => { if (TIW.pat === T) lootMsg(`A Terra Imperia patrol has landed nearby (crimson beacon) · ${T.rank} ${T.name} leads it`, '#ff6a6e'); }, 3400);
+}
+function hunterPlace(P) {
+  const area = curArea(), [x, z] = tiSpot(16, 22), g = new THREE.Group(); wScene.add(g);
+  const H = TIW.hunt = { g, R: [], x, z, P, face: true, beacon: tiBeacon(g, x, z, new THREE.Color(pontCol(P)).getHex(), 8) };
+  pontRig(P).then(R => { if (!R || curArea() !== area || TIW.hunt !== H) return; R.root.position.set(x, wHeight(x, z), z); R.root.traverse(o => { if (o.isMesh) o.castShadow = !tiPhone(); }); g.add(R.root); H.R.push(R); }).catch(() => null);
+  setTimeout(() => { if (TIW.hunt !== H) return; const [, him] = pontHe(P); notice(`${pontTitle(P)} · lv ${P.lv}`, `${P.name.toUpperCase()} HAS FOUND YOU`, 3600); sfx.thud(); lootMsg(`${P.name} is waiting for you · beat ${him} to take ${him} into your crew, or kill ${him} before ${pontHe(P)[0]} grows too strong`, pontCol(P)); }, 3000);
+}
+
+// ---- the fights: the faction leaders' arena, with James, a soldier or a Pontifex on the far side of it ----
+function jamesSpec() { const lv = Math.max(22, plvNow() + 2); return { key: 'ti:james', boss: 'James', full: 'James Brown, Pontifex Maximus', hall: 'The Antarctic station', lv, hp: Math.round(6000 + lv * 190), theme: null, load: leadTag('cpJamesTI', 1.95, 'sword'),
+  core: ['charge', 'slam', 'volley', 'blink'], p2: ['sweep', 'nova'], sig: 'spiral', seq: ['charge', 'slam', 'volley', 'blink', 'slam'],
+  lines: { intro: 'You pushed me into the sea. He pulled me out. I am not the man you left on that pier.', p2: 'Do you know how long it takes to freeze? I do. I counted.', p3: 'FOR THE GRAND IMPERARCH!', win: 'Enough… do it, then. Or don’t. I stopped being afraid of the cold.' } }; }
+function soldierSpec(T) { const lv = Math.max(8, plvNow() + 1); return { key: 'ti:soldier', boss: T.name.split(' ')[0], full: `${T.rank} ${T.name}, Terra Imperia`, hall: 'A Terra Imperia patrol', lv, hp: Math.round(2600 + lv * 120), theme: null, load: () => tiSoldierRig(T.sex),
+  core: ['charge', 'volley', 'slam', 'blink'], p2: ['rain'], sig: 'sweep', seq: ['volley', 'charge', 'slam'],
+  lines: { intro: 'By order of the Grand Imperarch, you are under arrest. Or dead. Your choice.', p2: 'Squad, hold the line!', p3: 'FOR TERRA IMPERIA!', win: 'Finish it… go on…' } }; }
+function pontSpec(P) { P.lv = Math.min(PONT_MAX_LV, Math.max(P.lv || 0, plvNow() + 3)); const lv = P.lv, sis = P.sex === 'f'; return { key: 'ti:pont', boss: P.name.split(' ')[0], full: `${P.name}, ${pontTitle(P)}`, hall: sis ? 'A Sister on your trail' : 'A Pontifex on your trail', lv, hp: Math.round(4500 + lv * 170), theme: null, load: () => pontRig(P),
+  core: ['charge', 'slam', 'blink', 'volley'], p2: ['nova', 'sweep'], sig: 'spiral', seq: sis ? ['blink', 'volley', 'blink', 'charge', 'slam'] : ['blink', 'slam', 'charge', 'volley'],
+  lines: sis ? { intro: 'I was a soldier. You made me a Sister of Hawthorne. Now kneel to what you made.', p2: 'The heart they gave me sings when you bleed.', p3: 'FOR THE GRAND IMPERARCH!', win: 'Then… I am yours. As the anointing demands.' }
+    : { intro: 'I was a soldier. You made me this. Now I will make you kneel.', p2: 'The heart they gave me does not tire.', p3: 'I AM THE PONTIFEX!', win: 'Then… I am yours. As the anointing demands.' } }; }
+function pontKilledYou(id, where) { // every time they kill you they come back far stronger (lv 100 at most), and leave you for dead
+  const P = pontById(id); if (!P || P.st !== 'hunt') return;
+  const was = P.lv || 1; P.lv = Math.min(PONT_MAX_LV, was + 8 + Math.round(was * .12)); P.kills = (P.kills | 0) + 1; pontSave();
+  setTimeout(() => { notice(`${P.name} left you for dead${where ? ' · ' + where : ''}`, `${pontTitle(P).toUpperCase()} · LV ${was} → ${P.lv}`, 4200); lootMsg(`${P.name} grows stronger every time ${pontHe(P)[0]} kills you · finish ${pontHe(P)[1]} early`, '#ff6a6e'); }, where ? 1200 : 3000);
+}
+function tiFight(kind, X, ref) {
+  if (!isPl() || DGN.on || state !== 'explore') { lootMsg('Not here', '#ff8f86'); return; }
+  const p = player.position, L = leaderLair(null, { lid: kind + Date.now().toString(36) }, { list: [X] }, world.planet.P);
+  Object.assign(L, { tiKind: kind, tiRef: ref, name: X.hall || L.name }); lairEnter(L, { x: p.x, z: p.z }, 1);
+}
+function tiBossWin(B) {
+  const L = DGN.lair, Bd = B.Bd;
+  for (const o of [...fauna.list]) if (o.dgn && !o.dead) removeFauna(o);
+  dgnBossClear(); sfx.chime(); ex.shake = .6; DGN.flashL = 1.5;
+  if (DGN.lb) { DGN.lb.mesh.rotation.x = .35; DGN.lb.mesh.position.y = -.3; } // down on one knee
+  notice(L.tiKind === 'james' ? 'Main quest' : 'Terra Imperia', `${Bd.short.toUpperCase()} IS BEATEN`, 3200); lbark(Bd.short, Bd.lines.win, 3400);
+  gainXP(Math.round((L.tiKind === 'james' ? 600 : 250) + Bd.lv * 14), `Defeated ${Bd.name}`);
+  lairSetProg(L, L.floors + 1);
+  const lb = DGN.lb, gone = () => setTimeout(() => { if (!lb || DGN.lb !== lb) return; if (lb.mesh.parent) lb.mesh.parent.remove(lb.mesh); DGN.lb = null; }, 2600);
+  setTimeout(() => { if (L.tiKind === 'james') jamesChoice(gone); else if (L.tiKind === 'soldier') soldierChoice(L.tiRef, gone); else if (L.tiKind === 'pont') pontChoice(L.tiRef, gone); }, 1800);
+}
+function pontUnlockNote() {
+  setTimeout(() => { notice('Terra Imperia', 'THE PONTIFEX MAXIMUS IS YOURS TO MAKE', 4200); lootMsg('Beat a male Terra Imperia soldier anywhere in Sol and anoint him: he rises as a Pontifex Maximus, hunts you, and joins you once you beat him again', '#ff6a6e'); }, 5200);
+}
+function jamesChoice(gone) {
+  pdMeet('james');
+  openChoice('JAMES BROWN', [
+    { text: 'Spare him', onPick: () => {
+      setC3({ jamesFate: 'spared' }); wanderer.party = [...new Set([...(wanderer.party || []), 'james-ti'])]; pontSave();
+      lbark('James', 'Why…? After the pier… Fine. I owe you a life. I’ll pay it back.', 4400);
+      syncCrewParty(); refreshJamesUI(); renderTasks(); sfx.chime();
+      notice('James Brown is spared', 'HE JOINS YOUR CREW', 4200); compJoinNotice('james-ti', 4800); gone(); pontUnlockNote();
+    } },
+    { text: 'Kill him', onPick: () => {
+      setC3({ jamesFate: 'killed' }); wanderer.party = (wanderer.party || []).filter(x => x !== 'james-ti'); pontSave();
+      sfx.thud(); ex.shake = 1; DGN.flashL = 2.4; if (DGN.lb && DGN.lb.mesh.parent) { DGN.lb.mesh.parent.remove(DGN.lb.mesh); DGN.lb = null; }
+      renderTasks(); notice('James Brown', 'IS DEAD · FOR GOOD THIS TIME', 4200); pontUnlockNote();
+    } }]);
+}
+function pontAnoint(T, gone) { // a beaten soldier rises as a Pontifex Maximus (a man) or a Sister of Hawthorne (a woman), and hunts you
+  const sex = T.sex || 'm', sis = sex === 'f';
+  const P = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: T.name, sex, col: sis ? '#d8d2c0' : '', lv: Math.min(PONT_MAX_LV, plvNow() + 3), st: 'hunt', made: Date.now() };
+  wanderer.ponts = [...PONTS(), P]; const st = alState(); st.c['pont:' + P.id] = { a: sis ? AL_BASE['Neutral Evil'] : AL_BASE['Lawful Evil'], inf: 30 }; alSave(); pontSave();
+  sfx.thud(); ex.shake = .8; if (DGN.on) DGN.flashL = 2.2; if (gone) gone();
+  notice('Anointed', `${T.name.toUpperCase()} RISES AS A ${pontTitle(P).toUpperCase()}`, 4200);
+  setTimeout(() => lootMsg(`${T.name} will hunt you across Sol, on the ground and in space · beat ${pontHe(P)[1]} again and ${pontHe(P)[0]}’s yours`, '#ff6a6e'), 1800);
+}
+function anointOpt(T, gone) { // only one Pontifex and one Sister can hunt you at once
+  const sis = T.sex === 'f', [he, him] = sis ? ['she', 'her'] : ['he', 'him'];
+  return huntSlotFree(T.sex || 'm') ? { text: `Anoint ${him} · ${he} rises as a ${sis ? 'Sister of Hawthorne' : 'Pontifex Maximus'} and hunts you`, onPick: () => pontAnoint(T, gone) }
+    : { text: `(A ${sis ? 'Sister' : 'Pontifex'} is already hunting you · deal with ${sis ? 'her' : 'him'} first)`, onPick: () => { lootMsg(`Only one ${sis ? 'Sister of Hawthorne' : 'Pontifex Maximus'} can hunt you at a time`, '#ff8f86'); if (gone) gone(); } };
+}
+function soldierChoice(T, gone) {
+  if (TIW.pat) { if (TIW.pat.g.parent) TIW.pat.g.parent.remove(TIW.pat.g); TIW.pat = null; } // the patrol is broken
+  const him = T.sex === 'f' ? 'her' : 'him';
+  openChoice(`${T.rank.toUpperCase()} ${T.name.toUpperCase()}`, [anointOpt(T, gone),
+    { text: `Finish ${him}`, onPick: () => { sfx.thud(); DGN.flashL = 1.6; if (DGN.lb && DGN.lb.mesh.parent) { DGN.lb.mesh.parent.remove(DGN.lb.mesh); DGN.lb = null; } notice('Terra Imperia', `${T.rank.toUpperCase()} ${T.name.toUpperCase()} IS DEAD`, 3000); } }]);
+}
+function pontTroopChoice(sp) { // a Pontifex or Sister ruling a resident empire falls: their guard can be anointed too (the only way left once Terra Imperia is gone)
+  const pickT = sex => ({ sex, name: pick(sex === 'f' ? TI_NAMES_F : TI_NAMES), rank: pick(TI_RANKS) }), m = pickT('m'), f = pickT('f');
+  openChoice(`${sp.toUpperCase()}'S GUARD`, [anointOpt(m), anointOpt(f), { text: 'Leave them', onPick: () => {} }]);
+}
+function pontChoice(id, gone) {
+  const P = pontById(id); if (!P) return; if (TIW.hunt && TIW.hunt.P === P) { if (TIW.hunt.g.parent) TIW.hunt.g.parent.remove(TIW.hunt.g); TIW.hunt = null; }
+  const [he, him, his] = pontHe(P);
+  openChoice(`${P.name.toUpperCase()} · ${pontTitle(P).toUpperCase()}`, [
+    { text: `Take ${him} into your crew`, onPick: () => {
+      P.st = 'ally'; wanderer.party = [...new Set([...(wanderer.party || []), 'pont:' + P.id])]; pontSave(); syncCrewParty(); refreshJamesUI(); gone(); sfx.chime();
+      notice(pontTitle(P), `${P.name.toUpperCase()} JOINS YOUR CREW`, 4200); compJoinNotice('pont:' + P.id, 4800);
+      setTimeout(() => lootMsg(`Rename ${him}, change ${his} armour colour or make ${him} a resident: Diplomacy → Crew`, pontCol(P)), 2600);
+    } },
+    { text: `Kill ${him} for good`, onPick: () => { wanderer.ponts = PONTS().filter(o => o !== P); pontSave(); sfx.thud(); DGN.flashL = 2; if (DGN.lb && DGN.lb.mesh.parent) { DGN.lb.mesh.parent.remove(DGN.lb.mesh); DGN.lb = null; } notice(pontTitle(P), `${P.name.toUpperCase()} IS DEAD`, 3400); } },
+    { text: `Let ${him} go (${he} keeps hunting you)`, onPick: () => { gone(); pontSave(); } }]);
+}
+
+// ---- your Pontifexes, in your crew ----
+function pontParty() { for (const id of (wanderer && wanderer.party) || []) if (String(id).startsWith('pont:') && !PARTY[id]) { const P = pontById(id.slice(5)); if (P) PARTY[id] = { name: P.name.split(' ')[0], full: `${P.name}, ${pontTitle(P)}`, crew: true }; } }
+function pontDrop(id) { const C = CREW[id]; if (C && C.R && C.R.root.parent) C.R.root.parent.remove(C.R.root); delete CREW[id]; delete PARTY[id]; }
+function pontRefresh(id) { pontDrop('pont:' + id); syncCrewParty(); placeCrew().catch(() => null); refreshJamesUI(); }
+function pontToResident(id) {
+  const P = pontById(id); if (!P) return;
+  if (residents.length >= MAX_RESIDENTS) { lootMsg(`The world already has ${MAX_RESIDENTS} residents`, '#ff8f86'); return; }
+  const base = JSON.parse(JSON.stringify(curChar() || wanderer));
+  for (const k of ['party', 'ponts', 'dip', 'place', 'lairs', 'cmds', 'aboard', 'dungeon', 'ch1', 'ch2', 'ch3', 'persona', 'resSp', 'look', 'gear']) delete base[k];
+  residents.push(Object.assign(base, { id: ccId(), name: P.name, species: 'human', identity: P.sex === 'f' ? 'female' : 'male', resSp: P.sex === 'f' ? 'sister' : 'pontifex', pontCol: P.col || '', sentAt: Date.now(), persona: null, align: undefined }));
+  wanderer.ponts = PONTS().filter(o => o !== P); wanderer.party = (wanderer.party || []).filter(x => x !== 'pont:' + id); pontDrop('pont:' + id); pontSave(); refreshJamesUI();
+  sfx.chime(); notice(pontTitle(P), `${P.name.toUpperCase()} NOW LIVES IN THIS WORLD · A RESIDENT`, 3600);
+}
+async function resPontModel(c) {
+  const R = await pontRig({ col: c.pontCol, sex: c.resSp === 'sister' ? 'f' : 'm' }); if (!R) return null;
+  if (tiPhone()) R.root.traverse(o => { if (o.isMesh) o.castShadow = false; });
+  return { m: R.root, L: { ra: R.ra, la: R.la, rl: R.rl, ll: R.ll }, human: false, tared: true };
+}
+function dipPontCard() {
+  const all = PONTS(); if (!pontOpen() && !all.length) return '';
+  const allies = all.filter(o => o.st === 'ally'), hunters = all.filter(o => o.st === 'hunt'), esc = s => String(s).replace(/[<>&"]/g, '');
+  let h = `<div class="dip-card" style="--fc:#d0343a"><h4>PONTIFEX MAXIMUS · SISTERS OF HAWTHORNE<small>${allies.length} in your service${hunters.length ? ` · ${hunters.length} hunting you` : ''}</small></h4><p>Beat a Terra Imperia soldier anywhere in Sol and anoint them: a man rises as a Pontifex Maximus, a woman as a Sister of Hawthorne. One of each can hunt you at a time, on the ground and in space, and they grow far stronger every time they kill you (up to lv 100), so deal with them early. Beat them again to take them into your crew, as many as you like. Once Terra Imperia is gone, the guard of a resident empire ruled by one of them can still be anointed.</p>`;
+  for (const P of allies) {
+    const on = (wanderer.party || []).includes('pont:' + P.id), A = alComp(pontAlL(P));
+    h += `<div style="border-top:1px solid var(--faint);padding:10px 0"><div style="font-size:8px;letter-spacing:.22em;color:var(--mute);margin-bottom:6px;text-transform:uppercase">${pontTitle(P)} · lv ${compLevel('pont:' + P.id)} · <b style="color:${alColor(A.a)};font-weight:500">${alRank(A.a)} ${A.a > 0 ? '+' : ''}${Math.round(A.a)}</b> · influence ${Math.round(A.inf)}</div><div class="dip-row" style="flex-wrap:wrap"><input class="dip-in" data-a="pontNameIn" data-p="${P.id}" value="${esc(P.name)}" maxlength="28" style="min-width:0;flex:1 1 140px"><button class="btn small" data-a="pontRename" data-p="${P.id}"><span>Rename</span></button></div>
+      <div class="dip-row" style="flex-wrap:wrap;gap:7px;margin-top:8px">${PONT_PAL.map(([n, c]) => `<button data-a="pontCol" data-p="${P.id}" data-col="${c}" title="${n}" aria-label="${n}" style="width:30px;height:30px;border-radius:50%;padding:0;cursor:pointer;background:${c || '#2b2f36'};border:2px solid ${(P.col || '') === c ? '#fff' : 'rgba(255,255,255,.18)'}"></button>`).join('')}<input type="color" data-a="pontColPick" data-p="${P.id}" value="${P.col || '#2b2f36'}" title="Any colour" style="width:34px;height:30px;padding:0;border:0;background:none;cursor:pointer"></div>
+      <div class="dip-row" style="flex-wrap:wrap;margin-top:8px"><button class="btn small" data-a="pontParty" data-p="${P.id}"><span>${on ? `Leave ${pontHe(P)[1]} on the Nostra` : `Bring ${pontHe(P)[1]} aboard`}</span></button><button class="btn small" data-a="pontRes" data-p="${P.id}"><span>${DIPV.pontRes === P.id ? `Tap again: ${pontHe(P)[0]} lives in the world for good (takes a resident slot)` : `Make ${pontHe(P)[1]} a resident`}</span></button></div></div>`;
+  }
+  for (const P of hunters) h += `<div class="dip-row" style="border-top:1px solid var(--faint);padding:8px 0;justify-content:space-between"><span style="font-size:10px;letter-spacing:.16em">${esc(P.name).toUpperCase()}<br><small style="color:#ff8f86;letter-spacing:.2em;font-size:8px">${pontTitle(P).toUpperCase()} · HUNTING YOU · LV ${P.lv}${P.kills ? ` · HAS KILLED YOU ${P.kills}×` : ''}</small></span></div>`;
+  return h + `</div>`;
+}
+const pontAlL = P => ({ id: 'pont:' + P.id, name: P.name.toUpperCase(), al: P.sex === 'f' ? 'Neutral Evil' : 'Lawful Evil', tag: 'cpPontifex', h: P.sex === 'f' ? 1.86 : 1.95, mod: P.sex === 'f' ? 'sister' : '', pcol: P.col || '', pont: true });
+function dipPontClick(a, b) {
+  const id = b.dataset.p, P = pontById(id); if (!P) return false;
+  if (a === 'pontRename') { const v = ($(`#dipBody input[data-a="pontNameIn"][data-p="${id}"]`).value || '').trim().slice(0, 28); if (!v) return true; P.name = v; pontSave(); pontRefresh(id); sfx.chime(); }
+  else if (a === 'pontCol') { P.col = b.dataset.col || ''; pontSave(); pontRefresh(id); sfx.click(); }
+  else if (a === 'pontParty') { const k = 'pont:' + id, on = (wanderer.party || []).includes(k); wanderer.party = on ? wanderer.party.filter(x => x !== k) : [...(wanderer.party || []), k]; if (on) pontDrop(k); pontSave(); syncCrewParty(); placeCrew().catch(() => null); refreshJamesUI(); sfx.click(); }
+  else if (a === 'pontRes') { if (DIPV.pontRes === id) { DIPV.pontRes = null; pontToResident(id); } else DIPV.pontRes = id; }
+  else return false;
+  dipRender(); return true;
+}
+function dipPontChange(t) { if (t.dataset.a !== 'pontColPick') return false; const P = pontById(t.dataset.p); if (!P) return true; P.col = t.value; pontSave(); pontRefresh(P.id); dipRender(); return true; }
+
+// ---- the cutscene: Hawthorne raises James Brown from the Southern Ocean ----
+const JRV = { on: false, scene: null, t: 0, step: -1, stepEnd: 0, shot: null, shotT: 0, shotDur: 6, actT: 0 };
+const JRV_STEPS = [
+  { dur: 4.4, shot: [[34, 12, 46], [16, 7, 28], [0, 0, 7]] }, // the black water, the searchlights, a shape in the waves
+  { who: 'THOMAS HAWTHORNE', text: 'There he is. Face down in the black water, right where the wanderer left him. Get him out of there.', act: 'winch', shot: [[7, 3, 17], [4.5, 2.6, 11], [0, .3, 6]] },
+  { who: 'THOMAS HAWTHORNE', text: 'Look at him. Frozen through. The cold took his fingers first, then his breath, then his heart, and it took its time. Hours in that water, Brown, with nothing to do but think about how you failed me.', shot: [[1.7, 2.3, -.9], [1.2, 2, -1.5], [0, 1.2, -2.6]] },
+  { who: 'THOMAS HAWTHORNE', text: 'You were my eyes on the ice. My Pontifex. And you let a stray from nowhere throw you off a pier like rubbish. Dying does not excuse you. Nothing excuses you.', shot: [[-.5, 1.95, -2.1], [-.95, 1.88, -2.6], [-2.2, 1.75, -3.4]] },
+  { who: 'THOMAS HAWTHORNE', text: 'Open his chest. Every Pontifex Maximus carries the heart of Terra Imperia, and his has stopped. Give him a better one.', act: 'open', shot: [[3, 3.2, .1], [2.2, 2.6, -.8], [0, 1.2, -2.2]] },
+  { who: 'THOMAS HAWTHORNE', text: 'Burn the ice out of his veins. Again. AGAIN! I did not drag this corpse out of the sea to watch it stay dead!', act: 'shock', shot: [[-3.6, 2.4, 1], [-2.6, 2, 0], [0, 1.1, -2.2]] },
+  { who: 'THOMAS HAWTHORNE', text: 'There. Breathe, James. It will hurt for the rest of your life. Good. Pain is how you will remember who owns it.', act: 'rise', shot: [[4.2, 1.3, 1.6], [3.3, 1.6, .2], [1.6, 1.5, -2]] },
+  { who: 'JAMES BROWN', text: '…Grand Imperarch.', james: true, shot: [[.3, 1.95, -.9], [.7, 1.9, -1.35], [1.6, 1.85, -2]] },
+  { who: 'THOMAS HAWTHORNE', text: 'Your old station is mine now. Hold it. The wanderer will come back to the ice. They always come back. And you will be waiting. Do not fail me twice.', shot: [[-6, 3, 4], [-4, 2.4, 2], [0, 1.4, -2.5]] }
+];
+function jrvFrost(R) { R.root.traverse(o => { if (!o.isMesh || !o.material) return; const f = m => { const n = m.clone(); if (n.color) n.color.lerp(new THREE.Color(0xbfdcff), .6); if (n.emissive) { n.emissive.set(0x1a3a5a); n.emissiveIntensity = .35; } return n; }; o.material = Array.isArray(o.material) ? o.material.map(f) : f(o.material); }); }
+async function jrvBuild() {
+  const S = JRV.scene = new THREE.Scene(), phone = tiPhone(); S.background = new THREE.Color(0x02060a); S.fog = new THREE.FogExp2(0x061018, .028);
+  JRV.hemi = new THREE.HemisphereLight(0x6a8aa8, 0x020406, .4); S.add(JRV.hemi);
+  const moon = new THREE.DirectionalLight(0x9ab8e0, .7); moon.position.set(-40, 60, 30); moon.castShadow = true; moon.shadow.mapSize.set(phone ? 1024 : 2048, phone ? 1024 : 2048); Object.assign(moon.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20, far: 160 }); moon.shadow.camera.updateProjectionMatrix(); S.add(moon);
+  // the sea: black, heaving
+  const N = phone ? 60 : 110, sea = new THREE.PlaneGeometry(500, 500, N, N); sea.rotateX(-Math.PI / 2); sea.translate(0, -.6, 250 - 2);
+  JRV.sea = new THREE.Mesh(sea, new THREE.MeshStandardMaterial({ color: 0x051420, roughness: .22, metalness: .35 })); JRV.sea.receiveShadow = true; S.add(JRV.sea); JRV.sea0 = Float32Array.from(sea.attributes.position.array);
+  // the ice shelf's edge, and floes in the water
+  const ice = new THREE.MeshStandardMaterial({ color: 0xcfe4f4, roughness: .55, metalness: .05 });
+  const shelf = new THREE.Mesh(new THREE.BoxGeometry(200, 6, 90), ice); shelf.position.set(0, -3, -43); shelf.receiveShadow = true; S.add(shelf);
+  const fl = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), ice, phone ? 26 : 50), M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), Sc = new THREE.Vector3();
+  for (let i = 0; i < fl.count; i++) { let x, z; do { x = (Math.random() - .5) * 90; z = 4 + Math.random() * 60; } while (Math.abs(x) < 4 && z < 12); const s = .8 + Math.random() * 3; M.compose(V.set(x, -.55, z), Q.setFromEuler(E.set(0, Math.random() * 3, 0)), Sc.set(s, .25, s * (.6 + Math.random() * .6))); fl.setMatrixAt(i, M); }
+  fl.receiveShadow = true; S.add(fl);
+  // his gunship overhead, searchlights down on the water
+  const ship = hwmShip(); ship.scale.setScalar(.22); ship.position.set(4, 26, -34); ship.rotation.y = .5; S.add(ship); JRV.ship = ship;
+  JRV.beams = [];
+  for (const [x, z] of [[-6, 6], [6, 3]]) { const b = new THREE.Mesh(new THREE.ConeGeometry(4, 26, 24, 1, true), new THREE.MeshBasicMaterial({ color: 0xbfe8ff, transparent: true, opacity: .07, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); b.position.set(x, 13, z - 14); b.lookAt(x * .2, 0, 6); b.rotateX(Math.PI / 2); S.add(b); JRV.beams.push(b); }
+  const sl = new THREE.SpotLight(0xd8f0ff, 900, 60, .32, .5, 1.3); sl.position.set(2, 24, -14); sl.target.position.set(0, 0, 6); sl.castShadow = true; S.add(sl, sl.target); JRV.search = sl;
+  // the slab, and the machine over it
+  const steel = new THREE.MeshStandardMaterial({ color: 0x3a3e46, metalness: .8, roughness: .35 }), dark = new THREE.MeshStandardMaterial({ color: 0x15171a, metalness: .7, roughness: .5 });
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(1.5, .25, 2.8), steel); slab.position.set(0, .95, -2); slab.castShadow = slab.receiveShadow = true; S.add(slab);
+  for (const [x, z] of [[-.6, -.9], [.6, -.9], [-.6, -3.1], [.6, -3.1]]) { const l = new THREE.Mesh(new THREE.BoxGeometry(.12, .95, .12), dark); l.position.set(x, .47, z); S.add(l); }
+  for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(.2, 4.2, .2), dark); p.position.set(s * 1.3, 2.1, -2); S.add(p); }
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(2.8, .25, .3), dark); bar.position.set(0, 4.2, -2); S.add(bar);
+  JRV.arms = [-1, 1].map(s => { const a = new THREE.Group(), r = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, 1.8, 8), steel); r.position.y = -.9; a.add(r); const tip = new THREE.Mesh(new THREE.ConeGeometry(.09, .4, 8), steel); tip.rotation.x = Math.PI; tip.position.y = -1.95; a.add(tip); a.position.set(s * .35, 4.1, -2.2); a.rotation.z = s * .5; S.add(a); return a; });
+  const heart = glowSprite(0xff2a3a, 1.6, 0); heart.position.set(0, 1.42, -2.45); S.add(heart); JRV.heart = heart; JRV.heartL = new THREE.PointLight(0xff2a3a, 0, 8, 1.6); JRV.heartL.position.set(0, 1.7, -2.4); S.add(JRV.heartL);
+  JRV.bolts = new THREE.Group(); S.add(JRV.bolts);
+  // snow on the wind
+  const NS = phone ? 900 : 2200, sp = new Float32Array(NS * 3); for (let i = 0; i < NS; i++) sp.set([(Math.random() - .5) * 80, Math.random() * 30, (Math.random() - .5) * 80], i * 3);
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3)); JRV.snow = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xdfefff, size: .12, transparent: true, opacity: .7, depthWrite: false })); S.add(JRV.snow);
+  // the people: Hawthorne, his men, James as the sea left him, and James as Hawthorne makes him
+  const [H, Jd, Jp, ...T] = await Promise.all([hawthorneRig().catch(() => null), companionRig('james').catch(() => null), companionRig('james-ti').catch(() => null), ...Array.from({ length: phone ? 2 : 4 }, () => tiSoldierRig().catch(() => null))]);
+  const add = (R, x, y, z, ry) => { if (!R) return null; R.root.position.set(x, y, z); R.root.rotation.y = ry; R.root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); S.add(R.root); return R; };
+  JRV.haw = add(H, -2.2, 0, -3.4, Math.PI / 2 - .3);
+  if (Jd) { jrvFrost(Jd); add(Jd, 0, -.5, 8, 0); Jd.root.rotation.x = Math.PI / 2; } JRV.dead = Jd; // face down in the water
+  if (Jp) { add(Jp, 0, 1.2, -1.1, 0); Jp.root.rotation.x = -Math.PI / 2; Jp.root.visible = false; } JRV.pont = Jp;
+  JRV.troops = T.filter(Boolean).map((R, i) => add(R, (i % 2 ? 1 : -1) * (3.4 + Math.floor(i / 2) * 1.8), 0, -4.5 - Math.floor(i / 2) * 1.4, i % 2 ? -Math.PI / 2 - .3 : Math.PI / 2 + .3));
+}
+async function startJamesRev() {
+  if (JRV.on || HWM.on) return; JRV.on = true; JRV.phase = 'load';
+  state = 'jamesRev'; ex.keys.clear(); vel.set(0, 0, 0); if (ex.dlg) closeDialog();
+  const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.thud(); sfx.drone(.5);
+  hwmBarsMake();
+  try { await jrvBuild(); } catch (e) { console.error(e); jrvEnd(); return; }
+  JRV.saveCam = { near: camera.near, far: camera.far, fov: camera.fov }; camera.near = .05; camera.far = 900; camera.fov = camera.aspect < 1 ? 64 : 42; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
+  renderer.domElement.style.filter = 'contrast(1.2) saturate(.7) brightness(.95)';
+  HWM.bars.classList.add('on'); show(ui.xhud, true); ui.xhud.classList.add('cutting');
+  Object.assign(JRV, { phase: 'run', t: 0, step: -1, stepEnd: 0, flashA: 0 });
+  fd.style.transition = 'opacity 1.6s'; fd.style.opacity = 0;
+  setTimeout(() => notice('The Southern Ocean · off the Antarctic coast', 'MEANWHILE', 2800), 400);
+}
+function jrvWhenFree(ms, n = 20) { setTimeout(() => { if (JRV.on || CH3S().jamesRev) return; if (state === 'explore' && !ex.dlg && !DGN.on) startJamesRev(); else if (n > 0) jrvWhenFree(1500, n - 1); }, ms); } // once you're on your feet, out of any dialogue
+function jrvBolt() {
+  const pts = [], a = new THREE.Vector3((Math.random() < .5 ? -1 : 1) * .35, 2.2, -2.2), b = new THREE.Vector3((Math.random() - .5) * .5, 1.25, -2 - Math.random() * .8);
+  for (let i = 0; i <= 8; i++) { const p = a.clone().lerp(b, i / 8); if (i && i < 8) p.add(new THREE.Vector3((Math.random() - .5) * .25, (Math.random() - .5) * .15, (Math.random() - .5) * .25)); pts.push(p); }
+  const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: Math.random() < .5 ? 0xff5a6a : 0xbfe8ff })); JRV.bolts.add(l);
+  setTimeout(() => { JRV.bolts.remove(l); l.geometry.dispose(); l.material.dispose(); }, 90 + Math.random() * 80);
+}
+function jrvTick(dt) {
+  if (JRV.phase !== 'run' || !JRV.scene) return;
+  dt = Math.min(dt, .05); JRV.t += dt; const t = JRV.t;
+  hwmSubTick(); JRV.flashA = Math.max(0, JRV.flashA - dt * 1.8); fbFlash(JRV.flashA, JRV.flashC || '#ff2a1a');
+  if (t >= JRV.stepEnd && !JRV.ending) {
+    JRV.step++;
+    if (JRV.step < JRV_STEPS.length) {
+      const Sx = JRV_STEPS[JRV.step]; JRV.shot = Sx.shot; JRV.shotT = t; JRV.actT = 0; JRV.act = Sx.act || null;
+      const dur = Sx.text ? hwmSay(Sx.who, Sx.text, null, !!Sx.james) : Sx.dur; JRV.stepEnd = t + dur + .4; JRV.shotDur = dur + .4;
+      if (Sx.act === 'open') { JRV.flashA = .5; JRV.flashC = '#ff2a3a'; sfx.thud(); }
+      if (Sx.act === 'rise') { JRV.flashA = 1; JRV.flashC = '#ffffff'; sfx.thud(); JRV.shake = 1; if (JRV.dead) JRV.dead.root.visible = false; if (JRV.pont) JRV.pont.root.visible = true; }
+      if (Sx.james) { JRV.shake = .3; sfx.heart(.8); }
+    } else { JRV.ending = true; hwmSubHide(); notice('Terra Imperia', 'JAMES BROWN, PONTIFEX MAXIMUS', 3000); const fd = $('#fade'); fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 1; setTimeout(jrvEnd, 1500); }
+  }
+  JRV.actT += dt; const k = JRV.actT;
+  // the body: up out of the sea on the winch, onto the slab, face up
+  const D = JRV.dead;
+  if (D && JRV.act === 'winch') { const u = clamp(k / 5, 0, 1), e = u * u * (3 - 2 * u), r = D.root;
+    if (u < .45) { const v = u / .45; r.position.set(0, -.5 + v * 3.6, 8 - v * 3); r.rotation.x = Math.PI / 2 - v * .6; }
+    else { const v = (u - .45) / .55, s = v * v * (3 - 2 * v); r.position.set(0, 3.1 - s * 1.95, 5 - s * 6.1); r.rotation.x = Math.PI / 2 - .6 - s * (Math.PI - .6); }
+    r.rotation.z = Math.sin(t * 2) * .08 * (1 - e); }
+  else if (D && JRV.step > 1 && JRV.step < 6) { D.root.position.set(0, 1.2, -1.1); D.root.rotation.set(-Math.PI / 2, 0, 0); }
+  if (D && JRV.step === 0) { D.root.position.y = -.5 + Math.sin(t * 1.3) * .05; D.root.rotation.z = Math.sin(t * .8) * .1; }
+  // the machine comes down, and the heart lights
+  const armY = JRV.step >= 4 && JRV.step < 6 ? clamp(k / 1.2, 0, 1) : JRV.step >= 6 ? 1 - clamp(k / 1.5, 0, 1) : 0;
+  for (const a of JRV.arms || []) a.position.y = 4.1 - armY * 1.1;
+  const hot = JRV.step === 4 ? clamp((k - 1) / 1, 0, 1) : JRV.step === 5 ? 1 : JRV.step >= 6 ? .55 : 0;
+  if (JRV.heart) { JRV.heart.material.opacity = hot * (.75 + Math.sin(t * 9) * .2); JRV.heartL.intensity = hot * 40; }
+  if (JRV.act === 'shock') { if ((JRV.boltT = (JRV.boltT || 0) - dt) <= 0) { JRV.boltT = .08 + Math.random() * .2; jrvBolt(); if (Math.random() < .3) { JRV.flashA = .45; JRV.flashC = Math.random() < .5 ? '#ff2a3a' : '#cfe8ff'; JRV.shake = .5; sfx.thud(); } }
+    if (D) D.root.position.y = 1.2 + Math.max(0, Math.sin(t * 23)) * .08; }
+  // he rises: off the slab and onto his feet, facing his master
+  const Pn = JRV.pont;
+  if (Pn && Pn.root.visible) { const u = JRV.step === 6 ? clamp(k / 3.2, 0, 1) : 1, s = u * u * (3 - 2 * u), r = Pn.root;
+    r.position.set(s * 1.6, 1.2 * (1 - s), -1.1 - s * .9); r.rotation.set(-Math.PI / 2 * (1 - s), -Math.PI / 2 * s, 0); Pn.mode = 'idle'; if (s >= 1) animRig(Pn, dt); }
+  // Hawthorne, his men, the water, the light
+  const Hr = JRV.haw; if (Hr) { Hr.mode = 'idle'; animRig(Hr, dt); if (JRV.step === 1 || JRV.step === 4 || JRV.step === 5) Hr.ra.rotation.x = -1.2 + Math.sin(t * 2) * .1; }
+  for (const R of JRV.troops || []) if (R) { R.mode = 'idle'; animRig(R, dt); }
+  if (JRV.sea) { const P = JRV.sea.geometry.attributes.position, a0 = JRV.sea0; for (let i = 0; i < P.count; i++) { const x = a0[i * 3], z = a0[i * 3 + 2]; P.array[i * 3 + 1] = -.6 + Math.sin(x * .18 + t * 1.1) * .18 + Math.sin(z * .23 - t * .9) * .22; } P.needsUpdate = true; if ((JRV.nT = (JRV.nT || 0) + dt) > .5) { JRV.nT = 0; JRV.sea.geometry.computeVertexNormals(); } }
+  if (JRV.snow) { const P = JRV.snow.geometry.attributes.position; for (let i = 0; i < P.count; i++) { let y = P.array[i * 3 + 1] - dt * 2.2; if (y < 0) y += 30; P.array[i * 3 + 1] = y; P.array[i * 3] += dt * 1.6; if (P.array[i * 3] > 40) P.array[i * 3] -= 80; } P.needsUpdate = true; }
+  if (JRV.search) { const sx = Math.sin(t * .35) * 8; JRV.search.target.position.set(JRV.step === 0 ? sx : 0, 0, JRV.step <= 1 ? 6 : -2); }
+  if (JRV.ship) JRV.ship.position.y = 26 + Math.sin(t * .6) * .4;
+  if ((JRV.hb = (JRV.hb || 0) + dt) > (JRV.step >= 6 ? .7 : 1.1)) { JRV.hb = 0; sfx.heart(JRV.step >= 4 ? .6 : .35); }
+  sfx.drone(.5);
+  // the camera along its shot
+  const sh = JRV.shot; if (sh) { const kk = smooth(0, Math.max(3, JRV.shotDur || 6), t - JRV.shotT), from = new THREE.Vector3().fromArray(sh[0]), to = new THREE.Vector3().fromArray(sh[1]);
+    JRV.shake = Math.max(0, (JRV.shake || 0) - dt * 1.4); const s = .012 + JRV.shake * .22;
+    camera.position.copy(from.lerp(to, kk)).add(new THREE.Vector3((Math.random() - .5) * s, (Math.random() - .5) * s, 0)); camera.lookAt(new THREE.Vector3().fromArray(sh[2])); if (JRV.step === 5) camera.rotateZ(.1); }
+  renderer.render(JRV.scene, camera);
+}
+function jrvSkip() { if (!JRV.on) return; const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(jrvEnd, 450); }
+function jrvEnd() {
+  if (!JRV.on) return; JRV.on = false; JRV.phase = null; hwmSubHide(); fbFlash(0); sfx.drone(0); try { sfx.stopNarr(); } catch (e) {}
+  if (JRV.saveCam) { camera.near = JRV.saveCam.near; camera.far = JRV.saveCam.far; camera.fov = JRV.saveCam.fov; camera.updateProjectionMatrix(); }
+  renderer.domElement.style.filter = ''; if (HWM.bars) HWM.bars.classList.remove('on'); ui.xhud.classList.remove('cutting');
+  if (JRV.scene) { for (const R of [JRV.haw, JRV.dead, JRV.pont, ...(JRV.troops || [])]) if (R && R.root.parent) R.root.parent.remove(R.root); try { disposeOwned(JRV.scene); } catch (e) {} }
+  Object.assign(JRV, { scene: null, haw: null, dead: null, pont: null, troops: [], sea: null, snow: null, ship: null, arms: null, heart: null, bolts: null, ending: false, step: -1 });
+  setC3({ jamesRev: true });
+  state = 'explore'; ex.snap = true; clock.getDelta();
+  const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0;
+  setTimeout(() => { notice('Main quest', 'DEFEAT JAMES BROWN AT THE ANTARCTIC STATION', 4200); sfx.chime(); renderTasks(); }, 1600);
+  setTimeout(() => lootMsg('Fly to Earth and land anywhere on Antarctica · the old research station is a Terra Imperia stronghold now', '#ff6a6e'), 6000);
+}
+
 // where he comes from: out of St Stephen's entrance if you're close to the Palace, otherwise up the street towards you
 function hawStart() {
   const p = player.position, D = LON.door;
@@ -14028,7 +14482,7 @@ function spaceHudTick(P, alt, fwd) {
     if (M) { const wp = tmpVs.copy(khzDir()).multiplyScalar(M.r + spaceH(M, khzDir())).add(M.pos), d = SPC.pos.distanceTo(wp), v3 = wp.project(camera);
       if (v3.z < 1) { const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; h += `<div class="sh-mk gold${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>OLYMPUS MONS<br><small>KHAZGLAR · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`; } }
   }
-  if (SPC.sys === 'sol') for (const [on, id, label, sub, cls] of [[charonQ(), 'charon', 'CHARON', 'MAIN QUEST', 'gold'], [nyxQ(), 'eris', 'ERIS', 'NYREXIA · OPTIONAL', 'nyx']]) { // the quests' destinations
+  if (SPC.sys === 'sol') for (const [on, id, label, sub, cls] of [[charonQ(), 'charon', 'CHARON', 'MAIN QUEST', 'gold'], [chnQ(), 'charon', 'CHARON', 'MEET CHARON AND KIZNA', 'gold'], [jamesQ(), 'earth', 'EARTH', 'ANTARCTICA · JAMES BROWN', 'gold'], [nyxQ(), 'eris', 'ERIS', 'NYREXIA · OPTIONAL', 'nyx']]) { // the quests' destinations
     if (!on) continue; const Q = SPC.bodies.find(o => o.id === id); if (!Q) continue;
     const d = SPC.pos.distanceTo(Q.pos) - Q.r, v3 = tmpVs.copy(Q.pos).project(camera); if (v3.z >= 1) continue;
     const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; h += `<div class="sh-mk ${cls}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${label}<br><small>${sub} · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`;
@@ -15500,6 +15954,12 @@ function scSpawn() {
     m.scale.setScalar(1.35); const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(pos, SPC.pos, SCV.c.set(0, 1, 0))); m.position.copy(pos); m.quaternion.copy(q); SPC.scene.add(m);
     SC.foes.push({ m, pos, q, hp: 150, max: 150, speed: 240, cd: 2, burst: 0, mode: 'attack', modeT: 0, brk: new THREE.Vector3(), name: `${compName(cid).toUpperCase()} · ${DIP_FAC.find(f => f.id === K.war).fleet}`, ace: cid, war: K.war, cath: !!K.cath });
   }
+  const hunt = curSys().id === 'sol' && PONTS().filter(o => o.st === 'hunt'); // a Pontifex or a Sister on your trail can come for you out here too
+  if (hunt && hunt.length && Math.random() < .35) { const P = pick(hunt), dir = SCV.b.set(Math.random() - .5, (Math.random() - .5) * .4, Math.random() - .5).normalize().addScaledVector(fwd, .9).normalize(), pos = SPC.pos.clone().addScaledVector(dir, 2500), m = makeFighter('ti');
+    m.scale.setScalar(1.45); m.traverse(o => { if (o.isMesh && o.material && o.material.emissive) { o.material = o.material.clone(); o.material.color.set(pontCol(P)); } });
+    const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(pos, SPC.pos, SCV.c.set(0, 1, 0))); m.position.copy(pos); m.quaternion.copy(q); SPC.scene.add(m);
+    const hp = Math.round(120 + P.lv * 2.2); SC.foes.push({ m, pos, q, hp, max: hp, speed: 250, cd: 1.6, burst: 0, mode: 'attack', modeT: 0, brk: new THREE.Vector3(), name: `${P.name.toUpperCase()} · ${pontTitle(P).toUpperCase()} · LV ${P.lv}`, hunter: P.id, ti: true });
+    setTimeout(() => spaceMsg(`${P.name}, ${pontTitle(P)}, has found you in space`), 900); }
   sfx.alarm(); setTimeout(() => sfx.alarm(), 300); combatPulse();
   if (K.resist) { spaceMsg(`${K.who} · ${n} fighters · they haven't forgotten`); return; }
   if (K.war) { spaceMsg(`The ${DIP_FAC.find(f => f.id === K.war).fleet.toLowerCase()} · ${n} ships · you're at war`); return; }
@@ -15537,6 +15997,7 @@ function scHurtPlayer(n) {
   if (SC.hull <= 0) scShipDown();
 }
 function scShipDown() {
+  for (const f of SC.foes) if (f.hunter && f.hp > 0) pontKilledYou(f.hunter, 'in space'); // a Pontifex or Sister shot you down
   scBoom(SPC.pos, 2.4); sfx.boom(1.4); scClear();
   const lost = Math.floor(units() * .25); if (lost) addUnits(-lost);
   const S = curSys(); SC.hull = 100; SC.shield = 100; SC.nextT = SPC.t + 90 + Math.random() * 60;
@@ -15550,6 +16011,7 @@ function scKill(f) {
   const drops = [['scrap', 1 + Math.floor(Math.random() * 3)], Math.random() < .5 && ['crystal', 1], Math.random() < .15 && ['warpcell', 1]].filter(Boolean);
   for (const [id, n] of drops) giveItem(id, n);
   const W3 = wanderer.ch3; if (W3) { W3.kills = (W3.kills | 0) + 1; const c = curChar(); if (c) c.ch3 = W3; }
+  if (f.hunter) { const P = pontById(f.hunter); if (P) setTimeout(() => spaceMsg(`${P.name} ejects and escapes · ${pontHe(P)[0]}’ll find you again on the ground`), 1800); }
   if (f.ace) { delete dip().lent[f.ace]; dipSave(); setTimeout(() => spaceMsg(`${compName(f.ace)} ejects and is picked up · back in your crew, safe`), 1800); if (f.ace === 'orion') placeOrion().catch(() => null); }
   if (f.war) dipScore(f.war, f.ace ? 10 : 6, f.ace ? `${compName(f.ace)}'s ship down` : 'ship down');
   if (f.bot) { const who = residents.find(c => c.id === f.bot); if (who) setTimeout(() => resDie(who), 1200); }
@@ -16129,6 +16591,7 @@ function nicoCmd(mode, quiet) {
 let nicoSrcP = null;
 async function companionRig(id) { // the rig any companion walks and fights with: Nico's own, a story companion's Nostrapedia model, or an imported/custom character
   if (id === 'nico') return nicoCompanionRig();
+  if (String(id).startsWith('pont:')) { const R = await pontRig(pontById(id.slice(5))); if (!R) throw new Error('no Pontifex ' + id); return R; }
   const L = COMPANIONS.find(o => o.id === id && o.tag);
   if (L) { await glbReady(L.tag); const el = document.getElementById(L.tag); if (!el) throw new Error('no model for ' + id); const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     const sc = await parseGlb(u8.buffer); if (L.mod === 'kizna') feminiseRobot(sc); const R = autoRig(gearNoMeasure(SkeletonUtils.clone(sc)), L.h || 1.9); armRig(R, L.weapon || 'none');
@@ -16157,6 +16620,7 @@ function compTracer(R, foe) { // a muzzle flash and a streak to the target, as O
 }
 /* ---- crew: the imported Project BC / Sevirrus characters (and your own creations) as companions ---- */
 function syncCrewParty() {
+  pontParty(); // your Pontifexes
   for (const id of (wanderer && wanderer.party) || []) if (!PARTY[id]) { const L = COMPANIONS.find(o => o.id === id && o.tag); if (L) { PARTY[id] = { name: titleName(L.name.split(' ')[0]), full: titleName(L.name), crew: true, story: true }; continue; } }
   for (const id of (wanderer && wanderer.party) || []) if (!PARTY[id]) { const c = charById(id); if (c) PARTY[id] = { name: titleName(c.name.split(' ').slice(-1)[0] === 'SEVIRRUS' ? 'Sevirrus' : c.name.split(' ')[0]), full: titleName(c.name), imported: true }; }
 }
@@ -16325,11 +16789,13 @@ function dipRender() {
     for (const c of dipChars()) { const on = (wanderer.party || []).includes(c.id); h += `<div class="dip-row" style="justify-content:space-between;border-top:1px solid var(--faint);padding:8px 0"><span style="font-size:10px;letter-spacing:.16em">${c.name}<br><small style="color:var(--mute);letter-spacing:.2em;font-size:8px;text-transform:uppercase">${c.game || 'Your creation'} · ${c.title || ''}</small></span><button class="btn small" data-a="${on ? 'dismiss' : 'recruit'}" data-c="${c.id}"${on && D.lent[c.id] ? ' disabled' : ''}><span>${on ? 'Send home' : 'Bring aboard'}</span></button></div>`; }
     h += `</div>`;
   }
+  if (DIPV.tab === 'crew') h += dipPontCard();
   el.innerHTML = h;
 }
 function dipClick(e) {
   const b = e.target.closest('[data-a]'); if (!b || b.disabled || b.tagName === 'SELECT' || b.tagName === 'INPUT') return;
   const D = dip(), a = b.dataset.a, f = b.dataset.f, cb = b.dataset.cb, id = b.dataset.c, pid = b.dataset.p;
+  if (a && a.startsWith('pont') && dipPontClick(a, b)) return;
   if (a === 'ask') DIPV.confirm = { f, cb };
   else if (a === 'cancel') DIPV.confirm = null;
   else if (a === 'declare') { DIPV.confirm = null; dipDeclare(f, cb); }
@@ -16351,6 +16817,7 @@ function dipClick(e) {
 }
 function dipChange(e) {
   const t = e.target, a = t.dataset.a, D = dip();
+  if (dipPontChange(t)) return;
   if (a === 'gov') { D.col[t.dataset.p].gov = t.value || null; dipSave(); dipRender(); }
   else if (a === 'setLeader' && DIPV.settle) DIPV.settle.leader = t.value;
   else if (a === 'setName' && DIPV.settle) DIPV.settle.name = t.value;
@@ -16733,7 +17200,8 @@ async function landOn(P, dir, place) {
   const toCharon = P.id === 'charon' && charonQ();
   const W3 = wanderer.ch3 = Object.assign({}, wanderer.ch3, { landed: true, lastPlanet: P.id }, toCharon ? { charonLanded: true } : {}); const c = curChar(); if (c) c.ch3 = W3; saveRoster();
   if (toCharon) setTimeout(() => { notice('Main quest complete', 'YOU HAVE REACHED CHARON', 3800); sfx.chime(); renderTasks(); }, place ? 600 : 4200);
-  if (P.id === 'eris' && nyxQ()) nyxPlace().catch(e => console.error(e)); // Nyrexia is in the Citadel, with her sisters
+  if (P.id === 'eris' && nyxQ()) nyxPlace().catch(e => console.error(e));
+  try { tiLanded(P); } catch (e) { console.error(e); } // Charon and Kizna, the Antarctic stronghold, Terra Imperia's patrols and your Pontifexes // Nyrexia is in the Citadel, with her sisters
   const f = $('#shFlash'); if (f) f.classList.remove('on');
   if (place) { state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks(); if (place.dgn && place.dgn.lair) { const L = lairById(place.dgn.lair); if (L) { const G = (world.lairGates || []).find(q => q.L === L) || { x: +place.x, z: +place.z }; lairEnter(L, G, Math.min(L.floors + 1, +place.dgn.f || 1), place.dgn, true); return; } } if (place.dgn && P.id === 'mars') { DGN.lair = null; dgnEnter(+place.dgn.f || 1, place.dgn, true); return; } notice(wxTag(P), P.name.toUpperCase(), 3600); setTimeout(() => lootMsg(P.faction, '#9fe6ff'), 1400); sqOnLand(P); return; } // a save made inside Olympus Mons goes straight back in
   // the ship comes down out of the sky onto the spot
@@ -17113,7 +17581,7 @@ function planetTraders(P) {
    Then Orion and Nico bring them back. It happens once (ch3.nightmare). */
 const NM = { on: false, t: 0, phase: null, bi: -1, scene: null, props: null, actors: {}, cam: new THREE.Vector3(), look: new THREE.Vector3(), q: [], vo: {}, race: 'human' };
 // models fetched the first time they're shown, not at start-up: about 9 MB that phones shouldn't pay for until they need it
-const LAZY_GLB = new Set(['cpJavek', 'cpJavekC', 'cpCroxianU']);
+const LAZY_GLB = new Set(['cpJavek', 'cpJavekC', 'cpCroxianU', 'cpPontifex']);
 const glbReady = tag => LAZY_GLB.has(tag) ? loadDataScript(tag, 'glb') : Promise.resolve(true);
 function loadDataScript(id, kind) { // fetch a data/<id>.js pack only when it's needed
   return new Promise(res => {
@@ -18241,6 +18709,7 @@ function updateWorldMode(dt) {
   if (!ex.near && DGN.on) ex.near = dgnNear(p); // inside Olympus Mons: the stairs, the spring
   if (!ex.near && isPl() && !DGN.on && world.dgnGate && Math.hypot(p.x - world.dgnGate.x, p.z - world.dgnGate.z) < 3.2) ex.near = { id: 'dgnGate', label: 'Enter Olympus Mons' };
   if (!ex.near && NYX.R && NYX.R.root.parent && Math.hypot(p.x - NYX.x, p.z - NYX.z) < 3.2) ex.near = { id: 'nyx', label: 'Nyrexia Erisconos' };
+  if (!ex.near && TIW.area) ex.near = tiNear(p);
   if (!ex.near && !DGN.on && LHALL.g && LHALL.g.visible && Math.hypot(p.x - LHALL.x, p.z - LHALL.z) < 3.6) ex.near = { id: 'leadGate', label: `The Hall of ${LHALL.H.Lo.list[0].boss}` };
   if (!ex.near && isPl() && !DGN.on) { const G = lairGateNear(p); if (G) ex.near = { id: 'lairGate', ref: G, label: `${G.L.name} · lv ${G.L.lv}${lairCleared(G.L) ? ' · cleared' : ''}` }; } // the lairs
   if (!ex.near && isPl()) { const G = giverNear(p); if (G) ex.near = { id: 'qgiver', ref: G, label: titleName(G.name) }; } // quest givers
@@ -19811,13 +20280,24 @@ const PEDIA_ANCIENT = [
       'Shakhak ruled for longer than most stars have lived, and died in 199,999,998 BC. Every emperor since, including Hak Chompjak V, has been crowned with his name spoken first.'
     ] },
   { id: 'javek', tag: 'cpJavek', h: 1.9, unlockAt: 4, name: 'JAVEK', title: 'Leader of the Grob Robotic Collective', // classified until Chapter IV, when he appears
-    facts: [['Species', 'Grob, part machine and part flesh'], ['Once led', 'The Grob Robotic Collective'], ['Defeated', 'At Steca, by Shakhak Chompjak'], ['Eyes', 'Green, behind brass goggles'], ['Fate', 'Forced into hiding; never destroyed'], ['Alignment', 'Lawful Evil']],
+    facts: [['Species', 'Grob, part machine and part flesh'], ['Born', '7,000,000,000 BC'], ['Mother', 'Marissa (deceased)'], ['Father', 'Jaximus, the Destroyer of Haeca (deceased)'], ['Grandfather', 'Roximus, the Builder of Haeca (deceased)'], ['Once', 'Royal chancellor to Maraxos II, whom he overthrew'], ['Led', 'The Grob Robotic Collective'], ['Defeated', 'At Steca, by Shakhak Chompjak'], ['Fate', 'Forced into hiding; never destroyed'], ['Alignment', 'Lawful Evil']],
     align: 'Order without mercy. Javek ran the Grob as a machine runs: every part in its place, and every part replaceable.',
     paras: [
-      'Javek rose to lead the Grob Robotic Collective in the long age after the machines overthrew Obsidnia, the Vector of Destruction who built them. Under him the Collective held worlds across the region around Steca and Aridaxx, and its governors ruled as far as Eris.',
-      'He was never entirely a machine. Behind his goggles were green eyes and a living face, blue-skinned and long-eared, and he kept a hand of flesh beside his mechanical arm, as if to remind himself of something.',
+      'Javek was born in 7,000,000,000 BC, the son of Marissa and of Jaximus, the Destroyer of Haeca, and the grandson of Roximus, the Builder of Haeca. Both men served the Xyperion Communist Grob Republic, and both were killed by the kings of the house of Maragroxis.',
+      'As a child he met Maraxos II, and the two became friends. Javek grew up to be his royal chancellor, the one adviser Maraxos trusted above all others. Then Javek overthrew him.',
+      'He rose to lead the Grob Robotic Collective in the long age after the machines overthrew Obsidnia, the Vector of Destruction who built them. Under him the Collective held worlds across the region around Steca and Aridaxx, and its governors ruled as far as Eris.',
+      'He was never entirely a machine. Behind his goggles were green eyes and a living face, blue-skinned and long-eared, not red like his father’s and grandfather’s, and he kept a hand of flesh beside his mechanical arm, as if to remind himself of something.',
       'At Steca, close to Aridaxx, Shakhak Chompjak defeated him and broke the Grob’s hold on the region. Javek was not destroyed. He was forced into hiding, and Chompy legend insists he never stopped planning his return.',
       'He has been seen since. In 2014 a British civil servant, Director Josiah Richards of the Cabinet Office, came face to face with him on Earth over a set of schematics.'
+    ] },
+  { id: 'jaximus', tag: 'cpJavek', mod: 'jaximus', h: 1.95, unlockAt: 4, name: 'JAXIMUS', title: 'The Destroyer of Haeca', // Javek's father: Javek's own model with red skin (redSkinGrob), no extra download
+    facts: [['Species', 'Grob, part machine and part flesh'], ['Skin', 'Red, like his father Roximus'], ['Served', 'The Xyperion Communist Grob Republic, as a subordinate'], ['Father', 'Roximus, the Builder of Haeca'], ['Wife', 'Marissa'], ['Son', 'Javek'], ['Destroyed', 'The Haecan Republic, by causing a nuclear winter'], ['Killed by', 'Maragroxis VIII'], ['Status', 'Deceased']],
+    align: 'Obedience turned to ruin. Jaximus carried out the Republic’s orders to the letter, even when the order was to end a world.',
+    paras: [
+      'Jaximus, called the Destroyer of Haeca, was a subordinate of the Xyperion Communist Grob Republic. He was red-skinned, like his father Roximus before him.',
+      'Roximus had been the Builder of Haeca, and he too served the Republic as a subordinate. He was killed by Maragroxis VII.',
+      'His son undid his life’s work. Jaximus destroyed the Haecan Republic by bringing a nuclear winter down on it, and Haeca went cold and dark.',
+      'He was killed by Maragroxis VIII, son of the king who had killed his father. He left behind his wife, Marissa, and their son, Javek.'
     ] },
   { id: 'lianna', tag: 'anLianna', h: 2, name: 'LIANNA ERISCONOS', title: 'Former Grob Governor of Eris',
     facts: [['Species', 'Erisian'], ['Born', 'c. 2,500,000,000 BC'], ['Died', '1,000,000,000 BC, of a plague'], ['Children', 'Vishara, Alexia and Nyrexia Erisconos'], ['Formerly', 'Grob Governor of Eris, alongside Reaper Drox and Demolisher Grab'], ['Alignment', 'Chaotic Good (formerly Lawful Evil)']],
@@ -20160,7 +20640,7 @@ const COMPANIONS = [
       'He has lived there longer than anyone can remember, tending a small, strange garden and watching the sky. Those who make the climb find him patient, oddly funny and far better informed about the rest of the solar system than a hermit has any right to be.',
       'Khazglar does not like crowds, cities or questions about his past. He does like company, as long as it is quiet.'
     ] },
-  { id: 'charon', tag: 'cpCharon', h: 2.3, unlockAt: 3, metIf: pdMetCh3(() => c3f('charonLanded')), name: 'CHARON', title: 'The Robot of Charon',
+  { id: 'charon', tag: 'cpCharon', h: 2.3, unlockAt: 3, metIf: pdMetCh3(() => pdMet('charon') || c3f('charonMet')), name: 'CHARON', title: 'The Robot of Charon',
     facts: [['Type', 'Industrial humanoid robot'], ['Origin', 'Charon, moon of Pluto'], ['Sister', 'Kizna'], ['Alignment', 'Neutral Good']],
     align: 'Built for work, chooses kindness. Charon has no orders telling him to be good; he simply decided to be.',
     paras: [
@@ -20168,7 +20648,7 @@ const COMPANIONS = [
       'Who built him, and why they left, is a question Charon answers differently every time he is asked. His chassis is scratched and his paint is chipped, but every bolt is tight, and his dry sense of humour has survived a very long time alone.',
       'He is fiercely protective of his sister, Kizna, and of anyone she decides to trust.'
     ] },
-  { id: 'kizna', tag: 'cpCharon', mod: 'kizna', h: 2.15, unlockAt: 3, metIf: pdMetCh3(() => c3f('charonLanded')), name: 'KIZNA', title: 'Loyal guardian',
+  { id: 'kizna', tag: 'cpCharon', mod: 'kizna', h: 2.15, unlockAt: 3, metIf: pdMetCh3(() => pdMet('kizna') || c3f('charonMet')), name: 'KIZNA', title: 'Loyal guardian',
     facts: [['Type', 'Humanoid robot'], ['Origin', 'Charon, moon of Pluto'], ['Brother', 'Charon'], ['Serves', 'You, the wanderer'], ['Alignment', 'Lawful Good']],
     align: 'Duty with a heart. Once Kizna gives her loyalty, she keeps it, and she keeps you alive.',
     paras: [
@@ -20207,6 +20687,14 @@ const COMPANIONS = [
       'The explorer was a cover. James Brown’s true allegiance has always been to Terra Imperia, and the armour he now wears marks him as its Pontifex Maximus.',
       'Everything at the bottom of the world (the rescue, the station, the meeting in the storm) was part of an arrangement made long before you arrived. You were never part of the plan. That is exactly why Terra Imperia became so interested in you.'
     ] },
+  { id: 'pontifex', tag: 'cpPontifex', h: 1.95, unlockAt: 3, metIf: () => pontOpen() || chNow() > 3, name: 'PONTIFEX MAXIMUS · SISTERS OF HAWTHORNE', title: 'Terra Imperia’s anointed · as many as you make', // data/cpPontifex.js (a Sister: the same armour, slimmer, without the horns)
+    facts: [['Species', 'Human soldiers of Terra Imperia'], ['Men', 'Rise as a Pontifex Maximus'], ['Women', 'Rise as a Sister of Hawthorne'], ['Made by', 'Anointing a beaten soldier'], ['Heart', 'A reactor of Terra Imperia, in place of their own'], ['Hunting you', 'One Pontifex and one Sister at a time'], ['Strength', 'Grows every time they kill you, up to lv 100'], ['Alignment', 'Evil by preference · Pontifex Lawful Evil, Sister Neutral Evil']],
+    align: 'Obedience with a burning heart. They serve whoever beat them last, and they would rather that you were cruel.',
+    paras: [
+      'The Pontifex Maximus was James Brown’s title, until Hawthorne pulled him out of the Southern Ocean and gave him a new heart. Whatever became of James at the Antarctic station, the title is no longer his alone.',
+      'Beat a soldier of Terra Imperia anywhere in Sol and you can anoint them. A man rises as a Pontifex Maximus, a woman as a Sister of Hawthorne, reactor hearts burning in their chests, and they hunt you across the system, on the ground and in space. One of each can be on your trail at once. Every time they kill you they come back far stronger, so the wise deal with them early.',
+      'Beat them a second time and they kneel. Each keeps their own name, armour colour and alignment: evil pleases them, and good can sway them, slowly. Keep them in your crew, or settle them in the world as residents. A Pontifex or a Sister who rules a resident empire keeps a guard of their own, and when Terra Imperia is gone, that guard is the last place new ones can come from.'
+    ] },
   { id: 'josiah2', tag: 'cpJosiah2', h: 1.85, unlockAt: 4, name: 'JOSIAH WILLIAMS II', title: 'Heir of two families',
     facts: [['Species', 'Human'], ['Grandfather', 'Gareth Williams'], ['Great-grandfather', 'Josiah Richards (died 2047 AD)'], ['Alignment', 'Neutral Good']],
     align: 'Decent, curious and haunted by a family history he does not fully understand.',
@@ -20234,6 +20722,11 @@ const COMPANIONS = [
     ] }
 ];
 const figCache = {};
+function redSkinGrob(sc) { // Jaximus (and Roximus before him) were red-skinned: Javek's model with the blue skin turned red
+  const RED = { 'blue organic skin': [.36, .035, .03], 'navy blue coat': [.15, .016, .014] }; // skin red, and the navy coat over his torso a dark red to match
+  const fix = m => { const c = m && RED[(m.name || '').toLowerCase()]; if (!c) return m; const r = m.clone(); r.color.setRGB(...c); return r; };
+  sc.traverse(o => { if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map(fix) : fix(o.material); });
+}
 function feminiseRobot(sc) {
   // Kizna: Charon's frame, slimmer and in rose and lilac, with swept-back antennae and a hip plate
   sc.scale.x *= .84; sc.scale.z *= .9;
@@ -20279,7 +20772,7 @@ function figSlasherTick(dt) {
   }
 }
 function loadFigure(c) {
-  const key = c.tag + (c.mod || '') + (c.sil ? ':sil' : '');
+  const key = c.tag + (c.mod || '') + (c.sil ? ':sil' : '') + (c.pcol || '');
   if (figCache[key]) return figCache[key];
   figCache[key] = (async () => {
     await glbReady(c.tag);
@@ -20287,6 +20780,8 @@ function loadFigure(c) {
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     const sc = await parseGlb(u8.buffer), holder = new THREE.Group(); holder.add(sc);
     if (c.mod === 'kizna') feminiseRobot(sc);
+    if (c.mod === 'jaximus') redSkinGrob(sc);
+    if (c.mod === 'sister') sisterShape(sc); if (c.pcol) pontPaint(sc, c.pcol);
     if (c.tag === 'chSevirrus') { sinisterEyes(sc); holder.userData.slasher = figSlasher(sc); }
     if (c.sil) { const black = new THREE.MeshBasicMaterial({ color: 0x000000 }); sc.traverse(o => { if (o.isMesh) o.material = black; }); }
     sc.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
@@ -20299,7 +20794,7 @@ function loadFigure(c) {
   figCache[key].catch(() => { delete figCache[key]; });
   return figCache[key];
 }
-const companionsNow = () => COMPANIONS.filter(c => !(c.hideFrom && chNow() >= c.hideFrom));
+const companionsNow = () => COMPANIONS.filter(c => !(c.hideFrom && chNow() >= c.hideFrom) && !((c.id === 'james-ti' || c.id === 'james') && jamesKilled())); // kill James at the station and he's gone for good
 const primeCache = {};
 function loadPrime(p) {
   if (primeCache[p.tag]) return primeCache[p.tag];
@@ -20579,7 +21074,8 @@ function resGroundOk() {
 // (data/taredGlb.js, built by nightmare/tools/build_taredesiban.py): blue skin, dark armour with teal inlays, a sheer cape. ----
 const RES_TARED = { label: 'Taredesiban', src: null };
 function resIsTared(c) { return !!(c && c.resSp === 'taredesiban'); } // function declarations: the roster can ask before this part of the file has run
-function resSpLabel(c) { return resIsTared(c) ? 'Taredesiban' : SPECIES[spOf(c)].label; }
+function resIsPont(c) { return !!(c && (c.resSp === 'pontifex' || c.resSp === 'sister')); }
+function resSpLabel(c) { return resIsTared(c) ? 'Taredesiban' : c && c.resSp === 'pontifex' ? 'Pontifex Maximus' : c && c.resSp === 'sister' ? 'Sister of Hawthorne' : SPECIES[spOf(c)].label; }
 async function resTaredModel() {
   if (!RES_TARED.src) RES_TARED.src = loadDataScript('taredGlb', 'glb').then(() => embGlb('taredGlb'));
   const src = await RES_TARED.src; if (!src) return null;
@@ -20589,6 +21085,7 @@ async function resTaredModel() {
 }
 async function resModel(c) {
   if (resIsTared(c)) return resTaredModel();
+  if (resIsPont(c)) return resPontModel(c);
   const sp = spOf(c);
   if (sp === 'human') { if (!look.ready) return null; } else if (!(await loadSpecies(sp))) return null;
   const held = ex.held && ex.held.parent ? ex.held : null, hp = held && held.parent; if (hp) hp.remove(held);
@@ -21475,7 +21972,7 @@ function resGearText(c) { const g = resGear(c), ids = Object.values(g); if (!ids
   return Object.entries(sets).map(([n, k]) => `${n} ×${k}`).join(' · ') + ` (${Math.round(resGearDef(g) * 100)}%)`; }
 function resGearDress(B) { // their armour on their own body
   for (const o of B.armor || []) if (o.parent) o.parent.remove(o);
-  B.armor = []; if (!B.body || !B.L || resIsTared(B.c)) return; // a Taredesiban wears their people's armour
+  B.armor = []; if (!B.body || !B.L || resIsTared(B.c) || resIsPont(B.c)) return; // a Taredesiban wears their people's armour (and a Pontifex his own)
   B.gearKey = resGearKey(B.c);
   try { B.armor = armorBuild(resGear(B.c), B.c, B.body, B.L); } catch (e) { console.error(e); }
 }
@@ -21833,7 +22330,7 @@ function resPersonaOpen(c, onSend) {
     if (b.hasAttribute('data-cancel')) { el.classList.add('hidden'); return; }
     if (b.hasAttribute('data-look')) { c.persona = { text: ta.value.trim().slice(0, 400), at: Date.now() }; el.classList.add('hidden'); enterCreate('resEdit', c); return; } // the full editor, species and all
     c.persona = { text: ta.value.trim().slice(0, 400), at: Date.now() };
-    const was = resIsTared(c); c.resSp = raceSel || null;
+    const was = resIsTared(c); if (!resIsPont(c)) c.resSp = raceSel || null; // a Pontifex or a Sister stays one
     if (!onSend && was !== resIsTared(c)) { try { RES.bots = RES.bots.filter(B => { if (B.id !== c.id) return true; if (B.root && B.root.parent) B.root.parent.remove(B.root); return false; }); } catch (e) {} } // they'll turn up again as who they are now
     el.classList.add('hidden'); if (onSend) onSend(); else { saveRoster(); renderRoster(); }
   };
@@ -22022,6 +22519,7 @@ function loopFrame() {
   if (state === 'brawl') { try { fightTick(dt); } catch (e) { console.error(e); } updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'nightmare') { nightmareTick(dt); sfx.music(0); return; }
   if (state === 'hawMars') { try { hwmTick(dt); } catch (e) { console.error(e); hwmEnd(); } sfx.music(0); return; }
+  if (state === 'jamesRev') { try { jrvTick(dt); } catch (e) { console.error(e); jrvEnd(); } sfx.music(0); return; }
   if (state === 'space') { spaceTick(dt); try { resSpaceTick(dt); } catch (e) { console.error(e); } sfx.music(0); renderer.render(SPC.atmo ? ATM.scene : SPC.scene, camera); return; }
   if (state === 'xpaused' && SPC.paused) { sfx.music(0); renderer.render(SPC.atmo ? ATM.scene : SPC.scene, camera); return; }
   if (state === 'shipLand' || state === 'shipUp') { (state === 'shipLand' ? shipLandTick : shipUpTick)(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
