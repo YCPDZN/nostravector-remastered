@@ -1769,3 +1769,5 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - **Taking worlds back:** any world Terra Imperia seizes can be bombarded and captured like Mercury and Venus, and comes back as your colony. Worlds the Erisians take need a war with them (Diplomacy).
   - Saved in `dip().surge`. It only runs in Chapter III, and not if Terra Imperia is already beaten.
 - **Unvoiced for now:** Hak's call and the meeting are subtitles only.
+- **Voice slots ready:** Hak's lines play from `data/hakVoices.js` once it exists. CH3HAKCALL1–3 are slots 0–2 (the call) and CH3HAKMEET1–8 are slots 3–10 (the meeting, including the alternative lines). Until then they show as subtitles.
+- **On phones:** the new objectives, the space markers (which never wrap), the talk prompt, the goal line in space, the notices and the messages all have short versions, so they fit small screens upright and sideways. The return-to-Charon objective, marker and messages got short phone versions too.
