@@ -1,5 +1,5 @@
-"""Javek, the companion: a fugitive. Goggles off, round glasses on over green eyes, black hood and cape.
-usage: python3 javek_fugitive.py javek.glb (the green-eyed build from javek_green_eyes.py) out.glb"""
+"""Javek, the companion: a fugitive. Goggles off, Hak Chompjak's style of glasses over green eyes, black hood and cape.
+usage: python3 javek_fugitive.py javek.glb (the green-eyed build from javek_green_eyes.py) out.glb data/leader_chompy.js (Hak, for his glasses)"""
 import sys, json, struct, numpy as np
 CT={5120:np.int8,5121:np.uint8,5122:np.int16,5123:np.uint16,5125:np.uint32,5126:np.float32}
 NC={'SCALAR':1,'VEC2':2,'VEC3':3,'VEC4':4,'MAT4':16}
@@ -52,7 +52,6 @@ def mat(name,rgb,emis=None,rough=.4,metal=0.,alpha=None,double=False):
     if double: m['doubleSided']=True
     M.append(m); return len(M)-1
 mS=mat('eye white',(.82,.84,.8),rough=.3); mI=mat('green iris',(.03,.42,.08),emis=(.02,.5,.08),rough=.25); mP=mat('pupil',(.004,.006,.005),rough=.2); mG=mat('eye glint',(1,1,1),emis=(1,1,1),rough=.1)
-mF=mat('glasses frame',(.018,.018,.02),rough=.35,metal=.7); mL=mat('glasses lens',(.55,.75,.7),rough=.05,alpha=.16,double=True)
 mC=mat('black hood and cape',(.011,.011,.013),rough=.92,double=True)
 # 3. geometry helpers
 def normals(V,F):
@@ -93,10 +92,37 @@ for sx in (-1,1):
     cx=.093*sx; th=np.radians(62); R=ER/np.sin(th); cz=EZF-R
     for (t,s,m,lk) in ((th,1,mS,(0,0)),(np.radians(30),1.008,mI,(0,-.05)),(np.radians(13),1.016,mP,(0,-.05)),(np.radians(5),1.024,mG,(-.35,.4))):
         V,F,Nn=cap((cx,EY,cz),R,t,s,lk,nr=3 if m==mG else 10,ns=12 if m==mG else 28); prim(V,F,m,*head(len(V)),Nn=Nn.astype(np.float32))
-    V,F=torus((cx,EY,.206),.057,.0055); prim(V,F,mF,*head(len(V)))                              # rim
-    V,F,Nn=cap((cx,EY,.206-.4),.4,np.arcsin(.056/.4),1.,nr=4,ns=28); prim(V,F,mL,*head(len(V)),Nn=Nn.astype(np.float32))  # lens
-    V,F=tube((cx+.057*sx,EY+.008,.206),(.192*sx,1.772,.03),.0045); prim(V,F,mF,*head(len(V)))     # arm back to the ear
-V,F=tube((-.036,EY+.012,.209),(.036,EY+.012,.209),.0048); prim(V,F,mF,*head(len(V)))              # bridge
+# Hak Chompjak's glasses (round, navy frames, a V bridge, dark blue lenses with a glint), cut down to Javek's face
+import base64, re as _re
+hs=open(sys.argv[3]).read(); hb=base64.b64decode(_re.search(r'textContent="([^"]+)"',hs).group(1)); hjl=struct.unpack('<I',hb[12:16])[0]; HJ=json.loads(hb[20:20+hjl]); ho=20+hjl; HB=hb[ho+8:ho+8+struct.unpack('<I',hb[ho:ho+4])[0]]
+def hacc(i):
+    a_=HJ['accessors'][i]; v=HJ['bufferViews'][a_['bufferView']]; n_=NC[a_['type']]; dt=CT[a_['componentType']]; it=np.dtype(dt).itemsize; st=v.get('byteStride',0) or n_*it; off=v.get('byteOffset',0)+a_.get('byteOffset',0)
+    raw=np.frombuffer(HB,np.uint8,count=st*(a_['count']-1)+n_*it,offset=off); return np.lib.stride_tricks.as_strided(raw,(a_['count'],n_*it),(st,1)).copy().view(dt).reshape(a_['count'],n_)
+def qm(q):
+    x,y,z,w=q; return np.array([[1-2*(y*y+z*z),2*(x*y-z*w),2*(x*z+y*w)],[2*(x*y+z*w),1-2*(x*x+z*z),2*(y*z-x*w)],[2*(x*z-y*w),2*(y*z+x*w),1-2*(x*x+y*y)]])
+def nm4(n):
+    if 'matrix' in n: return np.array(n['matrix']).reshape(4,4).T
+    m=np.eye(4); m[:3,:3]=qm(n.get('rotation',[0,0,0,1]))*np.array(n.get('scale',[1,1,1])); m[:3,3]=n.get('translation',[0,0,0]); return m
+HMAT={}
+def hmat(hm,alpha=None):
+    k=hm.get('name','')+str(alpha)
+    if k not in HMAT:
+        c=hm['pbrMetallicRoughness'].get('baseColorFactor',[1,1,1,1])[:3]
+        HMAT[k]=mat('Hak-style '+hm.get('name','glasses').lower(),c,rough=hm['pbrMetallicRoughness'].get('roughnessFactor',.4),metal=hm['pbrMetallicRoughness'].get('metallicFactor',0),alpha=alpha,double=bool(alpha))
+    return HMAT[k]
+GS=.5; GC=np.array([0,3.664,.49]); GT=np.array([0,EY+.006,.222])   # Hak's frame centre -> just in front of Javek's eyes
+def hwalk(i,W):
+    n=HJ['nodes'][i]; W=W@nm4(n); nm=n.get('name','')
+    if 'mesh' in n and _re.match(r'(Glass|Lens glint|Glasses)',nm):
+        for p in HJ['meshes'][n['mesh']]['primitives']:
+            X=hacc(p['attributes']['POSITION']).astype(float); X=(W@np.c_[X,np.ones(len(X))].T).T[:,:3]
+            X=(X-GC)*GS+GT
+            ax=np.abs(X[:,0]); far=ax>.168; X[far,0]=np.sign(X[far,0])*(.168+(ax[far]-.168)*.45)   # temples tucked in along his head, under the hood
+            I=hacc(p['indices']).ravel() if 'indices' in p else np.arange(len(X))
+            lens=nm.startswith('Glass lens')   # Hak's lenses are dark; Javek's let the green show through
+            prim(X,I.reshape(-1,3),hmat(HJ['materials'][p['material']],.5 if lens else None),*head(len(X)))
+    for c in n.get('children',[]): hwalk(c,W)
+for r in HJ['scenes'][HJ.get('scene',0)]['nodes']: hwalk(r,np.eye(4))
 # 5. the hood: a cowl over the head, open at the face, the long ears out through the sides
 HC=np.array([0,1.742,-.008]); A,Bh,C=.222,.226,.22
 phis=np.radians(np.linspace(-58,90,26)); ths=np.radians(np.linspace(-180,180,73)); rows=[]
