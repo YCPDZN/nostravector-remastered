@@ -1790,3 +1790,114 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - Two new city styles, `grek` and `consul`, for the towers, windows, streets and traffic.
 - **Hak in Karribassa:** he now waits in the heart of the city, on the south bridge across the canal in front of the Hall of Oaths (the dome on its ring of white columns), with two Chompy guards (one fewer pair on phones). The minimap's gold marker points to him. If you land away from the city, you're told to fly there from the sky.
 - **The minimap marker** also points to Charon and Kizna and to the Cygnus supply shuttle when they're waiting.
+
+## Fix: talking to Hak in Karribassa
+- **Hak answers now.** Pressing E / TALK beside Hak Chompjak on the bridge before the Hall of Oaths opened an empty box instead of the meeting, because the talk button never handed his prompt to the Chapter III code. The same fix makes **BOARD** on the Cygnus supply shuttle and **FIGHT** on a governor work too.
+
+## The Cygnus Terra Imperius, rebuilt: a five-storey corridor, and the place to farm Pontifexes and Sisters
+- **Five decks**, up from four, each named: the Hangar, Barracks, Armoury, Reactor and Command Decks. Above them is the bridge.
+- **Each deck is one grand corridor**, 48 m wide and 264 m long, five storeys high:
+  - Four railed galleries run up each wall, lit red underneath, with rows of lit windows behind them.
+  - Steel pillars carry alarm beacons, and crimson banners of Terra Imperia hang three storeys from the top rail.
+  - Lit ribs cross the ceiling, and a crimson runner with gold edges and guide lights runs down the floor.
+  - At the far end is a great window onto Mercury and the Sun. Behind you are the hangar doors with Terra Imperia's star on them.
+  - Crew bays 36 × 30 m open off both sides, with crates against their walls.
+  - The pillars and crates are solid, and the fog is thinner aboard so you can see down the corridor.
+- **Lots of troops:** about 30 soldiers on each deck (around 14 on phones), in squads down the corridor and in the bays. A fresh squad comes every 18 s or so whenever fewer than 14 are left (6 on phones). Soldiers far down the corridor stand still until you get close, so this stays cheap.
+- **Anointing aboard:** every deck has its officer (who holds the lift up) and two Praetorian guards in the bays (one on phones), each with a **gold pip** over their head. Beat one and they drop to one knee instead of dying, under a gold glow. Walk up and press **ANOINT**: anoint them (a man rises as a Pontifex Maximus, a woman as a Sister of Hawthorne), finish them, or leave them for now. The usual limit holds: one Pontifex and one Sister hunting you at a time. If a slot is taken, they stay kneeling until it's free.
+- **Officers' names now match them:** a woman officer gets a woman's name, a man a man's.
+- **After Hawthorne, the Cygnus stays in orbit.** The supply shuttle keeps running from Mercury (Mercury stays open to you while it does) for as long as Terra Imperia stands. Every later boarding is a fresh run: deck 1, every officer back at their post, a new layout each time.
+  - **On the bridge:** whoever has hunted you longest waits there for the full duel. Beat them and they're yours, or kill them. If nobody is hunting you, the ship's commander holds the bridge, and you can anoint them when they fall.
+  - **Anoint someone on the way up** while the commander holds the bridge, and the new Pontifex or Sister goes up to take it: you meet them at the top of the same run.
+- In the story, decks you've cleared stay cleared. A save that had cleared all four old decks picks up on deck 5.
+- **Labels aboard:** lifts instead of stairs ("Lift up · deck 3 · The Armoury Deck", "Lift to the bridge"), a med station instead of a spring, and "Leave the Cygnus" on deck 1.
+
+## The Cygnus in orbit: fly to her and dock
+- **You can see the Cygnus Terra Imperius in space** whenever she's in play (the story, and afterwards for as long as Terra Imperia stands). She's a 760 m capital ship in a slow orbit 2.4 km above Mercury, going round about every 12 minutes:
+  - A long, flattened six-sided hull with a split prow, a dorsal spine and keel, flank sponsons with turrets, and stabiliser wings.
+  - A command tower aft, with the lit bridge across its top and a comms spire.
+  - Five engine nozzles glowing crimson-orange, and hundreds of lit windows.
+  - Crimson lines down her flanks and spine, and the star of Terra Imperia on her back.
+  - An open, lit hangar on her starboard flank, and blinking running lights.
+- **Her own marker** (gold for the main quest, red afterwards) replaces the old one on Mercury, with the distance: "THE CYGNUS TERRA IMPERIUS · MAIN QUEST · DOCK".
+- **Docking:** fly within about 470 m of her and you dock. The screen goes black and you're straight aboard, on deck 1 or the deck you'd reached. Later boardings put the hunter or the commander on the bridge as before. Within 3 km you're told to fly in close.
+- **Undocking:** leave by deck 1's lift (or the bridge once it's won) and you're back in orbit, just above her, pointing away from Mercury.
+- **The shuttle still runs** from Mercury's surface as another way up. If you board that way, you come back down to Mercury.
+- The quest line in space now says to fly to her in orbit over Mercury and dock.
+
+## Docking with the Cygnus, cleaned up; Hawthorne aboard is level 1
+- **No glimpse of Mercury when you dock.** The screen stays black the whole way in (no grey flash of sky). There's no "Mercury" title, no faction line and no shuttle message. Nothing on Mercury's ground (a patrol, a Pontifex or Sister who's found you, the war, a governor) turns up and announces itself while you're aboard.
+- **Thomas Hawthorne on the Cygnus's bridge is level 1**, on purpose. His health still follows his usual formula (5,350 at level 1).
+
+## Hawthorne has his say on the bridge
+- **Walking onto the Cygnus's bridge now starts a conversation with Thomas Hawthorne** before the fight. It's subtitles only, like the rest of his Cygnus lines.
+  - He talks about the five decks you cut through and about what you are. A human hears that they'd rather serve aliens; anyone else hears they're an alien on the finest ship humanity ever built.
+  - He points to Earth out of the window, now his, with the Federation run off to Mars.
+  - He talks about James, with different lines for whether you spared him or killed him.
+  - He talks about Hak, with different lines for whether you allied with the Chompy Empire.
+- **You answer him** with one of four replies: "It ends here", "Why? What is all of this for?", "You're not much of a fighter, are you?" or "Surrender". Each gets its own retort, then he sends his guards away to fight you himself.
+- His fight-opening line is now "Come on, then. Show me what Hak paid for."
+- The full conversation plays once per save (saved as `ch3.cygHawTalk`). If you come back to the bridge after falling, he just has one line for you.
+
+## Hawthorne voiced on the Cygnus, and the scene he stages after he falls
+- **Hawthorne is voiced aboard the Cygnus:** `data/hawCygVoices.js` holds **CH3CYG1–20**.
+  - 1–8 are his first lines on the bridge: 2/3 for whether you're human, 5/6 for whether you spared or killed James, 7/8 for whether you allied with the Chompy Empire.
+  - 9–12 are his comebacks to your four replies, 13 is "Enough. Guards, stand down", and 14 is his line when you come back after falling.
+  - 15–18 are his fight lines (start, phase two, phase three, beaten), and 19–20 are his escape.
+  - Sources are in `assets/audio/hawthorne_cygnus_ch3/`.
+- **After you beat him, a scene plays, and nothing explains it.** It's Sevirrus coming apart in the Alphinos throne hall, played back beat for beat:
+  - It's the same scene from the old game: the same hall, camera, timing, crown and crimson blade, the same guard stumbling in ("M-Majesty… the wounded are asking for—"), and the same subtitles and Skip button.
+  - Every line is word for word, from "Three strikes…" through "WHO TOLD YOU TO LOOK AT ME?!" to "…and then it will finally be quiet."
+  - But it's **Thomas Hawthorne** in it, with his name on the subtitles. The name never flickers to Hak's the way Sevirrus's did. He's re-enacting Hak's past to mock him, and the game never tells you.
+  - When it ends you're back on the bridge with him on one knee, composed again, and he says his escape lines (CH3CYG19–20) and leaves in the pod.
+  - It plays once, the first time you beat him.
+- **How it's made:** it runs on the Sevirrus cutscene page (`#sevCinePage`, `data/sevCine.js`) with Hawthorne in Sevirrus's place.
+  - `data/hawMirror.js` is his model with the same 18-bone skeleton as Sevirrus, made from `assets/models/terra_imperia/thomas_hawthorne.glb` by the new `nightmare/tools/haw_rig.py`. It flattens his parts, scales him to 1.9 m, measures his joints from his own geometry and weights him with `rig_glb.py`. The rigged model is also kept as `nightmare/models/HAWTHORNE_rigged.glb`.
+  - Sevirrus's voice is taken out. The guard keeps his. Hawthorne's slots wait for **CH3CYG21–30** (his ten lines, in order). Add them to the end of `hawCygVoices` and they're used automatically, with the scene's timing stretched to fit them.
+  - If the scene can't load, the game goes straight on to his escape.
+
+## Fix: two pieces of music at once in Hawthorne's fight
+- **The Cygnus bridge fight plays The Wrong Enemy and nothing else.** Starting a leader's theme switched off the combat music, and that brought the area's own playlist back up underneath it. Now the area music stays down for as long as a leader's theme plays. This fixes every leader fight (Hak, Vishara, Darius, Archamus and the rest), not just Hawthorne's.
+- **The Wrong Enemy is loaded while you climb the decks**, so the fight starts on it straight away. No random combat track plays first while it loads. If a leader's theme ever fails to load, Predator II plays instead, on its own.
+- The scene Hawthorne stages after the fight has no game music under it.
+- The space dogfight with Terra Imperia's aces (also The Wrong Enemy) lets the area music back up when it ends.
+
+## The staged scene, voiced and in cyan; Hawthorne drops the act
+- **Hawthorne's voice in the scene he stages:** CH3HAWTHORNEFAKESEVIRRUSSCENE1–10 are in `data/hawCygVoices.js` as slots 20–29 (CH3CYG21–30), one per line in order. The scene's timing follows his delivery. Sources are in `assets/audio/hawthorne_cygnus_ch3/`.
+- **His subtitles in that scene are cyan**, name and line, including the screamed ones. The guard keeps his own colour.
+- **Five new lines at the end of it** (moved from the bridge right after, see below). He's done pretending, vile and gloating:
+  - Sol fell to him while you were away.
+  - Darius Ancin has been driven out of Mars.
+  - "Your little Hak" is next.
+  - "I read your history", and he asks if you enjoyed the performance.
+  - Tell Hak he's coming to rip that crown off his head.
+  - These are subtitles only for now. Slots 30–34 (CH3CYG31–35) wait for his voice.
+
+## Hawthorne's five lines, said in the fake hall
+- **He says them inside the staged scene**, not back on the bridge. After "…and then it will finally be quiet." he stays in the fake Alphinos hall with the fake crown back on his head, crooked, his eyes still burning. The camera pushes slowly in on his face while he drops the act and speaks straight down the lens: Sol has fallen, Darius is driven off Mars, "your little Hak" is next, "I read your history", and he's coming for the crown.
+- In cyan like the rest of his lines. The scene now runs about two and a half minutes and fades out after the fifth line. Back on the bridge he says his two escape lines and leaves in the pod.
+- Each line has its own voice slot (CH3CYG31–35, slots 30–34). Until they're recorded they show as subtitles. Once they're in `hawCygVoices`, the scene's timing follows them like the other ten.
+
+## Hawthorne fully voiced on the Cygnus
+- **His five lines in the fake crown are voiced:** CH3HAWTHORNEFAKESEVIRRUSSCENE11–15, slots 30–34 of `data/hawCygVoices.js`. The staged scene's timing follows his delivery, so it now runs about 2 min 40 s. Sources are in `assets/audio/hawthorne_cygnus_ch3/`.
+- Everything Hawthorne says aboard the Cygnus is now voiced, 35 clips in all: the bridge conversation and replies, the fight, the staged scene and his escape.
+
+## Fixes: the game's HUD over Hawthorne's staged scene, and its lettering
+- **No game HUD over the scene.** The quest list, minimap, notice cards, pickup messages and boss bar used to show on top of it. The whole HUD is hidden from the first fade until the scene ends, then comes back for his escape lines.
+- **His subtitles use the old scene's own lettering.** Same font, same shadows, the red glow on the screamed lines kept. Only the colour changes, to plain cyan. The cyan glow is gone.
+
+## Chapter III: Sol falls, and back to Hak Chompjak
+- **The moment Hawthorne leaves the Cygnus**, after his escape lines and the pod, the news reaches you: **Sol has fallen.** While you were aboard, Terra Imperia took every world in Sol:
+  - Mars, the Moon, Charon, the unclaimed worlds and the Federation's, and **your colonies** (they're counted, and Hak mentions it).
+  - Only Erisian land keeps its colours: Eris, and any world Alexia's Erisians seized in the land grab.
+  - Darius Ancin is driven out of Mars. The Federation has nowhere left in Sol, so Darius has no hall.
+  - The land grab is over. From now on only Terra Imperia moves, retaking what you take back.
+  - Sol's faction now reads "Terra Imperia · all of Sol, but for Eris", Mars reads "taken from the Federation", and the objectives line counts Sol fallen.
+  - Worlds he took (your old colonies included) can be bombarded and taken back by beating their governors, as before. Mars, Earth and Charon stay open to land on.
+  - Notices: SOL HAS FALLEN · DRIVEN OUT OF MARS · your colonies lost (if you had any) · the new main quest.
+- **New main quest: Return to Hak Chompjak in Karribassa** (on Janira Prime). He waits on the bridge before the Hall of Oaths again, with his guards, the gold minimap marker, the Janira Prime marker in space and the goal line.
+  - **He tells you what you missed:** Sol has fallen (your colonies too, if you had any), Eris kept its colours only because Alexia knelt, Darius was driven out of Mars, and the Cygnus was never the prize.
+  - **You answer with one of three replies:** "He knew your past… he acted it out for me" (Hak: "…He did what?", then "a man who studies his enemy that closely is afraid of him"), "He says you're next" or "So what do we do now?". Each gets its own answer.
+  - **He closes** by offering his fleets (if you allied with the Chompy Empire) or repeating his offer of alliance (if not), and tells you to take Sol back world by world.
+  - Gives 300 XP. Saves `ch3.solFell`, `ch3.solLost`, `ch3.hakBack` and `dip().surge.fell`.
+  - Voices go in `data/hakBackVoices.js` as **CH3HAKBACK1–11** (slots 0–10). Until it exists, the lines play as subtitles.
