@@ -2326,7 +2326,7 @@ function chapterOf(c) {
   return { short: `Ch. ${CHN_ROMAN[n]}${area ? ' · ' + area : ''}`, full: `Chapter ${CHN_ROMAN[n]}${area ? ' · ' + area : ''}` };
 }
 function liveChapterLabel() {
-  const shipAt = () => SHIPI.from === 'space' ? (sysById(SPC.sys) || {}).name : world.adVisit && !isPl() ? 'Ad-Nostra' : world.planet ? world.planet.P.name : null;
+  const shipAt = () => SHIPI.from === 'space' ? (sysById(SPC.sys) || {}).name : world.adVisit && !isPl() ? (world.visitAt === 'antarctica' ? 'Antarctica' : 'Ad-Nostra') : world.planet ? world.planet.P.name : null;
   const n = (wanderer && wanderer.chapter) | 0, far = ex.mode === 'ship' ? ['The Nostra', shipAt()].filter(Boolean).join(' · ') : ex.mode === 'space' ? (sysById(SPC.sys) || {}).name : ex.mode === 'world' && isPl() ? world.planet.P.name : ex.mode === 'world' && world.adVisit && curArea() === 'africa' ? 'Earth · Ad-Nostra' : null;
   if (wanderer && wanderer.ch2 && wanderer.ch2.escapedLondon && n <= 3) return `Chapter III · ${far || 'Sol'}`;
   if (far) return `Chapter ${CHN_ROMAN[Math.max(1, n)]} · ${far}`;
@@ -8475,7 +8475,7 @@ function applyAreaLook() {
   else if (pl) planetLook();
   else if (world.iceSky) wScene.background = world.iceSky;
   if (!pl && world.plSea) world.plSea.visible = false;
-  if (!pl && world.landShip && !(world.adVisit && curArea() === 'africa')) world.landShip.visible = false;
+  if (!pl && world.landShip && !(world.adVisit && (curArea() === 'africa' || curArea() === 'antarctica'))) world.landShip.visible = false;
   wScene.fog.color.set(areaFog());
   const ice = !af && !eu && !pl;
   if (world.snow) { world.snow.visible = ice; if (ice) { world.snow.material.color.set(0xffffff); world.snow.material.opacity = .9; } }
@@ -10186,9 +10186,35 @@ function roomAround(p) {
 /* ---- Ad-Nostra from the Nostra (Chapter III on): land on Earth, then ask the helm to fly you to East Africa. The Nostra sets down
    in the open ground north of Orion's farm; the town, the harbour and The Salt Lantern are a short walk west. ---- */
 const ADN = { ship: { x: -24, z: 62 }, lat: -4.04, lon: 39.67 }; // on Kenya's coast, by the real Mombasa
+const ANT = { ship: { x: 30, z: 20 }, lat: -75.1, lon: 123.35 }; // Chapter I's Antarctica: the research station and your first camp, on the high plateau (where Concordia stands)
+const antDir = () => earthDir(ANT.lat, ANT.lon);
+async function visitAntBase(place) { // fly back to where it all began: the station, your Chapter I builds, and (while James holds it) Terra Imperia's stronghold
+  spaceOff(); state = 'loadingCh'; earthGroundClear(); earthFarClear();
+  world.planet = null; world.area = 'antarctica'; world.adVisit = true; world.visitAt = 'antarctica'; world.shipAt = { x: ANT.ship.x, z: ANT.ship.z };
+  hallClear(); if (world.cityG) world.cityG.visible = false;
+  await Promise.all([loadSpecies(spOf(wanderer)).catch(() => null), loadWorldHD()]);
+  buildAntarctica(); try { aScene.fog.color.set(0x14100d); aScene.background.set(0x0b0908); aScene.fog.density = .02; ant.hemi.intensity = .28; ant.sun.intensity = 0; ant.heat.intensity = 15; ant.lamp.intensity = 2.4; ant.lamp2.intensity = 2.6; ant.snow.visible = false; ant.drift.visible = false; setStationAfter(true); } catch (e) {}
+  const sx = ANT.ship.x, sz = ANT.ship.z;
+  enterWorld(Object.assign(place && place.where === 'antarctica' ? place : { mode: 'explore', area: 'world', where: 'antarctica', x: sx + 4, z: sz + 14.5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI }, { adVisit: true }));
+  ui.xhud.classList.add('world');
+  if (!world.landShip) world.landShip = makeShip();
+  setShipRig(world.landShip, 1, 1); wScene.add(world.landShip); world.landShip.position.set(sx, wHeight(sx, sz) + 2.7, sz); world.landShip.rotation.set(0, 0, 0); world.landShip.visible = true;
+  for (const f of world.landShip.userData.flames) f.visible = false;
+  worldUnstick(); await placeOrion().catch(() => null); placeCrew().catch(() => null);
+  const W3 = wanderer.ch3 = Object.assign({}, wanderer.ch3, { lastPlanet: 'earth' }); const c = curChar(); if (c) c.ch3 = W3;
+  state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks();
+  tiWorldClear(); TIW.area = 'antarctica'; if (jamesQ()) antStronghold();
+  notice('Earth · Antarctica', jamesQ() ? 'THE STATION · A TERRA IMPERIA STRONGHOLD' : 'THE RESEARCH STATION', 3400);
+  if (!place && !jamesQ()) setTimeout(() => lootMsg('Your Chapter I camp is as you left it · the Nostra is parked on the ice', '#cfeeff'), 2400);
+}
+function shipFlyToAnt() {
+  const f = $('#fade'); f.style.transition = 'opacity .6s'; f.style.opacity = 1; sfx.whoosh();
+  setTimeout(async () => { SHIPI.on = false; ui.xhud.classList.remove('aboard'); xUI.prompt.classList.remove('on'); xUI.act.classList.remove('on'); if (world.landShip) world.landShip.visible = false;
+    try { await visitAntBase(null); } catch (e) { console.error(e); } f.style.transition = 'opacity 1.2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 1300); }, 650);
+}
 async function visitAdNostra(place) {
   spaceOff(); state = 'loadingCh'; earthGroundClear(); earthFarClear();
-  world.planet = null; world.area = 'africa'; world.adVisit = true; world.shipAt = { x: ADN.ship.x, z: ADN.ship.z };
+  world.planet = null; world.area = 'africa'; world.adVisit = true; world.visitAt = 'africa'; world.shipAt = { x: ADN.ship.x, z: ADN.ship.z };
   const sx = ADN.ship.x, sz = ADN.ship.z;
   hallClear(); if (world.cityG) world.cityG.visible = false; // nothing of the last planet comes with you
   enterWorld(Object.assign(place && place.where === 'africa' ? place : { mode: 'explore', area: 'world', where: 'africa', x: sx + 4, z: sz + 14.5, y: 0, rot: -Math.PI * .7, yaw: -Math.PI * .7 + Math.PI }, { adVisit: true }));
@@ -12452,7 +12478,13 @@ function tiNear(p) {
 }
 function tiUse(n) {
   if (n.id === 'chn') chnTalk();
-  else if (n.id === 'tiStation') { const X = jamesSpec(); openChoice('THE ANTARCTIC STATION · TERRA IMPERIA', [{ text: `Go in and face ${X.full} (lv ${X.lv})`, onPick: () => tiFight('james', X) }, { text: 'Not yet', onPick: () => {} }]); }
+  else if (n.id === 'tiStation') { const X = jamesSpec(), L = [ // through the door, before you've even opened it
+      'I can hear you out there. I’d know those footsteps anywhere. I listened to them walk away down that pier while the water filled my lungs.',
+      'Do you know what the cold does? It takes your fingers. Then your voice. Then you can’t even scream. I screamed for you anyway. Every second, until I couldn’t.',
+      'Hawthorne cut me open and put a furnace where my heart used to be. It burns every time I think of you. So come in. Come in and let me show you what you made.'];
+    const run = i => { if (i < L.length) { openDialog('JAMES BROWN', [L[i]], false, () => run(i + 1)); return; }
+      openChoice('THE ANTARCTIC STATION · TERRA IMPERIA', [{ text: `Go in and face ${X.full} (lv ${X.lv})`, onPick: () => tiFight('james', X) }, { text: 'Not yet', onPick: () => lootMsg('James · “Run, then. You’re good at that.”', '#ff6a6e') }]); };
+    run(0); }
   else if (n.id === 'tiPatrol') { const T = TIW.pat, X = soldierSpec(T); openChoice(`${T.rank.toUpperCase()} ${T.name.toUpperCase()} · TERRA IMPERIA`, [{ text: `Fight ${T.rank} ${T.name} (lv ${X.lv})`, onPick: () => tiFight('soldier', X, { name: T.name, rank: T.rank, sex: T.sex }) }, { text: 'Leave them be', onPick: () => {} }]); }
   else if (n.id === 'pontHunt') { const P = TIW.hunt.P, X = pontSpec(P), [he, him] = pontHe(P); openChoice(`${P.name.toUpperCase()} · ${pontTitle(P).toUpperCase()}`, [{ text: `Face ${him} (lv ${X.lv}) · beat ${him} to make ${him} yours`, onPick: () => tiFight('pont', X, P.id) }, { text: `Not now (${he} keeps hunting you, and grows stronger every time ${he} kills you)`, onPick: () => {} }]); }
 }
@@ -12489,7 +12521,8 @@ async function chnTalk() {
 }
 
 // the stronghold: the old research station, fortified, in Terra Imperia's crimson
-function stationPlace() {
+function stationPlace() { // landed somewhere else on Earth: point the way (the stronghold is the real station, at its marker)
+  setTimeout(() => lootMsg('James Brown holds the old research station · follow the gold ANTARCTICA marker in the sky and land there, or fly there from your ship’s helm', '#ff6a6e'), 3200); return;
   const [la] = earthLL(plDir(0, 0));
   if (la > -60) { setTimeout(() => lootMsg('James Brown holds the old station in Antarctica · take off and land anywhere on the ice at the bottom of the world', '#ff6a6e'), 3200); return; }
   const sx = 20, sz = 26, y = wHeight(sx, sz), g = new THREE.Group(), base = new THREE.Group(); g.add(base); wScene.add(g);
@@ -12512,6 +12545,18 @@ function stationPlace() {
   setTimeout(() => { notice('Antarctica', 'THE STATION · A TERRA IMPERIA STRONGHOLD', 3600); lootMsg('The old research station, under the crimson beacon · James Brown is inside', '#ff6a6e'); }, 3600);
 }
 
+function antStronghold() { // the station where James first met you, fortified in Terra Imperia's crimson (its door is at x 7.9, facing +x)
+  const g = new THREE.Group(); wScene.add(g);
+  const dark = new THREE.MeshStandardMaterial({ color: 0x1a1c20, roughness: .6, metalness: .6 }), red = new THREE.MeshStandardMaterial({ color: 0x8a0e14, roughness: .7, side: THREE.DoubleSide, emissive: 0x3a0406, emissiveIntensity: .8 });
+  const box = (w, h, d, x, z, ry = 0, m = dark) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, wHeight(x, z) + h / 2, z); o.rotation.y = ry; o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+  for (const s of [-1, 1]) { box(.15, 6, .15, 9.4, s * 2.2); const b = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 3.6), red); b.position.set(9.5, wHeight(9.4, s * 2.2) + 4, s * 2.2); b.rotation.y = Math.PI / 2; g.add(b); }
+  for (let i = 0; i < 7; i++) { const a = -1 + i / 6 * 2; box(2.8, 1.1, .5, 8 + Math.cos(a) * 9, Math.sin(a) * 9, -a + Math.PI / 2); }
+  for (const s of [-1, 1]) { box(.25, 7, .25, 6, s * 6); const L = new THREE.PointLight(0xff2a2a, 60, 26, 1.6); L.position.set(6, wHeight(6, s * 6) + 7.2, s * 6); g.add(L); const sp = glowSprite(0xff3a2a, 3, .9); sp.position.copy(L.position); g.add(sp); }
+  const beacon = glowSprite(0xff2a2a, 16, .6); beacon.position.set(0, wHeight(0, 0) + 18, 0); g.add(beacon);
+  TIW.st = { g, R: [], dx: 9.4, dz: 0, beacon, ant: true };
+  Promise.all([tiSoldierRig(), tiSoldierRig()]).then(Rs => { if (curArea() !== 'antarctica' || !TIW.st) return; Rs.forEach((R, i) => { if (!R) return; const z = i ? 1.6 : -1.6; R.root.position.set(10.4, wHeight(10.4, z), z); R.root.rotation.y = Math.PI / 2; g.add(R.root); TIW.st.R.push(R); }); }).catch(() => null);
+  setTimeout(() => lootMsg('The station is Terra Imperia’s now · crimson banners on the door, James Brown inside', '#ff6a6e'), 3600);
+}
 // a patrol, or a Pontifex who has tracked you down
 function tiEncounters(P) {
   if (!isPl() || DGN.on) return;
@@ -12536,7 +12581,7 @@ function hunterPlace(P) {
 // ---- the fights: the faction leaders' arena, with James, a soldier or a Pontifex on the far side of it ----
 function jamesSpec() { const lv = Math.max(22, plvNow() + 2); return { key: 'ti:james', boss: 'James', full: 'James Brown, Pontifex Maximus', hall: 'The Antarctic station', lv, hp: Math.round(6000 + lv * 190), theme: null, load: leadTag('cpJamesTI', 1.95, 'none'), // he fights with the Pontifex scythe in his model
   core: ['charge', 'slam', 'volley', 'blink'], p2: ['sweep', 'nova'], sig: 'spiral', seq: ['charge', 'slam', 'volley', 'blink', 'slam'],
-  lines: { intro: 'You pushed me into the sea. He pulled me out. I am not the man you left on that pier.', p2: 'Do you know how long it takes to freeze? I do. I counted.', p3: 'FOR THE GRAND IMPERARCH!', win: 'Enough… do it, then. Or don’t. I stopped being afraid of the cold.' } }; }
+  lines: { intro: 'You shoved me off that pier and walked away while I drowned. I’m going to rip you apart for every second of it.', p2: 'I FROZE in that water! I felt my own heart STOP! And you didn’t even look back!', p3: 'I’LL DRAG YOU DOWN INTO THE DARK WITH ME!', win: 'Go on… finish it. You’ve killed me once already.' } }; }
 function soldierSpec(T) { const lv = Math.max(8, plvNow() + 1); return { key: 'ti:soldier', boss: T.name.split(' ')[0], full: `${T.rank} ${T.name}, Terra Imperia`, hall: 'A Terra Imperia patrol', lv, hp: Math.round(2600 + lv * 120), theme: null, load: () => tiSoldierRig(T.sex),
   core: ['charge', 'volley', 'slam', 'blink'], p2: ['rain'], sig: 'sweep', seq: ['volley', 'charge', 'slam'],
   lines: { intro: 'By order of the Grand Imperarch, you are under arrest. Or dead. Your choice.', p2: 'Squad, hold the line!', p3: 'FOR TERRA IMPERIA!', win: 'Finish it… go on…' } }; }
@@ -12550,8 +12595,8 @@ function pontKilledYou(id, where) { // every time they kill you they come back f
   setTimeout(() => { notice(`${P.name} left you for dead${where ? ' · ' + where : ''}`, `${pontTitle(P).toUpperCase()} · LV ${was} → ${P.lv}`, 4200); lootMsg(`${P.name} grows stronger every time ${pontHe(P)[0]} kills you · finish ${pontHe(P)[1]} early`, '#ff6a6e'); }, where ? 1200 : 3000);
 }
 function tiFight(kind, X, ref) {
-  if (!isPl() || DGN.on || state !== 'explore') { lootMsg('Not here', '#ff8f86'); return; }
-  const p = player.position, L = leaderLair(null, { lid: kind + Date.now().toString(36) }, { list: [X] }, world.planet.P);
+  if ((!isPl() && !world.adVisit) || DGN.on || state !== 'explore') { lootMsg('Not here', '#ff8f86'); return; }
+  const p = player.position, L = leaderLair(null, { lid: kind + Date.now().toString(36) }, { list: [X] }, world.planet ? world.planet.P : bodyById('earth'));
   Object.assign(L, { tiKind: kind, tiRef: ref, name: X.hall || L.name }); lairEnter(L, { x: p.x, z: p.z }, 1);
 }
 function tiBossWin(B) {
@@ -12573,7 +12618,7 @@ function jamesChoice(gone) {
   openChoice('JAMES BROWN', [
     { text: 'Spare him', onPick: () => {
       setC3({ jamesFate: 'spared' }); wanderer.party = [...new Set([...(wanderer.party || []), 'james-ti'])]; pontSave();
-      lbark('James', 'Why…? After the pier… Fine. I owe you a life. I’ll pay it back.', 4400);
+      lbark('James', 'Why…? I’d have gutted you. I’d have enjoyed it. …Fine. I owe you a life, wanderer. Don’t make me regret paying it back.', 5200);
       syncCrewParty(); refreshJamesUI(); renderTasks(); sfx.chime();
       notice('James Brown is spared', 'HE JOINS YOUR CREW', 4200); compJoinNotice('james-ti', 4800); gone(); pontUnlockNote();
     } },
@@ -14594,7 +14639,14 @@ function spaceHudTick(P, alt, fwd) {
     if (M) { const wp = tmpVs.copy(khzDir()).multiplyScalar(M.r + spaceH(M, khzDir())).add(M.pos), d = SPC.pos.distanceTo(wp), v3 = wp.project(camera);
       if (v3.z < 1) { const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; h += `<div class="sh-mk gold${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>OLYMPUS MONS<br><small>KHAZGLAR · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`; } }
   }
-  if (SPC.sys === 'sol') for (const [on, id, label, sub, cls] of [[charonQ(), 'charon', 'CHARON', 'MAIN QUEST', 'gold'], [chnQ(), 'charon', 'CHARON', 'MEET CHARON AND KIZNA', 'gold'], [jamesQ(), 'earth', 'EARTH', 'ANTARCTICA · JAMES BROWN', 'gold'], [nyxQ(), 'eris', 'ERIS', 'NYREXIA · OPTIONAL', 'nyx']]) { // the quests' destinations
+  if (SPC.sys === 'sol' && (wanderer.chapter | 0) >= 3) { // Antarctica: the station and your Chapter I camp (James Brown's stronghold while he holds it)
+    const E = SPC.bodies.find(Q => Q.id === 'earth'), dir = antDir(); let wp = null, d = 0;
+    if (SPC.atmo && ATM.on && ATM.P && ATM.P.real) { wp = tmpVs.copy(dir).multiplyScalar(ATM.Rg + 40); d = camera.position.distanceTo(wp); }
+    else if (!SPC.atmo && E) { wp = tmpVs.copy(dir).multiplyScalar(E.r + spaceH(E, dir)).add(E.pos); d = SPC.pos.distanceTo(wp); }
+    if (wp) { const v3 = wp.project(camera); if (v3.z < 1) { const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H, q = jamesQ();
+      h += `<div class="sh-mk${q ? ' gold' : ''}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${q ? 'ANTARCTICA · THE STATION' : 'ANTARCTICA · YOUR BASE'}<br><small>${q ? 'JAMES BROWN · MAIN QUEST' : 'CHAPTER I CAMP'} · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`; } }
+  }
+  if (SPC.sys === 'sol') for (const [on, id, label, sub, cls] of [[charonQ(), 'charon', 'CHARON', 'MAIN QUEST', 'gold'], [chnQ(), 'charon', 'CHARON', 'MEET CHARON AND KIZNA', 'gold'], [nyxQ(), 'eris', 'ERIS', 'NYREXIA · OPTIONAL', 'nyx']]) { // the quests' destinations
     if (!on) continue; const Q = SPC.bodies.find(o => o.id === id); if (!Q) continue;
     const d = SPC.pos.distanceTo(Q.pos) - Q.r, v3 = tmpVs.copy(Q.pos).project(camera); if (v3.z >= 1) continue;
     const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; h += `<div class="sh-mk ${cls}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${label}<br><small>${sub} · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`;
@@ -14870,6 +14922,7 @@ function atmLand() {
   const S = atmLandSpot(), P = A.P;
   if (S.Q && S.Q.nofly) { spaceMsg(S.Q.nofly); sfx.thud && sfx.thud(); return; }
   if (P.real && S.Q && S.Q.id === 'adnostra') { A.landing = { t: 0, d: S.d, Q: S.Q, adn: true }; spaceMsg('Setting down at Ad-Nostra'); return; }
+  if (P.real && S.Q && S.Q.id === 'antstation') { A.landing = { t: 0, d: S.d, Q: S.Q, ant: true }; spaceMsg('Setting down by the research station'); return; }
   const sea = P.sea ? (P.seaH || 0) : -1e9, wet = planetH(P, S.d) < sea + 3;
   A.landing = { t: 0, d: S.d, Q: S.Q }; spaceMsg(S.Q ? `Landing · ${S.Q.name}` : wet ? 'Over water · setting down on the nearest shore' : 'Landing');
 }
@@ -14882,6 +14935,7 @@ function atmLandTick(dt) {
   if (L.t > 1.75 && !L.done) {
     L.done = true; const P = A.P, d = L.d.clone(); atmoLeave(false); SPC.on = false;
     if (L.adn) { visitAdNostra(null).catch(e => console.error(e)); return; }
+    if (L.ant) { visitAntBase(null).catch(e => console.error(e)); return; }
     landOn(P, d).then(() => { const fl = $('#shFlash'); if (fl) fl.classList.remove('on'); }).catch(e => console.error(e));
   }
 }
@@ -15792,7 +15846,9 @@ const EP_LONDON = { id: 'london', name: 'New London', short: 'New London', tag: 
     eblocks(K, { R: 240 }, { cell: 26, street: 7, seed: 81, avoid: [[0, 0, 70], [120, 100, 34], [-140, -40, 26], [-20, 60, 40]], height: (x, z, r) => 18 + r * 30 + (r > .9 ? 60 : 0), build(K2, x, y, z, w, h, d, ry, r) { K2.box(r > .85 ? gl : ecityMat('paris', EST.paris), w, h, d, x, y, z, ry); } }); } };
 const EP_ADN = { id: 'adnostra', name: 'Ad-Nostra', short: 'Ad-Nostra', tag: 'The Salt Lantern', noGround: true, lat: -4.04, lon: 39.67, R: 120, see: 9000, note: 'Africa · the coast of East Africa',
   build(K, Q) { const M = EM(); let sd = 3; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647; for (let i = 0; i < 46; i++) { const a = rnd() * Math.PI * 2, r = 8 + rnd() * 70; K.box(M.white, 5 + rnd() * 5, 3 + rnd() * 4, 5 + rnd() * 5, Math.cos(a) * r, 0, Math.sin(a) * r, rnd() * 3, false); } Q.glows = [[0, 14, 0, 0xffc070, 30, .9]]; } };
-const EPOIS = [EP_PARIS, EP_NY, EP_BEIJING, EP_TOKYO, EP_CAIRO, EP_KINGSTON, EP_COLOSSEUM, EP_TAJ, EP_PETRA, EP_RIO, EP_MACHU, EP_CHICHEN, EP_WALL, EP_LONDON, EP_ADN];
+const EP_ANT = { id: 'antstation', name: 'The Antarctic research station', short: 'The station', tag: 'Where it began', noGround: true, lat: -75.1, lon: 123.35, R: 120, see: 12000, note: 'Antarctica · the research station and your Chapter I camp',
+  build(K, Q) { const M = EM(); K.box(M.white, 9, 3.4, 5.5, 0, .9, 0, 0, false); K.box(M.dark, 9.4, .35, 5.9, 0, 4.3, 0, 0, false); Q.glows = [[0, 18, 0, (typeof jamesQ === 'function' && jamesQ()) ? 0xff2a2a : 0xffc070, 34, .9]]; } };
+const EPOIS = [EP_PARIS, EP_NY, EP_BEIJING, EP_TOKYO, EP_CAIRO, EP_KINGSTON, EP_COLOSSEUM, EP_TAJ, EP_PETRA, EP_RIO, EP_MACHU, EP_CHICHEN, EP_WALL, EP_LONDON, EP_ADN, EP_ANT];
 
 // ---- on Earth's ground: trees where the climate grows them, and the land beyond the loaded ground out to the horizon ----
 function earthTreeK(x, z) {
@@ -16641,7 +16697,7 @@ async function shipInteract(n) {
   if (n.id === 'pilot') {
     if (SHIPI.from === 'space') { leaveShip('space'); return; }
     if (isPl() && world.planet && world.planet.P.id === 'mars' && !world.planet.khz && khzPending()) { openChoice('THE HELM', [{ text: 'Fly to Olympus Mons · Khazglar’s hermitage', onPick: () => khzFly() }, { text: 'Take off', onPick: () => leaveShip('takeoff') }, { text: 'Stay landed', onPick: () => {} }]); return; }
-    if (brawlOn() && isPl() && world.planet && world.planet.P.id === 'earth') { openChoice('THE HELM', [{ text: 'Take off', onPick: () => leaveShip('takeoff') }, { text: 'Fly to Ad-Nostra, East Africa · The Salt Lantern', onPick: () => shipFlyToAdNostra() }, { text: 'Stay landed', onPick: () => {} }]); return; }
+    if (isPl() && world.planet && world.planet.P.id === 'earth' && (brawlOn() || (wanderer.chapter | 0) >= 3)) { openChoice('THE HELM', [{ text: 'Take off', onPick: () => leaveShip('takeoff') }, ...(brawlOn() ? [{ text: 'Fly to Ad-Nostra, East Africa · The Salt Lantern', onPick: () => shipFlyToAdNostra() }] : []), { text: jamesQ() ? 'Fly to Antarctica · the station (James Brown)' : 'Fly to Antarctica · the station and your Chapter I camp', onPick: () => shipFlyToAnt() }, { text: 'Stay landed', onPick: () => {} }]); return; }
     leaveShip('takeoff'); return; }
   if (n.id === 'holo') { if (SHIPI.from === 'space') { leaveShip('space'); setTimeout(() => galOpen(), 50); } else lootMsg('The galaxy map works in flight · take off first', '#cfd6e6'); return; }
   if (n.id === 'aboard') { aboardTalk(n.who); return; }
@@ -17344,7 +17400,7 @@ function shipUpTick(dt) {
     const W = world.planet; S.visible = false; setShipRig(S, 1, 1); if (world.orion) world.orion.root.visible = true;
     rememberPlaceSafe(); ui.xhud.classList.remove('world');
     const hd = new THREE.Vector3(0, 0, -1).applyQuaternion(S.quaternion);
-    if (world.adVisit && !isPl()) { world.adVisit = false; const E0 = bodyById('earth'), d0 = new THREE.Vector3().fromArray(adnDir()); atmoFromGround(E0, d0, new THREE.Vector3(0, 1, 0).cross(d0).normalize()); return; }
+    if (world.adVisit && !isPl()) { world.adVisit = false; const E0 = bodyById('earth'), d0 = world.visitAt === 'antarctica' ? antDir() : new THREE.Vector3().fromArray(adnDir()); world.visitAt = null; atmoFromGround(E0, d0, new THREE.Vector3(0, 1, 0).cross(d0).normalize()); return; }
     const d1 = plDir(X0, Z0), e1 = W.E.clone().multiplyScalar(hd.x).addScaledVector(W.N, hd.z); atmoFromGround(W.P, d1, e1.lengthSq() > .01 ? e1.normalize() : W.E.clone());
   }
 }
@@ -17363,6 +17419,7 @@ async function startChapter3(place) {
     if (P && place.dir) { try { await landOn(P, new THREE.Vector3().fromArray(place.dir), place); } finally { SPC.booting = false; } if (place.aboard) shipResume(place, 'ground'); return; }
   }
   if (place && place.where === 'africa' && place.adVisit) { SPC.sys = 'sol'; buildSpace(); setSystem('sol'); try { await visitAdNostra(place); } finally { SPC.booting = false; } if (place.aboard) shipResume(place, 'ground'); return; }
+  if (place && place.where === 'antarctica' && place.adVisit) { SPC.sys = 'sol'; buildSpace(); setSystem('sol'); try { await visitAntBase(place); } finally { SPC.booting = false; } if (place.aboard) shipResume(place, 'ground'); return; }
   spaceOn(place && place.where === 'space' ? place : null); SPC.booting = false;
   if (place && place.aboard && place.where === 'space') shipResume(place, 'space');
 }
@@ -18605,7 +18662,7 @@ async function startChapter2(place) {
   if (!(wanderer.ch2 && wanderer.ch2.talkedOrion)) setTimeout(() => notice('Orion is waiting on the porch', 'SPEAK TO ORION', 3200), 3200);
 }
 function enterWorld(place) {
-  world.adVisit = !!(place && place.adVisit && place.where === 'africa'); // the Nostra parked outside Ad-Nostra (Chapter III on)
+  world.adVisit = !!(place && place.adVisit && (place.where === 'africa' || place.where === 'antarctica')); world.visitAt = world.adVisit ? place.where : null; // the Nostra parked outside Ad-Nostra, or on the ice by the station (Chapter III on)
   if (!place || place.where !== 'africa') { if (!world.area) world.area = 'antarctica'; }
   buildWorld(worldSeedOf(curChar() || wanderer));
   applyAreaLook();
@@ -18844,7 +18901,7 @@ function updateWorldMode(dt) {
   if (!ex.near && curArea() === 'africa' && TOWN.npcs.length) { const tn = townNear(p); if (tn) ex.near = { id: 'townsfolk', ref: tn, label: tn.label }; }
   if (!ex.near && !orionJoined() && curArea() === 'africa' && world.orion && world.orion.root.visible && Math.hypot(world.orion.root.position.x - p.x, world.orion.root.position.z - p.z) < 2.4) ex.near = { id: 'orion', label: 'Orion' };
   if (!ex.near) for (const cid of partyNow()) { if (cid === 'james') continue; const r = compRoot(cid); if (r && r.visible && r.parent === wScene && Math.hypot(r.position.x - p.x, r.position.z - p.z) < 2.4) { ex.near = { id: 'comp', cid, label: compName(cid) }; break; } } // any companion: Orion, Nico, the crew, whoever joins next
-  if (!ex.near && curArea() === 'antarctica' && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' };
+  if (!ex.near && curArea() === 'antarctica' && !(TIW.st && TIW.st.ant) && Math.hypot(p.x - 7.9, p.z) < 2.2) ex.near = { id: 'door', label: 'Station' }; // while James holds it, the door is his
   if (ex.vehicle) ex.near = { id: 'roverOut', label: 'Rover' };
   if (world.betrayal) ex.near = world.betrayal.phase === 'push' && james.root.visible && Math.hypot(james.root.position.x - p.x, james.root.position.z - p.z) < 2.6 ? { id: 'push', label: 'James Brown' } : null;
   if (!ex.near) {
