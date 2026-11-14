@@ -1390,3 +1390,4 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - **Companions:** Charon and Kizna open once you land on Charon. Nyrexia opens when you speak to her in the Citadel. Croxian, Malia and James open as above.
   - **The four leaders** open when you meet them (a dream, the story, the Citadel for Vishara) or face them in their hall. Your own race's leader still opens after Chapter I's first night.
   - Once you're past Chapter III, everyone from it is open, apart from leaders you have never met or fought.
+- **Javek as he was:** his **Ancient Figures** file shows the original model, **red optic and smoked lens intact** (`data/cpJavekR.js`, `assets/models/companions/javek_red_optic.glb`). Only the companion Javek has the green eyes.
