@@ -12461,6 +12461,7 @@ function tiBeacon(g, x, z, col, h) { const b = glowSprite(col, 14, .6); b.positi
 
 // Charon and Kizna, by your ship
 async function chnPlace() {
+  if (!TIW.chnVo) TIW.chnVo = loadDataScript('chnVoices').then(() => sfx.loadClips('chnVoices')).catch(() => []); // voiced: CH3CHARON1–5
   const area = curArea(), [C, K] = await Promise.all([companionRig('charon').catch(() => null), companionRig('kizna').catch(() => null)]);
   if (curArea() !== area || !chnQ() || !C) return;
   const g = new THREE.Group(), x = -5, z = 11; wScene.add(g);
@@ -12469,8 +12470,9 @@ async function chnPlace() {
   TIW.chn = { g, R: [C, K], face: true, x: x - 1.2, z: z + .3 };
   setTimeout(() => lootMsg('Two robots are waiting by your ship · go and talk to them', compColor('charon')), 2600);
 }
-function chnTalk() {
+async function chnTalk() {
   pdMeet('charon', 'kizna');
+  const vo = (await (TIW.chnVo || (TIW.chnVo = loadDataScript('chnVoices').then(() => sfx.loadClips('chnVoices')).catch(() => [])))) || [];
   const L = [
     ['CHARON', 'Visitors. On Charon. Kizna, put the kettle on. Oh, wait. We don’t drink, and we don’t own a kettle.'],
     ['KIZNA', 'Ignore him. You’re the wanderer from Hawthorne’s broadcast. His people came through here a month ago, drilling under the ice for something.'],
@@ -12478,7 +12480,7 @@ function chnTalk() {
     ['KIZNA', 'We can’t leave yet. This moon’s reactor needs both of us until the next alignment. When it’s done, we’ll find you.'],
     ['CHARON', 'She means it. She’s already decided she likes you. It’s very annoying.']
   ];
-  const run = i => { if (i < L.length) { openDialog(L[i][0], [L[i][1]], false, () => run(i + 1)); return; }
+  const run = i => { if (i < L.length) { openDialog(L[i][0], [L[i][1]], false, () => run(i + 1), vo[i] ? [vo[i]] : undefined); return; }
     setC3({ charonMet: true }); renderTasks(); sfx.chime(); gainXP(200, 'Met Charon and Kizna');
     notice('Charon and Kizna', 'THEY WILL JOIN YOU LATER', 3400);
     jrvWhenFree(4000);
@@ -12661,7 +12663,8 @@ function dipPontClick(a, b) {
 function dipPontChange(t) { if (t.dataset.a !== 'pontColPick') return false; const P = pontById(t.dataset.p); if (!P) return true; P.col = t.value; pontSave(); pontRefresh(P.id); dipRender(); return true; }
 
 // ---- the cutscene: Hawthorne raises James Brown from the Southern Ocean. A brutal reconstruction, played as horror: James wakes on the
-// slab screaming, is held down while the heart and the armour go in, and then the silence. (Synthesised screams until he's voiced.) ----
+// slab screaming, is held down while the heart and the armour go in, and then the silence. Voiced: data/jrvVoices.js, CH3HAWTHORNE1–13 (every
+// spoken line in order, Hawthorne's and James's); the synthesised scream is only a fallback if the voices don't load. ----
 const JRV = { on: false, scene: null, t: 0, step: -1, stepEnd: 0, shot: null, shotT: 0, shotDur: 6, actT: 0 };
 const JRV_STEPS = [
   { dur: 4.6, shot: [[34, 12, 46], [16, 7, 28], [0, 0, 7]] }, // the black water, the searchlights, a shape in the waves
@@ -12736,7 +12739,8 @@ async function startJamesRev() {
   state = 'jamesRev'; ex.keys.clear(); vel.set(0, 0, 0); if (ex.dlg) closeDialog();
   const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.thud(); sfx.drone(.5);
   hwmBarsMake();
-  try { await jrvBuild(); } catch (e) { console.error(e); jrvEnd(); return; }
+  if (!JRV.voP) JRV.voP = loadDataScript('jrvVoices').then(() => sfx.loadClips('jrvVoices')).catch(() => []); // voiced: CH3HAWTHORNE1–13
+  try { const [, vo] = await Promise.all([jrvBuild(), JRV.voP]); JRV.vo = vo || []; } catch (e) { console.error(e); jrvEnd(); return; }
   JRV.saveCam = { near: camera.near, far: camera.far, fov: camera.fov }; camera.near = .05; camera.far = 900; camera.fov = camera.aspect < 1 ? 64 : 42; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
   JRV.filt = 'contrast(1.25) saturate(.6) brightness(.9)'; renderer.domElement.style.filter = JRV.filt;
   HWM.bars.classList.add('on'); show(ui.xhud, true); ui.xhud.classList.add('cutting');
@@ -12763,8 +12767,9 @@ function jrvTick(dt) {
     JRV.step++;
     if (JRV.step < JRV_STEPS.length) {
       const Sx = JRV_STEPS[JRV.step]; JRV.shot = Sx.shot; JRV.shotT = t; JRV.actT = 0; JRV.act = Sx.act || null;
-      let dur = Sx.text ? hwmSay(Sx.who, Sx.text, null, !!Sx.james) : Sx.dur; if (Sx.min) dur = Math.max(dur, Sx.min); JRV.stepEnd = t + dur + .35; JRV.shotDur = dur + .35;
-      if (Sx.scream) { const [d, v, f] = Sx.scream; sfx.scream(d, v, f); setTimeout(() => { if (JRV.on && JRV.step === JRV_STEPS.indexOf(Sx)) sfx.scream(d * .6, v * .8, f * 1.15); }, d * 850); }
+      const li = JRV_STEPS.slice(0, JRV.step + 1).filter(o => o.text).length - 1, clip = Sx.text ? (JRV.vo || [])[li] || null : null; // the nth spoken line is CH3HAWTHORNE(n+1)
+      let dur = Sx.text ? hwmSay(Sx.who, Sx.text, clip, !!Sx.james) : Sx.dur; if (Sx.min) dur = Math.max(dur, clip ? Math.min(Sx.min, clip.duration + .6) : Sx.min); JRV.stepEnd = t + dur + .35; JRV.shotDur = dur + .35;
+      if (Sx.scream && !clip) { const [d, v, f] = Sx.scream; sfx.scream(d, v, f); setTimeout(() => { if (JRV.on && JRV.step === JRV_STEPS.indexOf(Sx)) sfx.scream(d * .6, v * .8, f * 1.15); }, d * 850); }
       if (Sx.act === 'open') { JRV.flashA = .5; JRV.flashC = '#ff2a3a'; sfx.thud(); sfx.drill(2.4, .14); }
       if (Sx.act === 'wake') { JRV.flashA = 1; JRV.flashC = '#ff0000'; JRV.shake = 1.4; sfx.thud(); for (const st of JRV.straps) st.visible = true; }
       if (Sx.act === 'rebuild') { sfx.drill(3.2, .16); sfx.sizzle(1.4, .14); }
