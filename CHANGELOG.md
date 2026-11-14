@@ -1755,3 +1755,38 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 ## The return to Charon, voiced
 - **Charon and Kizna's conversation after James Brown is fully voiced:** **CH3CHARONRETURN1–6**, slots 5–10 of `data/chnVoices.js` (after the first meeting's CH3CHARON1–5). 1–2 are the lines if you killed James, 3–4 if you spared him, and 5–6 are the lines everyone hears. Sources are in `assets/audio/charon_ch3/`.
 - **The first meeting replays on purpose.** Talking to them again after either conversation plays the first meeting and gives another 200 XP each time. That's an intentional XP farm, so leave it in.
+
+## Chapter III: Hak Chompjak's call, Karribassa, and Terra Imperia's surge
+- **Janira Proxima has moved next to Sol:** 2,081 light-years away, one jump with the first hyperdrive. It's moved after the galaxy is generated, so the other 490 systems (and every save's colonies, lairs and residents) stay exactly where they were. Chompy space around its old spot stays Chompy. Lore that put the Republic of Timpur "beyond Janira Proxima" now says "at the very tip of the outer spiral arm".
+- **Hak calls you.** After your second visit to Charon and Kizna (which comes once James Brown is spared or killed), Hak Chompjak sends an incoming transmission a few seconds after their goodbye, the next time you're free on the ground. His spies have gone quiet, Hawthorne's fleets are over Venus, and he wants you in **Karribassa**. New main quest: *Meet Hak Chompjak in Karribassa, on Janira Prime*. Janira Prime gets a gold marker in its system, and Hak waits by your ship at the spaceport.
+- **The meeting** (6 lines; one changes with whether you allied with the Chompy Empire, and Alexia already rules Eris by now) gives 300 XP. Saved as `ch3.hakCall` and `ch3.hakMet`.
+- **Terra Imperia's surge starts as Hak's call ends:**
+  - **Earth falls** and becomes the Grand Imperarch's capital (Terra Imperia's capital moves from Venus to Earth). You can still land on Earth, including Antarctica and Ad-Nostra.
+  - **The Federation flees to Mars**, its capital in exile. Darius Ancin's hall moves there.
+  - **Sol fills with Terra Imperia ships:** encounters about every 20–50 s instead of 45–120 s, 3 more fighters each time, and a 97% chance.
+  - **Land grabs:** every 2.5–4 minutes of play, one faction takes one world in Sol. Terra Imperia and the Federation take turns, and Alexia's Erisians join in once she rules Eris. Unclaimed worlds go first, then enemies' worlds: Terra Imperia and the Erisians take the Federation's and **yours**, and the Federation takes Terra Imperia's (and Alexia's). Each change shows a notice, and the objectives list keeps count.
+  - **Never taken:** Earth, Mars, Eris and Charon.
+  - **Taking worlds back:** any world Terra Imperia seizes can be bombarded and captured like Mercury and Venus, and comes back as your colony. Worlds the Erisians take need a war with them (Diplomacy).
+  - Saved in `dip().surge`. It only runs in Chapter III, and not if Terra Imperia is already beaten.
+- **Hak is voiced:** `data/hakVoices.js` holds **CH3HAKPREMEET1–10**. 1–3 are the call, and 4–10 are the meeting (8 if you allied with the Chompy Empire, 9 if you didn't). Sources are in `assets/audio/hak_ch3/`.
+- **On phones:** the new objectives, the space markers (which never wrap), the talk prompt, the goal line in space, the notices and the messages all have short versions, so they fit small screens upright and sideways. The return-to-Charon objective, marker and messages got short phone versions too.
+
+## Chapter III: infiltrating the Cygnus Terra Imperius
+- **After meeting Hak, the next main quest:** *Infiltrate the Cygnus Terra Imperius, Terra Imperia's capital ship, in orbit over Mercury.* Mercury gets a gold marker, and stays open to you for the mission even while Terra Imperia holds it.
+- **The supply shuttle:** land on Mercury and a Terra Imperia supply shuttle is loading by your ship, under a crimson beacon and guarded by two soldiers. **BOARD** it to go up to the Cygnus.
+- **Four decks:** steel and crimson corridors (a new `ship` lair theme) full of Terra Imperia soldiers with rifles, more of them on the upper decks. Each deck's way up is held by an officer (a named Centurion, Praetorian and so on) with about three times the health. Cleared decks stay cleared, so if you fall or leave you come back to the deck you'd reached. The soldiers now fight inside lairs, but only aboard the Cygnus.
+- **The bridge: Thomas Hawthorne** (your level + 2, at least 24) with volley, charge, slam and falling-star attacks, then cross and nova, and a sweep at the end, scored by *The Wrong Enemy*. His lines: "You came all the way up here to die on my ship? How very Federation of you." · "Do you know what this ship is? It is the future…" · "SOL IS MINE! EVERY WORLD, EVERY MOON, EVERY LAST ONE OF YOU!"
+- **He escapes.** Beaten, he sneers that the Cygnus was never the prize, Earth is, and gets away in a pod off the bridge (he dies at Carax later). 900 XP plus his level bonus. Saved as `ch3.cygDone`. Hawthorne's Cygnus lines are subtitles for now.
+- **On phones:** short versions of the objective, marker, prompt, goal line and messages.
+
+## Livelier capitals, four new cities, and Hak in the heart of Karribassa
+- **People in the streets:** every capital now has its own people walking the plaza and up and down the grand avenue, stopping now and then. Chompy walk Alphinos and Karribassa, Erisians the Citadel el Erisconos, Grek Carax, Malana and Archiostal, and Taredesibans Timpur Prime. Each wears colours close to their city's, and traders stand at the stalls. There are 14 in most cities, 20 in the big ones and 6 on phones. People only animate when you're nearby (closer on phones), and their shadows are off on phones.
+- **Market stalls** line the avenue in every capital (8, or 4 on phones), with awnings in the city's colours and lamps that glow at night.
+- **Four new cities**, each with its own landmark, visible from the sky and flown to like the other three:
+  - **Carax** (Grek, big): the Temple of Archamus, a stepped green-and-gold pyramid with the Light Egg floating over it in a column of light, a ring of obelisks and a pylon gate. Its note says *capital of the Catharsis* in Chapter IV.
+  - **Malana** (Grek): the same temple style, smaller.
+  - **Archiostal** (Grek, in the station's gardens): the temple city stands just ahead of wherever you dock.
+  - **Timpur Prime** (Taredesiban): the Senate of Timpur, a columned rotunda under a teal dome crowned with the old crown of the kings of Timpur (its crimson stone lit), teal banners and a colonnade gate.
+  - Two new city styles, `grek` and `consul`, for the towers, windows, streets and traffic.
+- **Hak in Karribassa:** he now waits in the heart of the city, on the south bridge across the canal in front of the Hall of Oaths (the dome on its ring of white columns), with two Chompy guards (one fewer pair on phones). The minimap's gold marker points to him. If you land away from the city, you're told to fly there from the sky.
+- **The minimap marker** also points to Charon and Kizna and to the Cygnus supply shuttle when they're waiting.
