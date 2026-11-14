@@ -5418,6 +5418,7 @@ function exploreCamera(dt) {
 addEventListener('keydown', e => {
   if (e.code === 'Escape' && !slotUI.root.classList.contains('hidden')) { closeSlots(); return; }
   if (state === 'hawMars' || state === 'jamesRev' || state === 'c4End') { if (e.code === 'Escape') skipMeeting(); return; }
+  if (state === 'nightmare' && NM.on) { if (NM.phase === 'wake' && ['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } else if (e.code === 'Escape') { e.preventDefault(); skipMeeting(); } return; }
   if (state === 'dream') { if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } return; }
   if (state === 'wcut') { if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } else if (e.code === 'Escape') skipMeeting(); return; }
   if (state === 'farmCut') { if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } return; }
@@ -5488,6 +5489,7 @@ canvas.addEventListener('wheel', e => {
 }, { passive: true });
 xUI.act.addEventListener('click', e => { e.stopPropagation(); interact(); });
 xUI.dlg.addEventListener('click', () => advanceDialog());
+addEventListener('click', e => { if (state === 'nightmare' && NM.on && NM.phase === 'wake' && ex.dlg && !(e.target.closest && e.target.closest('#xSkip, .x-dlg, button'))) advanceDialog(); }); // waking from the nightmare: a tap anywhere
 function sceneLocked() {
   const B = world.betrayal;
   return !!ex.dlg || !!world.callBusy || meet.active || ui.xhud.classList.contains('cutting') || !!(B && B.phase !== 'chase' && B.phase !== 'won' && B.phase !== 'dead');
@@ -14865,8 +14867,7 @@ function spaceOn(place) {
   SPC.vel = 60; SPC.thr = .3; SPC.camInit = false; clock.getDelta();
   scClear(); SC.shield = 100; SC.nextT = (SPC.t || 0) + 50 + Math.random() * 50;
   wanderer.place = currentPlace(); const c = curChar(); if (c) c.place = wanderer.place;
-  // the start of Chapter III: out over Earth, the nightmare comes (once)
-  if (!place && wanderer.ch3 && !wanderer.ch3.nightmare && !NM.on) setTimeout(() => { if (state === 'space' && !NM.on) startNightmare(); }, 3500);
+  NM.dueT = 0; // the nightmare (Chapter III, once) is started by nmDueTick, from the space loop
   if (place && place.atmo) atmoResume(place); // saved in a world's sky: back in it
 }
 // where you come out in a system: off its home world, on the sunlit side, the world filling the view below you
@@ -18267,6 +18268,14 @@ function nmSilhouette(R, on) { // the prophecy shows shapes, never faces
   R.root.traverse(o => { if (!o.isMesh) return; if (on) { if (!o.userData.realMat) o.userData.realMat = o.material; o.material = NM.silMat || (NM.silMat = new THREE.MeshBasicMaterial({ color: 0x000000 })); } else if (o.userData.realMat) o.material = o.userData.realMat; });
 }
 // ---- running it ----
+// Chapter III's nightmare comes the first time you're out in open space without having had it: straight after the escape, or
+// after loading a save made in space, on a planet or in a planet's sky before it came (a save like that used to never get it,
+// and Khazglar's quest waits on it). Not in a world's sky, mid-warp, on the galaxy map or mid-landing: a few seconds of open space first.
+function nmDueTick(dt) {
+  const due = (wanderer.chapter | 0) === 3 && wanderer.ch3 && !wanderer.ch3.nightmare && !NM.on && !SPC.atmo && !ATM.on && !SPC.warp && !GAL.open && !SPC.landing && !SPC.booting && !ex.dlg;
+  NM.dueT = due ? (NM.dueT || 0) + dt : 0;
+  if (NM.dueT > 3.5) { NM.dueT = 0; startNightmare(); }
+}
 async function startNightmare() {
   if (NM.on) return; NM.on = true; NM.race = ['chompy', 'erisian', 'human', 'grek'].includes(spOf(wanderer)) ? spOf(wanderer) : 'human';
   NM.phase = 'panic'; NM.t = 0; NM.bi = -1; NM.ready = false; NM.script = NM_SCRIPTS[NM.race];
@@ -23053,7 +23062,7 @@ function loopFrame() {
   if (state === 'hawMars') { try { hwmTick(dt); } catch (e) { console.error(e); hwmEnd(); } sfx.music(0); return; }
   if (state === 'jamesRev') { try { jrvTick(dt); } catch (e) { console.error(e); jrvEnd(); } sfx.music(0); return; }
   if (state === 'c4End') { try { c4eTick(dt); } catch (e) { console.error(e); c4eSkip(); } sfx.music(0); return; }
-  if (state === 'space') { spaceTick(dt); try { resSpaceTick(dt); } catch (e) { console.error(e); } sfx.music(0); renderer.render(SPC.atmo ? ATM.scene : SPC.scene, camera); return; }
+  if (state === 'space') { spaceTick(dt); try { resSpaceTick(dt); } catch (e) { console.error(e); } try { nmDueTick(dt); } catch (e) { console.error(e); } sfx.music(0); renderer.render(SPC.atmo ? ATM.scene : SPC.scene, camera); return; }
   if (state === 'xpaused' && SPC.paused) { sfx.music(0); renderer.render(SPC.atmo ? ATM.scene : SPC.scene, camera); return; }
   if (state === 'shipLand' || state === 'shipUp') { (state === 'shipLand' ? shipLandTick : shipUpTick)(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'trial') { trialTick(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); renderer.render(wScene, camera); return; }

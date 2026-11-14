@@ -1554,3 +1554,13 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - Sideways, phones frame the scenes like a computer screen.
   - Phones get half the fires (each one is a light) and no blur while you choke, so the endings stay smooth.
   - The game over screen sits inside the screen's safe area, with a thumb-sized button.
+
+### Fix: Chapter III's nightmare not starting or getting stuck
+- **It now always comes:**
+  - **When:** the first time you're out in open space in Chapter III without having had it, after a few seconds of flying.
+  - **Old bug:** it used to start only if you came into space at the very start of Chapter III. A save made in space, on a planet or in a planet's sky before it came never got it, and Khazglar's quest (which waits on it) could never begin.
+  - **Saves on planets:** load one and it comes once you're back in open space.
+  - **Never mid-warp:** it won't start in a world's sky, mid-warp, on the galaxy map or mid-landing either.
+- **Waking up no longer seems stuck:**
+  - Orion's "Hey! HEY! Look at me!" and the lines after it move on with **Space, E or Enter**, or a tap/click anywhere, like every other conversation. Before, only a click on the dialogue box itself worked.
+  - **Esc** skips the nightmare's memories.
