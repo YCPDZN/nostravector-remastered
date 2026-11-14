@@ -5199,7 +5199,7 @@ function influence(id, d) {
   const L = COMPANIONS.find(c => c.id === id), st = alState(), b = L ? alBaseOf(L) : 0;
   const C = st.c[id] || (st.c[id] = { a: b == null ? 0 : b, inf: 50 });
   C.inf = clamp(C.inf + d, 0, 100); alSave();
-  lootMsg(`${(PARTY[id] || { name: id }).name} · influence ${d > 0 ? '+' : '−'}${Math.abs(d)}`, d > 0 ? '#9fe6b0' : '#ffb36e');
+  lootMsg(`${(PARTY[id] || { name: L ? titleName(L.name.split(' ')[0]) : id }).name} · influence ${d > 0 ? '+' : '−'}${Math.abs(d)}`, d > 0 ? '#9fe6b0' : '#ffb36e');
 }
 function closeDialog() { if (ex.dlg) sfx.stopVoice(); xUI.dlg.classList.remove('choice'); ex.dlg = null; if (cine.on) { cine.on = false; ui.xhud.classList.remove('cine'); ex.snap = false; } xUI.dlg.classList.remove('on', 'ready'); ui.xhud.classList.remove('talking'); }
 function advanceDialog() {
@@ -12663,17 +12663,46 @@ function jamesChoice(gone) {
   pdMeet('james');
   openChoice('JAMES BROWN', [
     { text: 'Spare him', onPick: () => {
-      setC3({ jamesFate: 'spared' }); wanderer.party = [...new Set([...(wanderer.party || []), 'james-ti'])]; pontSave();
+      setC3({ jamesFate: 'spared', nyxBeforeJames: c3f('nyxJoined') }); wanderer.party = [...new Set([...(wanderer.party || []), 'james-ti'])]; pontSave();
       vbark('James', 'Why…? I’d have gutted you. I’d have enjoyed it. …Fine. I owe you a life, wanderer. Don’t make me regret paying it back.', 5200, jbfClip(7));
       syncCrewParty(); refreshJamesUI(); renderTasks(); sfx.chime();
       notice('James Brown is spared', 'HE JOINS YOUR CREW', 4200); compJoinNotice('james-ti', 4800); gone(); pontUnlockNote();
+      jamesCrewReact('spared', Math.max(5200, (jbfClip(7) ? jbfClip(7).duration * 1000 : 0)) + 600);
     } },
     { text: 'Kill him', onPick: () => {
-      setC3({ jamesFate: 'killed' }); wanderer.party = (wanderer.party || []).filter(x => x !== 'james-ti'); pontSave();
+      setC3({ jamesFate: 'killed', nyxBeforeJames: c3f('nyxJoined') }); wanderer.party = (wanderer.party || []).filter(x => x !== 'james-ti'); pontSave();
       sfx.thud(); ex.shake = 1; DGN.flashL = 2.4; if (DGN.lb && DGN.lb.mesh.parent) { DGN.lb.mesh.parent.remove(DGN.lb.mesh); DGN.lb = null; }
       renderTasks(); notice('James Brown', 'IS DEAD · FOR GOOD THIS TIME', 4200); pontUnlockNote();
+      jamesCrewReact('killed', 4600);
     } }]);
 }
+// Orion, Khazglar and Nico on James's fate: sparing him is cruelty to them (he's been through too much), killing him a mercy.
+// Only the ones who have joined you speak. Then a line nobody says aloud.
+const JAMES_REACT = {
+  spared: [
+    ['orion', () => orionJoined(), 'You let him walk out of there? After what Hawthorne put in his chest? That wasn’t mercy. You’ve left him to suffer, and he’ll take it out on whoever’s closest.'],
+    ['khazglar', () => khzJoined(), 'I have seen beasts kept alive past their time on this mountain. It is not kindness. The boy is in agony, and you have chained him to it.'],
+    ['nico', () => nicoJoined(), 'I’ve buried men who were kinder to lose than to keep. You just handed that boy another ten years of screaming.']],
+  killed: [
+    ['orion', () => orionJoined(), 'It’s done. He drowned once, and they dragged him back to burn. You gave him the rest he should have had. I’m not sorry.'],
+    ['khazglar', () => khzJoined(), 'A clean end, for one who had been through too much. You did him a kindness, wanderer, even if he could not see it.'],
+    ['nico', () => nicoJoined(), 'Hardest thing in the world, putting down someone who’s already broken. You did right by him.']]
+};
+function jamesCrewReact(fate, delay) {
+  const L = JAMES_REACT[fate].filter(r => r[1]()), d = fate === 'spared' ? -12 : 10; // moderate either way
+  L.forEach(([id, , text], i) => setTimeout(() => { const C = COMPANIONS.find(c => c.id === id); vbark((PARTY[id] || { name: C ? titleName(C.name.split(' ')[0]) : id }).name, text, 5600); influence(id, d); }, delay + i * 6000));
+  setTimeout(() => { sfx.thud(); notice('\u00a0', 'YOUR ACTIONS WILL BE REMEMBERED', 4600); }, delay + L.length * 6000 + 400);
+}
+// ---- Chapter III's choices, for Chapter IV's ending ----
+// good: James, Croxian and Malia all spared. bad: any of them killed, or Croxian killed and Orion left alive.
+// (wanderer.ch3: jamesFate, nyxBeforeJames, croxFate, maliaFate, orionFate: 'spared' | 'killed')
+function ch4Decisions() { const c = (wanderer && wanderer.ch3) || {}; return { james: c.jamesFate || null, nyxBeforeJames: c.jamesFate ? !!c.nyxBeforeJames : null, crox: c.croxFate || null, malia: c.maliaFate || null, orion: c.croxFate === 'killed' ? (c.orionFate || null) : undefined }; }
+function ch4Ending() {
+  const D = ch4Decisions();
+  if (D.james === 'killed' || D.crox === 'killed' || D.malia === 'killed' || D.orion === 'spared') return 'bad';
+  return D.james === 'spared' && D.crox === 'spared' && D.malia === 'spared' ? 'good' : null; // null: not decided yet
+}
+const orionVillain = () => ch4Decisions().crox === 'killed' && ch4Decisions().orion !== 'killed'; // Orion takes Terra Imperia, and only then do Pontifexes serve it in Chapter IV
 function pontAnoint(T, gone) { // a beaten soldier rises as a Pontifex Maximus (a man) or a Sister of Hawthorne (a woman), and hunts you
   const sex = T.sex || 'm', sis = sex === 'f';
   const P = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: T.name, sex, col: sis ? '#d8d2c0' : '', lv: Math.min(PONT_MAX_LV, plvNow() + 3), st: 'hunt', made: Date.now() };
