@@ -6544,7 +6544,7 @@ function cmdCompanion(mode) {
   if (mode === 'dismiss') { if (!sel) return; const ids = sel === 'all' ? partyNow() : [sel]; toggleJamesMenu(false); for (const id of ids) dismissCompanion(id); return; }
   if (!sel || !JCMDS.includes(mode)) return;
   const ids = sel === 'all' ? partyNow() : [sel];
-  for (const id of ids) { if (id === 'james') jamesCmd(mode, ids.length > 1 || sel !== 'james'); else if (id === 'orion') orionCmd(mode, ids.length > 1); else if (id === 'nico') nicoCmd(mode, ids.length > 1); else { (wanderer.cmds || (wanderer.cmds = {}))[id] = mode; const c = curChar(); if (c) c.cmds = wanderer.cmds; const C = CREW[id]; if (C) { C.wp = null; C.node = null; } if (ids.length === 1) { sfx.click(); lootMsg(`${compName(id)} · ${jBarkSet()[mode]}`, compColor(id)); saveRoster(); } } }
+  for (const id of ids) { if (id === 'james') jamesCmd(mode, ids.length > 1 || sel !== 'james'); else if (id === 'orion') orionCmd(mode, ids.length > 1); else if (id === 'nico') nicoCmd(mode, ids.length > 1); else { (wanderer.cmds || (wanderer.cmds = {}))[id] = mode; const c = curChar(); if (c) c.cmds = wanderer.cmds; const C = CREW[id]; if (C) { C.wp = null; C.node = null; } if (ids.length === 1) { sfx.click(); lootMsg(`${compName(id)} · ${jBarkSet()[mode]}`, compColor(id)); if (id === 'james-ti') jamesCmdVo(mode); saveRoster(); } } }
   if (sel === 'all') { sfx.click(); lootMsg(`Everyone · ${jBarkSet()[mode]}`, '#7fe0a0'); saveRoster(); }
   toggleJamesMenu(false); refreshJamesUI();
 }
@@ -7218,9 +7218,9 @@ const JBARK = {
   wander: 'I’ll stretch my legs around here.',
   follow: 'Right behind you.'
 };
-// James's lines change when he joins you again in Chapter III: put those here (and their recordings) when they're ready
-const JBARK_CH3 = null;
-const jBarkSet = () => ((wanderer.chapter | 0) >= 3 && JBARK_CH3) || JBARK;
+// James keeps his Chapter I order lines in every chapter, the Pontifex Maximus included (text and recordings, CH1COMMAND1–5)
+const jBarkSet = () => JBARK;
+function jamesCmdVo(mode) { sfx.loadClips('cmdVoices').then(c => { const b = c && c[JCMDS.indexOf(mode)]; if (b && !ex.dlg) sfx.playBuf(b, 1.25); }); }
 const BASE_SPOT = [11.5, 2.6];
 const comp = { mode: 'follow', target: null, wait: 0, anchor: null, node: null, swingT: 0, heading: 0, arrived: false };
 function companionOn() { return !!(wanderer && wanderer.ch1 && wanderer.ch1.metOutside && !wanderer.ch1.betrayed); }
@@ -7276,8 +7276,7 @@ function jamesCmd(mode, quiet) {
   setCh1({ jMode: mode });
   if (!quiet) {
     sfx.click(); lootMsg(`James · ${jBarkSet()[mode]}`, '#7fe0a0');
-    // Chapter I–II voice lines (COMMAND1–5 = mine, explore, base, wander, follow)
-    if ((wanderer.chapter | 0) < 3) sfx.loadClips('cmdVoices').then(c => { const b = c && c[JCMDS.indexOf(mode)]; if (b && !ex.dlg) sfx.playBuf(b, 1.25); });
+    jamesCmdVo(mode); // his voice lines (COMMAND1–5 = mine, explore, base, wander, follow)
   }
   toggleJamesMenu(false); refreshJamesUI();
 }
@@ -10290,6 +10289,7 @@ async function visitAntBase(place) { // fly back to where it all began: the stat
   buildAntarctica(); try { aScene.fog.color.set(0x14100d); aScene.background.set(0x0b0908); aScene.fog.density = .02; ant.hemi.intensity = .28; ant.sun.intensity = 0; ant.heat.intensity = 15; ant.lamp.intensity = 2.4; ant.lamp2.intensity = 2.6; ant.snow.visible = false; ant.drift.visible = false; setStationAfter(true); } catch (e) {}
   const sx = ANT.ship.x, sz = ANT.ship.z;
   enterWorld(Object.assign(place && place.where === 'antarctica' ? place : { mode: 'explore', area: 'world', where: 'antarctica', x: sx + 4, z: sz + 14.5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI }, { adVisit: true }));
+  player.visible = true; { const fl = $('#shFlash'); if (fl) fl.classList.remove('on'); } // taking off hid you, and the landing's black flash is still up: the normal landing shows you again, this one has to as well
   ui.xhud.classList.add('world');
   if (!world.landShip) world.landShip = makeShip();
   setShipRig(world.landShip, 1, 1); wScene.add(world.landShip); world.landShip.position.set(sx, wHeight(sx, sz) + 2.7, sz); world.landShip.rotation.set(0, 0, 0); world.landShip.visible = true;
@@ -10312,6 +10312,7 @@ async function visitAdNostra(place) {
   const sx = ADN.ship.x, sz = ADN.ship.z;
   hallClear(); if (world.cityG) world.cityG.visible = false; // nothing of the last planet comes with you
   enterWorld(Object.assign(place && place.where === 'africa' ? place : { mode: 'explore', area: 'world', where: 'africa', x: sx + 4, z: sz + 14.5, y: 0, rot: -Math.PI * .7, yaw: -Math.PI * .7 + Math.PI }, { adVisit: true }));
+  player.visible = true; { const fl = $('#shFlash'); if (fl) fl.classList.remove('on'); } // as at the station: show you again after the takeoff hid you
   ui.xhud.classList.add('world');
   if (!world.landShip) world.landShip = makeShip();
   setShipRig(world.landShip, 1, 1); wScene.add(world.landShip); world.landShip.position.set(sx, wHeight(sx, sz) + 2.7, sz); world.landShip.rotation.set(0, 0, 0); world.landShip.visible = true;
@@ -19788,11 +19789,13 @@ function menuNicoTick(dt) {
   R.root.position.y = height(R.root.position.x, R.root.position.z);
   animRig(R, dt);
 }
-// Khazglar and Nyrexia join you on the main menu once they've joined you: Khazglar beyond Orion on your left, Nyrexia beyond
-// James and Nico on your right. [to your right (negative: left), behind you]
+// Khazglar, Nyrexia and the Pontifex James join you on the main menu once they've joined you: Khazglar beyond Orion on your left,
+// Nyrexia beyond James and Nico on your right, then the Pontifex James beyond her. [to your right (negative: left), behind you]
 const MENU_CREW = [
   { id: 'khazglar', joined: () => !!(wanderer && wanderer.ch3 && wanderer.ch3.khzMet), side: () => menuCrewFit(orionJoined() ? [-3.4, 1.2] : [-1.7, .4]), R: null, load: null },
-  { id: 'nyrexia', joined: () => !!(wanderer && wanderer.ch3 && wanderer.ch3.nyxJoined), side: () => { const n = (companionOn() ? 1 : 0) + (nicoJoined() ? 1 : 0); return menuCrewFit([1.7 + n * 1.6, .4 + n * .7]); }, R: null, load: null }
+  { id: 'nyrexia', joined: () => !!(wanderer && wanderer.ch3 && wanderer.ch3.nyxJoined), side: () => { const n = (companionOn() ? 1 : 0) + (nicoJoined() ? 1 : 0); return menuCrewFit([1.7 + n * 1.6, .4 + n * .7]); }, R: null, load: null },
+  // James Brown as Terra Imperia made him (the Pontifex Maximus), once you've spared him and he's joined you: beyond Nico and Nyrexia on your right
+  { id: 'james-ti', joined: () => !!(wanderer && wanderer.ch3 && wanderer.ch3.jamesFate === 'spared'), side: () => { const n = (companionOn() ? 1 : 0) + (nicoJoined() ? 1 : 0) + (wanderer.ch3 && wanderer.ch3.nyxJoined ? 1 : 0); return menuCrewFit([1.7 + n * 1.6, .4 + n * .7]); }, R: null, load: null }
 ];
 function menuCrewFit([sd, b]) { return camera.aspect < 1 && Math.abs(sd) > 2 ? [sd * .72, b + .9] : [sd, b]; } // a phone held upright: the outer two step in (and back a little) so they stay on screen
 function menuCrewShow() {
