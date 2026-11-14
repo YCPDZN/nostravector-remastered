@@ -1778,3 +1778,15 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **The bridge: Thomas Hawthorne** (your level + 2, at least 24) with volley, charge, slam and falling-star attacks, then cross and nova, and a sweep at the end, scored by *The Wrong Enemy*. His lines: "You came all the way up here to die on my ship? How very Federation of you." · "Do you know what this ship is? It is the future…" · "SOL IS MINE! EVERY WORLD, EVERY MOON, EVERY LAST ONE OF YOU!"
 - **He escapes.** Beaten, he sneers that the Cygnus was never the prize, Earth is, and gets away in a pod off the bridge (he dies at Carax later). 900 XP plus his level bonus. Saved as `ch3.cygDone`. Hawthorne's Cygnus lines are subtitles for now.
 - **On phones:** short versions of the objective, marker, prompt, goal line and messages.
+
+## Livelier capitals, four new cities, and Hak in the heart of Karribassa
+- **People in the streets:** every capital now has its own people walking the plaza and up and down the grand avenue, stopping now and then. Chompy walk Alphinos and Karribassa, Erisians the Citadel el Erisconos, Grek Carax, Malana and Archiostal, and Taredesibans Timpur Prime. Each wears colours close to their city's, and traders stand at the stalls. There are 14 in most cities, 20 in the big ones and 6 on phones. People only animate when you're nearby (closer on phones), and their shadows are off on phones.
+- **Market stalls** line the avenue in every capital (8, or 4 on phones), with awnings in the city's colours and lamps that glow at night.
+- **Four new cities**, each with its own landmark, visible from the sky and flown to like the other three:
+  - **Carax** (Grek, big): the Temple of Archamus, a stepped green-and-gold pyramid with the Light Egg floating over it in a column of light, a ring of obelisks and a pylon gate. Its note says *capital of the Catharsis* in Chapter IV.
+  - **Malana** (Grek): the same temple style, smaller.
+  - **Archiostal** (Grek, in the station's gardens): the temple city stands just ahead of wherever you dock.
+  - **Timpur Prime** (Taredesiban): the Senate of Timpur, a columned rotunda under a teal dome crowned with the old crown of the kings of Timpur (its crimson stone lit), teal banners and a colonnade gate.
+  - Two new city styles, `grek` and `consul`, for the towers, windows, streets and traffic.
+- **Hak in Karribassa:** he now waits in the heart of the city, on the south bridge across the canal in front of the Hall of Oaths (the dome on its ring of white columns), with two Chompy guards (one fewer pair on phones). The minimap's gold marker points to him. If you land away from the city, you're told to fly there from the sky.
+- **The minimap marker** also points to Charon and Kizna and to the Cygnus supply shuttle when they're waiting.

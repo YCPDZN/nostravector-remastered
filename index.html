@@ -7024,6 +7024,9 @@ function questTarget() {
   if (DGN.on) return dgnTarget();
   if (NYX.R && NYX.R.root.parent && isPl()) return { x: NYX.x, z: NYX.z, label: 'Nyrexia Erisconos' };
   if (isPl() && world.dgnGate && khzPending()) return { x: world.dgnGate.x, z: world.dgnGate.z, label: 'The way into the mountain' };
+  if (isPl() && TIW.hak && hakQ()) return { x: TIW.hak.x, z: TIW.hak.z, label: 'Hak Chompjak · the Hall of Oaths' };
+  if (isPl() && TIW.cyg && cygQ()) return { x: TIW.cyg.x, z: TIW.cyg.z, label: 'The Cygnus supply shuttle' };
+  if (isPl() && TIW.chn && (chnQ() || chnBackQ())) return { x: TIW.chn.x, z: TIW.chn.z, label: 'Charon and Kizna' };
   if (isPl()) { const LT = lairNearestTarget(player.position); if (LT && Math.hypot(player.position.x, player.position.z) < 160) return LT; return Math.hypot(player.position.x, player.position.z) > 30 ? { x: 0, z: 10, label: 'Your ship' } : null; }
   if (curArea() === 'europe') { const c2 = wanderer.ch2 || {}; if (esc.on) return { x: SHIP.hatch[0], z: SHIP.hatch[1], label: 'The ship' }; return c2.arrived && !c2.reportTried ? { x: LON.door.x - 2, z: LON.door.z, label: 'Houses of Parliament' } : null; }
   if (curArea() === 'africa') {
@@ -12777,13 +12780,16 @@ async function hakCall() { // an incoming transmission
     setTimeout(surgeStart, 3800); // and as the line goes dead, the alarms
   }), 900);
 }
-async function hakPlace() { // the Emperor, waiting by your ship at Karribassa's spaceport
-  const area = curArea(), R = await leadTag('leader_chompy', 2.05)().catch(() => null);
+async function hakPlace() { // the Emperor, in the heart of Karribassa: on the bridge before the Hall of Oaths and its white columns
+  const C = world.planet && world.planet.city;
+  if (!C || C.K.name !== 'Karribassa') { setTimeout(() => lootMsg(tiPhone() ? 'Hak waits in Karribassa · fly to it' : 'Hak waits in the heart of Karribassa · take off and fly to the city from the sky (its marker), then land', '#ffb060'), 2600); return; }
+  const area = curArea(), [R, ...G] = await Promise.all([leadTag('leader_chompy', 2.05)().catch(() => null), ...(tiPhone() ? [] : [0, 1].map(() => loadSpecies('chompy').then(() => townModel('chompy')).then(src => src ? (Rg => (armRig(Rg, 'sword'), Rg))(autoRig(dressTownsfolk(src, { sp: 'chompy', c: [0x1a1418, 0xd0343a] }), 1.8)) : null).catch(() => null)))]);
   if (curArea() !== area || !hakQ() || !R) return;
-  const g = new THREE.Group(), x = -5, z = 11; wScene.add(g);
-  R.root.position.set(x, wHeight(x, z), z); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); g.add(R.root);
-  TIW.hak = { g, R: [R], face: true, x, z };
-  setTimeout(() => lootMsg(tiPhone() ? 'Hak is waiting by your ship' : 'Hak Chompjak is waiting by your ship · go and talk to him', '#ffb060'), 2600);
+  const g = new THREE.Group(), x = C.cx, z = C.cz + 46, y = C.y; wScene.add(g);
+  R.root.position.set(x, y, z); R.root.traverse(o => { if (o.isMesh) o.castShadow = !tiPhone(); }); g.add(R.root);
+  G.forEach((Rg, i) => { if (!Rg) return; Rg.root.position.set(x + (i ? 2.6 : -2.6), y, z - 1.2); Rg.root.traverse(o => { if (o.isMesh) o.castShadow = !tiPhone(); }); g.add(Rg.root); }); // the Emperor's guard
+  TIW.hak = { g, R: [R, ...G.filter(Boolean)], face: true, x, z };
+  setTimeout(() => lootMsg(tiPhone() ? 'Hak waits at the Hall of Oaths' : 'Hak Chompjak waits in the heart of Karribassa, before the Hall of Oaths · follow the gold marker', '#ffb060'), 2600);
 }
 async function hakMeet() { // the meeting
   pdMeet('hak'); const vo = (await hakVo()) || [];
@@ -15969,7 +15975,7 @@ function spaceHudTick(P, alt, fwd) {
   }
   box.innerHTML = h;
 }
-function ch3Goal() { const c = wanderer.ch3 || {}; if (cygQ()) return SPC.atmo && ATM.P && ATM.P.id === 'mercury' ? (tiPhone() ? 'The Cygnus · land, board the shuttle' : 'Infiltrate the Cygnus · land and board the supply shuttle') : SPC.sys === 'sol' ? (tiPhone() ? 'The Cygnus · land on Mercury' : 'Infiltrate the Cygnus · land on Mercury (the gold marker), where its supply shuttle runs') : (tiPhone() ? 'The Cygnus · warp to Sol' : 'Infiltrate the Cygnus · warp back to Sol'); if (hakQ()) return SPC.atmo && ATM.P && ATM.P.id === 'janira' ? 'Meet Hak Chompjak · land at Karribassa' : SPC.sys === 'janira' ? (tiPhone() ? 'Meet Hak · land on Janira Prime' : 'Meet Hak Chompjak · land on Janira Prime (the gold marker)') : (tiPhone() ? 'Meet Hak · warp to Janira Proxima' : 'Meet Hak Chompjak · warp to Janira Proxima, a short jump from Sol'); if (charonQ()) return SPC.atmo && ATM.P && ATM.P.id === 'charon' ? 'Head to Charon · land on it' : SPC.sys === 'sol' ? 'Head to Charon · Pluto’s moon, at the edge of Sol (the gold marker)' : 'Head to Charon · warp back to Sol'; if (khzPending()) return SPC.atmo && ATM.P && ATM.P.id === 'mars' ? 'Find Khazglar · fly to Olympus Mons and land' : khzTaskText();
+function ch3Goal() { const c = wanderer.ch3 || {}; if (cygQ()) return SPC.atmo && ATM.P && ATM.P.id === 'mercury' ? (tiPhone() ? 'The Cygnus · land, board the shuttle' : 'Infiltrate the Cygnus · land and board the supply shuttle') : SPC.sys === 'sol' ? (tiPhone() ? 'The Cygnus · land on Mercury' : 'Infiltrate the Cygnus · land on Mercury (the gold marker), where its supply shuttle runs') : (tiPhone() ? 'The Cygnus · warp to Sol' : 'Infiltrate the Cygnus · warp back to Sol'); if (hakQ()) return SPC.atmo && ATM.P && ATM.P.id === 'janira' ? (tiPhone() ? 'Meet Hak · fly to Karribassa, land' : 'Meet Hak Chompjak · fly to Karribassa (its marker) and land in the city') : SPC.sys === 'janira' ? (tiPhone() ? 'Meet Hak · land on Janira Prime' : 'Meet Hak Chompjak · land on Janira Prime (the gold marker)') : (tiPhone() ? 'Meet Hak · warp to Janira Proxima' : 'Meet Hak Chompjak · warp to Janira Proxima, a short jump from Sol'); if (charonQ()) return SPC.atmo && ATM.P && ATM.P.id === 'charon' ? 'Head to Charon · land on it' : SPC.sys === 'sol' ? 'Head to Charon · Pluto’s moon, at the edge of Sol (the gold marker)' : 'Head to Charon · warp back to Sol'; if (khzPending()) return SPC.atmo && ATM.P && ATM.P.id === 'mars' ? 'Find Khazglar · fly to Olympus Mons and land' : khzTaskText();
   return ch3GoalRest(c); }
 function ch3GoalRest(c) { return c.warped ? `Explore ${curSys().name}` : !c.landed ? 'Land on a planet in Sol' : 'Warp to another star system · open the galaxy map'; }
 /* ============ Into the atmosphere, No Man's Sky style ============
@@ -18764,18 +18770,26 @@ function beginChapter3() { // straight after the escape
 const CAPITALS = {
   aridaxx: { name: 'Alphinos', style: 'imperial', R: 380, grid: 34, maxH: 330, spire: 540, seed: 71, plaza: 78, note: 'Alphinos · capital of the Chompy Empire' },
   janira: { name: 'Karribassa', style: 'garden', R: 130, grid: 26, maxH: 150, spire: 200, seed: 33, plaza: 46, note: 'Karribassa · capital of Janira Prime' },
-  eris: { name: 'Citadel el Erisconos', style: 'crystal', R: 170, grid: 28, maxH: 190, spire: 300, seed: 19, plaza: 62, note: 'Citadel el Erisconos · seat of the Matriarch of Eris' }
+  eris: { name: 'Citadel el Erisconos', style: 'crystal', R: 170, grid: 28, maxH: 190, spire: 300, seed: 19, plaza: 62, note: 'Citadel el Erisconos · seat of the Matriarch of Eris' },
+  carax: { name: 'Carax', style: 'grek', R: 240, grid: 30, maxH: 230, spire: 360, seed: 91, plaza: 66, get note() { return FAC_CH === 4 ? 'Carax · capital of the Catharsis' : 'Carax · capital of the Grek Empire'; } },
+  malana: { name: 'Malana', style: 'grek', R: 140, grid: 26, maxH: 150, spire: 230, seed: 57, plaza: 50, note: 'Malana · first city of the Grek' },
+  'archiostal-gardens': { name: 'Archiostal', style: 'grek', R: 110, grid: 24, maxH: 110, spire: 190, seed: 108, plaza: 46, dock: true, note: 'Archiostal · the Order of Archamus’s temple city in the gardens' }
 };
+(function timpurCapital() { const P = ALL_BODIES.find(o => o.name === 'Timpur Prime'); if (P) CAPITALS[P.id] = { name: 'Timpur Prime', style: 'consul', R: 160, grid: 28, maxH: 170, spire: 260, seed: 73, plaza: 58, note: 'Timpur Prime · seat of the First Consul and the Senate of Timpur' }; })();
+const CITY_FOLK = { imperial: ['chompy', 1.72, [0x5a2a8a, 0xffc35a]], garden: ['chompy', 1.72, [0x1f5a5a, 0x7fffe0]], crystal: ['erisian', 1.86, [0xb070d8, 0xffd8f8]], grek: ['grek', 2.05, [0x3a5a2e, 0xd8b060]], consul: ['taredesiban', 1.98, [0x2a2a6a, 0x58d8c0]] }; // who walks each city's streets
 // each capital in its own style: imperial Alphinos (amethyst towers, gold, a ziggurat palace and the Boulevard of Emperors),
 // garden Karribassa (rounded teal towers, glowing trees, canals round the Hall of Oaths), and crystal Citadel el Erisconos
 // (spires of pink and lilac crystal round the Matriarch's citadel, under an aurora)
 const CITY_STYLE = {
   imperial: { wall: '#231634', slab: '#3a2a52', win: ['#ffd68c', '#ffe9c0', '#c8a0ff', '#8fe0ff'], lit: .5, tint: 0x8a6ab8, trim: 0xffc35a, accent: 0x69e0ff, tip: 0xff6ad8, roof: 0x1a1024, floor: ['#241a30', '#2e2240', 'rgba(255,195,90,.55)', 'rgba(105,224,255,.45)'], lamp: 0xffc35a, car: 0xffe2a8 },
   garden: { wall: '#12262e', slab: '#1f3a44', win: ['#7fffe0', '#c890ff', '#ffe2a8', '#9fd8ff'], lit: .46, tint: 0x5a9aa8, trim: 0x7fffe0, accent: 0xc890ff, tip: 0xffb0f0, roof: 0x14262a, floor: ['#16242a', '#1e3036', 'rgba(200,144,255,.5)', 'rgba(127,255,224,.4)'], lamp: 0xc890ff, car: 0xb8fff0 },
+  grek: { wall: '#1c2a1a', slab: '#2e4228', win: ['#d8f0a0', '#fff0b8', '#9fe8a0', '#ffe28a'], lit: .44, tint: 0x6a8a52, trim: 0xd8b060, accent: 0x9fff8a, tip: 0xfff0b0, roof: 0x162014, floor: ['#1a2416', '#24321e', 'rgba(216,176,96,.55)', 'rgba(159,255,138,.4)'], lamp: 0xd8b060, car: 0xf0ffd0 },
+  consul: { wall: '#16183a', slab: '#262a58', win: ['#7ff0e0', '#b8c8ff', '#58d8c0', '#ffe8b0'], lit: .45, tint: 0x4a5aa8, trim: 0xd8b060, accent: 0x58d8c0, tip: 0x9ff8f0, roof: 0x121430, floor: ['#161a34', '#1e2444', 'rgba(88,216,192,.5)', 'rgba(216,176,96,.45)'], lamp: 0x58d8c0, car: 0xc8fff4 },
   crystal: { wall: '#7a6a98', slab: '#a898c8', win: ['#ffc8f0', '#e8d8ff', '#b8f0ff', '#ffffff'], lit: .36, tint: 0xd8c8f0, trim: 0xffa8e4, accent: 0xb8f0ff, tip: 0xffd8f8, roof: 0x3a3050, floor: ['#2e2840', '#3a3250', 'rgba(255,168,228,.5)', 'rgba(184,240,255,.45)'], lamp: 0xffa8e4, car: 0xffd8f8 }
 };
 function cityPlan(W) {
   const K = CAPITALS[W.P.id]; W.city = null; if (!K) return;
+  if (K.dock) K.dir = new THREE.Vector3().copy(W.D).multiplyScalar(W.R).addScaledVector(W.N, -(K.R + 70)).normalize(); // a docked world: the city stands just ahead of where you come in
   const cd = capDir(W.P); if (Math.acos(clamp(W.D.dot(cd), -1, 1)) * W.R > K.R + 1500) return; // too far away to see from where you came down
   const kk = W.R / cd.dot(W.D), C = { K, R: K.R, cx: kk * cd.dot(W.E), cz: kk * cd.dot(W.N), y: 0 };
   W.city = null; const raw = planetH(W.P, plDir(C.cx, C.cz)) - W.h0; C.y = W.P.sea ? Math.max(raw, (W.P.seaH || 0) - W.h0 + 3) : raw;
@@ -18968,6 +18982,37 @@ function buildCity() {
     const gz = sz + K.R - 2; for (const s of [-1, 1]) { M(new THREE.Mesh(new THREE.CylinderGeometry(3, 3.6, 34, 12), stone), sx + s * (aw / 2 + 4), C.y + 17, gz); M(new THREE.Mesh(new THREE.SphereGeometry(3.6, 12, 8), gold), sx + s * (aw / 2 + 4), C.y + 35, gz); cell(sx + s * (aw / 2 + 4), gz, 4); }
     const arch = M(new THREE.Mesh(new THREE.TorusGeometry(aw / 2 + 4, 1.6, 10, 40, Math.PI), stone), sx, C.y + 30, gz); arch.scale.y = .45;
     M(new THREE.Mesh(new THREE.TorusGeometry(aw / 2 + 4, .4, 6, 40, Math.PI), trim), sx, C.y + 30, gz + 1.4).scale.y = .45;
+  } else if (K.style === 'grek') {
+    // the Temple of Archamus: a stepped pyramid of green stone edged in gold, the Light Egg floating over it in a column of light,
+    // a ring of obelisks round the plaza and a pylon gate facing the spaceport
+    const gs = new THREE.MeshStandardMaterial({ color: 0x3a5a32, roughness: .7, metalness: .15 });
+    let ty = sy, w0 = K.plaza * 1.1; for (let tt = 0; tt < 5; tt++) { const hh = 9 - tt; M(new THREE.Mesh(new THREE.BoxGeometry(w0, hh, w0), tt % 2 ? wallB : gs), sx, ty + hh / 2, sz); M(new THREE.Mesh(new THREE.BoxGeometry(w0 + 1, .7, w0 + 1), gold), sx, ty + hh, sz); ty += hh; w0 *= .76; }
+    M(new THREE.Mesh(new THREE.CylinderGeometry(3, 4, K.spire * .3, 8), gold), sx, ty + K.spire * .15, sz);
+    const egg = new THREE.Mesh(new THREE.SphereGeometry(9, 24, 18), new THREE.MeshStandardMaterial({ color: 0xfff4c8, emissive: 0xffe08a, emissiveIntensity: 1.1, roughness: .2, metalness: .3 })); egg.scale.y = 1.3; egg.position.set(sx, ty + K.spire * .36, sz); g.add(egg); C.fx.push({ o: egg, k: 'bob', ph: 0, y: egg.position.y });
+    const halo = glowSprite(0xffe08a, 60, .9); halo.position.copy(egg.position); g.add(halo); C.fx.push({ o: halo, k: 'flicker', ph: 3 });
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(2, 5, 2400, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xffe8a0, transparent: true, opacity: .14, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })); M(beam, sx, ty + 1200, sz); C.fx.push({ o: beam, k: 'beam' });
+    for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2 + .26; if (Math.sin(a) > .9) continue; const x = sx + Math.cos(a) * (K.plaza - 3), z = sz + Math.sin(a) * (K.plaza - 3); M(new THREE.Mesh(new THREE.CylinderGeometry(.9, 1.6, 16, 4).rotateY(Math.PI / 4), gs), x, sy + 8, z); M(new THREE.Mesh(new THREE.ConeGeometry(1.2, 3, 4).rotateY(Math.PI / 4), gold), x, sy + 17.5, z); cell(x, z, 1.8); }
+    cell(sx, sz, K.plaza * .56);
+    const gz = sz + K.R - 2; for (const s of [-1, 1]) { M(new THREE.Mesh(new THREE.BoxGeometry(7, 30, 7), gs), sx + s * (aw / 2 + 5), C.y + 15, gz); M(new THREE.Mesh(new THREE.ConeGeometry(5, 8, 4).rotateY(Math.PI / 4), gold), sx + s * (aw / 2 + 5), C.y + 34, gz); cell(sx + s * (aw / 2 + 5), gz, 4.4); }
+    M(new THREE.Mesh(new THREE.BoxGeometry(aw + 18, 3, 6), gs), sx, C.y + 27, gz); M(new THREE.Mesh(new THREE.TorusGeometry(4, .5, 8, 32), new THREE.MeshBasicMaterial({ color: st.trim })), sx, C.y + 27, gz + 3.2);
+  } else if (K.style === 'consul') {
+    // the Senate of Timpur: a columned rotunda in indigo stone under a teal dome, crowned with the old crown of the kings of
+    // Timpur; teal banners on the plaza and a colonnade gate facing the spaceport
+    const iv = new THREE.MeshStandardMaterial({ color: 0xe8ecff, roughness: .45 });
+    M(new THREE.Mesh(new THREE.CylinderGeometry(24, 26, 18, 32), stone), sx, sy + 9, sz);
+    for (let k = 0; k < 20; k++) { const a = k / 20 * Math.PI * 2; M(new THREE.Mesh(new THREE.CylinderGeometry(1, 1.2, 20, 10), iv), sx + Math.cos(a) * 28, sy + 10, sz + Math.sin(a) * 28); }
+    M(new THREE.Mesh(new THREE.TorusGeometry(28, 1, 8, 48).rotateX(Math.PI / 2), gold), sx, sy + 20.4, sz);
+    M(new THREE.Mesh(new THREE.SphereGeometry(25, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x58d8c0, roughness: .25, metalness: .6, emissive: 0x1a6a5a, emissiveIntensity: .4 })), sx, sy + 20, sz).scale.y = .75;
+    M(new THREE.Mesh(new THREE.TorusGeometry(7, 1.1, 8, 32).rotateX(Math.PI / 2), gold), sx, sy + 40, sz);
+    for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2; M(new THREE.Mesh(new THREE.ConeGeometry(1, 5, 6), gold), sx + Math.cos(a) * 7, sy + 43, sz + Math.sin(a) * 7); }
+    const jewel = glowSprite(0xd0343a, 10, .95); jewel.position.set(sx, sy + 46, sz); g.add(jewel); C.fx.push({ o: jewel, k: 'flicker', ph: 4 });
+    M(new THREE.Mesh(new THREE.ConeGeometry(3, K.spire * .4, 10), gold), sx, sy + 46 + K.spire * .2, sz);
+    const banT = canvasTex(128, 256, (c, w, h) => { c.fillStyle = '#16305a'; c.fillRect(0, 0, w, h); c.fillStyle = '#58d8c0'; c.fillRect(0, 0, w, 10); c.beginPath(); c.moveTo(w / 2, 50); c.lineTo(w * .8, 130); c.lineTo(w / 2, 210); c.lineTo(w * .2, 130); c.closePath(); c.fill(); c.fillStyle = '#d8b060'; c.fillRect(0, h - 18, w, 18); });
+    const banM2 = new THREE.MeshStandardMaterial({ map: banT, side: THREE.DoubleSide, roughness: .8, emissive: 0xffffff, emissiveMap: banT, emissiveIntensity: .25 });
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + .39; const x = sx + Math.cos(a) * (K.plaza - 6), z = sz + Math.sin(a) * (K.plaza - 6); M(new THREE.Mesh(new THREE.CylinderGeometry(.18, .22, 12, 6), gold), x, sy + 6, z); const b = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 5), banM2); b.position.set(x, sy + 8.5, z); b.rotation.y = -a; g.add(b); cell(x, z, .6); }
+    cell(sx, sz, 30);
+    const gz = sz + K.R - 2; for (let k = -3; k <= 3; k++) { if (Math.abs(k) < 1) continue; M(new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.7, 22, 10), iv), sx + k * (aw / 6 + 2), C.y + 11, gz); cell(sx + k * (aw / 6 + 2), gz, 2); }
+    M(new THREE.Mesh(new THREE.BoxGeometry(aw + 20, 2.4, 5), stone), sx, C.y + 23, gz);
   } else {
     // the Citadel el Erisconos: a great crystal spire in a crown of six, the Matriarch's faceted hall at their feet, a ring of
     // crystal blades round the plaza with four gates, shards drifting overhead, and the aurora
@@ -18988,18 +19033,61 @@ function buildCity() {
     const gz = sz + K.R - 2; for (const s of [-1, 1]) { M(new THREE.Mesh(new THREE.CylinderGeometry(3.5, 5, 46, 6), cm), sx + s * (aw / 2 + 5), C.y + 23, gz); M(new THREE.Mesh(new THREE.ConeGeometry(3.5, 12, 6), cm), sx + s * (aw / 2 + 5), C.y + 52, gz); cell(sx + s * (aw / 2 + 5), gz, 5); }
     for (let k = 0; k <= 10; k++) { const a = Math.PI * k / 10, s = M(new THREE.Mesh(new THREE.OctahedronGeometry(1.8, 0), cm2), sx + Math.cos(a) * (aw / 2 + 5), C.y + 44 + Math.sin(a) * 12, gz); s.scale.y = 1.8; }
   }
+  // ---- market stalls along the avenue: awnings in the city's colours, lit at night ----
+  C.stalls = [];
+  { const awnA = new THREE.MeshStandardMaterial({ color: st.accent, roughness: .8, emissive: st.accent, emissiveIntensity: .25, side: THREE.DoubleSide }), awnB = new THREE.MeshStandardMaterial({ color: st.trim, roughness: .8, emissive: st.trim, emissiveIntensity: .25, side: THREE.DoubleSide }), wood = new THREE.MeshStandardMaterial({ color: 0x3a2a22, roughness: .9 });
+    const ns = phone ? 4 : 8, sxo = aw / 2 - 3.2;
+    for (let k = 0; k < ns; k++) { const s = k % 2 ? 1 : -1, z = sz + K.plaza + 14 + Math.floor(k / 2) * 15, x = sx + s * sxo; if (z > sz + K.R - 10) break;
+      M(new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.1, 1.4), wood), x, C.y + .55, z);
+      for (const ox of [-1.2, 1.2]) M(new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, 2.6, 6), wood), x + ox, C.y + 1.3, z - .6);
+      const aw2 = M(new THREE.Mesh(new THREE.BoxGeometry(3, .08, 2), k % 4 < 2 ? awnA : awnB), x, C.y + 2.65, z - .2); aw2.rotation.x = .18 * -s;
+      const l = glowSprite(st.lamp, 1.4, .85); l.position.set(x, C.y + 2.3, z + .3); g.add(l);
+      cell(x, z, 1.6); C.stalls.push({ x: x - s * .2, z: z + 1.6, s }); }
+  }
   // ---- air traffic between the towers ----
   const nCars = (K.R > 200 ? 110 : 34) >> (phone ? 1 : 0), cars = new THREE.InstancedMesh(new THREE.CapsuleGeometry(.6, 2.6, 3, 8).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: st.car }), nCars); cars.frustumCulled = false; g.add(cars);
   C.cars = { m: cars, list: Array.from({ length: nCars }, () => ({ r: K.grid * 1.5 + K.plaza * .6 + r() * (K.R - K.grid * 1.5 - K.plaza * .6), a: r() * 6.28, h: 30 + r() * K.maxH * .6, w: (.05 + r() * .08) * (r() < .5 ? 1 : -1) * (120 / K.R) })) };
   { const mg = mergeStatic(SG); mg.traverse(o => { if (o.isMesh) { o.castShadow = !phone; o.receiveShadow = true; } }); g.add(mg); }
   wScene.add(g); world.cityG = g; g.visible = true;
+  C.folk = []; cityFolk(C, g, aw).catch(e => console.error(e)); // its people
   setTimeout(() => lootMsg(K.note, '#' + new THREE.Color(st.trim).getHexString()), 2600);
 }
+
+// ---- the people of a capital: they stroll round the plaza and up and down the avenue, and mind the stalls ----
+async function cityFolk(C, g, aw) {
+  const K = C.K, F = CITY_FOLK[K.style]; if (!F) return; const [sp, h, col] = F, phone = tiPhone();
+  await loadSpecies(sp).catch(() => null); const src = await townModel(sp).catch(() => null);
+  if (!src || !world.planet || world.planet.city !== C || world.cityG !== g) return;
+  const n = phone ? 6 : K.R > 200 ? 20 : 14, sx = C.cx, sz = C.cz, canal = K.style === 'imperial' ? 5.5 : 0;
+  const make = () => { const R = autoRig(dressTownsfolk(src, { sp, c: [new THREE.Color(col[0]).offsetHSL((Math.random() - .5) * .08, 0, (Math.random() - .5) * .2).getHex(), col[1]] }), h * (.92 + Math.random() * .12)); armRig(R, 'none');
+    R.root.traverse(o => { o.userData.shared = true; if (o.isMesh) { o.castShadow = !phone; o.frustumCulled = true; } }); g.add(R.root); return R; };
+  for (let i = 0; i < n; i++) {
+    const R = make(), ring = i % 2 === 0;
+    const f = ring ? { R, mode: 'ring', a: Math.random() * 6.28, r: K.plaza + 1 + Math.random() * 3, w: (.25 + Math.random() * .2) / (K.plaza + 2) * (Math.random() < .5 ? 1 : -1) * 6 }
+      : { R, mode: 'ave', x: sx + (Math.random() < .5 ? -1 : 1) * (canal + 1 + Math.random() * Math.max(1, aw / 2 - canal - 6)) /* clear of the stalls along the edges */, z: sz + K.plaza + 6 + Math.random() * (K.R - K.plaza - 14), dir: Math.random() < .5 ? 1 : -1, sp: 1.1 + Math.random() * .5 };
+    f.pause = Math.random() * 4; C.folk.push(f);
+  }
+  for (const s of C.stalls || []) { if (C.folk.length >= n + (phone ? 2 : 6)) break; const R = make(); R.root.position.set(s.x, C.y, s.z); R.root.rotation.y = Math.PI; C.folk.push({ R, mode: 'stall' }); } // a trader at each of the first stalls
+}
+function cityFolkTick(C, dt) {
+  if (!C.folk || !C.folk.length) return; const p = player.position, far = tiPhone() ? 90 : 160, K = C.K;
+  for (const f of C.folk) {
+    const R = f.R, o = R.root.position;
+    if (f.mode === 'ring') { if ((f.pause -= dt) < 0) { f.a += f.w * dt; R.mode = 'walk'; if (Math.random() < .002) f.pause = 2 + Math.random() * 4; } else R.mode = 'idle';
+      o.set(C.cx + Math.cos(f.a) * f.r, C.y, C.cz + Math.sin(f.a) * f.r); R.root.rotation.y = Math.atan2(-Math.sin(f.a) * Math.sign(f.w), Math.cos(f.a) * Math.sign(f.w)); }
+    else if (f.mode === 'ave') { if ((f.pause -= dt) < 0) { f.z += f.dir * f.sp * dt; R.mode = 'walk'; const z0 = C.cz + K.plaza + 6, z1 = C.cz + K.R - 8; if (f.z < z0 || f.z > z1) { f.dir *= -1; f.z = clamp(f.z, z0, z1); f.pause = 1 + Math.random() * 3; } } else R.mode = 'idle';
+      o.set(f.x, C.y, f.z); R.root.rotation.y = f.dir > 0 ? 0 : Math.PI; }
+    else R.mode = 'idle';
+    const near = Math.hypot(o.x - p.x, o.z - p.z) < far; R.root.visible = near; if (near) animRig(R, dt);
+  }
+}
+
 function cityTick(dt) {
   const C = world.planet && isPl() && world.planet.city; if (!C || !C.cars || !world.cityG) return;
   const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), Y = new THREE.Vector3(0, 1, 0), S = new THREE.Vector3(1, 1, 1), V = new THREE.Vector3();
   C.cars.list.forEach((c, i) => { c.a += c.w * dt; V.set(C.cx + Math.cos(c.a) * c.r, C.y + c.h, C.cz + Math.sin(c.a) * c.r); C.cars.m.setMatrixAt(i, M4.compose(V, Q.setFromAxisAngle(Y, -c.a + (c.w > 0 ? 0 : Math.PI)), S)); });
   C.cars.m.instanceMatrix.needsUpdate = true;
+  cityFolkTick(C, dt);
   const night = 1 - (world.dayL == null ? 1 : world.dayL); // the windows and the street lines brighten as the sun goes down
   if (C.glow) { C.glow[0].emissiveIntensity = C.glow[1].emissiveIntensity = (C.K.style === 'crystal' ? .55 : .5) + night * .9; C.glow[2].emissiveIntensity = .35 + night * 1.1; }
   for (const f of C.fx || []) {
