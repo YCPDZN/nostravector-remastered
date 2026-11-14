@@ -1457,4 +1457,5 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 ### James Brown's scythe
 - **James now carries the Pontifex scythe** (the crescent polearm with its crimson reactor channel) in his right hand, everywhere his Terra Imperia armour appears: the revival cutscene, the Antarctic station fight, as your companion if you spare him, the Nostrapedia and Adventures. It was copied from the Pontifex model into his own (`data/cpJamesTI.js`, built by `nightmare/tools/james_scythe.py`). In the station fight he swings it instead of the sword he used to get.
 - A weapon built into a model now never counts toward that character's height however they're loaded, so the scythe doesn't shrink him.
+- **A realistic recovery:** James is no longer flung into the air. A recovery crane (a davit on the edge of the ice) lowers its cable, and a rescue litter is slid under him in the water. He's hoisted slowly out of the sea, face down, swaying and turning a little on the cable. The boom swings in over the ice and lowers him onto the slab; on the next shot he's on his back. The camera pulls wide to follow it.
 
