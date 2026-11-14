@@ -1451,3 +1451,6 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - The synthesised scream now only plays if the voices fail to load. Both packs download only when they're needed.
 - **Croxian Mascar and Malia de Toro** stand at Hawthorne's side through the revival: Croxian helmeted with his scythe, as Terra Imperia's soldier, and Malia in her armour. Hawthorne never names them or speaks to them. When James wakes screaming, **they're the ones who step in and pin him to the slab** (Croxian on the left, Malia on the right). They let go when the heart takes, and return to Hawthorne's side. His soldiers keep further back.
 
+### Fix: twitching arms
+- Humans carrying a rifle or pistols (Peter Chambers, soldiers, armed residents and townsfolk) kept twitching their supporting arm. The game decided which way that arm swings in by comparing the two arms' positions **in the world**, so whenever someone faced sideways the arms were almost level and the answer flipped every frame. It now compares them in the character's own space and remembers the result, so the arm holds steady whichever way they face.
+
