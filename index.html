@@ -309,7 +309,7 @@ body.ch4 #title .taunt{display:block;position:absolute;right:calc(var(--sr) + 6v
 .pd-meta dd{letter-spacing:.12em}
 .pd-align{font-size:10.5px;line-height:1.7;color:var(--ice);margin:12px 0 4px;border-left:2px solid var(--ice);padding-left:12px}
 #pdList .mi small{display:block;font-size:8px;letter-spacing:.2em;color:var(--mute);margin-top:5px;text-transform:uppercase}
-#pdList .mi span{text-align:left}
+#pdList .mi span{text-align:left;min-width:0}#pdList .mi small{white-space:normal;overflow-wrap:anywhere;line-height:1.5}
 #pdBody.hidden,#pdList.hidden{display:none}
 #pdTabs{display:grid;grid-template-columns:repeat(3,1fr)}
 #pdTabs .tab{font-size:8px;letter-spacing:.14em;padding:11px 4px;white-space:nowrap}
@@ -1453,10 +1453,10 @@ body.touch .al-key{display:none}
 <script type="application/octet-stream" id="cpKhaz"></script><script src="data/cpKhaz.js"></script>
 <script type="application/octet-stream" id="cpCharon"></script><script src="data/cpCharon.js"></script>
 <script type="application/octet-stream" id="cpNyrexia"></script><script src="data/cpNyrexia.js"></script>
-<script type="application/octet-stream" id="cpJavek"></script><script src="data/cpJavek.js"></script>
-<script type="application/octet-stream" id="cpJavekC"></script><script src="data/cpJavekC.js"></script>
+<script type="application/octet-stream" id="cpJavek"></script><!-- data/cpJavek.js loads when first shown (LAZY_GLB) -->
+<script type="application/octet-stream" id="cpJavekC"></script><!-- data/cpJavekC.js loads when first shown (LAZY_GLB) -->
 <script type="application/octet-stream" id="cpCroxian"></script><script src="data/cpCroxian.js"></script>
-<script type="application/octet-stream" id="cpCroxianU"></script><script src="data/cpCroxianU.js"></script>
+<script type="application/octet-stream" id="cpCroxianU"></script><!-- data/cpCroxianU.js loads when first shown (LAZY_GLB) -->
 <script type="application/octet-stream" id="cpMalia"></script><script src="data/cpMalia.js"></script>
 <script type="application/octet-stream" id="cpJamesTI"></script><script src="data/cpJamesTI.js"></script>
 <script type="application/octet-stream" id="cpJosiah2"></script><script src="data/cpJosiah2.js"></script>
@@ -16130,7 +16130,7 @@ let nicoSrcP = null;
 async function companionRig(id) { // the rig any companion walks and fights with: Nico's own, a story companion's Nostrapedia model, or an imported/custom character
   if (id === 'nico') return nicoCompanionRig();
   const L = COMPANIONS.find(o => o.id === id && o.tag);
-  if (L) { const el = document.getElementById(L.tag); if (!el) throw new Error('no model for ' + id); const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  if (L) { await glbReady(L.tag); const el = document.getElementById(L.tag); if (!el) throw new Error('no model for ' + id); const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     const sc = await parseGlb(u8.buffer); if (L.mod === 'kizna') feminiseRobot(sc); const R = autoRig(gearNoMeasure(SkeletonUtils.clone(sc)), L.h || 1.9); armRig(R, L.weapon || 'none');
     if (id === 'khazglar') { const own = []; R.model.traverse(o => { if (/^weapon$/i.test(o.name || '')) own.push(o); }); for (const o of own) if (o.parent) o.parent.remove(o); // the model carries a hammer of its own: one hammer, not two
       const sock = R.rh ? boneSocket(R.rh) : R.ra ? handSocket(R.ra) : null; if (sock) { const H = makeKhzHammer(); sock.add(H); R.gear.push(H); } R.weapon = 'sword'; } // his legendary hammer
@@ -17112,6 +17112,9 @@ function planetTraders(P) {
      Grek    · a prophecy of what's coming, without a single name
    Then Orion and Nico bring them back. It happens once (ch3.nightmare). */
 const NM = { on: false, t: 0, phase: null, bi: -1, scene: null, props: null, actors: {}, cam: new THREE.Vector3(), look: new THREE.Vector3(), q: [], vo: {}, race: 'human' };
+// models fetched the first time they're shown, not at start-up: about 9 MB that phones shouldn't pay for until they need it
+const LAZY_GLB = new Set(['cpJavek', 'cpJavekC', 'cpCroxianU']);
+const glbReady = tag => LAZY_GLB.has(tag) ? loadDataScript(tag, 'glb') : Promise.resolve(true);
 function loadDataScript(id, kind) { // fetch a data/<id>.js pack only when it's needed
   return new Promise(res => {
     if (document.getElementById(id) && document.getElementById(id).textContent.length > 100) return res(true);
@@ -19759,7 +19762,8 @@ const PRIME_TABS = { primes: () => PEDIA_PRIMES, vectors: () => PEDIA_VECTORS };
 // classified files: leaders open in Chapter III (except the one you met in your dream), Primes and Vectors in Chapter IV
 const PEDIA_UNLOCK_AT = { leaders: 3, primes: 4, vectors: 4 };
 const CH_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-const pdUnlockText = (tab, L) => { if (L && L.unlockLabel) return L.unlockLabel; if (L && (L.metIf || tab === 'leaders') && chNow() >= (L.unlockAt || PEDIA_UNLOCK_AT[tab] || 0)) return tab === 'leaders' ? 'Chapter III, when you meet or fight them' : 'Chapter III, when you meet them'; const at = L && L.unlockAt ? L.unlockAt : PEDIA_UNLOCK_AT[tab]; return `Chapter ${CH_ROMAN[at] || at}`; };
+const PD_NARROW = () => matchMedia('(max-width:720px),(max-height:520px)').matches; // phones get the short label
+const pdUnlockText = (tab, L) => { if (L && L.unlockLabel) return L.unlockLabel; if (L && (L.metIf || tab === 'leaders') && chNow() >= (L.unlockAt || PEDIA_UNLOCK_AT[tab] || 0)) return PD_NARROW() ? (tab === 'leaders' ? 'Ch. III · meet or fight them' : 'Ch. III · once met') : tab === 'leaders' ? 'Chapter III, when you meet or fight them' : 'Chapter III, when you meet them'; const at = L && L.unlockAt ? L.unlockAt : PEDIA_UNLOCK_AT[tab]; return `Chapter ${CH_ROMAN[at] || at}`; };
 // ---- who you've met: Chapter III's people stay classified until you meet them (in the story, a dream, their hall) ----
 function pdMeet(...keys) {
   if (!wanderer) return; const m = Object.assign({}, (wanderer.ch3 && wanderer.ch3.met) || {}); let nu = false;
@@ -20278,6 +20282,7 @@ function loadFigure(c) {
   const key = c.tag + (c.mod || '') + (c.sil ? ':sil' : '');
   if (figCache[key]) return figCache[key];
   figCache[key] = (async () => {
+    await glbReady(c.tag);
     const bin = atob(document.getElementById(c.tag).textContent.trim()), u8 = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     const sc = await parseGlb(u8.buffer), holder = new THREE.Group(); holder.add(sc);
@@ -22437,7 +22442,7 @@ function advPick() {
 async function advHeroModel(who) {
   if (who === 'me') { const R = autoRig(SkeletonUtils.clone(inner), (SPECIES[spOf(wanderer)] && SPECIES[spOf(wanderer)].height) || 1.85); armRig(R, 'none'); return R; }
   if (who.startsWith('char:')) { const ch = charById(who.slice(5)); return loadCharRig(ch, ch.height || 2); }
-  const L = COMPANIONS.find(c => c.id === who.slice(5)), el = document.getElementById(L.tag);
+  const L = COMPANIONS.find(c => c.id === who.slice(5)); await glbReady(L.tag); const el = document.getElementById(L.tag);
   const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
   const sc = await parseGlb(u8.buffer); if (L.mod === 'kizna') feminiseRobot(sc);
   const R = autoRig(gearNoMeasure(SkeletonUtils.clone(sc)), L.h || 1.9); armRig(R, 'none'); return R;

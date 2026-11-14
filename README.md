@@ -1394,3 +1394,8 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **Javek the fugitive (companion):** the companion Javek wears **Hak Chompjak's style of glasses** (taken from Hak's own model: round lenses, navy frames, a V bridge, a glint; the blue tint is lighter so his green eyes show through) over a matching pair of green eyes, a **black hood** (open at the face, his long ears out through the sides) and a **black cape** to the backs of his knees. The hood is skinned to his head; the cape follows his chest, spine and hips as he walks. The goggles, their bolts and strap are gone. Model: `data/cpJavekC.js` / `assets/models/companions/javek_fugitive.glb`, built by `nightmare/tools/javek_fugitive.py` from the green-eyed model and `data/leader_chompy.js` (for Hak's glasses). The **Ancient Figures** Javek keeps his goggles with green eyes.
 - **2014:** both files now say Javek came face to face with **Director Josiah Richards**, a British civil servant in the Cabinet Office, over a set of schematics. That's this world's Josiah Richards, the great-grandfather of Josiah Williams II, not the Prime Secretary.
 
+
+## Phones
+
+- **Lighter start-up:** Javek's two models and the helmetless Croxian (about 9 MB together) no longer download when the game starts. Each one loads the first time it's actually shown: in the Nostrapedia, as a companion, or as an Adventure hero.
+- **Classified labels fit:** on a phone, the "when you meet them" labels shorten to *Ch. III · once met* / *Ch. III · meet or fight them*, and every Nostrapedia label wraps instead of widening the list.
