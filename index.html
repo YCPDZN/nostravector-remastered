@@ -2757,7 +2757,31 @@ const sfx = (() => {
     laser(v = 1) { tone(1400, 380, .09, 'sawtooth', .022 * v); noise(.05, 7000, 2500, .03 * v); },
     zap() { tone(520, 160, .12, 'square', .03); },
     shieldHit() { tone(300, 900, .1, 'triangle', .05); noise(.08, 4000, 1500, .06); },
-    boom(v = 1) { noise(.9, 900, 40, .5 * v); tone(80, 28, .7, 'sine', .4 * v); }
+    boom(v = 1) { noise(.9, 900, 40, .5 * v); tone(80, 28, .7, 'sine', .4 * v); },
+    // a human scream, synthesised: two detuned saws through vocal formants, a ragged vibrato, breath, and a little distortion (until it's voiced)
+    scream(dur = 1.8, v = .25, f0 = 340) {
+      if (!ctx) return; const t = ctx.currentTime, mix = ctx.createGain(), g = ctx.createGain(), ws = ctx.createWaveShaper(), curve = new Float32Array(512);
+      for (let i = 0; i < 512; i++) { const x = i / 255.5 - 1; curve[i] = Math.tanh(x * 3.2); } ws.curve = curve;
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 6 + Math.random() * 5; lg.gain.value = f0 * .07; lfo.connect(lg);
+      for (const det of [0, 19, -13]) { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.detune.value = det;
+        o.frequency.setValueAtTime(f0 * .62, t); o.frequency.linearRampToValueAtTime(f0 * 1.38, t + dur * .22); o.frequency.linearRampToValueAtTime(f0 * (1.05 + Math.random() * .2), t + dur * .75); o.frequency.linearRampToValueAtTime(f0 * .55, t + dur);
+        lg.connect(o.frequency); for (const [f, q, k] of [[820, 6, 1], [1240, 8, .8], [2750, 11, .45]]) { const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f * (.95 + Math.random() * .1); bp.Q.value = q; const kg = ctx.createGain(); kg.gain.value = k; o.connect(bp); bp.connect(kg); kg.connect(mix); }
+        o.start(t); o.stop(t + dur + .05); }
+      const br = ctx.createBufferSource(); br.buffer = noiseBuf; br.loop = true; const bb = ctx.createBiquadFilter(); bb.type = 'bandpass'; bb.frequency.value = 1900; bb.Q.value = .8; const bg = ctx.createGain(); bg.gain.value = .35; br.connect(bb); bb.connect(bg); bg.connect(mix); br.start(t); br.stop(t + dur + .05);
+      lfo.start(t); lfo.stop(t + dur + .05);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .07); g.gain.setValueAtTime(v, t + dur * .7); g.gain.linearRampToValueAtTime(v * .55, t + dur * .88); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      mix.gain.value = 1.4; mix.connect(ws); ws.connect(g); g.connect(master);
+    },
+    drill(dur = 1.2, v = .12) { // a surgical drill biting into metal and bone
+      if (!ctx) return; const t = ctx.currentTime, o = ctx.createOscillator(), am = ctx.createOscillator(), ag = ctx.createGain(), g = ctx.createGain();
+      o.type = 'square'; o.frequency.setValueAtTime(120, t); o.frequency.linearRampToValueAtTime(190, t + dur * .3); o.frequency.linearRampToValueAtTime(150, t + dur);
+      am.frequency.value = 28; ag.gain.value = .5; am.connect(ag); ag.connect(g.gain);
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1600;
+      g.gain.setValueAtTime(v, t); g.gain.setValueAtTime(v, t + dur * .85); g.gain.linearRampToValueAtTime(.0001, t + dur);
+      o.connect(lp); lp.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .05); am.start(t); am.stop(t + dur + .05);
+      noise(dur, 5200, 2600, v * .5);
+    },
+    sizzle(dur = .6, v = .12) { noise(dur, 9000, 3500, v); tone(2400, 1800, dur * .6, 'sawtooth', v * .08); } // searing
   };
 })();
 
@@ -12636,27 +12660,35 @@ function dipPontClick(a, b) {
 }
 function dipPontChange(t) { if (t.dataset.a !== 'pontColPick') return false; const P = pontById(t.dataset.p); if (!P) return true; P.col = t.value; pontSave(); pontRefresh(P.id); dipRender(); return true; }
 
-// ---- the cutscene: Hawthorne raises James Brown from the Southern Ocean ----
+// ---- the cutscene: Hawthorne raises James Brown from the Southern Ocean. A brutal reconstruction, played as horror: James wakes on the
+// slab screaming, is held down while the heart and the armour go in, and then the silence. (Synthesised screams until he's voiced.) ----
 const JRV = { on: false, scene: null, t: 0, step: -1, stepEnd: 0, shot: null, shotT: 0, shotDur: 6, actT: 0 };
 const JRV_STEPS = [
-  { dur: 4.4, shot: [[34, 12, 46], [16, 7, 28], [0, 0, 7]] }, // the black water, the searchlights, a shape in the waves
+  { dur: 4.6, shot: [[34, 12, 46], [16, 7, 28], [0, 0, 7]] }, // the black water, the searchlights, a shape in the waves
   { who: 'THOMAS HAWTHORNE', text: 'There he is. Face down in the black water, right where the wanderer left him. Get him out of there.', act: 'winch', shot: [[7, 3, 17], [4.5, 2.6, 11], [0, .3, 6]] },
   { who: 'THOMAS HAWTHORNE', text: 'Look at him. Frozen through. The cold took his fingers first, then his breath, then his heart, and it took its time. Hours in that water, Brown, with nothing to do but think about how you failed me.', shot: [[1.7, 2.3, -.9], [1.2, 2, -1.5], [0, 1.2, -2.6]] },
   { who: 'THOMAS HAWTHORNE', text: 'You were my eyes on the ice. My Pontifex. And you let a stray from nowhere throw you off a pier like rubbish. Dying does not excuse you. Nothing excuses you.', shot: [[-.5, 1.95, -2.1], [-.95, 1.88, -2.6], [-2.2, 1.75, -3.4]] },
-  { who: 'THOMAS HAWTHORNE', text: 'Open his chest. Every Pontifex Maximus carries the heart of Terra Imperia, and his has stopped. Give him a better one.', act: 'open', shot: [[3, 3.2, .1], [2.2, 2.6, -.8], [0, 1.2, -2.2]] },
-  { who: 'THOMAS HAWTHORNE', text: 'Burn the ice out of his veins. Again. AGAIN! I did not drag this corpse out of the sea to watch it stay dead!', act: 'shock', shot: [[-3.6, 2.4, 1], [-2.6, 2, 0], [0, 1.1, -2.2]] },
+  { who: 'THOMAS HAWTHORNE', text: 'Open his chest. Every Pontifex Maximus carries the heart of Terra Imperia, and his has stopped. Give him a better one.', act: 'open', shot: [[1.4, 2.9, -.6], [.9, 2.4, -1.3], [0, 1.25, -2.4]] },
+  { who: 'THOMAS HAWTHORNE', text: 'Burn the ice out of his veins. Again. AGAIN.', act: 'shock', min: 3.4, shot: [[-3.6, 2.4, 1], [-2.6, 2, 0], [0, 1.1, -2.2]] },
+  { who: 'JAMES BROWN', text: 'AAAAAAAAAAAAGH—!', james: true, act: 'wake', min: 3.2, scream: [2.8, .3, 360], shot: [[.25, 1.75, -1.6], [.15, 1.6, -2], [0, 1.25, -2.9]] },
+  { who: 'THOMAS HAWTHORNE', text: 'Hold him down. HOLD HIM!', act: 'thrash', min: 2.4, shot: [[2.4, 2.6, -.4], [1.8, 2.2, -1], [0, 1.2, -2.2]] },
+  { who: 'JAMES BROWN', text: 'STOP— please— it’s inside me— I can feel it— STOP—', james: true, act: 'thrash', min: 3.4, scream: [3.2, .28, 410], shot: [[-.4, 1.6, -1.9], [-.2, 1.5, -2.3], [0, 1.25, -2.9]] },
+  { who: 'THOMAS HAWTHORNE', text: 'Pain means the heart has taken. Bolt the armour on. Every plate. Into the bone.', act: 'rebuild', shot: [[3.2, 3.4, .6], [2.4, 2.8, -.4], [0, 1.2, -2.2]] },
+  { who: 'JAMES BROWN', text: 'AAAAAAAAAAAAAAAAAAAAAH—', james: true, act: 'rebuild', min: 4.2, scream: [4, .32, 300], shot: [[-1.6, 3.6, -2], [-1, 3, -2.1], [0, 1.2, -2.2]] },
+  { dur: 2.8, act: 'silence', shot: [[.4, 1.5, -1.1], [.3, 1.48, -1.4], [0, 1.3, -2.6]] }, // black, then nothing but the new heart
   { who: 'THOMAS HAWTHORNE', text: 'There. Breathe, James. It will hurt for the rest of your life. Good. Pain is how you will remember who owns it.', act: 'rise', shot: [[4.2, 1.3, 1.6], [3.3, 1.6, .2], [1.6, 1.5, -2]] },
-  { who: 'JAMES BROWN', text: '…Grand Imperarch.', james: true, shot: [[.3, 1.95, -.9], [.7, 1.9, -1.35], [1.6, 1.85, -2]] },
+  { who: 'JAMES BROWN', text: '…Grand… Imperarch.', james: true, min: 2.6, shot: [[.3, 1.95, -.9], [.7, 1.9, -1.35], [1.6, 1.85, -2]] },
   { who: 'THOMAS HAWTHORNE', text: 'Your old station is mine now. Hold it. The wanderer will come back to the ice. They always come back. And you will be waiting. Do not fail me twice.', shot: [[-6, 3, 4], [-4, 2.4, 2], [0, 1.4, -2.5]] }
 ];
+const JRV_WORK = new Set(['open', 'shock', 'wake', 'thrash', 'rebuild']); // the machine is in him
 function jrvFrost(R) { R.root.traverse(o => { if (!o.isMesh || !o.material) return; const f = m => { const n = m.clone(); if (n.color) n.color.lerp(new THREE.Color(0xbfdcff), .6); if (n.emissive) { n.emissive.set(0x1a3a5a); n.emissiveIntensity = .35; } return n; }; o.material = Array.isArray(o.material) ? o.material.map(f) : f(o.material); }); }
 async function jrvBuild() {
-  const S = JRV.scene = new THREE.Scene(), phone = tiPhone(); S.background = new THREE.Color(0x02060a); S.fog = new THREE.FogExp2(0x061018, .028);
-  JRV.hemi = new THREE.HemisphereLight(0x6a8aa8, 0x020406, .4); S.add(JRV.hemi);
-  const moon = new THREE.DirectionalLight(0x9ab8e0, .7); moon.position.set(-40, 60, 30); moon.castShadow = true; moon.shadow.mapSize.set(phone ? 1024 : 2048, phone ? 1024 : 2048); Object.assign(moon.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20, far: 160 }); moon.shadow.camera.updateProjectionMatrix(); S.add(moon);
+  const S = JRV.scene = new THREE.Scene(), phone = tiPhone(); S.background = new THREE.Color(0x010305); S.fog = new THREE.FogExp2(0x040a10, .034);
+  JRV.hemi = new THREE.HemisphereLight(0x5a7a98, 0x020406, .32); S.add(JRV.hemi);
+  const moon = new THREE.DirectionalLight(0x9ab8e0, .55); moon.position.set(-40, 60, 30); moon.castShadow = true; moon.shadow.mapSize.set(phone ? 1024 : 2048, phone ? 1024 : 2048); Object.assign(moon.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20, far: 160 }); moon.shadow.camera.updateProjectionMatrix(); S.add(moon);
   // the sea: black, heaving
   const N = phone ? 60 : 110, sea = new THREE.PlaneGeometry(500, 500, N, N); sea.rotateX(-Math.PI / 2); sea.translate(0, -.6, 250 - 2);
-  JRV.sea = new THREE.Mesh(sea, new THREE.MeshStandardMaterial({ color: 0x051420, roughness: .22, metalness: .35 })); JRV.sea.receiveShadow = true; S.add(JRV.sea); JRV.sea0 = Float32Array.from(sea.attributes.position.array);
+  JRV.sea = new THREE.Mesh(sea, new THREE.MeshStandardMaterial({ color: 0x041018, roughness: .22, metalness: .35 })); JRV.sea.receiveShadow = true; S.add(JRV.sea); JRV.sea0 = Float32Array.from(sea.attributes.position.array);
   // the ice shelf's edge, and floes in the water
   const ice = new THREE.MeshStandardMaterial({ color: 0xcfe4f4, roughness: .55, metalness: .05 });
   const shelf = new THREE.Mesh(new THREE.BoxGeometry(200, 6, 90), ice); shelf.position.set(0, -3, -43); shelf.receiveShadow = true; S.add(shelf);
@@ -12665,18 +12697,28 @@ async function jrvBuild() {
   fl.receiveShadow = true; S.add(fl);
   // his gunship overhead, searchlights down on the water
   const ship = hwmShip(); ship.scale.setScalar(.22); ship.position.set(4, 26, -34); ship.rotation.y = .5; S.add(ship); JRV.ship = ship;
-  JRV.beams = [];
-  for (const [x, z] of [[-6, 6], [6, 3]]) { const b = new THREE.Mesh(new THREE.ConeGeometry(4, 26, 24, 1, true), new THREE.MeshBasicMaterial({ color: 0xbfe8ff, transparent: true, opacity: .07, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); b.position.set(x, 13, z - 14); b.lookAt(x * .2, 0, 6); b.rotateX(Math.PI / 2); S.add(b); JRV.beams.push(b); }
+  for (const [x, z] of [[-6, 6], [6, 3]]) { const b = new THREE.Mesh(new THREE.ConeGeometry(4, 26, 24, 1, true), new THREE.MeshBasicMaterial({ color: 0xbfe8ff, transparent: true, opacity: .06, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); b.position.set(x, 13, z - 14); b.lookAt(x * .2, 0, 6); b.rotateX(Math.PI / 2); S.add(b); }
   const sl = new THREE.SpotLight(0xd8f0ff, 900, 60, .32, .5, 1.3); sl.position.set(2, 24, -14); sl.target.position.set(0, 0, 6); sl.castShadow = true; S.add(sl, sl.target); JRV.search = sl;
-  // the slab, and the machine over it
-  const steel = new THREE.MeshStandardMaterial({ color: 0x3a3e46, metalness: .8, roughness: .35 }), dark = new THREE.MeshStandardMaterial({ color: 0x15171a, metalness: .7, roughness: .5 });
+  // the operating light over the slab (it flickers), and the red emergency strobe
+  JRV.op = new THREE.SpotLight(0xe8f4ff, 0, 12, .55, .4, 1.2); JRV.op.position.set(0, 5.2, -2); JRV.op.target.position.set(0, 1, -2.2); S.add(JRV.op, JRV.op.target);
+  JRV.strobe = new THREE.PointLight(0xff1a1a, 0, 18, 1.4); JRV.strobe.position.set(-1.6, 3.4, -3.6); S.add(JRV.strobe);
+  // the slab, its restraints, and the machine over it
+  const steel = new THREE.MeshStandardMaterial({ color: 0x3a3e46, metalness: .8, roughness: .35 }), dark = new THREE.MeshStandardMaterial({ color: 0x15171a, metalness: .7, roughness: .5 }), grime = new THREE.MeshStandardMaterial({ color: 0x2a0606, roughness: .3, metalness: .2, transparent: true, opacity: 0 });
   const slab = new THREE.Mesh(new THREE.BoxGeometry(1.5, .25, 2.8), steel); slab.position.set(0, .95, -2); slab.castShadow = slab.receiveShadow = true; S.add(slab);
+  JRV.stain = new THREE.Mesh(new THREE.CircleGeometry(.75, 24), grime); JRV.stain.rotation.x = -Math.PI / 2; JRV.stain.position.set(0, 1.081, -2.3); S.add(JRV.stain); // what runs off the slab
+  JRV.straps = []; for (const z of [-1.35, -2.1, -2.75]) { const st = new THREE.Mesh(new THREE.BoxGeometry(1.56, .07, .14), new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: .8 })); st.position.set(0, 1.42, z); st.visible = false; S.add(st); JRV.straps.push(st); }
   for (const [x, z] of [[-.6, -.9], [.6, -.9], [-.6, -3.1], [.6, -3.1]]) { const l = new THREE.Mesh(new THREE.BoxGeometry(.12, .95, .12), dark); l.position.set(x, .47, z); S.add(l); }
   for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(.2, 4.2, .2), dark); p.position.set(s * 1.3, 2.1, -2); S.add(p); }
   const bar = new THREE.Mesh(new THREE.BoxGeometry(2.8, .25, .3), dark); bar.position.set(0, 4.2, -2); S.add(bar);
-  JRV.arms = [-1, 1].map(s => { const a = new THREE.Group(), r = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, 1.8, 8), steel); r.position.y = -.9; a.add(r); const tip = new THREE.Mesh(new THREE.ConeGeometry(.09, .4, 8), steel); tip.rotation.x = Math.PI; tip.position.y = -1.95; a.add(tip); a.position.set(s * .35, 4.1, -2.2); a.rotation.z = s * .5; S.add(a); return a; });
+  JRV.arms = [-1, 0, 1].map(s => { const a = new THREE.Group(), r = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 1.8, 8), steel); r.position.y = -.9; a.add(r);
+    const tip = new THREE.Group(), cone = new THREE.Mesh(new THREE.ConeGeometry(.08, .42, 6), steel); cone.rotation.x = Math.PI; tip.add(cone); for (let k = 0; k < 3; k++) { const fl2 = new THREE.Mesh(new THREE.BoxGeometry(.02, .3, .05), dark); fl2.rotation.y = k * 2.1; fl2.position.y = .05; tip.add(fl2); }
+    tip.position.y = -1.95; a.add(tip); a.userData.tip = tip; a.position.set(s * .38, 4.1, s ? -2.15 : -2.5); a.rotation.z = s * .45; S.add(a); return a; });
   const heart = glowSprite(0xff2a3a, 1.6, 0); heart.position.set(0, 1.42, -2.45); S.add(heart); JRV.heart = heart; JRV.heartL = new THREE.PointLight(0xff2a3a, 0, 8, 1.6); JRV.heartL.position.set(0, 1.7, -2.4); S.add(JRV.heartL);
   JRV.bolts = new THREE.Group(); S.add(JRV.bolts);
+  // sparks off the drills, and steam off the cold body
+  const NP = phone ? 160 : 400, spp = new Float32Array(NP * 3); JRV.spv = new Float32Array(NP * 3); JRV.spl = new Float32Array(NP); for (let i = 0; i < NP; i++) spp[i * 3 + 1] = -99;
+  const spg = new THREE.BufferGeometry(); spg.setAttribute('position', new THREE.BufferAttribute(spp, 3)); JRV.sparks = new THREE.Points(spg, new THREE.PointsMaterial({ color: 0xffb060, size: .05, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); S.add(JRV.sparks); JRV.spi = 0;
+  JRV.steam = []; for (let i = 0; i < (phone ? 4 : 8); i++) { const st = glowSprite(0xcfdfe8, 1.2, 0); st.position.set((Math.random() - .5) * .8, 1.4, -1.4 - Math.random() * 1.6); st.userData.ph = Math.random() * 6; S.add(st); JRV.steam.push(st); }
   // snow on the wind
   const NS = phone ? 900 : 2200, sp = new Float32Array(NS * 3); for (let i = 0; i < NS; i++) sp.set([(Math.random() - .5) * 80, Math.random() * 30, (Math.random() - .5) * 80], i * 3);
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3)); JRV.snow = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xdfefff, size: .12, transparent: true, opacity: .7, depthWrite: false })); S.add(JRV.snow);
@@ -12685,8 +12727,9 @@ async function jrvBuild() {
   const add = (R, x, y, z, ry) => { if (!R) return null; R.root.position.set(x, y, z); R.root.rotation.y = ry; R.root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); S.add(R.root); return R; };
   JRV.haw = add(H, -2.2, 0, -3.4, Math.PI / 2 - .3);
   if (Jd) { jrvFrost(Jd); add(Jd, 0, -.5, 8, 0); Jd.root.rotation.x = Math.PI / 2; } JRV.dead = Jd; // face down in the water
-  if (Jp) { add(Jp, 0, 1.2, -1.1, 0); Jp.root.rotation.x = -Math.PI / 2; Jp.root.visible = false; } JRV.pont = Jp;
+  if (Jp) { add(Jp, 0, 1.2, -1.1, 0); Jp.root.rotation.x = -Math.PI / 2; Jp.root.visible = false; Jp.root.traverse(o => { if (o.isMesh && o.material && o.material.emissive) { o.material = o.material.clone(); o.userData.e0 = o.material.emissiveIntensity; } }); } JRV.pont = Jp;
   JRV.troops = T.filter(Boolean).map((R, i) => add(R, (i % 2 ? 1 : -1) * (3.4 + Math.floor(i / 2) * 1.8), 0, -4.5 - Math.floor(i / 2) * 1.4, i % 2 ? -Math.PI / 2 - .3 : Math.PI / 2 + .3));
+  JRV.troop0 = JRV.troops.map(R => R && R.root.position.clone());
 }
 async function startJamesRev() {
   if (JRV.on || HWM.on) return; JRV.on = true; JRV.phase = 'load';
@@ -12695,66 +12738,100 @@ async function startJamesRev() {
   hwmBarsMake();
   try { await jrvBuild(); } catch (e) { console.error(e); jrvEnd(); return; }
   JRV.saveCam = { near: camera.near, far: camera.far, fov: camera.fov }; camera.near = .05; camera.far = 900; camera.fov = camera.aspect < 1 ? 64 : 42; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
-  renderer.domElement.style.filter = 'contrast(1.2) saturate(.7) brightness(.95)';
+  JRV.filt = 'contrast(1.25) saturate(.6) brightness(.9)'; renderer.domElement.style.filter = JRV.filt;
   HWM.bars.classList.add('on'); show(ui.xhud, true); ui.xhud.classList.add('cutting');
-  Object.assign(JRV, { phase: 'run', t: 0, step: -1, stepEnd: 0, flashA: 0 });
+  Object.assign(JRV, { phase: 'run', t: 0, step: -1, stepEnd: 0, flashA: 0, blackT: 0, gore: 0 });
   fd.style.transition = 'opacity 1.6s'; fd.style.opacity = 0;
   setTimeout(() => notice('The Southern Ocean · off the Antarctic coast', 'MEANWHILE', 2800), 400);
 }
-function jrvWhenFree(ms, n = 20) { setTimeout(() => { if (JRV.on || CH3S().jamesRev) return; if (state === 'explore' && !ex.dlg && !DGN.on) startJamesRev(); else if (n > 0) jrvWhenFree(1500, n - 1); }, ms); } // once you're on your feet, out of any dialogue
 function jrvBolt() {
-  const pts = [], a = new THREE.Vector3((Math.random() < .5 ? -1 : 1) * .35, 2.2, -2.2), b = new THREE.Vector3((Math.random() - .5) * .5, 1.25, -2 - Math.random() * .8);
+  const pts = [], a = new THREE.Vector3((Math.random() < .5 ? -1 : 1) * .38, 2.2, -2.2), b = new THREE.Vector3((Math.random() - .5) * .5, 1.3, -2 - Math.random() * .8);
   for (let i = 0; i <= 8; i++) { const p = a.clone().lerp(b, i / 8); if (i && i < 8) p.add(new THREE.Vector3((Math.random() - .5) * .25, (Math.random() - .5) * .15, (Math.random() - .5) * .25)); pts.push(p); }
   const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: Math.random() < .5 ? 0xff5a6a : 0xbfe8ff })); JRV.bolts.add(l);
-  setTimeout(() => { JRV.bolts.remove(l); l.geometry.dispose(); l.material.dispose(); }, 90 + Math.random() * 80);
+  setTimeout(() => { if (JRV.bolts) JRV.bolts.remove(l); l.geometry.dispose(); l.material.dispose(); }, 90 + Math.random() * 80);
 }
+function jrvSpark(x, y, z, n) { // a spray of sparks off a drill bit
+  const P = JRV.sparks.geometry.attributes.position.array, N = JRV.spl.length;
+  for (let k = 0; k < n; k++) { const i = JRV.spi = (JRV.spi + 1) % N; P[i * 3] = x; P[i * 3 + 1] = y; P[i * 3 + 2] = z; JRV.spv.set([(Math.random() - .5) * 3, 1 + Math.random() * 2.4, (Math.random() - .5) * 3], i * 3); JRV.spl[i] = .4 + Math.random() * .5; }
+}
+function jrvWhenFree(ms, n = 20) { setTimeout(() => { if (JRV.on || CH3S().jamesRev) return; if (state === 'explore' && !ex.dlg && !DGN.on) startJamesRev(); else if (n > 0) jrvWhenFree(1500, n - 1); }, ms); } // once you're on your feet, out of any dialogue
 function jrvTick(dt) {
   if (JRV.phase !== 'run' || !JRV.scene) return;
   dt = Math.min(dt, .05); JRV.t += dt; const t = JRV.t;
-  hwmSubTick(); JRV.flashA = Math.max(0, JRV.flashA - dt * 1.8); fbFlash(JRV.flashA, JRV.flashC || '#ff2a1a');
+  hwmSubTick(); JRV.flashA = Math.max(0, JRV.flashA - dt * 1.8); fbFlash(JRV.blackT > 0 ? 1 : JRV.flashA, JRV.blackT > 0 ? '#000' : JRV.flashC || '#ff2a1a'); JRV.blackT -= dt;
   if (t >= JRV.stepEnd && !JRV.ending) {
     JRV.step++;
     if (JRV.step < JRV_STEPS.length) {
       const Sx = JRV_STEPS[JRV.step]; JRV.shot = Sx.shot; JRV.shotT = t; JRV.actT = 0; JRV.act = Sx.act || null;
-      const dur = Sx.text ? hwmSay(Sx.who, Sx.text, null, !!Sx.james) : Sx.dur; JRV.stepEnd = t + dur + .4; JRV.shotDur = dur + .4;
-      if (Sx.act === 'open') { JRV.flashA = .5; JRV.flashC = '#ff2a3a'; sfx.thud(); }
-      if (Sx.act === 'rise') { JRV.flashA = 1; JRV.flashC = '#ffffff'; sfx.thud(); JRV.shake = 1; if (JRV.dead) JRV.dead.root.visible = false; if (JRV.pont) JRV.pont.root.visible = true; }
-      if (Sx.james) { JRV.shake = .3; sfx.heart(.8); }
+      let dur = Sx.text ? hwmSay(Sx.who, Sx.text, null, !!Sx.james) : Sx.dur; if (Sx.min) dur = Math.max(dur, Sx.min); JRV.stepEnd = t + dur + .35; JRV.shotDur = dur + .35;
+      if (Sx.scream) { const [d, v, f] = Sx.scream; sfx.scream(d, v, f); setTimeout(() => { if (JRV.on && JRV.step === JRV_STEPS.indexOf(Sx)) sfx.scream(d * .6, v * .8, f * 1.15); }, d * 850); }
+      if (Sx.act === 'open') { JRV.flashA = .5; JRV.flashC = '#ff2a3a'; sfx.thud(); sfx.drill(2.4, .14); }
+      if (Sx.act === 'wake') { JRV.flashA = 1; JRV.flashC = '#ff0000'; JRV.shake = 1.4; sfx.thud(); for (const st of JRV.straps) st.visible = true; }
+      if (Sx.act === 'rebuild') { sfx.drill(3.2, .16); sfx.sizzle(1.4, .14); }
+      if (Sx.act === 'silence') { JRV.blackT = .55; sfx.drone(0); hwmSubHide(); }
+      if (Sx.act === 'rise') { JRV.flashA = 1; JRV.flashC = '#ffffff'; sfx.thud(); JRV.shake = .6; if (JRV.dead) JRV.dead.root.visible = false; if (JRV.pont) JRV.pont.root.visible = true; for (const st of JRV.straps) st.visible = false; }
+      if (Sx.james && !Sx.scream) { JRV.shake = .3; sfx.heart(.9); }
     } else { JRV.ending = true; hwmSubHide(); notice('Terra Imperia', 'JAMES BROWN, PONTIFEX MAXIMUS', 3000); const fd = $('#fade'); fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 1; setTimeout(jrvEnd, 1500); }
   }
-  JRV.actT += dt; const k = JRV.actT;
+  JRV.actT += dt; const k = JRV.actT, act = JRV.act, work = JRV_WORK.has(act);
   // the body: up out of the sea on the winch, onto the slab, face up
   const D = JRV.dead;
-  if (D && JRV.act === 'winch') { const u = clamp(k / 5, 0, 1), e = u * u * (3 - 2 * u), r = D.root;
+  if (D && act === 'winch') { const u = clamp(k / 5, 0, 1), e = u * u * (3 - 2 * u), r = D.root;
     if (u < .45) { const v = u / .45; r.position.set(0, -.5 + v * 3.6, 8 - v * 3); r.rotation.x = Math.PI / 2 - v * .6; }
     else { const v = (u - .45) / .55, s = v * v * (3 - 2 * v); r.position.set(0, 3.1 - s * 1.95, 5 - s * 6.1); r.rotation.x = Math.PI / 2 - .6 - s * (Math.PI - .6); }
     r.rotation.z = Math.sin(t * 2) * .08 * (1 - e); }
-  else if (D && JRV.step > 1 && JRV.step < 6) { D.root.position.set(0, 1.2, -1.1); D.root.rotation.set(-Math.PI / 2, 0, 0); }
+  else if (D && JRV.step > 1 && D.root.visible) { D.root.position.set(0, 1.2, -1.1); D.root.rotation.set(-Math.PI / 2, 0, 0); }
   if (D && JRV.step === 0) { D.root.position.y = -.5 + Math.sin(t * 1.3) * .05; D.root.rotation.z = Math.sin(t * .8) * .1; }
-  // the machine comes down, and the heart lights
-  const armY = JRV.step >= 4 && JRV.step < 6 ? clamp(k / 1.2, 0, 1) : JRV.step >= 6 ? 1 - clamp(k / 1.5, 0, 1) : 0;
-  for (const a of JRV.arms || []) a.position.y = 4.1 - armY * 1.1;
-  const hot = JRV.step === 4 ? clamp((k - 1) / 1, 0, 1) : JRV.step === 5 ? 1 : JRV.step >= 6 ? .55 : 0;
-  if (JRV.heart) { JRV.heart.material.opacity = hot * (.75 + Math.sin(t * 9) * .2); JRV.heartL.intensity = hot * 40; }
-  if (JRV.act === 'shock') { if ((JRV.boltT = (JRV.boltT || 0) - dt) <= 0) { JRV.boltT = .08 + Math.random() * .2; jrvBolt(); if (Math.random() < .3) { JRV.flashA = .45; JRV.flashC = Math.random() < .5 ? '#ff2a3a' : '#cfe8ff'; JRV.shake = .5; sfx.thud(); } }
-    if (D) D.root.position.y = 1.2 + Math.max(0, Math.sin(t * 23)) * .08; }
-  // he rises: off the slab and onto his feet, facing his master
+  // awake, and fighting the straps: the whole body bucks, the arms wrench at the restraints, the head snaps side to side
+  if (D && D.root.visible && (act === 'wake' || act === 'thrash' || act === 'rebuild')) { const r = D.root, w = act === 'rebuild' ? .7 : 1;
+    r.position.y = 1.2 + Math.max(0, Math.sin(t * 17) * Math.sin(t * 5.3)) * .12 * w; r.rotation.z = Math.sin(t * 13.7) * .07 * w; r.rotation.x = -Math.PI / 2 + Math.sin(t * 9.1) * .05 * w;
+    if (D.ra) { D.ra.rotation.x = -.6 + Math.sin(t * 21) * .7 * w; D.ra.rotation.z = Math.sin(t * 15) * .4; } if (D.la) { D.la.rotation.x = -.6 + Math.sin(t * 19 + 1) * .7 * w; D.la.rotation.z = -Math.sin(t * 16) * .4; }
+    if (D.rl) D.rl.rotation.x = Math.sin(t * 14) * .5 * w; if (D.ll) D.ll.rotation.x = Math.sin(t * 12 + 2) * .5 * w;
+    if (D.head) D.head.rotation.y = Math.sin(t * 11) * .6 * w; }
+  // the machine comes down into him: drills spinning, sparks, the heart lighting
+  const armY = work ? clamp(k / 1.2, 0, 1) : JRV.step >= 11 ? Math.max(0, 1 - k / 1.5) * (JRV.step === 11 ? 1 : 0) : 0;
+  (JRV.arms || []).forEach((a, i) => { const dig = act === 'rebuild' || act === 'open' ? Math.sin(t * (6 + i)) * .12 : 0; a.position.y = 4.1 - armY * 1.15 - dig; a.userData.tip.rotation.y += dt * (work ? 40 : 0);
+    if (work && Math.random() < dt * (act === 'rebuild' ? 30 : 14)) { const p = a.userData.tip.getWorldPosition(new THREE.Vector3()); jrvSpark(p.x, p.y - .2, p.z, 6); } });
+  if (act === 'rebuild' && (JRV.drT = (JRV.drT || 0) - dt) <= 0) { JRV.drT = .9 + Math.random() * .6; sfx.drill(.8, .12); if (Math.random() < .5) sfx.sizzle(.5, .1); }
+  const hot = act === 'open' ? clamp((k - 1) / 1, 0, 1) : work ? 1 : JRV.step >= 11 ? .55 : 0;
+  if (JRV.heart) { JRV.heart.material.opacity = hot * (.75 + Math.sin(t * (act === 'wake' || act === 'thrash' ? 16 : 9)) * .2); JRV.heartL.intensity = hot * 40; }
+  JRV.gore = Math.min(1, JRV.gore + (work ? dt * .12 : 0)); if (JRV.stain) JRV.stain.material.opacity = JRV.gore * .85;
+  if (act === 'shock' || act === 'wake') { if ((JRV.boltT = (JRV.boltT || 0) - dt) <= 0) { JRV.boltT = .07 + Math.random() * .18; jrvBolt(); if (Math.random() < .35) { JRV.flashA = .45; JRV.flashC = Math.random() < .5 ? '#ff2a3a' : '#cfe8ff'; JRV.shake = Math.max(JRV.shake || 0, .5); sfx.zap(); } }
+    if (D && act === 'shock') D.root.position.y = 1.2 + Math.max(0, Math.sin(t * 23)) * .08; }
+  // horror: the operating light flickers, the strobe pulses red, black frames cut in while he screams, the picture warps
+  const scr = act === 'wake' || act === 'thrash' || act === 'rebuild';
+  if (JRV.op) JRV.op.intensity = JRV.step >= 2 && act !== 'silence' ? (Math.random() < (scr ? .18 : .04) ? 0 : 160 + Math.random() * 60) : 0;
+  if (JRV.strobe) JRV.strobe.intensity = work ? (Math.sin(t * 9) > .4 ? 30 : 0) : 0;
+  if (scr && Math.random() < dt * 1.6 && JRV.blackT <= 0) JRV.blackT = .04 + Math.random() * .06;
+  if (JRV.hemi) JRV.hemi.intensity = act === 'silence' ? .08 : scr && Math.random() < .08 ? .05 : .32;
+  renderer.domElement.style.filter = scr ? `contrast(1.4) saturate(${.4 + Math.random() * .3}) brightness(${.85 + Math.random() * .2}) hue-rotate(${(Math.random() - .5) * 14}deg)` : act === 'silence' ? 'contrast(1.3) saturate(.2) brightness(.6)' : JRV.filt;
+  // sparks fall, steam rises off him
+  if (JRV.sparks) { const P = JRV.sparks.geometry.attributes.position.array; for (let i = 0; i < JRV.spl.length; i++) { if (JRV.spl[i] <= 0) continue; JRV.spl[i] -= dt; JRV.spv[i * 3 + 1] -= 9 * dt; for (let a = 0; a < 3; a++) P[i * 3 + a] += JRV.spv[i * 3 + a] * dt; if (JRV.spl[i] <= 0 || P[i * 3 + 1] < 1.08) P[i * 3 + 1] = -99; } JRV.sparks.geometry.attributes.position.needsUpdate = true; }
+  for (const st of JRV.steam || []) { const on = JRV.step >= 2 && JRV.step <= 10 ? 1 : 0, ph = (t * .35 + st.userData.ph) % 1; st.position.y = 1.35 + ph * 1.6; st.material.opacity = on * (1 - ph) * (work ? .45 : .2); st.scale.setScalar(.6 + ph * 1.4); }
+  // he rises: off the slab and onto his feet, facing his master; his armour's lights stutter, then burn
   const Pn = JRV.pont;
-  if (Pn && Pn.root.visible) { const u = JRV.step === 6 ? clamp(k / 3.2, 0, 1) : 1, s = u * u * (3 - 2 * u), r = Pn.root;
-    r.position.set(s * 1.6, 1.2 * (1 - s), -1.1 - s * .9); r.rotation.set(-Math.PI / 2 * (1 - s), -Math.PI / 2 * s, 0); Pn.mode = 'idle'; if (s >= 1) animRig(Pn, dt); }
-  // Hawthorne, his men, the water, the light
-  const Hr = JRV.haw; if (Hr) { Hr.mode = 'idle'; animRig(Hr, dt); if (JRV.step === 1 || JRV.step === 4 || JRV.step === 5) Hr.ra.rotation.x = -1.2 + Math.sin(t * 2) * .1; }
-  for (const R of JRV.troops || []) if (R) { R.mode = 'idle'; animRig(R, dt); }
+  if (Pn && Pn.root.visible) { const u = JRV.step === 12 ? clamp(k / 3.2, 0, 1) : 1, s = u * u * (3 - 2 * u), r = Pn.root;
+    r.position.set(s * 1.6, 1.2 * (1 - s), -1.1 - s * .9); r.rotation.set(-Math.PI / 2 * (1 - s), -Math.PI / 2 * s, 0); Pn.mode = 'idle';
+    if (u < 1) { if (Pn.ra) Pn.ra.rotation.x = Math.sin(t * 9) * .3 * (1 - u); if (Pn.head) Pn.head.rotation.z = Math.sin(t * 7) * .25 * (1 - u); } else animRig(Pn, dt);
+    const fl = u < 1 ? (Math.random() < .3 ? 0 : 2.5) : 1.4; Pn.root.traverse(o => { if (o.isMesh && o.userData.e0 != null) o.material.emissiveIntensity = (o.userData.e0 || .3) * fl; }); }
+  // Hawthorne watches; his men hold James down while he fights
+  const Hr = JRV.haw; if (Hr) { Hr.mode = 'idle'; animRig(Hr, dt); if (JRV.step === 1 || act === 'open' || act === 'shock' || act === 'rebuild') Hr.ra.rotation.x = -1.2 + Math.sin(t * 2) * .1; if (act === 'thrash' && JRV.step === 7) Hr.ra.rotation.x = -1.6 + Math.sin(t * 6) * .2; }
+  (JRV.troops || []).forEach((R, i) => { if (!R) return; R.mode = 'idle'; animRig(R, dt); const o0 = JRV.troop0[i], hold = act === 'thrash' || act === 'rebuild' || act === 'wake', tx = hold && i < 2 ? (i % 2 ? .95 : -.95) : o0.x, tz = hold && i < 2 ? -1.8 - i * .3 : o0.z;
+    R.root.position.x += (tx - R.root.position.x) * Math.min(1, dt * 3); R.root.position.z += (tz - R.root.position.z) * Math.min(1, dt * 3);
+    if (hold && i < 2) { R.root.rotation.y = i % 2 ? -Math.PI / 2 : Math.PI / 2; if (R.ra) R.ra.rotation.x = -1.3 + Math.sin(t * 12 + i) * .15; if (R.la) R.la.rotation.x = -1.3 + Math.sin(t * 11 + i) * .15; } });
+  // the water, the snow, the searchlight
   if (JRV.sea) { const P = JRV.sea.geometry.attributes.position, a0 = JRV.sea0; for (let i = 0; i < P.count; i++) { const x = a0[i * 3], z = a0[i * 3 + 2]; P.array[i * 3 + 1] = -.6 + Math.sin(x * .18 + t * 1.1) * .18 + Math.sin(z * .23 - t * .9) * .22; } P.needsUpdate = true; if ((JRV.nT = (JRV.nT || 0) + dt) > .5) { JRV.nT = 0; JRV.sea.geometry.computeVertexNormals(); } }
   if (JRV.snow) { const P = JRV.snow.geometry.attributes.position; for (let i = 0; i < P.count; i++) { let y = P.array[i * 3 + 1] - dt * 2.2; if (y < 0) y += 30; P.array[i * 3 + 1] = y; P.array[i * 3] += dt * 1.6; if (P.array[i * 3] > 40) P.array[i * 3] -= 80; } P.needsUpdate = true; }
   if (JRV.search) { const sx = Math.sin(t * .35) * 8; JRV.search.target.position.set(JRV.step === 0 ? sx : 0, 0, JRV.step <= 1 ? 6 : -2); }
   if (JRV.ship) JRV.ship.position.y = 26 + Math.sin(t * .6) * .4;
-  if ((JRV.hb = (JRV.hb || 0) + dt) > (JRV.step >= 6 ? .7 : 1.1)) { JRV.hb = 0; sfx.heart(JRV.step >= 4 ? .6 : .35); }
-  sfx.drone(.5);
-  // the camera along its shot
+  // the heartbeat: slow and wet at first, racing while he screams, then alone in the silence
+  const rate = act === 'silence' ? .62 : scr ? .38 : JRV.step >= 12 ? .7 : 1.1; if ((JRV.hb = (JRV.hb || 0) + dt) > rate) { JRV.hb = 0; sfx.heart(act === 'silence' ? 1 : JRV.step >= 4 ? .6 : .35); }
+  sfx.drone(act === 'silence' ? 0 : scr ? .75 : .5);
+  // the camera along its shot: handheld, and shaking hard while he fights
   const sh = JRV.shot; if (sh) { const kk = smooth(0, Math.max(3, JRV.shotDur || 6), t - JRV.shotT), from = new THREE.Vector3().fromArray(sh[0]), to = new THREE.Vector3().fromArray(sh[1]);
-    JRV.shake = Math.max(0, (JRV.shake || 0) - dt * 1.4); const s = .012 + JRV.shake * .22;
-    camera.position.copy(from.lerp(to, kk)).add(new THREE.Vector3((Math.random() - .5) * s, (Math.random() - .5) * s, 0)); camera.lookAt(new THREE.Vector3().fromArray(sh[2])); if (JRV.step === 5) camera.rotateZ(.1); }
+    JRV.shake = Math.max(scr ? .35 : 0, (JRV.shake || 0) - dt * 1.4); const s = .012 + JRV.shake * .22, hh = Math.sin(t * 1.7) * .015;
+    camera.position.copy(from.lerp(to, kk)).add(new THREE.Vector3((Math.random() - .5) * s + hh, (Math.random() - .5) * s + Math.cos(t * 1.3) * .012, 0)); camera.lookAt(new THREE.Vector3().fromArray(sh[2]));
+    if (act === 'shock' || scr) camera.rotateZ(Math.sin(t * 3) * .06 + .08); }
   renderer.render(JRV.scene, camera);
 }
 function jrvSkip() { if (!JRV.on) return; const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(jrvEnd, 450); }

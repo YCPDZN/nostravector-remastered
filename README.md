@@ -1437,3 +1437,12 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - Evil acts please them, raise influence and pull them further.
   - Good acts cost influence and only sway them slowly. The more they trust you, the more they listen.
 - **After Terra Imperia.** Terra Imperia is gone by 2127, and the Catharsis is the threat in Chapter IV, so patrols only come in Chapter III. But a Pontifex or Sister who is a resident and **rules a resident empire** keeps a guard of their own. Challenge them from Diplomacy and beat them, and you can anoint one of their guard, a man or a woman, if that slot is free. That's how you keep making them in later chapters.
+
+### The revival, as horror
+- **The reconstruction is now a horror sequence.** James wakes on the slab mid-operation, **screaming**, strapped down. He bucks against the restraints while Hawthorne's men pin his arms. Drills come down into his chest with sparks flying and steam rising off his frozen body, and something dark spreads across the slab. The operating light flickers, a red strobe pulses, black frames cut in, and the picture warps and shakes like handheld footage while he screams. Then a hard cut to **silence**: black, then nothing but his new heartbeat, before he rises in the armour with its lights stuttering on.
+- **New lines:**
+  - Hawthorne: *"Hold him down. HOLD HIM!"* and *"Pain means the heart has taken. Bolt the armour on. Every plate. Into the bone."*
+  - James: *"STOP— please— it's inside me— I can feel it— STOP—"*
+- **Synthesised screams for now:** a distorted, voice-like synth, with new drill and searing sounds. Send recordings and I'll swap them in.
+- **Patrols, hunters and anointing** (on the ground and in space) still only begin once James is defeated, whether you spare him or kill him.
+
