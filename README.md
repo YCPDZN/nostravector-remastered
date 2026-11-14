@@ -1483,3 +1483,16 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   Destinations in another area are marked *across the network · the Nostra follows you*. You arrive by the teleporter, with your ship set down nearby and your crew with you. New London's teleporter still can't be reached this way.
 - **Planet bases stay where you built them.** A teleporter built on a planet now remembers the ground it stands on, so teleporting back puts you, and the base, in the same place. Teleporters built before this update land on a fixed dry spot on that planet, with your base laid out around you.
 
+### Mission brief, and the teleporter on phones
+- **The Mission brief follows your chapter.** It used to show only the opening (2125, Antarctica) or the 2127 time skip, so Chapters II and III, and Chapter IV before the time skip, read like Chapter I, out of step with the year shown in the corner. It now has its own text for each part of the story:
+  - Chapter I: Antarctica.
+  - Chapter II: Africa, Orion and New London.
+  - Chapter III: Hawthorne on Mars and the hunt for allies across Sol, with no spoilers past where you are.
+  - Chapter IV after the time skip: the Catharsis.
+  - Chapter V: Lord Zark and Carax.
+- **The teleporter menu on phones:**
+  - Thumb-sized Teleport buttons, and the name field fits the screen.
+  - The list scrolls inside the menu without dragging the page.
+  - With the phone on its side, the header shrinks so the list and Close both fit.
+  - Planet bases are labelled simply, e.g. *Kepler-442 b · Your base*.
+

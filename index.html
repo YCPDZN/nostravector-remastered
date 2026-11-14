@@ -697,7 +697,13 @@ button.bm-c.no{opacity:.45}
 .units-tag b{color:#ffc94a;font-weight:400;margin-left:6px;font-size:13px;letter-spacing:.1em}
 .tp-name{display:flex;gap:8px;justify-content:center;margin-bottom:10px}
 .tp-name input{background:rgba(0,0,0,.35);border:1px solid var(--line);color:var(--ink);font:inherit;font-size:11px;letter-spacing:.1em;padding:8px 10px;min-width:200px}
-.tp-list{max-height:min(52vh,460px);overflow-y:auto;width:100%}
+.tp-list{max-height:min(52vh,460px);overflow-y:auto;width:100%;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.tp-list .res-row button.mini{min-height:36px;min-width:92px} /* a teleport button a thumb can hit */
+.tp-list .inv-h{line-height:1.6}
+@media (max-width:720px){ .tp-name input{min-width:0;flex:1} .tp-list{max-height:calc(100dvh - 300px)} }
+@media (orientation:landscape) and (max-height:520px){ /* phone on its side: the header shrinks, the list takes what's left, Close stays clear */
+  #tpMenu .eyebrow{display:none} #tpMenu .h1{font-size:16px;margin:0} #tpMenu .panel{gap:8px;max-height:calc(100dvh - var(--st) - var(--sb) - 16px)}
+  .tp-name{margin-bottom:0} .tp-name input{padding:6px 8px} .tp-list{max-height:calc(100dvh - var(--st) - var(--sb) - 150px)} }
 .recipe .btn.on{border-color:#7fe0a0}
 .jwho{display:flex;flex-direction:column;gap:4px;max-width:min(420px,calc(100vw - var(--sl) - var(--sr) - 40px));max-height:min(46vh,320px);overflow-y:auto;padding-bottom:4px;border-bottom:1px solid var(--faint);margin-bottom:2px}
 .jwho button{min-width:190px!important;padding:7px 12px!important;font-size:9px!important;text-transform:none!important;letter-spacing:.12em!important}
@@ -1684,9 +1690,13 @@ function tauntList() {
 const taunt = { on: false, i: 0, tok: 0 };
 const BRIEF_START = 'The year is <b>2125 AD</b>. Beyond our small blue world, countless worlds wait in the dark. You are the Exploration Division’s lone <b>wanderer</b>, and your journey begins on the ice of <b>Antarctica</b>, where the cold will test you long before the stars do.';
 const BRIEF_CH4 = 'The year is <b>2127 AD</b>. The old world is dead. <b>Hawthorne is gone</b>, and the Exploration Division is scattered across a galaxy that no longer feels safe. The <b>Catharsis</b> is spreading, world by world, and the voice in the dark grows louder each time you close your eyes. You are still the <b>wanderer</b>. You are still standing. Find who is left, and find out what is coming, before it finds you.';
+const BRIEF_CH2 = 'The year is <b>2125 AD</b>. Betrayed on the Antarctic pier, you crossed the sea to <b>Africa</b>, where an old soldier named <b>Orion Mascar</b> took you in without asking a single question. Now the courts of <b>New London</b> want you, and someone in black and crimson is watching every step you take.';
+const BRIEF_CH3 = 'The year is <b>2125 AD</b>. <b>Hawthorne</b> has landed on Mars, and he says <b>Sol is his</b>. Aboard the <b>Nostra</b>, you hunt the system for allies: a hermit on Olympus Mons, two robots on a frozen moon, a princess of Eris. <b>Terra Imperia</b> is hunting you back, and not everyone you left behind has stayed dead.';
+const BRIEF_CH5 = 'The year is <b>2127 AD</b>. The Catharsis has a name now: <b>Lord Zark</b>, the Prime Evil. Every faction you fought, freed or bent to your will is waiting to see what the <b>wanderer</b> does next. Settle your debts, gather who is left, and finish it at <b>Carax</b>.';
+function briefNow() { const c = chNow(); return c >= 5 ? BRIEF_CH5 : postSkip() ? BRIEF_CH4 : c >= 3 ? BRIEF_CH3 : c === 2 ? BRIEF_CH2 : BRIEF_START; } // each chapter tells its own story
 function applyMenuEra() {
   const on = isCh4Menu();
-  const bt = $('#briefT'); if (bt) bt.innerHTML = postSkip() ? BRIEF_CH4 : BRIEF_START;
+  const bt = $('#briefT'); if (bt) bt.innerHTML = briefNow();
   const ys = $('#yearStamp'); if (ys) ys.textContent = postSkip() ? '2127 AD' : '2125 AD';
   const st = $('#setStyle'); if (st) { st.style.display = chNow() >= 5 ? '' : 'none'; st.querySelector('.val').textContent = menuStyle === 'red' ? 'BLOOD RED' : 'NORMAL'; }
   document.body.classList.toggle('ch4', on);
@@ -6395,7 +6405,7 @@ function renderTp() {
   for (const t of list) (byArea[t.area] = byArea[t.area] || []).push(t);
   let h = '';
   for (const [area, ts] of Object.entries(byArea)) {
-    const PB = area.startsWith('pl:') ? bodyById(area.slice(3)) : null, A = AREA_INFO[area] || (PB ? { planet: PB.name, name: `your base on ${PB.name}` } : { planet: '?', name: area }), here0 = area === curArea(), far = !here0 && tpFarOk(area), reach = here0 || far, cur = AREA_INFO[curArea()] || { planet: '' };
+    const PB = area.startsWith('pl:') ? bodyById(area.slice(3)) : null, A = PB ? { planet: PB.name, name: 'Your base' } : AREA_INFO[area] || { planet: '?', name: area }, here0 = area === curArea(), far = !here0 && tpFarOk(area), reach = here0 || far, cur = AREA_INFO[curArea()] || { planet: '' };
     h += `<div class="inv-h" style="margin-top:12px">${A.planet} · ${A.name}${here0 ? '' : far ? ' · across the network' : A.planet === cur.planet ? (ferryOpen() ? ' · take the ferry to get here' : ' · reach it by sea first') : ' · reach this planet by ship first'}</div>`;
     h += ts.map(t => {
       const self = here && t.id === here.id, d = Math.round(Math.hypot(t.x - player.position.x, t.z - player.position.z));
