@@ -1759,7 +1759,7 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 ## Chapter III: Hak Chompjak's call, Karribassa, and Terra Imperia's surge
 - **Janira Proxima has moved next to Sol:** 2,081 light-years away, one jump with the first hyperdrive. It's moved after the galaxy is generated, so the other 490 systems (and every save's colonies, lairs and residents) stay exactly where they were. Chompy space around its old spot stays Chompy. Lore that put the Republic of Timpur "beyond Janira Proxima" now says "at the very tip of the outer spiral arm".
 - **Hak calls you.** After your second visit to Charon and Kizna (which comes once James Brown is spared or killed), Hak Chompjak sends an incoming transmission a few seconds after their goodbye, the next time you're free on the ground. His spies have gone quiet, Hawthorne's fleets are over Venus, and he wants you in **Karribassa**. New main quest: *Meet Hak Chompjak in Karribassa, on Janira Prime*. Janira Prime gets a gold marker in its system, and Hak waits by your ship at the spaceport.
-- **The meeting** (6 lines, which change with Alexia's coup and with whether you allied with the Chompy Empire) gives 300 XP. Saved as `ch3.hakCall` and `ch3.hakMet`.
+- **The meeting** (6 lines; one changes with whether you allied with the Chompy Empire, and Alexia already rules Eris by now) gives 300 XP. Saved as `ch3.hakCall` and `ch3.hakMet`.
 - **Terra Imperia's surge starts as Hak's call ends:**
   - **Earth falls** and becomes the Grand Imperarch's capital (Terra Imperia's capital moves from Venus to Earth). You can still land on Earth, including Antarctica and Ad-Nostra.
   - **The Federation flees to Mars**, its capital in exile. Darius Ancin's hall moves there.
@@ -1769,5 +1769,5 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - **Taking worlds back:** any world Terra Imperia seizes can be bombarded and captured like Mercury and Venus, and comes back as your colony. Worlds the Erisians take need a war with them (Diplomacy).
   - Saved in `dip().surge`. It only runs in Chapter III, and not if Terra Imperia is already beaten.
 - **Unvoiced for now:** Hak's call and the meeting are subtitles only.
-- **Voice slots ready:** Hak's lines play from `data/hakVoices.js` once it exists. CH3HAKCALL1–3 are slots 0–2 (the call) and CH3HAKMEET1–8 are slots 3–10 (the meeting, including the alternative lines). Until then they show as subtitles.
+- **Voice slots ready:** Hak's lines play from `data/hakVoices.js` once it exists. CH3HAKCALL1–3 are slots 0–2 (the call) and CH3HAKMEET1–7 are slots 3–9 (the meeting, including both versions of the alliance line). Until then they show as subtitles.
 - **On phones:** the new objectives, the space markers (which never wrap), the talk prompt, the goal line in space, the notices and the messages all have short versions, so they fit small screens upright and sideways. The return-to-Charon objective, marker and messages got short phone versions too.
