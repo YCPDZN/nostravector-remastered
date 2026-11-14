@@ -1739,3 +1739,8 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 ## Companion damage, by level
 - **Every companion's damage grows with their own level** (`COMP_DPS`, `compDps` and `compHit`, just after `compLevel`). Nico starts strongest; Orion and Khazglar start weaker and grow faster, and overtake her as they level up (Orion around player level 41, Khazglar around 60 against one target, sooner in a crowd thanks to his splash). Everyone else is 16 + their level per second, kept below Nico; Chapter I James is 8 + half his level.
 - **The level rule you use now applies to companions** (`compGap`): +4% a level above the foe, up to ×2, and −4% a level below, down to ×0.3. They don't get one-shots, and against bosses their bonus stops at ×1.25.
+
+## Chapter III: back to Charon
+- **After James Brown, spared or killed,** a new main quest appears: *Return to Charon and speak to Charon and Kizna*. Charon is marked in gold in space (*MAIN QUEST · CHARON AND KIZNA*), and the two robots wait by your ship when you land. No Terra Imperia patrols land while they're there.
+- **What they say depends on James's fate.** If you killed him, Charon is sorry for your loss and Kizna warns that Hawthorne will want a new Pontifex Maximus, and you. If you spared him, Charon jokes about hiding the reactor and Kizna warns that Hawthorne and his Sisters won't forgive it. Either way, Charon has dropped another mountain on Hawthorne's drill crews, and Kizna says the alignment is close. Unvoiced for now (subtitles).
+- **Completing it** gives 250 XP and saves `ch3.charonBack`. Charon and Kizna don't join your crew yet.

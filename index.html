@@ -5095,7 +5095,7 @@ function renderTasks() {
   if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
   if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? campTasks(p, task) : '');
   if (curArea() === 'africa' || ((wanderer.chapter | 0) >= 2 && p.escaped)) h = ch2Tasks(task); // Chapter II's objectives follow you, even back to Antarctica
-  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (c3.hawMars && (wanderer.chapter | 0) === 3 ? task(!!c3.charonLanded, 'Main quest · Head to Charon') : '') + (c3.charonLanded && (wanderer.chapter | 0) === 3 ? task(!!c3.charonMet, 'Meet Charon and Kizna on Charon') : '') + (c3.jamesRev ? task(!!c3.jamesFate, 'Main quest · Defeat James Brown at the Antarctic station') : '') + (tiWarOn() ? task(false, `War · take Mercury and Venus from Terra Imperia · bombard, land, defeat the governor (${TI_WORLDS.filter(id => dip().col[id]).length}/2)`) : '') + (c3.hawMars ? (!c3.nyxJoined && c3.jamesFate ? '' : !c3.nyxJoined && c3.nyxFailed ? '<div class="x-task failed"><i></i><span>FAILED: <s>Recruit Nyrexia Erisconos on Eris</s></span></div>' : task(!!c3.nyxJoined, 'Side quest (optional) · Recruit Nyrexia Erisconos on Eris')) : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
+  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (c3.hawMars && (wanderer.chapter | 0) === 3 ? task(!!c3.charonLanded, 'Main quest · Head to Charon') : '') + (c3.charonLanded && (wanderer.chapter | 0) === 3 ? task(!!c3.charonMet, 'Meet Charon and Kizna on Charon') : '') + (c3.jamesRev ? task(!!c3.jamesFate, 'Main quest · Defeat James Brown at the Antarctic station') : '') + (c3.jamesFate && (wanderer.chapter | 0) === 3 ? task(!!c3.charonBack, 'Main quest · Return to Charon and speak to Charon and Kizna') : '') + (tiWarOn() ? task(false, `War · take Mercury and Venus from Terra Imperia · bombard, land, defeat the governor (${TI_WORLDS.filter(id => dip().col[id]).length}/2)`) : '') + (c3.hawMars ? (!c3.nyxJoined && c3.jamesFate ? '' : !c3.nyxJoined && c3.nyxFailed ? '<div class="x-task failed"><i></i><span>FAILED: <s>Recruit Nyrexia Erisconos on Eris</s></span></div>' : task(!!c3.nyxJoined, 'Side quest (optional) · Recruit Nyrexia Erisconos on Eris')) : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
   if ((wanderer.chapter | 0) >= 3) { const tq = sqTracked(); if (tq) h += `<div class="x-task sq-task"><i></i><span>${tq}</span></div>`; } // the side quest you're tracking
   xUI.tasks.innerHTML = h;
   $('#xChap').textContent = liveChapterLabel().toUpperCase();
@@ -12500,6 +12500,7 @@ function setC3(o) { wanderer.ch3 = Object.assign({}, wanderer.ch3, o); const c =
 const ch3Now = () => !!wanderer && (wanderer.chapter | 0) === 3;
 function chnQ() { const c = CH3S(); return ch3Now() && !!c.charonLanded && !c.charonMet; }
 function jamesQ() { const c = CH3S(); return !!c.jamesRev && !c.jamesFate; }
+function chnBackQ() { const c = CH3S(); return ch3Now() && !!c.jamesFate && !c.charonBack; } // after James, spared or killed: back to Charon to speak to Charon and Kizna
 function pontOpen() { return !!CH3S().jamesFate; }
 function jamesKilled() { return CH3S().jamesFate === 'killed'; }
 const PONTS = () => (wanderer && wanderer.ponts) || [];
@@ -12553,7 +12554,7 @@ const TIW = { area: null, chn: null, st: null, pat: null, hunt: null };
 function tiWorldClear() { for (const k of ['chn', 'st', 'pat', 'hunt', 'gov']) { const o = TIW[k]; if (o && o.R) for (const R of o.R) if (R && R.cb) { const i = fauna.list.indexOf(R.cb); if (i >= 0) fauna.list.splice(i, 1); } if (o && o.g && o.g.parent) o.g.parent.remove(o.g); TIW[k] = null; } }
 function tiLanded(P) {
   tiWorldClear(); TIW.area = curArea(); if (!P) return;
-  if (P.id === 'charon' && chnQ()) chnPlace().catch(e => console.error(e));
+  if (P.id === 'charon' && (chnQ() || chnBackQ())) chnPlace().catch(e => console.error(e));
   if (P.id === 'earth' && jamesQ()) stationPlace();
   if (CH3S().charonMet && !CH3S().jamesRev && ch3Now()) jrvWhenFree(3200); // you left before it played: it finds you on the next world
   if (P.sys === 'sol' && !P.dock) tiEncounters(P);
@@ -12603,7 +12604,7 @@ function tiNear(p) {
   return null;
 }
 function tiUse(n) {
-  if (n.id === 'chn') chnTalk();
+  if (n.id === 'chn') (chnBackQ() ? chnBackTalk : chnTalk)();
   else if (n.id === 'tiStation') jbfVoices().then(() => { const X = jamesSpec(), L = [ // through the door, before you've even opened it
       'I can hear you out there. I’d know those footsteps anywhere. I listened to them walk away down that pier while the water filled my lungs.',
       'Do you know what the cold does? It takes your fingers. Then your voice. Then you can’t even scream. I screamed for you anyway. Every second, until I couldn’t.',
@@ -12638,12 +12639,12 @@ function bossBark(Bd, k, ms) { vbark(Bd.short, Bd.lines[k], ms, Bd.vo === 'jbf' 
 async function chnPlace() {
   if (!TIW.chnVo) TIW.chnVo = loadDataScript('chnVoices').then(() => sfx.loadClips('chnVoices')).catch(() => []); // voiced: CH3CHARON1–5
   const area = curArea(), [C, K] = await Promise.all([companionRig('charon').catch(() => null), companionRig('kizna').catch(() => null)]);
-  if (curArea() !== area || !chnQ() || !C) return;
+  if (curArea() !== area || !(chnQ() || chnBackQ()) || !C) return;
   const g = new THREE.Group(), x = -5, z = 11; wScene.add(g);
   const put = (R, px, pz) => { if (!R) return; R.root.position.set(px, wHeight(px, pz), pz); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); g.add(R.root); };
   put(C, x, z); put(K, x - 2.4, z + .6);
   TIW.chn = { g, R: [C, K], face: true, x: x - 1.2, z: z + .3 };
-  setTimeout(() => lootMsg('Two robots are waiting by your ship · go and talk to them', compColor('charon')), 2600);
+  setTimeout(() => lootMsg(chnBackQ() ? 'Charon and Kizna are waiting by your ship · go and talk to them' : 'Two robots are waiting by your ship · go and talk to them', compColor('charon')), 2600);
 }
 async function chnTalk() {
   pdMeet('charon', 'kizna');
@@ -12663,6 +12664,25 @@ async function chnTalk() {
   run(0);
 }
 
+// back on Charon after James Brown, spared or killed (unvoiced for now: subtitles)
+function chnBackTalk() {
+  pdMeet('charon', 'kizna');
+  const L = (jamesKilled() ? [
+    ['CHARON', 'You’re back. We heard the station go quiet. I’m sorry. Whatever he became, he was your friend once.'],
+    ['KIZNA', 'Hawthorne lost his Pontifex Maximus today. He’ll want a new one. And he’ll want you.']
+  ] : [
+    ['CHARON', 'You’re back. And you let the man who tried to freeze you walk out of there alive. Kizna, hide the reactor.'],
+    ['KIZNA', 'We heard what happened at the station. You spared him. Hawthorne won’t forgive that, and neither will his Sisters.']
+  ]).concat([
+    ['CHARON', 'While you were gone, Hawthorne’s drill crews came back. I dropped another mountain on them. I’m running out of mountains.'],
+    ['KIZNA', 'The alignment is close. Keep your comms open, wanderer. When this moon can spare us, you’ll be the first to know.']
+  ]);
+  const run = i => { if (i < L.length) { openDialog(L[i][0], [L[i][1]], false, () => run(i + 1)); return; }
+    setC3({ charonBack: true }); renderTasks(); sfx.chime(); gainXP(250, 'Spoke to Charon and Kizna');
+    notice('Main quest', 'YOU SPOKE TO CHARON AND KIZNA', 3400);
+  };
+  run(0);
+}
 // the stronghold: the old research station, fortified, in Terra Imperia's crimson
 function stationPlace() { // landed somewhere else on Earth: point the way (the stronghold is the real station, at its marker)
   setTimeout(() => lootMsg('James Brown holds the old research station · follow the gold ANTARCTICA marker in the sky and land there, or fly there from your ship’s helm', '#ff6a6e'), 3200); return;
@@ -12705,7 +12725,7 @@ function tiEncounters(P) {
   if (!isPl() || DGN.on) return;
   const hunters = PONTS().filter(o => o.st === 'hunt');
   if (hunters.length && Math.random() < .6) { hunterPlace(pick(hunters)); return; }
-  if (ch3Now() && pontOpen() && Math.random() < .5 && !(P.id === 'charon' && chnQ()) && !(P.id === 'earth' && jamesQ())) patrolPlace();
+  if (ch3Now() && pontOpen() && Math.random() < .5 && !(P.id === 'charon' && (chnQ() || chnBackQ())) && !(P.id === 'earth' && jamesQ())) patrolPlace();
 }
 function patrolPlace() {
   const area = curArea(), [x, z] = tiSpot(22, 32), g = new THREE.Group(); wScene.add(g);
@@ -15746,7 +15766,7 @@ function spaceHudTick(P, alt, fwd) {
     if (wp) { const v3 = wp.project(camera); if (v3.z < 1) { const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H, q = jamesQ();
       h += `<div class="sh-mk${q ? ' gold' : ''}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${q ? 'ANTARCTICA · THE STATION' : 'ANTARCTICA · YOUR BASE'}<br><small>${q ? 'JAMES BROWN · MAIN QUEST' : 'CHAPTER I CAMP'} · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`; } }
   }
-  if (SPC.sys === 'sol') for (const [on, id, label, sub, cls] of [[charonQ(), 'charon', 'CHARON', 'MAIN QUEST', 'gold'], [chnQ(), 'charon', 'CHARON', 'MEET CHARON AND KIZNA', 'gold'], [nyxQ(), 'eris', 'ERIS', 'NYREXIA · OPTIONAL', 'nyx']]) { // the quests' destinations
+  if (SPC.sys === 'sol') for (const [on, id, label, sub, cls] of [[charonQ(), 'charon', 'CHARON', 'MAIN QUEST', 'gold'], [chnQ(), 'charon', 'CHARON', 'MEET CHARON AND KIZNA', 'gold'], [chnBackQ(), 'charon', 'CHARON', 'MAIN QUEST · CHARON AND KIZNA', 'gold'], [nyxQ(), 'eris', 'ERIS', 'NYREXIA · OPTIONAL', 'nyx']]) { // the quests' destinations
     if (!on) continue; const Q = SPC.bodies.find(o => o.id === id); if (!Q) continue;
     const d = SPC.pos.distanceTo(Q.pos) - Q.r, v3 = tmpVs.copy(Q.pos).project(camera); if (v3.z >= 1) continue;
     const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; h += `<div class="sh-mk ${cls}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${label}<br><small>${sub} · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`;
