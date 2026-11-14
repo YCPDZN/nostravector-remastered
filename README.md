@@ -1374,3 +1374,28 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **Not yet:** the **Final Boss theme** (`data/thFinal.js`) is stored for Lord Zark's Chapter IV story battle (level 60, on Carax), which isn't built yet. Hawthorne (Terra Imperia) has no hall.
 - Files: themes in `data/thHak.js`, `thPrimeGood.js`, `thEris.js`, `thDarius.js`, `thLightEgg.js`, `thWrong.js`, `thPrimeEvil.js`, `thFinal.js` (originals in `assets/audio/leaders_themes`); Archamus unhooded in `data/prArchamusU.js` (`assets/models/primes/archamus_unhooded.glb`). They load only when needed.
 
+## Croxian, without his helmet
+- **As your companion**, Croxian Mascar no longer wears his helmet. Under it he has his father's face (Orion's, without the beard or the cybernetic eye) and Orion's short brushed hair, cut shorter and **black**. He keeps his armour, collar, cloak and scythe.
+- This is the companion's model only (`data/cpCroxianU.js`, also `assets/models/companions/croxian_unhelmeted.glb`): wherever your companion Croxian appears (your crew, his Nostrapedia companion page). The story's Croxian (Chapters I and II, the nightmare, Terra Imperia's general) keeps his helmet.
+- Built from the two original models by `nightmare/tools/croxian_unhelmet.py` (`python3 croxian_unhelmet.py data/cpCroxian.js data/cpOrion.js out.glb`).
+- **His height:** your companion Croxian now stands **1.85 m, the same as his father Orion**. He used to come out at about 1.34 m: the game sized characters by everything in their model, and his scythe reaches far above his head, so the scythe was being fitted to his height (and pulled him off-centre). A first fix missed most of the scythe's parts (the loader spells their names with underscores), so he still came out short; now the whole scythe is left out of the measurement. Carried weapons no longer count toward anyone's height, in the game and in the Nostrapedia; Croxian was the only character affected. (The story's Croxian in Chapters I and II is unchanged.)
+- **Nostrapedia too:** Croxian's entry in the Companions section of the Nostrapedia now shows him at 1.85 m, beside Orion at the same height (it sized him by his scythe as well).
+
+## Javek, and meeting Chapter III's people
+
+- **Javek** joins the Nostrapedia twice: under **Companions** and under **Ancient Figures**. Both files stay **[Redacted] until Chapter IV**, when he appears. He's the last leader of the Grob Robotic Collective, the one Shakhak Chompjak beat at Steca, written to fit the lore already in the Nostrapedia (Shakhak, Lianna, Obsidnia).
+- **His model** (`data/cpJavek.js`, `assets/models/companions/javek.glb`) is your rigged Javek with the **red optical sensor and the smoked lens taken out** (and their glints). **Green eyes** now sit in both goggle rings: a white eyeball, a glowing green iris and a dark pupil, skinned to his head bone so they move with him. Built by `nightmare/tools/javek_green_eyes.py`.
+- **Chapter III's people are classified until you meet them.** Reaching Chapter III no longer opens their files on its own. Each file reads *"Unlocks in Chapter III, when you meet them"* until you do:
+  - **Terra Imperia:** Hawthorne opens at the trial, in the Human nightmare or after his Mars speech. Alexia opens in the Erisian vision or at the Citadel. James, Malia and Croxian open where the story put you face to face with them.
+  - **Companions:** Charon and Kizna open once you land on Charon. Nyrexia opens when you speak to her in the Citadel. Croxian, Malia and James open as above.
+  - **The four leaders** open when you meet them (a dream, the story, the Citadel for Vishara) or face them in their hall. Your own race's leader still opens after Chapter I's first night.
+  - Once you're past Chapter III, everyone from it is open, apart from leaders you have never met or fought.
+- **Green eyes in both files:** the Ancient Figures Javek uses the same green-eyed model as the companion. Nothing in the game uses the red optic.
+- **Javek the fugitive (companion):** the companion Javek wears **Hak Chompjak's style of glasses** (taken from Hak's own model: round lenses, navy frames, a V bridge, a glint; the blue tint is lighter so his green eyes show through) over a matching pair of green eyes, a **black hood** (open at the face, his long ears out through the sides) and a **black cape** to the backs of his knees. The hood is skinned to his head; the cape follows his chest, spine and hips as he walks. The goggles, their bolts and strap are gone. Model: `data/cpJavekC.js` / `assets/models/companions/javek_fugitive.glb`, built by `nightmare/tools/javek_fugitive.py` from the green-eyed model and `data/leader_chompy.js` (for Hak's glasses). The **Ancient Figures** Javek keeps his goggles with green eyes.
+- **2014:** both files now say Javek came face to face with **Director Josiah Richards**, a British civil servant in the Cabinet Office, over a set of schematics. That's this world's Josiah Richards, the great-grandfather of Josiah Williams II, not the Prime Secretary.
+
+
+## Phones
+
+- **Lighter start-up:** Javek's two models and the helmetless Croxian (about 9 MB together) no longer download when the game starts. Each one loads the first time it's actually shown: in the Nostrapedia, as a companion, or as an Adventure hero.
+- **Classified labels fit:** on a phone, the "when you meet them" labels shorten to *Ch. III · once met* / *Ch. III · meet or fight them*, and every Nostrapedia label wraps instead of widening the list.
