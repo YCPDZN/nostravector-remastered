@@ -76,6 +76,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 .mi.active span small{color:var(--mute)}
 .roster-empty{padding:18px 4px;font-size:9.5px;letter-spacing:.26em;color:var(--mute);text-transform:uppercase;border-bottom:1px solid var(--faint)}
 .sub-head{padding:0 4px 16px;font-size:9px;letter-spacing:.5em;color:var(--mute);text-transform:uppercase}
+#cutList{max-height:min(56vh,560px);overflow-y:auto;overscroll-behavior:contain}#cutList .mi span{white-space:normal;min-width:0}#cutList .mi small{white-space:normal}.cuts-more{padding:14px 4px 10px;letter-spacing:.32em;white-space:normal}
 .brief{font-size:10.5px;line-height:2.1;letter-spacing:.2em;color:var(--mute);text-transform:uppercase;margin:0;padding:18px 4px;border-bottom:1px solid var(--faint)}
 .brief b{color:var(--ink);font-weight:400}
 .foot{display:flex;flex-wrap:wrap;gap:8px 28px;font-size:8.5px;letter-spacing:.32em;color:var(--mute);text-transform:uppercase}
@@ -1126,7 +1127,8 @@ body.touch .al-key{display:none}
       <button class="mi" data-go="mBrief"><i>05</i><span>Mission brief</span><em class="arr">›</em></button>
       <button class="mi" id="ccBtn"><i>06</i><span>Custom creations</span><em class="arr">›</em></button>
       <button class="mi" id="pediaBtn"><i>07</i><span>Nostrapedia</span><em class="arr">›</em></button>
-      <button class="mi" data-go="mSettings"><i>08</i><span>Settings</span><em class="arr">›</em></button>
+      <button class="mi" id="cutsBtn"><i>08</i><span>Cutscenes</span><em class="arr">›</em></button>
+      <button class="mi" data-go="mSettings"><i>09</i><span>Settings</span><em class="arr">›</em></button>
     </nav>
     <div class="menu off" id="mBrief">
       <p class="brief" id="briefT">The year is <b>2125 AD</b>. Beyond our small blue world, countless worlds wait in the dark. You are the Exploration Division’s lone <b>wanderer</b>, and your journey begins on the ice of <b>Antarctica</b>, where the cold will test you long before the stars do.</p>
@@ -1146,6 +1148,11 @@ body.touch .al-key{display:none}
       <button class="mi" id="mSave"><i>01</i><span>Save game</span><em class="val" id="mSaveVal"></em></button>
       <button class="mi" id="mLoad"><i>02</i><span>Load game</span><em class="arr">›</em></button>
       <button class="mi danger" id="mDelete"><i>03</i><span>Delete save</span><em class="arr">›</em></button>
+      <button class="mi back" data-go="mMain"><i>‹</i><span>Back</span></button>
+    </div>
+    <div class="menu off" id="mCuts">
+      <div class="sub-head" id="cutsHead">Cutscenes</div>
+      <div id="cutList"></div>
       <button class="mi back" data-go="mMain"><i>‹</i><span>Back</span></button>
     </div>
     <div class="menu off" id="mSettings">
@@ -1955,7 +1962,7 @@ function menuSpaceSet(W) {
     const h = new THREE.Mesh(new THREE.SphereGeometry(1300, 32, 24), new THREE.MeshBasicMaterial({ color: 0 })); h.position.copy(hp).multiplyScalar(.97); MSP.world.add(h);
   }
   else { const c = glowSprite(st.col, 2200, 1); c.position.copy(sd); MSP.world.add(c); const g = glowSprite(st.col, 9000, .55); g.position.copy(sd); MSP.world.add(g); }
-  MSP.sunL.position.set(9000, 4000, 7000); MSP.sunL.target.position.set(-2600, -900, -6600); // lit from over your shoulder, so you see its day side MSP.sunL.color.set(red ? 0xff8a6a : st.light); MSP.sunL.intensity = st.kind === 'hole' ? 1.9 : 2.6;
+  MSP.sunL.position.set(9000, 4000, 7000); MSP.sunL.target.position.set(-2600, -900, -6600); MSP.sunL.color.set(red ? 0xff8a6a : st.light); MSP.sunL.intensity = st.kind === 'hole' ? 1.9 : 2.6; // lit from over your shoulder, so you see its day side
   MSP.stars.rotation.set(S.map.y * 2.1, S.map.x * 3.3, .5 + S.map.x);
   MSP.scene.background.set(red ? 0x0a0103 : 0x010103);
   MSP.hemi.color.set(red ? 0xb04030 : 0x8090b0);
@@ -2837,6 +2844,7 @@ function refreshMenu() {
   const has = roster.length > 0;
   startBtn.style.display = has ? '' : 'none';
   rosterBtn.style.display = has ? '' : 'none';
+  $('#cutsBtn').style.display = has ? '' : 'none';
   applyMenuEra();
   $('#activeName').textContent = has ? `${wanderer.name} · LV ${levelOf(wanderer)}` : '';
   menuCompanion(); menuWhereUI();
@@ -3305,7 +3313,7 @@ function endIntro() {
   sfx.stopVoice(); showQuote(-1);
   state = 'introOut';
   const f = $('#fade'); f.style.opacity = 1;
-  setTimeout(() => { show(ui.intro, false); enterCreate(); f.style.opacity = 0; }, 650);
+  setTimeout(() => { show(ui.intro, false); if (!cutDone()) enterCreate(); f.style.opacity = 0; }, 650); // replayed from Cutscenes: back to the menu, not the creator
 }
 
 /* ============ character creator ============ */
@@ -3966,6 +3974,7 @@ function finishCutscene() {
     if (james.ready) james.root.visible = false;
     player.visible = true; inner.visible = true; resetRig();
     sfx.wind(0); cs.heartRate = 0;
+    if (CUT.on) { cutDone(); f.style.transition = 'opacity 1.4s'; setTimeout(() => { f.style.transition = ''; }, 1500); return; } // replayed from Cutscenes
     const cur = roster.find(x => x.id === activeId);
     if (cur && (cur.chapter | 0) < 1) { cur.chapter = 1; wanderer.chapter = 1; saveRoster(); }
     refreshMenu();
@@ -5014,6 +5023,7 @@ function endCh2Intro() {
   setTimeout(() => {
     renderer.domElement.style.filter = ''; ciFx(0, 0, 0); camera.up.set(0, 1, 0);
     if (ci.orion) ci.orion.root.visible = false;
+    if (CUT.on) { fcEl.classList.remove('on', 'black', 'title', 'title2'); ci.done = false; cutDone(); return; } // replayed from Cutscenes: no narration, nothing saved
     wanderer.ch2 = Object.assign({}, wanderer.ch2, { started: true, introSeen: true }); const c = curChar(); if (c) c.ch2 = wanderer.ch2; saveRoster();
     scene.add(player); scene.add(particles); resetRig(); inner.rotation.set(0, 0, 0); inner.position.set(0, 0, 0); player.position.set(0, height(0, 0), 0);
     ui.xhud.classList.remove('cineonly'); show(ui.xhud, false);
@@ -10651,7 +10661,7 @@ function dgnTick(dt) {
 function dgnDown() { // you fell
   if (DGN.downing) return; DGN.downing = true;
   const fight = !!DGN.boss;
-  if (fight && DGN.lair && DGN.lair.tiKind === 'pont') { const id = DGN.lair.tiRef; pontKilledYou(id); if (TIW.hunt && TIW.hunt.P && TIW.hunt.P.id === id) { if (TIW.hunt.g.parent) TIW.hunt.g.parent.remove(TIW.hunt.g); TIW.hunt = null; } setTimeout(() => { if (DGN.on && DGN.lair && DGN.lair.tiKind === 'pont') { try { dgnBossClear(); } catch (e) {} dgnLeave(); } }, 3000); } // they leave you for dead, and come back stronger state = 'loadingCh'; vel.set(0, 0, 0);
+  if (fight && DGN.lair && DGN.lair.tiKind === 'pont') { const id = DGN.lair.tiRef; pontKilledYou(id); if (TIW.hunt && TIW.hunt.P && TIW.hunt.P.id === id) { if (TIW.hunt.g.parent) TIW.hunt.g.parent.remove(TIW.hunt.g); TIW.hunt = null; } setTimeout(() => { if (DGN.on && DGN.lair && DGN.lair.tiKind === 'pont') { try { dgnBossClear(); } catch (e) {} dgnLeave(); } }, 3000); } state = 'loadingCh'; vel.set(0, 0, 0); // they leave you for dead, and come back stronger
   const bo = $('#blackout'); bo.style.transition = 'opacity 1.1s'; bo.style.opacity = 1;
   notice(fight ? (DGN.lair ? `${DGN.boss.Bd.short} put you down` : 'Khazglar’s hammer put you down') : 'You blacked out', fight ? 'THE FIGHT STARTS AGAIN' : 'ORION DRAGGED YOU BACK TO THE STAIRS', 3200);
   setTimeout(() => {
@@ -11466,7 +11476,7 @@ function lairBossWin() {
 const LEAD_TH = {}; // theme buffers, loaded on first use
 async function leaderTheme(k) {
   if (!k) return null;
-  if (k === 'laniakea') return LEAD_TH[k] || (LEAD_TH[k] = sfx.combatBuf(COMBAT_TRACKS.indexOf('Wonders of Laniakea (Combat)')).catch(() => null)); // a combat track already in the game const id = { hak: 'thHak', eris: 'thEris', darius: 'thDarius', lightEgg: 'thLightEgg', wrong: 'thWrong', primeEvil: 'thPrimeEvil', final: 'thFinal', primeGood: 'thPrimeGood' }[k]; if (!id) return null;
+  if (k === 'laniakea') return LEAD_TH[k] || (LEAD_TH[k] = sfx.combatBuf(COMBAT_TRACKS.indexOf('Wonders of Laniakea (Combat)')).catch(() => null)); const id = { hak: 'thHak', eris: 'thEris', darius: 'thDarius', lightEgg: 'thLightEgg', wrong: 'thWrong', primeEvil: 'thPrimeEvil', final: 'thFinal', primeGood: 'thPrimeGood' }[k]; if (!id) return null; // a combat track already in the game
   if (!LEAD_TH[k]) LEAD_TH[k] = loadDataScript(id).then(() => sfx.loadClips(id)).then(c => (c && c[0]) || null).catch(() => null);
   return LEAD_TH[k];
 }
@@ -11498,7 +11508,7 @@ function leadSpec(key) { // the leaders: their moves, their words, their model, 
       lines: { intro: 'I have guided the Grek since before their stars were named. Kneel, and be guided.', p2: 'Then see me as I am.', p3: 'I AM THE PRIME GOOD.', win: 'Even good… must yield… sometimes…' } },
     archamusU: { boss: 'Archamus', full: 'Archamus, unmasked', lv: 100, theme: 'lightEgg', load: leadArchamusU, core: ['nova', 'rain', 'blink', 'spiral'], p2: ['pull', 'cross'], sig: 'rain', seq: ['rain', 'nova', 'blink', 'spiral', 'nova'],
       lines: { intro: 'My champion has fallen. Then I will stand in his place, as I am.', p2: 'Look at me. Few ever have.', p3: 'I AM THE PRIME GOOD.', win: 'Even good… must yield… sometimes…' } },
-    amgrek: { boss: 'Am-Grek', full: 'Am-Grek, High Hierarch', lv: 85, theme: 'laniakea', // Wonders of Laniakea (Combat), for now load: async () => { const R = await brawlRig({ sp: 'grek', c: [0x3a4a2e, 0xd8b060], name: 'AM-GREK' }); if (R) armRig(R, 'sword'); return R; }, core: ['slam', 'leap', 'charge', 'nova'], p2: ['summon', 'rain'], sig: 'cross', seq: ['leap', 'slam', 'nova', 'charge', 'slam'],
+    amgrek: { boss: 'Am-Grek', full: 'Am-Grek, High Hierarch', lv: 85, theme: 'laniakea', load: async () => { const R = await brawlRig({ sp: 'grek', c: [0x3a4a2e, 0xd8b060], name: 'AM-GREK' }); if (R) armRig(R, 'sword'); return R; }, core: ['slam', 'leap', 'charge', 'nova'], p2: ['summon', 'rain'], sig: 'cross', seq: ['leap', 'slam', 'nova', 'charge', 'slam'], // Wonders of Laniakea (Combat), for now
       lines: { intro: 'Archamus guides my hand. It has never missed.', p2: 'Grek! The faithful stand with me!', p3: 'BY ARCHAMUS’S WILL!', win: 'Forgive me… Prime Good…' } },
     zark: { boss: 'Zark', full: 'Lord Zark, the Prime Evil', lv: 100, theme: 'primeEvil', load: leadTag('prZark', 3.6), core: ['nova', 'spiral', 'pull', 'blink'], p2: ['rain', 'cross'], sig: 'sweep', seq: ['spiral', 'blink', 'nova', 'pull', 'spiral'],
       lines: { intro: 'I made Sevirrus. I can unmake you.', p2: 'The dark has teeth, little thing.', p3: 'I AM THE PRIME EVIL.', win: 'This changes… nothing…' } }
@@ -12289,7 +12299,7 @@ async function hwmBuild() {
   const ship = HWM.ship = hwmShip(); ship.position.set(0, 40, -62); S.add(ship);
   // the ramp, a dais at its foot, and Terra Imperia's banners either side
   const dark = new THREE.MeshStandardMaterial({ color: 0x1c1e22, metalness: .7, roughness: .45 }), red = new THREE.MeshStandardMaterial({ color: 0x8a0e14, roughness: .7, side: THREE.DoubleSide, emissive: 0x2a0204, emissiveIntensity: .6 });
-  const ramp = new THREE.Mesh(new THREE.BoxGeometry(9, .8, 40), dark); ramp.position.set(-10, 13, -27); ramp.rotation.x = .62; // down from the ship's belly to the dust behind him ramp.castShadow = ramp.receiveShadow = true; S.add(ramp);
+  const ramp = new THREE.Mesh(new THREE.BoxGeometry(9, .8, 40), dark); ramp.position.set(-10, 13, -27); ramp.rotation.x = .62; ramp.castShadow = ramp.receiveShadow = true; S.add(ramp); // down from the ship's belly to the dust behind him
   const dais = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.8, .6, 24), dark); dais.position.set(-10, .3, -6); dais.receiveShadow = true; S.add(dais);
   const emb = canvasTex(256, 512, (c, w, h) => { c.fillStyle = '#7a0a10'; c.fillRect(0, 0, w, h); c.strokeStyle = '#1a0204'; c.lineWidth = 14; c.strokeRect(10, 10, w - 20, h - 20); c.fillStyle = '#120204'; c.beginPath(); c.moveTo(w / 2, 120); c.lineTo(w / 2 + 70, 230); c.lineTo(w / 2, 340); c.lineTo(w / 2 - 70, 230); c.closePath(); c.fill(); c.fillStyle = '#d0343a'; c.beginPath(); c.arc(w / 2, 230, 26, 0, 7); c.fill(); });
   for (const x of [-18, -2]) { const pole = new THREE.Mesh(new THREE.CylinderGeometry(.15, .15, 12, 8), dark); pole.position.set(x, 6, -8); S.add(pole); const b = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 7), new THREE.MeshStandardMaterial({ map: emb, side: THREE.DoubleSide, roughness: .8 })); b.position.set(x, 8, -7.9); S.add(b); }
@@ -12434,6 +12444,7 @@ function hwmEnd() {
   renderer.domElement.style.filter = ''; if (HWM.bars) HWM.bars.classList.remove('on'); ui.xhud.classList.remove('cutting');
   if (HWM.scene) { if (HWM.haw) HWM.scene.remove(HWM.haw.root); for (const T of HWM.troops) HWM.scene.remove(T.R.root); try { disposeOwned(HWM.scene); } catch (e) {} } // the people share their models with the rest of the game: only the set is thrown away
   HWM.scene = null; HWM.haw = null; HWM.ship = null; HWM.troops = []; HWM.dust = null; HWM.hail = false; HWM.ending = false; HWM.raise = false;
+  if (CUT.on) { cutDone(); return; } // replayed from Cutscenes
   wanderer.ch3 = Object.assign({}, wanderer.ch3, { hawMars: true }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster();
   state = 'explore'; ex.snap = true; clock.getDelta();
   const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0;
@@ -13014,6 +13025,7 @@ function jrvEnd() {
   renderer.domElement.style.filter = ''; if (HWM.bars) HWM.bars.classList.remove('on'); ui.xhud.classList.remove('cutting');
   if (JRV.scene) { for (const R of [JRV.haw, JRV.dead, JRV.pont, ...(JRV.troops || [])]) if (R && R.root.parent) R.root.parent.remove(R.root); try { disposeOwned(JRV.scene); } catch (e) {} }
   Object.assign(JRV, { scene: null, haw: null, dead: null, pont: null, troops: [], sea: null, snow: null, ship: null, arms: null, heart: null, bolts: null, ending: false, step: -1 });
+  if (CUT.on) { cutDone(); return; } // replayed from Cutscenes
   setC3({ jamesRev: true });
   state = 'explore'; ex.snap = true; clock.getDelta();
   const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0;
@@ -13087,21 +13099,20 @@ const C4E_STEPS = {
     { who: 'TAREDESIBA I', text: 'The Conqrix Empire ends today, Obsidnia. Every world you burned is marching behind me.', act: 'face', shot: [[-1.2, 1.9, 4.6], [-.9, 1.95, 5], 'arch'] },
     { who: 'OBSIDNIA', text: 'Behind you? Ha! Look behind ME, little king. I have the Minotaurus and the Hamadalians on speed dial. One word, and they wipe you, your crown and your whole pitiful people off the face of the Milky Way. And I will not hesitate.', villain: true, act: 'face', point: true, shot: [[2.4, 1.6, 4.8], [1.8, 2, 3.8], 'zark'] },
     { who: 'TAREDESIBA I', text: 'Then say your word. We did not come all this way to be afraid of it.', act: 'face', shot: [[1.3, 1.8, 5.6], [1, 1.85, 5.9], 'arch'] },
-    { dur: 3.2, act: 'hex', shot: [[-6.5, 2.2, 4.5], [-5.5, 2.4, 3.5], 'mid'] }, // his dark magic, three times, and the light turns each one aside
-    { who: 'OBSIDNIA', text: 'Is that all your little light can do? Flicker?', villain: true, act: 'face', shot: [[1.4, 2.4, 3.4], [1, 2.5, 2.9], 'zark'] },
-    { dur: 2.4, act: 'dash', shot: [[10, 2.4, 9], [8, 2.4, 7.5], 'mid'] },
-    { dur: 2.7, act: 'bind', shot: [[2.3, 1.3, 3.9], [1.9, 1.4, 3.5], 'mid'] },
-    { dur: 3.4, act: 'flurry', shot: [[-4.4, 2.4, 1.2], [-4.2, 2.2, 5.8], 'mid'] },
-    { dur: 3, act: 'smash', shot: [[6.5, 2.6, 0], [5.5, 2.4, 2], 'arch'] },
-    { who: 'OBSIDNIA', text: 'Kneel, Taredesiba. Kneel, and I might let your children keep their names.', villain: true, act: 'face', shot: [[2.2, 2.6, 5.2], [1.7, 2.7, 4.6], 'zark'] },
-    { dur: 3.8, act: 'dive', shot: [[4.5, .6, 9.5], [4, .8, 8.6], 'arch'] },
-    { who: 'TAREDESIBA I', text: 'Archamus! Prime Good, who answers the faithful at the edge of every dark! Lend me your light!', act: 'face', raise: true, min: 4, shot: [[1.4, 1.6, 5.2], [1.1, 1.7, 5.6], 'arch'] },
-    { dur: 3.8, act: 'beam', shot: [[-12.5, 2, 3.5], [-11, 2.4, 3.5], [0, 2.4, 3.5]] }, // dark against light, and the light comes down from above to answer him
-    { dur: 2.4, act: 'pierce', shot: [[3.6, 1.6, -.6], [3.1, 1.8, -1.6], 'zark'] },
-    { who: 'OBSIDNIA', text: 'You think your god saved you? Archamus is a candle, and I am the night it burns in. Keep your rocks, Taredesiba. I will come back for your children’s children.', villain: true, act: 'wound', shot: [[1.3, 1.6, -2.2], [1, 1.6, -2.6], 'zark'] },
-    { dur: 3.6, act: 'rift', shot: [[4.2, 2.6, 3], [3.2, 2.7, 1.2], [0, 2.8, -6]] },
-    { who: 'TAREDESIBA I', text: 'Let him run. Timpur stands. And for as long as one of us wears this crown, we will remember whose light this was.', act: 'after', shot: [[1.6, 1.9, 1.4], [1.3, 1.95, 1.8], 'arch'] },
-    { dur: 4.5, act: 'after', shot: [[0, 6, -12], [0, 9, -18], [0, 1.5, 6]] }
+    { dur: 4.2, act: 'thex', shot: [[-6.5, 2.2, 6.4], [-5.8, 2.4, 5.8], 'mid'] }, // three bolts of his dark magic: the light holds once, cracks, and breaks
+    { who: 'OBSIDNIA', text: 'Is that all your little light can do? Flicker?', villain: true, act: 'tkneel', shot: [[1.4, 2.4, 3.4], [1, 2.5, 2.9], 'zark'] },
+    { dur: 3.6, act: 'tcharge', shot: [[10, 2.4, 8], [9, 2.4, 6], 'mid'] }, // he charges anyway; Obsidnia catches the blow on one blade and throws him off
+    { dur: 3.3, act: 'tbind', shot: [[2.4, 1.1, 7.4], [2, 1.2, 7], 'mid'] }, // forced down onto one knee under Obsidnia's blade
+    { dur: 3.6, act: 'tflurry', shot: [[-4.4, 2.4, 6.4], [-4.2, 2.2, 9.8], 'mid'] }, // blow after blow, and he can only give ground
+    { dur: 3, act: 'tthrow', shot: [[6.5, 2.6, 8], [5.5, 2.4, 9.4], 'arch'] }, // his guard breaks: thrown onto his back in front of his own host
+    { who: 'OBSIDNIA', text: 'Kneel, Taredesiba. Kneel, and I might let your children keep their names.', villain: true, act: 'tdown', shot: [[-.5, .7, 13.2], [-.4, .8, 12.9], 'zark'] },
+    { who: 'TAREDESIBA I', text: 'Archamus! Prime Good, who answers the faithful at the edge of every dark! Lend me your light!', act: 'tpray', min: 4, shot: [[1.3, 1.4, 9.9], [1, 1.5, 10.2], 'arch'] },
+    { dur: 5, act: 'tbeam', shot: [[-12.5, 2, 9], [-11, 2.4, 9], [0, 2.2, 9]] }, // point blank, and he's losing it, until the light comes down from above to answer him
+    { dur: 2.4, act: 'tpierce', shot: [[3.6, 1.6, 6.2], [3.1, 1.8, 5.2], 'zark'] },
+    { who: 'OBSIDNIA', text: 'You think your god saved you? Archamus is a candle, and I am the night it burns in. Keep your rocks, Taredesiba. I will come back for your children’s children.', villain: true, act: 'twound', shot: [[1.3, 1.6, 6], [1, 1.6, 5.6], 'zark'] },
+    { dur: 3.8, act: 'trift', shot: [[4.2, 2.4, 12.2], [3.4, 2.5, 11.2], [0, 2.4, 2.6]] }, // past him, to the rift: he reaches after Obsidnia and can't follow
+    { who: 'TAREDESIBA I', text: 'Let him run. Timpur stands. And for as long as one of us wears this crown, we will remember whose light this was.', act: 'tafter', shot: [[1.4, 1.2, 9.5], [1.2, 1.25, 9.8], 'arch'] },
+    { dur: 5, act: 'tafter', shot: [[0, 3, 3], [0, 6.5, -2], [0, 1, 11]] } // still on his knees, small, in front of his host
   ],
   good: [
     ...C4E_OPEN,
@@ -13240,8 +13251,8 @@ function c4dBuild(S, phone) { // the duel's own props, added to the throne room 
   const rift = new THREE.Group(); rift.position.set(0, 3.4, -6.6); rift.scale.set(.001, .001, 1);
   const ring = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 5.4), new THREE.MeshBasicMaterial({ map: c4dRiftTex(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
   const core = new THREE.Mesh(new THREE.CircleGeometry(1.45, 48), new THREE.MeshBasicMaterial({ color: 0x050008, transparent: true, opacity: .96, side: THREE.DoubleSide, fog: false })); core.position.z = -.02;
-  rift.add(core, ring); rift.scale.y = .001; rift.userData.sy = 1.35; rift.visible = false; S.add(rift); C4E.rift = rift; C4E.riftL = new THREE.PointLight(0xa040ff, 0, 16, 1.4); C4E.riftL.position.set(0, 3.4, -5.6); S.add(C4E.riftL);
-  C4E.cracks = []; for (let i = 0; i < 6; i++) { const c = new THREE.Mesh(new THREE.PlaneGeometry(.1, 2.6 + Math.random() * 2.4), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xffc860 : 0xff3a5a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  rift.add(core, ring); rift.scale.y = .001; rift.userData.sy = 1.35; rift.visible = false; S.add(rift); C4E.rift = rift; C4E.riftL = new THREE.PointLight(0xa040ff, 0, 16, 1.4); C4E.riftL.position.set(0, 3.4, -5.6); S.add(C4E.riftL); if (T) { rift.position.z = 1.6; C4E.riftL.position.z = 2.6; } // the nightmare's rift opens behind Obsidnia, nearer the host
+  C4E.cracks = []; for (let i = 0; i < 6; i++) { const c = new THREE.Mesh(new THREE.PlaneGeometry(.1, 2.6 + Math.random() * 2.4), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xffc860 : c4dV(0xff3a5a), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
     c.rotation.x = -Math.PI / 2; c.rotation.z = i / 6 * Math.PI * 2 + Math.random() * .4; c.position.set(0, .025, 3.6); c.geometry.translate(0, c.geometry.parameters.height / 2, 0); c.scale.y = .001; S.add(c); C4E.cracks.push(c); }
   C4E.zp = { x: 0, y: 0, z: 0 }; C4E.ap = { x: 0, y: T ? 0 : 9, z: 7.5 }; C4E.zHot = 0; C4E.zGone = 0; C4E.flinch = 0; C4E.stop = 0; C4E.slowT = 0; C4E.dStep = -1;
   C4E.lookP = { mid: new THREE.Vector3(0, 2.4, 3.6), zark: new THREE.Vector3(0, 2.4, 0), arch: new THREE.Vector3(0, 2.6, 7.5) };
@@ -13267,7 +13278,7 @@ function c4eDuel(dt, rdt, t, act) {
   const Z = C4E.zark, A = C4E.arch, ST = C4E_STEPS[C4E.kind][C4E.step] || {}, TD = C4E.kind === 'tared'; if (!Z || !A) return;
   if (C4E.step !== C4E.dStep) { C4E.dStep = C4E.step; C4E.aT = 0; C4E.fired = {}; }
   C4E.aT += dt; const k = C4E.aT, once = (key, at) => { if (k >= at && !C4E.fired[key]) { C4E.fired[key] = true; return true; } return false; };
-  const zp = C4E.zp, ap = C4E.ap, KZ = c4dKneel(Z), floorY = z => !TD && z < -2.5 ? .6 : 0; // the dais (the throne room only)
+  const zp = C4E.zp, ap = C4E.ap, KZ = c4dKneel(Z), KA = TD ? c4dKneel(A) : null, floorY = z => !TD && z < -2.5 ? .6 : 0; // the dais (the throne room only)
   const pre = act === 'hall' || act === 'kneel'; let zP = KZ, aP = C4D.float, zt = null, at = null, rate = 14, aYaw = null, zYaw = null, clash = null, contFlinch = 0;
   A.root.visible = !pre;
   if (!pre) {
@@ -13346,20 +13357,105 @@ function c4eDuel(dt, rdt, t, act) {
       if (k > 1.5) zp.z = lerp(-4.2, -6.4, c4dEz(clamp((k - 1.5) / .9, 0, 1))); zp.y = floorY(-4.2); C4E.zGone = c4dEz(clamp((k - 1.7) / .7, 0, 1)); C4E.zHot = Math.max(0, .5 - k * .2);
       at = { x: 0, z: k < 1 ? ap.z : Math.max(-2.3, ap.z - rdt * 6.5) }; rate = 40; aP = k > 1 && ap.z > -2.2 ? c4dRun(c4dMix(C4D.guard, C4D.guard, 0), t * 13, .85) : k > 2 ? C4D.point : C4D.guard;
       if (once('close', 2.6)) c4dImpact({ x: 0, y: 3.4, z: -6.4 }, { flash: .9, fc: '#b060ff', ring: 0xa040ff, ry: .7, n: 190, sp: 10, up: 2, sc: 0xa040ff, sc2: 0xff3a8a, shake: 1.4, flinch: 1, boom: 1.4 }); }
-    else if (act === 'after') { aP = C4D.stand; ap.y = 0; const W = TD ? [0, 14] : C4E_WATCH[0]; // he turns to you (in the nightmare, to his host) aYaw = Math.atan2(W[0] - ap.x, W[1] - ap.z); C4E.rift.visible = false; C4E.riftL.intensity = 0; }
+    // ---- the Taredesiban nightmare: its own fight, and he is losing it from the first blow ----
+    else if (act === 'thex') { // three bolts: the light holds the first, cracks on the second, and the third goes through
+      zt = { x: 0, z: 0 }; rate = 8; const ph = [.4, 1.4, 2.3];
+      const cy = ph.find(q => k >= q - .35 && k < q + .4); zP = cy != null ? c4dMix(C4D.guard, C4D.cast, c4dEz(clamp((k - (cy - .35)) / .25, 0, 1))) : C4D.guard;
+      ph.forEach((q, i) => { if (once('bolt' + i, q)) { C4E.boltQ = (C4E.boltQ || 0) + 1; sfx.zap(); sfx.whoosh(); } });
+      const hit = (s, d) => c4dEz(clamp((k - s) / d, 0, 1)), thrown = clamp((k - 2.72) / .55, 0, 1);
+      ap.x = 0; ap.z = 7.5 + .4 * hit(.82, .25) + .9 * hit(1.82, .3) + 1.6 * c4dOut(thrown); ap.y = k > 2.72 && k < 3.27 ? Math.sin(thrown * Math.PI) * .9 : 0;
+      C4E.wardOn = k < 1.82 ? 1 : k < 2.72 ? (Math.random() < .5 ? .7 : .12) : 0; // the ward flickers after the second, and is gone after the third
+      aP = k < 2.72 ? c4dMix(C4D.guard, Object.assign({}, C4D.block, { lean: k > 1.82 ? -.2 : .05 }), c4dEz(clamp(k / .4, 0, 1))) : k < 3.27 ? C4D.recoil : c4dMix(C4D.recoil, KA, c4dEz(clamp((k - 3.27) / .4, 0, 1)));
+      if (once('crack', 1.82)) { C4E.flashA = Math.max(C4E.flashA, .3); C4E.flashC = '#fff0c0'; sfx.shieldHit(); C4E.shake = Math.max(C4E.shake || 0, .7); }
+      if (once('through', 2.72)) c4dImpact({ x: 0, y: 1.5, z: ap.z - .3 }, { stop: .12, slow: .6, flash: .8, fc: '#9a40ff', ring2: 0x9a40ff, n: 160, sp: 10, up: 3, sc: 0x9a40ff, sc2: 0xffd890, shake: 1.6, flinch: 1, boom: 1.3 });
+      if (once('land', 3.27)) c4dImpact({ x: 0, y: .2, z: ap.z }, { ring: 0x8a7a70, ry: .1, n: 40, sp: 5, sc: 0xffa060, shake: .7, flinch: .5, thud: true }); }
+    else if (act === 'tkneel') { ap.x = 0; ap.z = 10.4; ap.y = 0; aP = Object.assign({}, KA, { head: KA.head + .35 }); zt = { x: 0, z: 0 }; rate = 6; C4E.wardOn = 0;
+      zP = c4dMix(C4D.stand, C4D.point, c4dEz(clamp(k / .8, 0, 1))); } // on one knee, head down; Obsidnia doesn't even raise his guard
+    else if (act === 'tcharge') { // he gets up and charges anyway; Obsidnia doesn't move, catches the blow on his blade, and throws him off with his other hand
+      zt = { x: 0, z: 0 }; rate = 10; ap.x = 0; const one = Object.assign({}, C4D.block, { la: .05, laz: 0, laL: 0, lean: -.02 });
+      if (k < .6) { ap.z = 10.4; ap.y = 0; aP = c4dMix(KA, C4D.guard, c4dEz(k / .6)); zP = C4D.stand; }
+      else if (k < 1.6) { const u = (k - .6) / 1; ap.z = lerp(10.4, 2.5, u * u * (1.6 - .6 * u)); ap.y = 0; aP = c4dRun(c4dMix(C4D.guard, C4D.over, c4dEz(clamp((u - .6) / .35, 0, 1))), k * 15); zP = c4dMix(C4D.stand, one, c4dEz(clamp((u - .75) / .25, 0, 1))); }
+      else if (k < 2.4) { ap.z = 2.5; ap.y = 0; aP = Object.assign(c4dMix(C4D.over, C4D.bind, c4dOut(clamp((k - 1.6) / .1, 0, 1))), { ra: C4D.bind.ra + Math.sin(t * 41) * .04 }); zP = one; clash = 'near'; contFlinch = .2; }
+      else { const u = clamp((k - 2.4) / .55, 0, 1); ap.z = lerp(2.5, 7.2, c4dOut(u)); ap.y = k < 2.95 ? Math.sin(u * Math.PI) * 1.1 : 0; aP = k < 2.95 ? C4D.recoil : c4dMix(C4D.recoil, KA, c4dEz(clamp((k - 2.95) / .45, 0, 1)));
+        zP = c4dMix(Object.assign({}, one, { la: -1.6, laz: .2 }), C4D.stand, c4dEz(clamp((k - 2.6) / .8, 0, 1))); }
+      if (once('w', 1.4)) sfx.whoosh();
+      if (once('clash', 1.6)) { clash = 'hit'; C4E.pend = { stop: .12, slow: .4, flash: .7, fc: '#fff2d0', ring: 0xffd890, ring2: 0x9a40ff, ry: .1, n: 140, sp: 10, up: 3, sc: 0xffe0a0, sc2: 0x9a40ff, shake: 1.3, flinch: .9, boom: 1.1, clang: true }; }
+      if (once('push', 2.4)) c4dImpact({ x: 0, y: 1.5, z: 1.8 }, { stop: .08, flash: .6, fc: '#9a40ff', ring2: 0x9a40ff, n: 120, sp: 9, up: 2, sc: 0x9a40ff, shake: 1.2, flinch: .8, boom: 1 });
+      if (once('land', 2.95)) c4dImpact({ x: 0, y: .2, z: 7.2 }, { ring: 0x8a7a70, ry: .1, n: 40, sp: 5, sc: 0xffa060, shake: .6, flinch: .4, thud: true }); }
+    else if (act === 'tbind') { // he's barely up before Obsidnia is on him; he holds the blade off on one knee, and sinks
+      ap.x = 0; ap.y = 0; ap.z = k < 2.7 ? 7.2 : lerp(7.2, 8.6, c4dOut(clamp((k - 2.7) / .4, 0, 1)));
+      zt = { x: 0, z: k < 2.7 ? 5.95 : ap.z - 2.2 }; rate = k < 1 ? 4 : 14;
+      const sink = c4dEz(clamp((k - 1) / 1.6, 0, 1)), lockA = Object.assign({}, C4D.block, { rl: -1.2, ll: .6, rk: 1.4, lk: 1.2, y: -.45 - sink * .35, lean: -.05 - sink * .2, ra: C4D.block.ra + Math.sin(t * 43) * .04 });
+      aP = k < .9 ? c4dMix(KA, lockA, c4dEz(clamp(k / .9, 0, 1))) : k < 2.7 ? lockA : c4dMix(C4D.recoil, C4D.crouch, c4dEz(clamp((k - 2.9) / .4, 0, 1)));
+      zP = k < .8 ? c4dRun(c4dMix(C4D.guard, C4D.guard, 0), k * 9, .5) : k < 1 ? c4dMix(C4D.over, C4D.bind, c4dOut((k - .8) / .2)) : k < 2.7 ? Object.assign({}, C4D.bind, { lean: .4 + sink * .15, ra: C4D.bind.ra + Math.cos(t * 37) * .03 }) : c4dMix(C4D.bind, C4D.guard, c4dEz(clamp((k - 2.7) / .5, 0, 1)));
+      if (once('lock', 1)) { clash = 'hit'; C4E.pend = { stop: .1, flash: .5, fc: '#9a40ff', ring: 0x9a40ff, ry: .1, n: 110, sp: 9, up: 2, sc: 0x9a40ff, sc2: 0xffd890, shake: 1.1, flinch: .8, boom: .9, clang: true }; }
+      if (k > 1 && k < 2.7) { clash = 'near'; contFlinch = .3; if (Math.random() < rdt * 30) C4E.pend2 = { n: 4, sp: 5, up: 1.2, sc: Math.random() < .6 ? 0x9a40ff : 0xffd890 };
+        C4E.cracks.forEach((c, i) => { c.position.z = 7.2; c.scale.y = Math.max(.001, c4dEz(clamp((k - 1) / 1.4 - i * .05, 0, 1))); c.material.opacity = .85 * c4dEz(clamp((k - 1) / .6, 0, 1)); }); }
+      else if (k >= 2.7) C4E.cracks.forEach(c => { c.material.opacity = Math.max(0, c.material.opacity - rdt * .6); });
+      if (once('shove', 2.7)) c4dImpact({ x: 0, y: 1.2, z: 7 }, { flash: .4, fc: '#9a40ff', ring: 0x9a40ff, ry: .1, n: 70, sp: 8, sc: 0x9a40ff, shake: .9, flinch: .6, boom: .7 }); }
+    else if (act === 'tflurry') { // blow after blow; he can only give ground, and each block comes a little lower
+      const D = .5, i = Math.min(5, Math.floor(k / D)), u = k < 6 * D ? (k % D) / D : 1, style = i % 2 ? 'side' : 'over';
+      ap.y = 0; at = { x: Math.sin(k * .9) * .3, z: 8.6 + Math.min(6, i + (k < 6 * D ? c4dEz(clamp((u - .5) / .4, 0, 1)) : 1)) * .3 }; zt = { x: -at.x, z: at.z - 2.3 }; rate = 16;
+      if (k < 6 * D) { zP = c4dSwing(u, style); const def = c4dDefend(u); aP = Object.assign(def, { lean: (def.lean || 0) - i * .05, y: (def.y || 0) - i * .05 }); if (once('s' + i, i * D + .18)) sfx.swing();
+        if (once('h' + i, i * D + .55 * D)) { clash = 'hit'; C4E.pend = { stop: .05, flash: .2 + i * .04, fc: '#9a40ff', n: 60 + i * 12, sp: 9, up: 2, sc: 0x9a40ff, sc2: 0xffd890, shake: .5 + i * .1, flinch: .3, boom: .3 + i * .06, clang: true }; } }
+      else { zP = C4D.guard; aP = c4dMix(C4D.recoil, C4D.crouch, .5); } }
+    else if (act === 'tthrow') { // his guard is gone, and the next blow puts him on his back in front of his own host
+      zP = k < .38 ? c4dMix(C4D.guard, C4D.over, c4dEz(k / .38)) : k < .46 ? c4dMix(C4D.over, C4D.slash, c4dOut((k - .38) / .08)) : k < 1.2 ? C4D.slash : c4dMix(C4D.slash, C4D.stand, c4dEz(clamp((k - 1.2) / .6, 0, 1)));
+      if (once('w', .3)) sfx.whoosh(); zt = { x: 0, z: 8.8 }; rate = 5;
+      if (k < .46) { aP = c4dMix(c4dMix(C4D.recoil, C4D.crouch, .5), C4D.block, c4dEz(clamp(k / .4, 0, 1)) * .6); C4E.a0 = ap.z; C4E.a0x = ap.x; ap.y = 0; }
+      else { const u = clamp((k - .46) / .8, 0, 1); ap.z = lerp(C4E.a0 || 10.4, 11, c4dOut(u)); ap.x = lerp(C4E.a0x || 0, 0, u); ap.y = Math.sin(u * Math.PI) * .7;
+        aP = k < 1.26 ? Object.assign({}, C4D.recoil, { lean: -.35 - u * 1.1 }) : Object.assign({}, C4D.recoil, { lean: -1.45, y: .12, ra: .9, la: .7, head: -.1 }); }
+      if (once('slam', .46)) { clash = 'hit'; C4E.pend = { stop: .12, slow: .5, flash: .9, fc: '#9a40ff', ring: 0x9a40ff, ry: .1, n: 180, sp: 11, up: 3, sc: 0x9a40ff, sc2: 0xffd890, shake: 1.7, flinch: 1, boom: 1.4, clang: true }; }
+      if (once('ground', 1.26)) c4dImpact({ x: 0, y: .2, z: 11 }, { ring: 0x8a7a70, ry: .1, n: 60, sp: 6, sc: 0xffa060, shake: 1, flinch: 1, thud: true }); }
+    else if (act === 'tdown') { // on his back, propping himself up on an elbow; Obsidnia stands over him, the point of the blade at his throat
+      ap.y = 0; const r = c4dEz(clamp((k - 1.2) / 2.5, 0, 1)); aP = Object.assign({}, C4D.recoil, { lean: -1.45 + r * .55, y: .12 - r * .1, ra: .9 - r * .4, la: .7 + r * .3, head: -.1 + r * .3 });
+      zt = { x: 0, z: ap.z - 1.7 }; rate = 1.6; zP = c4dMix(C4D.stand, Object.assign({}, C4D.point, { ra: -.9, head: .35 }), c4dEz(clamp(k / 2, 0, 1))); }
+    else if (act === 'tpray') { // up onto his knees with the blade over him, and he calls on the only thing he has left
+      ap.y = 0; aP = c4dMix(Object.assign({}, C4D.recoil, { lean: -.9, y: .02 }), Object.assign({}, KA, { ra: -2.9, raz: -.2, lean: -.12, head: -.35 }), c4dEz(clamp(k, 0, 1)));
+      zt = { x: 0, z: ap.z - 1.7 }; rate = 3; zP = c4dMix(Object.assign({}, C4D.point, { ra: -.9, head: .35 }), C4D.over, c4dEz(clamp((k - .6) / 1.2, 0, 1)));
+      C4E.charge = clamp((k - .8) / 2, 0, 1) * .5; if (once('call', 1)) sfx.chime(); }
+    else if (act === 'tbeam') { // dark against light, point blank; it drives him down, until the light answers from above
+      zt = { x: 0, z: ap.z - 4 }; rate = 3; ap.y = 0; zP = c4dMix(C4D.over, C4D.cast, c4dEz(clamp(k / .5, 0, 1)));
+      const press = c4dEz(clamp((k - .6) / 2.4, 0, 1)), saved = k > 3.1;
+      aP = Object.assign({}, KA, { ra: -1.57, la: -1.2, laz: .35, lean: saved ? .1 : -.1 - press * .3, head: -.2, y: KA.y - (saved ? 0 : press * .08) }); contFlinch = k > .6 ? .45 : 0;
+      if (once('fire', .6)) c4dImpact({ x: 0, y: 2, z: ap.z - 2 }, { flash: .7, fc: '#9a40ff', n: 60, sp: 8, sc: 0x9a40ff, shake: 1, flinch: .7, boom: 1 });
+      C4E.beamU = !saved ? lerp(.45, .88, press) + Math.sin(k * 23) * .012 : lerp(.88, .02, Math.pow(clamp((k - 3.1) / 1.4, 0, 1), 1.8));
+      C4E.beamOn = k >= .6 ? 1 : 0; C4E.charge = saved ? 1 : clamp((k - .1) / .5, 0, 1) * .3; C4E.shake = Math.max(C4E.shake || 0, k > .6 ? (saved ? .6 : .3 + press * .3) : 0);
+      if (once('light', 3.1)) { C4E.flashA = Math.max(C4E.flashA, 1); C4E.flashC = '#fffbe8'; sfx.boom(1.2); sfx.chime(); c4eRing(.1, 0xffd890, ap.x, ap.z, 18); } }
+    else if (act === 'tpierce') {
+      if (once('z0', 0)) C4E.tz0 = zp.z; const z0 = C4E.tz0, u = clamp(k / .85, 0, 1), e = 1 - Math.pow(1 - u, 3);
+      if (k < .85) { zp.z = lerp(z0, z0 - 3, e); zp.y = Math.sin(u * Math.PI) * .9; zP = C4D.recoil; } else { zp.z = z0 - 3; zp.y = 0; zP = c4dMix(C4D.recoil, KZ, c4dEz(clamp((k - .85) / .3, 0, 1))); }
+      ap.y = 0; aP = Object.assign({}, KA, { ra: -1.57 + c4dEz(clamp((k - .6) / .8, 0, 1)) * 1.1, la: -.4, head: -.1 }); C4E.beamOn = Math.max(0, 1 - k / .35); C4E.beamU = 0; C4E.charge = Math.max(0, 1 - k); C4E.zHot = Math.min(.65, k * 1.1);
+      if (once('pierce', 0)) c4dImpact({ x: 0, y: 2.2, z: z0 }, { stop: .1, flash: 1, fc: '#ffffff', ring: 0xffd890, ring2: 0x9a40ff, ry: .1, n: 240, sp: 12, up: 3, sc: 0xffe0a0, sc2: 0x9a40ff, shake: 2.2, flinch: 1, boom: 1.7 });
+      if (once('land', .85)) c4dImpact({ x: 0, y: .7, z: z0 - 3 }, { ring: 0x8a7a70, ry: .65, n: 50, sp: 5, sc: 0xffa060, shake: .9, flinch: .4, thud: true }); }
+    else if (act === 'twound') { zp.y = 0; zP = Object.assign({}, KZ, { head: KZ.head - .1 }); C4E.zHot = .5 + Math.sin(t * 5) * .1; ap.y = 0; C4E.charge = 0;
+      aP = Object.assign({}, KA, { ra: -.5, la: -.3, lean: .3, head: .3 }); } // he can't get up to follow: his head hangs
+    else if (act === 'trift') {
+      const R = C4E.rift, o = c4dEz(clamp(k / .8, 0, 1)), cl = c4dEz(clamp((k - 2.8) / .3, 0, 1)), sc = o * (1 - cl);
+      R.visible = sc > .002; R.scale.set(Math.max(.001, sc * (1 + Math.sin(t * 9) * .03)), Math.max(.001, sc * R.userData.sy), 1); R.children[1].rotation.z += rdt * 1.6; C4E.riftL.intensity = sc * 90;
+      if (once('open', .1)) { sfx.boom(.6); C4E.flashA = Math.max(C4E.flashA, .3); C4E.flashC = '#a040ff'; }
+      if (once('z0', 0)) C4E.tz0 = zp.z; const z0 = C4E.tz0;
+      zP = k < .7 ? KZ : k < 1.5 ? c4dMix(KZ, C4D.stand, c4dEz((k - .7) / .8)) : c4dRun(c4dMix(C4D.stand, C4D.stand, 0), -k * 6, .4);
+      if (k > 1.5) zp.z = lerp(z0, R.position.z + .2, c4dEz(clamp((k - 1.5) / .9, 0, 1))); zp.y = 0; C4E.zGone = c4dEz(clamp((k - 1.7) / .7, 0, 1)); C4E.zHot = Math.max(0, .5 - k * .2);
+      ap.y = 0; const reach = c4dEz(clamp((k - 1.4) / .8, 0, 1)), slump = c4dEz(clamp((k - 2.6) / .6, 0, 1)); // he reaches after him, and can't follow
+      aP = Object.assign({}, KA, { ra: -.5 - reach * 1.1 * (1 - slump), la: -.3 - reach * .9 * (1 - slump), lean: .3 - reach * .2 + slump * .25, head: .3 - reach * .5 + slump * .5 });
+      if (once('close', 2.8)) c4dImpact({ x: 0, y: 3.4, z: R.position.z }, { flash: .9, fc: '#b060ff', ring: 0xa040ff, ry: .7, n: 190, sp: 10, up: 2, sc: 0xa040ff, sc2: 0xff3a8a, shake: 1.4, flinch: 1, boom: 1.4 }); }
+    else if (act === 'tafter') { C4E.rift.visible = false; C4E.riftL.intensity = 0; ap.y = 0; C4E.charge = 0; aYaw = Math.PI; // still on his knees; only his head comes up
+      const u = ST.text ? c4dEz(clamp(k / 2.5, 0, 1)) : 1; aP = Object.assign({}, KA, { ra: -.5, la: -.3, lean: .3 - u * .15, head: .3 - u * .4 }); }
+    else if (act === 'after') { aP = C4D.stand; ap.y = 0; const W = TD ? [0, 14] : C4E_WATCH[0]; aYaw = Math.atan2(W[0] - ap.x, W[1] - ap.z); C4E.rift.visible = false; C4E.riftL.intensity = 0; } // he turns to you (in the nightmare, to his host)
     // positions, eased toward their marks
     const f = 1 - Math.exp(-dt * rate);
     if (zt) { zp.x += (zt.x - zp.x) * f; zp.z += (zt.z - zp.z) * f; } if (at) { ap.x += (at.x - ap.x) * f; ap.z += (at.z - ap.z) * f; }
-    if (!['pierce', 'wound', 'rift'].includes(act)) zp.y = floorY(zp.z); if (!['arch', 'dive'].includes(act)) ap.y = act === 'smash' ? 0 : ap.y;
+    if (!['pierce', 'wound', 'rift', 'tpierce', 'twound', 'trift'].includes(act)) zp.y = floorY(zp.z); if (!['arch', 'dive'].includes(act)) ap.y = act === 'smash' ? 0 : ap.y;
   }
   // Zark (from the hall's kneel on, the duel drives him) and Archamus
   if (!pre) { Z.mode = 'idle'; animRig(Z, dt); c4dPose(Z, zP); Z.root.position.set(zp.x, zp.y + (zP.y || 0), zp.z); Z.root.rotation.order = 'YXZ'; Z.root.rotation.y = zYaw != null ? zYaw : Math.atan2(ap.x - zp.x, ap.z - zp.z);
     c4dZarkMat(Z, C4E.zHot, C4E.zGone); C4E.zarkL.intensity = C4E.zGone > .9 ? 0 : 6 + C4E.zHot * 60; C4E.zarkL.position.set(zp.x, zp.y + 2.4, zp.z + .4);
-    if (C4E.zAura) C4E.zAura.material.opacity = act === 'rise' ? .5 * Math.max(0, 1 - Math.abs(k - .6)) : act === 'hex' ? .3 + Math.sin(t * 9) * .08 : ['dash', 'bind', 'flurry', 'smash', 'dive', 'beam'].includes(act) ? .12 : 0; }
+    if (C4E.zAura) C4E.zAura.material.opacity = TD && act[0] === 't' ? (act === 'thex' ? .3 + Math.sin(t * 9) * .08 : ['tdown', 'tpray'].includes(act) ? .22 : ['tcharge', 'tbind', 'tflurry', 'tthrow', 'tbeam'].includes(act) ? .14 : 0) : act === 'rise' ? .5 * Math.max(0, 1 - Math.abs(k - .6)) : act === 'hex' ? .3 + Math.sin(t * 9) * .08 : ['dash', 'bind', 'flurry', 'smash', 'dive', 'beam'].includes(act) ? .12 : 0; }
   A.mode = 'idle'; animRig(A, dt); if (!pre) { c4dPose(A, aP); A.root.position.set(ap.x, ap.y + (aP.y || 0), ap.z); A.root.rotation.order = 'YXZ'; A.root.rotation.y = aYaw != null ? aYaw : Math.atan2(zp.x - ap.x, zp.z - ap.z); }
   if (C4E.archGlow) C4E.archGlow.material.opacity = A.root.visible ? .35 + Math.sin(t * 2) * .08 + (C4E.charge || 0) * .3 : 0;
   { const on = act === 'arch' || act === 'stand', u = act === 'arch' ? c4dEz(clamp(k / 3, 0, 1)) : act === 'stand' ? Math.max(0, 1 - k / 2.5) : 0; C4E.holy.intensity = on ? 300 * (act === 'arch' ? u * .8 + .2 : u) : 0; C4E.shaft.material.opacity = on ? .16 * (act === 'arch' ? 1 - u * .5 : u) : 0;
-    if (TD && (act === 'beam' || act === 'pierce' || (act === 'face' && ST.raise))) { const w = act === 'face' ? clamp(k / 1.2, 0, 1) : 1; C4E.holy.position.set(ap.x, 26, ap.z); C4E.holy.target.position.set(ap.x, 0, ap.z); C4E.holy.target.updateMatrixWorld(); C4E.holy.intensity = 340 * w; C4E.shaft.position.set(ap.x, 13, ap.z); C4E.shaft.material.opacity = .13 * w + Math.sin(t * 6) * .02 * w; } } // the light of Archamus answers him
+    if (TD && ['tpray', 'tbeam', 'tpierce'].includes(act)) { const w = act === 'tpray' ? clamp((k - .8) / 2, 0, 1) * .25 : act === 'tbeam' ? (k < 3.1 ? .25 : 1) : 1; C4E.holy.position.set(ap.x, 26, ap.z); C4E.holy.target.position.set(ap.x, 0, ap.z); C4E.holy.target.updateMatrixWorld(); C4E.holy.intensity = 340 * w; C4E.shaft.position.set(ap.x, 13, ap.z); C4E.shaft.material.opacity = .13 * w + Math.sin(t * 6) * .02 * w; } } // the light of Archamus answers him
   // blades: where they are, their trails and their light
   Z.root.updateMatrixWorld(true); A.root.updateMatrixWorld(true);
   const W3 = o => o.getWorldPosition(new THREE.Vector3()), zb = C4E.zBlade, ab = C4E.aBlade; if (!C4E.bolts) C4E.bolts = [];
@@ -13373,26 +13469,27 @@ function c4eDuel(dt, rdt, t, act) {
     while (C4E.boltQ > 0) { C4E.boltQ--; const m = glowSprite(0x9a40ff, 1.7, 1), c = glowSprite(0xffffff, .5, 1); m.add(c); C4E.scene.add(m); C4E.bolts.push({ m, p0: zT.clone(), t: 0 }); }
     for (const B of [...C4E.bolts]) { B.t += dt; const u = Math.min(1, B.t / .42); B.m.position.copy(B.p0).lerp(chest, u); B.m.position.y += Math.sin(u * Math.PI) * .9; B.m.scale.setScalar(1.6 + Math.sin(t * 40) * .3);
       if (Math.random() < .8) c4dSpark(B.m.position.x, B.m.position.y, B.m.position.z, 2, 2, .5, 0x9a40ff);
-      if (u >= 1) { C4E.scene.remove(B.m); C4E.bolts.splice(C4E.bolts.indexOf(B), 1); C4E.wardF = 1; c4dImpact(chest.clone().add(new THREE.Vector3(0, 0, -.6)), { stop: .06, flash: .45, fc: '#9a40ff', ring2: 0xffd890, n: 90, sp: 9, up: 2, sc: 0x9a40ff, sc2: 0xffd890, shake: .8, flinch: .7, boom: .6 }); } }
-    C4E.wardF = Math.max(0, (C4E.wardF || 0) - rdt * 2.2); C4E.wardOn = act === 'hex' ? 1 : Math.max(0, (C4E.wardOn || 0) - rdt * 2);
+      if (u >= 1) { C4E.scene.remove(B.m); C4E.bolts.splice(C4E.bolts.indexOf(B), 1); C4E.wardF = act === 'thex' && k > 2.6 ? 0 : 1; c4dImpact(chest.clone().add(new THREE.Vector3(0, 0, -.6)), { stop: .06, flash: .45, fc: '#9a40ff', ring2: 0xffd890, n: 90, sp: 9, up: 2, sc: 0x9a40ff, sc2: 0xffd890, shake: .8, flinch: .7, boom: .6 }); } }
+    C4E.wardF = Math.max(0, (C4E.wardF || 0) - rdt * 2.2); C4E.wardOn = act === 'hex' ? 1 : act === 'thex' ? C4E.wardOn : Math.max(0, (C4E.wardOn || 0) - rdt * 2);
     if (C4E.ward) { C4E.ward.position.copy(chest).add(new THREE.Vector3(0, 0, -.5)); C4E.ward.material.opacity = C4E.wardOn * .14 + C4E.wardF * .85; C4E.ward.scale.setScalar(3 + C4E.wardF * 2.4); } }
   const flare = Math.min(1, C4E.flashA || 0); C4E.zbL.position.copy(zT); C4E.abL.position.copy(aT2); C4E.zbL.intensity = pre || C4E.zGone > .9 ? 0 : 7 + flare * 40; C4E.abL.intensity = pre ? 0 : 9 + flare * 40 + (C4E.charge || 0) * 30;
   // the beam struggle
   const bo = C4E.beamOn || 0;
-  if (bo > 0 && (act === 'beam' || act === 'pierce')) { const M = zT.clone().lerp(aT2, C4E.beamU != null ? C4E.beamU : .5), w = (.8 + Math.sin(t * 37) * .12 + (act === 'beam' && k > 2.4 ? .5 : 0)) * bo;
-    c4dBeamSet(C4E.beamZ, zT, M, w * (act === 'pierce' ? .3 : 1)); c4dBeamSet(C4E.beamA, aT2, act === 'pierce' ? new THREE.Vector3(zp.x, zp.y + 2.2, zp.z) : M, w * 1.1);
+  const ba = act === 'tbeam' ? 'beam' : act === 'tpierce' ? 'pierce' : act, bk = act === 'tbeam' ? k - .7 : k; // the nightmare's beam struggle runs on the same machinery
+  if (bo > 0 && (ba === 'beam' || ba === 'pierce')) { const M = zT.clone().lerp(aT2, C4E.beamU != null ? C4E.beamU : .5), w = (.8 + Math.sin(t * 37) * .12 + (ba === 'beam' && bk > 2.4 ? .5 : 0)) * bo;
+    c4dBeamSet(C4E.beamZ, zT, M, w * (ba === 'pierce' ? .3 : 1)); c4dBeamSet(C4E.beamA, aT2, ba === 'pierce' ? new THREE.Vector3(zp.x, zp.y + 2.2, zp.z) : M, w * 1.1);
     C4E.beamZ.userData.glow.material.opacity = C4E.beamA.userData.glow.material.opacity = .55 * bo; C4E.beamZ.userData.core.material.opacity = C4E.beamA.userData.core.material.opacity = bo;
-    C4E.meet.position.copy(M); C4E.meet.material.opacity = act === 'beam' ? .9 : 0; C4E.meet.scale.setScalar(2.6 + Math.sin(t * 29) * .5 + (k > 2.4 ? 1.2 : 0));
-    if (act === 'beam' && Math.random() < rdt * 60) c4dSpark(M.x, M.y, M.z, 4, 9, 1.5, Math.random() < .5 ? 0xffd890 : 0xff3a5a); }
+    C4E.meet.position.copy(M); C4E.meet.material.opacity = ba === 'beam' ? .9 : 0; C4E.meet.scale.setScalar(2.6 + Math.sin(t * 29) * .5 + (bk > 2.4 ? 1.2 : 0));
+    if (ba === 'beam' && Math.random() < rdt * 60) c4dSpark(M.x, M.y, M.z, 4, 9, 1.5, Math.random() < .5 ? 0xffd890 : 0xff3a5a); }
   else { C4E.beamZ.visible = C4E.beamA.visible = false; C4E.meet.material.opacity = 0; }
   const ch = C4E.charge || 0; C4E.chZ.position.copy(zT); C4E.chA.position.copy(aT2); C4E.chZ.material.opacity = C4E.chA.material.opacity = ch * .9; C4E.chZ.scale.setScalar(.6 + ch * 1.6); C4E.chA.scale.setScalar(.6 + ch * 1.8);
   // where the camera and the watchers look
   C4E.lookP.mid.set((zp.x + ap.x) / 2, 2.4, (zp.z + ap.z) / 2); if (Z.head) Z.head.getWorldPosition(C4E.lookP.zark); else C4E.lookP.zark.set(zp.x, zp.y + 2.4, zp.z); if (A.head) A.head.getWorldPosition(C4E.lookP.arch); else C4E.lookP.arch.set(ap.x, ap.y + 2.6, ap.z);
-  C4E.lookN = act === 'after' ? ap : pre ? { x: 0, z: .4 } : act === 'arch' || act === 'stand' ? { x: ap.x, z: ap.z } : { x: (zp.x + ap.x) / 2, z: (zp.z + ap.z) / 2 };
+  C4E.lookN = act === 'after' || act === 'tafter' ? ap : pre ? { x: 0, z: .4 } : act === 'arch' || act === 'stand' ? { x: ap.x, z: ap.z } : { x: (zp.x + ap.x) / 2, z: (zp.z + ap.z) / 2 };
   // the watchers: silent, turning to follow it, flinching from the blows
   C4E.flinch = Math.max(contFlinch, C4E.flinch - rdt * 1.6); const fl = C4E.flinch, L = C4E.lookN;
   for (const Q of C4E.watch || []) { Q.mode = 'idle'; animRig(Q, rdt); const p = Q.root.position; Q.root.rotation.order = 'YXZ'; Q.root.rotation.y = angLerp(Q.root.rotation.y, Math.atan2(L.x - p.x, L.z - p.z), Math.min(1, rdt * 3));
-    Q.root.rotation.x = -.14 * fl; if (Q.la) Q.la.rotation.x -= 1.3 * fl; if (Q.ra && Q.weapon !== 'rifle') Q.ra.rotation.x -= .5 * fl; }
+    Q.root.rotation.x = -.14 * fl; if (TD && Q.head && Q.rest && Q.rest.has(Q.head)) Q.head.rotation.x = Q.rest.get(Q.head).x + (['tdown', 'tpray', 'twound', 'trift', 'tafter'].includes(act) ? .45 : 0); if (Q.la) Q.la.rotation.x -= 1.3 * fl; if (Q.ra && Q.weapon !== 'rifle') Q.ra.rotation.x -= .5 * fl; }
   c4dSparksTick(dt);
   // hit-stop and slow motion, for the next frame
   C4E.stop -= rdt; C4E.slowT -= rdt; C4E.slow = C4E.stop > 0 ? .02 : C4E.slowT > 0 ? .32 : 1;
@@ -13502,7 +13599,7 @@ async function ch4EndingPlay(kind, opts = {}) {
   HWM.bars.classList.add('on'); show(ui.xhud, true); ui.xhud.classList.add('cutting');
   Object.assign(C4E, { phase: 'run', t: 0, step: -1, stepEnd: 0, flashA: 0, blackT: 0, slow: 1, zarkHot: 0, zarkGone: 0, life: 1, stop: 0, slowT: 0 });
   C4E.saveDpr = renderer.getPixelRatio(); if ((kind === 'neutral' || kind === 'tared') && !tiPhone()) { const cap = Math.sqrt(8.3e6 / Math.max(1, innerWidth * innerHeight)); renderer.setPixelRatio(Math.max(C4E.saveDpr, Math.min((devicePixelRatio || 1) * 1.5, 2.5, cap))); } // supersampled: sharper edges for the duel
-  leaderPlay('final').catch(() => null);
+  leaderPlay(kind === 'tared' ? 'laniakea' : kind === 'neutral' ? 'primeGood' : 'final').catch(() => null); // the good and bad endings: the Final Boss theme; the neutral duel: the Prime Good, start to finish; the Taredesiban nightmare: the nightmare score (Wonders of Laniakea)
   fd.style.transition = 'opacity 1.6s'; fd.style.opacity = 0;
   setTimeout(() => kind === 'tared' ? notice('12,000,000,000 BC · a world of the Conqrix Empire', 'TAREDESIBA I AGAINST OBSIDNIA', 3800) : notice('Carax · the throne of the Catharsis', 'THE SIEGE IS OVER', 3000), 500);
   return true;
@@ -13589,14 +13686,14 @@ function c4eTick(dt) {
   for (const R of [...C4E.rings]) { R.t += rdt; const s = 1 + R.t * (R.sp || 14); R.m.scale.set(s, s, s); R.m.material.opacity = Math.max(0, .9 - R.t * .7); if (R.t > 1.4) { C4E.scene.remove(R.m); R.m.geometry.dispose(); R.m.material.dispose(); C4E.rings.splice(C4E.rings.indexOf(R), 1); } }
   { const B = C4E.burst.geometry.attributes.position.array; for (let i = 0; i < C4E.bl.length; i++) { if (C4E.bl[i] <= 0) continue; C4E.bl[i] -= dt; C4E.bv[i * 3 + 1] -= 2.4 * dt; for (let a = 0; a < 3; a++) B[i * 3 + a] += C4E.bv[i * 3 + a] * dt; if (C4E.bl[i] <= 0 || B[i * 3 + 1] < 0) B[i * 3 + 1] = -99; } C4E.burst.geometry.attributes.position.needsUpdate = true; }
   { const E = C4E.embers.geometry.attributes.position.array, up = act === 'still' || act === 'collapse' ? -.6 : 1.1; for (let i = 0; i < E.length; i += 3) { E[i + 1] += up * dt; E[i] += Math.sin(t + i) * .3 * dt; if (E[i + 1] > 18) E[i + 1] = 0; if (E[i + 1] < 0) E[i + 1] = 18; } C4E.embers.geometry.attributes.position.needsUpdate = true; C4E.embers.material.color.setHex(act === 'still' ? 0xb8b0a8 : 0xff8a3a); }
-  { const lit = C4E.kind === 'neutral' || C4E.kind === 'tared' ? (act === 'after' ? 1 : act === 'hall' || act === 'kneel' ? 0 : .45) : C4E.kind !== 'bad' && (act === 'arch' || act === 'ring') ? 1 : act === 'fall' ? .4 : 0; C4E.fillL = (C4E.fillL || 0) + (lit - (C4E.fillL || 0)) * Math.min(1, rdt * .8); C4E.fill.intensity = C4E.fillL * 1.7; C4E.fillH.intensity = C4E.fillL * 1.3; C4E.hemi.intensity = 1.25 * (1 - .65 * C4E.fillL); C4E.key.intensity = 1.6 * (1 - .6 * C4E.fillL); }
+  { const lit = C4E.kind === 'tared' ? (act === 'tafter' ? .5 : act === 'tbeam' || act === 'tpierce' ? .35 : .15) : C4E.kind === 'neutral' ? (act === 'after' ? 1 : act === 'hall' || act === 'kneel' ? 0 : .45) : C4E.kind !== 'bad' && (act === 'arch' || act === 'ring') ? 1 : act === 'fall' ? .4 : 0; C4E.fillL = (C4E.fillL || 0) + (lit - (C4E.fillL || 0)) * Math.min(1, rdt * .8); C4E.fill.intensity = C4E.fillL * 1.7; C4E.fillH.intensity = C4E.fillL * 1.3; C4E.hemi.intensity = 1.25 * (1 - .65 * C4E.fillL); C4E.key.intensity = 1.6 * (1 - .6 * C4E.fillL); }
   for (const F of C4E.fires) { F.L.intensity = (34 + Math.sin(t * 9 + F.ph) * 8 + Math.random() * 6) * (1 - .6 * (C4E.fillL || 0)); F.g.material.opacity = .7 + Math.sin(t * 11 + F.ph) * .15; }
   // the bad ending gets darker and colder as it goes, and your sight closes in
   const choking = ['grab', 'choke', 'fade', 'last', 'dead'].includes(act), dark = choking ? 1 - C4E.life : 0;
   C4E.vig.style.opacity = choking ? (.2 + dark * .55).toFixed(3) : act === 'orion' || act === 'close' ? '.2' : '0';
   if (choking && act !== 'dead' && Math.random() < rdt * (.25 + dark * 1.2) && C4E.blackT <= 0) C4E.blackT = .04 + dark * .12; // you keep blacking out
   const hbRate = choking ? (act === 'dead' ? 99 : .32 + dark * 1.1) : act === 'still' ? .9 : 1.6; if ((C4E.hb = (C4E.hb || 0) + rdt) > hbRate) { C4E.hb = 0; if (choking || act === 'still') sfx.heart(choking ? .6 + dark * .4 : .4); }
-  renderer.domElement.style.filter = choking ? `contrast(${1.25 + dark * .3}) saturate(${Math.max(0, .75 - dark * .75)}) brightness(${Math.max(.38, .95 - dark * .6)})${tiPhone() ? '' : ` blur(${(dark * 1.6).toFixed(2)}px)`}` : act === 'burn' ? `contrast(1.3) saturate(1.2) brightness(${1 + Math.random() * .15})` : act === 'still' ? 'contrast(1.1) saturate(.35) brightness(.85)' : act === 'orion' || act === 'close' ? 'contrast(1.25) saturate(.5) brightness(.85)' : (C4E.kind === 'neutral' || C4E.kind === 'tared') && (act === 'beam' || act === 'pierce') ? `contrast(1.24) saturate(1.12) brightness(${(1 + Math.random() * .08).toFixed(3)})` : C4E.kind === 'tared' ? 'contrast(1.16) saturate(1.08) brightness(.97) hue-rotate(-6deg)' : C4E.kind === 'neutral' ? 'contrast(1.14) saturate(1.02) brightness(.98)' : C4E.filt;
+  renderer.domElement.style.filter = choking ? `contrast(${1.25 + dark * .3}) saturate(${Math.max(0, .75 - dark * .75)}) brightness(${Math.max(.38, .95 - dark * .6)})${tiPhone() ? '' : ` blur(${(dark * 1.6).toFixed(2)}px)`}` : act === 'burn' ? `contrast(1.3) saturate(1.2) brightness(${1 + Math.random() * .15})` : act === 'still' ? 'contrast(1.1) saturate(.35) brightness(.85)' : act === 'orion' || act === 'close' ? 'contrast(1.25) saturate(.5) brightness(.85)' : (C4E.kind === 'neutral' && (act === 'beam' || act === 'pierce') || C4E.kind === 'tared' && (act === 'tpierce' || act === 'tbeam' && C4E.actT > 3.1)) ? `contrast(1.24) saturate(1.12) brightness(${(1 + Math.random() * .08).toFixed(3)})` : C4E.kind === 'tared' ? 'contrast(1.2) saturate(.72) brightness(.86) hue-rotate(-6deg)' : C4E.kind === 'neutral' ? 'contrast(1.14) saturate(1.02) brightness(.98)' : C4E.filt;
   sfx.drone(act === 'still' || act === 'dead' ? 0 : choking ? .7 : .35);
   // the camera along its shot; slow motion on the leap; a hard shake as he dies; handheld and close while you choke
   const sh = C4E.shot; if (sh) { const kk = smooth(0, Math.max(2.4, C4E.shotDur || 6), t - C4E.shotT), from = new THREE.Vector3().fromArray(sh[0]), to = new THREE.Vector3().fromArray(sh[1]);
@@ -13619,27 +13716,20 @@ function c4eCue(act) { // the moment each beat begins
   if (act === 'grab') { sfx.thud(); C4E.shake = 1.2; C4E.flashA = .5; C4E.flashC = '#600'; }
   if (act === 'dead') { sfx.drone(0); C4E.blackT = 9; }
   if (act === 'fall') { sfx.thud(); C4E.shake = .6; if (C4E.kind !== 'bad') setTimeout(() => notice('The Prime Evil', 'LORD ZARK IS BEATEN', 3000), 1400); }
-  if (C4E.kind === 'tared') { // the nightmare's music: the battle to the Final Boss theme, Archamus's light to The Light Egg, silence as Obsidnia goes, the Prime Good's after
-    if (act === 'beam') { sfx.stopSong(.5); setTimeout(() => { if (C4E.on) leaderPlay('lightEgg').catch(() => null); }, 350); }
-    if (act === 'rift') setTimeout(() => { if (C4E.on) sfx.stopSong(2.4); }, 2200);
-    if (act === 'after' && !C4E.afterMus) { C4E.afterMus = true; setTimeout(() => { if (C4E.on) leaderPlay('primeGood').catch(() => null); }, 600); }
+  if (C4E.kind === 'tared') { // the nightmare's music: the battle to the nightmare score (Wonders of Laniakea), Archamus's light to The Light Egg once it finally comes down, and The Light Egg plays on to the end (no Prime Good)
+    if (act === 'tbeam') setTimeout(() => { if (C4E.on && C4E.act === 'tbeam') { sfx.stopSong(.4); setTimeout(() => { if (C4E.on) leaderPlay('lightEgg').catch(() => null); }, 300); } }, 3000); // only once the light comes down
   }
-  if (C4E.kind === 'neutral') { // the duel's music: his theme as he rises, silence as he goes, the Prime Good's after
-    if (act === 'rise') { sfx.stopSong(.8); setTimeout(() => { if (C4E.on) leaderPlay('primeEvil').catch(() => null); }, 500); }
-    if (act === 'rift') setTimeout(() => { if (C4E.on) sfx.stopSong(2.4); }, 2200);
-    if (act === 'after') setTimeout(() => { if (C4E.on) leaderPlay('primeGood').catch(() => null); }, 600);
-  }
-  if (act === 'arch') { C4E.archT = 0; sfx.stopSong(2); setTimeout(() => { if (C4E.on) leaderPlay('primeGood').catch(() => null); }, 1200); sfx.chime(); }
+  if (act === 'arch') { C4E.archT = 0; if (C4E.kind !== 'neutral') { sfx.stopSong(2); setTimeout(() => { if (C4E.on) leaderPlay('primeGood').catch(() => null); }, 1200); } sfx.chime(); } // the neutral duel's Prime Good is already playing
   if (act === 'ring' && !C4E.ringStarted) { C4E.ringStarted = true; C4E.archT = 0; C4E.ringT = 0; sfx.stopSong(2); setTimeout(() => { if (C4E.on) leaderPlay('primeGood').catch(() => null); }, 900); }
 }
 function c4eSkip() { if (!C4E.on || C4E.ending) return; C4E.ending = true; hwmSubHide(); const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(c4eOutcome, 450); }
 function c4eOutcome() { // what each ending leaves behind
   const kind = C4E.kind, prev = C4E.preview;
   if (kind === 'bad') { c4eGameOver(); return; }
-  if (kind === 'tared') { c4eEnd(true); renderer.domElement.style.filter = ''; { const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0; } if (prev) { location.href = location.pathname; return; } state = 'nightmare'; nmWake(); return; } // the nightmare ends: Orion and Nico bring you back
+  if (kind === 'tared') { c4eEnd(true); renderer.domElement.style.filter = ''; { const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0; } if (prev) { if (cutDone()) return; location.href = location.pathname; return; } state = 'nightmare'; nmWake(); return; } // the nightmare ends: Orion and Nico bring you back
   const fd = $('#fade'); fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 1;
   notice(kind === 'good' ? 'Chapter IV · the good ending' : 'Chapter IV · the neutral ending', kind === 'good' ? 'THE CATHARSIS FALLS' : 'THE WAR GOES ON', 3400);
-  setTimeout(() => { c4eEnd(); if (prev) { location.href = location.pathname; return; }
+  setTimeout(() => { c4eEnd(); if (prev) { if (cutDone()) return; location.href = location.pathname; return; }
     wanderer.ch4 = Object.assign({}, wanderer.ch4, { ending: kind });
     if (kind === 'neutral') wanderer.chapter = Math.max(5, wanderer.chapter | 0); // it goes on, into Chapter V
     const c = curChar(); if (c) { c.ch4 = wanderer.ch4; c.chapter = wanderer.chapter; } saveRoster();
@@ -13648,7 +13738,7 @@ function c4eOutcome() { // what each ending leaves behind
 }
 async function c4eGameOver() { // the bad ending: game over, and the save you played to get here is gone
   sfx.stopSong(.5); sfx.drone(0); hwmSubHide(); fbFlash(1, '#000');
-  const i = lastSlot, erased = !C4E.preview && i >= 0 && !!slots[i];
+  const i = lastSlot, erased = !C4E.preview && i >= 0 && !!slots[i]; if (!C4E.preview) cutsMark('bad'); // seen: the menu's Cutscenes keeps it, though the save is gone
   if (erased) { slots[i] = null; try { await writeSlots(); } catch (e) { console.error(e); } lastSlot = -1; dirty = false; }
   const el = document.createElement('div'); el.id = 'c4eOver';
   el.style.cssText = 'position:fixed;inset:0;z-index:40;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;padding:calc(var(--st,0px) + 24px) calc(var(--sr,0px) + 20px) calc(var(--sb,0px) + 24px) calc(var(--sl,0px) + 20px);opacity:0;transition:opacity 2.4s;overflow-y:auto';
@@ -13658,7 +13748,7 @@ async function c4eGameOver() { // the bad ending: game over, and the save you pl
     <button class="mi" id="c4eOverBtn" style="width:auto;max-width:100%;min-height:48px;margin-top:26px;color:#aa6060;border:1px solid #3a1414;padding:14px 26px;display:block;touch-action:manipulation">Return to the title screen</button>`;
   document.body.appendChild(el); requestAnimationFrame(() => { el.style.opacity = 1; });
   c4eEnd(true);
-  el.querySelector('#c4eOverBtn').addEventListener('click', () => { location.href = location.pathname; }); // start clean, from what's left of your saves
+  el.querySelector('#c4eOverBtn').addEventListener('click', () => { if (CUT.on) { el.remove(); cutDone(); return; } location.href = location.pathname; }); // from Cutscenes: back to the menu // start clean, from what's left of your saves
 }
 function c4eEnd(keepBlack) {
   if (!C4E.on) return; C4E.on = false; C4E.phase = null; hwmSubHide(); sfx.drone(0); try { sfx.stopNarr(); } catch (e) {}
@@ -13671,10 +13761,82 @@ function c4eEnd(keepBlack) {
   Object.assign(C4E, { scene: null, zark: null, orion: null, arch: null, ring: [], watch: [], bolts: [], ward: null, boltQ: 0, wardF: 0, wardOn: 0, afterMus: false, sparks: null, trails: [], pend: null, pend2: null, beamOn: 0, charge: 0, lookN: null, slow: 1, stop: 0, slowT: 0, flinch: 0, rings: [], you: null, youP: null, fillL: 0, ending: false, step: -1, ringStarted: false, archT: 0, ringT: 0 });
   if (!keepBlack) { state = C4E.from === 'title' ? 'title' : 'explore'; ex.snap = true; clock.getDelta(); const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0; }
 }
-// ?ending=good|neutral|bad: watch an ending from the title screen (tap or press a key once the menu is up; nothing is saved or erased)
-{ const m = location.search.match(/[?&]ending=(good|neutral|bad|tared)/); // tared: the Taredesiban nightmare if (m) { const go = () => { if (state !== 'title' || C4E.on) return; removeEventListener('pointerdown', go); removeEventListener('keydown', go); sfx.init && sfx.init(); ch4EndingPlay(m[1], { preview: true }); };
+// ?ending=good|neutral|bad|tared: watch an ending (or the Taredesiban nightmare) from the title screen (tap or press a key once the menu is up; nothing is saved or erased)
+{ const m = location.search.match(/[?&]ending=(good|neutral|bad|tared)/); // tared: the Taredesiban nightmare
+  if (m) { const go = () => { if (state !== 'title' || C4E.on) return; removeEventListener('pointerdown', go); removeEventListener('keydown', go); sfx.init && sfx.init(); ch4EndingPlay(m[1], { preview: true }); };
   addEventListener('pointerdown', go); addEventListener('keydown', go);
-  const hint = () => { if (state === 'title') notice('Preview', `TAP TO PLAY THE ${m[1].toUpperCase()} ENDING`, 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500); } }
+  const hint = () => { if (state === 'title') notice('Preview', m[1] === 'tared' ? 'TAP TO PLAY THE TAREDESIBAN NIGHTMARE' : `TAP TO PLAY THE ${m[1].toUpperCase()} ENDING`, 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500); } }
+
+// ---- the cutscene player (main menu · Cutscenes): the scenes the active wanderer has reached, replayed from the title ----
+// Each one runs as it does in the story, then comes back here: nothing is saved, no flag is set, no save is touched.
+// What's listed follows the wanderer's progress (Chapter III: only their own species' nightmare, as in the Nostrapedia).
+// The bad ending erases its own save, so it's remembered on this device instead, once you've seen it.
+const CUT = { on: null, cam: null }; // the scene playing from the menu (its id), or null
+const cutsSeen = () => store.get('nv_cutsSeen', []);
+const cutsMark = id => { const s = cutsSeen(); if (!s.includes(id)) { s.push(id); store.set('nv_cutsSeen', s); } };
+const CUT_NM = { chompy: 'THE NIGHTMARE OF SEVIRRUS', erisian: 'THE VISION OF THE CITADEL', human: 'THE NIGHTMARE OF NEW LONDON', taredesiban: 'THE LIGHT AT THE EDGE OF THE DARK', grek: 'THE PROPHECY IN THE DARK' };
+const cutEnding = () => (wanderer && wanderer.ch4 && wanderer.ch4.ending) || null;
+const CUTS = [
+  { id: 'intro', ch: 'Prologue', name: 'THE EXPLORATION DIVISION', sub: 'The opening', ok: () => !!wanderer, play: () => startIntro() },
+  { id: 'drop', ch: 'Chapter I', name: 'THE SURVIVOR OF THE DROP', sub: 'Antarctica · James Brown finds you in the snow', ok: () => chNow() >= 1, play: () => runCutscene() },
+  { id: 'ch2road', ch: 'Chapter II', name: 'THE COLLAPSE ON THE ROAD', sub: 'Africa · Orion finds you', ok: () => !!(wanderer.ch2 && wanderer.ch2.introSeen) || chNow() >= 3, play: () => startCh2Intro('title') },
+  { id: 'nightmare', ch: 'Chapter III', name: () => CUT_NM[nmSeen()] || 'THE NIGHTMARE', sub: 'Nightmare · above Earth', ok: () => !!nmSeen(), play: () => cutNightmare(nmSeen()) },
+  { id: 'hawMars', ch: 'Chapter III', name: 'THE GRAND IMPERARCH COMES TO MARS', sub: 'Mars · the plain below Olympus Mons', ok: () => !!CH3S().hawMars || chNow() >= 4, play: () => startHawMars() },
+  { id: 'jamesRev', ch: 'Chapter III', name: 'JAMES BROWN, PONTIFEX MAXIMUS', sub: 'The Southern Ocean · off the Antarctic coast', ok: () => !!CH3S().jamesRev || chNow() >= 4, play: () => startJamesRev() },
+  { id: 'good', ch: 'Chapter IV', name: 'THE CATHARSIS FALLS', sub: 'The good ending', ok: () => cutEnding() === 'good', play: () => ch4EndingPlay('good', { preview: true }) },
+  { id: 'neutral', ch: 'Chapter IV', name: 'THE WAR GOES ON', sub: 'The neutral ending', ok: () => cutEnding() === 'neutral' || chNow() >= 5, play: () => ch4EndingPlay('neutral', { preview: true }) },
+  { id: 'bad', ch: 'Chapter IV', name: 'NO ONE WILL REMEMBER', sub: 'The bad ending · seen on this device', ok: () => cutsSeen().includes('bad'), play: () => ch4EndingPlay('bad', { preview: true }) }
+];
+function cutsRender() {
+  const list = CUTS.filter(c => { try { return c.ok(); } catch { return false; } }), left = CUTS.length - list.length;
+  $('#cutsHead').textContent = wanderer ? `Cutscenes · ${wanderer.name}` : 'Cutscenes';
+  $('#cutList').innerHTML = list.map((c, i) => `<button class="mi" data-c="${c.id}"><i>${pad(i + 1)}</i><span>${typeof c.name === 'function' ? c.name() : c.name}<small>${c.ch} · ${c.sub}</small></span><em class="arr">›</em></button>`).join('')
+    + `<div class="sub-head cuts-more">${list.length ? '' : 'Nothing yet · '}${left ? `${left} more to find as you play on` : 'Every cutscene found'}</div>`;
+  for (const b of $('#cutList').querySelectorAll('[data-c]')) b.addEventListener('click', () => cutPlay(CUTS.find(c => c.id === b.dataset.c)));
+}
+function cutPlay(c) {
+  if (!c || CUT.on || state !== 'title') return;
+  sfx.init(); sfx.click();
+  CUT.on = c.id; CUT.cam = { fov: camera.fov, near: camera.near, far: camera.far };
+  show(ui.title, false);
+  Promise.resolve().then(() => c.play()).then(r => { if (r === false) cutDone(); }).catch(e => { console.error(e); cutDone(); });
+}
+function cutDone() { // back to the Cutscenes list, as if nothing happened (false when no menu replay was running)
+  if (!CUT.on) return false; CUT.on = null;
+  sfx.drone(0); if (sfx.leadOn) sfx.leadOn = false; sfx.stopSong(1); try { sfx.stopVoice(); } catch (e) {} try { sfx.stopNarr(); } catch (e) {}
+  renderer.domElement.style.filter = ''; fbFlash(0); hwmSubHide(); fbSubHide(); closeDialog();
+  if (CUT.cam) { Object.assign(camera, CUT.cam); camera.updateProjectionMatrix(); CUT.cam = null; } camera.up.set(0, 1, 0);
+  scene.add(player); scene.add(particles); resetRig(); player.visible = true; inner.visible = true; inner.rotation.set(0, 0, 0); inner.position.set(0, 0, 0);
+  ui.xhud.classList.remove('cutting', 'cineonly', 'noskip'); show(ui.xhud, false); if (HWM.bars) HWM.bars.classList.remove('on');
+  toTitle(); clock.getDelta(); cutsRender(); goMenu('mCuts');
+  const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0;
+  return true;
+}
+async function cutNightmare(race) { // the Chapter III nightmare on its own: straight into the memories (no ship, no waking up)
+  if (race === 'taredesiban') return ch4EndingPlay('tared', { preview: true }); // Taredesiba I against Obsidnia: the duel's own engine
+  if (NM.on) return false;
+  for (const R of Object.values(NM.actors || {})) if (R.root.parent) R.root.parent.remove(R.root); // a cast from an earlier replay
+  Object.assign(NM, { on: true, race, phase: 'load', t: 0, bi: -1, ready: false, vo: {}, actors: {}, sevM: null, script: NM_SCRIPTS[race] });
+  state = 'nightmare'; const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.gasp(1.4); sfx.drone(.4);
+  nmStage();
+  if (race === 'chompy') { // Sevirrus itself, or the staged memories if it won't load
+    const ok = await sevOpen().catch(() => false); if (!NM.on) return;
+    if (ok) { fd.style.opacity = 0; sevStart(); return; }
+    sevClose();
+  }
+  await nmCast(race).catch(e => console.error(e)); if (!NM.on || CUT.on !== 'nightmare') return;
+  NM.phase = 'mem'; NM.saveCam = { near: camera.near, far: camera.far, fov: camera.fov }; camera.near = .1; camera.far = 700; camera.fov = 55; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
+  renderer.domElement.style.filter = NM.script.tint; if (NM.vo.music) sfx.playSong(NM.vo.music, .5); nmBeat(0);
+  show(ui.xhud, true); ui.xhud.classList.add('cutting'); fd.style.transition = 'opacity 1.2s'; fd.style.opacity = 0;
+}
+function cutNmEnd() { // the memories are over (or skipped): no Orion, no ship, straight back to the menu
+  fbSubHide(); sfx.drone(0); if (NM.vo && NM.vo.music) sfx.stopSong(1.5);
+  if (NM.saveCam) { camera.near = NM.saveCam.near; camera.far = NM.saveCam.far; camera.fov = NM.saveCam.fov; camera.updateProjectionMatrix(); NM.saveCam = null; }
+  for (const R of Object.values(NM.actors || {})) R.root.visible = false;
+  const cd = $('#xCard'); if (cd) cd.classList.remove('on');
+  NM.on = false; NM.phase = null; cutDone();
+}
+$('#cutsBtn').addEventListener('click', () => { sfx.init(); sfx.click(); cutsRender(); goMenu('mCuts'); });
 
 // where he comes from: out of St Stephen's entrance if you're close to the Palace, otherwise up the street towards you
 function hawStart() {
@@ -18773,6 +18935,7 @@ function spaceViewOnly(dt) { // the ship hangs there while they talk you down
   SPC.ship.position.copy(SPC.pos); SPC.ship.quaternion.copy(SPC.q); if (SPC.stars) SPC.stars.position.copy(camera.position);
 }
 async function nmWake() {
+  if (CUT.on === 'nightmare') { cutNmEnd(); return; } // replayed from Cutscenes
   NM.phase = 'wake'; fbSubHide(); sfx.drone(0); if (NM.vo.music) sfx.stopSong(1.5);
   if (NM.saveCam) { camera.near = NM.saveCam.near; camera.far = NM.saveCam.far; camera.fov = NM.saveCam.fov; camera.updateProjectionMatrix(); }
   renderer.domElement.style.filter = ''; fbFlash(1, '#ffffff'); NM.flashA = 1; sfx.gasp(1.8);
