@@ -1,6 +1,6 @@
 """Build a Taredesiban (blue-skinned humanoid in dark armour with teal inlays, flared pauldrons, a sheer cape) as a rigged GLB.
 
-Residents only: the Taredesibans are not a playable race.
+Residents use this rigged model; the wanderer's own body is built from it by build_sp_taredesiban.py.
 
 Same 18-bone armature and bone names as the rigged Sevirrus and Jakal models, so every pose
 and animation works on all of them. Character faces +Z, units are metres.
