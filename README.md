@@ -1529,3 +1529,15 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **Bad ending:** all four the other way: James, Croxian and Malia killed, and Orion left alive.
 - **Neutral ending:** anything in between. Get even one choice "wrong" either way and it's neutral.
 - The Croxian, Malia and Orion choices aren't in the game yet; the record is ready for them.
+
+### Chapter IV's endings (waiting for the Siege of Carax)
+- **The three endings are built** as cutscenes in the burning throne room of Carax, with Lord Zark on his knees among the ruins. The Siege of Carax isn't in the game yet; when it is, its Lord Zark fight calls **`ch4EndingPlay()`** as he falls, and your Chapter III choices pick the ending.
+- **Good ending:** Zark collapses ("This changes… nothing…"). Archamus comes down out of the light, and Hak Chompjak, Vishara Erisconos and Darius Ancin walk in out of the smoke. The four of them stand around him and look down, and Hak says: *"Look at your empire now, Zark. Empty. Like your Catharsis will be by nightfall."* Ends on *THE CATHARSIS FALLS*.
+- **Neutral ending:** Zark is beaten. Archamus comes down through the broken roof: *the damage has been done, and we need to keep going.* The game goes on into **Chapter V**.
+- **Bad ending:**
+  - **Zark's death:** Zark taunts you, and you charge and leap at him in slow motion. A white flash and shockwaves follow, light tears out of the cracks in his body, and he comes apart into embers (*LORD ZARK IS DEAD*). Then silence, with ash falling.
+  - **Orion:** he walks out of the smoke in **black Terra Imperia armour with crimson trim**, blames you for Croxian's death, takes you by the throat and lifts you off the ground. He talks you through it while you kick and claw at his hand. Your sight closes in, darkens, drains of colour and keeps blacking out, under strangled breathing and a racing heartbeat. His last words are *"…no one will remember you were ever here."*
+  - **Game over:** the **save slot you played to get there is erased.** Loaded or last saved to slot 1, slot 1 is gone, and so on; the other slots are untouched. If the playthrough was never saved, there's nothing to erase.
+- **Skip** (or Esc) jumps straight to the outcome. Skipping the bad ending still ends in game over and still erases the save.
+- **Watch them now:** add `?ending=good`, `?ending=neutral` or `?ending=bad` to the game's address, then tap once the title screen is up. **A preview never erases a save** and returns to the title when it ends.
+- The lines have no voices yet: send recordings and I'll wire them in.
