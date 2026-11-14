@@ -1723,3 +1723,19 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - **Archamus (Primes):** worshipped by the Grek **and the Taredesibans**, theirs for twelve billion years.
   - **Obsidnia (Vectors):** his empire is named as the **Conqrix Empire**, with the Minotaurus and the Hamadalians as his allies and Taredesiba I's offensive. The Grob still overthrow him, eleven billion years ago.
   - **Timpur IV's file and the Taredesiban lore** in the creator now say they worship Archamus.
+
+## Nyrexia's death (Chapter III)
+- **If you never recruit Nyrexia, Alexia kills her.** Her quest fails for good once you go in to face James at the Antarctic station (the warning says so). When Alexia's coup on Eris comes, Nyrexia is in the Citadel beside Vishara. She begs Alexia to stop, Alexia cuts her down, and Vishara screams her name. Afterwards: *ERIS FALLS · A PUPPET OF TERRA IMPERIA*, then *NYREXIA ERISCONOS · IS DEAD*. Saved as `ch3.nyxDead` and `ch3.nyxFailed`.
+- **Vishara's oath.** Kneeling over her sister, then on her feet and shaking with fury, Vishara swears to hunt Alexia down and purge her side of the dynasty, in five paragraphs, before Alexia sends word to the Grand Imperarch.
+- **Fully voiced:** `data/nmErisVoices.js`, after CH3NMERIS1–8:
+  - **CH3NYREXIADEATH1–6** (slots 8–13): Nyrexia's two lines, Alexia's two replies, Vishara's scream, and Alexia's "Send word to the Grand Imperarch."
+  - **CH3NYREXIADEATH7–8** (slots 14–18): Vishara's oath, two recordings cut into one clip per paragraph (7 at 19.5 s; 8 at 20.8 s and 39.8 s).
+  - Sources in `assets/audio/nightmare_ch3/`.
+
+## James Brown, made easier
+- The Pontifex Maximus at the Antarctic station is now **your level** (at least 18; he was your level + 2, at least 22), with **3,500 + 110 × level HP** (was 6,000 + 190 × level), hits **25% softer**, waits **1.9 s** between attacks (was 1.4 s), moves a little slower, and no longer uses **nova** in phase two.
+- Story bosses can now set their own damage scale (`kdMul`), attack pause (`cd`) and speed (`sp`); only James uses them.
+
+## Companion damage, by level
+- **Every companion's damage grows with their own level** (`COMP_DPS`, `compDps` and `compHit`, just after `compLevel`). Nico starts strongest; Orion and Khazglar start weaker and grow faster, and overtake her as they level up (Orion around player level 41, Khazglar around 60 against one target, sooner in a crowd thanks to his splash). Everyone else is 16 + their level per second, kept below Nico; Chapter I James is 8 + half his level.
+- **The level rule you use now applies to companions** (`compGap`): +4% a level above the foe, up to ×2, and −4% a level below, down to ×0.3. They don't get one-shots, and against bosses their bonus stops at ×1.25.
