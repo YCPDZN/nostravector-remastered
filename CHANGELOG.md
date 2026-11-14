@@ -1744,3 +1744,10 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **After James Brown, spared or killed,** a new main quest appears: *Return to Charon and speak to Charon and Kizna*. Charon is marked in gold in space (*MAIN QUEST · CHARON AND KIZNA*), and the two robots wait by your ship when you land. No Terra Imperia patrols land while they're there.
 - **What they say depends on James's fate.** If you killed him, Charon is sorry for your loss and Kizna warns that Hawthorne will want a new Pontifex Maximus, and you. If you spared him, Charon jokes about hiding the reactor and Kizna warns that Hawthorne and his Sisters won't forgive it. Either way, Charon has dropped another mountain on Hawthorne's drill crews, and Kizna says the alignment is close. Unvoiced for now (subtitles).
 - **Completing it** gives 250 XP and saves `ch3.charonBack`. Charon and Kizna don't join your crew yet.
+
+## James Brown, Pontifex Maximus: his old orders, and the main menu
+- **His Chapter I order lines, voiced, in every chapter.** Ordering James as the Pontifex Maximus (Chapter III on) shows his Chapter I replies and plays their recordings (CH1COMMAND1–5): "On it. I'll dig us up some supplies.", "I'll scout ahead…", "Heading back to the station…", "I'll stretch my legs around here.", "Right behind you." Chapter I James's recordings now play in every chapter too. The unused slot for new Chapter III lines (`JBARK_CH3`) is gone. With **Everyone** selected he stays silent, as before.
+- **On the main menu.** Spare him at the station and his Terra Imperia model stands beside your wanderer, on the right beyond Nico and Nyrexia, walking with the rest of the crew. Hidden on the blood-red Chapter IV menu, like everyone else.
+
+## Fix: invisible after landing at the station
+- Landing at the Antarctic station (James's stronghold) left your wanderer invisible: taking off hides you, and that landing never showed you again. It now does, and clears the landing's black flash. Landing at Ad-Nostra had the same problem and is fixed too.
