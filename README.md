@@ -1475,3 +1475,11 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - Beaten: *"Go on… finish it. You've killed me once already."*
   - Spared: *"Why…? I'd have gutted you. I'd have enjoyed it. …Fine. I owe you a life, wanderer. Don't make me regret paying it back."*
 
+### Teleporting between your bases
+- **From Chapter III on (and in Chapters IV and V), the teleporter network reaches all your bases,** not just the ones in the area you're standing in. Use any teleporter (yours, the station's, Orion's or Ad-Nostra's) and the list now lets you jump to:
+  - **Chapter I's Antarctica**: the station teleporter and your camp's teleporters;
+  - **Africa**: Orion's teleporter, Ad-Nostra's, and any you built there;
+  - **every planet where you've built a teleporter**, in any star system.
+  Destinations in another area are marked *across the network · the Nostra follows you*. You arrive by the teleporter, with your ship set down nearby and your crew with you. New London's teleporter still can't be reached this way.
+- **Planet bases stay where you built them.** A teleporter built on a planet now remembers the ground it stands on, so teleporting back puts you, and the base, in the same place. Teleporters built before this update land on a fixed dry spot on that planet, with your base laid out around you.
+
