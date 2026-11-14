@@ -1511,3 +1511,20 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - REFUSAL: walking away from the door (*"Run, then. You're good at that."*).
 - His lines stay on screen until he's finished saying them. Killing him is still silent.
 - The pack (about 1.7 MB) starts downloading when the stronghold appears, so it's ready by the time you reach the door.
+
+### James's fate: what your crew thinks
+- **Orion, Khazglar and Nico react** once you decide James's fate (only the ones who have joined you, one after another):
+  - **Spare him** and they call you out: he's been through too much, and you've left him to suffer. Each loses **12 influence** with you.
+  - **Kill him** and they praise it as a mercy killing. Each gains **10 influence**.
+- Then, either way, a line nobody speaks: ***YOUR ACTIONS WILL BE REMEMBERED.***
+
+### Chapter III's choices and Chapter IV's ending
+- The game now keeps a record of the choices that decide Chapter IV's ending:
+  - **James Brown:** killed or spared (recorded now).
+  - **Nyrexia:** whether you'd recruited her before you defeated James (recorded now, when his fate is decided).
+  - **Croxian Mascar:** killed or spared. Kill him and **Orion turns villain and takes command of Terra Imperia**, the only way Pontifexes serve Terra Imperia in Chapter IV.
+  - **Malia de Toro:** killed or spared.
+  - **Orion Mascar:** killed or left alive. This choice only comes if you killed Croxian.
+- **Good ending:** James, Croxian and Malia all spared.
+- **Bad ending:** James, Croxian or Malia killed, or Orion left alive after Croxian's death.
+- The Croxian, Malia and Orion choices aren't in the game yet; the record is ready for them.
