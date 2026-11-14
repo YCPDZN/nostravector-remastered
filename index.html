@@ -5088,7 +5088,7 @@ function renderTasks() {
   if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
   if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? campTasks(p, task) : '');
   if (curArea() === 'africa' || ((wanderer.chapter | 0) >= 2 && p.escaped)) h = ch2Tasks(task); // Chapter II's objectives follow you, even back to Antarctica
-  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (c3.hawMars && (wanderer.chapter | 0) === 3 ? task(!!c3.charonLanded, 'Main quest · Head to Charon') : '') + (c3.charonLanded && (wanderer.chapter | 0) === 3 ? task(!!c3.charonMet, 'Meet Charon and Kizna on Charon') : '') + (c3.jamesRev ? task(!!c3.jamesFate, 'Main quest · Defeat James Brown at the Antarctic station') : '') + (c3.hawMars ? task(!!c3.nyxJoined, 'Side quest (optional) · Recruit Nyrexia Erisconos on Eris') : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
+  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (c3.hawMars && (wanderer.chapter | 0) === 3 ? task(!!c3.charonLanded, 'Main quest · Head to Charon') : '') + (c3.charonLanded && (wanderer.chapter | 0) === 3 ? task(!!c3.charonMet, 'Meet Charon and Kizna on Charon') : '') + (c3.jamesRev ? task(!!c3.jamesFate, 'Main quest · Defeat James Brown at the Antarctic station') : '') + (c3.hawMars ? (!c3.nyxJoined && (c3.nyxFailed || c3.jamesFate) ? task(true, '<s>Side quest · Recruit Nyrexia Erisconos on Eris</s> · failed') : task(!!c3.nyxJoined, 'Side quest (optional) · Recruit Nyrexia Erisconos on Eris')) : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
   if ((wanderer.chapter | 0) >= 3) { const tq = sqTracked(); if (tq) h += `<div class="x-task sq-task"><i></i><span>${tq}</span></div>`; } // the side quest you're tracking
   xUI.tasks.innerHTML = h;
   $('#xChap').textContent = liveChapterLabel().toUpperCase();
@@ -7702,7 +7702,17 @@ function faunaSpawner() {
   }
   for (const c of [...fauna.list]) if (Math.hypot(c.x - p.x, c.z - p.z) > 175 && c.state !== 'hunt') removeFauna(c);
 }
+// ---- level against level: the further you outlevel something, the harder you hit it (and the reverse). 25 levels apart is a one-shot ----
+const LV_ONESHOT = 25;
+const faunaLv = c => !c ? 0 : c.lv || (c.D && (c.D.lv || Math.max(1, Math.round((c.D.xp || 15) / 15)))) || 0; // wildlife: its level from what it's worth
+function lvGapMul(a, d) { if (!a || !d) return 1; const g = a - d; return g >= LV_ONESHOT ? Infinity : clamp(1 + g * .04, .3, 2); } // +4% a level up to ×2, −4% a level down to ×0.3
+function foeLv(src) { // who is hitting you, and at what level (0: the world itself, no scaling)
+  if (src && typeof src === 'object') { if (src.lv) return src.lv; if (src.D) return faunaLv(src); }
+  if (DGN.on && DGN.boss && DGN.boss.c) return faunaLv(DGN.boss.c);
+  return 0;
+}
 function hurtPlayer(n, src) {
+  { const k = lvGapMul(foeLv(src), levelOf(wanderer)); if (k === Infinity) { n = Math.round(maxHP() * 1.5); if (time - (fauna.osT || -9) > 2) { fauna.osT = time; lootMsg('Far above your level · dodge it or block it', '#ff6a6e'); } } else if (k !== 1) n = Math.max(1, Math.round(n * k)); }
   if (ex.act && ex.act.type === 'dodge') { if (time - fauna.msgT > 1) { lootMsg('Dodged!', '#9fe6ff'); fauna.msgT = time; } return; }
   if (ex.blocking) {
     const p = player.position, a = player.rotation.y, dx = src ? src.x - p.x : 0, dz = src ? src.z - p.z : 0, d = Math.hypot(dx, dz) || 1;
@@ -7734,6 +7744,7 @@ function blackout() {
 function damageFauna(c, dmg, fromJames) {
   if (c.dead) return;
   if (c.boss) dmg = dgnBossDmg(c, dmg); // his ward
+  if (!fromJames) { const k = lvGapMul(levelOf(wanderer), faunaLv(c)); if (k === Infinity) { dmg = Math.max(dmg, c.hp); if (!c.D.passive && time - (fauna.osT || -9) > 1.5) { fauna.osT = time; lootMsg('One shot · far beneath your level', '#ffd27a'); } } else dmg *= k; }
   if (c.D.passive && !c.D.huntable) {
     if (!fromJames && time - (fauna.alT || -99) > 12) { fauna.alT = time; alignAct(-2, 'Cruelty to a harmless animal'); }
     c.state = 'flee'; c.t = 0; c.tgt = null;
@@ -10340,7 +10351,7 @@ const khzJoined = () => !!(wanderer && wanderer.ch3 && wanderer.ch3.khzMet);
 const khalUp = () => khzJoined() && !!wanderer.ch3.khal;
 // after Hawthorne's speech on Mars: the main quest (head to Charon) and an optional side quest (recruit Nyrexia on Eris)
 function charonQ() { const c = wanderer && wanderer.ch3; return !!(c && c.hawMars && (wanderer.chapter | 0) === 3 && !c.charonLanded); }
-function nyxQ() { const c = wanderer && wanderer.ch3; return !!(c && c.hawMars && !c.nyxJoined); } // Khalmar holds the summit (and the wardens are back)
+function nyxQ() { const c = wanderer && wanderer.ch3; return !!(c && c.hawMars && !c.nyxJoined && !c.nyxFailed && !c.jamesFate); } // fails for good once you go in to face James // Khalmar holds the summit (and the wardens are back)
 const sumBoss = () => !khzJoined() || khalUp(); // someone is waiting on the throne
 function khzLocal(W, dir) { // a direction on the world, in the landing spot's metres (x east, z south)
   const td = dir.dot(W.D); if (td < .5) return null; const R = W.R || W.P.r;
@@ -10424,7 +10435,7 @@ const dgnLv = f => 5 + Math.round((f - 1) * 1.5); // creatures from level 5 on t
 function dgnType(base, f, warden) { // a creature for this floor: tougher the higher you climb
   const key = `dgn_${base}_${f}${warden ? 'w' : ''}`; if (FAUNA[key]) return key;
   const B = DGN_BASE[base], k = .75 + (f - 1) * .15, w = warden ? 2.4 : 1, lv = dgnLv(f) + (warden ? 2 : 0); // easier: less health, slower growth, softer wardens
-  FAUNA[key] = Object.assign({}, B, { name: warden ? `Warden of the ${['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh'][f]} floor · lv ${lv}` : `${B.name} · lv ${lv}`, hp: Math.round(B.hp * k * w), dmg: Math.max(2, Math.round(B.dmg * .55 * (1 + (f - 1) * (base === 'rusthound' ? .06 : .1)) * (warden ? 1.2 : 1))), xp: Math.round(B.xp * (1 + (f - 1) * .35) * (warden ? 5 : 1)), aggro: warden ? 18 : B.aggro, pack: warden ? false : B.pack,
+  FAUNA[key] = Object.assign({}, B, { lv, name: warden ? `Warden of the ${['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh'][f]} floor · lv ${lv}` : `${B.name} · lv ${lv}`, hp: Math.round(B.hp * k * w), dmg: Math.max(2, Math.round(B.dmg * .55 * (1 + (f - 1) * (base === 'rusthound' ? .06 : .1)) * (warden ? 1.2 : 1))), xp: Math.round(B.xp * (1 + (f - 1) * .35) * (warden ? 5 : 1)), aggro: warden ? 18 : B.aggro, pack: warden ? false : B.pack,
     loot: warden ? () => [['medkit', 1], ['obsidian', 2], ['crystal', 2], Math.random() < .5 && ['warpcell', 1]] : B.loot });
   if (BEASTS[base]) BEASTS[key] = BEASTS[base];
   return key;
@@ -10825,7 +10836,7 @@ function dgnBossStart() {
   const K = DGN.k; if (!K || DGN.boss) return;
   DGN.cut = false; K.R.root.position.y = 0;
   const P = sumKB(), D = { name: P.short, hp: P.hp, r: 1.8, xp: 0, dmg: 0, loot: () => [] };
-  const c = { type: 'khazboss', D, mesh: K.R.root, x: K.x, z: K.z, y: 0, rot: 0, hp: P.hp, state: 'hunt', t: 0, cd: 0, home: [K.x, K.z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, boss: true, bar: null };
+  const c = { type: 'khazboss', D, mesh: K.R.root, x: K.x, z: K.z, y: 0, rot: 0, hp: P.hp, state: 'hunt', t: 0, cd: 0, home: [K.x, K.z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, boss: true, bar: null, lv: P.lv };
   fauna.list.push(c);
   DGN.boss = { c, R: K.R, st: 'chase', t: 0, cd: 2, quakeCd: 11, leapCd: 6, throwCd: 8, metT: 4, aggroT: 0, tgt: 'you', ph: 1, tels: [], mets: [], proj: null };
   sfx.combat(true, COMBAT_TRACKS.indexOf('Predator II'));
@@ -11118,7 +11129,7 @@ const spRoles = sp => sp.flies ? ['runner', 'hunter', 'brute', 'glider'] : ['run
 function spType(sp, role, lv, warden) { // a creature of this species at this level (registered once)
   const key = `sp~${sp.id}~${role}~${lv}${warden ? '~w' : ''}`; if (FAUNA[key]) return key;
   const Rl = SP_ROLE[role], B = Rl.base, kh = 1 + (lv - 10) * .08, kd = 1 + (lv - 10) * .035, kx = 1 + (lv - 10) * .06, w = warden ? 4 : 1;
-  const D = Object.assign({}, B, { name: warden ? `${sp.name} matriarch · lv ${lv}` : `${sp.name} ${Rl.title} · lv ${lv}`, hp: Math.round(B.hp * kh * w), dmg: Math.round(B.dmg * kd * (warden ? 1.4 : 1)), xp: Math.round(B.xp * kx * (warden ? 5 : 1)),
+  const D = Object.assign({}, B, { lv, name: warden ? `${sp.name} matriarch · lv ${lv}` : `${sp.name} ${Rl.title} · lv ${lv}`, hp: Math.round(B.hp * kh * w), dmg: Math.round(B.dmg * kd * (warden ? 1.4 : 1)), xp: Math.round(B.xp * kx * (warden ? 5 : 1)),
     pack: warden ? false : B.pack, spot: warden ? `The ${sp.name} matriarch rises!` : `${sp.name} ${Rl.title}s!`,
     loot: warden ? () => [['medkit', 1], ['crystal', 2], ['obsidian', 1], ['alienmeat', 2], Math.random() < .5 && ['warpcell', 1]] : role === 'brute' ? () => [['metal', 1], ['alienmeat', 2], Math.random() < .3 && ['medkit', 1]] : () => [Math.random() < .6 && ['alienmeat', 1], Math.random() < .4 && ['scrap', 1], Math.random() < .2 && ['crystal', 1]] });
   if (B.fly) D.look = { body: new THREE.Color(sp.p.c1).getHex(), dark: new THREE.Color(sp.p.c3).getHex(), s: 1.9 };
@@ -11350,7 +11361,7 @@ function lairArenaTick(dt) {
 function lairBossStart() {
   const K = DGN.lb, Bd = K.B; if (DGN.boss) return;
   const D = { name: Bd.name, hp: Bd.hp, r: Bd.p ? 1.6 + Bd.p.girth * Bd.p.scale * .6 : 1.6, xp: 0, dmg: 0, loot: () => [] };
-  const c = { type: 'lairboss', D, mesh: K.mesh, x: K.x, z: K.z, y: 0, rot: 0, hp: Bd.hp, state: 'hunt', t: 0, cd: 0, home: [K.x, K.z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, boss: true, bar: null };
+  const c = { type: 'lairboss', D, mesh: K.mesh, x: K.x, z: K.z, y: 0, rot: 0, hp: Bd.hp, state: 'hunt', t: 0, cd: 0, home: [K.x, K.z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, boss: true, bar: null, lv: Bd.lv || (DGN.lair && DGN.lair.lv) || 0 };
   fauna.list.push(c);
   DGN.boss = { lair: true, c, Bd, st: 'chase', t: 0, cd: Bd.cd + 1, ph: 1, seq: [...Bd.seq], si: 0, tels: [], mets: [], proj: null, shots: [], pools: [], A: null, chaseT: 0 };
   if (Bd.theme) leaderPlay(Bd.theme).then(ok => { if (!ok) sfx.combat(true, COMBAT_TRACKS.indexOf('Predator II')); }); else sfx.combat(true, COMBAT_TRACKS.indexOf('Predator II'));
@@ -12548,10 +12559,19 @@ function tiUse(n) {
       'Do you know what the cold does? It takes your fingers. Then your voice. Then you can’t even scream. I screamed for you anyway. Every second, until I couldn’t.',
       'Hawthorne cut me open and put a furnace where my heart used to be. It burns every time I think of you. So come in. Come in and let me show you what you made.'];
     const run = i => { if (i < L.length) { const c = jbfClip(i); openDialog('JAMES BROWN', [L[i]], false, () => run(i + 1), c ? [c] : undefined); return; }
-      openChoice('THE ANTARCTIC STATION · TERRA IMPERIA', [{ text: `Go in and face ${X.full} (lv ${X.lv})`, onPick: () => tiFight('james', X) }, { text: 'Not yet', onPick: () => { lootMsg('James · “Run, then. You’re good at that.”', '#ff6a6e'); const c = jbfClip(8); if (c) sfx.playNarr(c, 1.3); } }]); };
+      openChoice('THE ANTARCTIC STATION · TERRA IMPERIA', [{ text: `Go in and face ${X.full} (lv ${X.lv})`, onPick: () => jamesWarn(X) }, { text: 'Not yet', onPick: () => { lootMsg('James · “Run, then. You’re good at that.”', '#ff6a6e'); const c = jbfClip(8); if (c) sfx.playNarr(c, 1.3); } }]); };
     run(0); });
   else if (n.id === 'tiPatrol') { const T = TIW.pat, X = soldierSpec(T); openChoice(`${T.rank.toUpperCase()} ${T.name.toUpperCase()} · TERRA IMPERIA`, [{ text: `Fight ${T.rank} ${T.name} (lv ${X.lv})`, onPick: () => tiFight('soldier', X, { name: T.name, rank: T.rank, sex: T.sex }) }, { text: 'Leave them be', onPick: () => {} }]); }
   else if (n.id === 'pontHunt') { const P = TIW.hunt.P, X = pontSpec(P), [he, him] = pontHe(P); openChoice(`${P.name.toUpperCase()} · ${pontTitle(P).toUpperCase()}`, [{ text: `Face ${him} (lv ${X.lv}) · beat ${him} to make ${him} yours`, onPick: () => tiFight('pont', X, P.id) }, { text: `Not now (${he} keeps hunting you, and grows stronger every time ${he} kills you)`, onPick: () => {} }]); }
+}
+function jamesWarn(X) { // past this door the story turns, and what you do from here on has consequences
+  const nyx = nyxQ(), L = ['Once you face James Brown, the story will head in a direction where your actions will have consequences.'];
+  if (nyx) L.push('Nyrexia’s quest will fail if you proceed. She will not wait for you on Eris.');
+  openDialog('WARNING', L, true, () => openChoice('FACE JAMES BROWN?', [
+    { text: nyx ? `Proceed · face ${X.full} (Nyrexia’s quest fails)` : `Proceed · face ${X.full}`, onPick: () => {
+      if (nyx) { setC3({ nyxFailed: true }); renderTasks(); setTimeout(() => notice('Side quest failed', 'NYREXIA ERISCONOS STAYS ON ERIS', 3600), 400); }
+      tiFight('james', X); } },
+    { text: 'Turn back', onPick: () => { lootMsg('James · “Run, then. You’re good at that.”', '#ff6a6e'); const c = jbfClip(8); if (c) sfx.playNarr(c, 1.3); } }]));
 }
 const tiSpot = (r0, r1) => { for (let k = 0; k < 24; k++) { const a = Math.random() * Math.PI * 2, r = r0 + Math.random() * (r1 - r0), x = Math.cos(a) * r, z = Math.sin(a) * r; if (!worldBlocked(x, z)) return [x, z]; } return [r0, r0 * .4]; };
 function tiBeacon(g, x, z, col, h) { const b = glowSprite(col, 14, .6); b.position.set(x, wHeight(x, z) + h, z); g.add(b); return b; }
