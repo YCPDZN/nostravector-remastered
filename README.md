@@ -1564,3 +1564,7 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **Waking up no longer seems stuck:**
   - Orion's "Hey! HEY! Look at me!" and the lines after it move on with **Space, E or Enter**, or a tap/click anywhere, like every other conversation. Before, only a click on the dialogue box itself worked.
   - **Esc** skips the nightmare's memories.
+- **The nightmare on phones:**
+  - Held upright, the memories use a wider lens and each shot steps back, so nobody is cut off the sides (the two HFOS soldiers used to be sliced in half).
+  - A tap anywhere moves Orion's wake-up lines on.
+  - **Skip** is thumb-sized on phones (in every cutscene, not just this one).

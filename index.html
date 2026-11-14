@@ -426,6 +426,7 @@ body.touch .touch-ui{display:block}
 #xSkip{position:absolute;right:calc(var(--sr) + 20px);bottom:calc(var(--sb) + 16px);display:none;pointer-events:auto;z-index:3}
 #xhud.cutting #xSkip{display:inline-block}
 #xhud.cutting.noskip #xSkip{display:none}
+body.touch #xSkip{min-height:46px;min-width:104px;padding-left:20px;padding-right:20px;touch-action:manipulation} /* thumb-sized Skip on phones, for every cutscene */
 #cfHud{position:fixed;inset:0;z-index:33;pointer-events:none;display:none;font-family:'Lexend Exa',sans-serif;color:#fff}
 #cfHud.on{display:block}
 #cfHud .bars{position:absolute;top:max(18px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(94vw,1000px);display:flex;flex-direction:row;align-items:flex-start;gap:14px;margin:0}
@@ -18361,7 +18362,9 @@ function nightmareTick(dt) {
     // the camera drifts along its path, shaking
     const kk = smooth(0, Math.max(3, NM.lineEnd || 6), NM.bt), from = new THREE.Vector3().fromArray(B.cam[0]), to = new THREE.Vector3().fromArray(B.cam[1]);
     NM.cam.copy(from.lerp(to, kk)); NM.shake = Math.max(0, (NM.shake || 0) - dt * 1.5); const s = .03 + NM.shake * .25;
-    camera.position.set(NM.cam.x + (Math.random() - .5) * s, NM.cam.y + (Math.random() - .5) * s, NM.cam.z); camera.lookAt(NM.look.fromArray(B.at));
+    const look = NM.look.fromArray(B.at), up = camera.aspect < 1, fv = up ? 64 : 55; if (camera.fov !== fv) { camera.fov = fv; camera.updateProjectionMatrix(); }
+    if (up) { NM.cam.sub(look).multiplyScalar(clamp(1 + (1 - camera.aspect) * 1.1, 1, 1.7)).add(look); NM.cam.y = Math.max(.25, NM.cam.y); } // a phone held upright: a wider lens, and the shot steps back so nobody is cut off the sides
+    camera.position.set(NM.cam.x + (Math.random() - .5) * s, NM.cam.y + (Math.random() - .5) * s, NM.cam.z); camera.lookAt(look);
     if ((NM.hb = (NM.hb || 0) + dt) > .7) { NM.hb = 0; sfx.heart(.7); }
     sfx.drone(.55);
     renderer.render(NM.scene, camera);
