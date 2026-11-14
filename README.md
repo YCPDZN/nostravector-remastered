@@ -1376,6 +1376,6 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 
 ## Croxian, without his helmet
 - **As your companion**, Croxian Mascar no longer wears his helmet. Under it he has his father's face (Orion's, without the beard or the cybernetic eye) and Orion's short brushed hair, cut shorter and **black**. He keeps his armour, collar, cloak and scythe.
-- This is the companion's model only (`data/cpCroxianU.js`, also `assets/models/companions/croxian_unhelmeted.glb`): wherever your companion Croxian appears (your crew, the menu, his Nostrapedia companion page). The story's Croxian (Chapters I and II, the nightmare, Terra Imperia's general) keeps his helmet.
+- This is the companion's model only (`data/cpCroxianU.js`, also `assets/models/companions/croxian_unhelmeted.glb`): wherever your companion Croxian appears (your crew, his Nostrapedia companion page). The story's Croxian (Chapters I and II, the nightmare, Terra Imperia's general) keeps his helmet.
 - Built from the two original models by `nightmare/tools/croxian_unhelmet.py` (`python3 croxian_unhelmet.py data/cpCroxian.js data/cpOrion.js out.glb`).
 
