@@ -113,4 +113,3 @@ Add one of these to the game's address to jump straight to a scene:
 - **The Siege of Carax:** Lord Zark's Chapter IV story battle (level 60, on Carax). The three Chapter IV endings are built and waiting. When Zark falls, the fight should call `ch4EndingPlay()`, and your Chapter III choices pick the ending. The Final Boss theme (`data/thFinal.js`) is already in the game for it.
 - **Charon and Kizna joining your crew.** The story says they'll join "when the alignment comes".
 - **Thomas Hawthorne's hall:** Terra Imperia's leader has no hall to fight him in.
-- **Voices for the return to Charon:** Charon and Kizna's conversation after James Brown is subtitles only for now.

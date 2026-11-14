@@ -1751,3 +1751,7 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 
 ## Fix: invisible after landing at the station
 - Landing at the Antarctic station (James's stronghold) left your wanderer invisible: taking off hides you, and that landing never showed you again. It now does, and clears the landing's black flash. Landing at Ad-Nostra had the same problem and is fixed too.
+
+## The return to Charon, voiced
+- **Charon and Kizna's conversation after James Brown is fully voiced:** **CH3CHARONRETURN1–6**, slots 5–10 of `data/chnVoices.js` (after the first meeting's CH3CHARON1–5). 1–2 are the lines if you killed James, 3–4 if you spared him, and 5–6 are the lines everyone hears. Sources are in `assets/audio/charon_ch3/`.
+- **The first meeting replays on purpose.** Talking to them again after either conversation plays the first meeting and gives another 200 XP each time. That's an intentional XP farm, so leave it in.
