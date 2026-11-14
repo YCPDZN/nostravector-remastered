@@ -1399,3 +1399,9 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 
 - **Lighter start-up:** Javek's two models and the helmetless Croxian (about 9 MB together) no longer download when the game starts. Each one loads the first time it's actually shown: in the Nostrapedia, as a companion, or as an Adventure hero.
 - **Classified labels fit:** on a phone, the "when you meet them" labels shorten to *Ch. III · once met* / *Ch. III · meet or fight them*, and every Nostrapedia label wraps instead of widening the list.
+
+## Javek's family
+
+- **Javek's Ancient Figures file** now gives his birth (7,000,000,000 BC) and his family: his mother **Marissa** (deceased), his father **Jaximus, the Destroyer of Haeca** (deceased) and his grandfather **Roximus, the Builder of Haeca** (deceased). It also says he met **Maraxos II** as a child, rose to be his trusted royal chancellor, and then overthrew him.
+- **Jaximus has his own Ancient Figures file**, redacted until Chapter IV like Javek's. He was a subordinate of the Xyperion Communist Grob Republic who destroyed the Haecan Republic by causing a nuclear winter, and was killed by Maragroxis VIII. The file also covers his father Roximus, the Builder of Haeca, killed by Maragroxis VII. Jaximus is shown with **red skin, like Roximus**: it's Javek's model recoloured in the game, so there's nothing extra to download.
+
