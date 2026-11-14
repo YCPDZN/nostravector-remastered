@@ -16127,7 +16127,7 @@ async function companionRig(id) { // the rig any companion walks and fights with
   if (id === 'nico') return nicoCompanionRig();
   const L = COMPANIONS.find(o => o.id === id && o.tag);
   if (L) { const el = document.getElementById(L.tag); if (!el) throw new Error('no model for ' + id); const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-    const sc = await parseGlb(u8.buffer); if (L.mod === 'kizna') feminiseRobot(sc); const R = autoRig(SkeletonUtils.clone(sc), L.h || 1.9); armRig(R, L.weapon || 'none');
+    const sc = await parseGlb(u8.buffer); if (L.mod === 'kizna') feminiseRobot(sc); const R = autoRig(gearNoMeasure(SkeletonUtils.clone(sc)), L.h || 1.9); armRig(R, L.weapon || 'none');
     if (id === 'khazglar') { const own = []; R.model.traverse(o => { if (/^weapon$/i.test(o.name || '')) own.push(o); }); for (const o of own) if (o.parent) o.parent.remove(o); // the model carries a hammer of its own: one hammer, not two
       const sock = R.rh ? boneSocket(R.rh) : R.ra ? handSocket(R.ra) : null; if (sock) { const H = makeKhzHammer(); sock.add(H); R.gear.push(H); } R.weapon = 'sword'; } // his legendary hammer
     return R; }
@@ -18734,11 +18734,14 @@ function makeSword() {
   return g;
 }
 // ---- auto-rig: skeleton bones, named pivot groups, or a geometric split for anything else ----
+function boxNoGear(m) { const sk = []; m.traverse(o => { if (o.userData && o.userData.noMeasure) sk.push([o, o.parent]); }); for (const [o, p] of sk) p.remove(o); m.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(m); for (const [o, p] of sk) p.add(o); m.updateMatrixWorld(true); return b; }
+function gearNoMeasure(m) { m.traverse(o => { if (/^(weapon|scythe|staff |blade coupling)/i.test(o.name || '')) o.userData.noMeasure = true; }); return m; } // carried weapons don't count toward a character's height
 function autoRig(src, targetH) {
   const root = new THREE.Group(), turn = new THREE.Group(), m = src; root.add(turn); turn.add(m);
   // measure the model as it actually renders (skinning included), exactly as the player and James are measured,
   // so every character comes out at its true height next to you
-  const measure = () => { m.updateMatrixWorld(true); return new THREE.Box3().setFromObject(m); };
+  const skip = []; m.traverse(o => { if (o.userData && o.userData.noMeasure) skip.push([o, o.parent]); }); // a weapon the model carries (Croxian's scythe) isn't part of their height
+  const measure = () => { for (const [o, p] of skip) p.remove(o); m.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(m); for (const [o, p] of skip) p.add(o); return b; };
   let box = measure();
   const k = targetH / Math.max(.01, box.max.y - box.min.y); m.scale.multiplyScalar(k);
   box = measure();
@@ -20151,7 +20154,7 @@ const COMPANIONS = [
       'Where her sisters are patient and unreadable in the Erisian way, Nyrexia is curious and impatient, and far too interested in the rest of the galaxy for a princess of the oldest court in the solar system. She has slipped her bodyguards more times than the great houses like to admit.',
       'She travels with you partly out of loyalty, partly out of curiosity, and partly, she admits, because it annoys her family.'
     ] },
-  { id: 'croxian', tag: 'cpCroxianU', h: 1.9, unlockAt: 3, name: 'CROXIAN MASCAR', title: 'Former soldier of Terra Imperia', // as your companion his helmet is off (data/cpCroxianU.js, built by nightmare/tools/croxian_unhelmet.py); the story's Croxian keeps it
+  { id: 'croxian', tag: 'cpCroxianU', h: 1.85, unlockAt: 3, name: 'CROXIAN MASCAR', title: 'Former soldier of Terra Imperia', // as your companion his helmet is off (data/cpCroxianU.js, built by nightmare/tools/croxian_unhelmet.py); the story's Croxian keeps it
     facts: [['Species', 'Human'], ['Born', '2094 AD, England, Earth'], ['Father', 'Orion Mascar'], ['Partner', 'Malia de Toro'], ['Formerly', 'A soldier of Terra Imperia'], ['Alignment', 'Neutral Good']],
     align: 'A good man who served a bad cause, and is trying to make up for it one decision at a time.',
     paras: [
@@ -20265,8 +20268,8 @@ function loadPrime(p) {
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     const sc = await parseGlb(u8.buffer), holder = new THREE.Group(); holder.add(sc);
     sc.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
-    sc.updateMatrixWorld(true);
-    const b = new THREE.Box3().setFromObject(sc), c = b.getCenter(new THREE.Vector3());
+    sc.updateMatrixWorld(true); gearNoMeasure(sc);
+    const b = boxNoGear(sc), c = b.getCenter(new THREE.Vector3()); // sized and centred on the body, not a weapon they carry
     sc.position.set(-c.x, -b.min.y, -c.z); holder.scale.setScalar(p.h / Math.max(.01, b.max.y - b.min.y));
     holder.userData.keep = true;
     return holder;
@@ -22402,7 +22405,7 @@ async function advHeroModel(who) {
   const L = COMPANIONS.find(c => c.id === who.slice(5)), el = document.getElementById(L.tag);
   const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
   const sc = await parseGlb(u8.buffer); if (L.mod === 'kizna') feminiseRobot(sc);
-  const R = autoRig(SkeletonUtils.clone(sc), L.h || 1.9); armRig(R, 'none'); return R;
+  const R = autoRig(gearNoMeasure(SkeletonUtils.clone(sc)), L.h || 1.9); armRig(R, 'none'); return R;
 }
 async function advPlay(who) {
   adv.lastWho = who; advMsg('Landing…');
