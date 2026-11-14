@@ -25,7 +25,7 @@ The full feature-by-feature history is in **[CHANGELOG.md](CHANGELOG.md)**.
 | **Prologue** | Antarctica | A flight through the Milky Way to Earth. You collapse on the ice and James Brown rescues you. |
 | **I · Antarctica** | The research station and the endless procedural ice | Explore the station, dream of your species' leader, track James across the ice, make camp, survive a super blizzard, then drive his rover to the Ross Sea ferry. On the pier James betrays you. You push him into the sea and escape **Croxian Mascar** of Terra Imperia. |
 | **II · Africa & New London** | Africa, the harbour town of Ad-Nostra, New London | You collapse on an African road and **Orion Mascar** nurses you back to health, then joins you. A cantina brawl ends in your arrest. In New London you meet **Thomas Hawthorne**, stand trial before **President Darius Ancin** in the House of Commons, and escape with **Nico**. |
-| **III · Sol and the galaxy** | Space: Sol, 500 star systems, the galactic core | Your own ship, the Nostra. A nightmare shaped by your species, **Khazglar** on Olympus Mons, Hawthorne's "Sol is MINE!" on Mars, Terra Imperia's war, Charon and Kizna, and **James Brown** brought back as the Pontifex Maximus. Your choices here (James, Croxian, Malia, Orion, Nyrexia) decide how Chapter IV ends. |
+| **III · Sol and the galaxy** | Space: Sol, 500 star systems, the galactic core | Your own ship, the Nostra. A nightmare shaped by your species, **Khazglar** on Olympus Mons, Hawthorne's "Sol is MINE!" on Mars, Terra Imperia's war, Charon and Kizna, **James Brown** brought back as the Pontifex Maximus, then Hak Chompjak's call to Karribassa as Terra Imperia seizes Earth and Sol is carved up world by world. Your choices here (James, Croxian, Malia, Orion, Nyrexia) decide how Chapter IV ends. |
 | **IV · The Catharsis** | Two years later, 2127 AD, in a blood-red galaxy | Lord Zark and the Catharsis. Three endings (good, neutral and bad) play out in the burning throne room of Carax. |
 | **V · The hunt for Lord Zark** | The galaxy after the Catharsis falls | The Catharsis's worlds are yours, Hawthorne is dead, and the hunt for Zark goes on. |
 
@@ -111,5 +111,6 @@ Add one of these to the game's address to jump straight to a scene:
 ## Not built yet
 
 - **The Siege of Carax:** Lord Zark's Chapter IV story battle (level 60, on Carax). The three Chapter IV endings are built and waiting. When Zark falls, the fight should call `ch4EndingPlay()`, and your Chapter III choices pick the ending. The Final Boss theme (`data/thFinal.js`) is already in the game for it.
+- **Voices for Hak Chompjak's call and the Karribassa meeting:** subtitles only for now.
 - **Charon and Kizna joining your crew.** The story says they'll join "when the alignment comes".
 - **Thomas Hawthorne's hall:** Terra Imperia's leader has no hall to fight him in.

@@ -1755,3 +1755,17 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 ## The return to Charon, voiced
 - **Charon and Kizna's conversation after James Brown is fully voiced:** **CH3CHARONRETURN1–6**, slots 5–10 of `data/chnVoices.js` (after the first meeting's CH3CHARON1–5). 1–2 are the lines if you killed James, 3–4 if you spared him, and 5–6 are the lines everyone hears. Sources are in `assets/audio/charon_ch3/`.
 - **The first meeting replays on purpose.** Talking to them again after either conversation plays the first meeting and gives another 200 XP each time. That's an intentional XP farm, so leave it in.
+
+## Chapter III: Hak Chompjak's call, Karribassa, and Terra Imperia's surge
+- **Janira Proxima has moved next to Sol:** 2,081 light-years away, one jump with the first hyperdrive. It's moved after the galaxy is generated, so the other 490 systems (and every save's colonies, lairs and residents) stay exactly where they were. Chompy space around its old spot stays Chompy. Lore that put the Republic of Timpur "beyond Janira Proxima" now says "at the very tip of the outer spiral arm".
+- **Hak calls you.** After you've spoken to Charon and Kizna a second time, Hak Chompjak sends an incoming transmission the next time you're free on the ground. His spies have gone quiet, Hawthorne's fleets are over Venus, and he wants you in **Karribassa**. New main quest: *Meet Hak Chompjak in Karribassa, on Janira Prime*. Janira Prime gets a gold marker in its system, and Hak waits by your ship at the spaceport.
+- **The meeting** (6 lines, which change with Alexia's coup and with whether you allied with the Chompy Empire) gives 300 XP. Saved as `ch3.hakCall` and `ch3.hakMet`.
+- **Terra Imperia's surge starts as Hak's call ends:**
+  - **Earth falls** and becomes the Grand Imperarch's capital (Terra Imperia's capital moves from Venus to Earth). You can still land on Earth, including Antarctica and Ad-Nostra.
+  - **The Federation flees to Mars**, its capital in exile. Darius Ancin's hall moves there.
+  - **Sol fills with Terra Imperia ships:** encounters about every 20–50 s instead of 45–120 s, 3 more fighters each time, and a 97% chance.
+  - **Land grabs:** every 2.5–4 minutes of play, one faction takes one world in Sol. Terra Imperia and the Federation take turns, and Alexia's Erisians join in once she rules Eris. Unclaimed worlds go first, then enemies' worlds: Terra Imperia and the Erisians take the Federation's and **yours**, and the Federation takes Terra Imperia's (and Alexia's). Each change shows a notice, and the objectives list keeps count.
+  - **Never taken:** Earth, Mars, Eris and Charon.
+  - **Taking worlds back:** any world Terra Imperia seizes can be bombarded and captured like Mercury and Venus, and comes back as your colony. Worlds the Erisians take need a war with them (Diplomacy).
+  - Saved in `dip().surge`. It only runs in Chapter III, and not if Terra Imperia is already beaten.
+- **Unvoiced for now:** Hak's call and the meeting are subtitles only.
