@@ -1499,3 +1499,15 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 
 ### Fix: the Mission brief on desktop
 - **On desktop the Mission brief was one endless line** running off the screen. The title screen takes the class `sub` while a sub-menu is open, and that's also the name of the logo's subtitle style, which forbids wrapping, so every sub-menu inherited it. The subtitle style now applies only to the subtitle under the logo, so the brief wraps into the menu column as it does on phones. The Wanderers, Save / Load and Settings menus wrap again too.
+
+### James Brown, voiced at the station
+- **The Antarctic station fight is voiced** with **CH3JB1–8** and **CH3JBREFUSAL** (`data/jbfVoices.js`, sources in `assets/audio/james_ch3/`):
+  - 1–3: the three lines through the door;
+  - 4: the fight starts (*"You shoved me off that pier…"*);
+  - 5: phase two (*"I FROZE in that water!…"*);
+  - 6: phase three (*"I'LL DRAG YOU DOWN INTO THE DARK WITH ME!"*);
+  - 7: beaten (*"Go on… finish it…"*);
+  - 8: spared (*"Why…? I'd have gutted you…"*);
+  - REFUSAL: walking away from the door (*"Run, then. You're good at that."*).
+- His lines stay on screen until he's finished saying them. Killing him is still silent.
+- The pack (about 1.7 MB) starts downloading when the stronghold appears, so it's ready by the time you reach the door.
