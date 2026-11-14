@@ -1526,5 +1526,6 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - **Malia de Toro:** killed or spared.
   - **Orion Mascar:** killed or left alive. This choice only comes if you killed Croxian.
 - **Good ending:** James, Croxian and Malia all spared.
-- **Bad ending:** James, Croxian or Malia killed, or Orion left alive after Croxian's death.
+- **Bad ending:** all four the other way: James, Croxian and Malia killed, and Orion left alive.
+- **Neutral ending:** anything in between. Get even one choice "wrong" either way and it's neutral.
 - The Croxian, Malia and Orion choices aren't in the game yet; the record is ready for them.
