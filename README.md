@@ -1323,8 +1323,8 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **Khalmar:** level 22, 6,500 health (was 11,000) and 70% of the old damage.
 - The **healing spring** refills in 15 seconds (was 40).
 
-## The Taredesibans (residents only)
-- A people of their own that only **residents** can belong to: they're **not a playable race**, so they never appear in the wanderer creator.
+## The Taredesibans
+- A people of their own from the Republic of Timpur. They started out as residents only; **they're now a playable race too** (see *The Taredesibans, playable*).
 - **Their look:** tall (about 1.98 m), smooth pale-blue skin, a tall cranium with swept-back pointed ears, a short dark beard, and dark indigo armour engraved with curves, with glowing teal inlays (a V across the chest, a gem at the heart, lines down the gauntlets and greaves), violet lines on the thighs and spine, three flared plates on each shoulder, and a sheer teal cape.
 - **The model** is fully rigged (the same 18-bone skeleton as the other rigged characters), so they walk, wave, dance, mine and spar like every other resident. It's built by `nightmare/tools/build_taredesiban.py` (`python3 build_taredesiban.py out.glb`) and lives in `data/taredGlb.js` (the GLB is also in `assets/models/characters/taredesiban.glb`). It only loads when a Taredesiban is around.
 - **Making one:** in the personality panel, when you **send a wanderer into the world** or **edit a resident**, pick **Their people: Taredesiban** (or keep the species they were made as). Changing it on an existing resident takes effect the next time they turn up.
@@ -1568,3 +1568,125 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - Held upright, the memories use a wider lens and each shot steps back, so nobody is cut off the sides (the two HFOS soldiers used to be sliced in half).
   - A tap anywhere moves Orion's wake-up lines on.
   - **Skip** is thumb-sized on phones (in every cutscene, not just this one).
+
+### Chapter IV's endings: the full dialogue
+- **The good ending now has a real conversation** in the ring around Zark, after his *"This changes… nothing…"*:
+  - Zark sneers up at the five of you: *"Three crowns of dust, a light that hides in the sky, and a stray off the ice…"*
+  - Archamus answers him: *"No. But we are the last…"*
+  - Vishara: the daughters of Eris sang the names of every world he burned on the way here.
+  - Darius: humanity is done running from his shadow.
+  - Hak's line, as before.
+  - Zark: *"Then end it… if you can bear what comes after."*
+  - Archamus: Zark won't die tonight; he'll answer in chains to every world he burned.
+  - Archamus, to you: *"You walked out of the ice with nothing, and you brought every one of us to this room. Whatever comes next is yours to build."*
+- **The neutral ending says more:**
+  - A second line from Zark on the floor: *"Kill me, and another rises in my place. Spare me, and I rise again…"*
+  - Archamus acknowledges the choices that went wrong: *"Some who should be standing beside you tonight are not… Carry them, wanderer. Do not let them carry you."*
+  - He ends on Chapter V: *"Zark will crawl back into the dark to lick his wounds. When he does, we follow him there."*
+- **The bad ending's lines are unchanged.**
+- **No more gasping while Orion chokes you.** The synthesised strangled breaths, and the cry when he grabs you, are gone. The racing heartbeat stays.
+- **Ready for voices.** Each ending plays its own pack if it's there, one clip per spoken line in order. Until then the lines play silently, as before:
+  - `data/c4eGoodVoices.js`, **CH4GOOD1–11** (updated when Am-Grek and Timpur IV joined the ring):
+    1. Zark: "This changes… nothing…"
+    2. Zark: "Five crowns of dust…"
+    3. Archamus: "No. But we are the last…"
+    4. Vishara
+    5. Darius
+    6. Am-Grek: "Archamus guided us to this floor…"
+    7. Timpur IV: "Timpur sits at the very edge of your maps…"
+    8. Hak
+    9. Zark: "Then end it…"
+    10. Archamus: "You will not die tonight…"
+    11. Archamus: "Wanderer. You walked out of the ice…"
+  - `data/c4eNeutralVoices.js`, **CH4NEUTRAL1–8** (the neutral ending was rewritten as the duel: see *Chapter IV's neutral ending: Archamus against Lord Zark*).
+  - `data/c4eBadVoices.js`, **CH4BAD1–15**: 1 Zark "You think you have won?…", then Orion: 2 "You killed the devil…", 3 "Croxian. My boy…", 4 "I buried what you left of him…", 5 "Hah… haha… HAHAHAHA! Look at you…", 6 "I fought in the Third World War…", 7 "No. Don't reach for that weapon…", 8 "Feel that?…", 9 "Hahaha… Listen to you! That little whistle!…", 10 "Kick. Claw at my hands…", 11 "Don't look at me like that!…", 12 "Heh… heheh… I dreamed about this…", 13 "Croxian, can you see?…", 14 "Shhh. Almost over…", 15 "Terra Imperia is mine now…".
+
+### The bad ending: Orion comes apart
+- **Six new lines from Orion,** deranged and laughing hysterically. He calls you a mongrel and vermin:
+  - Two before he grabs you: *"…You're nothing but a mongrel that wandered in out of the snow!"* and *"…You are not like the people I fought in World War Three. They had honour. You're VERMIN."*
+  - Four while he chokes you, the last as your sight starts to go: the whistle in your throat, *"you filthy little mongrel"*, *"I dreamed about this"*, and *"Croxian, can you see?… Papa caught the vermin!"*
+- **He shakes with laughter:** head thrown back, shoulders jerking, on every laughing line.
+- **The choke is paced for the longer scene:** your sight closes in while he talks but doesn't go fully dark until his last words.
+
+### The bad ending, voiced
+- **All fifteen lines of the bad ending are voiced** with **CH4BAD1–15** (`data/c4eBadVoices.js`, about 3.8 MB; sources in `assets/audio/ending_ch4_bad/`): Zark's taunt, then Orion's fourteen lines in order, laughter and all.
+- Each line stays on screen until it has finished playing. The pack downloads only when the bad ending starts.
+
+### Lip sync: Orion's bad ending and Hawthorne's Sol speech
+- **Orion moves his mouth with his voice** through every line of the bad ending, laughter included, using the same face rig as everywhere else he talks.
+- **Hawthorne's "Sol is MINE!" speech on Mars** is lip-synced the same way as his other scenes: his jaw follows the recording of each paragraph.
+- A line without a recording still moves the mouth while its words appear on screen.
+
+### Chapter IV's neutral ending: Archamus against Lord Zark
+- **Rewritten as a duel.** Zark is beaten, but he isn't finished. Archamus comes down through the broken roof in a shaft of light, Zark rises, and the two Primes fight across the burning throne room. **You, Hak, Vishara and Darius watch from the edge of the hall in silence.** They turn to follow the fight and flinch, arms up, from the big blows.
+- **The fight, beat by beat:**
+  1. They charge and meet in the middle of the hall: freeze frame, flash, shockwave, a shower of sparks, then slow motion.
+  2. Blades locked: they shove against each other, sparks streaming off the blades, the floor cracking gold and crimson beneath them, until they throw each other apart.
+  3. Six strikes in a row, overhead and sideways, each one caught, with a hit-stop on every clash.
+  4. Zark's overhead blow throws Archamus across the hall, his feet ploughing sparks out of the stone.
+  5. Archamus leaps, hangs at the top of the arc, and comes down on him. Zark blocks it and is driven to one knee.
+  6. They break apart, and a beam of light meets a beam of crimson in the middle of the hall. Zark pushes it most of the way back, then the light overpowers him.
+  7. The light goes through. Zark is thrown up onto the throne's dais and lands on his knees, his armour glowing from the cracks.
+  8. A violet rift tears open behind him. He backs into it and is gone. Archamus runs for him, too late, and the rift snaps shut.
+- **Built to look sharp:**
+  - **Blades:** Archamus carries a blade of light; Zark a black greatsword with burning crimson edges and a violet core. Both leave motion trails on fast swings.
+  - **Effects:** sparks fly as sharp streaks, and every impact freezes for a split second before it lands.
+  - **Rendering (desktop):** the scene renders at up to 1.5× resolution and with 4096-pixel shadows, then goes back to normal afterwards. Phones get fewer sparks.
+- **Music:** the Prime Good's theme as Archamus comes down, The Prime Evil as Zark rises, silence as he goes, then the Prime Good's theme again.
+- **The lines (CH4NEUTRAL1–8):**
+  1. Zark: *"You think this is victory? You have broken a body, wanderer. Nothing more."*
+  2. Archamus: *"Enough, Zark. It is over. Kneel, and let it end here."*
+  3. Zark: *"Archamus. I wondered how long you would hide in the sky and let them bleed for you."*
+  4. Archamus: *"I never hid. I waited for them to need me. They need me now."*
+  5. Zark: *"Then come down from your light, and bleed with them."*
+  6. Zark: *"Strike me down, and the dark only grows. This is not the end of me, Archamus. It is the beginning of the end of you all."*
+  7. Archamus: *"He is gone. Some who should be standing beside you tonight are not, and Carax is burning. The damage has been done."*
+  8. Archamus: *"But we cannot stop now. Wherever he crawls, we follow him there. We need to keep going."*
+- It still ends on *THE WAR GOES ON*, and the game goes on into **Chapter V: the hunt for Lord Zark**.
+
+## Am-Grek and Timpur IV at the end of Chapter IV
+- **Both endings now include Am-Grek, High Hierarch of the Grek, and Timpur IV, First Consul of the Republic of Timpur.**
+  - **Good ending:** they walk in out of the smoke with the others and join the ring around Zark (seven of you now). Each has a line: Am-Grek, *"Archamus guided us to this floor, to this hour…"*; Timpur IV, *"Timpur sits at the very edge of your maps, Zark. You never once looked our way. That was your last mistake."* Zark's taunt is now *"Five crowns of dust…"*
+  - **Neutral ending:** they watch the duel in silence with you, Hak, Vishara and Darius, from the far corners of the hall, turning to follow it and flinching from the blows.
+
+## Timpur IV, First Consul of the Republic of Timpur
+- **The Republic's leader is Timpur IV** (he used to be "Taredesiba VI"). Every First Consul takes the name Timpur and wears the old crown of the kings of Timpur.
+- **His own model** (`data/timpurGlb.js`, built by `nightmare/tools/build_timpur_iv.py` on top of the Taredesiban builder; the GLB is also in `assets/models/characters/timpur_iv.glb`). He's a Taredesiban with:
+  - a **gold crown** of nine points, a crimson stone at the brow and teal stones at the others;
+  - the Consul's gold chain and medallion across his breastplate;
+  - gold rims on his pauldrons and gold cape clasps;
+  - a heavy teal mantle in place of the sheer cape, and a beard going grey.
+  It's fully rigged and only loads when he's needed.
+- **Where he appears:** his hall on Timpur Prime (*Timpur IV, First Consul of the Republic of Timpur*, level 90), Diplomacy (*led by Timpur IV, First Consul, answering to Aridaxx*), both Chapter IV endings, the Nostrapedia, and a Taredesiban wanderer's first dream.
+- **Nostrapedia:** Leaders is now *The Five Leaders*, with a file on **Timpur IV** that's also the Taredesibans' history: who they are, the kings who gave up the throne but not the crown, the Republic, and its strings to Aridaxx. It opens when you meet him (in his hall, or in your dream if you're a Taredesiban).
+
+## The Taredesibans, playable
+- **Pick Taredesiban in the wanderer creator.** Their body (`data/sp_taredesiban.js`, built by `nightmare/tools/build_sp_taredesiban.py`; also `assets/models/characters/taredesiban_playable.glb`) is the residents' model, regrouped for the wanderer's rig. The armour is engraved in greyscale and coloured by its material, so the creator can recolour:
+  - **skin** (pale blue by default);
+  - **armour** (dark indigo);
+  - **inlays** (teal: the V on the chest, the heart gem, the lines on the gauntlets and greaves);
+  - **beard**, which is optional, like a human's.
+  They have no hair choices; the colour picker reads *Beard colour*.
+- **Lore:** the creator shows their homeworld (*Timpur Prime, Timpur, at the far edge of the galaxy*) and a short history of the Taredesibans and the Republic.
+- **Their story:**
+  - **Chapter I's first dream:** Timpur IV, crowned, speaks to you, with five lines of his own (no recordings yet: subtitles).
+  - **Chapter I's second dream:** the Grek's warning uses the non-human lines, as it does for Erisians, Chompy and Grek.
+  - **Hawthorne** speaks to you as he does to the other alien races (the non-human lines in New London and his other scenes).
+  - **Chapter III's nightmare is the Grek's:** *The Prophecy in the Dark*, with its wake-up lines and its Nostrapedia event.
+  - **Khazglar** greets a Taredesiban with a line of his own, and **the Chapter IV voice** has five taunts for them. These are unvoiced: subtitles.
+- **Fixes for playing as one:**
+  - the creator no longer breaks on a species with no lore;
+  - the nightmare used to give a Taredesiban the human one;
+  - the first dream used to show humanity's leader lines with no one there;
+  - residents' chatter could crash on a missing species line list;
+  - Khazglar would have called you human.
+- **As residents:** a Taredesiban wanderer you send into the world:
+  - uses the rigged Taredesiban model;
+  - calls Timpur Prime home;
+  - flies a Chompy ship (Timpur's are Chompy-built);
+  - has resident lines of their own.
+
+### Taredesiban voice slots
+- **Timpur IV's dream is voiced** (Chapter I, as a Taredesiban): `data/lv_taredesiban.js`, **CH1TIMPUR1–5**, one per line (sources in `assets/audio/timpur_ch1/`). It only downloads for a Taredesiban.
+- **Khazglar's Taredesiban line is voiced:** **CH3KHAZ24**, the 24th clip in `data/khazVoices.js` (source in `assets/audio/khazglar_ch3/`).
+- **The Chapter IV menu taunts** are typed on screen, not spoken, like all the others: nothing to record.
