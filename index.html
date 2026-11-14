@@ -2546,7 +2546,8 @@ const sfx = (() => {
     });
     return cache[id];
   }
-  function applyAreaGain() { if (areaGain) areaGain.gain.setTargetAtTime(combatOn ? 0 : areaLvl, ctx.currentTime, .7); }
+  let leadOnV = false; // a leader's theme is playing (Hawthorne's The Wrong Enemy, Hak's, Vishara's…): nothing else plays under it
+  function applyAreaGain() { if (areaGain) areaGain.gain.setTargetAtTime(combatOn || leadOnV ? 0 : areaLvl, ctx.currentTime, .7); }
   async function areaNext() {
     const tok = areaTok;
     if (!AREA_TRACKS[areaSet]) return; // a region with no playlist here stays silent
@@ -2617,6 +2618,7 @@ const sfx = (() => {
       if (onEnd) s.onended = () => { if (songSrc === me) { songSrc = null; onEnd(); } }; // a playlist moves on; a song that was stopped doesn't
     },
     songBuf() { return songSrc && songSrc.buf; },
+    get leadOn() { return leadOnV; }, set leadOn(v) { leadOnV = !!v; if (ctx) applyAreaGain(); }, // the area's playlist ducks under a leader's theme (it used to come back up and play over The Wrong Enemy)
     stopSong(t = 1.5) { if (!songSrc || !ctx) return; const { s, g } = songSrc; songSrc = null; g.gain.cancelScheduledValues(ctx.currentTime); g.gain.setTargetAtTime(0, ctx.currentTime, t / 3); try { s.stop(ctx.currentTime + t + .1); } catch {} },
     music(level) { if (level === musicLevel) return; musicLevel = level; if (musicGain && !combatOn) musicGain.gain.setTargetAtTime(level, ctx.currentTime, .5); },
     // combat themes: their own looping layer that ducks the menu theme, crossfading between tracks
@@ -5095,7 +5097,7 @@ function renderTasks() {
   if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
   if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? campTasks(p, task) : '');
   if (curArea() === 'africa' || ((wanderer.chapter | 0) >= 2 && p.escaped)) h = ch2Tasks(task); // Chapter II's objectives follow you, even back to Antarctica
-  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (c3.hawMars && (wanderer.chapter | 0) === 3 ? task(!!c3.charonLanded, 'Main quest · Head to Charon') : '') + (c3.charonLanded && (wanderer.chapter | 0) === 3 ? task(!!c3.charonMet, 'Meet Charon and Kizna on Charon') : '') + (c3.jamesRev ? task(!!c3.jamesFate, 'Main quest · Defeat James Brown at the Antarctic station') : '') + (c3.jamesFate && (wanderer.chapter | 0) === 3 ? task(!!c3.charonBack, tiPhone() ? 'Main quest · Back to Charon and Kizna' : 'Main quest · Return to Charon and speak to Charon and Kizna') : '') + (c3.hakMet && (wanderer.chapter | 0) === 3 ? task(!!c3.cygDone, tiPhone() ? 'Main quest · Infiltrate the Cygnus (Mercury)' : 'Main quest · Infiltrate the Cygnus Terra Imperius, Terra Imperia’s capital ship, in orbit over Mercury') : '') + (c3.hakCall && (wanderer.chapter | 0) === 3 ? task(!!c3.hakMet, tiPhone() ? 'Main quest · Meet Hak in Karribassa (Janira Prime)' : 'Main quest · Meet Hak Chompjak in Karribassa, on Janira Prime (Janira Proxima, a short jump from Sol)') : '') + (surgeOn() ? task(false, surgeTaskText()) : '') + (tiWarOn() ? task(false, `War · take Mercury and Venus from Terra Imperia · bombard, land, defeat the governor (${TI_WORLDS.filter(id => dip().col[id]).length}/2)`) : '') + (c3.hawMars ? (!c3.nyxJoined && c3.jamesFate ? '' : !c3.nyxJoined && c3.nyxFailed ? '<div class="x-task failed"><i></i><span>FAILED: <s>Recruit Nyrexia Erisconos on Eris</s></span></div>' : task(!!c3.nyxJoined, 'Side quest (optional) · Recruit Nyrexia Erisconos on Eris')) : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
+  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (c3.hawMars && (wanderer.chapter | 0) === 3 ? task(!!c3.charonLanded, 'Main quest · Head to Charon') : '') + (c3.charonLanded && (wanderer.chapter | 0) === 3 ? task(!!c3.charonMet, 'Meet Charon and Kizna on Charon') : '') + (c3.jamesRev ? task(!!c3.jamesFate, 'Main quest · Defeat James Brown at the Antarctic station') : '') + (c3.jamesFate && (wanderer.chapter | 0) === 3 ? task(!!c3.charonBack, tiPhone() ? 'Main quest · Back to Charon and Kizna' : 'Main quest · Return to Charon and speak to Charon and Kizna') : '') + (c3.hakMet && (wanderer.chapter | 0) === 3 ? task(!!c3.cygDone, tiPhone() ? 'Main quest · Infiltrate the Cygnus (Mercury)' : 'Main quest · Infiltrate the Cygnus Terra Imperius, Terra Imperia’s capital ship, in orbit over Mercury') : '') + (c3.solFell && (wanderer.chapter | 0) === 3 ? task(!!c3.hakBack, tiPhone() ? 'Main quest · Return to Hak in Karribassa' : 'Main quest · Return to Hak Chompjak in Karribassa, on Janira Prime: Sol has fallen') : '') + (c3.hakCall && (wanderer.chapter | 0) === 3 ? task(!!c3.hakMet, tiPhone() ? 'Main quest · Meet Hak in Karribassa (Janira Prime)' : 'Main quest · Meet Hak Chompjak in Karribassa, on Janira Prime (Janira Proxima, a short jump from Sol)') : '') + (surgeOn() ? task(false, surgeTaskText()) : '') + (tiWarOn() ? task(false, `War · take Mercury and Venus from Terra Imperia · bombard, land, defeat the governor (${TI_WORLDS.filter(id => dip().col[id]).length}/2)`) : '') + (c3.hawMars ? (!c3.nyxJoined && c3.jamesFate ? '' : !c3.nyxJoined && c3.nyxFailed ? '<div class="x-task failed"><i></i><span>FAILED: <s>Recruit Nyrexia Erisconos on Eris</s></span></div>' : task(!!c3.nyxJoined, 'Side quest (optional) · Recruit Nyrexia Erisconos on Eris')) : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
   if ((wanderer.chapter | 0) >= 3) { const tq = sqTracked(); if (tq) h += `<div class="x-task sq-task"><i></i><span>${tq}</span></div>`; } // the side quest you're tracking
   xUI.tasks.innerHTML = h;
   $('#xChap').textContent = liveChapterLabel().toUpperCase();
@@ -5278,9 +5280,11 @@ async function interact() {
     dismantle(n.ref);
   } else if (n.id === 'lairGate' || /^dgn/.test(n.id)) { // the lair gates too (their id doesn't start with dgn: pressing E on one used to fall through to an empty inspect box and freeze the game)
     if (n.id === 'lairGate') lairGateUse(n.ref); else dgnUse(n.id);
+  } else if (n.id === 'cygKneel') {
+    cygKneelUse(n.ref);
   } else if (n.id === 'nyx') {
     nyxTalk();
-  } else if (['chn', 'tiStation', 'tiPatrol', 'pontHunt'].includes(n.id)) {
+  } else if (['chn', 'hak', 'cygShuttle', 'tiStation', 'tiPatrol', 'tiGov', 'pontHunt'].includes(n.id)) { // every prompt tiNear() offers goes to tiUse() (Hak, the Cygnus shuttle and the governors used to fall through to an empty inspect box)
     tiUse(n);
   } else if (n.id === 'leadGate') {
     leaderHallUse();
@@ -7024,8 +7028,8 @@ function questTarget() {
   if (DGN.on) return dgnTarget();
   if (NYX.R && NYX.R.root.parent && isPl()) return { x: NYX.x, z: NYX.z, label: 'Nyrexia Erisconos' };
   if (isPl() && world.dgnGate && khzPending()) return { x: world.dgnGate.x, z: world.dgnGate.z, label: 'The way into the mountain' };
-  if (isPl() && TIW.hak && hakQ()) return { x: TIW.hak.x, z: TIW.hak.z, label: 'Hak Chompjak · the Hall of Oaths' };
-  if (isPl() && TIW.cyg && cygQ()) return { x: TIW.cyg.x, z: TIW.cyg.z, label: 'The Cygnus supply shuttle' };
+  if (isPl() && TIW.hak && (hakQ() || hakBackQ())) return { x: TIW.hak.x, z: TIW.hak.z, label: 'Hak Chompjak · the Hall of Oaths' };
+  if (isPl() && TIW.cyg && (cygQ() || cygFarm())) return { x: TIW.cyg.x, z: TIW.cyg.z, label: 'The Cygnus supply shuttle' };
   if (isPl() && TIW.chn && (chnQ() || chnBackQ())) return { x: TIW.chn.x, z: TIW.chn.z, label: 'Charon and Kizna' };
   if (isPl()) { const LT = lairNearestTarget(player.position); if (LT && Math.hypot(player.position.x, player.position.z) < 160) return LT; return Math.hypot(player.position.x, player.position.z) > 30 ? { x: 0, z: 10, label: 'Your ship' } : null; }
   if (curArea() === 'europe') { const c2 = wanderer.ch2 || {}; if (esc.on) return { x: SHIP.hatch[0], z: SHIP.hatch[1], label: 'The ship' }; return c2.arrived && !c2.reportTried ? { x: LON.door.x - 2, z: LON.door.z, label: 'Houses of Parliament' } : null; }
@@ -10475,6 +10479,7 @@ const dgnCell = (i, j) => i >= 0 && j >= 0 && i < DGN.N && j < DGN.N && DGN.open
 const dgnW = (i, j) => [DGN.O.x + (i - DGN.N / 2 + .5) * DGN.C, DGN.O.z + (j - DGN.N / 2 + .5) * DGN.C]; // a cell's centre in the world
 const dgnIJ = (x, z) => [Math.floor((x - DGN.O.x) / DGN.C + DGN.N / 2), Math.floor((z - DGN.O.z) / DGN.C + DGN.N / 2)];
 function dgnLayout(f) {
+  if (cygDeckOn(f)) return cygLayout(f); // aboard the Cygnus: one grand corridor, five storeys high
   const N = DGN.N, open = new Uint8Array(N * N), R = dgnRng((DGN.lair ? DGN.lair.seed : 9100) + f * 7919), set = (i, j) => { if (i >= 0 && j >= 0 && i < N && j < N) open[j * N + i] = 1; };
   const room = (sx, sy) => { for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) set(sx * 4 + a, sy * 4 + b); return { sx, sy, c: [sx * 4 + 1, sy * 4 + 1] }; };
   const link = (A, B) => { if (A.sy === B.sy) set(Math.min(A.sx, B.sx) * 4 + 3, A.sy * 4 + 1); else set(A.sx * 4 + 1, Math.min(A.sy, B.sy) * 4 + 3); };
@@ -10506,6 +10511,7 @@ function dgnLayout(f) {
 }
 function dgnBlocked(x, z) {
   if (!DGN.open) return true;
+  if (DGN.solid) for (const o of DGN.solid) if (Math.abs(x - o.x) < o.hw + .35 && Math.abs(z - o.z) < o.hd + .35) return true;
   for (const [ox, oz] of [[.35, .35], [-.35, .35], [.35, -.35], [-.35, -.35]]) {
     const [i, j] = dgnIJ(x + ox, z + oz); if (!dgnCell(i, j)) return true;
     if (DGN.arena && DGN.barrier && i === DGN.arena.gate[0] && j === DGN.arena.gate[1]) return true;
@@ -10514,6 +10520,7 @@ function dgnBlocked(x, z) {
 }
 const dgnCrewReady = () => partyNow().includes('orion') && partyNow().includes('nico'); // all three of you
 function dgnBuild(f) {
+  const deck = cygDeckOn(f); DGN.N = deck ? 48 : 16; DGN.solid = []; // a Cygnus deck is 288 m across; everything else keeps its 96
   const lay = dgnLayout(f); Object.assign(DGN, { f, open: lay.open, rooms: lay.rooms, start: lay.start, end: lay.end });
   const N = DGN.N, C = DGN.C, g = new THREE.Group(); DGN.g = g; wScene.add(g); DGN.fx = [];
   const [ox, oz] = dgnW(0, 0); g.position.set(0, 0, 0);
@@ -10521,15 +10528,17 @@ function dgnBuild(f) {
   const TH = DGN.lair ? DGN.lair.th : null, hot = TH ? .5 : f / 8, floorT = TH ? tex(TH.floor[0], TH.floor[1], DGN.lair.seed + f) : tex('#2a1a16', '#3e2620', 11 + f), wallT = TH ? tex(TH.wall[0], TH.wall[1], DGN.lair.seed + 7 + f) : tex('#3a2420', '#522e24', 23 + f);
   floorT.repeat.set(N, N); wallT.repeat.set(1, 1.4);
   const fl = new THREE.Mesh(new THREE.PlaneGeometry(N * C, N * C), new THREE.MeshStandardMaterial({ map: floorT, roughness: .95 })); fl.rotation.x = -Math.PI / 2; fl.position.set(DGN.O.x, 0, DGN.O.z); fl.receiveShadow = true; g.add(fl);
-  const ce = new THREE.Mesh(new THREE.PlaneGeometry(N * C, N * C), new THREE.MeshStandardMaterial({ color: 0x120a08, roughness: 1 })); ce.rotation.x = Math.PI / 2; ce.position.set(DGN.O.x, 8.6, DGN.O.z); g.add(ce);
+  const WH = deck ? CYG_H : 8.6; // the walls' height: five storeys aboard the Cygnus
+  const ce = new THREE.Mesh(new THREE.PlaneGeometry(N * C, N * C), new THREE.MeshStandardMaterial({ color: deck ? 0x0c0d10 : 0x120a08, roughness: 1 })); ce.rotation.x = Math.PI / 2; ce.position.set(DGN.O.x, WH, DGN.O.z); g.add(ce);
   // walls: every closed cell beside an open one
   const walls = []; for (let j = -1; j <= N; j++) for (let i = -1; i <= N; i++) { if (dgnCell(i, j)) continue; let near = false; for (let a = -1; a <= 1 && !near; a++) for (let b = -1; b <= 1; b++) if (dgnCell(i + a, j + b)) { near = true; break; } if (near) walls.push([i, j]); }
-  const wm = new THREE.InstancedMesh(new THREE.BoxGeometry(C, 8.6, C), new THREE.MeshStandardMaterial({ map: wallT, roughness: .9, emissive: new THREE.Color(TH ? TH.emis : 0x3a0c04), emissiveIntensity: .25 + hot * .4 }), walls.length);
-  const mm = new THREE.Matrix4(); walls.forEach(([i, j], k) => { const [x, z] = dgnW(i, j); mm.makeTranslation(x, 4.3, z); wm.setMatrixAt(k, mm); }); wm.castShadow = wm.receiveShadow = true; g.add(wm);
+  const wm = new THREE.InstancedMesh(new THREE.BoxGeometry(C, WH, C), new THREE.MeshStandardMaterial({ map: wallT, roughness: .9, emissive: new THREE.Color(TH ? TH.emis : 0x3a0c04), emissiveIntensity: .25 + hot * .4 }), walls.length);
+  const mm = new THREE.Matrix4(); walls.forEach(([i, j], k) => { const [x, z] = dgnW(i, j); mm.makeTranslation(x, WH / 2, z); wm.setMatrixAt(k, mm); }); wm.castShadow = wm.receiveShadow = true; g.add(wm);
   const R = dgnRng(777 + f * 31);
   // lava: glowing cracks across the floors, brighter the higher you go, and a pool in some rooms
   const lavaM = new THREE.MeshBasicMaterial({ color: TH ? new THREE.Color(TH.glow) : new THREE.Color(0xff5a1a).lerp(new THREE.Color(0xffc060), hot * .5) });
-  for (const rm of DGN.rooms) {
+  if (deck) cygDecor(g, f); // the galleries, pillars, banners and the window onto Mercury, instead of cracks of lava
+  else for (const rm of DGN.rooms) {
     const [cx, cz] = dgnW(rm.c[0], rm.c[1]);
     for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(.18, .04, 3 + R() * 6), lavaM); m.position.set(cx + (R() - .5) * 13, .03, cz + (R() - .5) * 13); m.rotation.y = R() * Math.PI; g.add(m); }
     if (rm !== DGN.start && rm !== DGN.end && R() < .45) { const m = new THREE.Mesh(new THREE.CircleGeometry(1.6 + R(), 18), lavaM); m.rotation.x = -Math.PI / 2; m.position.set(cx + (R() - .5) * 8, .04, cz + (R() - .5) * 8); g.add(m); const s = glowSprite(TH ? TH.glow : 0xff6a2a, 5, .55); s.position.set(m.position.x, .8, m.position.z); g.add(s); }
@@ -10539,7 +10548,7 @@ function dgnBuild(f) {
   // a few lights where it matters: the stairs down, the way up, and the middle of the floor
   const lights = [DGN.start, DGN.end, DGN.rooms[DGN.rooms.length >> 1]].filter(Boolean);
   for (const rm of lights) { const [x, z] = dgnW(rm.c[0], rm.c[1]); const L = new THREE.PointLight(TH ? TH.light : 0xff8a4a, 40, 40, 1.6); L.position.set(x, 6, z); g.add(L); }
-  const amb = new THREE.PointLight(TH ? TH.light : 0xff5a2a, 25, 70, 1.4); const [mx, mz] = dgnW(8, 8); amb.position.set(mx, 7, mz); g.add(amb);
+  const amb = new THREE.PointLight(TH ? TH.light : 0xff5a2a, 25, 70, 1.4); const [mx, mz] = dgnW(N / 2, N / 2); amb.position.set(mx, 7, mz); g.add(amb);
   // the stairs down (and, on the first floor, the way out), and the healing spring beside them
   const [sx, sz] = dgnW(DGN.start.c[0], DGN.start.c[1] + 1);
   const arch = (x, z, col, open) => { const a = new THREE.Group(), st = new THREE.MeshStandardMaterial({ color: 0x3a2420, roughness: .9 });
@@ -10575,6 +10584,7 @@ function dgnPopulate(f) {
   DGN.spawnT = 30;
 }
 function dgnClearFloor() {
+  cygClearKneel(); DGN.solid = null;
   if (DGN.boss) dgnBossClear();
   for (const c of [...fauna.list]) if (c.dgn || c.boss) { if (c.boss) fauna.list.splice(fauna.list.indexOf(c), 1); else removeFauna(c); }
   if (DGN.g) { wScene.remove(DGN.g); try { disposeOwned(DGN.g); } catch (e) { console.error(e); } DGN.g = null; } // the floor's walls, lava and lights, and their painted rock
@@ -10587,7 +10597,7 @@ function dgnClearFloor() {
 function dgnLookOn() { // inside the mountain: no sky, a red dark, the heat of the rock
   if (!DGN.sky) DGN.sky = canvasTex(4, 256, (c) => { const gr = c.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#060203'); gr.addColorStop(1, '#1a0704'); c.fillStyle = gr; c.fillRect(0, 0, 4, 256); });
   const TH = DGN.lair ? DGN.lair.th : null;
-  wScene.background = DGN.sky; wScene.fog.color.set(TH ? TH.fog : 0x160805); wScene.fog.density = .022;
+  wScene.background = DGN.sky; wScene.fog.color.set(TH ? TH.fog : 0x160805); wScene.fog.density = cygDeckOn(DGN.f) ? .0075 : .022; // aboard the Cygnus you can see down the whole corridor
   if (world.hemi) { world.hemi.intensity = .42; world.hemi.color.set(TH ? TH.hemi[0] : 0xffb08a); world.hemi.groundColor.set(TH ? TH.hemi[1] : 0x3a0e06); }
   if (world.sun) world.sun.intensity = .08;
   if (world.veil) world.veil.visible = false; if (world.snow) world.snow.visible = false; if (world.plSea) world.plSea.visible = false;
@@ -10612,7 +10622,8 @@ function dgnEnter(f, at, quick) { // go to floor f: at = { x, z } (a save), 'top
     placeOrion().then(() => { if (world.orion && DGN.on) world.orion.root.position.set(p.x - 1.5, 0, p.z + 1.2); }).catch(() => null);
     placeCrew().catch(() => null);
     renderTasks(); clock.getDelta();
-    if (DGN.lair) { const L = DGN.lair; notice(f === dgnTop() ? (lairCleared(L) ? `${L.name} · the heart, empty now` : `${L.name} · the heart · ${lairBoss(L).name}`) : `${L.name} · floor ${f} of ${L.floors} · the ${natSp(L.S).name}`, f === dgnTop() ? 'THE LAIR’S HEART' : `FLOOR ${f}`, 3600); if (f === 1 && !lairProg(L)) setTimeout(() => lootMsg(natSp(L.S).desc, '#d8c8ff'), 2400); }
+    if (DGN.lair && DGN.lair.cyg) { const L = DGN.lair; notice(f === dgnTop() ? (lairCleared(L) ? 'The Cygnus · the bridge, empty now' : `The Cygnus · the bridge · ${lairBoss(L).name}`) : `The Cygnus Terra Imperius · deck ${f} of ${L.floors}`, f === dgnTop() ? 'THE BRIDGE' : CYG_DECKS[f].toUpperCase(), 3600); }
+    else if (DGN.lair) { const L = DGN.lair; notice(f === dgnTop() ? (lairCleared(L) ? `${L.name} · the heart, empty now` : `${L.name} · the heart · ${lairBoss(L).name}`) : `${L.name} · floor ${f} of ${L.floors} · the ${natSp(L.S).name}`, f === dgnTop() ? 'THE LAIR’S HEART' : `FLOOR ${f}`, 3600); if (f === 1 && !lairProg(L)) setTimeout(() => lootMsg(natSp(L.S).desc, '#d8c8ff'), 2400); }
     else notice(f === 8 ? 'Olympus Mons · the summit' : `Olympus Mons · floor ${f} of 8 · creatures lv ${dgnLv(f)}–${dgnLv(f) + 3}`, DGN_NAMES[f].toUpperCase(), 3600);
     if (!DGN.lair && f === 1 && !(wanderer.ch3 && wanderer.ch3.dgnSeen)) { wanderer.ch3 = Object.assign({}, wanderer.ch3, { dgnSeen: true }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster(); setTimeout(() => lootMsg('Inside the mountain, every XP counts 1.9 ×', '#ffc94a'), 2600); setTimeout(() => lootMsg('Each floor’s warden holds the stairs up · the spring by the stairs heals you', '#cfd6e6'), 5200); }
   };
@@ -10648,6 +10659,10 @@ function dgnLeave() { // back out onto the slope, by the door
       player.rotation.y = 0; ex.yaw = Math.PI; ex.snap = true; vel.set(0, 0, 0); updateChunks(99);
       placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
     } catch (e) { console.error(e); DGN.on = false; DGN.open = null; DGN.lair = null; }
+    if (LR && LR.fromSpace && cygSpaceOn()) { // you came aboard from orbit: you leave the same way
+      try { rememberPlaceSafe(); spaceOn(cygUndockPlace()); } catch (e) { console.error(e); state = 'explore'; }
+      fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; }, 950);
+      notice('The Cygnus Terra Imperius', 'UNDOCKED · BACK IN ORBIT', 2800); return; }
     await dgnWarm();
     state = 'explore'; fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; }, 950);
     notice(LR ? LR.name : 'Olympus Mons', LR ? 'BACK ON THE SURFACE' : 'BACK ON THE SLOPE', 2400);
@@ -10657,6 +10672,11 @@ function dgnLeave() { // back out onto the slope, by the door
 function dgnNear(p) { // what you can use in here
   if (!DGN.on) return null;
   const d = (o, r) => o && Math.hypot(p.x - o.x, p.z - o.z) < r;
+  if (DGN.lair && DGN.lair.cyg) { const L = DGN.lair, top = dgnTop(); // the Cygnus: lifts, not stairs
+    if (d(DGN.up, 3)) return { id: 'dgnUp', label: dgnBeaten(DGN.f) ? (DGN.f + 1 === top ? `Lift to the bridge · ${lairBoss(L).short}` : `Lift up · deck ${DGN.f + 1} · ${CYG_DECKS[DGN.f + 1]}`) : 'The lift up · the officer still holds it' };
+    if (d(DGN.down, 3)) return { id: 'dgnDown', label: DGN.f === 1 || (DGN.f === top && lairCleared(L)) ? 'Leave the Cygnus · the shuttle down to Mercury' : `Lift down · deck ${DGN.f - 1}` };
+    if (d(DGN.well, 2.4)) return { id: 'dgnWell', label: 'Med station' };
+    return null; }
   if (DGN.lair) { const L = DGN.lair, top = dgnTop();
     if (d(DGN.up, 3)) return { id: 'dgnUp', label: dgnBeaten(DGN.f) ? (DGN.f + 1 === top ? (lairCleared(L) ? 'Down to the lair’s heart' : `Down to the lair’s heart · ${lairBoss(L).short}`) : `Deeper · floor ${DGN.f + 1}`) : 'The way down · the matriarch still stands' };
     if (d(DGN.down, 3)) return { id: 'dgnDown', label: DGN.f === 1 || (DGN.f === top && lairCleared(L)) ? 'Leave the lair' : `Back up · floor ${DGN.f - 1}` };
@@ -10683,14 +10703,15 @@ function dgnTick(dt) {
   if (DGN.upArch) { const open = dgnBeaten(DGN.f); DGN.upArch.userData.door.material.opacity = open ? .45 + Math.sin(time * 3) * .15 : .25; DGN.upArch.userData.door.material.color.set(open ? 0xffc94a : 0xff3a2a); DGN.upArch.userData.glow.material.color.set(open ? 0xffc94a : 0xff3a2a); }
   // the warden falls: the stairs open
   if (DGN.warden && DGN.warden.dead && !dgnBeaten(DGN.f)) {
-    if (DGN.lair) { lairSetProg(DGN.lair, DGN.f); DGN.warden = null; sfx.chime(); notice(`Floor ${DGN.f} cleared`, DGN.f + 1 === dgnTop() ? `${lairBoss(DGN.lair).short.toUpperCase()} AWAITS BELOW` : 'THE WAY DOWN IS OPEN', 3400); }
+    if (DGN.lair && DGN.lair.cyg) { lairSetProg(DGN.lair, DGN.f); DGN.warden = null; sfx.chime(); notice(`Deck ${DGN.f} cleared`, DGN.f + 1 === dgnTop() ? `THE LIFT TO THE BRIDGE IS OPEN · ${lairBoss(DGN.lair).short.toUpperCase()}` : 'THE LIFT UP IS OPEN', 3400); }
+    else if (DGN.lair) { lairSetProg(DGN.lair, DGN.f); DGN.warden = null; sfx.chime(); notice(`Floor ${DGN.f} cleared`, DGN.f + 1 === dgnTop() ? `${lairBoss(DGN.lair).short.toUpperCase()} AWAITS BELOW` : 'THE WAY DOWN IS OPEN', 3400); }
     else { wanderer.ch3 = Object.assign({}, wanderer.ch3, { dgnMax: DGN.f }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster();
     DGN.warden = null; sfx.chime(); notice(`Floor ${DGN.f} cleared`, DGN.f === 7 ? 'THE WAY TO THE SUMMIT IS OPEN' : 'THE STAIRS UP ARE OPEN', 3400); } renderTasks();
   }
   // they keep coming: a fresh pack every half a minute or so while there are few about (the grind)
   if (state === 'explore' && DGN.f < dgnTop() && (DGN.spawnT -= dt) <= 0) {
-    DGN.spawnT = 55; const alive = fauna.list.filter(c => c.dgn && !c.dead).length, p = player.position;
-    if (alive < 3 + DGN.f / 3) { const far = DGN.rooms.filter(rm => rm !== DGN.start && Math.hypot(dgnW(rm.c[0], rm.c[1])[0] - p.x, dgnW(rm.c[0], rm.c[1])[1] - p.z) > 26); if (far.length) dgnSpawnGroup(far[Math.random() * far.length | 0], DGN.f); }
+    const cy = cygDeckOn(DGN.f); DGN.spawnT = cy ? 18 : 55; const alive = fauna.list.filter(c => c.dgn && !c.dead).length, p = player.position;
+    if (alive < (cy ? (tiPhone() ? 6 : 14) : 3 + DGN.f / 3)) { /* aboard the Cygnus the crew keep coming, a squad every 18 s or so */ const far = DGN.rooms.filter(rm => rm !== DGN.start && Math.hypot(dgnW(rm.c[0], rm.c[1])[0] - p.x, dgnW(rm.c[0], rm.c[1])[1] - p.z) > 26); if (far.length) dgnSpawnGroup(far[Math.random() * far.length | 0], DGN.f); }
   }
   if (DGN.lair && DGN.lair.cyg) cygTick(dt);
   if (DGN.f === dgnTop()) dgnArenaTick(dt);
@@ -11384,7 +11405,7 @@ function lairArenaTick(dt) {
   if (DGN.arenaL) DGN.arenaL.intensity = 60 + Math.sin(time * 2.3) * 10 + (DGN.flashL || 0) * 220; DGN.flashL = Math.max(0, (DGN.flashL || 0) - dt * 2.5);
   if (lairCleared(L)) return;
   if (!DGN.lb) lairBossPlace(); const K = DGN.lb; if (!K) return;
-  if (!DGN.boss) { if (K.R) { if (!K.R.static) { try { K.R.mode = 'idle'; animRig(K.R, dt); } catch (e) { K.R.static = true; } } } else animSpecies(K.mesh, time, false); K.mesh.position.set(K.x, K.B.hover ? 1.2 + Math.sin(time * 2) * .4 : 0, K.z); const [, gz] = dgnW(A.gate[0], A.gate[1]); if (state === 'explore' && !ex.dlg && player.position.z < gz - DGN.C) lairBossStart(); return; }
+  if (!DGN.boss) { if (K.R) { if (!K.R.static) { try { K.R.mode = 'idle'; animRig(K.R, dt); } catch (e) { K.R.static = true; } } } else animSpecies(K.mesh, time, false); K.mesh.position.set(K.x, K.B.hover ? 1.2 + Math.sin(time * 2) * .4 : 0, K.z); const [, gz] = dgnW(A.gate[0], A.gate[1]); if (state === 'explore' && !ex.dlg && player.position.z < gz - DGN.C) { if (L.tiKind === 'cygnus' && !L.hawTalked) { L.hawTalked = true; cygHawTalk(() => lairBossStart()); } else lairBossStart(); } return; } // Hawthorne has his say first
   lairBossTick(dt);
 }
 function lairBossStart() {
@@ -11393,7 +11414,7 @@ function lairBossStart() {
   const c = { type: 'lairboss', D, mesh: K.mesh, x: K.x, z: K.z, y: 0, rot: 0, hp: Bd.hp, state: 'hunt', t: 0, cd: 0, home: [K.x, K.z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, boss: true, bar: null, lv: Bd.lv || (DGN.lair && DGN.lair.lv) || 0 };
   fauna.list.push(c);
   DGN.boss = { lair: true, c, Bd, st: 'chase', t: 0, cd: Bd.cd + 1, ph: 1, seq: [...Bd.seq], si: 0, tels: [], mets: [], proj: null, shots: [], pools: [], A: null, chaseT: 0 };
-  if (Bd.theme) leaderPlay(Bd.theme).then(ok => { if (!ok) sfx.combat(true, COMBAT_TRACKS.indexOf('Predator II')); }); else sfx.combat(true, COMBAT_TRACKS.indexOf('Predator II'));
+  if (Bd.theme) { sfx.leadOn = true; leaderPlay(Bd.theme).then(ok => { if (!ok) { sfx.leadOn = false; sfx.combat(true, COMBAT_TRACKS.indexOf('Predator II')); } }); } else sfx.combat(true, COMBAT_TRACKS.indexOf('Predator II')); // a leader's theme and nothing else: no random combat track starts while it loads
   if (Bd.unmask) DGN.boss.unP = leadArchamusU().catch(() => null); // the face under the hood, ready for phase two
   notice(`${Bd.leader ? 'Faction leader' : 'Lair boss'} · level ${Bd.lv}`, Bd.name.toUpperCase(), 3200); bossBark(Bd, 'intro', 3600); lairBossBar();
 }
@@ -11645,7 +11666,7 @@ function leaderBossWin(B) { // a leader falls: the war is won (or the resident e
 setInterval(() => { try {
   if (state !== 'space' || !SC.foes) { if (SC.wrongOn) { SC.wrongOn = false; sfx.stopSong(1.5); } return; }
   const aces = SC.foes.some(f => f.ace && f.hp > 0);
-  if (aces && !SC.wrongOn) { SC.wrongOn = true; leaderPlay('wrong'); } else if (!aces && SC.wrongOn) { SC.wrongOn = false; sfx.stopSong(2); }
+  if (aces && !SC.wrongOn) { SC.wrongOn = true; leaderPlay('wrong'); } else if (!aces && SC.wrongOn) { SC.wrongOn = false; sfx.leadOn = false; sfx.stopSong(2); }
 } catch (e) {} }, 1000);
 // ---- wildlife: each generated world that can hold life has its species roaming the surface ----
 function genFauna(p, n) {
@@ -12564,8 +12585,9 @@ function tiWorldClear() { for (const k of ['chn', 'hak', 'cyg', 'st', 'pat', 'hu
 function tiLanded(P) {
   tiWorldClear(); TIW.area = curArea(); if (!P) return;
   if (P.id === 'charon' && (chnQ() || chnBackQ())) chnPlace().catch(e => console.error(e));
-  if (P.id === 'janira' && hakQ()) hakPlace().catch(e => console.error(e));
-  if (P.id === 'mercury' && cygQ()) cygPlace();
+  if (P.id === 'janira' && (hakQ() || hakBackQ())) hakPlace().catch(e => console.error(e));
+  if (P.id === 'mercury' && (cygQ() || cygFarm())) cygPlace();
+  if (SPC.cygDock) { SPC.cygDock = false; setTimeout(cygDockIn, 350); return; } // you docked with the Cygnus in orbit: straight aboard, and nothing down on Mercury (patrols, a hunter, the war) turns up to announce itself
   if (P.id === 'earth' && jamesQ()) stationPlace();
   if (CH3S().charonMet && !CH3S().jamesRev && ch3Now()) jrvWhenFree(3200); // you left before it played: it finds you on the next world
   if (P.sys === 'sol' && !P.dock) tiEncounters(P);
@@ -12618,7 +12640,7 @@ function tiNear(p) {
 }
 function tiUse(n) {
   if (n.id === 'chn') (chnBackQ() ? chnBackTalk : chnTalk)();
-  else if (n.id === 'hak') hakMeet();
+  else if (n.id === 'hak') (hakQ() ? hakMeet : hakBackTalk)();
   else if (n.id === 'cygShuttle') cygBoard();
   else if (n.id === 'tiStation') jbfVoices().then(() => { const X = jamesSpec(), L = [ // through the door, before you've even opened it
       'I can hear you out there. I’d know those footsteps anywhere. I listened to them walk away down that pier while the water filled my lungs.',
@@ -12648,7 +12670,7 @@ const JBF_IDX = { intro: 3, p2: 4, p3: 5, win: 6 };
 function jbfVoices() { return TIW.jbfVo || (TIW.jbfVo = loadDataScript('jbfVoices').then(() => sfx.loadClips('jbfVoices')).then(c => (TIW.jbfClips = c || [])).catch(() => (TIW.jbfClips = []))); }
 const jbfClip = i => (TIW.jbfClips || [])[i] || null;
 function vbark(who, text, ms, clip) { showNarr(who.toUpperCase(), text); clearTimeout(world.barkT); world.barkT = setTimeout(hideNarr, clip ? Math.max(ms, clip.duration * 1000 + 300) : ms); if (clip) sfx.playNarr(clip, 1.3); } // a bark that waits for its voice
-function bossBark(Bd, k, ms) { vbark(Bd.short, Bd.lines[k], ms, Bd.vo === 'jbf' ? jbfClip(JBF_IDX[k]) : null); }
+function bossBark(Bd, k, ms) { const hw = DGN.lair && DGN.lair.tiKind === 'cygnus' && CYGV.vo ? CYGV.vo[{ intro: 14, p2: 15, p3: 16, win: 17 }[k]] : null; vbark(Bd.short, Bd.lines[k], ms, Bd.vo === 'jbf' ? jbfClip(JBF_IDX[k]) : hw || null); } // Hawthorne on the Cygnus: CH3CYG15–18
 
 // Charon and Kizna, by your ship
 async function chnPlace() {
@@ -12724,12 +12746,14 @@ function surgeOverlay(D) { // the worlds that changed hands, with the right flag
     const P = bodyById(id); if (!P || D.col[id]) continue;
     P.baseFac = P.faction = f === 'ti' ? (id === 'earth' ? 'Terra Imperia · Earth, capital of the Grand Imperarch' : 'Terra Imperia · seized in the surge') : f === 'hfos' ? 'Human Federation of Sol · claimed in the surge' : 'The Erisian Empire · puppet of Terra Imperia · seized in the surge'; P.traders = null;
   }
-  const M = bodyById('mars'); if (M && !D.col.mars && !(D.surge.own || {}).mars) { M.baseFac = M.faction = 'Human Federation of Sol · capital in exile, President Darius Ancin'; M.traders = null; }
+  const M = bodyById('mars'); if (M && (D.surge.own || {}).mars === 'ti' && D.surge.fell) { M.baseFac = M.faction = 'Terra Imperia · Mars, taken from the Federation'; M.traders = null; }
+  if (M && !D.col.mars && !(D.surge.own || {}).mars) { M.baseFac = M.faction = 'Human Federation of Sol · capital in exile, President Darius Ancin'; M.traders = null; }
 }
-function surgeSysOverlay() { if (!surgeOn()) return; const S = sysById('sol'); if (S) S.faction = 'Terra Imperia · Earth is the Grand Imperarch’s capital'; }
+function surgeSysOverlay() { if (!surgeOn()) return; const S = sysById('sol'); if (S) S.faction = dip().surge.fell ? 'Terra Imperia · all of Sol, but for Eris' : 'Terra Imperia · Earth is the Grand Imperarch’s capital'; }
 function surgeTaskText() {
   const D = dip(), n = { ti: 0, hfos: 0, erisian: 0, you: 0 };
   for (const P of surgeLands()) { const o = surgeOwner(P, D); if (o in n) n[o]++; }
+  if (D.surge.fell) return tiPhone() ? `Sol has fallen · Terra Imperia ${n.ti} · you ${n.you}` : `Sol has fallen to Terra Imperia · it holds ${n.ti} worlds${c3f('alexiaCoup') ? ` · Alexia’s Erisians ${n.erisian}` : ''} · you ${n.you} · take them back one by one`;
   if (tiPhone()) return `Sol at war · Terra Imperia ${n.ti} · Federation ${n.hfos}${c3f('alexiaCoup') ? ` · Alexia ${n.erisian}` : ''} · you ${n.you}`;
   return `Sol is being carved up · Terra Imperia holds ${n.ti} worlds · the Federation ${n.hfos}${c3f('alexiaCoup') ? ` · Alexia’s Erisians ${n.erisian}` : ''} · you ${n.you}`;
 }
@@ -12746,7 +12770,7 @@ function surgeStart() {
 function surgeTick() { // every few minutes of play, one faction takes one world
   if (!surgeOn() || !['explore', 'space'].includes(state) || ex.dlg) return; const D = dip(); if (playSec() < (D.surge.next || 0)) return;
   D.surge.next = playSec() + 150 + Math.random() * 90;
-  const who = ['ti', 'hfos', ...(c3f('alexiaCoup') ? ['erisian'] : [])], foes = { ti: ['hfos', 'you'], hfos: ['ti', ...(c3f('alexiaCoup') ? ['erisian'] : [])], erisian: ['hfos', 'you'] };
+  const who = D.surge.fell ? ['ti'] : ['ti', 'hfos', ...(c3f('alexiaCoup') ? ['erisian'] : [])], foes = { ti: ['hfos', 'you'], hfos: ['ti', ...(c3f('alexiaCoup') ? ['erisian'] : [])], erisian: ['hfos', 'you'] };
   const lands = surgeLands().filter(P => !SURGE_SAFE.includes(P.id));
   for (let k = 0; k < who.length; k++) {
     const G = who[(D.surge.n + k) % who.length], own = lands.map(P => [P, surgeOwner(P, D)]);
@@ -12763,6 +12787,52 @@ function surgeTick() { // every few minutes of play, one faction takes one world
 }
 setInterval(() => { try { surgeTick(); } catch (e) { console.error(e); } }, 2000);
 
+// ---- Sol falls (Chapter III, the moment Hawthorne leaves the Cygnus) ----
+// While you were climbing his ship, his fleets finished the job: every world in Sol is Terra Imperia's now, Mars and your colonies
+// included. Only Erisian land keeps its colours (Alexia kneels to him). Darius Ancin is driven out of Mars and the Federation has
+// nowhere left in Sol. The land grab is over: there is nothing left to grab. Next: back to Hak Chompjak in Karribassa.
+// Saves: ch3.solFell, ch3.hakBack; dip().surge.fell. Worlds he took can still be bombarded and taken back, world by world.
+function solFalls() {
+  const D = dip(); if (!D.surge) { D.surge = { on: true, next: 0, n: 0, own: { earth: 'ti' } }; }
+  D.surge.on = true; D.surge.fell = true; D.surge.next = playSec() + 600;
+  let lost = 0;
+  for (const P of surgeLands()) {
+    const o = surgeOwner(P, D); if (o === 'erisian' || String(P.baseFac || P.faction || '').startsWith('The Erisian Empire') || P.id === 'eris') continue; // Erisian land stays Erisian
+    if (D.col[P.id]) { delete D.col[P.id]; lost++; for (const W of Object.values(D.wars)) if (W && W.held) W.held = W.held.filter(x => x !== P.id); }
+    D.surge.own[P.id] = 'ti';
+  }
+  dipSave(); setC3({ solFell: true, solLost: lost }); try { surgeOverlay(D); surgeSysOverlay(); } catch (e) { console.error(e); } renderTasks();
+  const ph = tiPhone(), say = (ms, a, b, msg, col) => setTimeout(() => { notice(a, b, 4400); sfx.thud(); if (msg) lootMsg(msg, col); }, ms);
+  sfx.alarm(); setTimeout(() => sfx.alarm(), 400);
+  say(900, 'Terra Imperia', 'SOL HAS FALLEN', ph ? 'Every world in Sol is Terra Imperia’s' : 'While you were aboard the Cygnus, Terra Imperia took every world in Sol', '#d0343a');
+  say(5600, ph ? 'The Federation' : 'The Human Federation of Sol', 'DRIVEN OUT OF MARS', ph ? 'Darius Ancin has fled Sol' : 'Darius Ancin has been driven out of Mars: the Federation has nowhere left in Sol', '#7fb6ff');
+  if (lost) say(10300, 'Your colonies', ph ? `${lost} LOST` : `${lost} WORLD${lost > 1 ? 'S' : ''} LOST TO TERRA IMPERIA`, ph ? 'Bombard them to take them back' : 'Bombard them and beat their governors to take them back, world by world', '#ff6a6e');
+  say(lost ? 15000 : 10300, 'Main quest', ph ? 'RETURN TO HAK' : 'RETURN TO HAK CHOMPJAK IN KARRIBASSA', ph ? 'Warp to Janira Proxima · Karribassa' : 'Warp to Janira Proxima and land on Janira Prime: Hak waits in the heart of Karribassa', '#ffb060');
+}
+function hakBackQ() { const c = CH3S(); return ch3Now() && !!c.solFell && !c.hakBack; }
+function hakBackTalk() { // Hak, on the bridge before the Hall of Oaths again: he tells you what you missed (CH3HAKBACK1–11, subtitles until they're recorded)
+  const who = tiPhone() ? 'HAK CHOMPJAK V' : 'HAK CHOMPJAK V · EMPEROR OF THE CHOMPY EMPIRE', ally = chompyAlly(), lost = (CH3S().solLost | 0) > 0;
+  const go = vo => {
+    const L = [
+      ['You live. Good. Then you have not heard. While you were cutting your way up his ship, Hawthorne’s fleets finished what they started.', 0],
+      ['Sol has fallen. Every world, every moon, every station flies his crimson now' + (lost ? ', your colonies with them.' : '.'), 1],
+      ['Only Eris keeps its own colours, and only because Alexia knelt before he had to ask her.', 2],
+      ['Darius Ancin was driven out of Mars. The Federation is gone from Sol. A president with no planet, running for the dark.', 3],
+      ['The Cygnus was never the prize. He let you have his ship so he could have everything else.', 4]
+    ];
+    hakSay(who, L, vo, () => openChoice(who, [
+      { text: tiPhone() ? '“He knew your past.”' : '“He knew your past. Alphinos. Your father. He acted it out for me.”', onPick: () => hakSay(who, [['…He did what?', 5], ['Then he has been reading my history, and he wanted me to know it. Good. A man who studies his enemy that closely is a man who is afraid of him.', 6]], vo, end) },
+      { text: tiPhone() ? '“He says you’re next.”' : '“He says you’re next. He’s coming for your crown.”', onPick: () => hakSay(who, [['Everyone who has ever wanted this crown has said so. Most of them said it to my face. None of them are wearing it.', 7]], vo, end) },
+      { text: tiPhone() ? '“What now?”' : '“So what do we do now?”', onPick: () => hakSay(who, [['We do what he cannot. We hold.', 8]], vo, end) }
+    ], 'YOUR REPLY'));
+    function end() { hakSay(who, [ally ? ['Aridaxx stands with you. Take Sol back world by world, and every one he loses, he will feel. My fleets will follow you in.', 9] : ['My offer of alliance still stands. Until you take it, take Sol back world by world. Every one he loses, he will feel.', 10]], vo, () => {
+      setC3({ hakBack: true }); renderTasks(); sfx.chime(); gainXP(300, 'Returned to Hak Chompjak');
+      notice('Main quest', tiPhone() ? 'YOU RETURNED TO HAK' : 'YOU RETURNED TO HAK CHOMPJAK', 3600);
+      setTimeout(() => lootMsg(tiPhone() ? 'Take Sol back · bombard its worlds' : 'Take Sol back from Terra Imperia: bombard its worlds and beat their governors', '#ffb060'), 2400);
+    }); }
+  };
+  pdMeet('hak'); loadDataScript('hakBackVoices').then(ok => ok ? sfx.loadClips('hakBackVoices') : []).catch(() => []).then(v => go(v || []));
+}
 function hakCallDue() { const c = CH3S(); return ch3Now() && !!c.charonBack && !c.hakCall; } // after the second visit to Charon and Kizna (which comes after James Brown, spared or killed)
 const hakVo = () => loadDataScript('hakVoices').then(ok => ok ? sfx.loadClips('hakVoices') : []).catch(() => []); // CH3HAKCALL1–3 (slots 0–2), CH3HAKMEET1–7 (slots 3–9); a missing clip shows as subtitles
 function hakSay(who, L, vo, done) { const run = i => { if (i >= L.length) { done(); return; } const c = vo[L[i][1]]; openDialog(who, [L[i][0]], false, () => run(i + 1), c ? [c] : undefined); }; run(0); }
@@ -12784,7 +12854,7 @@ async function hakPlace() { // the Emperor, in the heart of Karribassa: on the b
   const C = world.planet && world.planet.city;
   if (!C || C.K.name !== 'Karribassa') { setTimeout(() => lootMsg(tiPhone() ? 'Hak waits in Karribassa · fly to it' : 'Hak waits in the heart of Karribassa · take off and fly to the city from the sky (its marker), then land', '#ffb060'), 2600); return; }
   const area = curArea(), [R, ...G] = await Promise.all([leadTag('leader_chompy', 2.05)().catch(() => null), ...(tiPhone() ? [] : [0, 1].map(() => loadSpecies('chompy').then(() => townModel('chompy')).then(src => src ? (Rg => (armRig(Rg, 'sword'), Rg))(autoRig(dressTownsfolk(src, { sp: 'chompy', c: [0x1a1418, 0xd0343a] }), 1.8)) : null).catch(() => null)))]);
-  if (curArea() !== area || !hakQ() || !R) return;
+  if (curArea() !== area || !(hakQ() || hakBackQ()) || !R) return;
   const g = new THREE.Group(), x = C.cx, z = C.cz + 46, y = C.y; wScene.add(g);
   R.root.position.set(x, y, z); R.root.traverse(o => { if (o.isMesh) o.castShadow = !tiPhone(); }); g.add(R.root);
   G.forEach((Rg, i) => { if (!Rg) return; Rg.root.position.set(x + (i ? 2.6 : -2.6), y, z - 1.2); Rg.root.traverse(o => { if (o.isMesh) o.castShadow = !tiPhone(); }); g.add(Rg.root); }); // the Emperor's guard
@@ -12812,11 +12882,21 @@ async function hakMeet() { // the meeting
    waits by your ship, guarded. Board it and you're aboard the Cygnus: four decks of Terra Imperia soldiers, an officer holding
    each deck's way up, and Thomas Hawthorne on the bridge. Beat him and he escapes; the Cygnus is yours to walk out of.
    Your progress through the decks is kept (fall and you start the current fight again). Saves: ch3.cygDone. ---- */
-const CYG = { R: [] };
+const CYG = { R: [], K: [] };
+const CYG_FLOORS = 5, CYG_H = 34; // five decks, and a corridor five storeys high (a storey every 6.8 m)
+const CYG_DECKS = ['', 'The Hangar Deck', 'The Barracks Deck', 'The Armoury Deck', 'The Reactor Deck', 'The Command Deck'];
+const cygDeckOn = f => !!(DGN.lair && DGN.lair.cyg && f < dgnTop()); // a deck (the bridge, above them, is the arena)
 function cygQ() { const c = CH3S(); return ch3Now() && !!c.hakMet && !c.cygDone; }
-function cygSpec() { const lv = Math.max(24, plvNow() + 2); return { key: 'ti:hawthorne', boss: 'Hawthorne', full: 'Thomas Hawthorne, Grand Imperarch of Terra Imperia', hall: 'The Cygnus · the bridge', lv, hp: Math.round(5200 + lv * 150), theme: 'wrong', load: () => hawthorneRig(),
+function cygFarm() { const c = CH3S(); return !!c.cygDone && pontOpen() && !dipRes('ti'); } // after Hawthorne: the Cygnus stays in orbit, and you can board it as often as you like
+function cygSpec() { const lv = 1; /* level 1 on purpose: Hawthorne on his own bridge */ return { key: 'ti:hawthorne', boss: 'Hawthorne', full: 'Thomas Hawthorne, Grand Imperarch of Terra Imperia', hall: 'The Cygnus · the bridge', lv, hp: Math.round(5200 + lv * 150), theme: 'wrong', load: () => hawthorneRig(),
   core: ['volley', 'charge', 'slam', 'rain'], p2: ['cross', 'nova'], sig: 'sweep', seq: ['volley', 'charge', 'volley', 'slam', 'rain'],
-  lines: { intro: 'You came all the way up here to die on my ship? How very Federation of you.', p2: 'Do you know what this ship is? It is the future. And you are bleeding on its floor.', p3: 'SOL IS MINE! EVERY WORLD, EVERY MOON, EVERY LAST ONE OF YOU!', win: 'Enough… Enough! This changes nothing.' } }; }
+  lines: { intro: 'Come on, then. Show me what Hak paid for.', p2: 'Do you know what this ship is? It is the future. And you are bleeding on its floor.', p3: 'SOL IS MINE! EVERY WORLD, EVERY MOON, EVERY LAST ONE OF YOU!', win: 'Enough… Enough! This changes nothing.' } }; }
+function cygHunter() { return PONTS().filter(o => o.st === 'hunt').sort((a, b) => (a.made || 0) - (b.made || 0))[0] || null; } // the one who's hunted you longest
+function cygBridge() { // who holds the bridge on a later boarding: whoever is hunting you, or else the ship's commander (beat them and you can anoint them)
+  const P = cygHunter(); if (P) return { X: pontSpec(P), kind: 'pont', ref: P.id, P };
+  const sex = Math.random() < .5 ? 'f' : 'm', T = { sex, name: pick(sex === 'f' ? TI_NAMES_F : TI_NAMES), rank: 'Commander' };
+  return { X: Object.assign(soldierSpec(T), { hall: 'The Cygnus · the bridge', full: `Commander ${T.name}, the Cygnus Terra Imperius` }), kind: 'soldier', ref: T };
+}
 function cygPlace() { // the supply shuttle, by your ship on Mercury, with its guards
   const area = curArea(), x = 15, z = -9, g = new THREE.Group(); wScene.add(g);
   const dark = new THREE.MeshStandardMaterial({ color: 0x1a1c20, roughness: .5, metalness: .7 }), red = new THREE.MeshStandardMaterial({ color: 0x8a0e14, roughness: .6, emissive: 0x3a0406, emissiveIntensity: .9 });
@@ -12826,53 +12906,351 @@ function cygPlace() { // the supply shuttle, by your ship on Mercury, with its g
   const L = new THREE.PointLight(0xff2a2a, 40, 18, 1.6); L.position.set(x, y + 4.5, z); g.add(L);
   TIW.cyg = { g, R: [], x, z: z + 5.5, face: true, beacon: tiBeacon(g, x, z, 0xff2a2a, 10) };
   if (!tiPhone()) Promise.all([tiSoldierRig(), tiSoldierRig('f')]).then(Rs => { if (curArea() !== area || !TIW.cyg) return; Rs.forEach((R, i) => { if (!R) return; const px = x + (i ? 2.2 : -2.2), pz = z + 7; R.root.position.set(px, wHeight(px, pz), pz); R.root.rotation.y = 0; g.add(R.root); TIW.cyg.R.push(R); }); }).catch(() => null);
-  setTimeout(() => lootMsg(tiPhone() ? 'The Cygnus supply shuttle is by your ship' : 'A Terra Imperia supply shuttle is loading by your ship · it runs up to the Cygnus', '#ff6a6e'), 2600);
+  const farm = !cygQ(); if (CYGS.docking) return; // docking from orbit: you never see Mercury
+  setTimeout(() => lootMsg(farm ? (tiPhone() ? 'The Cygnus shuttle still runs · board it' : 'The supply shuttle still runs up to the Cygnus · every officer aboard can be anointed') : (tiPhone() ? 'The Cygnus supply shuttle is by your ship' : 'A Terra Imperia supply shuttle is loading by your ship · it runs up to the Cygnus'), '#ff6a6e'), 2600);
 }
 function cygBoard() {
-  const X = cygSpec();
-  openChoice(tiPhone() ? 'THE CYGNUS' : 'THE CYGNUS TERRA IMPERIUS · IN ORBIT OVER MERCURY', [
-    { text: tiPhone() ? `Board · infiltrate (lv ${X.lv})` : `Board the shuttle · infiltrate the Cygnus (Hawthorne, lv ${X.lv})`, onPick: () => cygEnter(X) },
-    { text: 'Not yet', onPick: () => {} }], tiPhone() ? 'FOUR DECKS · HAWTHORNE' : 'FOUR DECKS OF TERRA IMPERIA · THOMAS HAWTHORNE ON THE BRIDGE');
+  const ph = tiPhone();
+  if (cygQ()) { const X = cygSpec();
+    openChoice(ph ? 'THE CYGNUS' : 'THE CYGNUS TERRA IMPERIUS · IN ORBIT OVER MERCURY', [
+      { text: ph ? `Board · infiltrate (lv ${X.lv})` : `Board the shuttle · infiltrate the Cygnus (Hawthorne, lv ${X.lv})`, onPick: () => cygEnter(X) },
+      { text: 'Not yet', onPick: () => {} }], ph ? 'FIVE DECKS · HAWTHORNE' : 'FIVE DECKS OF TERRA IMPERIA · THOMAS HAWTHORNE ON THE BRIDGE');
+    return; }
+  const B = cygBridge(), who = B.P ? `${B.P.name}, ${pontTitle(B.P)} (lv ${B.X.lv})` : `the ship’s commander (lv ${B.X.lv})`;
+  openChoice(ph ? 'THE CYGNUS' : 'THE CYGNUS TERRA IMPERIUS · STILL IN ORBIT', [
+    { text: ph ? `Board · ${B.P ? B.P.name.split(' ')[0] : 'the commander'} on the bridge` : `Board the shuttle · five decks of crew, and ${who} on the bridge`, onPick: () => cygEnter(B.X, B) },
+    { text: 'Not yet', onPick: () => {} }], ph ? 'ANOINT ITS OFFICERS' : 'EVERY OFFICER ABOARD CAN BE ANOINTED · WHOEVER HUNTS YOU WAITS ON THE BRIDGE');
 }
-function cygEnter(X) {
+function cygEnter(X, B, fromSpace) {
   if (!isPl() || DGN.on || state !== 'explore') { lootMsg('Not here', '#ff8f86'); return; }
-  const L = leaderLair(null, { lid: 'cygnus' }, { list: [X] }, world.planet.P); // one Cygnus: the decks you've cleared stay cleared
-  Object.assign(L, { tiKind: 'cygnus', cyg: true, floors: 4, th: LAIR_TH.ship, lv: X.lv, name: 'The Cygnus Terra Imperius' });
-  const at = Math.min(lairProg(L) + 1, L.floors + 1); // back on the deck you'd reached
-  notice('Infiltration', tiPhone() ? 'ABOARD THE CYGNUS' : 'ABOARD THE CYGNUS TERRA IMPERIUS', 3200); sfx.alarm();
+  const farm = !!B, L = leaderLair(null, { lid: farm ? 'cygfarm' : 'cygnus' }, { list: [X] }, world.planet.P); // the story's Cygnus keeps the decks you've cleared; a later boarding is a fresh run, every officer back at their post
+  Object.assign(L, { tiKind: farm ? B.kind : 'cygnus', tiRef: farm ? B.ref : undefined, cyg: true, cygFarm: farm, fromSpace: !!fromSpace, floors: CYG_FLOORS, th: LAIR_TH.ship, lv: X.lv, name: 'The Cygnus Terra Imperius' });
+  if (farm) { L.seed = Math.random() * 900000 | 0; const m = Object.assign({}, wanderer.lairs); m[L.id] = 0; wanderer.lairs = m; const c = curChar(); if (c) c.lairs = m; saveRoster(); }
+  const at = farm ? 1 : Math.min(lairProg(L) + 1, L.floors + 1); // back on the deck you'd reached
+  if (!farm) { cygVo(); leaderTheme('wrong'); } // his voice and The Wrong Enemy, loaded on the way up so the fight starts on it
+  notice(farm ? 'The Cygnus Terra Imperius' : 'Infiltration', fromSpace ? (tiPhone() ? 'DOCKED · ABOARD' : 'DOCKED · ABOARD THE CYGNUS TERRA IMPERIUS') : tiPhone() ? 'ABOARD THE CYGNUS' : 'ABOARD THE CYGNUS TERRA IMPERIUS', 3200); sfx.alarm();
   lairEnter(L, { x: TIW.cyg ? TIW.cyg.x : player.position.x, z: TIW.cyg ? TIW.cyg.z : player.position.z }, at);
+  if (farm && B.P) setTimeout(() => lootMsg(`${B.P.name} is waiting for you on the bridge · cut your way up through the five decks`, pontCol(B.P)), 4200);
 }
-function cygSoldier(x, z, f, lead) { // one of the crew: rifles, black and crimson; an officer holds each deck's way up
-  const L = DGN.lair;
-  return tiSoldierRig(Math.random() < .35 ? 'f' : 'm').then(R => {
+// ---- a deck: one grand corridor, 48 m wide and 264 m long, five storeys high, with crew bays off both sides ----
+// (a 48 × 48 grid of 6 m cells: the corridor is columns 20-27, rows 2-45; bays of 6 × 5 cells open off it)
+function cygLayout(f) {
+  const N = DGN.N, open = new Uint8Array(N * N), R = dgnRng(DGN.lair.seed + f * 7919), set = (i, j) => { if (i >= 0 && j >= 0 && i < N && j < N) open[j * N + i] = 1; };
+  for (let j = 2; j <= 45; j++) for (let i = 20; i <= 27; i++) set(i, j);
+  DGN.arena = null;
+  const start = { c: [23.5, 43] }, end = { c: [23.5, 4] }, path = [38, 32, 26, 20, 14, 9].map(j => ({ c: [23.5 + (R() - .5) * 4, j] })), bays = [];
+  for (const jb of [9, 16, 23, 30, 37]) for (const s of [-1, 1]) { if (R() < .2) continue; // most stretches have a bay on each side
+    const i0 = s < 0 ? 14 : 28; for (let j = jb - 2; j <= jb + 2; j++) for (let i = i0; i < i0 + 6; i++) set(i, j);
+    bays.push({ c: [i0 + 2.5, jb], side: true, s, z0: jb - 2, z1: jb + 2 }); }
+  return { open, rooms: [start, ...path, end, ...bays], start, end };
+}
+function cygDecor(g, f) {
+  const C = DGN.C, H = CYG_H, ph = tiPhone(), xw = DGN.O.x - 4 * C, xe = DGN.O.x + 4 * C, zN = DGN.O.z - 22 * C, zS = DGN.O.z + 22 * C, Lz = zS - zN, zm = (zN + zS) / 2;
+  const steel = new THREE.MeshStandardMaterial({ color: 0x1d1f25, roughness: .45, metalness: .75 }), dark = new THREE.MeshStandardMaterial({ color: 0x111216, roughness: .6, metalness: .6 });
+  const crimson = new THREE.MeshStandardMaterial({ color: 0x7a0c12, roughness: .7, emissive: 0x4a0408, emissiveIntensity: .8 }), gold = new THREE.MeshStandardMaterial({ color: 0xb8902c, roughness: .35, metalness: .85, emissive: 0x2a1a04, emissiveIntensity: .5 });
+  const glowR = new THREE.MeshBasicMaterial({ color: 0xff2a2a }), glowA = new THREE.MeshBasicMaterial({ color: 0xff7a5a });
+  const add = (geo, m, x, y, z, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry; o.receiveShadow = true; g.add(o); return o; };
+  const inst = (geo, m, list) => { if (!list.length) return null; const im = new THREE.InstancedMesh(geo, m, list.length), M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(1, 1, 1), E = new THREE.Euler();
+    list.forEach(([x, y, z, ry = 0], k) => { M.compose(new THREE.Vector3(x, y, z), Q.setFromEuler(E.set(0, ry, 0)), S); im.setMatrixAt(k, M); }); im.receiveShadow = true; g.add(im); return im; };
+  const bays = DGN.rooms.filter(r => r.side), inBay = (s, z) => bays.some(b => b.s === s && z > dgnW(0, b.z0)[1] - C / 2 - 1.5 && z < dgnW(0, b.z1)[1] + C / 2 + 1.5);
+  // the floor: a crimson runner with gold edges down the middle, guide lights either side
+  add(new THREE.BoxGeometry(9, .04, Lz - 6), crimson, DGN.O.x, .02, zm);
+  for (const s of [-1, 1]) add(new THREE.BoxGeometry(.35, .05, Lz - 6), gold, DGN.O.x + s * 4.7, .03, zm);
+  const guide = []; for (let z = zN + 6; z < zS - 6; z += 6) for (const s of [-1, 1]) guide.push([DGN.O.x + s * 6.2, .06, z]);
+  inst(new THREE.BoxGeometry(.5, .08, .9), glowR, guide);
+  // five storeys: four galleries up each wall, railed, lit red underneath, lit windows behind them
+  const win = [], pil = [], strip = [], ban = [], beac = [];
+  for (const s of [-1, 1]) { const wx = s < 0 ? xw : xe, ry = s < 0 ? Math.PI / 2 : -Math.PI / 2;
+    for (let k = 1; k <= 4; k++) { const y = k * H / 5;
+      add(new THREE.BoxGeometry(4.4, .5, Lz), steel, wx - s * 2.2, y, zm); // the gallery deck
+      add(new THREE.BoxGeometry(.14, 1.1, Lz), dark, wx - s * 4.3, y + .8, zm); // its rail
+      add(new THREE.BoxGeometry(.18, .12, Lz), glowR, wx - s * 4.35, y - .32, zm); // the red strip under it
+      for (let z = zN + 5; z < zS - 4; z += 7.5) if (!inBay(s, z)) win.push([wx - s * .06, y + 1.7, z, ry]); }
+    for (let z = zN + 5; z < zS - 4; z += 7.5) if (!inBay(s, z)) win.push([wx - s * .06, 2.2, z, ry]); // and on the deck itself
+    for (let z = zN + 9; z < zS - 6; z += 18) { if (inBay(s, z)) continue; pil.push([wx - s * .35, H / 2, z]); strip.push([wx - s * 1.17, H / 2, z]); DGN.solid.push({ x: wx - s * .35, z, hw: .8, hd: .8 }); beac.push([wx - s * 1.4, H - 2.5, z]); }
+    for (let z = zN + 18; z < zS - 12; z += 36) if (!inBay(s, z)) ban.push([wx - s * 4.75, H * .8 - 8.6, z, ry]); } // hung from the top gallery's rail, down past the two below
+  inst(new THREE.PlaneGeometry(3.2, 2.2), glowA, win);
+  inst(new THREE.BoxGeometry(1.6, H, 1.6), steel, pil);
+  inst(new THREE.BoxGeometry(.12, H * .92, .12), glowR, strip);
+  // the banners of Terra Imperia, hanging down three storeys: crimson, a gold ring, the black star
+  const bt = canvasTex(128, 384, (c, w) => { c.fillStyle = '#6a0a10'; c.fillRect(0, 0, w, 384); c.fillStyle = '#b8902c'; c.fillRect(0, 0, w, 10); c.fillRect(0, 374, w, 10); c.fillRect(8, 0, 6, 384); c.fillRect(w - 14, 0, 6, 384);
+    c.strokeStyle = '#d8b050'; c.lineWidth = 8; c.beginPath(); c.arc(64, 130, 42, 0, Math.PI * 2); c.stroke(); c.fillStyle = '#0c0c10'; c.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 14 : 34; c.lineTo(64 + Math.cos(a) * r, 130 + Math.sin(a) * r); } c.closePath(); c.fill();
+    c.fillStyle = '#d8b050'; c.beginPath(); c.moveTo(20, 384); c.lineTo(64, 330); c.lineTo(108, 384); c.fill(); });
+  inst(new THREE.PlaneGeometry(5, 17), new THREE.MeshStandardMaterial({ map: bt, side: THREE.DoubleSide, roughness: .8, emissive: 0x2a0204, emissiveIntensity: .6 }), ban);
+  // the ceiling's ribs, lit along their undersides
+  const ribs = [], ribL = []; for (let z = zN + 9; z < zS - 6; z += 18) { ribs.push([DGN.O.x, H - .9, z]); ribL.push([DGN.O.x, H - 1.85, z]); }
+  inst(new THREE.BoxGeometry(xe - xw, 1.8, 1.6), steel, ribs); inst(new THREE.BoxGeometry(xe - xw - 10, .1, .3), glowR, ribL);
+  // alarm beacons up on the pillars: they pulse
+  for (const [x, y, z] of beac.filter((_, i) => !ph || i % 2 === 0)) { const sp = glowSprite(0xff2a2a, 2.6, .85); sp.position.set(x, y, z); g.add(sp); DGN.fx.push(sp); }
+  // the far end: a great window onto Mercury, framed in steel; the near end: the hangar doors, the star of Terra Imperia on them
+  const vt = canvasTex(1024, 512, (c, w) => { const gr = c.createLinearGradient(0, 0, 0, 512); gr.addColorStop(0, '#020205'); gr.addColorStop(1, '#0a0608'); c.fillStyle = gr; c.fillRect(0, 0, w, 512);
+    const Rr = dgnRng(5150 + f); for (let i = 0; i < 700; i++) { c.fillStyle = `rgba(255,255,255,${.3 + Rr() * .7})`; const r = Rr() < .05 ? 1.6 : .8; c.fillRect(Rr() * w, Rr() * 512, r, r); }
+    const mx = 640, my = 760, mr = 560, mg = c.createRadialGradient(mx - 180, my - 320, 40, mx, my, mr); mg.addColorStop(0, '#d8cfc4'); mg.addColorStop(.55, '#8a8078'); mg.addColorStop(1, '#2a2522'); c.fillStyle = mg; c.beginPath(); c.arc(mx, my, mr, 0, Math.PI * 2); c.fill();
+    for (let i = 0; i < 90; i++) { const a = Rr() * Math.PI * 2, d = Rr() * mr * .95, x = mx + Math.cos(a) * d, y = my + Math.sin(a) * d; if (y > 512) continue; c.fillStyle = `rgba(40,34,30,${.15 + Rr() * .3})`; c.beginPath(); c.arc(x, y, 3 + Rr() * 16, 0, Math.PI * 2); c.fill(); }
+    const sg = c.createRadialGradient(80, 60, 0, 80, 60, 260); sg.addColorStop(0, 'rgba(255,240,200,.9)'); sg.addColorStop(1, 'rgba(255,200,120,0)'); c.fillStyle = sg; c.fillRect(0, 0, w, 512); });
+  add(new THREE.PlaneGeometry(44, 22), new THREE.MeshBasicMaterial({ map: vt }), DGN.O.x, 19, zN + .12);
+  for (const [w2, h2, x, y] of [[46, 1.4, 0, 8], [46, 1.4, 0, 30], [1.4, 23, -22.6, 19], [1.4, 23, 22.6, 19], [.8, 22, -7.3, 19], [.8, 22, 7.3, 19], [44, .6, 0, 19]]) add(new THREE.BoxGeometry(w2, h2, .9), steel, DGN.O.x + x, y, zN + .4);
+  const dt = canvasTex(512, 512, (c, w) => { c.fillStyle = '#18191e'; c.fillRect(0, 0, w, w); c.strokeStyle = '#2a2c33'; c.lineWidth = 6; for (let i = 0; i < 8; i++) { c.beginPath(); c.moveTo(0, i * 64); c.lineTo(w, i * 64); c.stroke(); } c.strokeStyle = '#0a0a0c'; c.lineWidth = 10; c.beginPath(); c.moveTo(256, 0); c.lineTo(256, w); c.stroke();
+    for (let i = 0; i < 16; i++) { c.fillStyle = i % 2 ? '#c8a020' : '#111'; c.beginPath(); c.moveTo(i * 32, 472); c.lineTo(i * 32 + 32, 472); c.lineTo(i * 32 + 16, 512); c.fill(); }
+    c.strokeStyle = '#d0343a'; c.lineWidth = 14; c.beginPath(); c.arc(256, 220, 120, 0, Math.PI * 2); c.stroke(); c.fillStyle = '#d0343a'; c.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 38 : 92; c.lineTo(256 + Math.cos(a) * r, 220 + Math.sin(a) * r); } c.closePath(); c.fill(); });
+  add(new THREE.PlaneGeometry(44, 30), new THREE.MeshStandardMaterial({ map: dt, roughness: .5, metalness: .6, emissive: 0x2a0406, emissiveMap: dt, emissiveIntensity: .35 }), DGN.O.x, 15, zS - .12, Math.PI);
+  // the bays: crates and racks against their back walls (solid), a red lamp in each
+  const crates = [];
+  for (const b of bays) { const [bx, bz] = dgnW(b.c[0], b.c[1]), back = bx + b.s * (3 * C - 1.5);
+    for (let k = -2; k <= 2; k++) { if (dgnRng(b.z0 * 13 + k + f)() < .3) continue; const z = bz + k * 5.2, h = 1.6 + (k & 1) * .9; crates.push([back, h / 2, z]); DGN.solid.push({ x: back, z, hw: 1.1, hd: 1.1 }); }
+    const sp = glowSprite(0xff3a2a, 4, .7); sp.position.set(bx, CYG_H * .35, bz); g.add(sp); }
+  inst(new THREE.BoxGeometry(2.2, 2.5, 2.2), dark, crates);
+  // light: the length of the corridor, high up
+  for (let i = 0; i < (ph ? 2 : 4); i++) { const z = zN + Lz * (i + .5) / (ph ? 2 : 4), Lp = new THREE.PointLight(0xff8a7a, 70, 110, 1.3); Lp.position.set(DGN.O.x, H * .6, z); g.add(Lp); }
+}
+// ---- the crew ----
+function cygSoldier(x, z, f, kind) { // kind: nothing (the crew), 'elite' (a Praetorian guard) or 'officer' (holds the deck's lift): the last two drop to one knee when beaten, and can be anointed
+  const L = DGN.lair, sex = Math.random() < .35 ? 'f' : 'm';
+  return tiSoldierRig(sex).then(R => {
     if (!R || !DGN.on || DGN.lair !== L || DGN.f !== f) return null;
-    R.root.position.set(x, 0, z); R.root.rotation.y = Math.random() * 6.28; wScene.add(R.root);
-    const c = tiArm(R, lead, lead ? `${pick(TI_RANKS)} ${pick(Math.random() < .5 ? TI_NAMES : TI_NAMES_F)}` : 'Cygnus crew'); c.dgn = f;
-    if (lead) { c.hp = c.D.hp = Math.round(c.hp * 3.2); c.lv += 2; }
+    const T = kind ? { sex, name: pick(sex === 'f' ? TI_NAMES_F : TI_NAMES), rank: kind === 'officer' ? pick(TI_RANKS) : pick(['Praetorian', 'Optio', 'Decurion']) } : null;
+    R.root.position.set(x, 0, z); R.root.rotation.y = kind ? Math.PI : Math.random() * 6.28; wScene.add(R.root);
+    const c = tiArm(R, !!kind, T ? `${T.rank} ${T.name}` : 'Cygnus crew'); c.dgn = f;
+    if (kind === 'officer') { c.hp = c.D.hp = Math.round(c.hp * 3.2); c.lv += 2; } else if (kind === 'elite') { c.hp = c.D.hp = Math.round(c.hp * 2.2); c.lv += 1; }
+    if (T) { R.T = T; R.anoint = true; const pip = glowSprite(0xffc94a, .5, .95); pip.position.set(0, 2.05, 0); R.root.add(pip); } // a gold pip: this one can be anointed
     CYG.R.push(R); return c;
   }).catch(() => null);
 }
-function cygSpawnGroup(rm, f) { const [cx, cz] = dgnW(rm.c[0], rm.c[1]), n = (tiPhone() ? 1 : 1 + (Math.random() < .5)) + (f > 2 ? 1 : 0); for (let i = 0; i < n; i++) cygSoldier(cx + rand(-4, 4), cz + rand(-4, 4), f); }
+function cygSpawnGroup(rm, f, n) { const [cx, cz] = dgnW(rm.c[0], rm.c[1]), s = rm.side ? 7 : 9; n = n || (tiPhone() ? 1 : 2 + (Math.random() < .5)) + (f > 2 ? 1 : 0); for (let i = 0; i < n; i++) cygSoldier(cx + rand(-s, s), cz + rand(-s, s), f); }
 function cygPopulate(f) {
-  DGN.warden = null; DGN.spawnT = 40; CYG.R = [];
-  if (f >= dgnTop()) return; // the bridge: Hawthorne
-  for (const rm of DGN.rooms) { if (rm === DGN.start) continue; if (rm === DGN.end && !dgnBeaten(f)) continue; if (!rm.side && Math.random() < .35) continue; cygSpawnGroup(rm, f); }
-  if (!dgnBeaten(f) && DGN.end) { const [cx, cz] = dgnW(DGN.end.c[0], DGN.end.c[1]); cygSoldier(cx, cz + 2, f, true).then(c => { if (c) DGN.warden = c; }); cygSpawnGroup(DGN.end, f); }
-  setTimeout(() => { if (DGN.on && DGN.lair && DGN.lair.cyg && DGN.f === f) lootMsg(tiPhone() ? `Deck ${f} of ${DGN.lair.floors}` : `Deck ${f} of ${DGN.lair.floors} · the officer holds the way up`, '#ff6a6e'); }, 1600);
+  cygClearKneel(); DGN.warden = null; DGN.spawnT = 25; CYG.R = [];
+  if (f >= dgnTop()) return; // the bridge: Hawthorne, a Pontifex or Sister, or the commander
+  const ph = tiPhone(), path = DGN.rooms.filter(r => !r.side && r !== DGN.start && r !== DGN.end), bays = DGN.rooms.filter(r => r.side);
+  for (const rm of path) cygSpawnGroup(rm, f, ph ? 1 + (Math.random() < .3) : 2 + (Math.random() < .5) + (f >= 3));
+  for (const rm of bays) if (Math.random() < (ph ? .35 : .75)) cygSpawnGroup(rm, f, ph ? 1 : 1 + (Math.random() < .6));
+  const eb = (bays.length >= 2 ? bays : path).slice().sort(() => Math.random() - .5).slice(0, ph ? 1 : 2); // two Praetorian guards in the bays: worth anointing
+  for (const rm of eb) { const [cx, cz] = dgnW(rm.c[0], rm.c[1]); cygSoldier(cx, cz, f, 'elite'); }
+  if (!dgnBeaten(f) && DGN.end) { const [cx, cz] = dgnW(DGN.end.c[0], DGN.end.c[1]); cygSoldier(cx, cz + 2, f, 'officer').then(c => { if (c) DGN.warden = c; }); cygSpawnGroup(DGN.end, f, ph ? 1 : 3); }
+  else if (DGN.end) cygSpawnGroup(DGN.end, f, ph ? 1 : 2);
+  setTimeout(() => { if (DGN.on && DGN.lair && DGN.lair.cyg && DGN.f === f) lootMsg(tiPhone() ? `Deck ${f} of ${DGN.lair.floors} · gold pips can be anointed` : `Deck ${f} of ${DGN.lair.floors} · ${CYG_DECKS[f]} · the officer holds the lift up · beat anyone with a gold pip and you can anoint them`, '#ff6a6e'); }, 1600);
 }
-function cygTick(dt) { for (const R of [...CYG.R]) { if (!R || !R.cb) continue; if (!tiSoldierTick(R, CYG, dt)) { R.mode = 'idle'; animRig(R, dt); } } }
+function cygTick(dt) {
+  const p = player.position;
+  for (const R of [...CYG.R]) { if (!R || !R.cb) continue;
+    if (R.anoint && R.cb.dead) { cygKneel(R); continue; } // an officer or a guard, beaten: down on one knee, not dead
+    if (!tiSoldierTick(R, CYG, dt)) { R.mode = 'idle'; if (Math.hypot(R.root.position.x - p.x, R.root.position.z - p.z) < 60) animRig(R, dt); } } // far down the corridor they stand still: it keeps forty of them cheap
+  for (const k of CYG.K) { k.glow.material.opacity = .65 + Math.sin(time * 4) * .25; }
+}
+function cygKneel(R) {
+  CYG.R = CYG.R.filter(x => x !== R); const c = R.cb, q = R.root.position;
+  R.root.rotation.x = .32; q.y = -.35; R.mode = 'idle'; try { animRig(R, 0); } catch (e) {} if (c.bar) c.bar.visible = false;
+  setTimeout(() => { const i = fauna.list.indexOf(c); if (i >= 0) fauna.list.splice(i, 1); }, 400);
+  const glow = glowSprite(0xffc94a, 1.6, .85); glow.position.set(q.x, 2.4, q.z); wScene.add(glow);
+  const T = R.T, k = { R, T, x: q.x, z: q.z, glow }; CYG.K.push(k);
+  const him = T.sex === 'f' ? 'her' : 'him';
+  lootMsg(`${T.rank} ${T.name} is down on one knee, still breathing · walk up to anoint ${him}`, '#ffc94a');
+}
+function cygKneelGone(k) { CYG.K = CYG.K.filter(o => o !== k); if (k.R.root.parent) k.R.root.parent.remove(k.R.root); if (k.glow.parent) k.glow.parent.remove(k.glow); }
+function cygClearKneel() { for (const k of [...CYG.K]) cygKneelGone(k); CYG.K = []; }
+function cygNear(p) { for (const k of CYG.K) if (Math.hypot(p.x - k.x, p.z - k.z) < 3) return { id: 'cygKneel', ref: k, label: `${k.T.rank} ${k.T.name}` }; return null; }
+function cygKneelUse(k) {
+  const T = k.T, him = T.sex === 'f' ? 'her' : 'him', made = Date.now();
+  const risen = () => { const P = PONTS().find(o => o.name === T.name && o.st === 'hunt' && (o.made || 0) >= made); if (!P) return; // only if they really were anointed
+    cygKneelGone(k);
+    if (cygBridgeTo(P)) setTimeout(() => lootMsg(`${P.name} goes up to the bridge to wait for you · beat ${pontHe(P)[1]} there and ${pontHe(P)[0]}’s yours`, pontCol(P)), 4200); };
+  openChoice(`${T.rank.toUpperCase()} ${T.name.toUpperCase()} · ON ONE KNEE`, [anointOpt(T, risen),
+    { text: `Finish ${him}`, onPick: () => { sfx.thud(); DGN.flashL = 1.2; cygKneelGone(k); notice('Terra Imperia', `${T.rank.toUpperCase()} ${T.name.toUpperCase()} IS DEAD`, 2600); } },
+    { text: `Leave ${him} for now`, onPick: () => {} }]);
+}
+function cygBridgeTo(P) { // on a later boarding, someone you anoint aboard takes the bridge from the commander
+  const L = DGN.lair; if (!L || !L.cygFarm || L.tiKind !== 'soldier' || lairCleared(L) || DGN.f >= dgnTop()) return false;
+  const X = pontSpec(P); Object.assign(L, { lead: Object.assign({}, X), lv: X.lv, bossName: X.boss, boss: null, tiKind: 'pont', tiRef: P.id }); lairBoss(L); return true;
+}
+// ---- the Cygnus Terra Imperius in space: Terra Imperia's capital ship, 760 m long, in a slow orbit 2.4 km over Mercury ----
+// Fly in close and you dock: straight aboard, onto deck 1 (or the deck you'd reached). Leave by deck 1's lift and you undock,
+// back in orbit beside her. The shuttle from Mercury's surface still runs too. The prow faces +z (lookAt along the orbit).
+const CYGS = { g: null, R: 3300, per: 720, tan: null, lights: [] };
+const cygSpaceOn = () => SPC.sys === 'sol' && (cygQ() || cygFarm());
+function cygSpacePos(t, out, tan) { const M = bodyById('mercury'), a = t / CYGS.per * Math.PI * 2 + 1.2; out.set(Math.cos(a) * CYGS.R, Math.sin(a * .5) * 260, Math.sin(a) * CYGS.R).add(M.pos || M.g.position); if (tan) tan.set(-Math.sin(a), 0, Math.cos(a)).normalize(); return out; }
+function cygShipMesh() {
+  const g = new THREE.Group(), ph = tiPhone();
+  const hull = new THREE.MeshStandardMaterial({ color: 0x3a3d45, roughness: .42, metalness: .65, emissive: 0x0b0b0e, emissiveIntensity: 1 }), plate = new THREE.MeshStandardMaterial({ color: 0x2a2c32, roughness: .5, metalness: .6, emissive: 0x08080a });
+  const crimson = new THREE.MeshStandardMaterial({ color: 0x8a0e14, roughness: .6, emissive: 0x6a0408, emissiveIntensity: 1 }), lit = new THREE.MeshBasicMaterial({ color: 0xffb27a }), red = new THREE.MeshBasicMaterial({ color: 0xff3030 });
+  const add = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); g.add(o); return o; };
+  const box = (w, h, d, m, x, y, z, rx, ry, rz) => add(new THREE.BoxGeometry(w, h, d), m, x, y, z, rx, ry, rz);
+  // the hull: a long six-sided body, flattened, tapering to the prow; a spine on top, a keel below
+  const body = add(new THREE.CylinderGeometry(42, 96, 640, 6, 1), hull, 0, 0, 10, Math.PI / 2, 0, 0); body.scale.set(1.35, 1, .55);
+  box(34, 40, 580, plate, 0, 46, -10); box(26, 26, 500, plate, 0, -44, -20);
+  box(8, 4, 590, crimson, 0, 67, -10); // the crimson line down her spine
+  for (const s of [-1, 1]) {
+    const prong = box(26, 30, 210, hull, s * 44, 0, 360, 0, -s * .06, 0); prong.scale.set(1, 1, 1); box(4, 32, 190, crimson, s * 57, 0, 355, 0, -s * .06, 0); // the split prow
+    box(56, 44, 380, plate, s * 122, -4, -40); box(4, 6, 380, crimson, s * 151, 14, -40); // the flank sponsons, a crimson line along each
+    for (let k = 0; k < 4; k++) { add(new THREE.CylinderGeometry(14, 16, 10, 10), plate, s * 122, 23, -180 + k * 95); box(5, 5, 40, plate, s * 122, 30, -168 + k * 95); } // turrets
+    box(170, 8, 120, hull, s * 150, -6, -250, 0, s * .25, 0); // the stabiliser wings aft
+  }
+  // the command tower aft, and the bridge across its top: lit windows along the front
+  box(84, 110, 96, hull, 0, 115, -230); box(150, 30, 64, plate, 0, 183, -236); box(136, 5, 1.5, lit, 0, 186, -203.5);
+  add(new THREE.CylinderGeometry(3, 3, 130, 6), plate, 0, 262, -250);
+  // engines: five great nozzles, glowing crimson-orange
+  for (const [x, y, r] of [[0, 0, 34], [-64, 20, 26], [64, 20, 26], [-64, -22, 22], [64, -22, 22]]) {
+    add(new THREE.CylinderGeometry(r, r * 1.2, 70, 14, 1, true), plate, x, y, -350, Math.PI / 2);
+    add(new THREE.CircleGeometry(r * .92, 16), new THREE.MeshBasicMaterial({ color: 0xff6a3a }), x, y, -384, 0, Math.PI);
+    const sp = glowSprite(0xff5a2a, r * 4.2, .8); sp.position.set(x, y, -398); g.add(sp); }
+  // lit windows: rows along the sponsons and the tower (one instanced mesh)
+  const W = [], Wm = new THREE.InstancedMesh(new THREE.BoxGeometry(1.4, 2.2, 5), lit, ph ? 220 : 480), M4 = new THREE.Matrix4(); let n = 0;
+  const put = (x, y, z) => { if (n < Wm.count) { M4.makeTranslation(x, y, z); Wm.setMatrixAt(n++, M4); } };
+  for (const s of [-1, 1]) for (let r = 0; r < 3; r++) for (let z = -220; z < 140; z += ph ? 13 : 8) if (Math.random() < .8) put(s * 150.3, -16 + r * 11, z);
+  for (const s of [-1, 1]) for (let r = 0; r < 6; r++) for (let z = -270; z < -186; z += 9) put(s * 42.4, 72 + r * 14, z);
+  for (let r = 0; r < 6; r++) for (let x = -36; x <= 36; x += 9) put(x, 72 + r * 14, -181.8);
+  Wm.count = n; g.add(Wm);
+  // the star of Terra Imperia on her back
+  const st = canvasTex(256, 256, (c, w) => { c.clearRect(0, 0, w, w); c.strokeStyle = '#d0343a'; c.lineWidth = 14; c.beginPath(); c.arc(128, 128, 110, 0, Math.PI * 2); c.stroke(); c.fillStyle = '#d0343a'; c.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 34 : 86; c.lineTo(128 + Math.cos(a) * r, 128 + Math.sin(a) * r); } c.closePath(); c.fill(); });
+  add(new THREE.PlaneGeometry(110, 110), new THREE.MeshBasicMaterial({ map: st, transparent: true }), 0, 66.5, 120, -Math.PI / 2);
+  // the hangar, open on her starboard flank: where you dock
+  box(2, 34, 80, new THREE.MeshBasicMaterial({ color: 0xffd0a0 }), 151.5, -4, 40); const hb = glowSprite(0xffc070, 90, .55); hb.position.set(165, -4, 40); g.add(hb);
+  // running lights: they blink
+  CYGS.lights = [];
+  for (const [x, y, z, c] of [[44, 0, 468, 0xff3030], [-44, 0, 468, 0xff3030], [0, 330, -250, 0xff3030], [232, -6, -250, 0xffffff], [-232, -6, -250, 0xffffff], [151, 20, 80, 0x7aff9a], [151, 20, 0, 0x7aff9a]]) { const sp = glowSprite(c, 26, .9); sp.position.set(x, y, z); g.add(sp); CYGS.lights.push(sp); }
+  return g;
+}
+function cygSpaceTick() { // in normal flight: keep her in orbit, and dock when you fly in close (true: you're docking)
+  if (!cygSpaceOn() || !SPC.scene) { if (CYGS.g) CYGS.g.visible = false; return false; }
+  if (!CYGS.g) { CYGS.g = cygShipMesh(); SPC.scene.add(CYGS.g); }
+  const g = CYGS.g; g.visible = true; cygSpacePos(time, g.position, CYGS.tan || (CYGS.tan = new THREE.Vector3())); g.lookAt(tmpVs2.copy(g.position).add(CYGS.tan));
+  CYGS.lights.forEach((sp, i) => { sp.material.opacity = Math.sin(time * 3 + i * 1.7) > .2 ? .95 : .15; });
+  const d = SPC.pos.distanceTo(g.position);
+  if (d < 3000 && time - (CYGS.msgT || -9) > 7) { CYGS.msgT = time; spaceMsg(cygQ() ? 'The Cygnus Terra Imperius · Hawthorne’s capital ship · fly in close to dock and infiltrate her' : 'The Cygnus Terra Imperius · fly in close to dock · her officers can be anointed'); }
+  if (d < 470) { cygDock(); return true; }
+  return false;
+}
+function cygDock() { // set down on Mercury out of sight (under a black screen) and go straight aboard
+  const M = bodyById('mercury'), dir = new THREE.Vector3().subVectors(CYGS.g.position, M.pos).normalize();
+  const fd = $('#fade'); fd.style.transition = 'opacity .35s'; fd.style.opacity = 1;
+  SPC.cygDock = true; CYGS.docking = true; spaceMsg('Docking with the Cygnus Terra Imperius'); sfx.alarm && sfx.alarm();
+  startLanding(M, dir); SPC.landing.place = { mode: 'explore', area: 'world', where: planetAreaKey(M), x: 5, z: 14.5, y: 0, rot: Math.PI * .8, yaw: Math.PI * 1.8, nf: 1 };
+  const f = $('#shFlash'); if (f) f.style.background = '#000';
+}
+function cygDockIn() {
+  CYGS.docking = false; const fd = $('#fade'), off = () => { fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; };
+  if (!isPl() || !world.planet || world.planet.P.id !== 'mercury' || state !== 'explore' || DGN.on) { off(); return; }
+  if (cygQ()) cygEnter(cygSpec(), null, true); else if (cygFarm()) { const B = cygBridge(); cygEnter(B.X, B, true); } else off();
+}
+function cygUndockPlace() { // back out in orbit, just above her, pointing away from Mercury
+  const M = bodyById('mercury'), tan = new THREE.Vector3(), p = cygSpacePos(time, new THREE.Vector3(), tan), out = new THREE.Vector3().subVectors(p, M.pos).normalize();
+  const sp = p.clone().addScaledVector(out, 720), q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(sp, sp.clone().add(out), tan));
+  return { sys: 'sol', sp: sp.toArray(), sq: q.toArray() };
+}
+// ---- Hawthorne's voice on the Cygnus: data/hawCygVoices.js, CH3CYG1–20 in slots 0–19 (the bridge, the fight, his escape) ----
+// slots 20–29 are kept for CH3CYG21–30, his voice for the scene below (until they're recorded it plays in subtitles)
+const CYGV = { vo: null, p: null };
+function cygVo() { return CYGV.p || (CYGV.p = loadDataScript('hawCygVoices').then(ok => ok ? sfx.loadClips('hawCygVoices') : []).then(v => (CYGV.vo = v || [])).catch(() => (CYGV.vo = []))); }
+const cygClip = i => CYGV.vo && CYGV.vo[i] ? [CYGV.vo[i]] : undefined;
+// ---- after Hawthorne falls on his bridge: the scene he stages ----
+// Nobody says what it is. It is Sevirrus coming apart in the Alphinos throne hall (Hak Chompjak's own past, Chapter V of the
+// game before this one) played back beat for beat: the same hall, the same camera, the same crown and crimson blade, the same
+// guard who stumbles in, every line word for word. Only it's Thomas Hawthorne in it, mocking Hak, and his name on the subtitles.
+// It runs on the Sevirrus cutscene page (#sevCinePage, data/sevCine.js) with Hawthorne's model, rigged to Sevirrus's skeleton
+// (data/hawMirror.js, made from thomas_hawthorne.glb with nightmare/tools/haw_rig.py), in place of Sevirrus's.
+const HMIR = { box: null, f: null, M: null };
+const HMIR_VO = [93, 94, null, 95, 96, 97, 98, 99, 100, 101, 102, 104, 105, 106, 107, 108]; // each line's voice slot in the page (the guard keeps his own, 103)
+// then he drops the act, still in the fake hall, still in the fake crown, straight down the camera (CH3CYG31–35): [scene time, secs, line]
+const HMIR_CROWN = [
+  [80.0, 5.0, 'Sol fell to me while you were away, you dumb little bastard. Every world, every moon, every shithole station. While you were crawling up my decks, my flag went up over all of it.'],
+  [85.5, 5.0, 'Darius Ancin has been driven out of Mars. The mighty Federation, pissing itself all the way to the edge of the system. I watched the whole fucking thing live.'],
+  [91.0, 5.0, 'And your little Hak. Your precious little emperor, hiding in his garden, praying I forget his name. I won’t. He’s next, and the coward knows it.'],
+  [96.5, 5.0, 'I read your history. Every page of it. Every butchered father, every screaming throne room, every night spent clawing at his own skull. Did you enjoy the performance? I practised.'],
+  [102.0, 5.0, 'Run back to Karribassa and tell him Thomas Hawthorne sends his love. Tell him I know exactly what’s rotting under that crown, and I’m coming to rip it off his fucking head.']];
+async function hawMirrorOpen() {
+  const tpl = document.getElementById('sevCinePage'); if (!tpl) return false;
+  const [a, b] = await Promise.all([loadDataScript('sevCine', 'glb'), loadDataScript('hawMirror', 'glb')]); if (!a || !b) return false;
+  let A; try { A = JSON.parse(document.getElementById('sevCine').textContent); } catch { return false; }
+  const hb = (document.getElementById('hawMirror').textContent || '').trim(); if (hb.length < 1000) return false;
+  A.glb = hb; delete A.score;
+  const clip = [7.55, 7.0, 3.55, 2.27, 7.39, 8.52, 4.68, 5.15, 4.75, 5.72, 10.68, 9.6, 9.0, 8.6, 10.6, 10.6]; // Sevirrus's own timing (Hawthorne keeps to it, beat for beat), then his five, until they're voiced
+  await cygVo(); let raw = []; try { raw = JSON.parse(document.getElementById('hawCygVoices').textContent); } catch {}
+  let k = 20; HMIR_VO.forEach((v, i) => { if (v === null) return; delete A['vo' + (v + 1)]; // never Sevirrus's voice
+    if (raw[k] && CYGV.vo[k]) { A['vo' + (v + 1)] = raw[k]; clip[i] = CYGV.vo[k].duration; } k++; }); // CH3CYG21–30, once they exist
+  const tags = Object.entries(A).map(([key, v]) => `<script type="application/octet-stream" id="${key}">${v}</` + `script>`).join('\n');
+  let page = tpl.textContent.replace(/<\\\/script/gi, '</' + 'script').replace(/<\\!--/g, '<!' + '--').replace('@@ASSETS@@', () => tags);
+  const swaps = [
+    ['window.__menu = { drift: true,', `window.__menu = { haw: true, hawClip: ${JSON.stringify(clip)}, hawExtra: ${JSON.stringify(HMIR_CROWN.map(([t, d, l], i) => [t, d, 'Thomas Hawthorne', l, 104 + i]))}, drift: true,`],
+    ['#subs,#cineCard,.skip,#loading{display:none!important}', '#cineCard,#skipCastle,#loading{display:none!important}\n.subs.haw .who,.subs.haw .line{color:#3fe6f2!important}'], // Hawthorne speaks in cyan: the old scene's own lettering and shadows, only the colour changes // its own subtitles and Skip this time: it looks exactly like the old game
+    ['const CH5_CLIP = [', "if (M.haw) { CH5_INTRO.forEach(l => { if (l[2] === 'Sevirrus') { l[2] = 'Thomas Hawthorne'; l[6] = ''; } }); CH5_INTRO.push(...M.hawExtra); } // his name, never Hak's; then his five lines, still crowned\nconst CH5_CLIP = M.haw ? M.hawClip : ["],
+    ['C5W.push([83, nPrev + (83 - oPrev)]); }', 'const E5 = M.haw ? 109 : 83; C5W.push([E5, nPrev + (E5 - oPrev)]); }'], // the scene runs on past "finally be quiet" for them
+    ['const C5 = { KILL: 25.1, CHOPS: [26.2, 27.0], THRONE: [51.6, 52.8, 54.0], FLOOR: [64.4, 65.3, 66.2, 67.2], END: 83 };', 'const C5 = { KILL: 25.1, CHOPS: [26.2, 27.0], THRONE: [51.6, 52.8, 54.0], FLOOR: [64.4, 65.3, 66.2, 67.2], END: M.haw ? 109 : 83 };'],
+    ["subsEl.className = 'subs' + (who === 'Sevirrus' ? '' : ' lead')", "subsEl.className = 'subs' + (who === 'Thomas Hawthorne' ? ' haw' : '') + (who === 'Sevirrus' || who === 'Thomas Hawthorne' ? '' : ' lead')"],
+    ["const sevTalking = () => (subsWho.textContent === 'Sevirrus' ||", "const sevTalking = () => (subsWho.textContent === 'Sevirrus' || subsWho.textContent === 'Thomas Hawthorne' ||"],
+    ['sevMouth = makeMouth(root, /^(Jaw|Lower lip|Tongue)$/, 1.584, 0.034);', 'sevMouth = makeMouth(root, /^(Jaw|Lower lip|Tongue)$/, M.haw ? 1.513 : 1.584, 0.034);']];
+  for (const [from, to] of swaps) { if (!page.includes(from)) { console.warn('hawMirror: page changed', from); return false; } page = page.replace(from, () => to); }
+  const box = document.createElement('div'); box.id = 'hawMirrorBox';
+  box.style.cssText = 'position:fixed;inset:0;z-index:11;background:#000;opacity:0;transition:opacity .6s';
+  const f = document.createElement('iframe'); f.title = 'Thomas Hawthorne';
+  f.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;opacity:0;transition:opacity .45s';
+  f.setAttribute('allow', 'autoplay; fullscreen'); box.appendChild(f); document.body.appendChild(box); HMIR.box = box; HMIR.f = f;
+  const loaded = new Promise(res => f.addEventListener('load', res, { once: true }));
+  f.srcdoc = page; await loaded;
+  document.getElementById('sevCine').textContent = ''; document.getElementById('hawMirror').textContent = ''; // the page has them now (they reload if ever needed again)
+  for (let n = 0; n < 240; n++) {
+    let M = null; try { M = f.contentWindow.__menu; } catch { return false; }
+    if (M && M.playChapter5 && M._t) { const W = f.contentWindow; W.AudioContext = W.webkitAudioContext = function () { return sfx.sevCtx(); }; HMIR.M = M; return true; }
+    await new Promise(r => setTimeout(r, 250));
+  }
+  return false;
+}
+async function hawMirror(done) {
+  const fd = $('#fade'); state = 'loadingCh'; fd.style.transition = 'opacity .6s'; fd.style.opacity = 1; sfx.whoosh && sfx.whoosh(); sfx.leadOn = true; // no music under it
+  show(ui.xhud, false); try { hideNarr(); } catch (e) {} { const bb = $('#bossBar'); if (bb) bb.classList.remove('on'); } // and none of the game's HUD over it: no quests, no minimap, no notices
+  let fin = false;
+  const finish = () => { if (fin) return; fin = true;
+    try { if (HMIR.M) { HMIR.M.voice.stop(); HMIR.M.music.stop(); } } catch (e) {}
+    if (HMIR.box) HMIR.box.remove(); HMIR.box = HMIR.f = HMIR.M = null; sfx.leadOn = false;
+    state = 'explore'; show(ui.xhud, true); resize(); clock.getDelta(); fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; }, 950); done(); };
+  let ok = false; try { ok = await hawMirrorOpen(); } catch (e) { console.error(e); }
+  if (!ok) { if (HMIR.box) HMIR.box.remove(); finish(); return; }
+  const M = HMIR.M; try { M.prime(); } catch (e) {}
+  let started = false; const t0 = performance.now();
+  const tick = () => {
+    if (fin) return;
+    if (!started) {
+      try { started = !!M.playChapter5(); } catch (e) { console.warn(e); }
+      if (started) { HMIR.box.style.opacity = 1; HMIR.f.style.opacity = 1; fd.style.opacity = 0; }
+      else if (performance.now() - t0 > 30000) { finish(); return; }
+    } else { let t = null; try { t = M._t(); } catch {} if (t === null) { finish(); return; } } // it ends on its own (or Skip)
+    setTimeout(tick, 250);
+  };
+  tick();
+}
+function cygHawTalk(done) { // Thomas Hawthorne, on his own bridge: he has his say before the fight (the first time in full, after that a line)
+  const who = tiPhone() ? 'HAWTHORNE' : 'THOMAS HAWTHORNE · GRAND IMPERARCH', c = CH3S(), human = spOf(wanderer) === 'human', ph = tiPhone();
+  const say = (lines, next) => { const run = i => { if (i < lines.length) { const [t, v] = Array.isArray(lines[i]) ? lines[i] : [lines[i], -1]; openDialog(who, [t], false, () => run(i + 1), cygClip(v)); } else next(); }; run(0); }; // [line, voice slot]
+  if (c.cygHawTalk) { say([['You again. You fought your way up five decks a second time just to lose the same argument? Fine. Let’s have it.', 13]], done); return; }
+  setC3({ cygHawTalk: true });
+  const L = [
+    ['Five decks. Five decks of my best soldiers, and you walked over every one of them. Do you have any idea what it costs to train a Praetorian?', 0],
+    human ? ['And a human, no less. Born under the same sky as me, and you’d rather fetch and carry for aliens.', 1] : ['And not even human. An alien, standing on the bridge of the finest ship humanity ever built. Someone should be fired for this.', 2],
+    ['Look out of that window. Earth is mine. The Federation ran to Mars with its tail between its legs, and the Sun still came up this morning. Nobody misses them.', 3],
+    c.jamesFate === 'killed' ? ['And James. I pulled that man out of the Southern Ocean and gave him back his heart, and you took it off him in a frozen hut. Don’t you dare call me the monster.', 5]
+      : ['And James. I pulled that man out of the Southern Ocean and gave him back his heart, and you talked him out of it in an afternoon. I’ll be having my Pontifex back.', 4],
+    chompyAlly() ? ['Hak Chompjak sent you, didn’t he? An emperor who hides behind a wanderer. His spies were braver, right up until I found them.', 6]
+      : ['Hak Chompjak sent you, didn’t he? And you wouldn’t even bend the knee to him. Nobody’s soldier. That’s what makes you dangerous. And alone.', 7]
+  ];
+  const end = (reply, v) => say([[reply, v], ['Enough. Guards, stand down. No, leave the doors. I want to do this myself.', 12]], done);
+  say(L, () => openChoice(who, [
+    { text: ph ? '“It ends here.”' : '“It ends here, Hawthorne.”', onPick: () => end('Everyone says that. Venus said it. Earth said it. The Federation said it twice, the second time from Mars. And here I am.', 8) },
+    { text: ph ? '“Why? What’s it all for?”' : '“Why? What is all of this for?”', onPick: () => end('Order. A hundred worlds and one hand on the wheel. Every war you’ve fought out there happened because nobody was in charge. Well. Somebody is now.', 9) },
+    { text: ph ? '“You’re no fighter.”' : '“You’re not much of a fighter, are you, Grand Imperarch?”', onPick: () => end('I don’t need to be. I have a planet. You have a ship, a grudge and a very short life expectancy.', 10) },
+    { text: ph ? '“Surrender.”' : '“Surrender, and you walk off this ship alive.”', onPick: () => end('Generous. Wrong, but generous. You’re standing on my bridge, wanderer. Nobody here is surrendering to you.', 11) }
+  ], 'YOUR REPLY'));
+}
 function cygWin(gone) { // Hawthorne gets away: an escape pod off the bridge
   const L = [
-    ['THOMAS HAWTHORNE', 'You think breaking a few of my soldiers and denting my floor makes you a threat? I have a planet to run.'],
-    ['THOMAS HAWTHORNE', 'Enjoy my ship while you can, wanderer. The Cygnus was never the prize. Earth is.']
+    ['THOMAS HAWTHORNE', 'You think breaking a few of my soldiers and denting my floor makes you a threat? I have a planet to run.', 18],
+    ['THOMAS HAWTHORNE', 'Enjoy my ship while you can, wanderer. The Cygnus was never the prize. Earth is.', 19]
   ];
-  const run = i => { if (i < L.length) { openDialog(L[i][0], [L[i][1]], false, () => run(i + 1)); return; }
+  const run = i => { if (i < L.length) { openDialog(L[i][0], [L[i][1]], false, () => run(i + 1), cygClip(L[i][2])); return; }
     sfx.boom ? sfx.boom(1) : sfx.thud(); ex.shake = .8; DGN.flashL = 2; gone();
     setC3({ cygDone: true }); renderTasks(); sfx.chime();
+    if (!CH3S().solFell) setTimeout(solFalls, 9800); // and the news reaches you: Sol has fallen
     notice('Thomas Hawthorne', tiPhone() ? 'ESCAPES' : 'ESCAPES IN A POD OFF THE BRIDGE', 4200);
     setTimeout(() => { notice('Main quest', tiPhone() ? 'THE CYGNUS · DONE' : 'YOU INFILTRATED THE CYGNUS', 3600); lootMsg(tiPhone() ? 'Leave by the way you came in' : 'The bridge is yours · leave the Cygnus by the way you came in', '#9fe6b0'); }, 4400);
+    setTimeout(() => lootMsg(tiPhone() ? 'The Cygnus stays in orbit · board it again to anoint its officers' : 'The Cygnus stays in orbit over Mercury · board it again any time: every officer aboard can be anointed, and whoever hunts you waits on the bridge', '#ffc94a'), 9200);
   };
-  setTimeout(() => run(0), 600);
+  setTimeout(() => hawMirror(() => setTimeout(() => run(0), 500)), 3800); // he's beaten ("This changes nothing."), then the scene he stages, then he leaves
 }
 // the stronghold: the old research station, fortified, in Terra Imperia's crimson
 function stationPlace() { // landed somewhere else on Earth: point the way (the stronghold is the real station, at its marker)
@@ -12982,7 +13360,7 @@ function warFacOf(P) { // the story faction you're at war with that holds this w
   return F;
 }
 const warBombed = P => { const F = warFacOf(P); return !!F && (dip().wars[F.id].bombed || []).includes(P.id); };
-const tiBanned = P => !!warFacOf(P) && !warBombed(P) && !(P.id === 'mercury' && cygQ()); // closed to you until bombarded (Mercury stays open while the Cygnus's supply shuttle runs from it)
+const tiBanned = P => !!warFacOf(P) && !warBombed(P) && !(P.id === 'mercury' && (cygQ() || cygFarm())); // closed to you until bombarded (Mercury stays open while the Cygnus's supply shuttle runs from it)
 const chompyAlly = () => !!(wanderer && dip().tiWar && dip().tiWar.chompy === 'ally');
 function tiWarStart() {
   if (!wanderer || (wanderer.chapter | 0) !== 3 || dipRes('ti')) return; const D = dip(); if (D.tiWar) return;
@@ -15914,6 +16292,7 @@ function spaceTick(dt) {
   if (P.land && alt < 420 && tiBanned(P)) { SPC.pos.copy(P.pos).addScaledVector(dirP, ground + 1400); SPC.vel *= .3; if (time - (SPC.banMsgT || -9) > 3) { SPC.banMsgT = time; { const F = warFacOf(P); spaceMsg(`${P.name} · ${F ? dipFacName(F) : 'enemy'} territory · closed to you while you're at war · press B or tap BOMBARD to begin a bombardment`); } sfx.thud && sfx.thud(); } }
   { const can = tiBanned(P) && alt < 9000 && !SPC.bomb; tiBombBtn(can, P); if (can && (K.has('KeyB') || SPC.bombReq)) tiBombStart(P); SPC.bombReq = false; tiBombTick(dt, alt); }
   if (P.land && alt < 420 && !tiBanned(P)) { tiBombBtn(false); atmoEnter(P, dirP.clone(), fwd); return; } // into its sky (No Man's Sky style): you land where you choose
+  if (cygSpaceTick()) return; // the Cygnus, in orbit over Mercury: fly in close and you dock
   updateLods();
   for (const Q of SPC.bodies) { if (Q.cloud) Q.cloud.rotation.y += dt * .004; if (Q.spin) Q.spin.rotation.z += dt * .05; }
   { // the star: you can't fly into it
@@ -15961,6 +16340,10 @@ function spaceHudTick(P, alt, fwd) {
     if (M) { const wp = tmpVs.copy(khzDir()).multiplyScalar(M.r + spaceH(M, khzDir())).add(M.pos), d = SPC.pos.distanceTo(wp), v3 = wp.project(camera);
       if (v3.z < 1) { const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; h += `<div class="sh-mk gold${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>OLYMPUS MONS<br><small>KHAZGLAR · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`; } }
   }
+  if (cygSpaceOn() && CYGS.g && CYGS.g.visible && !SPC.atmo) { // the Cygnus herself, in orbit over Mercury
+    const d = SPC.pos.distanceTo(CYGS.g.position), v3 = tmpVs.copy(CYGS.g.position).project(camera), q = cygQ();
+    if (v3.z < 1) { const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; h += `<div class="sh-mk ${q ? 'gold' : 'enemy'}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${tiPhone() ? 'THE CYGNUS' : 'THE CYGNUS TERRA IMPERIUS'}<br><small>${q ? 'MAIN QUEST · DOCK' : 'DOCK · ANOINT'} · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`; }
+  }
   if (SPC.sys === 'sol' && (wanderer.chapter | 0) >= 3) { // Antarctica: the station and your Chapter I camp (James Brown's stronghold while he holds it)
     const E = SPC.bodies.find(Q => Q.id === 'earth'), dir = antDir(); let wp = null, d = 0;
     if (SPC.atmo && ATM.on && ATM.P && ATM.P.real) { wp = tmpVs.copy(dir).multiplyScalar(ATM.Rg + 40); d = camera.position.distanceTo(wp); }
@@ -15968,14 +16351,14 @@ function spaceHudTick(P, alt, fwd) {
     if (wp) { const v3 = wp.project(camera); if (v3.z < 1) { const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H, q = jamesQ();
       h += `<div class="sh-mk${q ? ' gold' : ''}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${q ? 'ANTARCTICA · THE STATION' : 'ANTARCTICA · YOUR BASE'}<br><small>${q ? 'JAMES BROWN · MAIN QUEST' : 'CHAPTER I CAMP'} · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`; } }
   }
-  for (const [on, id, label, sub, cls] of (SPC.sys === 'sol' ? [[charonQ(), 'charon', 'CHARON', 'MAIN QUEST', 'gold'], [chnQ(), 'charon', 'CHARON', 'MEET CHARON AND KIZNA', 'gold'], [chnBackQ(), 'charon', 'CHARON', tiPhone() ? 'CHARON AND KIZNA' : 'MAIN QUEST · CHARON AND KIZNA', 'gold'], [nyxQ(), 'eris', 'ERIS', 'NYREXIA · OPTIONAL', 'nyx'], [cygQ(), 'mercury', 'MERCURY', tiPhone() ? 'THE CYGNUS' : 'MAIN QUEST · THE CYGNUS IN ORBIT', 'gold']] : SPC.sys === 'janira' ? [[hakQ(), 'janira', 'JANIRA PRIME', tiPhone() ? 'HAK · KARRIBASSA' : 'MAIN QUEST · KARRIBASSA, HAK CHOMPJAK', 'gold']] : [])) { // the quests' destinations
+  for (const [on, id, label, sub, cls] of (SPC.sys === 'sol' ? [[charonQ(), 'charon', 'CHARON', 'MAIN QUEST', 'gold'], [chnQ(), 'charon', 'CHARON', 'MEET CHARON AND KIZNA', 'gold'], [chnBackQ(), 'charon', 'CHARON', tiPhone() ? 'CHARON AND KIZNA' : 'MAIN QUEST · CHARON AND KIZNA', 'gold'], [nyxQ(), 'eris', 'ERIS', 'NYREXIA · OPTIONAL', 'nyx']] : SPC.sys === 'janira' ? [[hakQ() || hakBackQ(), 'janira', 'JANIRA PRIME', tiPhone() ? 'HAK · KARRIBASSA' : 'MAIN QUEST · KARRIBASSA, HAK CHOMPJAK', 'gold']] : [])) { // the quests' destinations
     if (!on) continue; const Q = SPC.bodies.find(o => o.id === id); if (!Q) continue;
     const d = SPC.pos.distanceTo(Q.pos) - Q.r, v3 = tmpVs.copy(Q.pos).project(camera); if (v3.z >= 1) continue;
     const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; h += `<div class="sh-mk ${cls}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${label}<br><small>${sub} · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`;
   }
   box.innerHTML = h;
 }
-function ch3Goal() { const c = wanderer.ch3 || {}; if (cygQ()) return SPC.atmo && ATM.P && ATM.P.id === 'mercury' ? (tiPhone() ? 'The Cygnus · land, board the shuttle' : 'Infiltrate the Cygnus · land and board the supply shuttle') : SPC.sys === 'sol' ? (tiPhone() ? 'The Cygnus · land on Mercury' : 'Infiltrate the Cygnus · land on Mercury (the gold marker), where its supply shuttle runs') : (tiPhone() ? 'The Cygnus · warp to Sol' : 'Infiltrate the Cygnus · warp back to Sol'); if (hakQ()) return SPC.atmo && ATM.P && ATM.P.id === 'janira' ? (tiPhone() ? 'Meet Hak · fly to Karribassa, land' : 'Meet Hak Chompjak · fly to Karribassa (its marker) and land in the city') : SPC.sys === 'janira' ? (tiPhone() ? 'Meet Hak · land on Janira Prime' : 'Meet Hak Chompjak · land on Janira Prime (the gold marker)') : (tiPhone() ? 'Meet Hak · warp to Janira Proxima' : 'Meet Hak Chompjak · warp to Janira Proxima, a short jump from Sol'); if (charonQ()) return SPC.atmo && ATM.P && ATM.P.id === 'charon' ? 'Head to Charon · land on it' : SPC.sys === 'sol' ? 'Head to Charon · Pluto’s moon, at the edge of Sol (the gold marker)' : 'Head to Charon · warp back to Sol'; if (khzPending()) return SPC.atmo && ATM.P && ATM.P.id === 'mars' ? 'Find Khazglar · fly to Olympus Mons and land' : khzTaskText();
+function ch3Goal() { const c = wanderer.ch3 || {}; if (cygQ()) return SPC.atmo && ATM.P && ATM.P.id === 'mercury' ? (tiPhone() ? 'The Cygnus · board the shuttle, or dock in orbit' : 'Infiltrate the Cygnus · land and board the supply shuttle, or climb back to orbit and dock with her') : SPC.sys === 'sol' ? (tiPhone() ? 'The Cygnus · fly to her, dock' : 'Infiltrate the Cygnus · fly to her in orbit over Mercury (the gold marker) and dock') : (tiPhone() ? 'The Cygnus · warp to Sol' : 'Infiltrate the Cygnus · warp back to Sol'); if (hakQ() || hakBackQ()) return SPC.atmo && ATM.P && ATM.P.id === 'janira' ? (tiPhone() ? 'Meet Hak · fly to Karribassa, land' : 'Meet Hak Chompjak · fly to Karribassa (its marker) and land in the city') : SPC.sys === 'janira' ? (tiPhone() ? 'Meet Hak · land on Janira Prime' : 'Meet Hak Chompjak · land on Janira Prime (the gold marker)') : (tiPhone() ? 'Meet Hak · warp to Janira Proxima' : 'Meet Hak Chompjak · warp to Janira Proxima, a short jump from Sol'); if (charonQ()) return SPC.atmo && ATM.P && ATM.P.id === 'charon' ? 'Head to Charon · land on it' : SPC.sys === 'sol' ? 'Head to Charon · Pluto’s moon, at the edge of Sol (the gold marker)' : 'Head to Charon · warp back to Sol'; if (khzPending()) return SPC.atmo && ATM.P && ATM.P.id === 'mars' ? 'Find Khazglar · fly to Olympus Mons and land' : khzTaskText();
   return ch3GoalRest(c); }
 function ch3GoalRest(c) { return c.warped ? `Explore ${curSys().name}` : !c.landed ? 'Land on a planet in Sol' : 'Warp to another star system · open the galaxy map'; }
 /* ============ Into the atmosphere, No Man's Sky style ============
@@ -17605,7 +17988,7 @@ const DIP_FAC = [
   { id: 'grek', name: 'The Grek Empire', species: 'Grek', fleet: 'GREK FLEET', style: 'grek', col: '#7fe0a0', ch: [3, 4, 5], capital: 'carax', lead: ch => ch >= 4 ? 'Archamus and Am-Grek, co-leaders' : 'Am-Grek, High Hierarch', match: f => /^The Grek/.test(f) },
   { id: 'catharsis', name: 'The Catharsis', species: 'Catharsis', fleet: 'CATHARSIS', style: 'cath', col: '#a070ff', ch: [3, 4], capital: 'carax', lead: () => 'Lord Zark', locked: ch => ch === 4 ? 'Lord Zark is a story boss in Chapter IV. The Catharsis can’t be defeated yet.' : null, match: f => /^The Catharsis/.test(f) }, // destroyed at the siege of Carax: gone in Chapter V
   { id: 'erisian', name: 'The Erisian Empire', species: 'Erisian', fleet: 'ERISIAN GUARD', style: 'erisian', col: '#eda8d4', ch: [3, 4, 5], capital: 'eris', lead: ch => ch === 3 && wanderer.ch3 && wanderer.ch3.alexiaCoup ? 'Alexia Erisconos (usurper)' : 'Vishara Erisconos, Matriarch', match: f => /^The Erisian Empire/.test(f) },
-  { id: 'hfos', name: 'Human Federation of Sol', species: 'Human', fleet: 'FEDERATION NAVY', style: 'hfos', col: '#7fb6ff', ch: [3, 4, 5], get capital() { return surgeOn() ? 'mars' : 'earth'; }, /* Mars, once Terra Imperia takes Earth */ lead: () => 'President Darius Ancin', match: f => /^Human Federation of Sol/.test(f) },
+  { id: 'hfos', name: 'Human Federation of Sol', species: 'Human', fleet: 'FEDERATION NAVY', style: 'hfos', col: '#7fb6ff', ch: [3, 4, 5], get capital() { return surgeOn() ? (c3f('solFell') ? null : 'mars') : 'earth'; }, /* Mars, once Terra Imperia takes Earth */ lead: () => 'President Darius Ancin', match: f => /^Human Federation of Sol/.test(f) },
   { id: 'ti', name: 'Terra Imperia', species: 'Human', fleet: 'TERRA IMPERIA', style: 'ti', col: '#d0343a', ch: [3], get capital() { return surgeOn() ? 'earth' : 'venus'; }, /* Earth, once the surge takes it */ lead: () => 'Thomas Hawthorne, Grand Imperarch', match: f => /^Terra Imperia/.test(f) },
   { id: 'timpur', name: 'The Republic of Timpur', species: 'Timpur', fleet: 'TIMPUR REPUBLIC GUARD', style: 'chompy', col: '#58d8c0', ch: [3, 4, 5], get capital() { const P = ALL_BODIES.find(o => o.name === 'Timpur Prime'); return P ? P.id : null; }, lead: () => 'Timpur IV, First Consul, answering to Aridaxx', match: f => /^The Republic of Timpur/.test(f) } // a puppet of the Chompy Empire, at the far edge of the galaxy
 ];
@@ -18663,7 +19046,7 @@ function startLanding(P, dir) {
 }
 function landingTick(dt) {
   const L = SPC.landing; L.t += dt;
-  if (L.t > .55 && !L.done) { L.done = true; landOn(L.P, L.dir); }
+  if (L.t > .55 && !L.done) { L.done = true; landOn(L.P, L.dir, L.place); } // a place: straight onto the ground (docking with the Cygnus)
 }
 function planetAreaKey(P) { return 'pl:' + P.id; }
 function dryLandDir(P, D) { // nudges D onto the nearest ground at least 4 m above the sea
@@ -18701,7 +19084,7 @@ async function landOn(P, dir, place) {
   if (P.id === 'eris' && nyxQ()) nyxPlace().catch(e => console.error(e));
   try { tiLanded(P); } catch (e) { console.error(e); } // Charon and Kizna, the Antarctic stronghold, Terra Imperia's patrols and your Pontifexes // Nyrexia is in the Citadel, with her sisters
   const f = $('#shFlash'); if (f) f.classList.remove('on');
-  if (place) { state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks(); if (place.dgn && place.dgn.lair) { const L = lairById(place.dgn.lair); if (L) { const G = (world.lairGates || []).find(q => q.L === L) || { x: +place.x, z: +place.z }; lairEnter(L, G, Math.min(L.floors + 1, +place.dgn.f || 1), place.dgn, true); return; } } if (place.dgn && P.id === 'mars') { DGN.lair = null; dgnEnter(+place.dgn.f || 1, place.dgn, true); return; } notice(wxTag(P), P.name.toUpperCase(), 3600); setTimeout(() => lootMsg(P.faction, '#9fe6ff'), 1400); sqOnLand(P); return; } // a save made inside Olympus Mons goes straight back in
+  if (place) { state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks(); if (place.dgn && place.dgn.lair) { const L = lairById(place.dgn.lair); if (L) { const G = (world.lairGates || []).find(q => q.L === L) || { x: +place.x, z: +place.z }; lairEnter(L, G, Math.min(L.floors + 1, +place.dgn.f || 1), place.dgn, true); return; } } if (place.dgn && P.id === 'mars') { DGN.lair = null; dgnEnter(+place.dgn.f || 1, place.dgn, true); return; } if (!CYGS.docking) { notice(wxTag(P), P.name.toUpperCase(), 3600); setTimeout(() => lootMsg(P.faction, '#9fe6ff'), 1400); sqOnLand(P); } return; } // a save made inside Olympus Mons (and no Mercury notice while you dock with the Cygnus) goes straight back in
   // the ship comes down out of the sky onto the spot
   SPC.descent = { t: 0 }; state = 'shipLand'; show(ui.xhud, false); player.visible = false; for (const fl of world.landShip.userData.flames) fl.visible = true;
 }
@@ -20355,6 +20738,7 @@ function updateWorldMode(dt) {
     let bd = 2.6;
     for (const b of world.build) { const dd = Math.hypot(b.data.x - p.x, b.data.z - p.z); if (dd < bd && Math.abs(b.data.y - p.y) < 3.2) { bd = dd; ex.near = { id: 'dismantle', ref: b, label: pieceName(b.data) }; } }
   }
+  if (!ex.near && DGN.on && DGN.lair && DGN.lair.cyg) ex.near = cygNear(p); // aboard the Cygnus: an officer on one knee, waiting to be anointed
   if (!ex.near && DGN.on) ex.near = dgnNear(p); // inside Olympus Mons: the stairs, the spring
   if (!ex.near && isPl() && !DGN.on && world.dgnGate && Math.hypot(p.x - world.dgnGate.x, p.z - world.dgnGate.z) < 3.2) ex.near = { id: 'dgnGate', label: 'Enter Olympus Mons' };
   if (!ex.near && NYX.R && NYX.R.root.parent && Math.hypot(p.x - NYX.x, p.z - NYX.z) < 3.2) ex.near = { id: 'nyx', label: 'Nyrexia Erisconos' };
@@ -20392,7 +20776,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
+    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give James orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }

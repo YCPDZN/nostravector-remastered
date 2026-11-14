@@ -38,6 +38,7 @@ The full feature-by-feature history is in **[CHANGELOG.md](CHANGELOG.md)**.
 - **Explore:** procedural Antarctica and Africa, real Earth landmarks seen from orbit, and a No Man's Sky-style galaxy with 500 systems, HD procedural planets, weather, moons and dwarf planets. You land anywhere, fly through atmospheres and warp between systems from the galaxy map.
 - **Survive and build:** health, stamina, a jetpack, blocking and dodge rolls. Mine and chop for materials, craft tools, rifles and armour, smelt ores at the furnace, and build bases in five materials with snapping floors, walls, roofs and ramps. Teleporters link all your bases.
 - **Fight:** wildlife, 495 native species and their lairs, lair bosses, Terra Imperia patrols, Pontifexes and Sisters of Hawthorne, and No Man's Sky-style dogfights in space. Beat faction leaders in their halls to win wars.
+- **Farm Pontifexes and Sisters aboard the Cygnus:** after Hawthorne, fly back to her in orbit over Mercury and dock (or take the shuttle up from Mercury). Every officer and guard with a gold pip can be anointed when beaten, and whoever is hunting you waits on the bridge.
 - **Lead a crew:** James, Orion, Nico, Khazglar, Charon and Kizna, Nyrexia, Croxian, Malia and more. Every companion takes five orders (**Mine · Explore · Base · Wander · Follow**), and their damage grows with their own level.
 - **Rule:** Diplomacy with the Chompy Empire, the Erisian Empire, the Grek, the Human Federation of Sol, the Republic of Timpur and Terra Imperia. Five casus belli, colonies and governors, puppets, tributaries and resistance movements.
 - **Choose:** KOTOR / Mass Effect-style alignment in every chapter, and choices that change who lives, who joins you and how Chapter IV ends.
@@ -110,7 +111,7 @@ Add one of these to the game's address to jump straight to a scene:
 
 ## Not built yet
 
+- **Hak's voice when you return to him after Sol falls:** CH3HAKBACK1–11 in `data/hakBackVoices.js`. Subtitles only for now.
 - **The Siege of Carax:** Lord Zark's Chapter IV story battle (level 60, on Carax). The three Chapter IV endings are built and waiting. When Zark falls, the fight should call `ch4EndingPlay()`, and your Chapter III choices pick the ending. The Final Boss theme (`data/thFinal.js`) is already in the game for it.
-- **Voices for Hawthorne aboard the Cygnus:** subtitles only for now.
 - **Charon and Kizna joining your crew.** The story says they'll join "when the alignment comes".
 - **Thomas Hawthorne's hall:** Terra Imperia's leader has no hall to fight him in.
