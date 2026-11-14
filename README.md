@@ -1690,3 +1690,36 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **Timpur IV's dream is voiced** (Chapter I, as a Taredesiban): `data/lv_taredesiban.js`, **CH1TIMPUR1–5**, one per line (sources in `assets/audio/timpur_ch1/`). It only downloads for a Taredesiban.
 - **Khazglar's Taredesiban line is voiced:** **CH3KHAZ24**, the 24th clip in `data/khazVoices.js` (source in `assets/audio/khazglar_ch3/`).
 - **The Chapter IV menu taunts** are typed on screen, not spoken, like all the others: nothing to record.
+
+## The Taredesiban nightmare: Taredesiba I against Obsidnia (Chapter III)
+- **A Taredesiban wanderer now has a nightmare of their own** (it used to borrow the Grek's prophecy). It's set in **12,000,000,000 BC**, the furthest back of any race's nightmare by eleven billion years. Taredesiba I, first king of Timpur and Timpur IV's ancestor, leads an offensive against **Obsidnia of the Oilkoumene, ruler of the Conqrix Empire**.
+- **The setting:** a Conqrix world under a sky of newborn blue stars and a young galaxy, the ground split by violet fire, with the black spires of the Conqrix citadel on the horizon. The host of Timpur stands in ranks under teal banners behind Taredesiba; the Conqrix legion, Oilkoumene like Obsidnia, stands behind him. They don't speak; they turn to follow the fight and flinch from the blows.
+- **The fight** runs on the same engine as the neutral ending's duel: hit-stop and slow motion, blade trails, streak sparks and shockwaves. Taredesiba is crowned (Timpur IV's crown, which he wore first) and carries a blade of light; Obsidnia, whose own weapon is set aside, fights with a black blade edged in violet, and everything dark here is violet rather than crimson.
+  1. Obsidnia mocks him: *"I have the Minotaurus and the Hamadalians on speed dial. One word, and they wipe you, your crown and your whole pitiful people off the face of the Milky Way. And I will not hesitate."*
+  2. **Dark magic:** three bolts out of Obsidnia's hand, each one broken on a ward of light around Taredesiba.
+  3. The charge and the clash, the locked blades, six strikes, and Obsidnia's blow throwing Taredesiba across the field.
+  4. Taredesiba leaps and comes down on him.
+  5. **He calls on Archamus:** *"Archamus! Prime Good, who answers the faithful at the edge of every dark! Lend me your light!"* A shaft of light comes down on him, and The Light Egg plays.
+  6. **Light against dark:** a beam of gold meets a beam of violet. The dark pushes most of the way, then the light breaks through and throws Obsidnia down.
+  7. Obsidnia flees through a rift, promising to come back for the children of Timpur. Taredesiba turns to his host: *"…we will remember whose light this was."*
+- **Afterwards** Orion and Nico bring you back, with three new lines.
+- **Voices (all recorded):**
+  - `data/c4eTaredVoices.js`, **CH3NMTARED1–9**, in order:
+    1. Obsidnia: "Taredesiba. King of a few cold rocks…"
+    2. Taredesiba: "The Conqrix Empire ends today…"
+    3. Obsidnia: "Behind you? Ha!…"
+    4. Taredesiba: "Then say your word…"
+    5. Obsidnia: "Is that all your little light can do?…"
+    6. Obsidnia: "Kneel, Taredesiba…"
+    7. Taredesiba: "Archamus! Prime Good…"
+    8. Obsidnia: "You think your god saved you?…"
+    9. Taredesiba: "Let him run…"
+  - The wake-up: **CH3NMWAKETA1–3**, the 14th–16th clips of `data/nmWakeVoices.js` (after CH3NMWAKEGR3).
+  - Sources in `assets/audio/nightmare_ch3/`.
+- **Obsidnia's lip sync:** his jaw moves with his lines.
+- **Watch it now:** add `?ending=tared` to the game's address and tap once the title screen is up.
+- **Nostrapedia:**
+  - **New event:** *The Light at the Edge of the Dark*, for a Taredesiban who's had the nightmare.
+  - **Archamus (Primes):** worshipped by the Grek **and the Taredesibans**, theirs for twelve billion years.
+  - **Obsidnia (Vectors):** his empire is named as the **Conqrix Empire**, with the Minotaurus and the Hamadalians as his allies and Taredesiba I's offensive. The Grob still overthrow him, eleven billion years ago.
+  - **Timpur IV's file and the Taredesiban lore** in the creator now say they worship Archamus.
