@@ -1548,3 +1548,9 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - No stray sword in his hand.
   - Once Zark is down, a clean light comes up on everyone in the good and neutral endings, so the hall's red firelight no longer turns Hak (or anyone else) pink.
   - His line is shot square on, with Darius beside him.
+- **The endings on phones:**
+  - Held upright, the lens widens and every shot steps back from what it's looking at, so nobody is cut off the sides of the screen.
+  - Turn the phone mid-scene and the framing follows.
+  - Sideways, phones frame the scenes like a computer screen.
+  - Phones get half the fires (each one is a light) and no blur while you choke, so the endings stay smooth.
+  - The game over screen sits inside the screen's safe area, with a thumb-sized button.
