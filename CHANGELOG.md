@@ -2075,9 +2075,10 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 ## Croxian's fate, and Orion's
 - **Beaten at Terra Imperia's base, Croxian Mascar and Malia de Toro now stay down, and you choose: let them go, or finish them.** Spared, they fall back to their ships. Killed, they say their last words. Croxian's are "Tell my father… tell him he was right. About all of it." Each one's lines change if the other is already dead. The blockade breaks once every choice is made.
   - This sets `ch3.croxFate` and `ch3.maliaFate`, which Chapter IV's ending was already reading but nothing had set until now.
-- **Kill Croxian and Orion Mascar leaves you for good.** The next time you board the Nostra, he's waiting.
-  - If he spent the blockade aboard with the comms open, he heard his son die. If not, he heard it on the news.
-  - He talks about Croxian as a boy, and about the mercy he would have shown, and you can answer in one of three ways. Then he goes to bring his son home, and the screen fades.
-  - He leaves your crew, the Nostra and the main menu for good, and never turns up in Africa again. He leaves alive (`ch3.orionGone`, `ch3.orionFate: 'spared'`), which Chapter IV reads as Orion taking Terra Imperia.
-  - Malia's fate doesn't affect any of this.
-  - The lines are in `assets/audio/karribassa/VOICE_SCRIPT.md`. They aren't recorded yet, so they show as subtitles.
+- **Kill Croxian and Orion Mascar leaves you for good, in a cutscene of his own: Close the Channel.** You never speak to him.
+  - Straight after the blockade's goodbyes, the scene cuts away (MEANWHILE · ABOARD THE NOSTRA) to Orion alone on the crew deck, with the comms still open. He heard his son's last words.
+  - He remembers Croxian as a boy and the mercy he'd have shown the wanderer. Then he closes the channel, says he's going to bring his son home, and walks to the lift without looking back.
+  - One line changes with Malia's fate (spared or killed). If Croxian lives, nothing plays, whatever happened to Malia.
+  - He leaves your crew, the Nostra and the main menu for good, and never turns up in Africa again. The next time you board, his bunk is made and his rifle is gone. He leaves alive (`ch3.orionGone`, `ch3.orionFate: 'spared'`), which Chapter IV reads as Orion taking Terra Imperia.
+  - Skip works as in the other cutscenes. Once it has happened, it's on the Cutscenes menu after The Grand Imperarch's Breakdown.
+  - Voice pack: `data/orionGriefVoices.js` (CH3ORIONGRIEF1–11, not recorded yet, so it shows as subtitles). The script is in `assets/audio/karribassa/VOICE_SCRIPT.md`.

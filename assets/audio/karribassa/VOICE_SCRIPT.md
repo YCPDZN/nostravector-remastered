@@ -89,39 +89,22 @@ When Croxian Mascar or Malia de Toro is beaten at Terra Imperia's base, they sta
 | Malia de Toro | Killed, Croxian already dead | Wait for me, Croxian. I’m coming. |
 
 
-## Orion leaves: after Croxian's death
+## Close the Channel: Orion, after Croxian's death
 
-The next time you board the Nostra after killing Croxian, Orion is waiting. Then he leaves the party for good. **Not recorded yet:** these show as subtitles.
+A cutscene that plays only if you killed Croxian, straight after the blockade's goodbyes: the scene cuts away to Orion alone on the Nostra's crew deck, the comms still open. The wanderer never speaks to him. Line 6 depends on Malia: 6a if she was spared, 6b if she was killed. If Croxian lives, nothing plays. Then he leaves the party for good.
 
-He opens with one of two pairs, depending on whether he was aboard with the comms open during the blockade:
+Pack: `data/orionGriefVoices.js` (11 slots, in this order). **Not recorded yet:** these show as subtitles.
 
-| Speaker | When | Line |
+| File | Speaker | Line |
 |---|---|---|
-| Orion Mascar | He heard it on the comms | I heard it. The comms were open. I told you they would be. |
-| Orion Mascar | He heard it on the comms | He asked you to tell me I was right. I waited years to hear my boy say that, and I had to hear it through a speaker, from the one who killed him. |
-| Orion Mascar | He heard it on the news | It’s on every channel. General Croxian Mascar, killed on Janira Prime. |
-| Orion Mascar | He heard it on the news | They said it was you. I didn’t believe them. Not until I saw your face just now. |
-
-Then:
-
-| Speaker | Line |
-|---|---|
-| Orion Mascar | He was four the first time he fell off the sea wall at Dover. Split his chin open. He didn’t cry. He looked up at me to see if he should. |
-| Orion Mascar | I taught him to stand up straight. I taught him to hold a rifle. I never taught him how to come home. |
-| Orion Mascar | You could have let him go. Hak would have. Nico would have. I would have, wanderer, for you. I’d have let anyone go, for you. |
-| Orion Mascar | I sat by your bed for two weeks. I held you on that pier. And you couldn’t spare one minute of mercy for my son. |
-
-Your answer, and his reply:
-
-| Choice | Orion's reply |
-|---|---|
-| I’m sorry, Orion. | Don’t. Don’t say you’re sorry. If you say it, I have to decide whether I believe you, and I can’t. Not today. |
-| He would have killed us all. | Maybe. He was a soldier. So was I. A beaten soldier gets to go home, wanderer. That was the only rule I ever believed in. |
-| [Say nothing] | Nothing. Good. At least you know there’s nothing to say. |
-
-And last:
-
-| Speaker | Line |
-|---|---|
-| Orion Mascar | I’m going to bring him home. Whatever’s left of him. Someone should, and it was always supposed to be me. |
-| Orion Mascar | Don’t follow me. Don’t call. If you ever see me again, wanderer… I don’t know who I’ll be. |
+| CH3ORIONGRIEF1.mp3 | Orion Mascar | Croxian…? Wanderer, what’s happening down there? Somebody talk to me. |
+| CH3ORIONGRIEF2.mp3 | Orion Mascar | “Tell my father he was right.” That’s what he said. That’s what my boy said, with someone standing over him. |
+| CH3ORIONGRIEF3.mp3 | Orion Mascar | No. No, no, no. Not like this. Not with me up here, listening. |
+| CH3ORIONGRIEF4.mp3 | Orion Mascar | He was four the first time he fell off the sea wall at Dover. Split his chin open. He didn’t cry. He looked up at me to see if he should. |
+| CH3ORIONGRIEF5.mp3 | Orion Mascar | I taught him to stand up straight. I taught him to hold a rifle. I never taught him how to come home. |
+| CH3ORIONGRIEF6.mp3 | Orion Mascar (6a · Malia spared) | They let Malia go. Her, they let go. So it was a choice. Someone looked at my son on his knees, and chose. |
+| CH3ORIONGRIEF7.mp3 | Orion Mascar (6b · Malia killed) | And Malia with him. She’d have been my daughter. They were going to tell me. I know they were. They were waiting for the war to end. |
+| CH3ORIONGRIEF8.mp3 | Orion Mascar | I sat by that bed for two weeks. I held you on that pier. I’d have let anyone go for you, wanderer. Anyone. |
+| CH3ORIONGRIEF9.mp3 | Orion Mascar | Nostra, close the channel. … Close it. |
+| CH3ORIONGRIEF10.mp3 | Orion Mascar | I’m going to bring him home. Whatever’s left of him. It was always supposed to be me. |
+| CH3ORIONGRIEF11.mp3 | Orion Mascar | Don’t come looking for me, wanderer. If you ever find me again… I don’t know who I’ll be. |
