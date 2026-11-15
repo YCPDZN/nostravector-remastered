@@ -1046,6 +1046,8 @@ body.touch .al-key{display:none}
 .al-ct small{font-size:10.5px;color:#9aa0a8;letter-spacing:.04em}
 .al-ct em{font-style:normal;font-size:11px;letter-spacing:.16em;font-weight:600}
 .al-np{opacity:.7}
+.al-dnd{display:block;font-style:normal;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#c9ced8;margin-top:3px}
+.al-me-t em.al-dnd{font-size:11px}
 .al-empty{font-size:13px;color:#9aa0a8;padding:14px 4px}
 .al-inf{display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#9aa0a8}
 .al-inf i{display:block;width:90px;height:5px;border-radius:3px;background:rgba(230,233,240,.12);overflow:hidden}
@@ -5246,7 +5248,7 @@ xUI.dlg.addEventListener('click', e => { const b = e.target.closest('button[data
 // influence with one companion, straight from a conversation (0-100, everyone starts at 50)
 function influence(id, d) {
   if (!wanderer || !d) return;
-  const L = COMPANIONS.find(c => c.id === id), st = alState(), b = L ? alBaseOf(L) : 0;
+  const L = COMPANIONS.find(c => c.id === id) || AL_EXTRA.find(c => c.id === id), st = alState(), b = L ? alBaseOf(L) : 0;
   const C = st.c[id] || (st.c[id] = { a: b == null ? 0 : b, inf: 50 });
   C.inf = clamp(C.inf + d, 0, 100); alSave();
   lootMsg(`${(PARTY[id] || { name: L ? titleName(L.name.split(' ')[0]) : id }).name} · influence ${d > 0 ? '+' : '−'}${Math.abs(d)}`, d > 0 ? '#9fe6b0' : '#ffb36e');
@@ -5870,6 +5872,14 @@ const alBaseOf = L => { const f = alFact(L); return f in AL_BASE ? AL_BASE[f] : 
 function alState() { if (!wanderer.align) wanderer.align = { p: 0, c: {} }; return wanderer.align; }
 function alSave() { const c = curChar(); if (c) c.align = wanderer.align; saveRoster(); }
 function alComp(L) { const C = (wanderer.align && wanderer.align.c[L.id]) || null, b = alBaseOf(L); return { a: C ? C.a : b, inf: C ? C.inf : 50, hidden: b == null, met: !!C }; }
+// their written alignment follows where the chart has moved them: law stays their own, good/evil comes from the chart ("Neutral Evil · was Neutral Good")
+function alLabel(orig, a) {
+  if (!(orig in AL_BASE) || a == null) return orig || '';
+  const law = /^Lawful/.test(orig) ? 'Lawful' : /^Chaotic/.test(orig) ? 'Chaotic' : 'Neutral', moral = a >= 15 ? 'Good' : a <= -15 ? 'Evil' : 'Neutral';
+  const now = law === 'Neutral' && moral === 'Neutral' ? 'True Neutral' : `${law} ${moral}`;
+  return now === orig ? orig : `${now} · was ${orig}`;
+}
+const alLabelOf = L => { const A = alComp(L); return A.hidden ? '' : alLabel(alFact(L), A.met ? A.a : null); };
 const alRank = v => v >= 34 ? 'ENLIGHTENED HERO' : v <= -34 ? 'AWAKENED VILLAIN' : 'NEUTRAL';
 // grey, with a subtle hint of cyan or red that grows the further you go
 function alColor(v) {
@@ -5912,7 +5922,7 @@ function alOutfitSync(dt) {
   if (world.orion) alOutfit(world.orion.root, alCompDarkK('orion'), 'orion');
   if (menuOrionR) alOutfit(menuOrionR.root, alCompDarkK('orion'), 'orion');
   if (menuNicoR) alOutfit(menuNicoR.root, alCompDarkK('nico'), 'nico');
-  if (CREW.nico && CREW.nico.R) alOutfit(CREW.nico.R.root, alCompDarkK('nico'), 'nico');
+  for (const id in CREW) if (CREW[id] && CREW[id].R) alOutfit(CREW[id].R.root, alCompDarkK(id), id); // everyone walking with you: Nico, Nyrexia, Khazglar, Croxian, Malia, Josiah, Tyrotaronus, Gareth...
   const pk = alDarkK((wanderer.align && wanderer.align.p) || 0);
   if (alOutfitSync.pk !== pk) { alOutfitSync.pk = pk; applyLook(wanderer); }
 }
@@ -5921,7 +5931,7 @@ function alignAct(d, why) {
   const st = alState(); st.p = clamp(st.p + d, -100, 100);
   lootMsg(`${d > 0 ? 'Heroic' : 'Villainous'} ${d > 0 ? '+' : '−'}${Math.abs(d)} · ${why}`, d > 0 ? '#7fe3ff' : '#ff7a6e');
   for (const id of partyNow()) {
-    const L = COMPANIONS.find(c => c.id === id) || (String(id).startsWith('pont:') && pontById(id.slice(5)) ? pontAlL(pontById(id.slice(5))) : null); if (!L) continue;
+    const L = COMPANIONS.find(c => c.id === id) || AL_EXTRA.find(c => c.id === id) || (String(id).startsWith('pont:') && pontById(id.slice(5)) ? pontAlL(pontById(id.slice(5))) : null); if (!L) continue; // AL_EXTRA: Gareth and the others from Project BC and Sevirrus move with you too
     if (L.pont) { // a Pontifex or a Sister: evil pleases them and pulls them further; good can sway them, slowly, and they resent it
       const C = st.c[id] || (st.c[id] = { a: alBaseOf(L), inf: 30 }), nm = (PARTY[id] || { name: L.name }).name;
       if (d < 0) { C.inf = clamp(C.inf + Math.abs(d) * 2.5, 0, 100); C.a = clamp(C.a + d * .3, -100, 100); lootMsg(`${nm} approves · influence gained`, '#ff9f86'); }
@@ -5932,8 +5942,13 @@ function alignAct(d, why) {
     if (b == null) { C.inf = clamp(C.inf + Math.abs(d) * 1.5, 0, 100); lootMsg(`${nm} approves`, '#cfd6e6'); continue; } // James tells you what you want to hear
     const lean = C.a >= 15 ? 1 : C.a <= -15 ? -1 : 0;
     if (!lean) { C.a = clamp(C.a + d * .35, -100, 100); continue; } // a neutral companion just drifts with you
-    if (Math.sign(d) === lean) { C.inf = clamp(C.inf + Math.abs(d) * 2, 0, 100); C.a = clamp(C.a + d * .15, -100, 100); lootMsg(`${nm} approves · influence gained`, '#9fe6b0'); }
-    else { C.inf = clamp(C.inf - Math.abs(d) * 2, 0, 100); C.a = clamp(C.a + d * .5, -100, 100); lootMsg(`${nm} disapproves · influence lost`, '#ffb36e'); }
+    // KOTOR-style influence: a hero approves of good deeds, a villain of evil ones. Gain influence and they move TOWARD your alignment;
+    // lose it and they move AWAY from it. So a hero who does evil with a heroic companion pushes them down toward villainy, a villain who
+    // does good with a villainous companion pushes them up, and a villain who does good with a heroic companion (they approve) drags them down.
+    const you = Math.sign(st.p) || Math.sign(d), approve = Math.sign(d) === lean; // a perfectly grey wanderer counts as leaning the way of this deed
+    C.inf = clamp(C.inf + (approve ? 2 : -2) * Math.abs(d), 0, 100);
+    C.a = clamp(C.a + (approve ? you : -you) * Math.abs(d) * .4, -100, 100);
+    lootMsg(`${nm} ${approve ? 'approves · influence gained' : 'disapproves · influence lost'}`, approve ? '#9fe6b0' : '#ffb36e');
   }
   alSave();
   if (!$('#alignScr').classList.contains('hidden')) renderAlign();
@@ -5958,7 +5973,7 @@ function renderAlign() {
   } else {
     const A = alComp(pick.L), inP = party.includes(pick.L.id);
     chart = alChart(A.hidden ? 0 : A.a, true, A.hidden);
-    info = `<small>${pick.L.name}</small><b style="color:${A.hidden ? '#9aa0a8' : alColor(A.a)}">${A.hidden ? 'UNKNOWN' : alRank(A.a)}</b><em>${A.hidden ? pick.sub : `${A.a > 0 ? '+' : ''}${Math.round(A.a)} · ${pick.sub}`}</em>`
+    info = `<small>${pick.L.name}</small><b style="color:${A.hidden ? '#9aa0a8' : alColor(A.a)}">${A.hidden ? 'UNKNOWN' : alRank(A.a)}</b><em>${A.hidden ? pick.sub : `${A.a > 0 ? '+' : ''}${Math.round(A.a)} · ${pick.sub}`}</em>` + (alLabelOf(pick.L) ? `<em class="al-dnd">${alLabelOf(pick.L)}</em>` : '')
       + (inP ? `<div class="al-inf"><span>Influence</span><i><u style="width:${Math.round(A.inf)}%"></u></i></div>` : '')
       + '<button class="btn small al-you" id="alYou"><span>‹ Back to you</span></button>';
   }
@@ -5968,7 +5983,7 @@ function renderAlign() {
   if (comps.length) $('#alComps').innerHTML = comps.map(({ L, sub }) => {
     const A = alComp(L), inP = party.includes(L.id);
     return `<button class="al-card${inP ? ' in' : ''}${alView.sel === L.id ? ' sel' : ''}" data-id="${L.id}">${alChart(A.hidden ? 0 : A.a, false, A.hidden)}<div class="al-ct"><b>${L.name}</b><small>${sub}</small>`
-      + `<em style="color:${A.hidden ? '#9aa0a8' : alColor(A.a)}">${A.hidden ? 'UNKNOWN' : alRank(A.a)}</em>`
+      + `<em style="color:${A.hidden ? '#9aa0a8' : alColor(A.a)}">${A.hidden ? 'UNKNOWN' : alRank(A.a)}</em>` + (alLabelOf(L) ? `<small class="al-dnd">${alLabelOf(L)}</small>` : '')
       + (inP ? `<div class="al-inf"><span>Influence</span><i><u style="width:${Math.round(A.inf)}%"></u></i></div>` : '<small class="al-np">Not in your party</small>') + '</div></button>';
   }).join('');
   alShowModel(pick ? pick.L : null).catch(() => {});
@@ -23820,11 +23835,8 @@ function pdAlign(R) {
   const C = cid && wanderer && wanderer.align && wanderer.align.c && wanderer.align.c[cid];
   if (!C) return R;
   const orig = alFact(R); if (!(orig in AL_BASE)) return R;
-  const law = /^Lawful/.test(orig) ? 'Lawful' : /^Chaotic/.test(orig) ? 'Chaotic' : 'Neutral';
-  const moral = C.a >= 15 ? 'Good' : C.a <= -15 ? 'Evil' : 'Neutral';
-  const now = law === 'Neutral' && moral === 'Neutral' ? 'True Neutral' : `${law} ${moral}`;
-  if (now === orig) return R;
-  return Object.assign({}, R, { facts: R.facts.map(f => f[0] === 'Alignment' ? ['Alignment', `${now} · was ${orig}`] : f) });
+  const now = alLabel(orig, C.a); if (now === orig) return R;
+  return Object.assign({}, R, { facts: R.facts.map(f => f[0] === 'Alignment' ? ['Alignment', now] : f) });
 }
 function pediaEntry(i) {
   const L0 = pdSet()[i]; if (!L0) return; pedia.cur = L0; const L = pdResolve(L0);
