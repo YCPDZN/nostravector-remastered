@@ -106,12 +106,13 @@ Add one of these to the game's address to jump straight to a scene:
 - `?residents=all` brings every resident to you.
 - `?menu=ch4pre`, `?menu=ch4` or `?menu=ch5` previews the main menu for that chapter.
 - `?ending=tared` plays the Taredesiban nightmare once the title screen is up.
+- `?ending=oilkoumene` plays the Oilkoumene nightmare (The Fall of Obra-Spira), and `?ending=oilkdream` plays the Oilkoumene dream on the ice (Tyrotaronus). Tap once the title screen is up; nothing is saved.
 
 ---
 
 ## Not built yet
 
-- **Hak's voice when you return to him after Sol falls:** CH3HAKBACK1–11 in `data/hakBackVoices.js`. Subtitles only for now.
+- **The siege of Karribassa itself:** the vision shows it coming. The fight isn't built yet.
 - **The Siege of Carax:** Lord Zark's Chapter IV story battle (level 60, on Carax). The three Chapter IV endings are built and waiting. When Zark falls, the fight should call `ch4EndingPlay()`, and your Chapter III choices pick the ending. The Final Boss theme (`data/thFinal.js`) is already in the game for it.
 - **Charon and Kizna joining your crew.** The story says they'll join "when the alignment comes".
 - **Thomas Hawthorne's hall:** Terra Imperia's leader has no hall to fight him in.
