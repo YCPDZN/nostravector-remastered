@@ -1920,3 +1920,13 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **No full-screen blur on phones while it shakes.** The colour still drains, the contrast rises and the view shakes. Desktop keeps the blur. A blur filter over the whole game was too much for phones while the nightmare loads behind it.
 - **The Sevirrus montage loads with far less memory.** Its 13 MB of models and voices used to be pasted into one huge page for its frame, about five copies of the same 13 MB held at once, right during the shaking. Now they wait on `window.__sevAssets`, and a few lines at the top of the page (`SEV_PULL`) copy them in as it opens. The game drops its own copy first and lets them go once the page has them. That's about two copies at the peak.
 - Hawthorne's staged scene on the Cygnus loads the same lighter way.
+
+## The Chompy nightmare on phones: staged memories, like the nightmare on the ice
+- **On phones, a Chompy wanderer's nightmare is the staged memories**, played on the nightmare's dark stage like the other species' nightmares and the Antarctica flashback:
+  - The Carax massacre ("Everyone kneels…").
+  - Jakal Chompjak XVI's threat, then Damix ("Still the little prince…").
+  - Hak killing his father ("Long live the Emperor").
+  - "I took my father's head…".
+  - The High Priest of Destruction.
+  - Sepia memory filter, the recorded Sevirrus lines, Wonders of Laniakea under it (Fields of Carax if that can't load).
+- It never loads the 13 MB Sevirrus montage, which was what phones couldn't hold. **Desktop keeps the real montage.** Orion and Nico wake you the same way on both.
