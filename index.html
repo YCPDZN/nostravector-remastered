@@ -13209,15 +13209,19 @@ async function hawMirrorOpen() {
   let A; try { A = JSON.parse(document.getElementById('sevCine').textContent); } catch { return false; }
   const hb = (document.getElementById('hawMirror').textContent || '').trim(); if (hb.length < 1000) return false;
   A.glb = hb; delete A.score;
+  if (tiPhone()) { delete A.glbAlien; delete A.glbDamix; for (const k of Object.keys(A)) if (/^vo\d+$/.test(k) && k !== 'vo104') delete A[k]; } // phones: only what the Alphinos scene uses (Jakal stays: the crown comes off his model), about half the pack
   const clip = [7.55, 7.0, 3.55, 2.27, 7.39, 8.52, 4.68, 5.15, 4.75, 5.72, 10.68, 9.6, 9.0, 8.6, 10.6, 10.6]; // Sevirrus's own timing (Hawthorne keeps to it, beat for beat), then his five, until they're voiced
   await cygVo(); let raw = []; try { raw = JSON.parse(document.getElementById('hawCygVoices').textContent); } catch {}
   let k = 20; HMIR_VO.forEach((v, i) => { if (v === null) return; delete A['vo' + (v + 1)]; // never Sevirrus's voice
     if (raw[k] && CYGV.vo[k]) { A['vo' + (v + 1)] = raw[k]; clip[i] = CYGV.vo[k].duration; } k++; }); // CH3CYG21–30, once they exist
+  raw = null; if (tiPhone()) document.getElementById('hawCygVoices').textContent = ''; // his clips are decoded already; the 6.6 MB of text behind them can go
   document.getElementById('sevCine').textContent = ''; document.getElementById('hawMirror').textContent = ''; window.__sevAssets = A; // the page pulls them in as it opens (SEV_PULL)
   let page = tpl.textContent.replace(/<\\\/script/gi, '</' + 'script').replace(/<\\!--/g, '<!' + '--').replace('@@ASSETS@@', SEV_PULL);
   const swaps = [
     ['window.__menu = { drift: true,', `window.__menu = { haw: true, hawClip: ${JSON.stringify(clip)}, hawExtra: ${JSON.stringify(HMIR_CROWN.map(([t, d, l], i) => [t, d, 'Thomas Hawthorne', l, 104 + i]))}, drift: true,`],
     ['#subs,#cineCard,.skip,#loading{display:none!important}', '#cineCard,#skipCastle,#loading{display:none!important}\n.subs.haw .who,.subs.haw .line{color:#3fe6f2!important}'], // Hawthorne speaks in cyan: the old scene's own lettering and shadows, only the colour changes // its own subtitles and Skip this time: it looks exactly like the old game
+    ["  const ab = Uint8Array.from(atob(document.getElementById('glbAlien').textContent.trim()), c => c.charCodeAt(0)).buffer;\n  new GLTFLoader().parse(ab,", "  const ab = document.getElementById('glbAlien') ? Uint8Array.from(atob(document.getElementById('glbAlien').textContent.trim()), c => c.charCodeAt(0)).buffer : null;\n  if (ab) new GLTFLoader().parse(ab,"],
+    ["  new GLTFLoader().parse(p('glbDamix'), ", "  if (G('glbDamix')) new GLTFLoader().parse(p('glbDamix'), "],
     ['const CH5_CLIP = [', "if (M.haw) { CH5_INTRO.forEach(l => { if (l[2] === 'Sevirrus') { l[2] = 'Thomas Hawthorne'; l[6] = ''; } }); CH5_INTRO.push(...M.hawExtra); } // his name, never Hak's; then his five lines, still crowned\nconst CH5_CLIP = M.haw ? M.hawClip : ["],
     ['C5W.push([83, nPrev + (83 - oPrev)]); }', 'const E5 = M.haw ? 109 : 83; C5W.push([E5, nPrev + (E5 - oPrev)]); }'], // the scene runs on past "finally be quiet" for them
     ['const C5 = { KILL: 25.1, CHOPS: [26.2, 27.0], THRONE: [51.6, 52.8, 54.0], FLOOR: [64.4, 65.3, 66.2, 67.2], END: 83 };', 'const C5 = { KILL: 25.1, CHOPS: [26.2, 27.0], THRONE: [51.6, 52.8, 54.0], FLOOR: [64.4, 65.3, 66.2, 67.2], END: M.haw ? 109 : 83 };'],
@@ -13304,9 +13308,8 @@ async function hawMirror(done) {
     try { if (HMIR.M) { HMIR.M.voice.stop(); HMIR.M.music.stop(); } } catch (e) {}
     if (HMIR.box) HMIR.box.remove(); HMIR.box = HMIR.f = HMIR.M = null; sfx.leadOn = false;
     state = 'explore'; show(ui.xhud, true); resize(); clock.getDelta(); fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; }, 950); done(); };
-  if (tiPhone()) { hawStage(finish); return; } // phones: staged on the nightmare's stage, like the Chompy nightmare (the 13 MB montage is too much for them)
   let ok = false; try { ok = await hawMirrorOpen(); } catch (e) { console.error(e); }
-  if (!ok) { if (HMIR.box) HMIR.box.remove(); window.__sevAssets = null; finish(); return; }
+  if (!ok) { if (HMIR.box) HMIR.box.remove(); HMIR.box = HMIR.f = HMIR.M = null; window.__sevAssets = null; hawStage(finish); return; } // it won't load: the staged version on the nightmare's stage
   const M = HMIR.M; try { M.prime(); } catch (e) {}
   let started = false; const t0 = performance.now();
   const tick = () => {

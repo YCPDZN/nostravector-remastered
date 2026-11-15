@@ -1951,3 +1951,12 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - It goes in the way docking from orbit does: nothing of Mercury shows, and you leave the Cygnus back into orbit beside her.
 - Level, items and the rest start from zero, as with the other resets. Hawthorne is level 1 anyway.
 - Also for docking generally: the screen now stays black from touching down until you're aboard.
+
+## Hawthorne's staged scene: the montage back on phones, loading only what it needs
+- **Phones play the real Sevirrus montage again** for the scene Hawthorne stages after the Cygnus fight: the Alphinos hall, Jakal's crown and every beat, as on desktop.
+- **It loads only what that scene uses.** On phones it leaves out the alien settlers, Damix, Sevirrus's score and every Sevirrus voice line except the guard's. Jakal stays because the crown comes off his model. The page copes without the models it isn't given.
+- Once his lines are taken from it, the 6.6 MB of text behind Hawthorne's voice pack is let go on phones (the clips are decoded already).
+- **Hawthorne's rigged model is smaller:** 2.9 MB down to 2.4 MB (`data/hawMirror.js`, `nightmare/models/HAWTHORNE_rigged.glb`). The rigging tool had left the original copy of every part in the file. The new `nightmare/tools/slim_glb.py` drops anything nothing points at, and the geometry is byte-for-byte the same.
+- All in, a phone loads about half of what it did, about 9 MB instead of 17 MB.
+- **The staged version is now the fallback everywhere:** if the montage can't load, on a phone or a desktop, the scene plays on the nightmare's stage (throne hall, crown, guard, all 15 lines voiced) instead of skipping to his escape.
+- The Chompy nightmare on phones stays the staged memories. Its montage uses every scene, so it can't be cut down the same way.
