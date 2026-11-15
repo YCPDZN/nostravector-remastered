@@ -41,3 +41,30 @@ Pack: `data/hakRantVoices.js` (14 slots, in this order). **Recorded** as HAKLOSE
 | CH3HAKRANT12.mp3 | Hak Chompjak V (praying) | Archamus. Prime Good. You answered Taredesiba when the dark came for Timpur. |
 | CH3HAKRANT13.mp3 | Hak Chompjak V (praying) | I have no right to ask. I was Sevirrus. But these people were never him. |
 | CH3HAKRANT14.mp3 | Hak Chompjak V (praying) | Stand with Karribassa. And if you will not stand with me, stand with them. |
+
+
+## Before the blockade: Orion steps back
+
+Straight after Hak's prayer, before Terra Imperia attacks, if Orion is with you. He goes back to the Nostra and stays aboard until the blockade is over. **Not recorded yet:** these show as subtitles. Suggested file names below.
+
+| File | Speaker | Line |
+|---|---|---|
+| CH3ORIONSTEPSBACK1.mp3 | Orion Mascar | Wanderer. Before this starts, I need a word. Just us. |
+| CH3ORIONSTEPSBACK2.mp3 | Orion Mascar | I found you half dead in the heat. I sat by that bed for two weeks. I held you on that pier while you screamed at nothing. |
+| CH3ORIONSTEPSBACK3.mp3 | Orion Mascar | And just now, in that vision, you went somewhere none of us could follow. Hak was shaking you, and you weren’t there. I couldn’t breathe. |
+| CH3ORIONSTEPSBACK4.mp3 | Orion Mascar | There’s a name for what that does to me. PTSD. I’ve spent a long time pretending it didn’t have one. |
+| CH3ORIONSTEPSBACK5.mp3 | Orion Mascar | I can’t stand by and watch it happen again. Not in a real fight. Not with you bleeding in front of me. Not yet. |
+| CH3ORIONSTEPSBACK6.mp3 | Orion Mascar | So I’m going back to the Nostra. I’ll keep her warm and the comms open. Come back to me in one piece, friend. |
+
+Your answer, and his reply:
+
+| Choice | File | Orion's reply |
+|---|---|---|
+| Go. I’ll come back to you. | CH3ORIONSTEPSBACK7.mp3 | I know you will. That’s the only reason I can leave. |
+| You don’t have to explain. Go. | CH3ORIONSTEPSBACK8.mp3 | Thank you. For not making me say it twice. |
+
+Talking to him on the crew deck while the blockade is on:
+
+| File | Speaker | Line |
+|---|---|---|
+| CH3ORIONSTEPSBACK9.mp3 | Orion Mascar | Not this one. Finish it, then come and get me. I’ll be right here, with the comms open. |

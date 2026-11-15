@@ -12910,7 +12910,7 @@ function hakBackTalk() { // Hak, on the bridge before the Hall of Oaths again: h
     function finish() {
       setC3({ hakBack: true, karrVision: true }); renderTasks(); sfx.chime(); gainXP(300, 'Returned to Hak Chompjak');
       notice('Main quest', tiPhone() ? 'YOU RETURNED TO HAK' : 'YOU RETURNED TO HAK CHOMPJAK', 3600);
-      setTimeout(siegeStart, 3200); // and then the sky fills with Terra Imperia's ships: the blockade of Janira Prime
+      setTimeout(() => orionStepsBack(siegeStart), 2000); // Orion can't stay for this one; and then the sky fills with Terra Imperia's ships: the blockade of Janira Prime
     }
   };
   pdMeet('hak'); loadDataScript('hakBackVoices').then(ok => ok ? sfx.loadClips('hakBackVoices') : []).catch(() => []).then(v => go(v || []));
@@ -12975,6 +12975,28 @@ function siegeCmdUI() {
     el.addEventListener('pointerdown', e => { const b = e.target.closest('button[data-m]'); if (!b) return; e.preventDefault(); e.stopPropagation(); siegeCmd(b.dataset.m); }); document.body.appendChild(el); }
   el.classList.toggle('on', on); const m = (wanderer && wanderer.cmds && wanderer.cmds['lead:hak']) || 'follow';
   for (const b of el.querySelectorAll('button')) { b.classList.toggle('sel', b.dataset.m === m); b.style.display = b.dataset.m === 'advance' && !SG.base ? 'none' : ''; } // Advance: only on Janira Prime, with the base still standing
+}
+/* ---- before the blockade: Orion goes back to the Nostra. He found you half dead in the heat, sat two weeks by your fever, held you on
+   the pier in Antarctica, and has just watched you go under in the vision. He can't watch it happen again. He waits aboard (and won't
+   come back out) until the blockade is over; after that, call him from the crew deck as usual. Saves: ch3.orionStepped. ---- */
+const ORION_STEP = [
+  'Wanderer. Before this starts, I need a word. Just us.',
+  'I found you half dead in the heat. I sat by that bed for two weeks. I held you on that pier while you screamed at nothing.',
+  'And just now, in that vision, you went somewhere none of us could follow. Hak was shaking you, and you weren’t there. I couldn’t breathe.',
+  'There’s a name for what that does to me. PTSD. I’ve spent a long time pretending it didn’t have one.',
+  'I can’t stand by and watch it happen again. Not in a real fight. Not with you bleeding in front of me. Not yet.',
+  'So I’m going back to the Nostra. I’ll keep her warm and the comms open. Come back to me in one piece, friend.'
+];
+function orionStepsBack(done) {
+  if (!wanderer || !orionJoined() || !partyNow().includes('orion') || c3f('orionStepped')) { setTimeout(done, 1200); return; } // he's not with you: straight on
+  const bye = line => setTimeout(() => openDialog('ORION MASCAR', [line], false, () => {
+    setC3({ orionStepped: true }); wanderer.aboard = Object.assign({}, wanderer.aboard, { orion: true }); const c = curChar(); if (c) c.aboard = wanderer.aboard; saveRoster();
+    if (world.orion) world.orion.root.visible = false; if (ex.cSel === 'orion') ex.cSel = null; refreshJamesUI(); ui.xhud.classList.toggle('comp', companionOn() || partyNow().length > 0);
+    lootMsg('Orion is waiting aboard the Nostra (crew deck)', compColor('orion')); setTimeout(done, 1800);
+  }), 80);
+  openDialog('ORION MASCAR', ORION_STEP, false, () => openChoice('ORION MASCAR', [
+    { text: 'Go. I’ll come back to you.', onPick: () => bye('I know you will. That’s the only reason I can leave.') },
+    { text: 'You don’t have to explain. Go.', onPick: () => bye('Thank you. For not making me say it twice.') }]));
 }
 function siegeStart() { // straight after Hak's prayer
   if (c3f('siegeOn')) return; setC3({ siegeOn: true });
@@ -18900,6 +18922,7 @@ function dismissCompanion(id) {
   ui.xhud.classList.toggle('comp', companionOn() || partyNow().length > 0);
 }
 function aboardTalk(id) {
+  if (id === 'orion' && siegeQ() && c3f('orionStepped')) { openDialog('ORION MASCAR', ['Not this one. Finish it, then come and get me. I’ll be right here, with the comms open.'], false, () => {}); return; } // he sits the blockade out
   const nm = ((PARTY[id] || {}).full || compName(id)).toUpperCase();
   openChoice(nm, [{ text: 'Come with me.', onPick: () => recallCompanion(id) }, { text: 'Stay aboard for now.', onPick: () => lootMsg(`${compName(id)} stays aboard`, compColor(id)) }]);
 }

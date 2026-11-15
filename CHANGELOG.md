@@ -2065,3 +2065,9 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 ## The blockade fight's dialogue, tidied
 - **Every line in the fight at Terra Imperia's base now shows under the right speaker's name.** Before, they all went out under Croxian Mascar's name, with the real speaker squeezed into the line on desktop and missing on phones.
 - **The lines play one at a time,** so the bosses' retreat lines and the victory lines no longer talk over each other. They wait while a beaten Pontifex's choice is on screen, and Hak, Darius and Vishara leave only after their goodbyes have played.
+
+## Orion steps back from the blockade
+- **Straight after Hak's prayer, before Terra Imperia attacks, Orion takes you aside** (if he's with you). He found you half dead in the heat, sat by your fever for two weeks and held you on the pier in Antarctica, and he's just watched you go under in the vision. He tells you it's PTSD, and that he can't stand by and watch it happen again. Then he goes back to the Nostra.
+  - You answer "Go. I'll come back to you." or "You don't have to explain. Go.", and he replies to each.
+  - He stays on the crew deck until the blockade is over. Talk to him there and he asks you to finish it first. Afterwards you can call him back as usual.
+  - The lines are in `assets/audio/karribassa/VOICE_SCRIPT.md`. They aren't recorded yet, so they show as subtitles.
