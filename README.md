@@ -29,7 +29,7 @@ The full feature-by-feature history is in **[CHANGELOG.md](CHANGELOG.md)**.
 | **IV · The Catharsis** | Two years later, 2127 AD, in a blood-red galaxy | Lord Zark and the Catharsis. Three endings (good, neutral and bad) play out in the burning throne room of Carax. |
 | **V · The hunt for Lord Zark** | The galaxy after the Catharsis falls | The Catharsis's worlds are yours, Hawthorne is dead, and the hunt for Zark goes on. |
 
-**Five playable races:** Human, Erisian, Chompy, Grek and Taredesiban. Each has its own homeworld, dreams, nightmare and story lines.
+**Six playable races:** Human, Erisian, Chompy, Grek, Taredesiban and Oilkoumene. Each has its own dreams, nightmare and story lines, and a home in the Milky Way. For the Oilkoumene, from the Cyrannus Galaxy, that's Tamez Prime, out on the rim.
 
 ---
 
