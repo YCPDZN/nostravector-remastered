@@ -112,7 +112,7 @@ Add one of these to the game's address to jump straight to a scene:
 
 ## Not built yet
 
-- **The siege of Karribassa itself:** the vision shows it coming. The fight isn't built yet.
+- **One line of Hak's fury:** "I will find you, Hawthorne. I will pursue you to Earth." (slot 11 of `data/hakRantVoices.js`). Subtitle only for now; the rest is voiced.
 - **The Siege of Carax:** Lord Zark's Chapter IV story battle (level 60, on Carax). The three Chapter IV endings are built and waiting. When Zark falls, the fight should call `ch4EndingPlay()`, and your Chapter III choices pick the ending. The Final Boss theme (`data/thFinal.js`) is already in the game for it.
 - **Charon and Kizna joining your crew.** The story says they'll join "when the alignment comes".
 - **Thomas Hawthorne's hall:** Terra Imperia's leader has no hall to fight him in.

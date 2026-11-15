@@ -2012,3 +2012,39 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **Then Hak brings you round:** you tell him what you saw, and he answers ("My words. He keeps wearing them like a stolen coat."). Then the quest completes as before.
 - It plays on the nightmare's stage on every device, with fewer towers, ships, soldiers and embers on phones and no shadows. It's on the Cutscenes menu once seen ("Karribassa Burns"). Its voices (CH3KARRVISION1–11) aren't recorded yet; the script is in `assets/audio/karribassa/VOICE_SCRIPT.md`.
 - **Karribassa Burns is voiced:** CH3NIGHTMAREKARRIBASSA1–11 in `data/karrVisionVoices.js`, Hawthorne's eight lines and Hak's three (copies in `assets/audio/karribassa/`).
+
+## Karribassa Burns: quieter, and Hawthorne's own hand
+- **No more screams or explosions.** The vision is quiet now: a low drone, a soft heartbeat and Hawthorne's voice. It no longer starts or ends with a gasp.
+- **Hawthorne executes the three Chompy prisoners himself.** They kneel facing you, and he walks along the line behind them and cuts them down one by one: the first after "Everyone kneels. Some of them just need help.", the other two after "…on Carax, to people just like these." His soldiers stand back and watch, and the scene holds on it before moving on.
+- **Then made far more brutal:** Hawthorne beheads each prisoner. The head comes away and tumbles across the ground, blood sprays from the neck and pools where the body falls forward, and a dark red flash hits on each blow.
+- **Sharper on desktop:** the vision's key light now casts real shadows (2048 shadow map), and three flickering firelights play across the city and the people in it. Phones keep the lighter version.
+
+## Hak's fury, and his prayer
+- **After the vision, Hak loses it.** Straight after he brings you round, he turns on Thomas Hawthorne in a ten-sentence tirade. It plays in the game, in Karribassa on the bridge before the Hall of Oaths, not as a cutscene. Highlights: "You put my words in your mouth, and you wore my sins like a crown you found in the gutter." "You are not a monster, Hawthorne. You are a cheap fucking imitation of one." "If you lay one finger on the Grek… I will be standing at its gates." "I buried Sevirrus once. I will bury you beside him…"
+- **Darius Ancin and Vishara Erisconos join him.** After his second sentence they walk out of the Hall of Oaths and stand at his side, one on each side, without a word. Meeting them here opens their Nostrapedia pages.
+- **Then he kneels and prays to Archamus,** three lines: "I have no right to ask. I was Sevirrus. But these people were never him." When he rises, the quest completes as before.
+- Voices: CH3HAKRANT1–13 (`data/hakRantVoices.js`), subtitles until recorded. The script is in `assets/audio/karribassa/VOICE_SCRIPT.md`.
+- **The glasses come off.** In a shocking twist, after his fourth sentence Hak takes off his glasses: his hand goes to his face, and the glasses come away and hang in his hand at his side. He says his last seven sentences bare-faced, ending with a new one: "I will find you, Hawthorne. I will pursue you to Earth." Then he puts them back on before he kneels to pray. The tirade is eleven sentences now (CH3HAKRANT1–11), and the prayer is CH3HAKRANT12–14.
+- **Hak's fury and prayer are voiced:** HAKLOSESIT1–13 in `data/hakRantVoices.js` (copies in `assets/audio/karribassa/`). 1–10 are the tirade, 11–13 the prayer. They were recorded from the ten-sentence version, so the new eleventh line, "I will find you, Hawthorne. I will pursue you to Earth.", has an empty slot and shows as a subtitle until it's recorded.
+
+## The blockade of Janira Prime
+- **After Hak's prayer, Terra Imperia attacks Janira Prime.** Alarms sound, the first wave of Terra Imperia soldiers comes at you in Karribassa, and the main quest becomes: **end the blockade of Janira Prime** by taking Terra Imperia's base, 1 km from Karribassa (beyond the city, away from the spaceport). It has its own task line, a quest marker and space objectives.
+- **Hak, Darius Ancin and Vishara Erisconos fight beside you,** at their faction leaders' levels (95, 75 and 80), and they hit extremely hard.
+  - Hak fights with his sword.
+  - Darius uses a rifle.
+  - Vishara uses ice magic: bolts of frost that slow what they hit.
+- **Three orders for the three of them:** **Follow**, **Hold position** (they stay where they are and fight what comes to them) and **Advance** (they march on Terra Imperia's base and fight their way in). Use the buttons by the controls or the keys G / H / J.
+- **A Chompy rover,** purple and light blue, waits by the bridge before the Hall of Oaths. Drive it to the base the same way as James's rover in Chapter I. James's rover in Antarctica isn't touched.
+- **The base:**
+  - A ring of black walls with a gate facing the city, four towers with red lights, crimson banners, tents and a command post.
+  - A beacon over it.
+  - A garrison of Terra Imperia soldiers.
+- **Inside, out in the open (not a lair), you fight Croxian Mascar and Malia de Toro.**
+  - Croxian closes in with his blade and leaps onto where you stand.
+  - Malia keeps her distance and fires bursts.
+  - If a Pontifex Maximus or a Sister of Hawthorne is hunting you, they're there too. Beat them and you get the usual choice: take them into your crew, kill them, or let them go. With no Pontifex or Sister hunting you, it's just Croxian and Malia.
+  - One boss bar covers them all, and The Wrong Enemy plays.
+  - Beaten, Croxian and Malia fall back to their ships.
+- **The blockade breaks** when they're all beaten. You get 1,500 XP, Hak says "Karribassa stands. Now he knows we are coming", and the quest moves on to taking Sol back.
+- **Hak, Darius and Vishara stay with you,** and walk in a row behind you on the main menu.
+- **Nyrexia fights with ice magic everywhere now,** like her sister Vishara.
