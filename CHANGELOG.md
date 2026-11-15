@@ -2086,5 +2086,5 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 
 ## The blockade fight, voiced
 - **The fight's opening is voiced** (`data/blockadeVoices.js`): Croxian (BLOCKADE1), Malia (BLOCKADE2) and Hak (BLOCKADE4). The Pontifex line, BLOCKADE3, isn't recorded yet, so it still shows as a subtitle.
-- **Croxian and Malia's spare-or-kill lines are voiced** (`data/croxSpareVoices.js`, CH3CROXIANSPAREORKILL1–10): their beaten lines, the both-spared exchange, and each survivor's two lines. Their last words aren't recorded yet.
+- **Croxian and Malia's spare-or-kill lines are voiced** (`data/croxSpareVoices.js`, CH3CROXIANSPAREORKILL1–13): their beaten lines, the both-spared exchange, each survivor's two lines, and their last words (11 Croxian, 12 Malia, 13 Malia if Croxian is already dead).
 - Recordings are in `assets/audio/karribassa/`, and the voice script lists them.

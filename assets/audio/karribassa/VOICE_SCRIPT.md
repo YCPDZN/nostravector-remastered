@@ -90,7 +90,7 @@ Pack: `data/blockadeVoices.js` (BLOCKADE1–4, in this order). **Recorded:** 1, 
 
 When Croxian Mascar or Malia de Toro is beaten at Terra Imperia's base, they stay down and you choose. Spared, they join your crew there and then; killed, they say their last words. Once both are decided: if both were spared, they have a four-line exchange (two lines each); if one was killed, the survivor says two lines; if both were killed, nothing.
 
-Pack: `data/croxSpareVoices.js` (CH3CROXIANSPAREORKILL1–10): 1–2 the beaten lines, 3–6 both spared, 7–8 Croxian with Malia killed, 9–10 Malia with Croxian killed. **All 10 are recorded.** **Still to record:** the three last words (they show as subtitles).
+Pack: `data/croxSpareVoices.js` (CH3CROXIANSPAREORKILL1–13): 1–2 the beaten lines, 3–6 both spared, 7–8 Croxian with Malia killed, 9–10 Malia with Croxian killed, 11–13 the last words. **All 13 are recorded.**
 
 | Speaker | When | Line |
 |---|---|---|
@@ -115,13 +115,13 @@ One killed, the other spared (7–8 Croxian, 9–10 Malia):
 | Malia de Toro (Croxian killed) | You killed him. And now you want me. |
 | Malia de Toro (Croxian killed) | Fine. I’ll fight beside you. Not for you. For him, against the man who sent him here. |
 
-Last words (not recorded yet):
+Last words (CH3CROXIANSPAREORKILL11–13):
 
 | Speaker | When | Line |
 |---|---|---|
-| Croxian Mascar | Killed | Tell my father… tell him he was right. About all of it. |
-| Malia de Toro | Killed | Tell Croxian I— no. He knows. |
-| Malia de Toro | Killed, Croxian already dead | Wait for me, Croxian. I’m coming. |
+| Croxian Mascar | Killed (11) | Tell my father… tell him he was right. About all of it. |
+| Malia de Toro | Killed (12) | Tell Croxian I— no. He knows. |
+| Malia de Toro | Killed, Croxian already dead (13) | Wait for me, Croxian. I’m coming. |
 
 
 ## Close the Channel: Orion, after Croxian's death
