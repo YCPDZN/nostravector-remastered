@@ -126,20 +126,24 @@ Last words (CH3CROXIANSPAREORKILL11–13):
 
 ## Close the Channel: Orion, after Croxian's death
 
-A cutscene that plays only if you killed Croxian, straight after the blockade's goodbyes: the scene cuts away to Orion alone on the Nostra's crew deck, the comms still open. The wanderer never speaks to him. Line 6 depends on Malia: 6a if she was spared, 6b if she was killed. If Croxian lives, nothing plays. Then he leaves the party for good.
+A cutscene that plays only if you killed Croxian, straight after the blockade's goodbyes. The scene cuts away to Orion alone on the Nostra's crew deck; the wanderer never speaks to him. His son's last words come over the comms (Croxian's own recording, CH3CROXIANSPAREORKILL11). Orion breaks: he goes down onto the floor, folds over, hands over his eyes, and sobs. Then it stops. He closes the channel, gets up, vows to kill the wanderer, and goes to Thomas Hawthorne, who fought beside him in the Third World War. Line 7 depends on Malia: 7a if she was spared, 7b if she was killed. If Croxian lives, nothing plays.
 
-Pack: `data/orionGriefVoices.js` (11 slots, in this order). **Not recorded yet:** these show as subtitles.
+These should be played as real grief, not acting: the breath catching, words breaking off, the crying taking over between lines (lines 3 to 9), then flat and cold from line 10.
 
-| File | Speaker | Line |
-|---|---|---|
-| CH3ORIONGRIEF1.mp3 | Orion Mascar | Croxian…? Wanderer, what’s happening down there? Somebody talk to me. |
-| CH3ORIONGRIEF2.mp3 | Orion Mascar | “Tell my father he was right.” That’s what he said. That’s what my boy said, with someone standing over him. |
-| CH3ORIONGRIEF3.mp3 | Orion Mascar | No. No, no, no. Not like this. Not with me up here, listening. |
-| CH3ORIONGRIEF4.mp3 | Orion Mascar | He was four the first time he fell off the sea wall at Dover. Split his chin open. He didn’t cry. He looked up at me to see if he should. |
-| CH3ORIONGRIEF5.mp3 | Orion Mascar | I taught him to stand up straight. I taught him to hold a rifle. I never taught him how to come home. |
-| CH3ORIONGRIEF6.mp3 | Orion Mascar (6a · Malia spared) | And Malia, they spared. Took her in, like a stray. So it was a choice. Someone looked at my son on his knees, and chose. |
-| CH3ORIONGRIEF7.mp3 | Orion Mascar (6b · Malia killed) | And Malia with him. She’d have been my daughter. They were going to tell me. I know they were. They were waiting for the war to end. |
-| CH3ORIONGRIEF8.mp3 | Orion Mascar | I sat by that bed for two weeks. I held you on that pier. I’d have let anyone go for you, wanderer. Anyone. |
-| CH3ORIONGRIEF9.mp3 | Orion Mascar | Nostra, close the channel. … Close it. |
-| CH3ORIONGRIEF10.mp3 | Orion Mascar | I’m going to bring him home. Whatever’s left of him. It was always supposed to be me. |
-| CH3ORIONGRIEF11.mp3 | Orion Mascar | Don’t come looking for me, wanderer. If you ever find me again… I don’t know who I’ll be. |
+Pack: `data/orionGriefVoices.js` (VENGEFULMASCAR1–13, in this order). **All 13 are recorded.**
+
+| File | Speaker | How | Line |
+|---|---|---|---|
+| VENGEFULMASCAR1.mp3 | Orion Mascar | Standing; rising panic | Croxian? …Croxian. Son, answer me. Answer me. ANSWER ME! |
+| VENGEFULMASCAR2.mp3 | Orion Mascar | Going down onto the floor | No. No, no, no, no. Please. Please, not him. Not my boy. |
+| VENGEFULMASCAR3.mp3 | Orion Mascar | Hands over his eyes; can't breathe | I can’t… I can’t breathe. Oh God. Oh God, oh God. |
+| VENGEFULMASCAR4.mp3 | Orion Mascar | Sobbing through it | He was four. He fell off the sea wall at Dover and split his chin open, and he didn’t cry. He just looked up at me… to see if he should. |
+| VENGEFULMASCAR5.mp3 | Orion Mascar | Sobbing | I should have dragged him home. I should have gone to London and dragged him home by his collar. And I didn’t, because I was proud. I was so proud of him. |
+| VENGEFULMASCAR6.mp3 | Orion Mascar | Breaking | He said I was right. He finally said it. And I wasn’t there. I was up here. Listening. Listening to my boy die. |
+| VENGEFULMASCAR7.mp3 | Orion Mascar (7a · Malia spared) | Rocking; can't finish | And Malia, they spared. They looked at her and chose mercy. And they looked at my son on his knees, and they… they… |
+| VENGEFULMASCAR8.mp3 | Orion Mascar (7b · Malia killed) | Rocking | Malia too. Both of them. She’d have been my daughter. There’s no one left to tell. There’s no one left. |
+| VENGEFULMASCAR9.mp3 | Orion Mascar | Rocking, to his son | Croxian. Croxian. I’m sorry. I’m so sorry. Papa’s sorry. Papa’s so sorry. |
+| VENGEFULMASCAR10.mp3 | Orion Mascar | The crying stops; flat | Nostra. Close the channel. |
+| VENGEFULMASCAR11.mp3 | Orion Mascar | Getting up | I sat by that bed for two weeks. I held you on that pier. I would have died for you, wanderer. |
+| VENGEFULMASCAR12.mp3 | Orion Mascar | Cold | So I am going to kill you. Not today. Not quickly. But I will. |
+| VENGEFULMASCAR13.mp3 | Orion Mascar | Cold | Thomas and I bled together in the war. He told me there would always be a place for me at his side. I’m going to take it. |

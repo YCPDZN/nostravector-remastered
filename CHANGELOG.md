@@ -2088,3 +2088,10 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **The fight's opening is voiced** (`data/blockadeVoices.js`): Croxian (BLOCKADE1), Malia (BLOCKADE2) and Hak (BLOCKADE4). The Pontifex line, BLOCKADE3, isn't recorded yet, so it still shows as a subtitle.
 - **Croxian and Malia's spare-or-kill lines are voiced** (`data/croxSpareVoices.js`, CH3CROXIANSPAREORKILL1–13): their beaten lines, the both-spared exchange, each survivor's two lines, and their last words (11 Croxian, 12 Malia, 13 Malia if Croxian is already dead).
 - Recordings are in `assets/audio/karribassa/`, and the voice script lists them.
+
+## Close the Channel, reworked: Orion's grief
+- **His son's last words come over the comms** in Croxian's own recorded voice, and Orion breaks. He goes down onto the floor, folds over with his hands over his eyes, and sobs. His shoulders jerk, his breath catches, and he rocks. The lines follow real grief: denial, his boy as a child, the guilt of not dragging him home, Malia, then "Papa's sorry."
+- **Then it stops.** He closes the channel, gets up, and his face is empty. He vows to kill the wanderer, and he goes to Thomas Hawthorne, who fought beside him in the Third World War (`ch3.orionToHawthorne`). The scene ends on **ORION MASCAR HAS GONE TO HAWTHORNE**.
+- His rifle stays down until he walks to the lift. The camera works low and close on the floor, from the side, from above and from behind.
+- Orion's rig has no elbows, knees or spine, so the grief is built from what it does have: he sits on the floor with his legs out, the whole body folds forward, his head bows into raised arms, and he's kept on the floor by his legs.
+- **Voiced:** `data/orionGriefVoices.js` (VENGEFULMASCAR1–13; 7 and 8 are the two Malia lines). The script, with direction for each line, is in `assets/audio/karribassa/VOICE_SCRIPT.md`.
