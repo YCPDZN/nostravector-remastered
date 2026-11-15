@@ -2342,3 +2342,32 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - **Diplomacy:** Am-Grek still rules the Grek alone (Archamus doesn't co-rule yet), and the Catharsis isn't locked as Chapter IV's story boss.
   - **Nostrapedia:** the Terra Imperia tab keeps its name and its Chapter III files.
 - From the time skip on, it all switches to Chapter IV's, exactly as before. Under the hood, one rule (`cathEra`) now decides it everywhere, so they can't drift apart.
+
+## Face to face with Hak, all the way through
+- **The face-to-face camera now runs through all of Hak's scene, not just its first lines:**
+  - **"Hello, Thomas" and the exchange after it:** shot and reverse shot.
+  - **The beating:** *"This is for Janira Prime…"* to *"…every world you put in chains"* is shot over Hawthorne's shoulder onto Hak's face, so the blows come straight at you.
+  - **The throat-hold:** *"Shh. Don't talk…"*, *"Sevirrus."* and *"He never left…"* look down over Hawthorne's shoulder, as he's held off his feet, onto Hak's face as Sevirrus comes up in him.
+  - **The kill** keeps its own angle, beside them.
+- **No more dropping back.** In the pause after each line, the camera used to fall back into Hawthorne's eyes or to the old fixed angles. It stays face to face now.
+- **It follows them up and down,** from Hawthorne on his knees to Hawthorne lifted by the throat, and it takes each blow's shake.
+
+## The Armor of Thomas Hawthorne
+- **A human who beats Hawthorne on Mercury takes his armour.** After his death, once the Federation is restored: *Taken from Mercury · THE ARMOR OF THOMAS HAWTHORNE*.
+- **Armor of Thomas Hawthorne:** the Grand Imperarch's black-and-crimson parade plate. Human only, level 30. Takes 52% off every hit, +70 max health. That's a step above the Nostra exo-armour (50%, +50) and below the level-90 endgame sets.
+- It's a full suit, like the other species' sets. If nothing better is on it goes straight on; otherwise it waits in your bag (Inventory → Equipment).
+- **Other species don't get it.**
+- **Saves that beat Hawthorne before this existed** find it in their bag the next time they're played (humans only), once (`ch3.hawArmor`).
+
+### Hawthorne's death cutscene — remade from scratch
+- "The End of the Grand Imperarch" is now a shot-by-shot film instead of the old beat sequence: 27 shots, each with its own camera framed on where the actors actually are, cutting on the voice lines (timed from the clips themselves).
+- Mercury: a camera running backwards ahead of Hawthorne as he flees, over his shoulder for "Stay back!", low on the walking red-eyed wanderer, side-on as he goes down hard and gets up, a split-second look back with it right behind him, a close-up for "What ARE you?!", then the bunker wide as he gets in and it keeps walking.
+- The bunker: his back to the door in the failing red light, the lights slam on over his shoulder to reveal Hak, "Hello, Thomas." in close-up, shot/reverse-shot through the talk, varied angles through the beating, the throat-hold against the door, Sevirrus, a clearly visible blade, and the door opening on the wanderer's silhouette.
+- Lighting fixed: no more white-out shots. The sun sits high and off the line of the chase, the old stage key light no longer floods the bunker, and close-ups are no longer blown out. Removed the old floating red flags and the red ring.
+- Hak's subtitles have their own gold colour; they turn Sevirrus-red while he's channelled.
+- Fixed light shafts never appearing (a comment was swallowing the code that added them), which also stopped a per-frame error in the bunker.
+- Skip works in the new cutscene. Works framed for upright phones too.
+
+### Archamus' voice slots (the pod landing)
+- Archamus' 7 lines over the fallen wanderer are ready for voicing: `assets/audio/archamus_ch4/VOICE_SCRIPT.md` lists them as CH4ARCHAMUSPOD1–7 (pack: `data/podArchVoices.js`).
+- Once recorded, they play with the subtitles and the scene waits for each line to finish. Until then, subtitles only, as before.
