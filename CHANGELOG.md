@@ -1915,3 +1915,8 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 ## Fix: the nightmare crashing on phones
 - **The nightmare now always plays out beyond orbit**, as it does on desktop, for all five species (Chompy, Erisian, human, Grek, Taredesiban). If you're within six radii of a world when it starts, as you are in Earth orbit, the ship drifts back out under the black of the episode starting. It stops facing the planet, with the world still ahead of you.
 - **The close-up terrain of every world is let go before it plays:** the planets drop to their far, light versions. A phone was holding Earth's close-up surface in memory as well as the nightmare's scene (for a Chompy, the whole Sevirrus montage), and running out. The close-up terrain is rebuilt as normal when you fly back in.
+
+## Fix: the nightmare crashing on phones during the shaking
+- **No full-screen blur on phones while it shakes.** The colour still drains, the contrast rises and the view shakes. Desktop keeps the blur. A blur filter over the whole game was too much for phones while the nightmare loads behind it.
+- **The Sevirrus montage loads with far less memory.** Its 13 MB of models and voices used to be pasted into one huge page for its frame, about five copies of the same 13 MB held at once, right during the shaking. Now they wait on `window.__sevAssets`, and a few lines at the top of the page (`SEV_PULL`) copy them in as it opens. The game drops its own copy first and lets them go once the page has them. That's about two copies at the peak.
+- Hawthorne's staged scene on the Cygnus loads the same lighter way.
