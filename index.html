@@ -2538,7 +2538,7 @@ const COMBAT_TRACKS = ['Predator I', 'Predator II', 'Predator III', 'Predator IV
 const MENU_THEMES = [...COMBAT_TRACKS.map(name => ({ name })),
   { name: 'Descendant of Shakhak', k: 'hak' }, { name: 'The Child of Eris', k: 'eris' }, { name: 'The Guardian of Humanity', k: 'darius' },
   { name: 'The Prime Good', k: 'primeGood' }, { name: 'The Light Egg', k: 'lightEgg' }, { name: 'The Prime Evil', k: 'primeEvil' },
-  { name: 'Siege of Janira Prime', k: 'siege' }, { name: 'The Wrong Enemy', k: 'wrong' }, { name: 'Final Boss Theme', k: 'final' }];
+  { name: 'Siege of Janira Prime', k: 'siege' }, { name: 'Siege of Mercury', k: 'mercury' }, { name: 'Terra Imperium', k: 'terra' }, { name: 'The Wrong Enemy', k: 'wrong' }, { name: 'Final Boss Theme', k: 'final' }];
 const sfx = (() => {
   let combatSrc = null, combatOn = false, combatIdx = -1, combatTok = 0; const combatCache = {};
   // the menu theme can change with the story (chapter IV has its own)
@@ -11623,7 +11623,7 @@ function lairBossWin() {
 const LEAD_TH = {}; // theme buffers, loaded on first use
 async function leaderTheme(k) {
   if (!k) return null;
-  if (k === 'laniakea') return LEAD_TH[k] || (LEAD_TH[k] = sfx.combatBuf(COMBAT_TRACKS.indexOf('Wonders of Laniakea (Combat)')).catch(() => null)); const id = { hak: 'thHak', eris: 'thEris', darius: 'thDarius', lightEgg: 'thLightEgg', wrong: 'thWrong', siege: 'thSiege', primeEvil: 'thPrimeEvil', final: 'thFinal', primeGood: 'thPrimeGood' }[k]; if (!id) return null; // a combat track already in the game
+  if (k === 'laniakea') return LEAD_TH[k] || (LEAD_TH[k] = sfx.combatBuf(COMBAT_TRACKS.indexOf('Wonders of Laniakea (Combat)')).catch(() => null)); const id = { hak: 'thHak', eris: 'thEris', darius: 'thDarius', lightEgg: 'thLightEgg', wrong: 'thWrong', siege: 'thSiege', mercury: 'thMercury', terra: 'thTerra', primeEvil: 'thPrimeEvil', final: 'thFinal', primeGood: 'thPrimeGood' }[k]; if (!id) return null; // a combat track already in the game
   if (!LEAD_TH[k]) LEAD_TH[k] = loadDataScript(id).then(() => sfx.loadClips(id)).then(c => (c && c[0]) || null).catch(() => null);
   return LEAD_TH[k];
 }
@@ -13206,12 +13206,16 @@ async function orionStepsBack(done) {
     { text: 'Go. I’ll come back to you.', onPick: () => bye('I know you will. That’s the only reason I can leave.', 6) },
     { text: 'You don’t have to explain. Go.', onPick: () => bye('Thank you. For not making me say it twice.', 7) }]), vo.length ? vo.slice(0, 6) : undefined);
 }
-// ---- the Siege of Janira Prime (Wonders of Laniakea motif): on Janira Prime for as long as the blockade lasts, through the fight at Terra Imperia's base ----
-const SGM = { on: false, buf: null };
+// ---- the sieges' music: the Siege of Janira Prime (Wonders of Laniakea motif) on Janira Prime for as long as the blockade lasts, through the fight
+// at Terra Imperia's base; then the Siege of Mercury in Sol for as long as the War of Restoration lasts (in space, aboard, or on any world in Sol).
+// A fight in a hall plays its own theme (Hawthorne's Terra Imperium, Alexia's The Child of Eris) and the siege comes back after it. ----
+const SGM = { key: null, bufs: {} };
+function inSol() { return state === 'space' ? SPC.sys === 'sol' : ex.mode === 'ship' ? SPC.sys === 'sol' : ex.mode === 'world' && (world.adVisit ? true : isPl() && world.planet && world.planet.P.sys === 'sol'); }
 setInterval(() => { try {
-  const want = !!wanderer && siegeQ() && state === 'explore' && ex.mode === 'world' && isPl() && world.planet && world.planet.P.id === 'janira' && !DGN.on && !CUT.on;
-  if (want) { if (!SGM.on || !sfx.leadOn) { SGM.on = true; leaderPlay('siege').catch(() => {}); leaderTheme('siege').then(b => { SGM.buf = b; }); } return; }
-  if (SGM.on) { SGM.on = false; if (sfx.leadOn && SGM.buf && sfx.songBuf() === SGM.buf) { sfx.leadOn = false; sfx.stopSong(2); } }
+  const free = !!wanderer && !DGN.on && !CUT.on && ['explore', 'space', 'shipLand', 'shipUp'].includes(state); // landing and taking off, too
+  const key = !free ? null : siegeQ() && state === 'explore' && ex.mode === 'world' && isPl() && world.planet && world.planet.P.id === 'janira' ? 'siege' : ch3Now() && c3f('restoreWar') && !c3f('solFreed') && inSol() ? 'mercury' : null;
+  if (key) { if (SGM.key !== key || !sfx.leadOn) { SGM.key = key; leaderPlay(key).catch(() => {}); leaderTheme(key).then(b => { if (b) SGM.bufs[key] = b; }); } return; }
+  if (SGM.key) { SGM.key = null; if (sfx.leadOn && Object.values(SGM.bufs).includes(sfx.songBuf())) { sfx.leadOn = false; sfx.stopSong(2); } }
 } catch (e) {} }, 1000);
 // ---- Terra Imperia patrols all over Janira Prime while the blockade lasts (gone once it's broken) ----
 const SGP = { t: 0 };
@@ -13291,7 +13295,7 @@ async function siegeBosses() {
     c.bar.position.y = 2.4; c.bar.visible = false; R.root.add(c.bar); fauna.list.push(c);
     SG.bosses.push({ R, c, key: L[0], name: L[1], kind: L[3], P: L[5] || null, st: 'chase', cd: 2 + i * .7, leapCd: 6 + i, t: 0, tels: [] });
   });
-  sfx.alarm(); SGM.on = true; leaderPlay('siege').catch(() => {}); // the Siege of Janira Prime: already playing on Janira, and it carries on through the fight
+  sfx.alarm(); SGM.key = 'siege'; leaderPlay('siege').catch(() => {}); // the Siege of Janira Prime: already playing on Janira, and it carries on through the fight
   const barks = [['CROXIAN MASCAR', 'Hello again, wanderer. You brought friends this time.', 0], ['MALIA DE TORO', 'The Emperor himself. Hawthorne will want your head on a plate, Hak.', 1], ['HAK CHOMPJAK V', 'Then he can come and take it. MASCAR!', 3]];
   if (pont || sis) barks.splice(2, 0, [`${(pont || sis).name.toUpperCase()}`, 'In the name of the Grand Imperarch. Kneel.', 2]);
   setTimeout(() => { for (const [w, t, k] of barks) siegeSay(w, t, 3600, () => TIW.siege === S, bvo[k] || null); }, 600);
@@ -13345,7 +13349,7 @@ function siegeTick(dt) {
   siegeBar();
 }
 function siegeWin() {
-  if (c3f('siegeWon')) return; setC3({ siegeWon: true }); tiDrop('spat'); SGM.on = false; sfx.leadOn = false; sfx.stopSong && sfx.stopSong(1.5); sfx.chime(); gainXP(1500, 'Ended the blockade of Janira Prime');
+  if (c3f('siegeWon')) return; setC3({ siegeWon: true }); tiDrop('spat'); SGM.key = null; sfx.leadOn = false; sfx.stopSong && sfx.stopSong(1.5); sfx.chime(); gainXP(1500, 'Ended the blockade of Janira Prime');
   $('#bossBar').classList.remove('on'); SG.barOn = false; if (TIW.siege && TIW.siege.beacon) TIW.siege.beacon.visible = false;
   notice('Main quest complete', tiPhone() ? 'THE BLOCKADE IS BROKEN' : 'THE BLOCKADE OF JANIRA PRIME IS BROKEN', 4600); renderTasks();
   setTimeout(() => { // after the last boss's line: Hak, then the goodbyes, then they go home
@@ -14035,7 +14039,7 @@ function hawMercPlace() {
   storyGuard(H, area, x, z, tiPhone() ? 3 : 5, 'Hawthorne’s Praetorian');
   setTimeout(() => { if (TIW.hawm !== H) return; notice('Thomas Hawthorne', tiPhone() ? 'HIS LAST STAND' : 'HAWTHORNE MAKES HIS LAST STAND', 4200); sfx.thud(); lootMsg('A crimson beacon marks Hawthorne’s command post · cut through his Praetorians and face him', '#d0343a'); }, 2600);
 }
-function hawMercSpec() { const lv = Math.max(34, plvNow() + 5); return { key: 'ti:hawthorne', boss: 'Hawthorne', full: 'Thomas Hawthorne, Grand Imperarch of Terra Imperia', hall: 'Mercury · Hawthorne’s last stand', lv, hp: Math.round(6000 + lv * 190), theme: 'wrong', load: () => hawthorneRig(),
+function hawMercSpec() { const lv = 55; /* the real Hawthorne: far stronger than the one on the Cygnus */ return { key: 'ti:hawthorne', boss: 'Hawthorne', full: 'Thomas Hawthorne, Grand Imperarch of Terra Imperia', hall: 'Mercury · Hawthorne’s last stand', lv, hp: Math.round(7500 + lv * 230), theme: 'terra', kdMul: 1.2, cd: 1.15, load: () => hawthorneRig(), // Terra Imperium
   core: ['volley', 'charge', 'slam', 'rain'], p2: ['cross', 'nova', 'summon'], sig: 'sweep', seq: ['volley', 'charge', 'rain', 'slam', 'volley', 'cross'],
   lines: { intro: 'No bridge this time. No ship. Just you and me, and the sun.', p2: 'I survived the Third World War. I will survive you.', p3: 'TERRA IMPERIA IS ETERNAL!', win: 'Not here… not like this… There are older powers than mine, wanderer. You will meet them.' } }; }
 function hawMercTalk() {
@@ -14063,7 +14067,7 @@ function alexiaPlace() {
   storyGuard(H, area, x, z, tiPhone() ? 3 : 4, 'Alexia’s Terra Imperia guard');
   setTimeout(() => { if (TIW.alx !== H) return; notice('Alexia Erisconos', c3f('hawBeaten') ? 'HOLDS ERIS ALONE' : 'HOLDS ERIS FOR TERRA IMPERIA', 4200); sfx.thud(); lootMsg('A pale beacon marks Alexia and her Terra Imperia guard · face her and give Eris back to Vishara', '#eda8d4'); }, 2600);
 }
-function alexiaSpec() { const B = leadSpec('alexia'), lv = Math.max(32, plvNow() + 4); return Object.assign({}, B, { hall: 'Eris · the usurper’s guard', lv, hp: Math.round(5200 + lv * 170), theme: 'eris' }); }
+function alexiaSpec() { const B = leadSpec('alexia'), lv = 40; return Object.assign({}, B, { hall: 'Eris · the usurper’s guard', lv, hp: Math.round(5200 + lv * 170), theme: 'eris' }); } // The Child of Eris
 function alexiaTalk() {
   const X = alexiaSpec(), L = ['You. Of course it is you. Vishara never could fight her own battles.',
     c3f('hawBeaten') ? 'Hawthorne has run, I hear. No matter. I never needed him to hold this throne.' : 'Hawthorne promised me Eris, and Eris is what I took. You will not take it back.'];
