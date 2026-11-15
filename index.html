@@ -1390,8 +1390,8 @@ body.touch .al-key{display:none}
     <div class="slot-msg" id="slotMsg"></div>
     <div class="row slot-io"><button class="btn small" id="slotExport"><span>Export saves</span></button><button class="btn small" id="slotImport"><span>Import saves</span></button></div>
     <div class="hidden" id="slotReset"><!-- TEMPORARY: reset the active wanderer to the start of a chapter (for testing; remove before release) -->
-      <div class="slot-msg">Temporary · reset <b id="slotResetWho">this wanderer</b> to the start of Chapter I or III, or to New London just before the trial in Chapter II. Keeps name, species and looks; level, items, crew, colonies and quests start over.</div>
-      <div class="row"><button class="btn small" id="slotReset1"><span>Chapter I</span></button><button class="btn small" id="slotReset2"><span>Chapter II · New London</span></button><button class="btn small" id="slotReset3"><span>Chapter III</span></button></div>
+      <div class="slot-msg">Temporary · reset <b id="slotResetWho">this wanderer</b> to the start of Chapter I or III, to New London just before the trial in Chapter II, or to the Cygnus's bridge for Hawthorne in Chapter III. Keeps name, species and looks; level, items, crew, colonies and quests start over.</div>
+      <div class="row"><button class="btn small" id="slotReset1"><span>Chapter I</span></button><button class="btn small" id="slotReset2"><span>Chapter II · New London</span></button><button class="btn small" id="slotReset3"><span>Chapter III</span></button><button class="btn small" id="slotReset4"><span>Chapter III · Hawthorne</span></button></div>
     </div>
     <input type="file" id="slotFile" accept=".json,application/json" hidden>
     <button class="btn small" id="slotBack"><span>Back</span></button>
@@ -5547,27 +5547,37 @@ $('#xQuit').addEventListener('click', () => { sfx.click(); leaveExplore(); });
 const RESET_CH1 = { talked: true, seen: [], slept: true, slept2: true, stormHit: true, stormTalk: true, stormSafe: true, stormOver: true, shelterBuilt: true, outside: true, found: true, metOutside: true, jMode: 'follow', roverFound: true, roverTalk: true, campBench: true, campTele: true, campDone: true, sawMeeting: true, ferry: true, betrayed: true, jamesDead: true, escaped: true, ferryGone: true };
 const RESET_CH2 = { started: true, introSeen: true, talkedOrion: true, orionJoined: true, orionBase: 1, orionMode: 'follow', call: true, townFound: true, townSeen: true, farmFound: true, lionsDone: true, husbandFound: true, arrested: true, arrived: true, londonSeen: true, londonTalked: true, metHawthorne: true, trialDone: true, verdict: 'guilty', reportTried: true, cantinaClue: true, doorReached: true, metNico: true, antFlashback: true, flashWhere: 'london', antChoice: 'calm', escapedLondon: true };
 const RESET_CH2_LONDON = Object.fromEntries(Object.entries(RESET_CH2).filter(([k]) => !['trialDone', 'verdict', 'escapedLondon'].includes(k))); // New London: Hawthorne met, waiting for the Council's summons (the trial next)
+// 4 · Chapter III at the Cygnus's bridge: everything before it done (James spared, so he's in your crew with Khazglar; Nyrexia
+// never recruited, so she died in the coup on Eris), the surge under way, the five decks cleared: aboard, at the bridge, Hawthorne ahead
+const RESET_CH3_CYG = { started: true, visited: ['sol', 'janira'], cellsGiven: true, landed: true, warped: true, khzCall: true, khzMet: true, khzBase: 1, dgnSeen: true, hawMars: true, charonLanded: true, charonMet: true, jamesRev: true, jamesFate: 'spared', nyxBeforeJames: false, alexiaCoup: true, nyxDead: true, nyxFailed: true, charonBack: true, hakCall: true, hakMet: true };
 function resetToChapter(n, inGame = true) {
   const c = curChar(); if (!c) return;
   const keep = new Set([...Object.keys(DEFAULT_W), ...Object.keys(speciesDefaults(spOf(c)) || {}), 'name', 'id', 'worldSeed', 'persona']); keep.delete('chapter');
   const fresh = {}; for (const k of keep) if (k in c) fresh[k] = c[k];
-  fresh.chapter = n === 1 ? 0 : 2; // a new wanderer; or Chapter I just finished (Chapter III's start moves it on to 3, as the story does)
+  fresh.chapter = n === 1 ? 0 : n === 4 ? 3 : 2; // a new wanderer; or Chapter I just finished (Chapter III's start moves it on to 3, as the story does)
   if (n >= 2) fresh.ch1 = Object.assign({}, RESET_CH1, { seen: XSPOTS.map(sp => sp.id) });
-  fresh.ch2 = n === 2 ? Object.assign({}, RESET_CH2_LONDON, { hawMood: spOf(c) === 'human' ? 'friendly' : 'hostile' }) : n === 3 ? Object.assign({}, RESET_CH2, { hawMood: spOf(c) === 'human' ? 'friendly' : 'hostile' }) : undefined;
+  fresh.ch2 = n === 2 ? Object.assign({}, RESET_CH2_LONDON, { hawMood: spOf(c) === 'human' ? 'friendly' : 'hostile' }) : n >= 3 ? Object.assign({}, RESET_CH2, { hawMood: spOf(c) === 'human' ? 'friendly' : 'hostile' }) : undefined;
   if (!fresh.ch2) delete fresh.ch2;
+  if (n === 4) { fresh.ch3 = Object.assign({}, RESET_CH3_CYG, { nightmare: nmRace(spOf(c)) }); fresh.party = ['khazglar', 'james-ti']; fresh.lairs = { 'lead~res~cygnus': CYG_FLOORS }; // the five decks: cleared
+    fresh.dip = { realm: '', wars: {}, res: {}, col: {}, lent: {}, surge: { on: true, next: 900, n: 0, own: { earth: 'ti' } } }; }
   if (inGame) leaveExplore(false); resumePlace = null;
   const i = roster.findIndex(o => o.id === c.id); roster[i] = fresh; setActive(c.id); saveRoster();
   state = 'deploying'; show(ui.title, false); const f = $('#fade'); f.style.transition = ''; f.style.opacity = 1; sfx.combat(false); sfx.stopSong && sfx.stopSong(.5); sfx.leadOn = false;
   setTimeout(() => {
     f.style.transition = 'opacity 2.2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 2300);
-    if (n === 1) runCutscene(); else if (n === 2) visitNewLondon(null); else beginChapter3(); // Chapter II: New London, just before the trial
-    setTimeout(() => notice('Progress reset', n === 2 ? 'CHAPTER II · NEW LONDON, BEFORE THE TRIAL' : `CHAPTER ${['', 'I', 'II', 'III'][n]} · FROM THE START`, 3200), 4200);
+    if (n === 1) runCutscene(); else if (n === 2) visitNewLondon(null); else if (n === 3) beginChapter3(); // Chapter II: New London, just before the trial
+    else { // the Cygnus: set down on Mercury out of sight, then straight aboard at the bridge
+      f.style.transition = ''; f.style.opacity = 1;
+      SPC.cygDock = true; CYGS.docking = true; // as if docking from orbit: nothing of Mercury shows, and it goes straight aboard (to the bridge: the decks are cleared)
+      startChapter3({ mode: 'explore', area: 'world', where: 'pl:mercury', dir: [0, 1, 0], x: 5, z: 14.5, y: 0, rot: Math.PI * .8, yaw: Math.PI * 1.8, nf: 1 }).catch(e => { console.error(e); SPC.cygDock = CYGS.docking = false; f.style.opacity = 0; });
+    }
+    setTimeout(() => notice('Progress reset', n === 2 ? 'CHAPTER II · NEW LONDON, BEFORE THE TRIAL' : n === 4 ? 'CHAPTER III · THE CYGNUS, HAWTHORNE' : `CHAPTER ${['', 'I', 'II', 'III'][n]} · FROM THE START`, 3200), n === 4 ? 6500 : 4200);
   }, 650);
 }
 let resetArm = 0; // tap a chapter twice: the first tap only asks
-for (const n of [1, 2, 3]) $('#slotReset' + n).addEventListener('click', () => {
-  sfx.click(); const R = ['', 'I', 'II', 'III'][n];
-  if (resetArm !== n) { resetArm = n; slotMsg(`Tap Chapter ${R} again to reset ${(curChar() || {}).name || 'this wanderer'} to ${n === 2 ? 'New London, before the trial' : 'its start'} · unsaved progress is lost`, true); return; }
+for (const n of [1, 2, 3, 4]) $('#slotReset' + n).addEventListener('click', () => {
+  sfx.click(); const R = ['', 'I', 'II', 'III', 'III · Hawthorne'][n];
+  if (resetArm !== n) { resetArm = n; slotMsg(`Tap Chapter ${R} again to reset ${(curChar() || {}).name || 'this wanderer'} to ${n === 2 ? 'New London, before the trial' : n === 4 ? 'the Cygnus’s bridge, Hawthorne next' : 'its start'} · unsaved progress is lost`, true); return; }
   resetArm = 0; show(slotUI.root, false); resetToChapter(n, slotFrom === 'explore');
 });
 
@@ -12625,7 +12635,7 @@ function tiLanded(P) {
   if (P.id === 'charon' && (chnQ() || chnBackQ())) chnPlace().catch(e => console.error(e));
   if (P.id === 'janira' && (hakQ() || hakBackQ())) hakPlace().catch(e => console.error(e));
   if (P.id === 'mercury' && (cygQ() || cygFarm())) cygPlace();
-  if (SPC.cygDock) { SPC.cygDock = false; setTimeout(cygDockIn, 350); return; } // you docked with the Cygnus in orbit: straight aboard, and nothing down on Mercury (patrols, a hunter, the war) turns up to announce itself
+  if (SPC.cygDock) { SPC.cygDock = false; { const fd = $('#fade'); fd.style.transition = 'none'; fd.style.opacity = 1; } setTimeout(cygDockIn, 350); return; } // you docked with the Cygnus in orbit: straight aboard, and nothing down on Mercury (patrols, a hunter, the war) turns up to announce itself
   if (P.id === 'earth' && jamesQ()) stationPlace();
   if (CH3S().charonMet && !CH3S().jamesRev && ch3Now()) jrvWhenFree(3200); // you left before it played: it finds you on the next world
   if (P.sys === 'sol' && !P.dock) tiEncounters(P);
@@ -13229,6 +13239,63 @@ async function hawMirrorOpen() {
   }
   return false;
 }
+// ---- phones: Hawthorne's scene staged on the nightmare's stage (the throne hall of Alphinos), not the 13 MB Sevirrus montage ----
+// The same beats and every line (his voice, CH3CYG21–35), in his cyan, with a red flash at each cut like the Chompy memories.
+// Hawthorne in a crooked gold crown with a blade; the Chompy guard stumbles in and is cut down. Then he drops the act, crowned.
+const HAWV = i => ['haw', i];
+function hawStageScript() {
+  const H = 'THOMAS HAWTHORNE', X = HMIR_CROWN.map(([, , l], i) => [H, l, HAWV(30 + i)]);
+  return { tint: 'sepia(.4) saturate(1.35) hue-rotate(-12deg) contrast(1.15)', kind: 'haw', beats: [
+    { set: 'throne', actors: { haw: [0, -9, 0, 'idle'] }, cam: [[2.6, 1.6, -3], [1.6, 1.6, -5]], at: [0, 1.6, -9],
+      lines: [[H, 'Three strikes. He cuts my soldiers down in three strikes… and I could not land one. Not ONE.', HAWV(20)], [H, 'I took my father’s head. I took Damix’s heart. And Arixal rode away from me… whole.', HAWV(21)]] },
+    { set: 'throne', actors: { haw: [0, -9.5, Math.PI, 'idle'], g1: [0, 3, Math.PI, 'walk'] }, cam: [[-3.6, 1.7, -2], [-3, 1.7, -4]], at: [0, 1.4, -7.5],
+      lines: [['CHOMPY GUARD', 'M-Majesty… the wounded are asking for—'], [H, 'WHO TOLD YOU TO LOOK AT ME?!', HAWV(22)]],
+      fx: [[-1, 'walkTo', 'g1', [0, -6.6]], [0, 'turn', 'haw', 'g1'], [1, 'strike', 'haw', 'g1']] },
+    { set: 'throne', actors: { haw: [0, -8.6, Math.PI, 'idle'], g1: [0, -6.4, Math.PI, 'down'] }, cam: [[1.9, 1.3, -5], [1.2, 1.25, -6.2]], at: [0, 1.25, -8.4],
+      lines: [[H, 'Mother held his banner. My own mother. She looked straight through me, like I was already dead.', HAWV(23)], [H, 'I can hear them. Every one I ever cut. They’re laughing now. Do you hear it? They are all LAUGHING.', HAWV(24)]],
+      fx: [[0, 'rage', 'haw']] },
+    { set: 'throne', actors: { haw: [0, -12.2, 0, 'idle'] }, cam: [[-2.2, 1.9, -7.5], [-1.4, 1.8, -9]], at: [0, 1.7, -12.2],
+      lines: [[H, 'This crown was meant to make it quiet. Why is it so LOUD?', HAWV(25)], [H, 'I bled for this. I butchered for this. What MORE do you want from me?!', HAWV(26)]],
+      fx: [[0, 'rage', 'haw']] },
+    { set: 'throne', actors: { haw: [0, -12.6, 0, 'kneel'] }, cam: [[1.4, 1.1, -9.4], [.8, 1.05, -10.6]], at: [0, 1, -12.6],
+      lines: [[H, 'Father… when you looked at me… is this what you saw?', HAWV(27)], [H, 'No. No. NO. I am not weak. I am NOT WEAK!', HAWV(28)]] },
+    { set: 'throne', actors: { haw: [0, -12, 0, 'idle'] }, cam: [[0, 1.75, -5.5], [0, 1.75, -8.6]], at: [0, 1.75, -12],
+      lines: [[H, 'Let them come to Alphinos. Let them all come. I will paint these walls with every last Chompjak… and then it will finally be quiet.', HAWV(29)], ...X] }
+  ] };
+}
+function hawCrown() { // a crooked gold crown, like the one Sevirrus put back on
+  const g = new THREE.Group(), gold = new THREE.MeshStandardMaterial({ color: 0xd8a63a, metalness: .85, roughness: .3, emissive: 0x2a1a04 });
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(.17, .16, .07, 20, 1, true), gold); band.material.side = THREE.DoubleSide; g.add(band);
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, s = new THREE.Mesh(new THREE.ConeGeometry(.028, .1, 6), gold); s.position.set(Math.cos(a) * .165, .08, Math.sin(a) * .165); g.add(s); }
+  return g;
+}
+async function hawStage(done) {
+  for (const R of Object.values(NM.actors || {})) if (R.root.parent) R.root.parent.remove(R.root);
+  Object.assign(NM, { on: true, hawStage: { done }, race: 'chompy', phase: 'load', t: 0, bi: -1, ready: false, vo: {}, actors: {}, sevM: null, script: hawStageScript() });
+  state = 'nightmare'; ex.keys.clear(); vel.set(0, 0, 0); if (ex.dlg) closeDialog();
+  nmStage();
+  try {
+    const [H, G] = await Promise.all([hawthorneRig(), townModel('chompy').then(src => src ? autoRig(dressTownsfolk(src, { sp: 'chompy', c: [0x5a2a22, 0x8a6a3a] }), 1.75) : null)]);
+    const add = (k, R) => { if (!R) return; R.root.visible = false; R.root.traverse(o => { if (o.isMesh) o.frustumCulled = false; }); NM.scene.add(R.root); NM.actors[k] = R; };
+    if (H) { armRig(H, 'sword'); const cr = hawCrown(); if (H.head) { H.head.add(cr); H.root.updateMatrixWorld(true); const ws = new THREE.Vector3(); H.head.getWorldScale(ws); cr.scale.setScalar(1 / Math.max(.001, ws.x)); cr.position.set(0, .3 / Math.max(.001, ws.y), 0); cr.rotation.z = .2; } else { cr.position.set(0, 2, 0); cr.rotation.z = .2; H.root.add(cr); } }
+    add('haw', H); if (G) armRig(G, 'none'); add('g1', G);
+    await cygVo(); NM.vo.haw = CYGV.vo || [];
+  } catch (e) { console.error(e); }
+  if (!NM.on) return;
+  if (!NM.actors.haw) { hawStageEnd(); return; } // he wouldn't load: straight on to his escape
+  NM.phase = 'mem'; NM.saveCam = { near: camera.near, far: camera.far, fov: camera.fov }; camera.near = .1; camera.far = 700; camera.fov = 55; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
+  renderer.domElement.style.filter = NM.script.tint; nmBeat(0);
+  show(ui.xhud, true); ui.xhud.classList.add('cutting'); // just Skip over it
+  const fd = $('#fade'); fd.style.transition = 'opacity 1.2s'; fd.style.opacity = 0;
+}
+function hawStageEnd() {
+  const d = NM.hawStage && NM.hawStage.done; NM.hawStage = null; NM.on = false; NM.phase = null; fbSubHide(); sfx.drone(0);
+  if (NM.saveCam) { camera.near = NM.saveCam.near; camera.far = NM.saveCam.far; camera.fov = NM.saveCam.fov; camera.updateProjectionMatrix(); NM.saveCam = null; }
+  renderer.domElement.style.filter = ''; for (const R of Object.values(NM.actors)) R.root.visible = false;
+  ui.xhud.classList.remove('cutting'); show(ui.xhud, false);
+  const fd = $('#fade'); fd.style.transition = 'none'; fd.style.opacity = 1;
+  if (d) d();
+}
 async function hawMirror(done) {
   const fd = $('#fade'); state = 'loadingCh'; fd.style.transition = 'opacity .6s'; fd.style.opacity = 1; sfx.whoosh && sfx.whoosh(); sfx.leadOn = true; // no music under it
   show(ui.xhud, false); try { hideNarr(); } catch (e) {} { const bb = $('#bossBar'); if (bb) bb.classList.remove('on'); } // and none of the game's HUD over it: no quests, no minimap, no notices
@@ -13237,6 +13304,7 @@ async function hawMirror(done) {
     try { if (HMIR.M) { HMIR.M.voice.stop(); HMIR.M.music.stop(); } } catch (e) {}
     if (HMIR.box) HMIR.box.remove(); HMIR.box = HMIR.f = HMIR.M = null; sfx.leadOn = false;
     state = 'explore'; show(ui.xhud, true); resize(); clock.getDelta(); fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; }, 950); done(); };
+  if (tiPhone()) { hawStage(finish); return; } // phones: staged on the nightmare's stage, like the Chompy nightmare (the 13 MB montage is too much for them)
   let ok = false; try { ok = await hawMirrorOpen(); } catch (e) { console.error(e); }
   if (!ok) { if (HMIR.box) HMIR.box.remove(); window.__sevAssets = null; finish(); return; }
   const M = HMIR.M; try { M.prime(); } catch (e) {}
@@ -19791,7 +19859,7 @@ function nmBeat(i) {
 function nmClip(ref) { if (!ref) return null; const [k, i] = ref; return (NM.vo[k] || [])[i] || null; }
 function nmSay(L) {
   const clip = nmClip(L[2]); fbSay(L[0], L[1], clip, 1.3);
-  const kind = /ORION/.test(L[0]) ? 'orion' : /NICO|HFOS|DARIUS/.test(L[0]) ? 'james' : NM.script.kind;
+  const kind = /ORION/.test(L[0]) ? 'orion' : /NICO|HFOS|DARIUS/.test(L[0]) ? 'james' : NM.script.kind === 'haw' && /GUARD/.test(L[0]) ? 'sev' : NM.script.kind;
   if (fb.sub) { fb.sub.kind = kind; fbSubEl.className = 'on ' + kind; }
   return clip ? clip.duration : Math.max(1.6, L[1].split(/\s+/).length * .36);
 }
@@ -19871,6 +19939,7 @@ function spaceViewOnly(dt) { // the ship hangs there while they talk you down
 }
 async function nmWake() {
   if (NM.coup) { erisCoupEnd(); return; } // the coup on Eris, for real
+  if (NM.hawStage) { hawStageEnd(); return; } // Hawthorne's scene on phones
   if (CUT.on === 'nightmare') { cutNmEnd(); return; } // replayed from Cutscenes
   NM.phase = 'wake'; fbSubHide(); sfx.drone(0); if (NM.vo.music) sfx.stopSong(1.5);
   if (NM.saveCam) { camera.near = NM.saveCam.near; camera.far = NM.saveCam.far; camera.fov = NM.saveCam.fov; camera.updateProjectionMatrix(); }

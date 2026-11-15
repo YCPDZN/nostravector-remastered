@@ -1930,3 +1930,24 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - The High Priest of Destruction.
   - Sepia memory filter, the recorded Sevirrus lines, Wonders of Laniakea under it (Fields of Carax if that can't load).
 - It never loads the 13 MB Sevirrus montage, which was what phones couldn't hold. **Desktop keeps the real montage.** Orion and Nico wake you the same way on both.
+
+## Hawthorne's staged scene on phones: on the nightmare's stage, like the Chompy nightmare
+- **On phones, the scene Hawthorne stages after the Cygnus fight plays on the nightmare's dark stage, in the throne hall of Alphinos**, the same way the Chompy nightmare now does, instead of loading the 13 MB Sevirrus montage. **Desktop keeps the real montage.**
+- **Same beats and every line, all in his voice:**
+  - The ten breakdown lines (CH3HAWTHORNEFAKESEVIRRUSSCENE1–10), then, still crowned and straight down the lens, his five lines (11–15).
+  - **Hawthorne** wears a crooked gold crown and carries a blade.
+  - **The Chompy guard** stumbles in ("M-Majesty… the wounded are asking for—"), gets "WHO TOLD YOU TO LOOK AT ME?!", and is cut down. His line is subtitles only.
+  - Hawthorne rages, kneels at the throne ("Father…", "I am NOT WEAK!"), then stands for "Let them come to Alphinos…" and the rest.
+  - His subtitles are in his cyan, the guard's in the Chompy gold, with a red flash at each cut.
+- **Skip** (or Esc) ends it. Either way he says his escape lines on the bridge and leaves in the pod. If his model can't load, it goes straight to that.
+
+## Temporary · Reset progress: a fourth option, Chapter III · Hawthorne
+- **Chapter III · Hawthorne** (on the Load game screen, two taps) puts you **aboard the Cygnus, at the bridge**, with Hawthorne ahead: walk in for his conversation and the fight.
+- **Already done:**
+  - Chapters I and II, and Chapter III up to the Cygnus: your species' nightmare, Khazglar, Hawthorne on Mars, Charon and Kizna, and James Brown.
+  - James was spared, so he's in your crew with Khazglar. Nyrexia was never recruited, so she died in the coup on Eris.
+  - Hak's call and the meeting in Karribassa. Terra Imperia's surge is under way, with Earth fallen.
+  - All five of the Cygnus's decks are cleared.
+- It goes in the way docking from orbit does: nothing of Mercury shows, and you leave the Cygnus back into orbit beside her.
+- Level, items and the rest start from zero, as with the other resets. Hawthorne is level 1 anyway.
+- Also for docking generally: the screen now stays black from touching down until you're aboard.
