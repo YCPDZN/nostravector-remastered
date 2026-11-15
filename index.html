@@ -2532,6 +2532,11 @@ const pedestal = new THREE.Group();
 
 /* ============ audio ============ */
 const COMBAT_TRACKS = ['Predator I', 'Predator II', 'Predator III', 'Predator IV', 'Wonders of Laniakea (Combat)'];
+// Settings → Combat themes plays these in turn: the combat tracks, then the faction leaders' and Primes' themes (data/th*.js, loaded on first play)
+const MENU_THEMES = [...COMBAT_TRACKS.map(name => ({ name })),
+  { name: 'Descendant of Shakhak', k: 'hak' }, { name: 'The Child of Eris', k: 'eris' }, { name: 'The Guardian of Humanity', k: 'darius' },
+  { name: 'The Prime Good', k: 'primeGood' }, { name: 'The Light Egg', k: 'lightEgg' }, { name: 'The Prime Evil', k: 'primeEvil' },
+  { name: 'The Wrong Enemy', k: 'wrong' }, { name: 'Final Boss Theme', k: 'final' }];
 const sfx = (() => {
   let combatSrc = null, combatOn = false, combatIdx = -1, combatTok = 0; const combatCache = {};
   // the menu theme can change with the story (chapter IV has its own)
@@ -2637,7 +2642,7 @@ const sfx = (() => {
     stopSong(t = 1.5) { if (!songSrc || !ctx) return; const { s, g } = songSrc; songSrc = null; g.gain.cancelScheduledValues(ctx.currentTime); g.gain.setTargetAtTime(0, ctx.currentTime, t / 3); try { s.stop(ctx.currentTime + t + .1); } catch {} },
     music(level) { if (level === musicLevel) return; musicLevel = level; if (musicGain && !combatOn) musicGain.gain.setTargetAtTime(level, ctx.currentTime, .5); },
     // combat themes: their own looping layer that ducks the menu theme, crossfading between tracks
-    async combat(on, idx) {
+    async combat(on, idx, ext) { // ext: where to get a track that isn't one of the combat tracks (a leader's theme, from the music player)
       if (!ctx) return;
       const now = ctx.currentTime, fadeOut = (src, t) => { if (!src) return; src.g.gain.cancelScheduledValues(now); src.g.gain.setTargetAtTime(0, now, t / 3); src.s.stop(now + t + .1); };
       if (!on) {
@@ -2650,6 +2655,7 @@ const sfx = (() => {
       if (combatOn && idx === combatIdx) return;
       const tok = ++combatTok; combatOn = true; combatIdx = idx; applyAreaGain();
       if (musicGain) musicGain.gain.setTargetAtTime(0, now, .4);
+      if (!combatCache[idx] && idx >= COMBAT_TRACKS.length) { if (!ext) return; combatCache[idx] = Promise.resolve(ext()).catch(() => null); }
       if (!combatCache[idx]) combatCache[idx] = new Promise(res => {
         try {
           const bin = atob(document.getElementById('cm' + (idx + 1)).textContent.trim()), u8 = new Uint8Array(bin.length);
@@ -2995,12 +3001,12 @@ function goMenu(id) {
 }
 for (const b of document.querySelectorAll('#title [data-go]')) b.addEventListener('click', () => { sfx.init(); sfx.click(); goMenu(b.dataset.go); });
 newBtn.addEventListener('click', () => { sfx.init(); sfx.click(); startIntro(); });
-const refreshSettings = () => { $('#setSound .val').textContent = muted ? 'OFF' : 'ON'; $('#setMusic .val').textContent = musicOn ? 'ON' : 'OFF'; refreshOpts(); const ct = sfx.combatTrack; $('#setCombat .val').textContent = ct < 0 ? 'PLAY' : COMBAT_TRACKS[ct].toUpperCase(); };
+const refreshSettings = () => { $('#setSound .val').textContent = muted ? 'OFF' : 'ON'; $('#setMusic .val').textContent = musicOn ? 'ON' : 'OFF'; refreshOpts(); const ct = sfx.combatTrack; $('#setCombat .val').textContent = ct < 0 ? 'PLAY' : ((MENU_THEMES[ct] || {}).name || '').toUpperCase(); };
 // preview the combat themes from Settings: each tap plays the next one, then back to the menu theme
 $('#setCombat').addEventListener('click', () => {
   sfx.init(); sfx.click();
-  const n = sfx.combatTrack + 1;
-  if (n >= COMBAT_TRACKS.length) sfx.combat(false); else sfx.combat(true, n);
+  const n = sfx.combatTrack + 1, T = MENU_THEMES[n];
+  if (!T) sfx.combat(false); else sfx.combat(true, n, T.k ? () => leaderTheme(T.k) : null);
   setTimeout(refreshSettings, 30);
 });
 // in play, anything hostile calls combatPulse(); the music fades out a few seconds after the last threat
@@ -6538,7 +6544,8 @@ function partyNow() {
   for (const id of wanderer.party || []) if (PARTY[id] && !out.includes(id)) out.push(id);
   const lent = (wanderer.dip && wanderer.dip.lent) || {};
   const aboard = (wanderer && wanderer.aboard) || {}, dun = (wanderer && wanderer.dungeon) || {};
-  return out.filter(id => !lent[id] && !aboard[id] && !dun[id]); // away in a dungeon, too // companions lent to another faction (Diplomacy) are away; dismissed ones wait aboard the Nostra
+  const home = !!(wanderer.ch3 && wanderer.ch3.siegeWon); // Hak, Darius and Vishara: only until the blockade ends
+  return out.filter(id => !lent[id] && !aboard[id] && !dun[id] && !(home && SIEGE_LEADS[id])); // away in a dungeon, too // companions lent to another faction (Diplomacy) are away; dismissed ones wait aboard the Nostra
 }
 // ---- every companion, the same way: a level, what they're doing, and (for anyone who joins later) a rig that walks like the rest ----
 function compLevel(id) {
@@ -12623,6 +12630,7 @@ function tiLanded(P) {
   if (P.id === 'charon' && (chnQ() || chnBackQ())) chnPlace().catch(e => console.error(e));
   if (P.id === 'janira' && (hakQ() || hakBackQ())) hakPlace().catch(e => console.error(e));
   if (P.id === 'janira' && siegeQ()) setTimeout(() => siegePlace(false), 800); // the blockade: the base, and the rover
+  if (P.id === 'janira' && siegeQ() && c3f('siegeLeft')) { setC3({ siegeLeft: false }); if (siegeLeadsOn()) setTimeout(() => { if (state === 'explore') sayAs('DARIUS ANCIN', 'Still standing. Good. Let’s finish this.', 4200); }, 3600); }
   if (P.id === 'mercury' && (cygQ() || cygFarm())) cygPlace();
   if (SPC.cygDock) { SPC.cygDock = false; { const fd = $('#fade'); fd.style.transition = 'none'; fd.style.opacity = 1; } setTimeout(cygDockIn, 350); return; } // you docked with the Cygnus in orbit: straight aboard, and nothing down on Mercury (patrols, a hunter, the war) turns up to announce itself
   if (P.id === 'earth' && jamesQ()) stationPlace();
@@ -12942,7 +12950,8 @@ async function hakPlace(tries = 0) { // the Emperor, in the heart of Karribassa:
    their faction leaders' levels, and take three orders: Follow, Hold Position, Advance (the buttons over the controls, or G / H / J).
    A Chompy rover (purple and light blue) waits by the bridge. Terra Imperia's base stands 1 km from Karribassa: walls, towers, troops,
    and, out in the open (not a lair), Croxian Mascar and Malia de Toro, with a Pontifex Maximus and a Sister of Hawthorne if any are
-   hunting you. Beat them and the blockade ends (ch3.siegeWon). The three stay with you, and walk behind you on the main menu.
+   hunting you. Beat them and the blockade ends (ch3.siegeWon). They're temporary companions: once it's over they say goodbye and go home to
+   Karribassa (siegeLeave), and saves from before this lose them too. Until then they stay with you as long as you like.
    Saves: ch3.siegeOn, ch3.siegeWon; the leaders are in wanderer.party as lead:hak, lead:darius, lead:vishara. ---- */
 function iceBolt(R, foe) { // a shard of blue ice flies from the caster's hand, bursts into frost, and the target slows
   const q = R.root.position, a = R.root.rotation.y, sx = q.x + Math.sin(a) * .5, sy = q.y + 1.4, sz = q.z + Math.cos(a) * .5, tx = foe.x, ty = (foe.y || 0) + .9, tz = foe.z;
@@ -12952,6 +12961,7 @@ function iceBolt(R, foe) { // a shard of blue ice flies from the caster's hand, 
 }
 function siegeCmd(mode) { // Follow · Hold position · Advance, for Hak, Darius and Vishara together
   const ids = Object.keys(SIEGE_LEADS).filter(id => partyNow().includes(id)); if (!ids.length) return;
+  if (mode === 'advance' && !SG.base) { lootMsg(siegeQ() ? 'Nothing to advance on here · Terra Imperia’s base is on Janira Prime' : 'Nothing to advance on here', '#cfd6e6'); return; }
   const p = player.position; (wanderer.cmds || (wanderer.cmds = {}));
   ids.forEach((id, i) => { wanderer.cmds[id] = mode; const C = CREW[id]; if (C) C.holdAt = mode === 'hold' ? [(C.R ? C.R.root.position.x : p.x), (C.R ? C.R.root.position.z : p.z)] : null; });
   const c = curChar(); if (c) c.cmds = wanderer.cmds; saveRoster(); sfx.click();
@@ -12964,7 +12974,7 @@ function siegeCmdUI() {
   if (!el) { if (!on) return; el = document.createElement('div'); el.id = 'siegeCmd'; el.innerHTML = '<small>HAK · DARIUS · VISHARA</small><div><button data-m="follow">Follow<em>G</em></button><button data-m="hold">Hold position<em>H</em></button><button data-m="advance">Advance<em>J</em></button></div>';
     el.addEventListener('pointerdown', e => { const b = e.target.closest('button[data-m]'); if (!b) return; e.preventDefault(); e.stopPropagation(); siegeCmd(b.dataset.m); }); document.body.appendChild(el); }
   el.classList.toggle('on', on); const m = (wanderer && wanderer.cmds && wanderer.cmds['lead:hak']) || 'follow';
-  for (const b of el.querySelectorAll('button')) b.classList.toggle('sel', b.dataset.m === m);
+  for (const b of el.querySelectorAll('button')) { b.classList.toggle('sel', b.dataset.m === m); b.style.display = b.dataset.m === 'advance' && !SG.base ? 'none' : ''; } // Advance: only on Janira Prime, with the base still standing
 }
 function siegeStart() { // straight after Hak's prayer
   if (c3f('siegeOn')) return; setC3({ siegeOn: true });
@@ -13076,7 +13086,18 @@ function siegeWin() {
   $('#bossBar').classList.remove('on'); SG.barOn = false; if (TIW.siege && TIW.siege.beacon) TIW.siege.beacon.visible = false;
   notice('Main quest complete', tiPhone() ? 'THE BLOCKADE IS BROKEN' : 'THE BLOCKADE OF JANIRA PRIME IS BROKEN', 4600); renderTasks();
   setTimeout(() => bark('Hak Chompjak V: Karribassa stands. Now he knows we are coming.', 4200), 2600);
-  setTimeout(() => lootMsg(tiPhone() ? 'Hak, Darius and Vishara stay with you' : 'Hak, Darius and Vishara stay with you · Take Sol back from Terra Imperia: bombard its worlds and beat their governors', '#ffb060'), 7400);
+  setTimeout(() => sayAs('DARIUS ANCIN', 'That’s our part done. Go take Sol back, wanderer. We’ll hold the line here.', 4200), 7000);
+  setTimeout(() => sayAs('VISHARA ERISCONOS', 'Eris owes you a debt. We will not forget it.', 4000), 11400);
+  setTimeout(() => { siegeLeave(); lootMsg(tiPhone() ? 'Hak, Darius and Vishara return to Karribassa' : 'Hak, Darius and Vishara return to Karribassa · Take Sol back from Terra Imperia: bombard its worlds and beat their governors', '#ffb060'); }, 15600);
+}
+function siegeLeave() { // the blockade is over: the three go home, from your side, your ship and the main menu
+  if (!wanderer) return; const ids = Object.keys(SIEGE_LEADS), had = (wanderer.party || []).some(id => ids.includes(id)) || ids.some(id => wanderer.aboard && wanderer.aboard[id]);
+  if (!had) return;
+  wanderer.party = (wanderer.party || []).filter(id => !ids.includes(id));
+  for (const id of ids) { if (wanderer.cmds) delete wanderer.cmds[id]; if (wanderer.aboard) delete wanderer.aboard[id]; delete PARTY[id]; const C = CREW[id]; if (C && C.R) { const q = C.R.root.position; if (C.R.root.visible && C.R.root.parent === wScene) burst(q.x, q.y + 1, q.z, 24, 3, .8, .7, 1, .6, 1, 1.2); C.R.root.visible = false; } }
+  const c = curChar(); if (c) { c.party = wanderer.party; c.cmds = wanderer.cmds; c.aboard = wanderer.aboard; } saveRoster();
+  if (ids.includes(ex.cSel)) ex.cSel = null; try { refreshJamesUI(); siegeCmdUI(); shipCrewPlace(); } catch (e) {}
+  ui.xhud.classList.toggle('comp', companionOn() || partyNow().length > 0);
 }
 function hakGlasses(off, done) { // Hak's glasses (Glass lens, Glasses frame/temple/bridge, Lens glint in leader_chompy): taken off by hand, or put back
   const H = TIW.hak && TIW.hak.R[0]; if (!H || !H.ra) { done(); return; }
@@ -18688,6 +18709,7 @@ function shipUnstick() { // the nearest open floor, if you're standing inside so
 function shipShowDeck(d) { SHIPI.deck = d; SHIPI.decks.forEach((g, i) => { g.visible = i === d; }); shipCrewPlace(); }
 // companions waiting aboard stand (or sit) about the crew deck
 async function shipCrewPlace() {
+  shipFollowPlace().catch(e => console.warn(e)); // and whoever's following you, on whichever deck you're on
   const want = aboardIds();
   for (const [id, R] of Object.entries(SHIPI.rigs)) if (!want.includes(id) && R.root.parent) R.root.parent.remove(R.root);
   for (const [i, id] of want.entries()) {
@@ -18701,7 +18723,44 @@ async function shipCrewPlace() {
 async function compRigFor(id) { // a fresh rig of a companion, for the ship
   if (id === 'nico') return nicoCompanionRig();
   if (id === 'orion') { const el = document.getElementById('cpOrion'), bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); const R = autoRig(SkeletonUtils.clone(await parseGlb(u8.buffer)), 1.85); armRig(R, 'rifle'); return R; }
-  const c = charById(id); return c ? loadCharRig(c, 1.85) : null;
+  const c = charById(id); return c ? loadCharRig(c, 1.85) : companionRig(id); // Hak, Darius, Vishara, a Pontifex, Khazglar…: the rig they walk with on the ground
+}
+/* ---- followers come aboard: whoever is following you walks the Nostra's decks behind you, the way they do on the ground.
+   Quest companions too: Hak, Darius and Vishara stay with you as long as the blockade of Janira Prime is on, aboard and on any
+   world, and it waits until you go back and end it; then they go home. (Dismissed companions wait on the crew deck instead, as before.) ---- */
+SHIPI.frigs = {}; SHIPI.fload = {};
+const shipFollowIds = () => (wanderer ? partyNow().filter(id => id !== 'james') : []);
+function shipFree(x, z) { const [x0, x1, z0, z1] = SHIP_BOUNDS[SHIPI.deck]; if (x < x0 + .3 || x > x1 - .3 || z < z0 + .3 || z > z1 - .3) return false; for (const [a, b, c, e] of SHIP_COLS[SHIPI.deck]) if (x > a - .3 && x < b + .3 && z > c - .3 && z < e + .3) return false; return true; }
+function shipFollowSpot(k) { // open floor just behind you
+  const p = player.position, a = player.rotation.y;
+  for (const r of [1.3 + k * .6, 1, 1.8, .8]) for (const da of [0, .7, -.7, 1.4, -1.4, 2.2, -2.2, Math.PI]) { const t = a + Math.PI + da + (k % 2 ? .45 : -.45), x = p.x + Math.sin(t) * r, z = p.z + Math.cos(t) * r; if (shipFree(x, z)) return [x, z]; }
+  return [p.x, p.z];
+}
+async function shipFollowPlace() {
+  if (!SHIPI.on) return; const want = shipFollowIds();
+  for (const [id, R] of Object.entries(SHIPI.frigs)) if (!want.includes(id) && R.root.parent) R.root.parent.remove(R.root);
+  for (const [k, id] of want.entries()) {
+    let R = SHIPI.frigs[id];
+    if (!R) { if (SHIPI.fload[id]) continue; SHIPI.fload[id] = true; try { R = await compRigFor(id); } catch (e) { console.warn('follower rig failed', id, e); R = null; } SHIPI.fload[id] = false; if (!R) continue; SHIPI.frigs[id] = R; }
+    if (!SHIPI.on || !shipFollowIds().includes(id)) continue;
+    const deck = SHIPI.decks[SHIPI.deck]; if (!deck) continue;
+    if (R.root.parent !== deck) { deck.add(R.root); const [x, z] = shipFollowSpot(k); R.root.position.set(x, 0, z); R.root.rotation.y = player.rotation.y; R.mode = 'idle'; }
+  }
+}
+function shipFollowTick(dt) {
+  const want = shipFollowIds(), p = player.position, still = ex.dlg || ex.invOpen;
+  want.forEach((id, k) => {
+    const R = SHIPI.frigs[id]; if (!R || !R.root.parent) return; const o = R.root.position, dx = p.x - o.x, dz = p.z - o.z, d = Math.hypot(dx, dz) || 1;
+    if (d > 4.5) { const [x, z] = shipFollowSpot(k); o.set(x, 0, z); R.mode = 'idle'; } // round a corner, out of the lift: they catch up
+    else if (!still && d > 1.15 + k * .5) { const v = (d > 2.6 ? 3.6 : 2.2) * dt, nx = o.x + dx / d * v, nz = o.z + dz / d * v; if (shipFree(nx, o.z)) o.x = nx; if (shipFree(o.x, nz)) o.z = nz; R.mode = 'walk'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 8)); }
+    else { R.mode = 'idle'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 3)); }
+    animRig(R, dt);
+  });
+}
+function sayAs(who, line, ms = 4200) { showNarr(who, line); clearTimeout(world.barkT); world.barkT = setTimeout(hideNarr, ms); }
+function siegeShipLine(from) { // boarding the Nostra on Janira Prime with the blockade still on: Hak doesn't mind the wait
+  if (from === 'space' || !siegeQ() || !siegeLeadsOn() || !isPl() || !world.planet || world.planet.P.id !== 'janira' || SHIPI.siegeSaid) return;
+  SHIPI.siegeSaid = true; setTimeout(() => { if (SHIPI.on) sayAs('HAK CHOMPJAK V', 'Karribassa has walls, and its people are stubborn. It will hold a while. Where you go, we go.', 5200); }, 2600);
 }
 function enterShip(from) {
   if (SHIPI.on) return;
@@ -18715,7 +18774,7 @@ function enterShip(from) {
   if (d === 0) { player.position.set(0, 0, 6.8); player.rotation.y = Math.PI; } else { player.position.set(0, 0, 3.4); player.rotation.y = Math.PI; }
   ex.yaw = player.rotation.y + Math.PI; ex.pitch = .2; ex.dist = Math.min(ex.dist || 4, 3.4); vel.set(0, 0, 0); ex.snap = true;
   ui.xhud.classList.remove('cutting', 'cineonly', 'dreaming'); renderTasks();
-  notice(from === 'space' ? 'Aboard · in flight' : 'Aboard', 'THE NOSTRA', 2400); sfx.whoosh(); renderHotbar();
+  notice(from === 'space' ? 'Aboard · in flight' : 'Aboard', 'THE NOSTRA', 2400); sfx.whoosh(); renderHotbar(); siegeShipLine(from);
 }
 function leaveShip(to) { // to: 'ground' (down the ramp), 'space' (back to the helm), or 'takeoff'
   if (!SHIPI.on) return;
@@ -18728,7 +18787,7 @@ function leaveShip(to) { // to: 'ground' (down the ramp), 'space' (back to the h
   if (orionJoined()) placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
 }
 function updateShipMode(dt) {
-  const p = player.position, d = ex.dlg; SHIPI.t += dt;
+  const p = player.position, d = ex.dlg; SHIPI.t += dt; shipFollowTick(dt);
   if (SHIPI.core) { SHIPI.core.material.emissiveIntensity = 1.4 + Math.sin(SHIPI.t * 3) * .4; SHIPI.coreLight.intensity = 3.5 + Math.sin(SHIPI.t * 3) * 1; }
   if (SHIPI.holo) SHIPI.holo.rotation.y += dt * .25;
   for (const R of Object.values(SHIPI.rigs)) if (R.root.parent) animRig(R, dt);
@@ -18807,7 +18866,10 @@ const DISMISS_LINES = {
   orion: ['I’ll wait aboard the Nostra. Put the kettle on when you get back, and don’t do anything I wouldn’t.', 'Back aboard? Good. Lead on, friend.'],
   nico: ['I’ll keep the Nostra warm. Try not to get yourself shot without me.', 'About time. Both guns are ready.'],
   james: ['I’ll head back to the ship. Holler if you need me.', 'Right behind you.'],
-  khazglar: ['I will wait aboard. Wake me if anything interesting crosses the sky.', 'Lead on. I have sat still for long enough.']
+  khazglar: ['I will wait aboard. Wake me if anything interesting crosses the sky.', 'Lead on. I have sat still for long enough.'],
+  'lead:hak': ['Then I will wait aboard. Your ship is quieter than my palace. I find I prefer it.', 'Good. My sword was getting restless.'],
+  'lead:darius': ['I’ll be aboard. Call me when there’s something worth shooting.', 'About time. Let’s move.'],
+  'lead:vishara': ['I will wait aboard the Nostra. Try not to freeze without me.', 'Lead on, wanderer.']
 };
 const dismissLine = id => (DISMISS_LINES[id] || [`I’ll be aboard the Nostra if you need me.`, 'Let’s go.'])[0];
 const recallLine = id => (DISMISS_LINES[id] || [null, 'Let’s go.'])[1];
@@ -18885,6 +18947,7 @@ function compTracer(R, foe) { // a muzzle flash and a streak to the target, as O
 }
 /* ---- crew: the imported Project BC / Sevirrus characters (and your own creations) as companions ---- */
 function syncCrewParty() {
+  if (wanderer && wanderer.ch3 && wanderer.ch3.siegeWon) siegeLeave(); // Hak, Darius and Vishara went home when the blockade ended (saves from before they left, too)
   pontParty(); // your Pontifexes
   for (const id of (wanderer && wanderer.party) || []) if (SIEGE_LEADS[id] && !PARTY[id]) PARTY[id] = { name: SIEGE_LEADS[id].name, full: SIEGE_LEADS[id].full, crew: true, story: true }; // Hak, Darius and Vishara, from the blockade of Janira Prime
   for (const id of (wanderer && wanderer.party) || []) if (!PARTY[id]) { const L = COMPANIONS.find(o => o.id === id && o.tag); if (L) { PARTY[id] = { name: titleName(L.name.split(' ')[0]), full: titleName(L.name), crew: true, story: true }; continue; } }
@@ -19492,6 +19555,7 @@ function shipLandTick(dt) {
 // back to space from the ground
 function takeOff() {
   const S = world.landShip; if (!S) return;
+  if (siegeQ() && siegeLeadsOn() && isPl() && world.planet && world.planet.P.id === 'janira') setC3({ siegeLeft: true }); // the blockade waits for you
   SPC.ascent = { t: 0 }; state = 'shipUp'; show(ui.xhud, false); player.visible = false; if (world.orion) world.orion.root.visible = false; for (const f of S.userData.flames) f.visible = true; sfx.whoosh();
 }
 function shipUpTick(dt) {
@@ -20967,7 +21031,7 @@ const MENU_CREW = [
   // James Brown as Terra Imperia made him (the Pontifex Maximus), once you've spared him and he's joined you: beyond Nico and Nyrexia on your right
   { id: 'james-ti', joined: () => !!(wanderer && wanderer.ch3 && wanderer.ch3.jamesFate === 'spared'), side: () => { const n = (companionOn() ? 1 : 0) + (nicoJoined() ? 1 : 0) + (wanderer.ch3 && wanderer.ch3.nyxJoined ? 1 : 0); return menuCrewFit([1.7 + n * 1.6, .4 + n * .7]); }, R: null, load: null }
 ];
-MENU_CREW.push(...[['lead:hak', [-1.6, 3.4]], ['lead:darius', [0, 3.9]], ['lead:vishara', [1.6, 3.4]]].map(([id, at]) => ({ id, joined: () => !!(wanderer && (wanderer.party || []).includes(id)), side: () => menuCrewFit(at), R: null, load: null }))); // Hak, Darius and Vishara, once they've joined you: a row behind you
+MENU_CREW.push(...[['lead:hak', [-1.6, 3.4]], ['lead:darius', [0, 3.9]], ['lead:vishara', [1.6, 3.4]]].map(([id, at]) => ({ id, joined: () => !!(wanderer && (wanderer.party || []).includes(id) && !(wanderer.ch3 && wanderer.ch3.siegeWon)), side: () => menuCrewFit(at), R: null, load: null }))); // Hak, Darius and Vishara, once they've joined you: a row behind you
 function menuCrewFit([sd, b]) { return camera.aspect < 1 && Math.abs(sd) > 2 ? [sd * .72, b + .9] : [sd, b]; } // a phone held upright: the outer two step in (and back a little) so they stay on screen
 function menuCrewShow() {
   for (const M of MENU_CREW) {

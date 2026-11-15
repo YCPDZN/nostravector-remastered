@@ -2046,5 +2046,18 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - One boss bar covers them all, and The Wrong Enemy plays.
   - Beaten, Croxian and Malia fall back to their ships.
 - **The blockade breaks** when they're all beaten. You get 1,500 XP, Hak says "Karribassa stands. Now he knows we are coming", and the quest moves on to taking Sol back.
-- **Hak, Darius and Vishara stay with you,** and walk in a row behind you on the main menu.
+- **Hak, Darius and Vishara stay with you** for the blockade, and walk in a row behind you on the main menu while they're with you.
 - **Nyrexia fights with ice magic everywhere now,** like her sister Vishara.
+
+## Hak, Darius and Vishara, until the blockade ends
+- **The blockade waits for you.** Ending it is up to you: leave Janira Prime whenever you want, with Hak, Darius and Vishara still beside you, and come back to finish it when you're ready. The base, the rover and the fight are still there when you land.
+  - Board the Nostra on Janira Prime with the blockade still on and Hak says: "Karribassa has walls, and its people are stubborn. It will hold a while. Where you go, we go."
+  - Land back on Janira Prime afterwards and Darius says: "Still standing. Good. Let's finish this."
+- **Followers come aboard.** Whoever's following you (Hak, Darius, Vishara, Nico, Orion, Khazglar, your crew) now walks the Nostra's decks behind you, the way they do on the ground. They take the lift with you and catch up if they fall behind. Companions you dismiss still wait on the crew deck.
+- **Hak, Darius and Vishara can be dismissed** to wait aboard like anyone else, each with their own goodbye. Before this they would vanish, because the ship had no model for them.
+- **Advance** only shows on Janira Prime, while Terra Imperia's base is standing. Everywhere else the three just take Follow and Hold position.
+- **They're temporary companions.** When the blockade breaks, Hak says "Karribassa stands. Now he knows we are coming", then Darius ("That's our part done. Go take Sol back, wanderer. We'll hold the line here.") and Vishara ("Eris owes you a debt. We will not forget it.") say goodbye, and the three go home to Karribassa. They leave your side, the Nostra (even if you'd sent them to wait aboard) and the main menu.
+  - Saves that ended the blockade before this lose them the same way the next time they load.
+
+## The faction leaders' themes in the music player
+- **Settings → Combat themes now plays the faction leaders' and Primes' themes too.** After the five combat tracks it goes on to Descendant of Shakhak (Hak), The Child of Eris (Vishara), The Guardian of Humanity (Darius), The Prime Good and The Light Egg (Archamus), The Prime Evil (Zark), The Wrong Enemy and the Final Boss Theme, and then stops. Each theme loads the first time you play it.
