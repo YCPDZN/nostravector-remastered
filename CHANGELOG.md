@@ -2121,3 +2121,41 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - a hero who does evil with a villainous companion (they approve) draws them up toward the hero they follow.
   Neutral companions still just drift with your deeds, and Pontifexes and Sisters keep their own rules (evil always pleases them). Before, companions simply moved the way of each deed.
 - **Only companions in your party gain or lose influence.** Anyone waiting aboard the Nostra, lent to another faction or away in a dungeon is left out, whether the influence comes from your deeds, a conversation, or the crew's reactions to James's fate (before, Orion, Khazglar and Nico reacted to that if they'd ever joined you, even from the ship).
+
+## Test: the whole crew in Chapter V (`?ch5allteam`)
+- **Add `?ch5allteam=evil` to the game's address** and the title screen loads a test wanderer in Chapter V with every companion in the crew at once: Orion, Nico, Khazglar, Charon, Kizna, Nyrexia, Croxian, Malia, James (as Pontifex), Josiah Williams II, Javek, Tyrotaronus, and Gareth, Josiah Richards, Peter, Kevin and Sevirrus.
+  - You're at **−100 (Awakened Villain)** and every companion's chart is at **−90** with high influence, so they're all darkened and read as Evil on the alignment screen (L) and in the Nostrapedia.
+  - `=good` and `=neutral` do the same the other way, or grey. Left out, it's evil.
+- **It uses your active wanderer's look and level**, named "… · TEST", and **Continue** puts you aboard the Nostra in Sol, with the crew following you.
+- The story behind it: James spared, Croxian and Malia spared (so Orion stays), the blockade won, and Chapter IV's neutral ending into Chapter V. Pontifexes and Hak, Darius and Vishara aren't included.
+- **It's never saved.** Saving is refused while it's loaded, and nothing can erase a real slot. Reload without the switch to get your own saves back.
+
+## Josiah Williams II's face, and darkening that leaves skin alone
+- **Josiah Williams II's face no longer goes black as he turns.** His chin, skull, eye-whites, brow furrow and nose bridge were being darkened like clothing while the rest of his face stayed as it was. They're skin now, and so is Malia's chin, which had the same problem.
+- **Armour plates darken with the rest of the outfit.** A plate's outer surface ("chest shield face", "thigh shell face") was mistaken for a face and stayed bright while the armour around it darkened. That affected Josiah II, Khazglar and a few others.
+- **Gloved fingers darken with the glove** (Josiah II, Malia, Croxian, Khazglar), instead of staying light on dark gloves.
+
+## Fallen companions: crueller in your company
+- **Every companion who started good or neutral and turns evil gets a fallen Nostrapedia file:** a new alignment line, and a paragraph on what they've become beside you, after who they were. Orion, Nico, Khazglar, Charon, Kizna, Nyrexia, Croxian, Malia, Josiah Williams II, Javek, Tyrotaronus and Gareth all have one. Born villains (James as Pontifex, Kevin, Peter, Josiah Richards, Sevirrus, Pontifexes) keep theirs as they are.
+- **Gareth Williams now has a Companions file** while he's in your crew, with his alignment chart, like everyone else.
+- **Out in the world, fallen companions are crueller and more destructive:**
+  - They hunt harmless prey (gazelle, deer, capybara) and attack peaceful herds that stray within about 12 m, which can set a whole herd charging. None of it counts against your alignment: it's their cruelty, not yours.
+  - They hit 25% harder. Khazglar's hammer blast now catches harmless prey too.
+  - Every couple of minutes one of them says something cruel, and now and then they gloat over a kill. Each has their own lines.
+  - Orion does all of this too, with his rifle.
+
+## Javek, the Pontifexes and Sisters, and James darken too, and James is redeemed
+- **Javek darkens now.** He never did: his model is one mesh named "…skinned mesh", so all of him was taken for skin. He now goes by material. His gunmetal, brass, navy coat, trousers and leather darken, and his skin, green eyes, teeth, glowing circuitry and Hak-style glasses don't.
+- **Pontifexes and Sisters darken with how evil they are.** They start evil, so they start dark, and they go darker as evil pulls them further (or lighten if good sways them). Before, they never darkened at all.
+- **Their armour darkens all over.** On James, every Pontifex and every Sister, the whole suit darkens except the face, James's cybernetics and what glows (the reactor heart, the visor slit, the cyan Terra Imperia lights). Before, parts were missed because their names contain "ear" (forearm, rear horn, polearm, heart) or "crown" (crown shell, knee crown).
+- **James, spared, is Lawful Neutral, not Lawful Evil.** His file now speaks of the wanderer who spared him and the code he follows instead of a cause. Until you've spared him, his file is still the enemy's, Lawful Evil.
+  - **His chart starts at Lawful Neutral**, so he darkens as he turns. **His turn to darkness is Lawful Evil** ("Lawful Evil · was Lawful Neutral"), with a fallen Nostrapedia file and cruel lines of his own, like the other fallen companions.
+  - **Saves from before this** had his chart starting at Lawful Evil (−55). It's moved up once to the new scale (+63), so where you've pushed him is kept.
+
+## Corrupted files: Javek, James, and every Pontifex and Sister
+- **Javek's fall finally works.** His file reads "True Neutral (formerly Lawful Evil)", which the alignment chart couldn't read, so he could never turn (or darken). He now charts as True Neutral underneath, and the file still says what it said.
+- **Corrupted Javek** becomes *Leader of the Grob, again*, **Lawful Evil · as he once was**. His file adds "Fugitive no longer", "Mechanical arm: never hidden now" and "Ambition: the Grob Robotic Collective, rebuilt", alongside his fallen paragraph.
+- **Corrupted James** becomes *Pontifex Maximus · your executioner*: he serves you and whatever you order, and his code is gone.
+- **Every Pontifex and Sister in your service has a Companions file of their own**: their name, rank, armour colour, level and alignment chart, with their model in their own colours, darkened as far as they've gone.
+  - **Past −80, they're corrupted.** Their file becomes *Pontifex Maximus · corrupted* or *Sister of Hawthorne · corrupted*: a reactor running far past its limits, orders from no one but you, and a paragraph on the soldier burned away. A Pontifex's file notes that even James, who wore the title first, won't stand beside him. A Sister's notes that the other Sisters whisper she's what all of them were meant to become.
+- **`?ch5allteam` brings a Pontifex and a Sister too** (Varro Kade and Ilse Marrow). With `=evil` they're at −95, so their corrupted files show.
