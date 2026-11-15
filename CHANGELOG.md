@@ -2107,3 +2107,8 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - **Lord Zark, master of the Catharsis**, ruling from Carax, with Hawthorne (and Orion, if he turned) as his servants.
 - Chapter III's Terra Imperia tab is unchanged.
 - **Draven, Disciple of Sevirrus, is on the Catharsis tab too**, between Orion and Lord Zark, in his own model (bearded, in Sevirrus's black-and-red armour, with his sword). He follows the usurper Sevirrus was, who once killed for the Cult of Zark, so when the Catharsis's master turned out to be Zark, he knelt to him. Chaotic Evil, like Sevirrus. Clear the Usurper's Crypt on Aridaxx and his file marks him as fallen. Zark's file lists him among his servants.
+
+## Gareth Williams in a suit, and darkening for your whole crew
+- **Gareth Williams (Project BC) wears a suit now:** a charcoal jacket and trousers, a white shirt, a burgundy tie and black leather shoes, in place of his tank top, bare arms, white trousers and trainers. The model is rebuilt by `nightmare/tools/gareth_suit.py`.
+- **He darkens with his alignment like the other companions.** As he turns villainous, his suit, shirt and tie go dark, and his face, hair and hands stay as they are. Before, his model's parts had no names, so the darkening would have turned his face dark too.
+- **Every companion walking with you in the world now darkens with their alignment** (Nyrexia, Khazglar, Croxian, Malia, Josiah Williams II, Tyrotaronus, Gareth and the rest). Before, only Nico, Orion and James did out in the world; the others darkened only in the Nostrapedia and on the alignment screen.
