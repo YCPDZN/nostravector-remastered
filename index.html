@@ -13029,9 +13029,9 @@ async function siegeBosses() {
     SG.bosses.push({ R, c, key: L[0], name: L[1], kind: L[3], P: L[5] || null, st: 'chase', cd: 2 + i * .7, leapCd: 6 + i, t: 0, tels: [] });
   });
   sfx.alarm(); leaderPlay('wrong').catch(() => {});
-  const ph = tiPhone(), barks = [['CROXIAN MASCAR', 'Hello again, wanderer. You brought friends this time.'], ['MALIA DE TORO', 'The Emperor himself. Hawthorne will want your head on a plate, Hak.'], ['HAK CHOMPJAK V', 'Then he can come and take it. MASCAR!']];
+  const barks = [['CROXIAN MASCAR', 'Hello again, wanderer. You brought friends this time.'], ['MALIA DE TORO', 'The Emperor himself. Hawthorne will want your head on a plate, Hak.'], ['HAK CHOMPJAK V', 'Then he can come and take it. MASCAR!']];
   if (pont || sis) barks.splice(2, 0, [`${(pont || sis).name.toUpperCase()}`, 'In the name of the Grand Imperarch. Kneel.']);
-  barks.forEach(([w, t], i) => setTimeout(() => { if (TIW.siege === S) bark(`${ph ? '' : w + ': '}${t}`, 3400); }, 600 + i * 3600));
+  setTimeout(() => { for (const [w, t] of barks) siegeSay(w, t, 3600, () => TIW.siege === S); }, 600);
   notice('Terra Imperia', SG.bosses.length > 2 ? 'CROXIAN · MALIA · AND HAWTHORNE’S ANOINTED' : 'CROXIAN MASCAR · MALIA DE TORO', 3800);
 }
 function siegeBar() {
@@ -13052,7 +13052,7 @@ function siegeTick(dt) {
     if (c.dead || c.hp <= 0) { B.gone = true; c.dead = 1; const i = fauna.list.indexOf(c); if (i >= 0) fauna.list.splice(i, 1); for (const m of B.tels) if (m.parent) m.parent.remove(m); B.tels = [];
       burst(q.x, q.y + 1, q.z, 60, 6, 1, .3, .3, 1, 1.4, 2); sfx.thud(); setTimeout(() => { if (R.root.parent) R.root.parent.remove(R.root); }, 400);
       if (B.P) { notice(pontTitle(B.P), `${B.P.name.toUpperCase()} IS BEATEN`, 3000); setTimeout(() => pontChoice(B.P.id, () => {}), 1200); } // as on the Cygnus: take them in, kill them, or let them go
-      else bark(B.key === 'crox' ? 'Croxian Mascar: This isn’t over. Fall back!' : 'Malia de Toro: Pull out! Back to the ships!', 3200);
+      else siegeSay(B.key === 'crox' ? 'CROXIAN MASCAR' : 'MALIA DE TORO', B.key === 'crox' ? 'This isn’t over. Fall back!' : 'Pull out! Back to the ships!', 3000);
       if (SG.bosses.every(o => o.gone)) siegeWin(); continue; }
     c.x = q.x; c.z = q.z; c.y = q.y; c.slowT = Math.max(0, (c.slowT || 0) - dt);
     if (c.barT > 0) { c.barT -= dt; c.bar.visible = true; c.bar.quaternion.copy(camera.quaternion).premultiply(tmpQ.copy(R.root.quaternion).invert()); const f = c.bar.userData.fg, k = Math.max(0, c.hp / c.D.hp); f.scale.x = Math.max(.001, k); f.position.x = -(1 - k) / 2; } else c.bar.visible = false;
@@ -13085,10 +13085,23 @@ function siegeWin() {
   if (c3f('siegeWon')) return; setC3({ siegeWon: true }); sfx.leadOn = false; sfx.stopSong && sfx.stopSong(1.5); sfx.chime(); gainXP(1500, 'Ended the blockade of Janira Prime');
   $('#bossBar').classList.remove('on'); SG.barOn = false; if (TIW.siege && TIW.siege.beacon) TIW.siege.beacon.visible = false;
   notice('Main quest complete', tiPhone() ? 'THE BLOCKADE IS BROKEN' : 'THE BLOCKADE OF JANIRA PRIME IS BROKEN', 4600); renderTasks();
-  setTimeout(() => bark('Hak Chompjak V: Karribassa stands. Now he knows we are coming.', 4200), 2600);
-  setTimeout(() => sayAs('DARIUS ANCIN', 'That’s our part done. Go take Sol back, wanderer. We’ll hold the line here.', 4200), 7000);
-  setTimeout(() => sayAs('VISHARA ERISCONOS', 'Eris owes you a debt. We will not forget it.', 4000), 11400);
-  setTimeout(() => { siegeLeave(); lootMsg(tiPhone() ? 'Hak, Darius and Vishara return to Karribassa' : 'Hak, Darius and Vishara return to Karribassa · Take Sol back from Terra Imperia: bombard its worlds and beat their governors', '#ffb060'); }, 15600);
+  setTimeout(() => { // after the last boss's line: Hak, then the goodbyes, then they go home
+    siegeSay('HAK CHOMPJAK V', 'Karribassa stands. Now he knows we are coming.', 4200);
+    siegeSay('DARIUS ANCIN', 'That’s our part done. Go take Sol back, wanderer. We’ll hold the line here.', 4600);
+    siegeSay('VISHARA ERISCONOS', 'Eris owes you a debt. We will not forget it.', 4000);
+    siegeSay(null, () => { siegeLeave(); lootMsg(tiPhone() ? 'Hak, Darius and Vishara return to Karribassa' : 'Hak, Darius and Vishara return to Karribassa · Take Sol back from Terra Imperia: bombard its worlds and beat their governors', '#ffb060'); });
+  }, 1200);
+}
+// the fight's lines, one at a time, each under its own speaker's name (they used to all go out as Croxian's, and could talk over each other).
+// A line waits while a dialogue is open (a beaten Pontifex's choice); ok(), if given, can drop a line that no longer fits.
+const SSAY = { q: [], busy: false };
+function siegeSay(who, line, ms = 3600, ok) { SSAY.q.push({ who, line, ms, ok }); if (!SSAY.busy) siegeSayNext(); }
+function siegeSayNext() {
+  if (ex.dlg) { SSAY.busy = true; setTimeout(siegeSayNext, 500); return; }
+  const L = SSAY.q.shift(); if (!L) { SSAY.busy = false; return; } SSAY.busy = true;
+  if (L.ok && !L.ok()) { siegeSayNext(); return; }
+  if (typeof L.line === 'function') { try { L.line(); } catch (e) { console.error(e); } siegeSayNext(); return; } // an action, in turn
+  sayAs(L.who, L.line, L.ms); setTimeout(siegeSayNext, L.ms + 300);
 }
 function siegeLeave() { // the blockade is over: the three go home, from your side, your ship and the main menu
   if (!wanderer) return; const ids = Object.keys(SIEGE_LEADS), had = (wanderer.party || []).some(id => ids.includes(id)) || ids.some(id => wanderer.aboard && wanderer.aboard[id]);

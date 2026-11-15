@@ -2061,3 +2061,7 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 
 ## The faction leaders' themes in the music player
 - **Settings → Combat themes now plays the faction leaders' and Primes' themes too.** After the five combat tracks it goes on to Descendant of Shakhak (Hak), The Child of Eris (Vishara), The Guardian of Humanity (Darius), The Prime Good and The Light Egg (Archamus), The Prime Evil (Zark), The Wrong Enemy and the Final Boss Theme, and then stops. Each theme loads the first time you play it.
+
+## The blockade fight's dialogue, tidied
+- **Every line in the fight at Terra Imperia's base now shows under the right speaker's name.** Before, they all went out under Croxian Mascar's name, with the real speaker squeezed into the line on desktop and missing on phones.
+- **The lines play one at a time,** so the bosses' retreat lines and the victory lines no longer talk over each other. They wait while a beaten Pontifex's choice is on screen, and Hak, Darius and Vishara leave only after their goodbyes have played.
