@@ -2175,6 +2175,50 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   Both fight beside you, so you can't declare war on them. Saves from after the blockade start the war the next time you're on your feet or in space.
 - **New main quest: travel to Sol, with two objectives.**
   1. **Defeat Thomas Hawthorne on Mercury.** He makes his last stand at a command post under a crimson beacon, guarded by his Praetorians. Talk to him (Orion sends his regards, if he went to Hawthorne), then face him: **the real Hawthorne, lv 55**, far stronger than the one on the Cygnus (harder hits, quicker attacks, more health), to his own theme, **Terra Imperium**. The Hawthorne on the Cygnus keeps The Wrong Enemy. Beaten, **he slips away**, and Terra Imperia breaks: **the Human Federation of Sol is restored** to Earth (its capital again), Mars and every world Terra Imperia held in Sol, and the Human Resistance becomes the Federation again. Terra Imperia leaves Diplomacy, its patrols and fleets stop, and its land grab ends. Your colonies stay yours.
-  2. **Defeat Alexia Erisconos on Eris.** She waits with a Terra Imperia guard under a pale Erisian beacon. Face her (**lv 40**, to **The Child of Eris**). Beaten, **she flees the Citadel**, and **Vishara is Matriarch of Eris again**: the Erisian Resistance becomes the Erisian Empire once more, and a war with Eris now means Vishara.
+  2. **Defeat Alexia Erisconos on Eris.** She waits with a Terra Imperia guard under a pale Erisian beacon. Face her (**lv 40**, to **The Child of Eris**). Beaten, **Vishara has her taken to a cell**, and **Vishara is Matriarch of Eris again**: the Erisian Resistance becomes the Erisian Empire once more, and a war with Eris now means Vishara.
   - With both done: **Sol is free, and the War of Restoration is won** (+2,000 XP).
 - **The Siege of Mercury plays in Sol for as long as the War of Restoration lasts**: in space, aboard the Nostra, landing, and on any world in Sol. A fight in a hall plays its own theme (Terra Imperium for Hawthorne, The Child of Eris for Alexia), and the siege comes back after it. It stops once Sol is free. Siege of Mercury and Terra Imperium are in Settings → Combat themes too (`data/thMercury.js`, `data/thTerra.js`; the MP3s are in `assets/audio/leaders_themes/`).
+
+## Alexia on Eris, voiced, and Vishara's judgement
+- **Alexia speaks before the duel (ALEXIA1–9).** When you reach her post on Eris she has nine lines for you: Vishara, the court that spoke her sister's name like destiny, why she took Hawthorne's offer, Janira Prime, Nyrexia, and *"If you want to reach Mercury, you will have to get past me first!"* Then you choose to face her or not. Her voice loads as soon as she's placed, so it's ready when you get there (`data/alexiaVoices.js`).
+- **Beaten, she has one more thing to say (ALEXIA10):** *"Enough. Take the throne back to Vishara…"*
+- **New cutscene: *No Sister of Mine* (ALEXIADEFEATED1–10).** Vishara comes into the Citadel el Erisconos for her sister. It plays on the same Citadel set as *The Fall of Eris*, and it's the reverse of that scene:
+  1. Alexia is on her knees before the throne as Vishara walks up the processional. Alexia screams at her (lines 1–5): the throne, the fleets, Hawthorne leaving her to lose it alone, *"SAY SOMETHING!"*, *"I AM YOUR SISTER!"*
+  2. Vishara shakes with rage and disowns her (6–9). The guards step in on *"GUARDS, TAKE HER AWAY!"*
+  3. On the last line (10), the guards take Alexia out of the court while Vishara turns to you: *"WANDERER, ERIS WILL STAND WITH YOU AGAIN. NOW GO TO MERCURY…"*
+  Subtitles appear in Erisian violet, and Skip works as it does for every scene on this stage (`data/alexiaFallVoices.js`; the MP3s are in `assets/audio/alexia_ch3/`).
+- **Alexia no longer flees.** Afterwards: *ALEXIA ERISCONOS IS TAKEN TO A CELL*, then *VISHARA RETAKES ERIS*, and the Sol check as before.
+- **Cutscenes:** *No Sister of Mine* (Chapter III) unlocks once you've beaten her.
+
+## Charon and Kizna join, and the sieges of Mercury and Eris
+- **Charon and Kizna join your crew first.** Once the War of Restoration is called, the main quest sends you to Charon. Charon and Kizna wait by your ship: the alignment is over, the reactor can run without them, and they heard Hak's call. The scene is voiced: CH3FINALCHARON1–5, then 6 (*"Excellent. Kizna, bring the rock."*) or 7 (*"We'll be right here…"*) depending on your reply (`data/chkVoices.js`; the MP3s are in `assets/audio/charon_ch3/`). Say *"Welcome aboard, both of you"* and they join as companions, taking the same orders as the rest of your crew. Charon has a gold marker in space, and there's a task for it.
+- **Then you lay siege to both worlds.** The two missions only open once Charon and Kizna are with you. Saves already partway through the war go back to Charon first.
+- **Each siege is fought out in the open, like the blockade of Janira Prime, with no lairs:**
+  - **A Terra Imperia base**, 200–260 m from where you land, under a crimson beacon on Mercury or a pale one on Eris. It has black walls with a gate facing your ship, four towers, tents and banners, a garrison spread through it, and the command post at its heart. The quest marker points at it.
+  - **Patrols all over the planet** while the siege lasts, as on Janira Prime. Squads of two or three under crimson beacons, with more landing near you every minute or so.
+  - **The music:** the *Siege of Mercury* keeps playing across Sol, as before.
+- **The duels happen right there at the command post.** Talk to Hawthorne or Alexia (Alexia's voiced lines 1–9), choose to face them, and the fight starts where they stand, with their guard and your crew joining in. A boss bar shows at the top of the screen.
+  - **Hawthorne** (lv 55, to *Terra Imperium*): sword strikes, a leaping slam, and bursts from his sidearm. At half health he calls in two more Praetorians.
+  - **Alexia** (lv 40, to *The Child of Eris*): sword strikes, bolts of Erisian light (three at a time once she's hurt), and a flash that puts her right behind you.
+  - Both get faster when nearly beaten. Run more than 160 m from the post and they fall back to it, fully healed.
+  - Beaten, they drop to one knee and their garrison throws down its arms. Hawthorne's death plays (see below). Alexia says her last line, and then *No Sister of Mine* plays in the throne hall.
+  - Each one ends its world's siege: *THE SIEGE OF MERCURY IS WON* / *THE SIEGE OF ERIS IS WON*, the patrols are gone, and the rest plays out as before.
+
+## The end of the Grand Imperarch
+- **Hawthorne won't fight you until Alexia is beaten.** The siege of Mercury opens with Eris, but until Eris falls, talking to him only brings up *HAWTHORNE WILL NOT FACE YOU WHILE ALEXIA HOLDS ERIS* (no new lines). The task list now puts Eris first.
+- **Hawthorne dies on Mercury, in a slasher-horror cutscene:** *The End of the Grand Imperarch*. Beaten, he drops to one knee, and then:
+  1. **Through his own eyes**, he runs across Mercury for a Terra Imperia bunker, the camera bobbing and his breathing ragged (*"No… no, no, no…"*).
+  2. He looks back. **The wanderer is following him**: your own model, whatever your race (human, Chompy, Erisian, Grek, Oilkoumene or Taredesiban), black against a huge sun, with glowing red eyes, **walking and never running** (*"Stay back! I am the Grand Imperarch of Terra Imperia!"*).
+  3. He runs again, falls, gets up.
+  4. He looks back, and the wanderer is **right behind him**, with a sting (*"What ARE you?!"*).
+  5. From outside, he makes it through the bunker's red-lit door while the wanderer keeps walking. **Am-Grek watches from a ridge.**
+  6. Inside, through his eyes, the room is dark and the red emergency lights are failing. Something bangs on the door (*"Lock it. Lock it…"*).
+  7. He turns round, the lights come on, and **Hak is standing there**. *"Hello, Thomas."* Hak snaps his neck to one side the way Sevirrus did, then eases it back.
+  8. Hak walks up to him and talks (*"That thing out there is not why you came in here. You came in here because it wanted you to."*). Hawthorne begs.
+  9. **Hak punches him again and again**, a line for each set of blows: *"This is for Janira Prime." "For Eris." "For Darius. For every vote you spat on." "For every world you put in chains."* Blood flies with every hit, and Hawthorne sinks to his knees.
+  10. **Hak strangles him** against the door. *"Shh. Don't talk. Listen. That sound is your empire ending."* Then: *"Do you know what they called me, Thomas? Before the crown. Before I was Hak."* **He channels Sevirrus**: a red flash, red eyes, a red glow, the ghost of Sevirrus over him, *The Light Egg*, and both of them snap their necks. *"Sevirrus. He never left. He was only waiting for someone like you."*
+  11. *"Look at me."* **Hak drives his sword through him**: Hawthorne is lifted on the blade, the blade comes out of his back, and blood sprays. *"Goodnight, Grand Imperarch."* The blade comes out, Hawthorne falls, and Sevirrus fades.
+  12. The door opens on Mercury's glare, and **the wanderer is standing in it**, with Am-Grek far behind. Hak: *"He is yours to remember, wanderer. Mine to forget. Go home. Sol is free."*
+  **Voiced:** all 20 lines, CH3POSTFINALBOSS1–20 (`data/hawDeathVoices.js`; the MP3s are in `assets/audio/hawthorne_death_ch3/`). The chase plays to silence, a heartbeat and a low drone. When Hak channels Sevirrus, *The Light Egg* comes in, a hint at what's ahead.
+- Afterwards: *THOMAS HAWTHORNE IS DEAD · Hak Chompjak executed him on Mercury*, and the Federation is restored as before. It saves as `ch3.hawDead`. The scene is in **Cutscenes** (Chapter III).
+- **Lore:** he dies in 2125, two years before the Catharsis finds what's left of him. His Chapter IV Nostrapedia file, his Chapter V death record and Orion's Grand Imperarch file now say so.
