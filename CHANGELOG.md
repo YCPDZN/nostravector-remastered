@@ -2222,3 +2222,123 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   **Voiced:** all 20 lines, CH3POSTFINALBOSS1–20 (`data/hawDeathVoices.js`; the MP3s are in `assets/audio/hawthorne_death_ch3/`). The chase plays to silence, a heartbeat and a low drone. When Hak channels Sevirrus, *The Light Egg* comes in, a hint at what's ahead.
 - Afterwards: *THOMAS HAWTHORNE IS DEAD · Hak Chompjak executed him on Mercury*, and the Federation is restored as before. It saves as `ch3.hawDead`. The scene is in **Cutscenes** (Chapter III).
 - **Lore:** he dies in 2125, two years before the Catharsis finds what's left of him. His Chapter IV Nostrapedia file, his Chapter V death record and Orion's Grand Imperarch file now say so.
+
+## Fixes: Alexia and Hawthorne fight you again
+- **Talking to Alexia (Eris) or Hawthorne (Mercury) at their command post now starts the duel.** Their prompts were missing from the list that routes Terra Imperia characters to their talk scenes, so you got an empty inspect box and the fight never began. Now Alexia says her nine lines and offers *Face her / Not yet*, and Hawthorne does the same once Eris has fallen.
+
+## Vishara joins the fight on Eris
+- A couple of seconds into Alexia's duel, **Vishara Erisconos arrives in a flash of light** (*VISHARA ERISCONOS JOINS THE FIGHT*): *"Alexia! Put down the sword, sister. This ends now."*, and Alexia answers her. Vishara closes in with her sword and throws violet bolts from range, each hit taking about 1.2% of Alexia's health. She leaves when the duel ends, and *No Sister of Mine* plays as before.
+
+## After Hawthorne: something aboard the Nostra
+- **Beating Hawthorne completes** *Sol has fallen to Terra Imperia* and *War · take Mercury and Venus*, and leaves one objective: **Explore the galaxy (0/5 jumps)**. Only jumps after his death count.
+- **On the fifth jump, a few seconds out of warp, something comes aboard.** Alarms, red light, and you're put on the bridge. The crew deck is sealed: **you face it alone (companions 0)**. It never speaks; only the Nostra's computer does.
+- **It can't be beaten.** Strike it (F, Space, a click on the deck, or the big STRIKE button on phones): its bar dips and fills straight back up (*"It doesn't even flinch"*). It stalks you and lunges for about a tenth of your health a hit, but it can't kill you. At 15% health (or after 70 s) the reactor fails, *"Abandon ship. Escape pod one is open."*, and from outside the pod pulls away as **the Nostra breaks apart and explodes**.
+- **The alien is rigged:** a real skeleton (22 bones: hips, spine, neck, head, jaw, arms, digitigrade legs, a five-bone tail), weighted so the long sinewed limbs and the tail bend instead of splitting. It walks, swings and lunges with the game's own animation, its tail sways and its jaw works, and its compound eyes glow red. Model: `data/catharsisAlien.js`; the rigging script is `nightmare/tools/alien_rig.py`.
+- Once per save: `ch3.alienDone`, `ch3.nostraLost`.
+
+## Chapter IV begins: adrift, in blood red
+- **Straight after the Nostra is lost, Chapter IV starts.** A red-on-black title card (*CHAPTER IV · The Nostra is gone*), the save moves to Chapter IV (`ch4.pod`), the factions switch to Chapter IV's, and **the whole interface turns blood red from that moment**, in game and on the main menu (before, Chapter IV only went red after the time skip). The space HUD, the dialogue boxes, the notices and the touch buttons, which kept hard-coded blues, go red too.
+- **You fly the escape pod** in place of the Nostra, in space and on the ground. There are no decks to walk (the DECKS button goes), and using the pod on the ground takes straight off.
+- **Objectives:** *Escape the Nostra* ✓ and *Main quest · Survive: you're adrift in an escape pod · find somewhere to land*. What comes next isn't written yet.
+
+## Chapter III and the start of Chapter IV on phones
+- **The objective list** stays clear of the minimap, uses a slightly smaller type, and fades out after a few lines instead of running down the screen. Long Chapter III objectives (the war, the fall of Sol, Charon, Khazglar, exploring the galaxy) have short phone wording.
+- **In a duel** (Alexia, Hawthorne) the boss bar takes the objectives' place, so they no longer collide; big notices dim the list while they show.
+- **Narration and barks** (Vishara, the Nostra) sit above the action buttons when upright, and at the top beside the objectives when sideways, instead of under your thumbs. Pickup messages wrap instead of running off screen.
+- **In space:** upright, the objective no longer runs under the menu buttons or the target's name; sideways, the current objective is shown again on one line (it used to be hidden entirely).
+- **The fight aboard the Nostra** has a big STRIKE button where the attack button sits, and its bar keeps clear of your health bars and the narration both ways round. The Chapter IV title card fits an upright phone.
+
+## The End of the Grand Imperarch, graphically enhanced
+- **Its own post-processing.** Hawthorne's death now renders through HDR bloom and a film grade instead of a flat CSS filter. Mercury is warm in the highlights and cold in the shadows, with heat shimmer off the ground. The dark bunker is crushed red-black, and lit once Hak appears. When Hak channels Sevirrus it goes blood red. On top of that: vignette, film grain, and a chromatic split that kicks on every blow, smearing further while Hawthorne runs through his own eyes. The sun, the wanderer's red eyes, the emergency lights and Mercury's day through the door all bloom.
+- **Mercury, rebuilt:** real terrain under a regolith texture, with craters and mountains at the edge of the world. It stays dead flat along the run, round the bunker, his post and Am-Grek's ridge. The sun now actually lights the scene: low and white-hot, it throws long shadows toward the bunker, so the wanderer's shadow reaches Hawthorne before the wanderer does. There's a lens flare when he looks back into the sun, lumpy faceted boulders, and dust drifting in the light. The bunker gets armour, floodlights, hazard stripes round the door, a Terra Imperia ring and a turning red beacon.
+- **The bunker, rebuilt:** panelled walls with rivets and grime, a grated steel floor, ceiling pipes, consoles with flickering lockdown screens, and caged emergency lights. Each one throws a shaft of red through the dust and dies when the light fails. Once the lights come on, a hard light over Hak throws their shadows across the door. When the door opens, a shaft of Mercury's day pours in.
+- **Blood:** every punch splashes the door behind Hawthorne and the floor round him. The blade and the spurts throw more, and the stains on the door go with it when it opens. His pool now spreads out under him and shines.
+- **Phones:** half-resolution bloom, lighter terrain and fewer motes, and no shadows. If the post-processing modules can't load, the scene still plays with the new sets, ungraded.
+
+## Hawthorne's death at full quality everywhere, and an easier Hawthorne
+- **The End of the Grand Imperarch now plays at full quality on every device, phones included.** That means full-resolution bloom, shadows from the low sun and from the light over Hak, the full terrain, every boulder and all the dust. The post-processed image is multisampled, so edges stay clean through the bloom and grade, and the scene renders sharper while it plays (up to 2× pixel density, within a pixel budget). Your usual resolution comes back when it ends. Hawthorne, Hak, Am-Grek and the wanderer all cast shadows.
+- **Hawthorne is easier to beat on Mercury:**
+  - He's your own level (at least 30) instead of a fixed level 55, so the level gap no longer multiplies his blows or shrugs off yours.
+  - Much less health: 3,600 + 110 per level (it was 7,500 + 230 per level at level 55).
+  - His sword hits for 35% less, and he swings less often (every 1.9–2.5 s, was 1.3–1.9 s).
+  - His sidearm fires less often (every 4.2 s, was 3 s), and each shot hits 30% of the time (was 50%).
+  - His leaping slam comes every 12–16 s (was 8–12 s) and hits for less.
+  - At half health he calls in one Praetorian, not two.
+
+## Rifles: they hit hard, and they lock on
+- **Lock-on.** With a rifle selected, a red reticle marks what it will hit. It picks the hostile you're looking toward (where the camera points, not only where you face), prefers anything already hunting you and any boss, and only turns to something behind you when nothing is ahead. Fire and the lock holds: the reticle goes bright and starts turning, you swing onto the target, and every shot goes to it for 4 s after the last one while it's in range, even if something else wanders closer. Peaceful herds that aren't charging you are never locked. It works the same with the FIRE/ATTACK button on phones.
+- **They hit much harder, and keep up as you level.** Each shot is the rifle's base × 1.5 × (1 + 5% a level), plus the usual level bonus:
+
+  | | Level 1 | Level 20 | Level 40 |
+  |---|---|---|---|
+  | Scrap rifle | ~22 | ~42 | ~63 |
+  | Plasma rifle | ~41 | ~81 | ~120 |
+  | Rail rifle | ~72 | ~141 | ~216 |
+
+  Before, they were a flat 14, 26 and 46 whatever your level.
+- **And they feel it:** a flare where the shot lands, a bigger burst, a little camera kick (a thump on the rail rifle), and ordinary creatures stagger back a step. Bosses don't.
+
+## The siege of Mercury is fought at Hawthorne's base, not on the Cygnus
+- After you infiltrate the Cygnus, she stays in orbit over Mercury so you can board her again. That was still true during the siege of Mercury: she orbited overhead, auto-docked if you flew close on the way in (dropping you onto her bridge to fight Hawthorne or a commander there), and on the ground the quest marker pointed at her supply shuttle ahead of Hawthorne's base.
+- **While the siege of Mercury is on, the Cygnus is gone.** She isn't in orbit and won't dock, the shuttle isn't on the ground, and the marker leads to Hawthorne's base, where his last stand happens. Mercury stays open to land on for the siege. Once Hawthorne is dead and the war ends, everything after that plays out as before.
+
+## The siege marker points at Hawthorne's base
+- On any world, the navigation line under your objectives only ever said where your ship was (*Your ship · 230 m · NE*). During the siege of Mercury, that read as the siege marker pointing at your ship.
+- **The quest now comes first, in gold:** *◆ Hawthorne's base · the siege of Mercury · 230 m · NE*, with *Your ship* underneath. The same goes for every ground objective: Alexia's base on Eris, Terra Imperia's base on Janira Prime, Charon and Kizna, and the rest. The minimap's gold marker already pointed at the base; now the text agrees with it.
+
+## Hawthorne runs for his life: a real chase, not a nightmare
+- **Straight cuts.** The End of the Grand Imperarch no longer flashes white with a thud on every shot change, the way the nightmares and memories do: it cuts like a film. The scare when you're suddenly right behind him lands on the sting and the jolt, with no white screen. In the bunker the lights simply come on, with no red flash. The blows, the blade and Sevirrus keep their impacts.
+- **He actually runs.** In his own eyes the camera used to bob in place, because his hidden body never moved. Now the view really covers the ground to the bunker: it drops on every footfall, rolls with his shoulders, eases in and out when he stops to look back, dips when he falls, and he pants every other step.
+- **Seen from outside, it's a sprint:** a long, quick stride, arms pumping, leaning into it, a bounce off each footfall.
+- **A handheld camera:** the outside shots breathe and shudder smoothly instead of jittering frame to frame.
+
+## The pod: Chapter IV in the original look, a proper white pod, and Archamus
+- **Chapter IV starts in the original interface.** When the Nostra is lost, the title card and every label say Chapter IV, but the interface keeps its normal colours: the blood red comes later. The main menu matches.
+- **A white escape pod:** a blunt white teardrop with panel seams, a dark glass band across the nose, a ring of four thrusters glowing pale blue, a hatch and a blinker on its spine. It's the pod you fly in space, the one that sets down on the ground, and the one that gets clear of the Nostra as she breaks apart.
+- **The first time the pod comes down on a world, you die. Not a game over:**
+  1. You climb out of the wreck, by its scorch mark and the furrow it ploughed, with smoke rising off it. You stagger a few steps, panting, as the colour drains out of everything. You go down on your knees, then onto your face. Your heart slows, and stops.
+  2. Black, and the wind.
+  3. Out of the sunset haze, under a low sun, a tall hooded figure walks to where you lie: Archamus, only ever a black silhouette against the light, with *The Prime Good* rising underneath.
+  4. He kneels over you and reaches down, the light behind him swells, and everything goes gold.
+  5. *Archamus found you · CHAPTER IV · To be continued*, with **Save your game** or **Main menu**. Your place on that world is kept.
+  It plays once per save (`ch4.podLanded`, `ch4.archFound`), and Skip works. It goes through the same grade, bloom and shadows as Hawthorne's death.
+
+## The pod stays a pod in a world's sky; Chapter IV stays in the original look
+- **Flying down through a world's sky, you're still in the pod.** The sky uses its own copy of your ship, and it was still drawn as the Nostra. Now the pod is there too, and on the main menu when your save is out in space in the pod.
+- **No blood red in Chapter IV before the time skip:** not adrift in the pod, not landing, not in the Archamus scene, and not on the menu afterwards. The pod sequence also clears any red left over from an earlier build or a `?menu=ch4` preview.
+
+## The main menu shows the pod
+- **A save adrift in the escape pod shows the pod on the main menu,** cruising through its star system, not the Nostra. The menu could build that view before your save had loaded, when it couldn't yet tell you were in the pod, and never looked again. Now it checks every frame. The caption reads *Adrift in the escape pod · near …* instead of *Aboard your ship*.
+
+## The pod everywhere: in space, in orbit, in a world's sky, landing, on the ground, taking off
+- Instead of swapping in the pod at a handful of moments, every copy of your ship the game builds now registers itself, and one check each frame keeps all of them as the pod while you're adrift in Chapter IV. That covers space, orbit, the descent, a world's sky, the ground, take-off and the menu, including copies built later or rebuilt mid-flight.
+- The Nostra's parts now sit in a group of their own that stays hidden while you're in the pod. Landing and take-off light her engine flames and fold her legs and ramp, and that used to bring pieces of her back on screen. They can't any more.
+
+## Archamus speaks
+- **Over the fallen wanderer, Archamus talks, and never quite says anything outright.** Subtitles only for now, in a warm gold of his own:
+  1. *"Another light falls out of the dark, and the dark calls it chance."* (as he comes out of the haze)
+  2. *"It was never chance. Not the ship. Not the thing that came aboard. Not you."*
+  3. *"They told you that the end of a tyrant is the end of a war. It is the end of a page."* (kneeling over you)
+  4. *"Your heart has stopped. That is a small thing. I have watched stars stop."*
+  5. *"Something older than your wars has seen your face now. It will not forget it. Neither will I."* (seen from the side, his shape over you against the sky)
+  6. *"Sleep, wanderer. When you open your eyes, the years will have gone on without you."*
+  7. *"And you will owe me a light."* (he reaches down, and it goes gold)
+- He never says what the alien was, or who sent it. *"Something older than your wars"* and *"the years will have gone on without you"* leave the door open for the time skip. The scene now runs about a minute, each line timed to read before the next, and Skip still works.
+
+## You can see Hak kill Hawthorne
+- **No red screen over the blade.** The moment the sword went in, the whole screen flashed solid red and took about half a second to clear, so the kill happened behind it. Now there's just a jolt and a faint red edge.
+- **Sevirrus's glow no longer swallows them.** The red glow round Hak while he channels Sevirrus was a 3.4 m glow that, from the side, covered Hawthorne too, and the bloom made it worse. In this scene it's smaller and sits behind Hak.
+- **A clear grade and a light for the kill.** The Sevirrus grade (crushed, dark red) gives way to a clearer one for this one shot, and a light from the camera's side picks the two of them out.
+- **A better angle, on every screen.** The camera is now beside Hawthorne and a little behind him, so you see the blade go in and come out of his back, with Hak's face beyond. On an upright phone the shot used to be pulled back toward the door wall; it now stays inside the room. The shot is held a little longer, and the blade catches the light: bright steel, wet red.
+
+## "Hello, Thomas": face to face
+- **The reveal, then the conversation.** Hawthorne turns round in the dark, the lights slam on in his own eyes, and Hak is standing there. A beat later, on *"Hello, Thomas."*, it cuts out of his eyes to a face-to-face angle: over Hawthorne's shoulder, onto Hak's face.
+- **Then shot and reverse shot.** Through what follows (*"Run all you like…"*, Hawthorne's bargaining, *"…Only blood."*), the camera sits over the listener's shoulder onto whoever is speaking, follows Hak as he walks up, and cuts when the speaker changes, with a slow push in on each line. Both angles stay on one side of the two of them, so neither swaps sides on screen. The shots stay inside the room on every screen, upright phones included.
+
+## The Catharsis takes power after the time skip, not after the ship attack
+- **While you're adrift in the pod (Chapter IV before the time skip), the galaxy is as Chapter III left it.** The Catharsis's transfer of power waits for the two-year time skip:
+  - **The map:** systems and worlds keep their Chapter III owners and descriptions. Carax stays the Grek Empire's capital, not the Catharsis's.
+  - **Space:** no Catharsis warships jumping you. Their worlds stay neutral and keep their traders, and their quests stay open.
+  - **Diplomacy:** Am-Grek still rules the Grek alone (Archamus doesn't co-rule yet), and the Catharsis isn't locked as Chapter IV's story boss.
+  - **Nostrapedia:** the Terra Imperia tab keeps its name and its Chapter III files.
+- From the time skip on, it all switches to Chapter IV's, exactly as before. Under the hood, one rule (`cathEra`) now decides it everywhere, so they can't drift apart.
