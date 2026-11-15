@@ -13014,7 +13014,7 @@ const OCUT_LINES = [ // [text, voice slot, shot]; a line with `m` plays only for
   ['No. No, no, no. Not like this. Not with me up here, listening.', 2, 2],
   ['He was four the first time he fell off the sea wall at Dover. Split his chin open. He didn’t cry. He looked up at me to see if he should.', 3, 3],
   ['I taught him to stand up straight. I taught him to hold a rifle. I never taught him how to come home.', 4, 4],
-  ['They let Malia go. Her, they let go. So it was a choice. Someone looked at my son on his knees, and chose.', 5, 5, 'spared'],
+  ['And Malia, they spared. Took her in, like a stray. So it was a choice. Someone looked at my son on his knees, and chose.', 5, 5, 'spared'],
   ['And Malia with him. She’d have been my daughter. They were going to tell me. I know they were. They were waiting for the war to end.', 6, 5, 'killed'],
   ['I sat by that bed for two weeks. I held you on that pier. I’d have let anyone go for you, wanderer. Anyone.', 7, 6],
   ['Nostra, close the channel. … Close it.', 8, 3],
@@ -13214,21 +13214,32 @@ function siegeWin() {
     siegeSay(null, () => { siegeLeave(); lootMsg(tiPhone() ? 'Hak, Darius and Vishara return to Karribassa' : 'Hak, Darius and Vishara return to Karribassa · Take Sol back from Terra Imperia: bombard its worlds and beat their governors', '#ffb060'); if (orionCutDue()) setTimeout(() => startOrionCut(), 3200); }); // Croxian is dead: the scene cuts away to Orion
   }, 1200);
 }
-/* ---- Croxian and Malia, beaten: let them go, or kill them. Saves ch3.croxFate / ch3.maliaFate ('spared' | 'killed'), which Chapter IV's
+/* ---- Croxian and Malia, beaten: spare them (they join you, there and then), or kill them. Saves ch3.croxFate / ch3.maliaFate ('spared' | 'killed'), which Chapter IV's
    ending reads. Croxian is Orion's son: kill him, and Orion leaves you for good (his own cutscene after the blockade: startOrionCut). ---- */
 function siegeFate(B) {
   const crox = B.key === 'crox', who = crox ? 'CROXIAN MASCAR' : 'MALIA DE TORO', R = B.R, other = c3f(crox ? 'maliaDead' : 'croxDead');
   const away = () => { if (R.root.parent) R.root.parent.remove(R.root); };
   openDialog(who, [crox ? 'Go on, then. Hawthorne would.' : 'Well? Make it quick or make it kind. Just make it.'], false, () => openChoice(who, [
-    { text: crox ? 'Let him go.' : 'Let her go.', onPick: () => {
-      setC3({ [crox ? 'croxFate' : 'maliaFate']: 'spared' }); const q = R.root.position; burst(q.x, q.y + 1, q.z, 30, 4, .8, .8, .9, .7, 1, 1.2); away();
-      siegeSayNow(who, crox ? (other ? 'Malia… You’ll answer for her. Every one of you. Fall back!' : 'This isn’t over. Fall back!') : (other ? 'Croxian… You’ll pay for him, wanderer. I swear it. Back to the ships!' : 'Pull out! Back to the ships!'), 3400);
-    } },
+    { text: crox ? 'Spare him.' : 'Spare her.', onPick: () => setTimeout(() => openDialog(who, crox
+        ? (other ? ['You killed her. And you’d let me live.', 'I should hate you for that. Maybe I will. But Hawthorne sent us both here to die, and he’s the one I want. I’m with you.']
+                 : ['You’d let me live? After everything?', 'Hawthorne sent us here to die for his blockade. I’m done dying for that man. If you’ll have me, I’m with you.'])
+        : (other ? ['You killed him. And now you want me.', 'Fine. I’ll fight beside you. Not for you. For him, against the man who sent him here.']
+                 : ['Kind, then. I didn’t expect that.', 'Hawthorne won’t forgive this, and I’m tired of asking him to. Where Croxian goes, I go. Today, that’s with you.']),
+      false, () => siegeJoin(B)), 80) },
     { text: crox ? 'Finish him.' : 'Finish her.', onPick: () => setTimeout(() => openDialog(who, [crox ? 'Tell my father… tell him he was right. About all of it.' : (other ? 'Wait for me, Croxian. I’m coming.' : 'Tell Croxian I— no. He knows.')], false, () => {
       setC3(crox ? { croxFate: 'killed', croxDead: true } : { maliaFate: 'killed', maliaDead: true });
       const q = R.root.position; sfx.swing(); setTimeout(() => { sfx.thud(); ex.shake = .5; burst(q.x, q.y + 1, q.z, 70, 6, .9, .2, .2, 1, 1.3, 2); away(); notice('Terra Imperia', `${who} IS DEAD`, 3600); }, 260);
       if (crox && orionJoined()) setTimeout(() => lootMsg('The Nostra’s comms are open…', '#ff8f86'), 4200);
     }), 80) }]));
+}
+function siegeJoin(B) { // spared, they join you on the spot: Croxian (helmet off) with his blade, Malia with her rifle
+  const crox = B.key === 'crox', id = crox ? 'croxian' : 'malia', R = B.R, q = R.root.position;
+  setC3({ [crox ? 'croxFate' : 'maliaFate']: 'spared', [crox ? 'croxJoined' : 'maliaJoined']: true });
+  burst(q.x, q.y + 1, q.z, 30, 4, .8, .8, .9, .7, 1, 1.2); if (R.root.parent) R.root.parent.remove(R.root);
+  wanderer.party = [...new Set([...(wanderer.party || []), id])]; (wanderer.cmds || (wanderer.cmds = {}))[id] = 'follow';
+  const c = curChar(); if (c) { c.party = wanderer.party; c.cmds = wanderer.cmds; } saveRoster();
+  syncCrewParty(); placeCrew().catch(() => null); refreshJamesUI(); ui.xhud.classList.add('comp'); sfx.chime();
+  notice('Your crew', `${crox ? 'CROXIAN MASCAR' : 'MALIA DE TORO'} JOINS YOU`, 4200); compJoinNotice(id, 4800);
 }
 function siegeSayNow(who, line, ms = 3600) { SSAY.q.unshift({ who, line, ms }); if (!SSAY.busy) siegeSayNext(); } // straight after a choice, before anything already waiting
 // the fight's lines, one at a time, each under its own speaker's name (they used to all go out as Croxian's, and could talk over each other).
@@ -19139,7 +19150,8 @@ function crewTick(dt) {
     // fight anything hostile nearby, with whatever they carry
     const lead = !!SIEGE_LEADS[id], hold = lead && mode === 'hold' && C.holdAt, adv = lead && mode === 'advance' && SG.base;
     let foe = null, fd = guns ? 24 : adv ? 22 : 14;
-    for (const c of fauna.list) { if (c.dead || c.D.passive || (c.D.neutral && c.state !== 'hunt')) continue; const d = Math.hypot(c.x - o.x, c.z - o.z); if (hold && Math.hypot(c.x - C.holdAt[0], c.z - C.holdAt[1]) > (guns ? 26 : 9)) continue; if (d < fd) { fd = d; foe = c; } } // holding: only what comes to them
+    const kin = id === 'croxian' || id === 'malia'; // Croxian and Malia don't fight each other at the base
+    for (const c of fauna.list) { if (c.dead || c.D.passive || (c.D.neutral && c.state !== 'hunt') || (kin && c.type === 'siegeboss')) continue; const d = Math.hypot(c.x - o.x, c.z - o.z); if (hold && Math.hypot(c.x - C.holdAt[0], c.z - C.holdAt[1]) > (guns ? 26 : 9)) continue; if (d < fd) { fd = d; foe = c; } } // holding: only what comes to them
     C.atkT -= dt;
     if (foe) {
       const reach = guns ? 22 : id === 'khazglar' ? 2.8 : 2.2;
@@ -23472,7 +23484,7 @@ const COMPANIONS = [
       'Where her sisters are patient and unreadable in the Erisian way, Nyrexia is curious and impatient, and far too interested in the rest of the galaxy for a princess of the oldest court in the solar system. She has slipped her bodyguards more times than the great houses like to admit.',
       'She travels with you partly out of loyalty, partly out of curiosity, and partly, she admits, because it annoys her family.'
     ] },
-  { id: 'croxian', tag: 'cpCroxianU', h: 1.85, unlockAt: 3, metIf: pdMetCh3(() => pdMet('croxian')), name: 'CROXIAN MASCAR', title: 'Former soldier of Terra Imperia', // as your companion his helmet is off (data/cpCroxianU.js, built by nightmare/tools/croxian_unhelmet.py); the story's Croxian keeps it
+  { id: 'croxian', tag: 'cpCroxianU', h: 1.85, unlockAt: 3, weapon: 'sword', metIf: pdMetCh3(() => pdMet('croxian')), name: 'CROXIAN MASCAR', title: 'Former soldier of Terra Imperia', // as your companion his helmet is off (data/cpCroxianU.js, built by nightmare/tools/croxian_unhelmet.py); the story's Croxian keeps it
     facts: [['Species', 'Human'], ['Born', '2094 AD, England, Earth'], ['Father', 'Orion Mascar'], ['Partner', 'Malia de Toro'], ['Formerly', 'A soldier of Terra Imperia'], ['Alignment', 'Neutral Good']],
     align: 'A good man who served a bad cause, and is trying to make up for it one decision at a time.',
     paras: [
@@ -23480,7 +23492,7 @@ const COMPANIONS = [
       'He rose quickly as a soldier of Terra Imperia, and he was good at it. He is a former soldier now. He does not talk about why he left, or about what he saw before he did.',
       'His girlfriend, Malia de Toro, is the one person he never lies to. His father is the one person he cannot bring himself to call.'
     ] },
-  { id: 'malia', tag: 'cpMalia', h: 1.75, unlockAt: 3, metIf: pdMetCh3(() => pdMet('malia')), name: 'MALIA DE TORO', title: 'Terra Imperia',
+  { id: 'malia', tag: 'cpMalia', h: 1.75, unlockAt: 3, weapon: 'rifle', metIf: pdMetCh3(() => pdMet('malia')), name: 'MALIA DE TORO', title: 'Terra Imperia',
     facts: [['Species', 'Human'], ['Born', '2096 AD, Spain'], ['Works for', 'Terra Imperia'], ['Partner', 'Croxian Mascar'], ['Alignment', 'Lawful Neutral']],
     align: 'Professional to the bone. Malia does her job, keeps her word, and keeps her opinions about her employer to herself.',
     paras: [

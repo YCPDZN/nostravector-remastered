@@ -74,17 +74,21 @@ Talking to him on the crew deck while the blockade is on:
 
 ## The blockade: sparing or killing Croxian and Malia
 
-When Croxian Mascar or Malia de Toro is beaten at Terra Imperia's base, they stay down and you choose. **Not recorded yet:** these show as subtitles.
+When Croxian Mascar or Malia de Toro is beaten at Terra Imperia's base, they stay down and you choose. Spared, they join your crew there and then (whatever happened to the other); killed, they say their last words. **Not recorded yet:** these show as subtitles.
 
 | Speaker | When | Line |
 |---|---|---|
 | Croxian Mascar | Beaten | Go on, then. Hawthorne would. |
-| Croxian Mascar | Spared | This isn’t over. Fall back! |
-| Croxian Mascar | Spared, Malia already dead | Malia… You’ll answer for her. Every one of you. Fall back! |
+| Croxian Mascar | Spared, joins you | You’d let me live? After everything? |
+| Croxian Mascar | Spared, joins you | Hawthorne sent us here to die for his blockade. I’m done dying for that man. If you’ll have me, I’m with you. |
+| Croxian Mascar | Spared, Malia already dead | You killed her. And you’d let me live. |
+| Croxian Mascar | Spared, Malia already dead | I should hate you for that. Maybe I will. But Hawthorne sent us both here to die, and he’s the one I want. I’m with you. |
 | Croxian Mascar | Killed: his last words | Tell my father… tell him he was right. About all of it. |
 | Malia de Toro | Beaten | Well? Make it quick or make it kind. Just make it. |
-| Malia de Toro | Spared | Pull out! Back to the ships! |
-| Malia de Toro | Spared, Croxian already dead | Croxian… You’ll pay for him, wanderer. I swear it. Back to the ships! |
+| Malia de Toro | Spared, joins you | Kind, then. I didn’t expect that. |
+| Malia de Toro | Spared, joins you | Hawthorne won’t forgive this, and I’m tired of asking him to. Where Croxian goes, I go. Today, that’s with you. |
+| Malia de Toro | Spared, Croxian already dead | You killed him. And now you want me. |
+| Malia de Toro | Spared, Croxian already dead | Fine. I’ll fight beside you. Not for you. For him, against the man who sent him here. |
 | Malia de Toro | Killed: her last words | Tell Croxian I— no. He knows. |
 | Malia de Toro | Killed, Croxian already dead | Wait for me, Croxian. I’m coming. |
 
@@ -102,7 +106,7 @@ Pack: `data/orionGriefVoices.js` (11 slots, in this order). **Not recorded yet:*
 | CH3ORIONGRIEF3.mp3 | Orion Mascar | No. No, no, no. Not like this. Not with me up here, listening. |
 | CH3ORIONGRIEF4.mp3 | Orion Mascar | He was four the first time he fell off the sea wall at Dover. Split his chin open. He didn’t cry. He looked up at me to see if he should. |
 | CH3ORIONGRIEF5.mp3 | Orion Mascar | I taught him to stand up straight. I taught him to hold a rifle. I never taught him how to come home. |
-| CH3ORIONGRIEF6.mp3 | Orion Mascar (6a · Malia spared) | They let Malia go. Her, they let go. So it was a choice. Someone looked at my son on his knees, and chose. |
+| CH3ORIONGRIEF6.mp3 | Orion Mascar (6a · Malia spared) | And Malia, they spared. Took her in, like a stray. So it was a choice. Someone looked at my son on his knees, and chose. |
 | CH3ORIONGRIEF7.mp3 | Orion Mascar (6b · Malia killed) | And Malia with him. She’d have been my daughter. They were going to tell me. I know they were. They were waiting for the war to end. |
 | CH3ORIONGRIEF8.mp3 | Orion Mascar | I sat by that bed for two weeks. I held you on that pier. I’d have let anyone go for you, wanderer. Anyone. |
 | CH3ORIONGRIEF9.mp3 | Orion Mascar | Nostra, close the channel. … Close it. |
