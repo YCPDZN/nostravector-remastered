@@ -74,22 +74,37 @@ Talking to him on the crew deck while the blockade is on:
 
 ## The blockade: sparing or killing Croxian and Malia
 
-When Croxian Mascar or Malia de Toro is beaten at Terra Imperia's base, they stay down and you choose. Spared, they join your crew there and then (whatever happened to the other); killed, they say their last words. **Not recorded yet:** these show as subtitles.
+When Croxian Mascar or Malia de Toro is beaten at Terra Imperia's base, they stay down and you choose. Spared, they join your crew there and then; killed, they say their last words. Once both are decided: if both were spared, they have a four-line exchange (two lines each); if one was killed, the survivor says two lines; if both were killed, nothing. **Not recorded yet:** these show as subtitles.
 
 | Speaker | When | Line |
 |---|---|---|
 | Croxian Mascar | Beaten | Go on, then. Hawthorne would. |
-| Croxian Mascar | Spared, joins you | You’d let me live? After everything? |
-| Croxian Mascar | Spared, joins you | Hawthorne sent us here to die for his blockade. I’m done dying for that man. If you’ll have me, I’m with you. |
-| Croxian Mascar | Spared, Malia already dead | You killed her. And you’d let me live. |
-| Croxian Mascar | Spared, Malia already dead | I should hate you for that. Maybe I will. But Hawthorne sent us both here to die, and he’s the one I want. I’m with you. |
-| Croxian Mascar | Killed: his last words | Tell my father… tell him he was right. About all of it. |
 | Malia de Toro | Beaten | Well? Make it quick or make it kind. Just make it. |
-| Malia de Toro | Spared, joins you | Kind, then. I didn’t expect that. |
-| Malia de Toro | Spared, joins you | Hawthorne won’t forgive this, and I’m tired of asking him to. Where Croxian goes, I go. Today, that’s with you. |
-| Malia de Toro | Spared, Croxian already dead | You killed him. And now you want me. |
-| Malia de Toro | Spared, Croxian already dead | Fine. I’ll fight beside you. Not for you. For him, against the man who sent him here. |
-| Malia de Toro | Killed: her last words | Tell Croxian I— no. He knows. |
+
+Both spared:
+
+| Speaker | Line |
+|---|---|
+| Croxian Mascar | You’d let us both walk away? After everything we’ve done? |
+| Malia de Toro | Don’t question it, Croxian. Hawthorne would have shot us himself for losing. |
+| Croxian Mascar | Then I’m done dying for that man. If you’ll have us, wanderer, we’re with you. |
+| Malia de Toro | Where he goes, I go. Today, that’s with you. |
+
+One killed, the other spared:
+
+| Speaker | Line |
+|---|---|
+| Croxian Mascar (Malia killed) | You killed her. And you’d let me live. |
+| Croxian Mascar (Malia killed) | I should hate you for that. Maybe I will. But Hawthorne sent us both here to die, and he’s the one I want. I’m with you. |
+| Malia de Toro (Croxian killed) | You killed him. And now you want me. |
+| Malia de Toro (Croxian killed) | Fine. I’ll fight beside you. Not for you. For him, against the man who sent him here. |
+
+Last words:
+
+| Speaker | When | Line |
+|---|---|---|
+| Croxian Mascar | Killed | Tell my father… tell him he was right. About all of it. |
+| Malia de Toro | Killed | Tell Croxian I— no. He knows. |
 | Malia de Toro | Killed, Croxian already dead | Wait for me, Croxian. I’m coming. |
 
 
