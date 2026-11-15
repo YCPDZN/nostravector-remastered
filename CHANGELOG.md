@@ -1988,3 +1988,8 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - Still subtitles only: Orion and Nico's wake-up (CH3NMWAKEOK1–4) and Khazglar's line (CH3KHAZ25).
 - **Khazglar's Oilkoumene line is voiced:** KHAZOILKOUMENE.mp3, added as the 25th clip in `data/khazVoices.js`. Only Orion and Nico's wake-up (CH3NMWAKEOK1–4) is still subtitles.
 - **Orion and Nico's wake-up is voiced:** CH3ORIONOILKOUMENE1–4, added after the Taredesiban lines in `data/nmWakeVoices.js`. Every Oilkoumene line in the game is now voiced.
+
+## Oilkoumene on phones
+- **The Fall of Obra-Spira is lighter on phones:** one kneeling Oilkoumene instead of three (the one Tyronihlus strikes down), no shadows, ten spires instead of eighteen, and fewer stars and a smaller galaxy texture in the sky. It plays on the nightmare's stage on every device, like the other races' staged nightmares that already run on phones.
+- **Tyrotaronus's dream on a phone held upright:** the camera steps back so a 2.6 m figure keeps his head and horns in shot.
+- **Karribassa's sky marker** reads just "HAK" on phones.
