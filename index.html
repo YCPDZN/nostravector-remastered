@@ -14530,6 +14530,17 @@ function c4eBlackArmour(R) { // Orion in Terra Imperia's black: every plate, clo
     const f = m => { const n = m.clone(); if (glow.test(nm)) { n.color && n.color.set(0x7a0a10); if (n.emissive) { n.emissive.set(0xff1a1a); n.emissiveIntensity = 1.4; } } else { n.color && n.color.set(/rim|edge|cape|collar/i.test(nm) ? 0x050506 : 0x0d0d10); n.metalness = .75; n.roughness = .32; if (n.emissive) n.emissive.set(0x000000); } return n; };
     o.material = Array.isArray(o.material) ? o.material.map(f) : f(o.material); });
 }
+function orionTurnPaint(root) { // Orion after his betrayal (the Terra Imperia file): red armour plates over black, the lights crimson; his face, eyes and hair his own
+  const keep = /face|jaw|nose|neck|ear|eye|iris|pupil|glint|brow|lip|teeth|tongue|mouth|nostril|hair|beard|moustache|sideburn/i, glow = /rivet|terminal|lens|insignia|indicator|vent/i, red = /plate|spike|strap|clasp|lining/i;
+  root.traverse(o => { if (!o.isMesh || !o.material) return; const nm = (o.material.name || o.name || '');
+    if (keep.test(nm) && !/lens/i.test(nm)) return;
+    const f = m => { const n = m.clone();
+      if (glow.test(nm)) { n.color && n.color.set(0x8a0c12); if (n.emissive) { n.emissive.set(0xff1a1a); n.emissiveIntensity = 1.2; } }
+      else if (red.test(nm) && !/abdominal/i.test(nm)) { n.color && n.color.set(/lining/i.test(nm) ? 0x6e0f14 : 0xa3161e); n.metalness = .6; n.roughness = .38; if (n.emissive) n.emissive.set(0x000000); }
+      else { n.color && n.color.set(/rim|cape|collar/i.test(nm) ? 0x060607 : 0x0f0f12); n.metalness = .6; n.roughness = .4; if (n.emissive) n.emissive.set(0x000000); }
+      return n; };
+    o.material = Array.isArray(o.material) ? o.material.map(f) : f(o.material); });
+}
 function c4eHot(R) { R.root.traverse(o => { if (o.isMesh && o.material) { const f = m => { const n = m.clone(); n.transparent = true; n.userData.c0 = n.color ? n.color.clone() : null; n.userData.e0 = n.emissive ? n.emissive.clone() : null; n.userData.ei0 = n.emissiveIntensity || 0; return n; }; o.material = Array.isArray(o.material) ? o.material.map(f) : f(o.material); } }); }
 // ---- the neutral ending's duel: Archamus against Lord Zark, with you, Hak, Vishara and Darius watching from the edge of the hall ----
 // Keyframed poses (offsets from each joint's rest), snapped strikes with hit-stop freeze frames and slow motion at the big
@@ -23133,7 +23144,7 @@ function pdEntryLocked(L, tab = pedia.tab) {
   if (tab === 'leaders') return !pdMet('leader:' + L.sp); // a leader opens when you meet them (a dream, the story) or face them in their hall
   return false;
 }
-const pdSet = () => pedia.tab === 'leaders' ? PEDIA_LEADERS : pedia.tab === 'companions' ? companionsNow() : pedia.tab === 'ti' ? (chNow() >= 3 ? PEDIA_TI : []) : pedia.tab === 'ancient' ? PEDIA_ANCIENT : pedia.tab === 'events' ? pdEvents() : PRIME_TABS[pedia.tab] ? PRIME_TABS[pedia.tab]() : [];
+const pdSet = () => pedia.tab === 'leaders' ? PEDIA_LEADERS : pedia.tab === 'companions' ? companionsNow() : pedia.tab === 'ti' ? (chNow() >= 3 ? PEDIA_TI.filter(L => !L.showIf || L.showIf()) : []) : pedia.tab === 'ancient' ? PEDIA_ANCIENT : pedia.tab === 'events' ? pdEvents() : PRIME_TABS[pedia.tab] ? PRIME_TABS[pedia.tab]() : [];
 const pdLocked = () => { const set = pdSet(); return set.length > 0 && set.every(L => pdEntryLocked(L)); };
 const bar = n => `<span class="rd" style="width:${Math.round(n)}ch"></span>`;
 const barsFor = text => text.split(' ').map(w => bar(Math.max(2, w.length * .9))).join(' ');
@@ -23494,6 +23505,15 @@ const PEDIA_TI = [
     paras: [
       'Croxian Mascar is a general under Thomas Hawthorne and the son of Orion Mascar. He joined young, against his father’s wishes, and rose quickly through Terra Imperia’s ranks.',
       'He commands alongside Malia de Toro. His soldiers would follow him anywhere; his father, so far, will not even return his calls.'
+    ] },
+  // kill Croxian and Orion goes to Hawthorne (Close the Channel, ch3.orionGone): from then he's filed here, in red-and-black Terra Imperia armour, not under your companions
+  { id: 'orion-ti', tag: 'cpOrion', mod: 'orionTI', h: 1.85, showIf: () => orionBetrayed(), name: 'ORION MASCAR', title: 'Terra Imperia · at Hawthorne’s side',
+    facts: [['Species', 'Human'], ['Born', '2069 AD'], ['Son', 'Croxian Mascar (deceased), killed by the wanderer'], ['Fought beside', 'Thomas Hawthorne, in the Third World War'], ['Allegiance', 'Terra Imperia'], ['Sworn to', 'Kill the wanderer'], ['Formerly', 'Your companion'], ['Alignment', 'Chaotic Evil']],
+    align: 'Grief with nothing left to hold it back. Orion still answers to no one, and now he answers to no conscience either.',
+    paras: [
+      'Orion Mascar was born in 2069 AD and fought in the Third World War beside Thomas Hawthorne. For decades afterwards he helped people rebuild, and for a while he travelled with you: he nursed you through a fortnight of fever, and he held you on the pier.',
+      'Then you killed his son. He heard Croxian’s last words over the Nostra’s comms and broke on the floor of the crew deck. When he stood up again, he closed the channel and vowed to kill you. Not quickly, he said. But he would.',
+      'He went to Hawthorne, who had always told him there would be a place for him at his side, and he took it. He wears Terra Imperia’s armour now, red over black. The kindness is gone, and the stubbornness that once made him do the right thing without asking now drives him toward you.'
     ] }
 ];
 
@@ -23677,6 +23697,7 @@ function loadFigure(c) {
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     const sc = await parseGlb(u8.buffer), holder = new THREE.Group(); holder.add(sc);
     if (c.mod === 'kizna') feminiseRobot(sc);
+    if (c.mod === 'orionTI') orionTurnPaint(sc);
     if (c.mod === 'jaximus') redSkinGrob(sc);
     if (c.mod === 'sister') sisterShape(sc); if (c.pcol) pontPaint(sc, c.pcol);
     if (c.tag === 'chSevirrus') { sinisterEyes(sc); holder.userData.slasher = figSlasher(sc); }
@@ -23691,7 +23712,11 @@ function loadFigure(c) {
   figCache[key].catch(() => { delete figCache[key]; });
   return figCache[key];
 }
-const companionsNow = () => COMPANIONS.filter(c => !(c.hideFrom && chNow() >= c.hideFrom) && !((c.id === 'james-ti' || c.id === 'james') && jamesKilled())); // kill James at the station and he's gone for good
+const orionBetrayed = () => !!(wanderer && wanderer.ch3 && wanderer.ch3.orionGone); // Close the Channel: he left you for Hawthorne
+const c3Killed = k => !!(wanderer && wanderer.ch3 && wanderer.ch3[k + 'Fate'] === 'killed');
+const companionsNow = () => COMPANIONS.filter(c => !(c.hideFrom && chNow() >= c.hideFrom) && !((c.id === 'james-ti' || c.id === 'james') && jamesKilled()) // kill James at the station and he's gone for good
+  && !(c.id === 'croxian' && c3Killed('crox')) && !(c.id === 'malia' && c3Killed('malia')) // killed at Terra Imperia's base: gone from your companions (both, if you killed both)
+  && !(c.id === 'orion' && orionBetrayed())); // he went to Hawthorne: his file moves to Terra Imperia
 const primeCache = {};
 function loadPrime(p) {
   if (primeCache[p.tag]) return primeCache[p.tag];

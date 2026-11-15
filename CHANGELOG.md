@@ -2095,3 +2095,7 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - His rifle stays down until he walks to the lift. The camera works low and close on the floor, from the side, from above and from behind.
 - Orion's rig has no elbows, knees or spine, so the grief is built from what it does have: he sits on the floor with his legs out, the whole body folds forward, his head bows into raised arms, and he's kept on the floor by his legs.
 - **Voiced:** `data/orionGriefVoices.js` (VENGEFULMASCAR1–13; 7 and 8 are the two Malia lines). The script, with direction for each line, is in `assets/audio/karribassa/VOICE_SCRIPT.md`.
+
+## Orion turns: his Terra Imperia file
+- **After Close the Channel, Orion Mascar is filed under Terra Imperia in the Nostrapedia**, in red armour over black, with his alignment as **Chaotic Evil**. His file covers Croxian's death, his vow to kill the wanderer, and his place at Hawthorne's side. He's no longer listed among your companions.
+- **Kill Croxian or Malia at Terra Imperia's base and they're gone from your companions too** (both, if you killed both). Their Terra Imperia files stay.
