@@ -495,6 +495,7 @@ body.touch #xSkip{min-height:46px;min-width:104px;padding-left:20px;padding-righ
 #fbSub.sev{color:#ffd27a;--g1:rgba(255,40,0,.85);--g2:rgba(0,0,0,.9)}
 #fbSub.eris{color:#e6ccff;--g1:rgba(170,80,255,.8);--g2:rgba(0,0,0,.85)}
 #fbSub.grek{color:#c8ffd8;--g1:rgba(40,255,140,.7);--g2:rgba(0,0,0,.9)}
+#siegeCmd{position:fixed;right:14px;bottom:150px;z-index:31;display:none;text-align:right}#siegeCmd.on{display:block}#siegeCmd small{display:block;font-size:8px;letter-spacing:.3em;color:#c9a0ff;margin-bottom:5px;text-shadow:0 0 6px #000}#siegeCmd div{display:flex;gap:6px;justify-content:flex-end}#siegeCmd button{background:rgba(20,10,34,.72);border:1px solid rgba(201,160,255,.45);color:#e8dcff;font:9px/1 var(--text);letter-spacing:.16em;text-transform:uppercase;padding:9px 10px;cursor:pointer}#siegeCmd button.sel{border-color:#c9a0ff;background:rgba(106,58,154,.6)}#siegeCmd button em{font-style:normal;opacity:.55;margin-left:6px}body.touch #siegeCmd{bottom:auto;top:38%;right:8px}body.touch #siegeCmd button em{display:none}
 #fbSub.mair{color:#d6c2ff;--g1:rgba(122,60,255,.85);--g2:rgba(0,0,0,.9)}
 #fbSub.nihl{color:#c6d4ff;--g1:rgba(80,120,255,.8);--g2:rgba(0,0,0,.9)}
 #fbSub.taro{color:#eef2f6;--g1:rgba(184,191,204,.7);--g2:rgba(0,0,0,.9)}
@@ -4453,11 +4454,11 @@ async function jamesRoverTalk() {
     setTimeout(() => notice('James’s rover · by the teleporter', 'TAKE IT TO THE FERRY', 3600), 400);
   }, clips);
 }
-function enterRover() {
-  const R = world.rover; if (!R) return;
+function enterRover(R = world.rover) {
+  if (!R) return;
   ex.vehicle = { mesh: R, speed: 0, heading: R.userData.heading || 0, x: R.position.x, z: R.position.z, saveT: 0, taskT: 0 };
   player.visible = false; vel.set(0, 0, 0); stopBuild(); hideGhost(); ex.dist = 8.5;
-  if (!ch1().roverFound) { setCh1({ roverFound: true }); gainXP(60); renderTasks(); setTimeout(() => notice('The ferry is about a kilometre away', 'DRIVE TO THE FERRY', 3600), 300); }
+  if (R === world.rover && !ch1().roverFound) { setCh1({ roverFound: true }); gainXP(60); renderTasks(); setTimeout(() => notice('The ferry is about a kilometre away', 'DRIVE TO THE FERRY', 3600), 300); }
   sfx.thud(); lootMsg(document.body.classList.contains('touch') ? 'Stick to drive · EXIT to get out' : 'W / S drive · A / D steer · E to get out', '#e6e9f0');
 }
 function exitRover() {
@@ -4466,7 +4467,7 @@ function exitRover() {
   if (worldBlocked(x, z, false, wHeight(x, z))) { x = V.x + Math.cos(h) * 2.4; z = V.z - Math.sin(h) * 2.4; }
   ex.vehicle = null; V.mesh.userData.heading = h;
   player.visible = true; player.position.set(x, 0, z); player.position.y = groundAt(x, z, wHeight(x, z) + .5); player.rotation.y = h; ex.snap = true; ex.dist = 4.2; vel.set(0, 0, 0);
-  setCh1({ rover: { x: +V.x.toFixed(2), z: +V.z.toFixed(2), r: +h.toFixed(3) } });
+  if (V.mesh === world.rover) setCh1({ rover: { x: +V.x.toFixed(2), z: +V.z.toFixed(2), r: +h.toFixed(3) } }); // (the Chompy rover on Janira Prime isn't James's: nothing to save)
   if (companionOn() && james.ready && james.root.parent === wScene && comp.mode === 'follow') { james.root.visible = true; jTeleportNear(); }
   sfx.thud();
 }
@@ -4501,8 +4502,8 @@ function driveTick(dt) {
   p.set(V.x, y + .9, V.z); player.rotation.y = V.heading; vel.set(fx * V.speed, 0, fz * V.speed);
   ex.yaw = angLerp(ex.yaw, V.heading + Math.PI, Math.min(1, dt * (Math.abs(V.speed) > 2 ? 2.2 : .4)));
   sfx.gust(300 + Math.abs(V.speed) * 25);
-  if ((V.saveT -= dt) <= 0) { V.saveT = 1; const c = ch1(); if (c.rover) Object.assign(c.rover, { x: +V.x.toFixed(2), z: +V.z.toFixed(2), r: +V.heading.toFixed(3) }); }
-  if ((V.taskT -= dt) <= 0) { V.taskT = 1; if (!ch1().ferry) renderTasks(); }
+  if ((V.saveT -= dt) <= 0 && V.mesh === world.rover) { V.saveT = 1; const c = ch1(); if (c.rover) Object.assign(c.rover, { x: +V.x.toFixed(2), z: +V.z.toFixed(2), r: +V.heading.toFixed(3) }); }
+  if ((V.taskT -= dt) <= 0) { V.taskT = 1; if (V.mesh === world.rover && !ch1().ferry) renderTasks(); }
   // XP for the distance driven, as on foot
   ex.walkAcc = (ex.walkAcc || 0) + Math.abs(V.speed) * dt * .25; if (ex.walkAcc >= 40) { ex.walkAcc -= 40; gainXP(1); }
 }
@@ -5111,7 +5112,7 @@ function renderTasks() {
   if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
   if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? campTasks(p, task) : '');
   if (curArea() === 'africa' || ((wanderer.chapter | 0) >= 2 && p.escaped)) h = ch2Tasks(task); // Chapter II's objectives follow you, even back to Antarctica
-  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (c3.hawMars && (wanderer.chapter | 0) === 3 ? task(!!c3.charonLanded, 'Main quest · Head to Charon') : '') + (c3.charonLanded && (wanderer.chapter | 0) === 3 ? task(!!c3.charonMet, 'Meet Charon and Kizna on Charon') : '') + (c3.jamesRev ? task(!!c3.jamesFate, 'Main quest · Defeat James Brown at the Antarctic station') : '') + (c3.jamesFate && (wanderer.chapter | 0) === 3 ? task(!!c3.charonBack, tiPhone() ? 'Main quest · Back to Charon and Kizna' : 'Main quest · Return to Charon and speak to Charon and Kizna') : '') + (c3.hakMet && (wanderer.chapter | 0) === 3 ? task(!!c3.cygDone, tiPhone() ? 'Main quest · Infiltrate the Cygnus (Mercury)' : 'Main quest · Infiltrate the Cygnus Terra Imperius, Terra Imperia’s capital ship, in orbit over Mercury') : '') + (c3.solFell && (wanderer.chapter | 0) === 3 ? task(!!c3.hakBack, tiPhone() ? 'Main quest · Return to Hak in Karribassa' : 'Main quest · Return to Hak Chompjak in Karribassa, on Janira Prime: Sol has fallen') : '') + (c3.hakCall && (wanderer.chapter | 0) === 3 ? task(!!c3.hakMet, tiPhone() ? 'Main quest · Meet Hak in Karribassa (Janira Prime)' : 'Main quest · Meet Hak Chompjak in Karribassa, on Janira Prime (Janira Proxima, a short jump from Sol)') : '') + (surgeOn() ? task(false, surgeTaskText()) : '') + (tiWarOn() ? task(false, `War · take Mercury and Venus from Terra Imperia · bombard, land, defeat the governor (${TI_WORLDS.filter(id => dip().col[id]).length}/2)`) : '') + (c3.hawMars ? (!c3.nyxJoined && c3.jamesFate ? '' : !c3.nyxJoined && c3.nyxFailed ? '<div class="x-task failed"><i></i><span>FAILED: <s>Recruit Nyrexia Erisconos on Eris</s></span></div>' : task(!!c3.nyxJoined, 'Side quest (optional) · Recruit Nyrexia Erisconos on Eris')) : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
+  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (c3.hawMars && (wanderer.chapter | 0) === 3 ? task(!!c3.charonLanded, 'Main quest · Head to Charon') : '') + (c3.charonLanded && (wanderer.chapter | 0) === 3 ? task(!!c3.charonMet, 'Meet Charon and Kizna on Charon') : '') + (c3.jamesRev ? task(!!c3.jamesFate, 'Main quest · Defeat James Brown at the Antarctic station') : '') + (c3.jamesFate && (wanderer.chapter | 0) === 3 ? task(!!c3.charonBack, tiPhone() ? 'Main quest · Back to Charon and Kizna' : 'Main quest · Return to Charon and speak to Charon and Kizna') : '') + (c3.hakMet && (wanderer.chapter | 0) === 3 ? task(!!c3.cygDone, tiPhone() ? 'Main quest · Infiltrate the Cygnus (Mercury)' : 'Main quest · Infiltrate the Cygnus Terra Imperius, Terra Imperia’s capital ship, in orbit over Mercury') : '') + (c3.solFell && (wanderer.chapter | 0) === 3 ? task(!!c3.hakBack, tiPhone() ? 'Main quest · Return to Hak in Karribassa' : 'Main quest · Return to Hak Chompjak in Karribassa, on Janira Prime: Sol has fallen') : '') + (c3.siegeOn && (wanderer.chapter | 0) === 3 ? task(!!c3.siegeWon, tiPhone() ? 'Main quest · End the blockade of Janira Prime' : 'Main quest · End the blockade of Janira Prime: take Terra Imperia’s base, 1 km from Karribassa') : '') + (c3.hakCall && (wanderer.chapter | 0) === 3 ? task(!!c3.hakMet, tiPhone() ? 'Main quest · Meet Hak in Karribassa (Janira Prime)' : 'Main quest · Meet Hak Chompjak in Karribassa, on Janira Prime (Janira Proxima, a short jump from Sol)') : '') + (surgeOn() ? task(false, surgeTaskText()) : '') + (tiWarOn() ? task(false, `War · take Mercury and Venus from Terra Imperia · bombard, land, defeat the governor (${TI_WORLDS.filter(id => dip().col[id]).length}/2)`) : '') + (c3.hawMars ? (!c3.nyxJoined && c3.jamesFate ? '' : !c3.nyxJoined && c3.nyxFailed ? '<div class="x-task failed"><i></i><span>FAILED: <s>Recruit Nyrexia Erisconos on Eris</s></span></div>' : task(!!c3.nyxJoined, 'Side quest (optional) · Recruit Nyrexia Erisconos on Eris')) : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + task(false, 'Explore the galaxy') : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
   if ((wanderer.chapter | 0) >= 3) { const tq = sqTracked(); if (tq) h += `<div class="x-task sq-task"><i></i><span>${tq}</span></div>`; } // the side quest you're tracking
   xUI.tasks.innerHTML = h;
   $('#xChap').textContent = liveChapterLabel().toUpperCase();
@@ -5331,6 +5332,8 @@ async function interact() {
     pushJames();
   } else if (n.id === 'rover') {
     enterRover();
+  } else if (n.id === 'srover') {
+    enterRover(SG.rover);
   } else if (n.id === 'roverOut') {
     exitRover();
   } else if (n.id === 'door') {
@@ -6518,6 +6521,16 @@ function teleportTo(t) {
 }
 // ---- one companion command system for everyone in your party ----
 const PARTY = { james: { name: 'James', full: 'James Brown' }, orion: { name: 'Orion', full: 'Orion Mascar' }, nico: { name: 'Nico', full: 'Nico', crew: true } }; // Khazglar, Charon and the rest join here in later chapters (Nico walks and fights through the crew system below)
+// the blockade of Janira Prime (Chapter III): Hak, Darius and Vishara as companions (the rest of it is with the siege, further down)
+const SIEGE_LEADS = {
+  'lead:hak': { name: 'Hak', full: 'Hak Chompjak V', spec: 'hak', rig: () => leadTag('leader_chompy', 2.05, 'sword')() },
+  'lead:darius': { name: 'Darius', full: 'Darius Ancin', spec: 'darius', rig: async () => { const R = await dariusRig(); if (R) armRig(R, 'rifle'); return R; } },
+  'lead:vishara': { name: 'Vishara', full: 'Vishara Erisconos', spec: 'vishara', rig: () => glbRig('leader_erisian', 1.9, 'none') }
+};
+const ICE_MAGES = ['lead:vishara', 'nyrexia']; // Vishara and her sister Nyrexia fight with ice magic
+const SG = { base: null, rover: null, bosses: [], fought: false };
+const siegeQ = () => ch3Now() && c3f('siegeOn') && !c3f('siegeWon');
+const siegeLeadsOn = () => !!wanderer && Object.keys(SIEGE_LEADS).some(id => partyNow().includes(id));
 function partyNow() {
   const out = companionOn() ? ['james'] : [];
   if (orionJoined()) out.push('orion');
@@ -6533,6 +6546,7 @@ function compLevel(id) {
   if (id === 'orion') return orionLevel(); if (id === 'nico') return nicoLevel();
   if (id === 'james') return clamp(pl + 2, 3, 100); // James has been out on the ice longer than you
   if (String(id).startsWith('pont:')) { const P = pontById(id.slice(5)); return P ? clamp(Math.max(P.lv || 1, pl), 1, 110) : pl; } // a Pontifex keeps pace with you
+  if (SIEGE_LEADS[id]) return leadSpec(SIEGE_LEADS[id].spec).lv; // a faction leader fights at a faction leader's level
   if (id === 'khazglar') { const b = (wanderer && wanderer.ch3 && wanderer.ch3.khzBase) || pl; return clamp(KHZ_LV + pl - b, KHZ_LV, 110); } // level 15 when he joins (the level he fought you at), rising with you after
   const L = COMPANIONS.find(c => c.id === id); if (L && L.lv) return clamp(L.lv + pl - 1, L.lv, 110);
   const c = charById(id); return c && c.level ? clamp(+c.level || pl, 1, 110) : pl;
@@ -6545,10 +6559,11 @@ function compDps(id) {
   const S = COMP_DPS[id], lv = compLevel(id);
   if (S) return S[0] + S[1] * Math.max(0, lv - S[2]);
   if (id === 'james') return 8 + .5 * lv; // Chapter I James, out on the ice with you
+  if (SIEGE_LEADS[id]) return 60 + lv * 4.5; // Hak, Darius and Vishara hit extremely hard (and aren't held below Nico)
   const v = 16 + lv; return nicoJoined() ? Math.min(v, compDps('nico') * .85) : v;
 }
 function compGap(id, foe) { // the same level rule as yours: +4% a level above the foe (up to ×2), −4% a level below (down to ×0.3), but no one-shots. Bosses: ×1.25 at most
-  const k = lvGapMul(compLevel(id), faunaLv(foe)), m = k === Infinity ? 2 : k; return foe.boss ? Math.min(m, 1.25) : m;
+  const k = lvGapMul(compLevel(id), faunaLv(foe)), m = k === Infinity ? 2 : k; return foe.boss || foe.sboss ? Math.min(m, 1.25) : m;
 }
 function compHit(id, every) { return Math.round(compDps(id) * every * 10) / 10; } // one blow, for someone who strikes every `every` seconds
 function compMode(id) { return id === 'orion' ? orionC.mode : id === 'james' ? comp.mode : (wanderer && wanderer.cmds && wanderer.cmds[id]) || 'follow'; }
@@ -6926,6 +6941,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyB') { e.stopImmediatePropagation(); openBuild(true); return; }
   if (ex.build && (e.code === 'KeyX' || e.code === 'Escape')) { e.stopImmediatePropagation(); stopBuild(); lootMsg('Stopped building', '#e6e9f0'); return; }
   if (e.code === 'KeyV') { cycleCompanion(); return; }
+  if (siegeLeadsOn() && ['KeyG', 'KeyH', 'KeyJ'].includes(e.code) && state === 'explore' && !ex.dlg) { siegeCmd({ KeyG: 'follow', KeyH: 'hold', KeyJ: 'advance' }[e.code]); return; }
   if (partyNow().length && /^Digit[1-5]$/.test(e.code)) cmdCompanion(JCMDS[+e.code.slice(5) - 1]);
   else if (partyNow().length && e.code === 'Digit8' && canDismiss()) cmdCompanion('dismiss');
   else if (partyNow().length && e.code === 'Digit9' && effCh() >= 3) cmdCompanion('dungeon');
@@ -7043,6 +7059,7 @@ function questTarget() {
   if (DGN.on) return dgnTarget();
   if (NYX.R && NYX.R.root.parent && isPl()) return { x: NYX.x, z: NYX.z, label: 'Nyrexia Erisconos' };
   if (isPl() && world.dgnGate && khzPending()) return { x: world.dgnGate.x, z: world.dgnGate.z, label: 'The way into the mountain' };
+  if (isPl() && siegeQ() && SG.base && world.planet.P.id === 'janira') return { x: SG.base.x, z: SG.base.z, label: 'Terra Imperia’s base · end the blockade' };
   if (isPl() && (hakQ() || hakBackQ()) && world.planet.P.id === 'janira' && !TIW.hak && !(world.planet.city && world.planet.city.K.name === 'Karribassa')) { // landed away from the city: point the way there
     const W = world.planet, cd = capDir(W.P), x = cd.dot(W.E), z = cd.dot(W.N), f = Math.hypot(x, z) || 1, dist = Math.acos(clamp(cd.dot(W.D), -1, 1)) * W.R;
     return { x: x / f * Math.min(dist, 900), z: z / f * Math.min(dist, 900), label: `Karribassa · ${(dist / 1000).toFixed(1)} km · take off and fly there`, far: dist }; }
@@ -12600,11 +12617,12 @@ const pick = a => a[Math.floor(Math.random() * a.length)];
 
 // ---- what's on the ground near you: Charon and Kizna, the stronghold, a patrol, a Pontifex on your trail ----
 const TIW = { area: null, chn: null, st: null, pat: null, hunt: null };
-function tiWorldClear() { for (const k of ['chn', 'hak', 'cyg', 'st', 'pat', 'hunt', 'gov']) { const o = TIW[k]; if (o && o.R) for (const R of o.R) if (R && R.cb) { const i = fauna.list.indexOf(R.cb); if (i >= 0) fauna.list.splice(i, 1); } if (o && o.g && o.g.parent) o.g.parent.remove(o.g); TIW[k] = null; } }
+function tiWorldClear() { siegeClear(); for (const k of ['chn', 'hak', 'cyg', 'st', 'pat', 'hunt', 'gov', 'siege']) { const o = TIW[k]; if (o && o.R) for (const R of o.R) if (R && R.cb) { const i = fauna.list.indexOf(R.cb); if (i >= 0) fauna.list.splice(i, 1); } if (o && o.g && o.g.parent) o.g.parent.remove(o.g); TIW[k] = null; } }
 function tiLanded(P) {
   tiWorldClear(); TIW.area = curArea(); if (!P) return;
   if (P.id === 'charon' && (chnQ() || chnBackQ())) chnPlace().catch(e => console.error(e));
   if (P.id === 'janira' && (hakQ() || hakBackQ())) hakPlace().catch(e => console.error(e));
+  if (P.id === 'janira' && siegeQ()) setTimeout(() => siegePlace(false), 800); // the blockade: the base, and the rover
   if (P.id === 'mercury' && (cygQ() || cygFarm())) cygPlace();
   if (SPC.cygDock) { SPC.cygDock = false; { const fd = $('#fade'); fd.style.transition = 'none'; fd.style.opacity = 1; } setTimeout(cygDockIn, 350); return; } // you docked with the Cygnus in orbit: straight aboard, and nothing down on Mercury (patrols, a hunter, the war) turns up to announce itself
   if (P.id === 'earth' && jamesQ()) stationPlace();
@@ -12617,8 +12635,13 @@ function tiTick(dt) {
   if (!TIW.area) return;
   if (curArea() !== TIW.area) { tiWorldClear(); TIW.area = null; return; }
   const p = player.position;
-  for (const k of ['chn', 'hak', 'cyg', 'st', 'pat', 'hunt', 'gov']) { const o = TIW[k]; if (!o) continue; o.g.visible = !DGN.on;
-    for (const R of [...(o.R || [])]) { if (!R) continue; if (R.cb && tiSoldierTick(R, o, dt)) continue; R.mode = 'idle'; if (o.face) { const q = R.root.position; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - q.x, p.z - q.z), Math.min(1, dt * 3)); } animRig(R, dt); }
+  siegeTick(dt);
+  for (const k of ['chn', 'hak', 'cyg', 'st', 'pat', 'hunt', 'gov', 'siege']) { const o = TIW[k]; if (!o) continue; o.g.visible = !DGN.on;
+    for (const R of [...(o.R || [])]) { if (!R) continue; if (R.cb && tiSoldierTick(R, o, dt)) continue;
+      if (R.walkTo) { const q = R.root.position, dx = R.walkTo.x - q.x, dz = R.walkTo.z - q.z, d = Math.hypot(dx, dz); if (d > .15) { const st = Math.min(d, 1.5 * dt); q.x += dx / d * st; q.z += dz / d * st; R.root.rotation.y = Math.atan2(dx, dz); R.mode = 'walk'; animRig(R, dt); continue; } R.walkTo = null; } // walking up (Hak's allies)
+      if (R.pray) { R.mode = 'idle'; animRig(R, dt); R.root.position.y = R.baseY - .42; R.root.rotation.x = .1; if (R.ra) R.ra.rotation.x = -1.1; if (R.la) R.la.rotation.x = -1.1; continue; } else if (R.root.rotation.x) R.root.rotation.x = 0; // on his knees, praying
+      R.mode = 'idle'; if (o.face) { const q = R.root.position; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - q.x, p.z - q.z), Math.min(1, dt * 3)); } animRig(R, dt);
+      if (R.armGoal != null) { R.armX = R.armX == null ? R.ra.rotation.x : R.armX; R.armX += (R.armGoal - R.armX) * Math.min(1, dt * 7); R.ra.rotation.x = R.armX; } else if (R.armX != null) R.armX = null; } // Hak's hand to his glasses
     if (o.beacon) o.beacon.material.opacity = .5 + Math.sin(time * 3) * .2; }
 }
 // Terra Imperia soldiers on the ground are hostile: they close in, open fire, and can be shot or cut down like anything else
@@ -12848,13 +12871,38 @@ function hakBackTalk() { // Hak, on the bridge before the Hall of Oaths again: h
     function karrWake() { // back on the bridge: Hak brings you round (CH3NIGHTMAREKARRIBASSA9–11, after Hawthorne's eight lines)
       const kv = NM.vo.kv || [], say = (L, next) => hakSay(who, L, kv, next);
       say([['Wanderer! Look at me. You are back. What did you see?', 8]], () => openChoice(who, [
-        { text: tiPhone() ? '“Karribassa, burning.”' : '“Karribassa, burning. Hawthorne was here, using Sevirrus’s words.”', onPick: () => say([['My words. He keeps wearing them like a stolen coat.', 9], ['If what you saw is coming, it is coming soon. Then we make sure it does not happen the way you saw it.', 10]], finish) }
+        { text: tiPhone() ? '“Karribassa, burning.”' : '“Karribassa, burning. Hawthorne was here, using Sevirrus’s words.”', onPick: () => say([['My words. He keeps wearing them like a stolen coat.', 9], ['If what you saw is coming, it is coming soon. Then we make sure it does not happen the way you saw it.', 10]], hakRant) }
       ], 'YOUR REPLY'));
+    }
+    function hakRant() { // then he loses it: ten sentences at Hawthorne, in the open, on the bridge before the Hall of Oaths. Darius Ancin and
+      // Vishara Erisconos come out of the Hall partway through and stand at his side without a word. Then he kneels and prays to Archamus.
+      // Voices: data/hakRantVoices.js (CH3HAKRANT1–14: the eleven, then the three of the prayer), subtitles until recorded. He takes his glasses off
+      // for the last seven (from the first time anyone has seen him without them), and puts them back on before he kneels.
+      loadDataScript('hakRantVoices').then(ok => ok ? sfx.loadClips('hakRantVoices') : []).catch(() => []).then(rv => {
+        rv = rv || []; const say = (L, next) => hakSay(who, L, rv, next), H = TIW.hak && TIW.hak.R[0];
+        say([['Thomas Hawthorne! I know you can hear me. Men like you always keep an ear at the door.', 0], ['You put my words in your mouth, and you wore my sins like a crown you found in the gutter.', 1]], () => {
+          hakAllies(); // Darius Ancin and Vishara Erisconos, out of the Hall of Oaths, to his side
+          say([['Everyone kneels? I said that once, on Carax, and I have spent three hundred years on my knees for it.', 2],
+            ['You do not get to borrow Sevirrus. He was mine. His blood is on my hands, not on yours.', 3]], () => hakGlasses(true, () => // and then, for the first time anyone has seen, he takes off his glasses: his last seven, bare-faced
+          say([['You butchered my people in your filthy little dream, and you smiled while you did it.', 4],
+            ['You are not a monster, Hawthorne. You are a cheap fucking imitation of one.', 5],
+            ['So come to Karribassa. Bring every ship your stolen Federation can build.', 6],
+            ['Every street you burn, I will rebuild, and every soldier you send, I will send home in pieces.', 7],
+            ['And if you lay one finger on the Grek, Archiostal will not need to defend itself. I will be standing at its gates.', 8],
+            ['I buried Sevirrus once. I will bury you beside him, and I will look you in the eye, and I will not look away.', 9],
+            ['I will find you, Hawthorne. I will pursue you to Earth.', 10]], () => hakGlasses(false, () => { // and puts them back on
+            if (H) { H.pray = true; H.baseY = H.baseY != null ? H.baseY : H.root.position.y; } sfx.thud(); // he kneels
+            setTimeout(() => say([['Archamus. Prime Good. You answered Taredesiba when the dark came for Timpur.', 11],
+              ['I have no right to ask. I was Sevirrus. But these people were never him.', 12],
+              ['Stand with Karribassa. And if you will not stand with me, stand with them.', 13]], () => { if (H) { H.pray = false; if (H.baseY != null) H.root.position.y = H.baseY; } finish(); }), 1200);
+          }))));
+        });
+      });
     }
     function finish() {
       setC3({ hakBack: true, karrVision: true }); renderTasks(); sfx.chime(); gainXP(300, 'Returned to Hak Chompjak');
       notice('Main quest', tiPhone() ? 'YOU RETURNED TO HAK' : 'YOU RETURNED TO HAK CHOMPJAK', 3600);
-      setTimeout(() => lootMsg(tiPhone() ? 'Take Sol back · bombard its worlds' : 'Take Sol back from Terra Imperia: bombard its worlds and beat their governors', '#ffb060'), 2400);
+      setTimeout(siegeStart, 3200); // and then the sky fills with Terra Imperia's ships: the blockade of Janira Prime
     }
   };
   pdMeet('hak'); loadDataScript('hakBackVoices').then(ok => ok ? sfx.loadClips('hakBackVoices') : []).catch(() => []).then(v => go(v || []));
@@ -12888,6 +12936,167 @@ async function hakPlace(tries = 0) { // the Emperor, in the heart of Karribassa:
   G.forEach((Rg, i) => { if (!Rg) return; Rg.root.position.set(x + (i ? 2.6 : -2.6), y, z - 1.2); Rg.root.traverse(o => { if (o.isMesh) o.castShadow = !tiPhone(); }); g.add(Rg.root); }); // the Emperor's guard
   TIW.hak = { g, R: [R, ...G.filter(Boolean)], face: true, x, z };
   setTimeout(() => lootMsg(tiPhone() ? 'Hak waits at the Hall of Oaths' : 'Hak Chompjak waits in the heart of Karribassa, before the Hall of Oaths · follow the gold marker', '#ffb060'), 2600);
+}
+/* ---- Chapter III: the blockade of Janira Prime ----
+   After Hak's prayer, Terra Imperia attacks. Hak (his sword), Darius Ancin (a rifle) and Vishara Erisconos (ice magic) join you at
+   their faction leaders' levels, and take three orders: Follow, Hold Position, Advance (the buttons over the controls, or G / H / J).
+   A Chompy rover (purple and light blue) waits by the bridge. Terra Imperia's base stands 1 km from Karribassa: walls, towers, troops,
+   and, out in the open (not a lair), Croxian Mascar and Malia de Toro, with a Pontifex Maximus and a Sister of Hawthorne if any are
+   hunting you. Beat them and the blockade ends (ch3.siegeWon). The three stay with you, and walk behind you on the main menu.
+   Saves: ch3.siegeOn, ch3.siegeWon; the leaders are in wanderer.party as lead:hak, lead:darius, lead:vishara. ---- */
+function iceBolt(R, foe) { // a shard of blue ice flies from the caster's hand, bursts into frost, and the target slows
+  const q = R.root.position, a = R.root.rotation.y, sx = q.x + Math.sin(a) * .5, sy = q.y + 1.4, sz = q.z + Math.cos(a) * .5, tx = foe.x, ty = (foe.y || 0) + .9, tz = foe.z;
+  const m = new THREE.Mesh(new THREE.OctahedronGeometry(.18), new THREE.MeshBasicMaterial({ color: 0xbfefff })); m.scale.set(.6, .6, 2); m.position.set(sx, sy, sz); m.lookAt(tx, ty, tz); wScene.add(m);
+  const gl = glowSprite(0x7fd8ff, 1.2, .9); m.add(gl); sfx.whoosh && sfx.whoosh(); let k = 0;
+  const step = () => { k += .09; if (k >= 1 || !m.parent) { wScene.remove(m); burst(tx, ty, tz, 22, 3, .75, .9, 1, .6, .9, 1.2); sfx.hit && sfx.hit('ice'); if (!foe.dead) { foe.slowT = 2.5; } return; } m.position.set(lerp(sx, tx, k), lerp(sy, ty, k) + Math.sin(k * Math.PI) * .6, lerp(sz, tz, k)); requestAnimationFrame(step); }; step();
+}
+function siegeCmd(mode) { // Follow · Hold position · Advance, for Hak, Darius and Vishara together
+  const ids = Object.keys(SIEGE_LEADS).filter(id => partyNow().includes(id)); if (!ids.length) return;
+  const p = player.position; (wanderer.cmds || (wanderer.cmds = {}));
+  ids.forEach((id, i) => { wanderer.cmds[id] = mode; const C = CREW[id]; if (C) C.holdAt = mode === 'hold' ? [(C.R ? C.R.root.position.x : p.x), (C.R ? C.R.root.position.z : p.z)] : null; });
+  const c = curChar(); if (c) c.cmds = wanderer.cmds; saveRoster(); sfx.click();
+  lootMsg({ follow: 'Hak, Darius and Vishara · following you', hold: 'Hak, Darius and Vishara · holding position', advance: 'Hak, Darius and Vishara · advancing on Terra Imperia’s base' }[mode], '#c9a0ff');
+  siegeCmdUI();
+}
+setInterval(() => { try { siegeCmdUI(); } catch (e) {} }, 500); // the order buttons come and go with you (space, menus, dialogue)
+function siegeCmdUI() {
+  let el = $('#siegeCmd'); const on = siegeLeadsOn() && ex.mode === 'world' && state === 'explore';
+  if (!el) { if (!on) return; el = document.createElement('div'); el.id = 'siegeCmd'; el.innerHTML = '<small>HAK · DARIUS · VISHARA</small><div><button data-m="follow">Follow<em>G</em></button><button data-m="hold">Hold position<em>H</em></button><button data-m="advance">Advance<em>J</em></button></div>';
+    el.addEventListener('pointerdown', e => { const b = e.target.closest('button[data-m]'); if (!b) return; e.preventDefault(); e.stopPropagation(); siegeCmd(b.dataset.m); }); document.body.appendChild(el); }
+  el.classList.toggle('on', on); const m = (wanderer && wanderer.cmds && wanderer.cmds['lead:hak']) || 'follow';
+  for (const b of el.querySelectorAll('button')) b.classList.toggle('sel', b.dataset.m === m);
+}
+function siegeStart() { // straight after Hak's prayer
+  if (c3f('siegeOn')) return; setC3({ siegeOn: true });
+  wanderer.party = [...new Set([...(wanderer.party || []), ...Object.keys(SIEGE_LEADS)])]; (wanderer.cmds || (wanderer.cmds = {})); for (const id of Object.keys(SIEGE_LEADS)) wanderer.cmds[id] = 'follow';
+  const c = curChar(); if (c) { c.party = wanderer.party; c.cmds = wanderer.cmds; } saveRoster();
+  sfx.alarm(); setTimeout(() => sfx.alarm(), 500); ex.shake = .6; sfx.boom && sfx.boom(1);
+  notice('Terra Imperia', tiPhone() ? 'JANIRA PRIME IS UNDER ATTACK' : 'TERRA IMPERIA ATTACKS JANIRA PRIME', 4200);
+  // Hak's two guards stay at the Hall; Hak, Darius and Vishara come with you
+  const o = TIW.hak; if (o) { const keep = []; for (const R of o.R) { if (R === o.R[0] || SIEGE_LEADS_RIG(R)) { if (R.root.parent) R.root.parent.remove(R.root); } else keep.push(R); } o.R = keep; o.allies = false; TIW.hak.x = TIW.hak.z = 1e6; }
+  syncCrewParty(); placeCrew(); renderTasks(); refreshJamesUI();
+  setTimeout(() => { notice('Main quest', tiPhone() ? 'END THE BLOCKADE' : 'END THE BLOCKADE OF JANIRA PRIME', 4200); lootMsg(tiPhone() ? 'Take Terra Imperia’s base · 1 km · the rover is by the bridge' : 'Take Terra Imperia’s base, 1 km from Karribassa · a Chompy rover waits by the bridge · order Hak, Darius and Vishara with G / H / J', '#c9a0ff'); }, 4600);
+  siegePlace(true);
+}
+const SIEGE_LEADS_RIG = R => !!(R && R.siegeLead);
+async function siegePlace(wave) { // the base 1 km from Karribassa, the rover, and (when it starts) the first wave
+  const C = world.planet && world.planet.city; if (!C || C.K.name !== 'Karribassa' || !isPl() || TIW.siege) return;
+  const area = curArea(), dl = Math.hypot(C.cx, C.cz) || 1, ux = C.cx / dl, uz = C.cz / dl, bx = C.cx + ux * 1000, bz = C.cz + uz * 1000; // beyond the city, away from the spaceport
+  SG.base = { x: bx, z: bz }; SG.bosses = []; SG.fought = false;
+  const g = new THREE.Group(); wScene.add(g); const S = TIW.siege = { g, R: [], x: bx, z: bz }; const ph = tiPhone();
+  // the rover: a Chompy one, purple and light blue, by the bridge before the Hall of Oaths
+  const rv = makeRoverMesh(); rv.traverse(m => { if (!m.isMesh || !m.material.color) return; const h = m.material.color.getHex(); if (h === 0xd8dde4 || h === 0xcfd5dc) { m.material = m.material.clone(); m.material.color.set(0x6a3a9a); } else if (h === 0xe0662a) { m.material = m.material.clone(); m.material.color.set(0x7fd8ff); m.material.emissive = new THREE.Color(0x2a6a8a); m.material.emissiveIntensity = .4; } });
+  if (rv.userData.beacon) rv.userData.beacon.material.color.set(0x9ad8ff);
+  const rx = C.cx + 8, rz = C.cz + 52; rv.position.set(rx, wHeight(rx, rz), rz); rv.userData.heading = Math.atan2(ux, uz); rv.rotation.set(0, rv.userData.heading, 0, 'YXZ'); g.add(rv); SG.rover = rv;
+  // the base: a ring of black walls with a gate towards the city, four towers, crimson banners, tents and a command post
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .7, metalness: .3 }, o)), black = M(0x15161a), crimson = M(0xd0343a, { emissive: 0x5a0a0e, emissiveIntensity: .5 }), y0 = wHeight(bx, bz);
+  const put = (geo, m, x, y, z, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(bx + x, wHeight(bx + x, bz + z) + y, bz + z); o.rotation.y = ry; o.castShadow = !ph; o.receiveShadow = true; g.add(o); return o; };
+  const gateA = Math.atan2(-ux, -uz), R0 = 30;
+  for (let i = 0; i < 28; i++) { const a = i / 28 * Math.PI * 2; if (Math.abs(Math.atan2(Math.sin(a - gateA), Math.cos(a - gateA))) < .2) continue; put(new THREE.BoxGeometry(7, 4.5, 1.2), black, Math.sin(a) * R0, 2.25, Math.cos(a) * R0, a + Math.PI / 2); }
+  for (let i = 0; i < 4; i++) { const a = gateA + Math.PI / 4 + i * Math.PI / 2; put(new THREE.CylinderGeometry(2, 2.4, 11, 8), black, Math.sin(a) * R0, 5.5, Math.cos(a) * R0); put(new THREE.BoxGeometry(5, .6, 5), crimson, Math.sin(a) * R0, 11.2, Math.cos(a) * R0); const L = glowSprite(0xff3a3a, 3, .8); L.position.set(bx + Math.sin(a) * R0, y0 + 12.5, bz + Math.cos(a) * R0); g.add(L); }
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + .3, r = 14; put(new THREE.ConeGeometry(2.6, 3, 4), M(0x2a2b30), Math.sin(a) * r, 1.5, Math.cos(a) * r, a); put(new THREE.BoxGeometry(.15, 5, .15), black, Math.sin(a) * (r + 3), 2.5, Math.cos(a) * (r + 3)); put(new THREE.BoxGeometry(1.6, 1, .05), crimson, Math.sin(a) * (r + 3) + .8, 4.3, Math.cos(a) * (r + 3)); }
+  put(new THREE.BoxGeometry(8, 4, 6), black, 0, 2, 0); put(new THREE.BoxGeometry(8.2, .5, 6.2), crimson, 0, 4.2, 0); const bc = tiBeacon(g, bx, bz, 0xd0343a, 16); S.beacon = bc;
+  // the garrison
+  const n = ph ? 6 : 10;
+  for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, r = 8 + (i % 3) * 6; tiSoldierRig(i % 3 === 2 ? 'f' : 'm').then(R => { if (!R || TIW.siege !== S) return; const x = bx + Math.sin(a) * r, z = bz + Math.cos(a) * r; R.root.position.set(x, wHeight(x, z), z); R.root.rotation.y = a + Math.PI; R.root.traverse(m => { if (m.isMesh) m.castShadow = !ph; }); g.add(R.root); tiArm(R, false, 'Terra Imperia soldier'); S.R.push(R); }).catch(() => {}); }
+  // the first wave, at the city, as the attack begins
+  if (wave) { const p = player.position; for (let i = 0; i < (ph ? 4 : 6); i++) { const a = Math.atan2(ux, uz) + (i - 2.5) * .25, r = 26 + (i % 2) * 4; tiSoldierRig(i % 2 ? 'f' : 'm').then(R => { if (!R || TIW.siege !== S || curArea() !== area) return; const x = p.x + Math.sin(a) * r, z = p.z + Math.cos(a) * r; R.root.position.set(x, wHeight(x, z), z); R.root.rotation.y = a + Math.PI; g.add(R.root); const cb = tiArm(R, false, 'Terra Imperia soldier'); cb.state = 'hunt'; S.R.push(R); }).catch(() => {}); } }
+  siegeCmdUI();
+}
+function siegeClear() { if (TIW.siege) { for (const B of SG.bosses) { const i = fauna.list.indexOf(B.c); if (i >= 0) fauna.list.splice(i, 1); for (const m of B.tels || []) if (m.parent) m.parent.remove(m); } if (ex.vehicle && ex.vehicle.mesh === SG.rover) { ex.vehicle = null; player.visible = true; } } SG.rover = null; SG.bosses = []; SG.base = null; if (!c3f('siegeWon')) $('#bossBar') && SG.barOn && $('#bossBar').classList.remove('on'); SG.barOn = false; }
+// the bosses: out in the open, inside the walls. They don't die: beaten, they fall back to their ships
+async function siegeBosses() {
+  if (SG.fought) return; SG.fought = true; const S = TIW.siege; if (!S) return; const lv = Math.max(30, plvNow() + 4), bx = SG.base.x, bz = SG.base.z;
+  const hunters = PONTS().filter(P => P.st === 'hunt'), pont = hunters.find(P => P.sex !== 'f'), sis = hunters.find(P => P.sex === 'f');
+  const croxRig = async () => { const src = await embGlb('cpCroxian'); if (!src) return null; const R = autoRig(gearNoMeasure(SkeletonUtils.clone(src)), 1.85); armRig(R, 'none'); return R; };
+  const list = [['crox', 'Croxian Mascar', croxRig, 'melee', 9000 + lv * 350], ['malia', 'Malia de Toro', async () => { const R = await companionRig('malia'); if (R) armRig(R, 'rifle'); return R; }, 'ranged', 8000 + lv * 300]];
+  if (pont) list.push(['pont', pont.name, () => pontRig(pont), 'melee', 6000 + lv * 250, pont]); if (sis) list.push(['sis', sis.name, () => pontRig(sis), 'melee', 6000 + lv * 250, sis]);
+  const rigs = await Promise.all(list.map(L => L[2]().catch(() => null))); if (TIW.siege !== S) return;
+  list.forEach((L, i) => { const R = rigs[i]; if (!R) return; const a = i * 1.6 + .4, x = bx + Math.sin(a) * 6, z = bz + Math.cos(a) * 6; R.root.position.set(x, wHeight(x, z), z); R.root.traverse(m => { if (m.isMesh) m.castShadow = !tiPhone(); }); S.g.add(R.root);
+    const D = { name: `${L[1]} · lv ${lv}`, hp: L[4], r: .8, xp: Math.round(400 + lv * 20), dmg: 0, beast: 'pred', loot: () => [['warpcell', 1], ['medkit', 2]] };
+    const c = { type: 'siegeboss', D, lv, mesh: R.root, x, z, y: R.root.position.y, rot: 0, hp: L[4], state: 'hunt', t: 0, cd: 2 + i, home: [x, z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, ext: true, sboss: true, bar: hpBar() };
+    c.bar.position.y = 2.4; c.bar.visible = false; R.root.add(c.bar); fauna.list.push(c);
+    SG.bosses.push({ R, c, key: L[0], name: L[1], kind: L[3], P: L[5] || null, st: 'chase', cd: 2 + i * .7, leapCd: 6 + i, t: 0, tels: [] });
+  });
+  sfx.alarm(); leaderPlay('wrong').catch(() => {});
+  const ph = tiPhone(), barks = [['CROXIAN MASCAR', 'Hello again, wanderer. You brought friends this time.'], ['MALIA DE TORO', 'The Emperor himself. Hawthorne will want your head on a plate, Hak.'], ['HAK CHOMPJAK V', 'Then he can come and take it. MASCAR!']];
+  if (pont || sis) barks.splice(2, 0, [`${(pont || sis).name.toUpperCase()}`, 'In the name of the Grand Imperarch. Kneel.']);
+  barks.forEach(([w, t], i) => setTimeout(() => { if (TIW.siege === S) bark(`${ph ? '' : w + ': '}${t}`, 3400); }, 600 + i * 3600));
+  notice('Terra Imperia', SG.bosses.length > 2 ? 'CROXIAN · MALIA · AND HAWTHORNE’S ANOINTED' : 'CROXIAN MASCAR · MALIA DE TORO', 3800);
+}
+function siegeBar() {
+  const el = $('#bossBar'); if (!el) return; const live = SG.bosses.filter(B => !B.gone);
+  if (!live.length) { if (SG.barOn) el.classList.remove('on'); SG.barOn = false; return; }
+  const hp = live.reduce((a, B) => a + Math.max(0, B.c.hp), 0), max = live.reduce((a, B) => a + B.c.D.hp, 0);
+  el.innerHTML = `<div class="bb-h"><b>${live.map(B => B.name.toUpperCase()).join(' · ')}</b><small>LV ${live[0].c.lv} · TERRA IMPERIA · THE BLOCKADE</small></div><div class="bb"><i style="width:${(hp / max * 100).toFixed(1)}%"></i></div><em>${tiPhone() ? 'Beat them all' : 'Beat them all to end the blockade of Janira Prime'}</em>`;
+  el.classList.add('on'); SG.barOn = true;
+}
+function siegeTick(dt) {
+  siegeCmdUI(); const S = TIW.siege; if (!S || !SG.base) return; const p = player.position;
+  if (S.beacon) S.beacon.material.opacity = .5 + Math.sin(time * 3) * .2;
+  if (!SG.fought && siegeQ() && Math.hypot(p.x - SG.base.x, p.z - SG.base.z) < 70 && state === 'explore') siegeBosses();
+  if (!SG.bosses.length) return;
+  const live = state === 'explore' && !ex.dlg;
+  for (const B of SG.bosses) {
+    if (B.gone) continue; const R = B.R, c = B.c, q = R.root.position;
+    if (c.dead || c.hp <= 0) { B.gone = true; c.dead = 1; const i = fauna.list.indexOf(c); if (i >= 0) fauna.list.splice(i, 1); for (const m of B.tels) if (m.parent) m.parent.remove(m); B.tels = [];
+      burst(q.x, q.y + 1, q.z, 60, 6, 1, .3, .3, 1, 1.4, 2); sfx.thud(); setTimeout(() => { if (R.root.parent) R.root.parent.remove(R.root); }, 400);
+      if (B.P) { notice(pontTitle(B.P), `${B.P.name.toUpperCase()} IS BEATEN`, 3000); setTimeout(() => pontChoice(B.P.id, () => {}), 1200); } // as on the Cygnus: take them in, kill them, or let them go
+      else bark(B.key === 'crox' ? 'Croxian Mascar: This isn’t over. Fall back!' : 'Malia de Toro: Pull out! Back to the ships!', 3200);
+      if (SG.bosses.every(o => o.gone)) siegeWin(); continue; }
+    c.x = q.x; c.z = q.z; c.y = q.y; c.slowT = Math.max(0, (c.slowT || 0) - dt);
+    if (c.barT > 0) { c.barT -= dt; c.bar.visible = true; c.bar.quaternion.copy(camera.quaternion).premultiply(tmpQ.copy(R.root.quaternion).invert()); const f = c.bar.userData.fg, k = Math.max(0, c.hp / c.D.hp); f.scale.x = Math.max(.001, k); f.position.x = -(1 - k) / 2; } else c.bar.visible = false;
+    if (!live) { R.mode = 'idle'; animRig(R, dt); continue; }
+    const dx = p.x - q.x, dz = p.z - q.z, d = Math.hypot(dx, dz) || 1, sp = (B.kind === 'ranged' ? 3.2 : 4.6) * (c.slowT > 0 ? .5 : 1), dmg = Math.round((B.kind === 'ranged' ? 14 : 30) + c.lv * (B.kind === 'ranged' ? .5 : 1));
+    B.cd -= dt; B.leapCd -= dt; B.t += dt;
+    const face = () => { R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 7)); };
+    const move = (tx, tz, v) => { const ex2 = tx - q.x, ez = tz - q.z, e = Math.hypot(ex2, ez); if (e < .1) return; const nx = q.x + ex2 / e * v * dt, nz = q.z + ez / e * v * dt; if (!worldBlocked(nx, nz)) { q.x = nx; q.z = nz; } q.y = wHeight(q.x, q.z); };
+    if (B.st === 'chase') {
+      face();
+      if (B.kind === 'ranged') { // Malia: keeps her distance and fires bursts
+        if (d > 16) { R.mode = 'walk'; move(p.x, p.z, sp); } else if (d < 8) { R.mode = 'walk'; move(q.x - dx, q.z - dz, sp * .8); } else R.mode = 'idle';
+        if (B.cd <= 0 && d < 22) { B.cd = 1.8 + Math.random(); R.mode = 'attack'; R.t = 0; for (let k = 0; k < 3; k++) setTimeout(() => { if (B.gone || c.dead) return; compTracer(R, { x: p.x, y: p.y + .8, z: p.z }); sfx.shot(); if (Math.random() < .55) hurtPlayer(dmg, { x: q.x, z: q.z, lv: c.lv }); }, k * 180); }
+      } else { // Croxian and the anointed: close in and cut; Croxian also leaps onto where you stand
+        if (B.key === 'crox' && d > 9 && B.leapCd <= 0) { B.st = 'leap'; B.t = 0; B.lx = p.x; B.lz = p.z; B.sx = q.x; B.sz = q.z; B.tels = [telegraph(p.x, p.z, 3.6)]; R.mode = 'idle'; sfx.whoosh(); }
+        else if (d < 3.6 && B.cd <= 0) { B.st = 'swing'; B.t = 0; R.mode = 'attack'; R.t = 0; B.hit = false; B.tels = [telegraph(q.x + dx / d * 2, q.z + dz / d * 2, 2.6)]; }
+        else { R.mode = 'walk'; move(p.x, p.z, sp); }
+      }
+    } else if (B.st === 'swing') { face(); if (!B.hit && B.t > .75) { B.hit = true; sfx.swing(); sfx.thud(); if (d < 4.4) hurtPlayer(dmg, { x: q.x, z: q.z, lv: c.lv }); burst(q.x + dx / d * 2, q.y + .4, q.z + dz / d * 2, 18, 3, .8, .2, .2, .6, 1, 1); }
+      if (B.t > 1.5) { B.st = 'chase'; B.cd = 1.4 + Math.random() * .6; for (const m of B.tels) if (m.parent) m.parent.remove(m); B.tels = []; } }
+    else if (B.st === 'leap') { const k = clamp((B.t - .9) / .6, 0, 1); if (k > 0) { q.x = lerp(B.sx, B.lx, k); q.z = lerp(B.sz, B.lz, k); } q.y = wHeight(q.x, q.z) + Math.sin(k * Math.PI) * 5;
+      if (k >= 1 && !B.landed) { B.landed = true; sfx.thud(); ex.shake = .5; burst(q.x, q.y + .2, q.z, 40, 6, .9, .6, .6, .9, 1.2, 1.5); if (Math.hypot(p.x - q.x, p.z - q.z) < 3.6) hurtPlayer(dmg * 1.4, { x: q.x, z: q.z, lv: c.lv }); }
+      if (B.t > 2.1) { B.st = 'chase'; B.landed = false; B.leapCd = 8 + Math.random() * 4; B.cd = .8; q.y = wHeight(q.x, q.z); for (const m of B.tels) if (m.parent) m.parent.remove(m); B.tels = []; } }
+    for (const m of B.tels) m.material.opacity = .35 + .35 * Math.sin(time * 18);
+    animRig(R, dt);
+  }
+  siegeBar();
+}
+function siegeWin() {
+  if (c3f('siegeWon')) return; setC3({ siegeWon: true }); sfx.leadOn = false; sfx.stopSong && sfx.stopSong(1.5); sfx.chime(); gainXP(1500, 'Ended the blockade of Janira Prime');
+  $('#bossBar').classList.remove('on'); SG.barOn = false; if (TIW.siege && TIW.siege.beacon) TIW.siege.beacon.visible = false;
+  notice('Main quest complete', tiPhone() ? 'THE BLOCKADE IS BROKEN' : 'THE BLOCKADE OF JANIRA PRIME IS BROKEN', 4600); renderTasks();
+  setTimeout(() => bark('Hak Chompjak V: Karribassa stands. Now he knows we are coming.', 4200), 2600);
+  setTimeout(() => lootMsg(tiPhone() ? 'Hak, Darius and Vishara stay with you' : 'Hak, Darius and Vishara stay with you · Take Sol back from Terra Imperia: bombard its worlds and beat their governors', '#ffb060'), 7400);
+}
+function hakGlasses(off, done) { // Hak's glasses (Glass lens, Glasses frame/temple/bridge, Lens glint in leader_chompy): taken off by hand, or put back
+  const H = TIW.hak && TIW.hak.R[0]; if (!H || !H.ra) { done(); return; }
+  if (!H.glasses) { H.glasses = []; H.root.traverse(o => { if (o.isMesh && /^(glass(es)?|lens glint)\b/i.test((o.name || '').replace(/_/g, ' '))) H.glasses.push({ m: o, home: o.parent }); }); }
+  if (!H.glasses.length) { done(); return; }
+  H.armGoal = -2.5; sfx.cloth ? sfx.cloth() : sfx.click(); // hand up to his face
+  setTimeout(() => {
+    for (const g of H.glasses) (off ? H.ra : g.home).attach(g.m); // into his hand, or back on his face
+    H.armGoal = off ? -.35 : 0; // and down: held at his side
+    setTimeout(() => { if (!off) H.armGoal = null; done(); }, 750);
+  }, 700);
+}
+async function hakAllies() { // Darius Ancin and Vishara Erisconos come to Hak's side (silent: they only stand with him)
+  const o = TIW.hak; if (!o || o.allies) return; o.allies = true; const area = curArea(), H = o.R[0], hp = H.root.position;
+  const [D, V] = await Promise.all([dariusRig().catch(() => null), glbRig('leader_erisian', 1.9).catch(() => null)]);
+  if (curArea() !== area || TIW.hak !== o) return;
+  [[D, -1], [V, 1]].forEach(([R, sd]) => { if (!R) return; R.siegeLead = true; if (R.root.parent) R.root.parent.remove(R.root);
+    R.root.position.set(hp.x + sd * 7, hp.y, hp.z - 12); R.root.traverse(m => { if (m.isMesh) m.castShadow = !tiPhone(); }); o.g.add(R.root);
+    R.walkTo = { x: hp.x + sd * 1.9, z: hp.z - .4 }; o.R.push(R); });
+  pdMeet('leader:human', 'leader:erisian');
 }
 async function hakMeet() { // the meeting
   pdMeet('hak'); const vo = (await hakVo()) || [];
@@ -13263,22 +13472,22 @@ function karrVisionScript() {
   const W = 'THOMAS HAWTHORNE';
   return { tint: 'saturate(1.25) contrast(1.18) sepia(.15) hue-rotate(-10deg)', kind: 'haw', beats: [
     { set: 'karrFire', actors: { c1: [-3, 2, 2.6, 'walk'], c2: [2.5, 3, -2.4, 'walk'], s1: [0, -4, 0, 'aim'] }, cam: [[0, 9, 26], [0, 6, 16]], at: [0, 6, -20],
-      lines: [[W, 'Karribassa. The garden of the Chompy Empire. Listen to it, wanderer. That’s what a garden sounds like when it burns.', KV(0)]], fx: [[-1, 'scream'], [-1, 'walkTo', 'c1', [-9, 9]], [-1, 'walkTo', 'c2', [9, 10]], [0, 'boom']] },
-    { set: 'karrFire', actors: { c1: [-1.6, -3, Math.PI, 'kneel'], c2: [0, -3.4, Math.PI, 'kneel'], c3: [1.6, -3, Math.PI, 'kneel'], s1: [-.6, -6.2, 0, 'aim'], s2: [1.4, -6.4, -.2, 'aim'], haw: [0, -8, 0, 'idle'] }, cam: [[4.5, 2, -1], [3.4, 2.2, -2.8]], at: [0, 1.5, -5.5],
-      lines: [[W, 'Everyone kneels. Some of them just need help.', KV(1)], [W, 'Don’t look at me like that. Those aren’t my words. They’re your Emperor’s. He said them first, on Carax, to people just like these.', KV(2)]], fx: [[0, 'strike', 's1', 'c2'], [0, 'scream']] },
+      lines: [[W, 'Karribassa. The garden of the Chompy Empire. Listen to it, wanderer. That’s what a garden sounds like when it burns.', KV(0)]], fx: [[-1, 'walkTo', 'c1', [-9, 9]], [-1, 'walkTo', 'c2', [9, 10]]] },
+    { set: 'karrFire', hold: 3.4, actors: { c1: [-1.6, -3, 0, 'kneel'], c2: [0, -3.2, 0, 'kneel'], c3: [1.6, -3, 0, 'kneel'], s1: [-3, -6.4, .3, 'aim'], s2: [3, -6.6, -.3, 'aim'], haw: [-1.4, -4.4, 0, 'idle'] }, cam: [[1.2, 1.6, 3.2], [.8, 1.7, 2]], at: [0, 1.3, -3.6],
+      lines: [[W, 'Everyone kneels. Some of them just need help.', KV(1)], [W, 'Don’t look at me like that. Those aren’t my words. They’re your Emperor’s. He said them first, on Carax, to people just like these.', KV(2)]], fx: [[-1, 'turn', 'haw', 'c1'], [0, 'behead', 'haw', 'c1'], [1, 'walkTo', 'haw', [0, -4.6]], [1, 'turn', 'haw', 'c2', 1000], [1, 'behead', 'haw', 'c2', 1050], [1, 'walkTo', 'haw', [1.4, -4.4], 1700], [1, 'turn', 'haw', 'c3', 2500], [1, 'behead', 'haw', 'c3', 2550]] }, // Hawthorne, one by one: nobody else touches them
     { set: 'karrFire', actors: { haw: [0, -11.5, 0, 'idle'], s1: [-2.2, -10.4, .3, 'idle'], s2: [2.2, -10.4, -.3, 'idle'] }, cam: [[0, 1.8, -7.4], [0, 1.78, -8.8]], at: [0, 1.75, -11.5],
-      lines: [[W, 'Hak. Little prince. You buried Sevirrus and called it repentance. I dug him up. He was very good at this.', KV(3)], [W, 'Stay with me. I want you to hear your people scream.', KV(4)]], fx: [[1, 'scream'], [1, 'boom']] },
+      lines: [[W, 'Hak. Little prince. You buried Sevirrus and called it repentance. I dug him up. He was very good at this.', KV(3)], [W, 'Stay with me. I want you to hear your people scream.', KV(4)]], },
     { set: 'karrFire', actors: { haw: [0, -5, 0, 'idle'] }, cam: [[.5, 1.8, -1.6], [.25, 1.76, -2.6]], at: [0, 1.74, -5],
       lines: [[W, 'And you. You took my ship, and you thought that meant something. It bought him ten minutes. Use them well.', KV(5)]] },
     { set: 'karrFire', actors: { haw: [0, -9, Math.PI, 'idle'], s1: [-1.5, -10.5, Math.PI, 'idle'], s2: [1.5, -10.5, Math.PI, 'idle'] }, cam: [[0, 2.4, -2], [0, 4.5, 2]], at: [0, 3, -12],
-      lines: [[W, 'Once I’m done with the Chompy, I will come for the Grek next. Archiostal’s gardens will burn exactly like these.', KV(6)], [W, 'Long live the Emperor. Whichever one of us is left.', KV(7)]], fx: [[-1, 'boom'], [1, 'scream']] }
+      lines: [[W, 'Once I’m done with the Chompy, I will come for the Grek next. Archiostal’s gardens will burn exactly like these.', KV(6)], [W, 'Long live the Emperor. Whichever one of us is left.', KV(7)]], }
   ] };
 }
 async function karrVision(done) {
   for (const R of Object.values(NM.actors || {})) if (R.root.parent) R.root.parent.remove(R.root);
   Object.assign(NM, { on: true, kVision: { done }, race: 'human', phase: 'load', t: 0, bi: -1, ready: false, vo: {}, actors: {}, sevM: null, script: karrVisionScript() });
   state = 'nightmare'; ex.keys.clear(); vel.set(0, 0, 0); if (ex.dlg) closeDialog(); show(ui.xhud, false);
-  const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.gasp(1.4); sfx.drone(.45);
+  const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.drone(.18);
   nmStage();
   const ph = tiPhone();
   try {
@@ -13301,7 +13510,7 @@ function karrVisionEnd() {
   const d = NM.kVision && NM.kVision.done; NM.kVision = null; NM.on = false; NM.phase = null; fbSubHide(); sfx.drone(0);
   if (NM.saveCam) { camera.near = NM.saveCam.near; camera.far = NM.saveCam.far; camera.fov = NM.saveCam.fov; camera.updateProjectionMatrix(); NM.saveCam = null; }
   renderer.domElement.style.filter = ''; for (const R of Object.values(NM.actors)) R.root.visible = false;
-  ui.xhud.classList.remove('cutting'); fbFlash(1, '#ffffff'); sfx.gasp(1.8);
+  ui.xhud.classList.remove('cutting'); fbFlash(1, '#ffffff');
   if (CUT.on) { show(ui.xhud, false); if (d) d(); return; } // from Cutscenes
   state = 'explore'; show(ui.xhud, true); ex.snap = true; resize(); clock.getDelta();
   const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; fbFlash(0); }, 900);
@@ -16526,7 +16735,7 @@ function spaceHudTick(P, alt, fwd) {
   }
   box.innerHTML = h;
 }
-function ch3Goal() { const c = wanderer.ch3 || {}; if (cygQ()) return SPC.atmo && ATM.P && ATM.P.id === 'mercury' ? (tiPhone() ? 'The Cygnus · board the shuttle, or dock in orbit' : 'Infiltrate the Cygnus · land and board the supply shuttle, or climb back to orbit and dock with her') : SPC.sys === 'sol' ? (tiPhone() ? 'The Cygnus · fly to her, dock' : 'Infiltrate the Cygnus · fly to her in orbit over Mercury (the gold marker) and dock') : (tiPhone() ? 'The Cygnus · warp to Sol' : 'Infiltrate the Cygnus · warp back to Sol'); if (hakQ() || hakBackQ()) return SPC.atmo && ATM.P && ATM.P.id === 'janira' ? (tiPhone() ? 'Meet Hak · fly to Karribassa, land' : 'Meet Hak Chompjak · fly to Karribassa (its marker) and land in the city') : SPC.sys === 'janira' ? (tiPhone() ? 'Meet Hak · land on Janira Prime' : 'Meet Hak Chompjak · land on Janira Prime (the gold marker)') : (tiPhone() ? 'Meet Hak · warp to Janira Proxima' : 'Meet Hak Chompjak · warp to Janira Proxima, a short jump from Sol'); if (charonQ()) return SPC.atmo && ATM.P && ATM.P.id === 'charon' ? 'Head to Charon · land on it' : SPC.sys === 'sol' ? 'Head to Charon · Pluto’s moon, at the edge of Sol (the gold marker)' : 'Head to Charon · warp back to Sol'; if (khzPending()) return SPC.atmo && ATM.P && ATM.P.id === 'mars' ? 'Find Khazglar · fly to Olympus Mons and land' : khzTaskText();
+function ch3Goal() { const c = wanderer.ch3 || {}; if (siegeQ()) return SPC.atmo && ATM.P && ATM.P.id === 'janira' ? (tiPhone() ? 'Blockade · land near Karribassa' : 'End the blockade · land near Karribassa, then take Terra Imperia’s base') : SPC.sys === 'janira' ? (tiPhone() ? 'Blockade · land on Janira Prime' : 'End the blockade · land on Janira Prime') : (tiPhone() ? 'Blockade · warp to Janira Proxima' : 'End the blockade of Janira Prime · warp to Janira Proxima'); if (cygQ()) return SPC.atmo && ATM.P && ATM.P.id === 'mercury' ? (tiPhone() ? 'The Cygnus · board the shuttle, or dock in orbit' : 'Infiltrate the Cygnus · land and board the supply shuttle, or climb back to orbit and dock with her') : SPC.sys === 'sol' ? (tiPhone() ? 'The Cygnus · fly to her, dock' : 'Infiltrate the Cygnus · fly to her in orbit over Mercury (the gold marker) and dock') : (tiPhone() ? 'The Cygnus · warp to Sol' : 'Infiltrate the Cygnus · warp back to Sol'); if (hakQ() || hakBackQ()) return SPC.atmo && ATM.P && ATM.P.id === 'janira' ? (tiPhone() ? 'Meet Hak · fly to Karribassa, land' : 'Meet Hak Chompjak · fly to Karribassa (its marker) and land in the city') : SPC.sys === 'janira' ? (tiPhone() ? 'Meet Hak · land on Janira Prime' : 'Meet Hak Chompjak · land on Janira Prime (the gold marker)') : (tiPhone() ? 'Meet Hak · warp to Janira Proxima' : 'Meet Hak Chompjak · warp to Janira Proxima, a short jump from Sol'); if (charonQ()) return SPC.atmo && ATM.P && ATM.P.id === 'charon' ? 'Head to Charon · land on it' : SPC.sys === 'sol' ? 'Head to Charon · Pluto’s moon, at the edge of Sol (the gold marker)' : 'Head to Charon · warp back to Sol'; if (khzPending()) return SPC.atmo && ATM.P && ATM.P.id === 'mars' ? 'Find Khazglar · fly to Olympus Mons and land' : khzTaskText();
   return ch3GoalRest(c); }
 function ch3GoalRest(c) { return c.warped ? `Explore ${curSys().name}` : !c.landed ? 'Land on a planet in Sol' : 'Warp to another star system · open the galaxy map'; }
 /* ============ Into the atmosphere, No Man's Sky style ============
@@ -18646,6 +18855,7 @@ function nicoCmd(mode, quiet) {
 let nicoSrcP = null;
 async function companionRig(id) { // the rig any companion walks and fights with: Nico's own, a story companion's Nostrapedia model, or an imported/custom character
   if (id === 'nico') return nicoCompanionRig();
+  if (SIEGE_LEADS[id]) { const R = await SIEGE_LEADS[id].rig(); if (!R) throw new Error('no model for ' + id); return R; }
   if (String(id).startsWith('pont:')) { const R = await pontRig(pontById(id.slice(5))); if (!R) throw new Error('no Pontifex ' + id); return R; }
   const L = COMPANIONS.find(o => o.id === id && o.tag);
   if (L) { await glbReady(L.tag); const el = document.getElementById(L.tag); if (!el) throw new Error('no model for ' + id); const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
@@ -18676,6 +18886,7 @@ function compTracer(R, foe) { // a muzzle flash and a streak to the target, as O
 /* ---- crew: the imported Project BC / Sevirrus characters (and your own creations) as companions ---- */
 function syncCrewParty() {
   pontParty(); // your Pontifexes
+  for (const id of (wanderer && wanderer.party) || []) if (SIEGE_LEADS[id] && !PARTY[id]) PARTY[id] = { name: SIEGE_LEADS[id].name, full: SIEGE_LEADS[id].full, crew: true, story: true }; // Hak, Darius and Vishara, from the blockade of Janira Prime
   for (const id of (wanderer && wanderer.party) || []) if (!PARTY[id]) { const L = COMPANIONS.find(o => o.id === id && o.tag); if (L) { PARTY[id] = { name: titleName(L.name.split(' ')[0]), full: titleName(L.name), crew: true, story: true }; continue; } }
   for (const id of (wanderer && wanderer.party) || []) if (!PARTY[id]) { const c = charById(id); if (c) PARTY[id] = { name: titleName(c.name.split(' ').slice(-1)[0] === 'SEVIRRUS' ? 'Sevirrus' : c.name.split(' ')[0]), full: titleName(c.name), imported: true }; }
 }
@@ -18699,7 +18910,7 @@ function crewTick(dt) {
   const p = player.position, live = crewIds();
   for (const id of live) {
     const C = CREW[id]; if (!C || !C.R || !C.R.root.visible || C.R.root.parent !== wScene) continue;
-    const R = C.R, o = R.root.position, mode = (wanderer.cmds && wanderer.cmds[id]) || 'follow', name = PARTY[id].name, isN = id === 'nico', guns = isN || R.weapon === 'rifle' || R.weapon === 'pistols';
+    const R = C.R, o = R.root.position, mode = (wanderer.cmds && wanderer.cmds[id]) || 'follow', name = PARTY[id].name, isN = id === 'nico', ice = ICE_MAGES.includes(id), guns = isN || ice || R.weapon === 'rifle' || R.weapon === 'pistols';
     if (isN && !(mode === 'mine' || (mode === 'explore' && C.node))) nicoGear(R, 'pistols'); // her pistols are out unless she's digging
     if (state !== 'explore' || ex.dlg) { R.mode = 'idle'; animRig(R, dt); continue; }
     const walkTo = (x, z, stop, run) => {
@@ -18708,8 +18919,9 @@ function crewTick(dt) {
       R.mode = 'walk'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 8)); return false;
     };
     // fight anything hostile nearby, with whatever they carry
-    let foe = null, fd = guns ? 24 : 14;
-    for (const c of fauna.list) { if (c.dead || c.D.passive || (c.D.neutral && c.state !== 'hunt')) continue; const d = Math.hypot(c.x - o.x, c.z - o.z); if (d < fd) { fd = d; foe = c; } }
+    const lead = !!SIEGE_LEADS[id], hold = lead && mode === 'hold' && C.holdAt, adv = lead && mode === 'advance' && SG.base;
+    let foe = null, fd = guns ? 24 : adv ? 22 : 14;
+    for (const c of fauna.list) { if (c.dead || c.D.passive || (c.D.neutral && c.state !== 'hunt')) continue; const d = Math.hypot(c.x - o.x, c.z - o.z); if (hold && Math.hypot(c.x - C.holdAt[0], c.z - C.holdAt[1]) > (guns ? 26 : 9)) continue; if (d < fd) { fd = d; foe = c; } } // holding: only what comes to them
     C.atkT -= dt;
     if (foe) {
       const reach = guns ? 22 : id === 'khazglar' ? 2.8 : 2.2;
@@ -18720,11 +18932,14 @@ function crewTick(dt) {
           burst(foe.x, .4, foe.z, 18, 3, 1, .5, .15, .6, .8, 1); damageFauna(foe, dmg * compGap('khazglar', foe), true);
           for (const o of fauna.list) if (o !== foe && !o.dead && !o.D.passive && Math.hypot(o.x - foe.x, o.z - foe.z) < 3) damageFauna(o, dmg * .5 * compGap('khazglar', o), true);
           if (Math.hypot(player.position.x - foe.x, player.position.z - foe.z) < 8) ex.shake = Math.max(ex.shake || 0, .18);
-        } else if (C.atkT <= 0) { C.atkT = isN ? .5 : guns ? .9 : 1.2; if (guns) { sfx.shot(); compTracer(R, foe); } else sfx.swing(); damageFauna(foe, compHit(id, isN ? .5 : guns ? .9 : 1.2) * compGap(id, foe), true); } }
+        } else if (C.atkT <= 0 && ice) { C.atkT = 1; iceBolt(R, foe); damageFauna(foe, compHit(id, 1) * compGap(id, foe), true); // ice magic: a bolt of frost, and the target slows
+        } else if (C.atkT <= 0) { C.atkT = isN ? .5 : guns ? .9 : 1.2; if (guns) { sfx.shot(); compTracer(R, foe); } else sfx.swing(); damageFauna(foe, compHit(id, isN ? .5 : guns ? .9 : 1.2) * compGap(id, foe), true); if (lead && !guns) { burst(foe.x, (foe.y || 0) + .8, foe.z, 14, 3, 1, .85, .4, .5, .9, 1); if (Math.hypot(player.position.x - foe.x, player.position.z - foe.z) < 10) ex.shake = Math.max(ex.shake || 0, .12); } } }
       animRig(R, dt); continue;
     }
     const dp = Math.hypot(p.x - o.x, p.z - o.z);
-    if (mode === 'follow' || (mode === 'mine' && !C.node)) {
+    if (hold) { walkTo(C.holdAt[0], C.holdAt[1], .6, Math.hypot(o.x - C.holdAt[0], o.z - C.holdAt[1]) > 6); animRig(R, dt); continue; } // Hold position: where you told them
+    if (adv) { const k = live.indexOf(id) - 1, tx = SG.base.x + k * 3, tz = SG.base.z; if (Math.hypot(tx - o.x, tz - o.z) > 140 && dp > 60) { const a = Math.atan2(tx - p.x, tz - p.z); o.set(p.x + Math.sin(a) * 6 + k * 2, 0, p.z + Math.cos(a) * 6); o.y = groundAt(o.x, o.z, p.y + .5); } walkTo(tx, tz, 3, true); animRig(R, dt); continue; } // Advance: on Terra Imperia's base
+    if (mode === 'follow' || (mode === 'mine' && !C.node) || (lead && (mode === 'hold' || mode === 'advance'))) { // (a leader told to hold or advance with nowhere to do it follows you)
       if (dp > 40) { const a = player.rotation.y; o.set(p.x - Math.sin(a) * 2.6, 0, p.z - Math.cos(a) * 2.6); o.y = groundAt(o.x, o.z, p.y + .5); }
       else if (walkTo(p.x, p.z, 2.6 + live.indexOf(id) * .8, dp > 6)) R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - o.x, p.z - o.z), Math.min(1, dt * 3));
     } else if (mode === 'base') { const bx = isPl() ? 4 : 8, bz = isPl() ? 8 : 4; walkTo(bx + live.indexOf(id), bz, .5, Math.hypot(o.x - bx, o.z - bz) > 10); }
@@ -19801,6 +20016,7 @@ function nmSet(kind) {
     if (fall) { const pl = new THREE.Mesh(new THREE.SphereGeometry(10, 32, 24), M(0x2a0a0a, { emissive: 0xff3a0a, emissiveIntensity: .7 })); pl.position.set(-30, 22, -70); P.add(pl); NM.burn = pl; } // a world of the empire, burning in its sky
   } else if (kind === 'karrFire') { // Karribassa burning: teal towers, the canals, the Hall of Oaths's white columns, Terra Imperia's ships overhead
     const ph = tiPhone();
+    if (!ph) { NM.key.castShadow = true; NM.key.shadow.mapSize.set(2048, 2048); NM.key.shadow.bias = -.0004; NM.fireL = [[-8, 4, -6], [7, 5, -12], [1, 6, -16]].map(([x, y, z]) => { const L = new THREE.PointLight(0xff6a20, 40, 26, 1.6); L.position.set(x, y, z); P.add(L); return L; }); } // desktop: shadows, and three firelights
     Object.assign(look, { fog: 0x3a120c, dens: .016, bg: 0x2a0a06, ground: 0x2a1a18, hemi: 0x9a4a2a, rim: 0xff6a20, key: 0xffb080 });
     const tower = M(0x1f5a5a, { roughness: .5, metalness: .3, emissive: 0x0a2a2a, emissiveIntensity: .4 }), white = M(0xe8e4dc, { roughness: .6 }), burnt = M(0x1a1412, { roughness: .95 }), water = M(0x2a1a2a, { emissive: 0xff4a10, emissiveIntensity: .35, roughness: .1, metalness: .4 });
     const sky = new THREE.Mesh(new THREE.PlaneGeometry(400, 140), new THREE.MeshBasicMaterial({ color: 0x5a1a0e, fog: false })); sky.position.set(0, 55, -90); P.add(sky);
@@ -19974,7 +20190,7 @@ async function startNightmare() {
   else cast();
 }
 function nmBeat(i) {
-  const B = NM.script.beats[i], A = NM.actors; NM.bi = i; NM.bt = 0; NM.li = -1; NM.lineEnd = 0; NM.walk = {}; NM.shatterT = null; NM.shards = null; NM.flag = null; NM.burn = null; NM.fires = null; NM.embers = null;
+  const B = NM.script.beats[i], A = NM.actors; NM.bi = i; NM.bt = 0; NM.li = -1; NM.lineEnd = 0; NM.walk = {}; NM.shatterT = null; NM.shards = null; NM.flag = null; NM.burn = null; NM.fires = null; NM.embers = null; NM.fireL = null; if (NM.key) NM.key.castShadow = false; NM.heads = NM.blood = NM.pools = null;
   nmSet(B.set);
   for (const [k, R] of Object.entries(A)) {
     const s = B.actors[k]; R.root.visible = !!s; if (!s) continue;
@@ -19990,7 +20206,34 @@ function nmSay(L) {
   if (fb.sub) { fb.sub.kind = kind; fbSubEl.className = 'on ' + kind; }
   return clip ? clip.duration : Math.max(1.6, L[1].split(/\s+/).length * .36);
 }
+// a beheading (Karribassa's vision): the parts of the model above the neck come away as one, tumble and roll; blood sprays from
+// the neck and pools where the body falls. Everything goes into the set's props, so the next memory clears it.
+function nmBehead(R) {
+  if (!R || R.headless) return; R.headless = true; R.root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(R.root), H = box.max.y - box.min.y, cut = box.min.y + H * .83, parts = [], c = new THREE.Vector3(), b = new THREE.Box3();
+  R.root.traverse(o => { if (o.isMesh && !o.isSkinnedMesh && o.visible) { b.setFromObject(o); b.getCenter(c); if (c.y > cut) parts.push(o); } });
+  if (!parts.length) return;
+  const hb = new THREE.Box3(); for (const o of parts) hb.expandByObject(o); const hc = hb.getCenter(new THREE.Vector3()), neck = new THREE.Vector3(hc.x, hb.min.y, hc.z);
+  const head = new THREE.Group(); head.position.copy(hc); NM.props.add(head); head.updateMatrixWorld(true); for (const o of parts) head.attach(o);
+  const fwd = new THREE.Vector3(Math.sin(R.root.rotation.y), 0, Math.cos(R.root.rotation.y));
+  head.userData = { v: fwd.clone().multiplyScalar(1.6 + Math.random() * .8).add(new THREE.Vector3((Math.random() - .5) * .8, 2.2 + Math.random(), 0)), w: new THREE.Vector3(2 + Math.random() * 3, (Math.random() - .5) * 4, (Math.random() - .5) * 3), r: Math.max(.08, (hb.max.y - hb.min.y) * .45) };
+  (NM.heads || (NM.heads = [])).push(head);
+  // the spray: dark droplets out of the neck, falling and staying where they land
+  const n = tiPhone() ? 70 : 180, pos = new Float32Array(n * 3), vel = [];
+  for (let i = 0; i < n; i++) { pos[i * 3] = neck.x; pos[i * 3 + 1] = neck.y; pos[i * 3 + 2] = neck.z; const sp = .6 + Math.random() * 2.6; vel.push(new THREE.Vector3((Math.random() - .5) * 1.4 + fwd.x * sp * .6, 1 + Math.random() * 2.8, (Math.random() - .5) * 1.4 + fwd.z * sp * .6)); }
+  const drops = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(pos, 3)), new THREE.PointsMaterial({ color: 0x6a0000, size: tiPhone() ? .07 : .045, transparent: true, opacity: .95, depthWrite: false }));
+  drops.userData = { vel, t: 0, neck: neck.clone() }; NM.props.add(drops); (NM.blood || (NM.blood = [])).push(drops);
+  const pool = new THREE.Mesh(new THREE.CircleGeometry(1, 28), new THREE.MeshStandardMaterial({ color: 0x3a0000, roughness: .15, metalness: .2, transparent: true, opacity: .92, depthWrite: false }));
+  pool.rotation.x = -Math.PI / 2; pool.position.set(neck.x + fwd.x * .7, .02, neck.z + fwd.z * .7); pool.scale.setScalar(.01); pool.userData.grow = 0; NM.props.add(pool); (NM.pools || (NM.pools = [])).push(pool);
+}
+function nmGoreTick(dt) {
+  for (const h of NM.heads || []) { const u = h.userData; if (u.rest) continue; u.v.y -= 9.8 * dt; h.position.addScaledVector(u.v, dt); h.rotation.x += u.w.x * dt; h.rotation.y += u.w.y * dt; h.rotation.z += u.w.z * dt;
+    if (h.position.y < u.r) { h.position.y = u.r; u.v.y = Math.abs(u.v.y) * .3; u.v.x *= .6; u.v.z *= .6; u.w.multiplyScalar(.6); if (Math.abs(u.v.y) < .4 && u.v.length() < .5) u.rest = true; } }
+  for (const d of NM.blood || []) { const u = d.userData; if (u.t > 3) continue; u.t += dt; const a = d.geometry.attributes.position.array; for (let i = 0; i < u.vel.length; i++) { const v = u.vel[i]; if (a[i * 3 + 1] <= .02) continue; v.y -= 9.8 * dt; a[i * 3] += v.x * dt; a[i * 3 + 1] = Math.max(.02, a[i * 3 + 1] + v.y * dt); a[i * 3 + 2] += v.z * dt; } d.geometry.attributes.position.needsUpdate = true; }
+  for (const p of NM.pools || []) { const u = p.userData; if (u.grow >= 1) continue; u.grow = Math.min(1, u.grow + dt / 2.6); p.scale.setScalar(.05 + .85 * Math.sqrt(u.grow)); }
+}
 function nmFx(f) {
+  if (f[4]) { const g = f.slice(0, 4), bi = NM.bi; setTimeout(() => { if (NM.on && NM.bi === bi) nmFx(g); }, f[4]); return; } // a delayed effect (only within its own beat)
   const A = NM.actors, [, kind, a, b] = f, R = A[a];
   if (kind === 'strike' && R) { R.mode = 'attack'; R.t = 0; setTimeout(() => { const T = A[b]; if (T) { T.downT = 0; } fbFlash(.85, '#ff0000'); NM.flashA = .85; sfx.swing(); sfx.thud(); NM.shake = .7; }, 450); }
   if (kind === 'raise' && R) R.pose = 'raise';
@@ -19999,6 +20242,7 @@ function nmFx(f) {
   if (kind === 'walkTo' && R) { NM.walk[a] = b; R.mode = 'walk'; }
   if (kind === 'fall' && R) R.downT = 0;
   if (kind === 'shatter') NM.shatterT = 0;
+  if (kind === 'behead' && R) { R.mode = 'attack'; R.t = 0; setTimeout(() => { const T = A[b]; if (!T || !NM.on) return; nmBehead(T); T.fallFwd = true; T.downT = 0; fbFlash(.7, '#8a0000'); NM.flashA = .7; sfx.swing(); sfx.thud(); NM.shake = .5; }, 430); }
   if (kind === 'scream') { sfx.scream(2.6, .26, 300); setTimeout(() => sfx.scream(2, .2, 420), 500); }
   if (kind === 'boom') { sfx.boom(1); fbFlash(.6, '#ff7a2a'); NM.flashA = .6; NM.shake = .9; }
 }
@@ -20027,7 +20271,7 @@ function nightmareTick(dt) {
     if (NM.bt > .6 && NM.bt >= NM.lineEnd && NM.li < B.lines.length) {
       NM.li++;
       for (const f of (B.fx || [])) if (f[0] === NM.li - 1) nmFx(f); // what happens once the previous line is said (or, for -1, as it opens)
-      NM.lineEnd = NM.bt + (NM.li < B.lines.length ? nmSay(B.lines[NM.li]) + .45 : 1.1); // after the last line, a breath, then the next memory
+      NM.lineEnd = NM.bt + (NM.li < B.lines.length ? nmSay(B.lines[NM.li]) + .45 : (B.hold || 1.1)); // after the last line, a breath, then the next memory
     }
     if (NM.li >= B.lines.length && NM.bt >= NM.lineEnd) {
       if (NM.bi + 1 < NM.script.beats.length) nmBeat(NM.bi + 1); else { nmWake(); return; }
@@ -20043,10 +20287,12 @@ function nightmareTick(dt) {
       if (R.pose === 'hug') { R.ra.rotation.x = -1.15; R.la.rotation.x = -1.05; }
       if (R.pose === 'raise') { R.ra.rotation.x = -2.8; }
       if (R.pose === 'rage') { R.ra.rotation.x = -1.3 + Math.sin(t * 30) * .08; R.la.rotation.x = -1.3 - Math.sin(t * 30) * .08; }
-      if (R.downT >= 0) { R.downT += dt; const k2 = Math.min(1, R.downT / .5); R.root.rotation.x = -k2 * 1.45; R.root.position.y = k2 * .18; }
+      if (R.downT >= 0) { R.downT += dt; const k2 = Math.min(1, R.downT / (R.fallFwd ? .8 : .5)); R.root.rotation.x = (R.fallFwd ? 1.35 : -1.45) * k2 * k2; R.root.position.y = R.fallFwd ? -.42 * (1 - k2) : k2 * .18; } // executed from behind: forward, onto their faces
     }
     if (NM.flag) NM.flag.rotation.y = Math.sin(t * 2) * .15;
     if (NM.burn) NM.burn.rotation.y += dt * .1;
+    if (NM.heads || NM.blood || NM.pools) nmGoreTick(dt);
+    if (NM.fireL) NM.fireL.forEach((L, i) => { L.intensity = 34 + Math.sin(t * 11 + i * 2.1) * 8 + Math.random() * 6; });
     if (NM.fires) for (let i = 0; i < NM.fires.length; i++) { const f = NM.fires[i]; f.material.opacity = .65 + Math.sin(t * 9 + i * 1.7) * .2 + Math.random() * .1; }
     if (NM.embers) { const a = NM.embers.geometry.attributes.position.array; for (let i = 1; i < a.length; i += 3) { a[i] += dt * 2.2; if (a[i] > 20) a[i] = 0; } NM.embers.geometry.attributes.position.needsUpdate = true; }
     if (NM.shatterT != null && NM.shards) { NM.shatterT += dt; if (NM.shatterT > 1.2) for (const c of NM.shards) { c.position.addScaledVector(c.userData.v, dt); c.userData.v.y -= 9.8 * dt * .3; c.rotation.x += dt * 2; c.rotation.z += dt * 1.4; } }
@@ -20056,8 +20302,8 @@ function nightmareTick(dt) {
     const look = NM.look.fromArray(B.at), up = camera.aspect < 1, fv = up ? 64 : 55; if (camera.fov !== fv) { camera.fov = fv; camera.updateProjectionMatrix(); }
     if (up) { NM.cam.sub(look).multiplyScalar(clamp(1 + (1 - camera.aspect) * 1.1, 1, 1.7)).add(look); NM.cam.y = Math.max(.25, NM.cam.y); } // a phone held upright: a wider lens, and the shot steps back so nobody is cut off the sides
     camera.position.set(NM.cam.x + (Math.random() - .5) * s, NM.cam.y + (Math.random() - .5) * s, NM.cam.z); camera.lookAt(look);
-    if ((NM.hb = (NM.hb || 0) + dt) > .7) { NM.hb = 0; sfx.heart(.7); }
-    sfx.drone(.55);
+    if ((NM.hb = (NM.hb || 0) + dt) > .7) { NM.hb = 0; sfx.heart(NM.kVision ? .3 : .7); }
+    sfx.drone(NM.kVision ? .18 : .55); // Karribassa's vision is a quiet one
     renderer.render(NM.scene, camera);
     return;
   }
@@ -20721,6 +20967,7 @@ const MENU_CREW = [
   // James Brown as Terra Imperia made him (the Pontifex Maximus), once you've spared him and he's joined you: beyond Nico and Nyrexia on your right
   { id: 'james-ti', joined: () => !!(wanderer && wanderer.ch3 && wanderer.ch3.jamesFate === 'spared'), side: () => { const n = (companionOn() ? 1 : 0) + (nicoJoined() ? 1 : 0) + (wanderer.ch3 && wanderer.ch3.nyxJoined ? 1 : 0); return menuCrewFit([1.7 + n * 1.6, .4 + n * .7]); }, R: null, load: null }
 ];
+MENU_CREW.push(...[['lead:hak', [-1.6, 3.4]], ['lead:darius', [0, 3.9]], ['lead:vishara', [1.6, 3.4]]].map(([id, at]) => ({ id, joined: () => !!(wanderer && (wanderer.party || []).includes(id)), side: () => menuCrewFit(at), R: null, load: null }))); // Hak, Darius and Vishara, once they've joined you: a row behind you
 function menuCrewFit([sd, b]) { return camera.aspect < 1 && Math.abs(sd) > 2 ? [sd * .72, b + .9] : [sd, b]; } // a phone held upright: the outer two step in (and back a little) so they stay on screen
 function menuCrewShow() {
   for (const M of MENU_CREW) {
@@ -21012,6 +21259,7 @@ function updateWorldMode(dt) {
   if (!ex.near) for (const b of world.build) if (b.data.k === 'furnace' && Math.hypot(b.data.x - p.x, b.data.z - p.z) < 2.3 && Math.abs(b.data.y - p.y) < 1.5) ex.near = { id: 'furnace', ref: b, label: 'Furnace' };
   if (!ex.near) for (const b of world.build) if (b.data.k === 'bench' && Math.hypot(b.data.x - p.x, b.data.z - p.z) < 2 && Math.abs(b.data.y - p.y) < 1.5) ex.near = { id: 'bench', label: 'Crafting table' };
   if (!ex.near && ch1().bed && !ch1().slept2) { const B = ch1().bed; if (Math.hypot(B.x - p.x, B.z - p.z) < 1.9 && Math.abs(B.y - p.y) < 1.5) ex.near = { id: 'bed', label: 'Bed' }; }
+  if (!ex.near && SG.rover && !ex.vehicle && SG.rover.parent && Math.hypot(SG.rover.position.x - p.x, SG.rover.position.z - p.z) < 3.6) ex.near = { id: 'srover', label: 'Chompy rover' };
   if (!ex.near && world.rover && !ex.vehicle && world.rover.visible && Math.hypot(world.rover.position.x - p.x, world.rover.position.z - p.z) < 3.4) ex.near = { id: 'rover', label: 'Rover' };
   if (!ex.near && curArea() === 'africa' && wanderer.ch2 && wanderer.ch2.lionsDone && !wanderer.ch2.doorReached && Math.hypot(p.x - (FARM.x - 5.6), p.z - FARM.z) < 2.6) ex.near = { id: 'farmDoor', label: 'Farmhouse door' };
   if (!ex.near) { const fn = ferryNear(p); if (fn) ex.near = fn; }
@@ -21033,7 +21281,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
+    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give James orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
