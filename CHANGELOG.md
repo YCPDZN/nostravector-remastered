@@ -1960,3 +1960,6 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - All in, a phone loads about half of what it did, about 9 MB instead of 17 MB.
 - **The staged version is now the fallback everywhere:** if the montage can't load, on a phone or a desktop, the scene plays on the nightmare's stage (throne hall, crown, guard, all 15 lines voiced) instead of skipping to his escape.
 - The Chompy nightmare on phones stays the staged memories. Its montage uses every scene, so it can't be cut down the same way.
+
+## Hawthorne's staged scene: phones back on the staged version
+- The montage crashed on phones even trimmed, so phones play the staged scene on the nightmare's stage again, as before. Desktop keeps the montage; the slimmer model and the staged fallback stay.
