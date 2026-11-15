@@ -13143,7 +13143,9 @@ async function siegeBosses() {
   const croxRig = async () => { const src = await embGlb('cpCroxian'); if (!src) return null; const R = autoRig(gearNoMeasure(SkeletonUtils.clone(src)), 1.85); armRig(R, 'none'); return R; };
   const list = [['crox', 'Croxian Mascar', croxRig, 'melee', 9000 + lv * 350], ['malia', 'Malia de Toro', async () => { const R = await companionRig('malia'); if (R) armRig(R, 'rifle'); return R; }, 'ranged', 8000 + lv * 300]];
   if (pont) list.push(['pont', pont.name, () => pontRig(pont), 'melee', 6000 + lv * 250, pont]); if (sis) list.push(['sis', sis.name, () => pontRig(sis), 'melee', 6000 + lv * 250, sis]);
-  const rigs = await Promise.all(list.map(L => L[2]().catch(() => null))); if (TIW.siege !== S) return;
+  const vo = n => loadDataScript(n).then(ok => ok ? sfx.loadClips(n) : []).catch(() => []).then(v => v || []);
+  const [rigs, bvo, svo] = await Promise.all([Promise.all(list.map(L => L[2]().catch(() => null))), vo('blockadeVoices'), vo('croxSpareVoices')]); if (TIW.siege !== S) return;
+  SG.bvo = bvo; SG.svo = svo; // BLOCKADE1–4 (the opening: Croxian, Malia, the Pontifex, Hak; 3 not recorded), CH3CROXIANSPAREORKILL1–10
   list.forEach((L, i) => { const R = rigs[i]; if (!R) return; const a = i * 1.6 + .4, x = bx + Math.sin(a) * 6, z = bz + Math.cos(a) * 6; R.root.position.set(x, wHeight(x, z), z); R.root.traverse(m => { if (m.isMesh) m.castShadow = !tiPhone(); }); S.g.add(R.root);
     const D = { name: `${L[1]} · lv ${lv}`, hp: L[4], r: .8, xp: Math.round(400 + lv * 20), dmg: 0, beast: 'pred', loot: () => [['warpcell', 1], ['medkit', 2]] };
     const c = { type: 'siegeboss', D, lv, mesh: R.root, x, z, y: R.root.position.y, rot: 0, hp: L[4], state: 'hunt', t: 0, cd: 2 + i, home: [x, z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, ext: true, sboss: true, bar: hpBar() };
@@ -13151,9 +13153,9 @@ async function siegeBosses() {
     SG.bosses.push({ R, c, key: L[0], name: L[1], kind: L[3], P: L[5] || null, st: 'chase', cd: 2 + i * .7, leapCd: 6 + i, t: 0, tels: [] });
   });
   sfx.alarm(); leaderPlay('wrong').catch(() => {});
-  const barks = [['CROXIAN MASCAR', 'Hello again, wanderer. You brought friends this time.'], ['MALIA DE TORO', 'The Emperor himself. Hawthorne will want your head on a plate, Hak.'], ['HAK CHOMPJAK V', 'Then he can come and take it. MASCAR!']];
-  if (pont || sis) barks.splice(2, 0, [`${(pont || sis).name.toUpperCase()}`, 'In the name of the Grand Imperarch. Kneel.']);
-  setTimeout(() => { for (const [w, t] of barks) siegeSay(w, t, 3600, () => TIW.siege === S); }, 600);
+  const barks = [['CROXIAN MASCAR', 'Hello again, wanderer. You brought friends this time.', 0], ['MALIA DE TORO', 'The Emperor himself. Hawthorne will want your head on a plate, Hak.', 1], ['HAK CHOMPJAK V', 'Then he can come and take it. MASCAR!', 3]];
+  if (pont || sis) barks.splice(2, 0, [`${(pont || sis).name.toUpperCase()}`, 'In the name of the Grand Imperarch. Kneel.', 2]);
+  setTimeout(() => { for (const [w, t, k] of barks) siegeSay(w, t, 3600, () => TIW.siege === S, bvo[k] || null); }, 600);
   notice('Terra Imperia', SG.bosses.length > 2 ? 'CROXIAN · MALIA · AND HAWTHORNE’S ANOINTED' : 'CROXIAN MASCAR · MALIA DE TORO', 3800);
 }
 function siegeBar() {
@@ -13219,6 +13221,7 @@ function siegeWin() {
 function siegeFate(B) {
   const crox = B.key === 'crox', who = crox ? 'CROXIAN MASCAR' : 'MALIA DE TORO', R = B.R, other = c3f(crox ? 'maliaDead' : 'croxDead');
   const away = () => { if (R.root.parent) R.root.parent.remove(R.root); };
+  const bc = (SG.svo || [])[crox ? 0 : 1];
   openDialog(who, [crox ? 'Go on, then. Hawthorne would.' : 'Well? Make it quick or make it kind. Just make it.'], false, () => openChoice(who, [
     { text: crox ? 'Spare him.' : 'Spare her.', onPick: () => { siegeJoin(B); siegePairLines(); } },
     { text: crox ? 'Finish him.' : 'Finish her.', onPick: () => setTimeout(() => openDialog(who, [crox ? 'Tell my father… tell him he was right. About all of it.' : (other ? 'Wait for me, Croxian. I’m coming.' : 'Tell Croxian I— no. He knows.')], false, () => {
@@ -13226,7 +13229,7 @@ function siegeFate(B) {
       const q = R.root.position; sfx.swing(); setTimeout(() => { sfx.thud(); ex.shake = .5; burst(q.x, q.y + 1, q.z, 70, 6, .9, .2, .2, 1, 1.3, 2); away(); notice('Terra Imperia', `${who} IS DEAD`, 3600); }, 260);
       if (crox && orionJoined()) setTimeout(() => lootMsg('The Nostra’s comms are open…', '#ff8f86'), 4200);
       SSAY.q.unshift({ pause: 1400 }, { line: siegePairLines }); if (!SSAY.busy) siegeSayNext(); // if the other was spared, they speak now, before the victory lines
-    }), 80) }]));
+    }), 80) }]), bc ? [bc] : undefined);
 }
 // once both are decided: spared together, a four-line exchange (two each); one dead, the survivor's two lines; both dead, nothing
 const SIEGE_PAIR = [['CROXIAN MASCAR', 'You’d let us both walk away? After everything we’ve done?'], ['MALIA DE TORO', 'Don’t question it, Croxian. Hawthorne would have shot us himself for losing.'],
@@ -13240,9 +13243,9 @@ function siegePairLines() {
   if (SG.pairSaid || !keys.length || keys.some(k => !fate(k))) return; // not both decided yet
   SG.pairSaid = true; const spared = keys.filter(k => fate(k) === 'spared');
   if (!spared.length) return; // both dead: no one left to speak
-  const say = (L, i = 0) => { if (i >= L.length) return; openDialog(L[i][0], [L[i][1]], false, () => say(L, i + 1)); };
-  if (spared.length === 2) say(SIEGE_PAIR);
-  else if (keys.length === 2) { const [who, lines] = SIEGE_WIDOW[spared[0]]; say(lines.map(l => [who, l])); }
+  const vo = SG.svo || [], say = (L, slot, i = 0) => { if (i >= L.length) return; const c = vo[slot + i]; openDialog(L[i][0], [L[i][1]], false, () => say(L, slot, i + 1), c ? [c] : undefined); };
+  if (spared.length === 2) say(SIEGE_PAIR, 2); // CH3CROXIANSPAREORKILL3–6
+  else if (keys.length === 2) { const [who, lines] = SIEGE_WIDOW[spared[0]]; say(lines.map(l => [who, l]), spared[0] === 'crox' ? 6 : 8); } // 7–8 Croxian, 9–10 Malia
 }
 function siegeJoin(B) { // spared, they join you on the spot: Croxian (helmet off) with his blade, Malia with her rifle
   const crox = B.key === 'crox', id = crox ? 'croxian' : 'malia', R = B.R, q = R.root.position;
@@ -13257,14 +13260,15 @@ function siegeSayNow(who, line, ms = 3600) { SSAY.q.unshift({ who, line, ms }); 
 // the fight's lines, one at a time, each under its own speaker's name (they used to all go out as Croxian's, and could talk over each other).
 // A line waits while a dialogue is open (a beaten Pontifex's choice); ok(), if given, can drop a line that no longer fits.
 const SSAY = { q: [], busy: false };
-function siegeSay(who, line, ms = 3600, ok) { SSAY.q.push({ who, line, ms, ok }); if (!SSAY.busy) siegeSayNext(); }
+function siegeSay(who, line, ms = 3600, ok, clip) { SSAY.q.push({ who, line, ms, ok, clip }); if (!SSAY.busy) siegeSayNext(); }
 function siegeSayNext() {
   if (ex.dlg) { SSAY.busy = true; setTimeout(siegeSayNext, 500); return; }
   const L = SSAY.q.shift(); if (!L) { SSAY.busy = false; return; } SSAY.busy = true;
   if (L.ok && !L.ok()) { siegeSayNext(); return; }
   if (L.pause) { setTimeout(siegeSayNext, L.pause); return; } // a beat of silence
   if (typeof L.line === 'function') { try { L.line(); } catch (e) { console.error(e); } siegeSayNext(); return; } // an action, in turn
-  sayAs(L.who, L.line, L.ms); setTimeout(siegeSayNext, L.ms + 300);
+  const ms = L.clip ? Math.max(L.ms, L.clip.duration * 1000 + 300) : L.ms; // a recorded line plays to its end
+  sayAs(L.who, L.line, ms); if (L.clip) sfx.playNarr(L.clip, 1.3); setTimeout(siegeSayNext, ms + 300);
 }
 function siegeLeave() { // the blockade is over: the three go home, from your side, your ship and the main menu
   if (!wanderer) return; const ids = Object.keys(SIEGE_LEADS), had = (wanderer.party || []).some(id => ids.includes(id)) || ids.some(id => wanderer.aboard && wanderer.aboard[id]);

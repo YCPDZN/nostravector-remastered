@@ -2083,3 +2083,8 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - He leaves your crew, the Nostra and the main menu for good, and never turns up in Africa again. The next time you board, his bunk is made and his rifle is gone. He leaves alive (`ch3.orionGone`, `ch3.orionFate: 'spared'`), which Chapter IV reads as Orion taking Terra Imperia.
   - Skip works as in the other cutscenes. Once it has happened, it's on the Cutscenes menu after The Grand Imperarch's Breakdown.
   - Voice pack: `data/orionGriefVoices.js` (CH3ORIONGRIEF1–11, not recorded yet, so it shows as subtitles). The script is in `assets/audio/karribassa/VOICE_SCRIPT.md`.
+
+## The blockade fight, voiced
+- **The fight's opening is voiced** (`data/blockadeVoices.js`): Croxian (BLOCKADE1), Malia (BLOCKADE2) and Hak (BLOCKADE4). The Pontifex line, BLOCKADE3, isn't recorded yet, so it still shows as a subtitle.
+- **Croxian and Malia's spare-or-kill lines are voiced** (`data/croxSpareVoices.js`, CH3CROXIANSPAREORKILL1–10): their beaten lines, the both-spared exchange, and each survivor's two lines. Their last words aren't recorded yet.
+- Recordings are in `assets/audio/karribassa/`, and the voice script lists them.

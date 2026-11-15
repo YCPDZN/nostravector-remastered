@@ -72,16 +72,32 @@ Talking to him on the crew deck while the blockade is on:
 | CH3ORIONLEAVESPARTY9.mp3 | Orion Mascar | Not this one. Finish it, then come and get me. I’ll be right here, with the comms open. |
 
 
+## The blockade: the fight's opening
+
+As Croxian and Malia come at you inside Terra Imperia's base. The Pontifex line plays only if a Pontifex Maximus or a Sister of Hawthorne is hunting you.
+
+Pack: `data/blockadeVoices.js` (BLOCKADE1–4, in this order). **Recorded:** 1, 2 and 4. **Still to record:** 3 (shows as a subtitle).
+
+| File | Speaker | Line |
+|---|---|---|
+| BLOCKADE1.mp3 | Croxian Mascar | Hello again, wanderer. You brought friends this time. |
+| BLOCKADE2.mp3 | Malia de Toro | The Emperor himself. Hawthorne will want your head on a plate, Hak. |
+| BLOCKADE3.mp3 | Pontifex Maximus or Sister of Hawthorne | In the name of the Grand Imperarch. Kneel. |
+| BLOCKADE4.mp3 | Hak Chompjak V | Then he can come and take it. MASCAR! |
+
+
 ## The blockade: sparing or killing Croxian and Malia
 
-When Croxian Mascar or Malia de Toro is beaten at Terra Imperia's base, they stay down and you choose. Spared, they join your crew there and then; killed, they say their last words. Once both are decided: if both were spared, they have a four-line exchange (two lines each); if one was killed, the survivor says two lines; if both were killed, nothing. **Not recorded yet:** these show as subtitles.
+When Croxian Mascar or Malia de Toro is beaten at Terra Imperia's base, they stay down and you choose. Spared, they join your crew there and then; killed, they say their last words. Once both are decided: if both were spared, they have a four-line exchange (two lines each); if one was killed, the survivor says two lines; if both were killed, nothing.
+
+Pack: `data/croxSpareVoices.js` (CH3CROXIANSPAREORKILL1–10): 1–2 the beaten lines, 3–6 both spared, 7–8 Croxian with Malia killed, 9–10 Malia with Croxian killed. **All 10 are recorded.** **Still to record:** the three last words (they show as subtitles).
 
 | Speaker | When | Line |
 |---|---|---|
-| Croxian Mascar | Beaten | Go on, then. Hawthorne would. |
-| Malia de Toro | Beaten | Well? Make it quick or make it kind. Just make it. |
+| Croxian Mascar | Beaten (CH3CROXIANSPAREORKILL1) | Go on, then. Hawthorne would. |
+| Malia de Toro | Beaten (CH3CROXIANSPAREORKILL2) | Well? Make it quick or make it kind. Just make it. |
 
-Both spared:
+Both spared (CH3CROXIANSPAREORKILL3–6):
 
 | Speaker | Line |
 |---|---|
@@ -90,7 +106,7 @@ Both spared:
 | Croxian Mascar | Then I’m done dying for that man. If you’ll have us, wanderer, we’re with you. |
 | Malia de Toro | Where he goes, I go. Today, that’s with you. |
 
-One killed, the other spared:
+One killed, the other spared (7–8 Croxian, 9–10 Malia):
 
 | Speaker | Line |
 |---|---|
@@ -99,7 +115,7 @@ One killed, the other spared:
 | Malia de Toro (Croxian killed) | You killed him. And now you want me. |
 | Malia de Toro (Croxian killed) | Fine. I’ll fight beside you. Not for you. For him, against the man who sent him here. |
 
-Last words:
+Last words (not recorded yet):
 
 | Speaker | When | Line |
 |---|---|---|
