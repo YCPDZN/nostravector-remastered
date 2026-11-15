@@ -5871,9 +5871,10 @@ const AL_EXTRA = [
 ];
 const alFact = L => L.al || ((L.facts || []).find(f => f[0] === 'Alignment') || [])[1];
 const alBaseOf = L => { const f = alFact(L); return f in AL_BASE ? AL_BASE[f] : null; }; // null = unreadable (James, before the pier)
-function alState() { if (!wanderer.align) wanderer.align = { p: 0, c: {} }; return wanderer.align; }
+function alJamesFix() { const A = wanderer && wanderer.align; if (!A || A.jv) return; A.jv = 1; const C = A.c && A.c['james-ti']; if (C) C.a = clamp(C.a + 63, -100, 100); } // James's chart used to start at Lawful Evil (-55); spared, he's Lawful Neutral (8)
+function alState() { if (!wanderer.align) wanderer.align = { p: 0, c: {}, jv: 1 }; alJamesFix(); return wanderer.align; }
 function alSave() { const c = curChar(); if (c) c.align = wanderer.align; saveRoster(); }
-function alComp(L) { const C = (wanderer.align && wanderer.align.c[L.id]) || null, b = alBaseOf(L); return { a: C ? C.a : b, inf: C ? C.inf : 50, hidden: b == null, met: !!C }; }
+function alComp(L) { alJamesFix(); const C = (wanderer.align && wanderer.align.c[L.id]) || null, b = alBaseOf(L); return { a: C ? C.a : b, inf: C ? C.inf : 50, hidden: b == null, met: !!C }; }
 // their written alignment follows where the chart has moved them: law stays their own, good/evil comes from the chart ("Neutral Evil · was Neutral Good")
 function alLabel(orig, a) {
   if (!(orig in AL_BASE) || a == null) return orig || '';
@@ -5897,23 +5898,35 @@ function alChart(v, big, hidden) {
 // how far into the dark someone has gone: nothing until -15, fully dark by -80
 const alDarkK = v => v > -15 ? 0 : Math.min(1, (-v - 15) / 65);
 const AL_DARK = new THREE.Color(0x0c0d11);
-const NOT_CLOTH = /face|jaw|nose|neck|ear|eye|iris|pupil|glint|brow|mouth|lip|teeth|tongue|nostril|hair|sideburn|beard|moustache|fringe|crown|palm|finger|lens|cybernetic|terminal|skin|head/i;
+const NOT_CLOTH = /face|jaw|nose|neck|ear|eye|iris|pupil|glint|brow|mouth|lip|teeth|tongue|nostril|hair|sideburn|beard|moustache|fringe|crown|palm|finger|lens|cybernetic|terminal|skin|head|\bchin\b|human cranium|\bsclera\b|glabell|nasal bridge/i; // the last few: Josiah II's chin, skull, eye-whites, brow furrow and nose bridge
+// an armour plate's outer surface ("Upper chest shield face", "thigh shell face") is outfit, not a face
+const ARMOUR_FACE = /(shield|plate|shell|armou?r|bracer|greave|clasp|casing|pauldron)\s+face/ig;
+const notCloth = (n, gloved) => NOT_CLOTH.test(n.replace(ARMOUR_FACE, '$1')) && !(gloved && /finger|thumb/i.test(n) && !/skin|nail/i.test(n)); // gloved hands (Josiah II): the fingers are the glove's
 // darken a character's outfit (not skin, hair or eyes) by k, from their own original colours
-const AL_CLOTH_ONLY = { tyrotaronus: /silver|pauldron|bracer|shell|guard|louvre|keel|conduit|casing|armour/i };
+const AL_CLOTH_ONLY = { tyrotaronus: /silver|pauldron|bracer|shell|guard|louvre|keel|conduit|casing|armour/i,
+  javek: /gunmetal|structural metal|polished metal|brass|coat|trousers|leather|fabric patch/i }; // Javek is one mesh in many materials ("…skinned mesh"), so he goes by material: metal, coat, trousers and leather darken; skin, eyes, glasses and glowing circuitry don't
+// the Pontifex armour (James, every Pontifex and Sister): all of it darkens except his face, his cybernetics and what glows
+const AL_KEEP = { 'james-ti': /^brown \/|cybernetic|optic|reactor|glint|glyph|command light|chevron|red slot|visor slit|channel|conduit/i };
+AL_KEEP.pontifex = AL_KEEP['james-ti'];
+const alKey = id => String(id || '').startsWith('pont:') ? 'pontifex' : id;
 function alOutfit(root, k, id) {
   if (!root || root.userData.alK === k) return;
   root.userData.alK = k;
-  const only = AL_CLOTH_ONLY[id];
+  const only = AL_CLOTH_ONLY[alKey(id)], keep = AL_KEEP[alKey(id)];
+  let gloved = false; root.traverse(o => { if (o.isMesh && /glove/i.test(o.name || '')) gloved = true; });
   root.traverse(o => {
     if (!o.isMesh || !o.name || !o.material || Array.isArray(o.material)) return;
-    if (only ? !only.test(o.name) || /lens|core|node|glow|emitter/i.test(o.name) : NOT_CLOTH.test(o.name || '') || NOT_CLOTH.test(o.material.name || '')) return;
+    const nm = o.name + ' ' + (o.material.name || '');
+    if (keep ? keep.test(o.name) || keep.test(o.material.name || '') : only ? !only.test(nm) || /lens|core|node|glow|emitter|luminous|optical/i.test(nm) : notCloth(o.name || '', gloved) || notCloth(o.material.name || '', gloved)) return;
     if (!o.userData.alOrig) { o.material = o.material.clone(); o.userData.alOrig = o.material.color.clone(); }
     o.material.color.copy(o.userData.alOrig).lerp(AL_DARK, k * .8);
   });
 }
-// companions: only those who started good or neutral change; born villains (Sevirrus, Kevin, Peter, Josiah...) stay as they are
+// companions: those who started good or neutral darken as they turn; born villains (Sevirrus, Kevin, Peter, Josiah...) stay as they are; Pontifexes and Sisters darken with how evil they are
 function alCompDarkK(id) {
-  const L = COMPANIONS.find(c => c.id === id) || AL_EXTRA.find(c => c.id === id); if (!L || !wanderer) return 0;
+  if (!wanderer) return 0;
+  if (String(id).startsWith('pont:')) { const P = pontById(id.slice(5)); if (!P) return 0; const C = wanderer.align && wanderer.align.c && wanderer.align.c[id]; return alDarkK(C ? C.a : alBaseOf(pontAlL(P))); } // a Pontifex or a Sister: as dark as they are evil
+  const L = COMPANIONS.find(c => c.id === id) || AL_EXTRA.find(c => c.id === id); if (!L) return 0;
   const b = alBaseOf(L); if (b == null || b <= -15) return 0;
   return alDarkK(alComp(L).a);
 }
@@ -15188,6 +15201,38 @@ function c4eEnd(keepBlack) {
   addEventListener('pointerdown', go); addEventListener('keydown', go);
   const hint = () => { if (state === 'title') notice('Preview', m[1] === 'tared' ? 'TAP TO PLAY THE TAREDESIBAN NIGHTMARE' : m[1] === 'oilkoumene' ? 'TAP TO PLAY THE OILKOUMENE NIGHTMARE' : m[1] === 'oilkdream' ? 'TAP TO PLAY THE OILKOUMENE DREAM' : `TAP TO PLAY THE ${m[1].toUpperCase()} ENDING`, 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500); } }
 
+// ?ch5allteam=evil (or =good, =neutral; evil if left out): a throwaway Chapter V wanderer for testing, with every companion in the crew at once
+// (Orion, Nico, Khazglar, Charon, Kizna, Nyrexia, Croxian, Malia, James as Pontifex, Josiah II, Javek, Tyrotaronus, and Gareth and the others from
+// Project BC and Sevirrus), all pushed fully that way, and you with them. It takes your active wanderer's look and starts aboard the Nostra in Sol.
+// It is never written anywhere: saving is refused while it's loaded, and nothing can erase a real slot.
+let TEST_RUN = null;
+{ const m = location.search.match(/[?&]ch5allteam(?:=(evil|good|neutral))?/);
+  if (m) slotsReady.then(() => {
+    const kind = m[1] || 'evil', v = kind === 'evil' ? -1 : kind === 'good' ? 1 : 0;
+    const base = roster.find(c => c.id === activeId) || DEFAULT_W;
+    const T = Object.assign({}, DEFAULT_W, JSON.parse(JSON.stringify(base)), { id: 'test-ch5allteam', name: `${(base.name || 'WANDERER').slice(0, 14)} · TEST`, chapter: 5 });
+    const lv = levelInfo(T.xp || 0).level;
+    T.ch1 = Object.assign({}, T.ch1, { found: true, metOutside: true, betrayed: true, jamesDead: true, escaped: true });
+    T.ch2 = Object.assign({}, T.ch2, { started: true, introSeen: true, metNico: true, orionJoined: true, orionBase: lv, orionMode: 'follow', trialDone: true, escapedLondon: true });
+    T.ch3 = Object.assign({}, T.ch3, { started: true, nightmare: spOf(T), khzCall: true, khzMet: true, khzBase: lv, hawMars: true, charonLanded: true, charonMet: true, nyxJoined: true,
+      jamesRev: true, jamesFate: 'spared', nyxBeforeJames: true, hakMet: true, hakCall: true, hakBack: true, karrVision: true, siegeOn: true, siegeWon: true, croxFate: 'spared', maliaFate: 'spared', cygDone: true,
+      orionGone: false, orionFate: null, croxDead: false, maliaDead: false, nyxDead: false });
+    T.ch4 = Object.assign({}, T.ch4, { timeSkip: true, ending: 'neutral' });
+    const ids = COMPANIONS.filter(L => L.tag && !['james', 'orion', 'nico', 'pontifex'].includes(L.id)).map(L => L.id).concat(AL_EXTRA.map(L => L.id)); // Orion and Nico come with the story flags; the story's James is the Pontifex now
+    T.ponts = [{ id: 'testpm', name: 'Varro Kade', sex: 'm', col: '', lv: Math.min(PONT_MAX_LV, lv + 3), st: 'ally', made: Date.now() }, { id: 'testsh', name: 'Ilse Marrow', sex: 'f', col: '#d8d2c0', lv: Math.min(PONT_MAX_LV, lv + 3), st: 'ally', made: Date.now() }]; // a Pontifex and a Sister, corrupted
+    ids.push('pont:testpm', 'pont:testsh');
+    T.party = ids; T.cmds = {}; for (const id of ['orion', 'nico', ...ids]) T.cmds[id] = 'follow';
+    T.aboard = {}; T.dungeon = {}; if (T.dip) T.dip = Object.assign({}, T.dip, { lent: {} });
+    T.align = { p: 100 * v, c: {}, jv: 1 };
+    for (const id of ['orion', 'nico', ...ids]) T.align.c[id] = { a: 90 * v, inf: 90 };
+    for (const id of ['pont:testpm', 'pont:testsh']) T.align.c[id] = { a: v < 0 ? -95 : v > 0 ? 40 : -20, inf: 90 }; // evil: past −80, so their corrupted files show
+    T.place = { mode: 'explore', area: 'space', where: 'space', sys: 'sol', aboard: true, deck: 2 };
+    roster = roster.filter(c => c.id !== T.id).concat([T]); activeId = T.id; wanderer = Object.assign({}, T);
+    resumePlace = Object.assign({}, T.place, { who: T.id }); TEST_RUN = kind; lastSlot = -1; dirty = false;
+    applyLook(wanderer); if (state === 'title') refreshMenu();
+    const hint = () => { if (state === 'title') notice('Test · not saved', `CHAPTER V · WHOLE CREW · ${kind.toUpperCase()}`, 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500);
+  }); }
+
 // ---- the cutscene player (main menu · Cutscenes): the scenes the active wanderer has reached, replayed from the title ----
 // Each one runs as it does in the story, then comes back here: nothing is saved, no flag is set, no save is touched.
 // What's listed follows the wanderer's progress (Chapter III: only their own species' nightmare, as in the Nostrapedia).
@@ -19241,7 +19286,7 @@ async function placeCrew() {
 }
 function crewTick(dt) {
   if (ex.mode !== 'world') return;
-  const p = player.position, live = crewIds();
+  const p = player.position, live = crewIds(); cruelTick(dt, partyNow().includes('orion') && world.orion ? ['orion', ...live] : live);
   for (const id of live) {
     const C = CREW[id]; if (!C || !C.R || !C.R.root.visible || C.R.root.parent !== wScene) continue;
     const R = C.R, o = R.root.position, mode = (wanderer.cmds && wanderer.cmds[id]) || 'follow', name = PARTY[id].name, isN = id === 'nico', ice = ICE_MAGES.includes(id), guns = isN || ice || R.weapon === 'rifle' || R.weapon === 'pistols';
@@ -19256,19 +19301,20 @@ function crewTick(dt) {
     const lead = !!SIEGE_LEADS[id], hold = lead && mode === 'hold' && C.holdAt, adv = lead && mode === 'advance' && SG.base;
     let foe = null, fd = guns ? 24 : adv ? 22 : 14;
     const kin = id === 'croxian' || id === 'malia'; // Croxian and Malia don't fight each other at the base
-    for (const c of fauna.list) { if (c.dead || c.D.passive || (c.D.neutral && c.state !== 'hunt') || (kin && c.type === 'siegeboss')) continue; const d = Math.hypot(c.x - o.x, c.z - o.z); if (hold && Math.hypot(c.x - C.holdAt[0], c.z - C.holdAt[1]) > (guns ? 26 : 9)) continue; if (d < fd) { fd = d; foe = c; } } // holding: only what comes to them
+    const cruel = fallenComp(id), cm = cruel ? 1.25 : 1; // fallen: they hunt harmless prey and peaceful herds that stray near too, and strike harder
+    for (const c of fauna.list) { const extra = c.D.passive || (c.D.neutral && c.state !== 'hunt'); if (c.dead || (extra && !(cruel && (!c.D.passive || c.D.huntable))) || (kin && c.type === 'siegeboss')) continue; const d = Math.hypot(c.x - o.x, c.z - o.z); if (extra && d > 12) continue; if (hold && Math.hypot(c.x - C.holdAt[0], c.z - C.holdAt[1]) > (guns ? 26 : 9)) continue; if (d < fd) { fd = d; foe = c; } } // holding: only what comes to them
     C.atkT -= dt;
     if (foe) {
       const reach = guns ? 22 : id === 'khazglar' ? 2.8 : 2.2;
       if (fd > reach) walkTo(foe.x, foe.z, reach * .9, true);
-      else { if (isN) nicoGear(R, 'pistols'); R.mode = 'attack'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(foe.x - o.x, foe.z - o.z), Math.min(1, dt * 6));
+      else { const hpWas = foe.hp; if (isN) nicoGear(R, 'pistols'); R.mode = 'attack'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(foe.x - o.x, foe.z - o.z), Math.min(1, dt * 6));
         if (C.atkT <= 0 && id === 'khazglar') { // his hammer: slow, heavy, and it hits everything around whatever it lands on
           C.atkT = 1.35; const dmg = compHit('khazglar', 1.35); sfx.swing(); setTimeout(() => { try { sfx.thud(); } catch (e) {} }, 180);
-          burst(foe.x, .4, foe.z, 18, 3, 1, .5, .15, .6, .8, 1); damageFauna(foe, dmg * compGap('khazglar', foe), true);
-          for (const o of fauna.list) if (o !== foe && !o.dead && !o.D.passive && Math.hypot(o.x - foe.x, o.z - foe.z) < 3) damageFauna(o, dmg * .5 * compGap('khazglar', o), true);
+          burst(foe.x, .4, foe.z, 18, 3, 1, .5, .15, .6, .8, 1); damageFauna(foe, cm * dmg * compGap('khazglar', foe), true);
+          for (const o of fauna.list) if (o !== foe && !o.dead && (!o.D.passive || (cruel && o.D.huntable)) && Math.hypot(o.x - foe.x, o.z - foe.z) < 3) damageFauna(o, cm * dmg * .5 * compGap('khazglar', o), true);
           if (Math.hypot(player.position.x - foe.x, player.position.z - foe.z) < 8) ex.shake = Math.max(ex.shake || 0, .18);
-        } else if (C.atkT <= 0 && ice) { C.atkT = 1; iceBolt(R, foe); damageFauna(foe, compHit(id, 1) * compGap(id, foe), true); // ice magic: a bolt of frost, and the target slows
-        } else if (C.atkT <= 0) { C.atkT = isN ? .5 : guns ? .9 : 1.2; if (guns) { sfx.shot(); compTracer(R, foe); } else sfx.swing(); damageFauna(foe, compHit(id, isN ? .5 : guns ? .9 : 1.2) * compGap(id, foe), true); if (lead && !guns) { burst(foe.x, (foe.y || 0) + .8, foe.z, 14, 3, 1, .85, .4, .5, .9, 1); if (Math.hypot(player.position.x - foe.x, player.position.z - foe.z) < 10) ex.shake = Math.max(ex.shake || 0, .12); } } }
+        } else if (C.atkT <= 0 && ice) { C.atkT = 1; iceBolt(R, foe); damageFauna(foe, cm * compHit(id, 1) * compGap(id, foe), true); // ice magic: a bolt of frost, and the target slows
+        } else if (C.atkT <= 0) { C.atkT = isN ? .5 : guns ? .9 : 1.2; if (guns) { sfx.shot(); compTracer(R, foe); } else sfx.swing(); damageFauna(foe, cm * compHit(id, isN ? .5 : guns ? .9 : 1.2) * compGap(id, foe), true); if (lead && !guns) { burst(foe.x, (foe.y || 0) + .8, foe.z, 14, 3, 1, .85, .4, .5, .9, 1); if (Math.hypot(player.position.x - foe.x, player.position.z - foe.z) < 10) ex.shake = Math.max(ex.shake || 0, .12); } } if (cruel && hpWas > 0 && foe.hp <= 0) cruelBark(id, 'kill'); }
       animRig(R, dt); continue;
     }
     const dp = Math.hypot(p.x - o.x, p.z - o.z);
@@ -21177,7 +21223,8 @@ function orionGear(R, kind) {
 }
 function orionShoot(R, dt) {
   const o = R.root.position; let best = null, bd = 26;
-  for (const c of fauna.list) { if (c.dead || c.D.passive || (c.D.neutral && c.state !== 'hunt')) continue; const d = Math.hypot(c.x - o.x, c.z - o.z); if (d < bd) { bd = d; best = c; } }
+  const cruel = fallenComp('orion'); // fallen: harmless prey and peaceful herds that stray near are fair game too, and he hits harder
+  for (const c of fauna.list) { const extra = c.D.passive || (c.D.neutral && c.state !== 'hunt'); if (c.dead || (extra && !(cruel && (!c.D.passive || c.D.huntable)))) continue; const d = Math.hypot(c.x - o.x, c.z - o.z); if (extra && d > 12) continue; if (d < bd) { bd = d; best = c; } }
   orionC.shootT = (orionC.shootT || 0) - dt;
   if (!best) return false;
   orionGear(R, 'rifle'); R.mode = 'attack';
@@ -21189,7 +21236,8 @@ function orionShoot(R, dt) {
     const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(mx, fy, mz), new THREE.Vector3(best.x, best.y + .6, best.z)]);
     const tr = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffd38a, transparent: true, opacity: .9 })); wScene.add(tr);
     setTimeout(() => { wScene.remove(tr); g.dispose(); tr.material.dispose(); }, 70);
-    sfx.shot(); damageFauna(best, compHit('orion', 1.05) * compGap('orion', best), true);
+    const hpWas = best.hp; sfx.shot(); damageFauna(best, (cruel ? 1.25 : 1) * compHit('orion', 1.05) * compGap('orion', best), true);
+    if (cruel && hpWas > 0 && best.hp <= 0) cruelBark('orion', 'kill');
   }
   return true;
 }
@@ -21951,6 +21999,7 @@ function rememberPlace() {
   return p;
 }
 async function doSave(i) {
+  if (TEST_RUN) { slotMsg('This is the ?ch5allteam test wanderer: it can\u2019t be saved, so your real saves stay as they were.', true); return; }
   const place = slotFrom === 'explore' ? rememberPlace() : { mode: 'menu' };
   const prev = slots[i];
   slots[i] = { savedAt: Date.now(), roster: JSON.parse(JSON.stringify(roster)), activeId, place, residents: JSON.parse(JSON.stringify(residents)), resEmp: JSON.parse(JSON.stringify(resEmp)), resGuild: JSON.parse(JSON.stringify(resGuild)) };
@@ -23161,7 +23210,7 @@ function pdEntryLocked(L, tab = pedia.tab) {
   if (tab === 'leaders') return !pdMet('leader:' + L.sp); // a leader opens when you meet them (a dream, the story) or face them in their hall
   return false;
 }
-const pdSet = () => pedia.tab === 'leaders' ? PEDIA_LEADERS : pedia.tab === 'companions' ? companionsNow() : pedia.tab === 'ti' ? (chNow() >= 3 ? (chNow() >= 4 ? PEDIA_CATH : PEDIA_TI).filter(L => !L.showIf || L.showIf()) : []) : pedia.tab === 'ancient' ? PEDIA_ANCIENT : pedia.tab === 'events' ? pdEvents() : PRIME_TABS[pedia.tab] ? PRIME_TABS[pedia.tab]() : [];
+const pdSet = () => pedia.tab === 'leaders' ? PEDIA_LEADERS : pedia.tab === 'companions' ? companionsNow().concat(pdCrewFiles()) : pedia.tab === 'ti' ? (chNow() >= 3 ? (chNow() >= 4 ? PEDIA_CATH : PEDIA_TI).filter(L => !L.showIf || L.showIf()) : []) : pedia.tab === 'ancient' ? PEDIA_ANCIENT : pedia.tab === 'events' ? pdEvents() : PRIME_TABS[pedia.tab] ? PRIME_TABS[pedia.tab]() : [];
 const pdLocked = () => { const set = pdSet(); return set.length > 0 && set.every(L => pdEntryLocked(L)); };
 const bar = n => `<span class="rd" style="width:${Math.round(n)}ch"></span>`;
 const barsFor = text => text.split(' ').map(w => bar(Math.max(2, w.length * .9))).join(' ');
@@ -23645,12 +23694,21 @@ const COMPANIONS = [
       'Whether she stays out of loyalty, ambition or something she is not ready to say aloud is the question that hangs over everyone who travels with her.'
     ] },
   { id: 'james-ti', tag: 'cpJamesTI', h: 1.95, unlockAt: 3, metIf: pdMetCh3(() => pdMet('james')), name: 'JAMES BROWN', title: 'Pontifex Maximus of Terra Imperia',
-    facts: [['True allegiance', 'Terra Imperia'], ['Rank', 'Pontifex Maximus'], ['Former cover', 'Explorer, Human Federation of Sol'], ['Alignment', 'Lawful Evil']],
-    align: 'Loyal to a cause, not to people. James keeps every promise he makes to Terra Imperia, and none of the ones he made to you.',
+    // spared and in your crew, James is redeemed: Lawful Neutral (his chart starts there, and turns Lawful Evil if he falls back into the dark). Until then his file is the enemy's.
+    facts: [['Former allegiance', 'Terra Imperia'], ['Rank', 'Pontifex Maximus, in name'], ['Former cover', 'Explorer, Human Federation of Sol'], ['Serves', 'You, the wanderer who spared him'], ['Alignment', 'Lawful Neutral']],
+    align: 'Spared, and trying to deserve it. James still keeps every promise he makes, and for the first time some of them are to you.',
     paras: [
-      'The explorer was a cover. James Brown’s true allegiance has always been to Terra Imperia, and the armour he now wears marks him as its Pontifex Maximus.',
-      'Everything at the bottom of the world (the rescue, the station, the meeting in the storm) was part of an arrangement made long before you arrived. You were never part of the plan. That is exactly why Terra Imperia became so interested in you.'
-    ] },
+      'The explorer was a cover. James Brown’s true allegiance was always to Terra Imperia, and the armour he still wears marks him as its Pontifex Maximus.',
+      'Everything at the bottom of the world (the rescue, the station, the meeting in the storm) was part of an arrangement made long before you arrived. You were never part of the plan. That is exactly why Terra Imperia became so interested in you.',
+      'You beat him and let him live, and he has not forgotten it. He follows a code now rather than a cause: orders kept, debts paid, and nothing done that he would have to explain. Hawthorne would call it treason. James calls it settling his account.'
+    ],
+    dyn: () => (wanderer && wanderer.ch3 && wanderer.ch3.jamesFate === 'spared') ? null : {
+      facts: [['True allegiance', 'Terra Imperia'], ['Rank', 'Pontifex Maximus'], ['Former cover', 'Explorer, Human Federation of Sol'], ['Alignment', 'Lawful Evil']],
+      align: 'Loyal to a cause, not to people. James keeps every promise he makes to Terra Imperia, and none of the ones he made to you.',
+      paras: [
+        'The explorer was a cover. James Brown’s true allegiance has always been to Terra Imperia, and the armour he now wears marks him as its Pontifex Maximus.',
+        'Everything at the bottom of the world (the rescue, the station, the meeting in the storm) was part of an arrangement made long before you arrived. You were never part of the plan. That is exactly why Terra Imperia became so interested in you.'
+      ] } },
   { id: 'pontifex', tag: 'cpPontifex', h: 1.95, unlockAt: 3, metIf: () => pontOpen() || chNow() > 3, name: 'PONTIFEX MAXIMUS · SISTERS OF HAWTHORNE', title: 'Terra Imperia’s anointed · as many as you make', // data/cpPontifex.js (a Sister: the same armour, slimmer, without the horns)
     facts: [['Species', 'Human soldiers of Terra Imperia'], ['Men', 'Rise as a Pontifex Maximus'], ['Women', 'Rise as a Sister of Hawthorne'], ['Made by', 'Anointing a beaten soldier'], ['Heart', 'A reactor of Terra Imperia, in place of their own'], ['Hunting you', 'One Pontifex and one Sister at a time'], ['Strength', 'Grows every time they kill you, up to lv 100'], ['Alignment', 'Evil by preference · Pontifex Lawful Evil, Sister Neutral Evil']],
     align: 'Obedience with a burning heart. They serve whoever beat them last, and they would rather that you were cruel.',
@@ -23667,7 +23725,7 @@ const COMPANIONS = [
       'He grew up hearing stories about both of them, and he has inherited a little of each: Gareth’s good humour and, thankfully, not his balance; Richards’s sharp mind and his habit of noticing everything.',
       'Lately he has been having dreams about a version of his great-grandfather he never knew, and a title he has never heard anyone say aloud.'
     ] },
-  { id: 'javek', tag: 'cpJavekC', h: 1.9, unlockAt: 4, name: 'JAVEK', title: 'Last leader of the Grob · fugitive', // data/cpJavekC.js: glasses, black hood and cape (nightmare/tools/javek_fugitive.py); the Ancient Figures file keeps his goggles
+  { id: 'javek', tag: 'cpJavekC', h: 1.9, unlockAt: 4, al: 'True Neutral', name: 'JAVEK', title: 'Last leader of the Grob · fugitive', // data/cpJavekC.js: glasses, black hood and cape (nightmare/tools/javek_fugitive.py); the Ancient Figures file keeps his goggles
     facts: [['Species', 'Grob, part machine and part flesh'], ['Once led', 'The Grob Robotic Collective'], ['Defeated', 'At Steca, by Shakhak Chompjak'], ['Status', 'Fugitive'], ['Met', 'Director Josiah Richards, Cabinet Office, 2014'], ['Alignment', 'True Neutral (formerly Lawful Evil)']],
     align: 'A machine-king who lost everything and kept his patience. Javek fights beside you now, and nobody, perhaps not even Javek, knows how long that will last.',
     paras: [
@@ -23830,12 +23888,110 @@ function pdResolve(L) {
   if (d && d.paras2) { R.paras = [...L.paras]; R.paras[1] = d.paras2; }
   return pdAlign(R);
 }
+// ---- fallen companions: anyone who started good or neutral and has turned evil in your company ----
+// Their Nostrapedia file changes (a new alignment line and what they've become beside you), and out in the world they turn crueller:
+// they hunt harmless prey and peaceful herds too, strike harder, and say so.
+const PD_FALLEN = {
+  orion: { align: 'Kind once, and stubborn still. Somewhere beside you, Orion stopped asking whether a thing was right and started asking only whether it worked.',
+    para: 'He has changed in your company. The man who shared his last ration now takes what he wants, and the rifle he once raised only to protect people comes up first and fastest at anything that moves. He no longer argues with you about where you are going. He argues about who to burn on the way, and he usually wins.',
+    barks: ['Nobody out here’s going to stop us. Might as well take what we like.', 'I used to bury people. Now I just leave them.', 'Croxian looks at me like he doesn’t know me any more. Maybe he doesn’t.'], kills: ['Stay down.', 'Should’ve run faster.'] },
+  nico: { align: 'Hopeful once. Nico has already lost one century, and she has decided that this one owes her.',
+    para: 'Travelling with you has burned the warmth out of her. Lady Luck still smiles, but now she smiles while she shoots, and she shoots first. She robs the dead, she toys with whatever she hunts, and she has stopped talking about the farmhouse and her son as if they were somewhere she was going home to.',
+    barks: ['I spent ninety years asleep. I’m done asking nicely.', 'Luck’s got nothing to do with it any more, love. I just don’t miss.', 'Little Orion’s better off without a mother like this. Don’t tell him I said that.'], kills: ['Bang. You’re dead.', 'Ooh, that one squealed.'] },
+  khazglar: { align: 'Gentle once, and solitary. Now Khazglar comes down from his mountain looking for trouble, and his hammer finds it.',
+    para: 'His patience has set into something colder. He brings his legendary hammer down on anything that strays near, the harmless along with the dangerous, and looks at what is left with the same calm he once gave his garden. He says the thin air of Olympus Mons kept him kind. Down here, beside you, he can breathe.',
+    barks: ['I tended a garden for centuries. Whatever grows can be cut down.', 'So many small, loud creatures. The mountain was quieter.', 'You taught me something, wanderer. Silence can be made.'], kills: ['Quiet now.', 'Into the soil with you.'] },
+  charon: { align: 'Built for work, and now he chooses cruelty. Nobody ordered that either; he simply decided.',
+    para: 'His dry humour has curdled into something with an edge. He hauls, drills and breaks living things now with the same tireless efficiency he once gave to ice and rock, and he keeps a ledger of his kills that he reads aloud at night. Kizna still trusts you. Charon has decided that is her problem.',
+    barks: ['Load-bearing limit exceeded. On purpose.', 'I calculate a ninety-eight percent chance that thing stops moving shortly.', 'Kizna says I’ve changed. Kizna is correct. She usually is.'], kills: ['Logged.', 'Efficient.'] },
+  kizna: { align: 'Duty without a heart. Kizna keeps her loyalty to you, whatever it costs everyone else.',
+    para: 'She still watches over you, and only you. Everyone and everything else has become a threat to be removed before it can become one, and she removes it precisely, without warning and without regret. She still corrects your maths. Now she corrects anyone who gets in your way, permanently.',
+    barks: ['Threat assessment complete. Everything is a threat.', 'You are safe. I have made sure nothing else is.', 'Charon used to call me the sensible one. Removing them is sensible.'], kills: ['Threat removed.', 'You are welcome.'] },
+  nyrexia: { align: 'Royal blood, cruel heart. Nyrexia breaks her oaths when it amuses her now, and her family’s rules for sport.',
+    para: 'The curiosity that had her slipping her bodyguards has turned into appetite. Her ice magic freezes things solid for the pleasure of watching them shatter, and she has stopped pretending she travels with you to annoy her family. She travels with you because nobody else lets her do this.',
+    barks: ['Vishara would faint if she saw me now. I’d pay to watch.', 'Do you hear how they crack when they freeze? Lovely.', 'The oldest court in the solar system, and not one of them ever had this much fun.'], kills: ['Shatter.', 'Frozen. And finished.'] },
+  croxian: { align: 'A good man who served a bad cause, and has gone back to serving one. Yours.',
+    para: 'Whatever he left Terra Imperia to escape, he has found it again beside you, and this time he does not pretend to mind. His blade is out before anyone has spoken, he leaves nothing alive behind him, and Malia has stopped asking what happened to the man who quit. His father is still the one person he cannot bring himself to call. Now it is because Orion would recognise exactly what he has become.',
+    barks: ['I left the Imperium over things like this. Funny how it follows you.', 'Dad warned me about people like you. Should have listened. Glad I didn’t.', 'Leave none of them standing. That’s the job.'], kills: ['Next.', 'Finished.'] },
+  malia: { align: 'Professional to the bone, and the job is cruelty now. Malia does it well, and keeps no opinions about it at all.',
+    para: 'She has found an employer worse than Terra Imperia, and she works harder for you than she ever did for them. She fires in tight, merciless bursts, picks off whatever flees, and files every kill away as a job well done. The question that hung over her has its answer: she stays for ambition, and for the view from the top.',
+    barks: ['Terra Imperia paid better. You let me work.', 'Clean, quick, nothing left. That’s how it’s done.', 'Croxian keeps asking when we stop. I keep not answering.'], kills: ['Target down.', 'Confirmed.'] },
+  josiah2: { align: 'Decent once, and curious still. Josiah has stopped being haunted by his family’s history and started living up to the worst of it.',
+    para: 'The dreams of a great-grandfather he never knew have stopped frightening him. In your company he answers to the title in them, and he wears the Prime Secretary’s cold, careful cruelty as if it were an heirloom. He still notices everything. Now he uses it to find the weakest thing in the room.',
+    barks: ['Great-grandad Richards was a quiet, careful man. The other one wasn’t. I know which I take after now.', 'Grandad Gareth would trip over his own feet trying to stop me. Bless him.', 'Prime Secretary. I like how that sounds.'], kills: ['Noted, and dealt with.', 'Careful. Quiet. Done.'] },
+  'james-ti': { title: 'Pontifex Maximus · your executioner', facts: [['Serves', 'You, and whatever you order'], ['Code', 'Gone: only orders now']],
+    align: 'Loyal to a code, and the code has rotted. James keeps every promise he makes to you, and you have stopped asking for kind ones.',
+    para: 'Whatever he was settling with you, the account is closed. Beside you he has become the Pontifex Maximus again in everything but whose orders he follows: the reactor in his chest runs hot, the scythe comes out first, and he carries out cruelty with the same cold punctuality he once gave Terra Imperia. He has stopped calling it a debt. He calls it duty.',
+    barks: ['Hawthorne taught me obedience. You taught me what it’s for.', 'I spared nobody for Terra Imperia either. Old habits.', 'You let me live once. I’ve decided nobody else gets that.'], kills: ['Sentence carried out.', 'By your order.'] },
+  javek: { title: 'Leader of the Grob, again', label: 'Lawful Evil · as he once was', facts: [['Status', 'Fugitive no longer'], ['Mechanical arm', 'Never hidden now'], ['Ambition', 'The Grob Robotic Collective, rebuilt']],
+    align: 'A machine-king who lost everything, and has decided to take it all back. Beside you, Javek remembers what it was to rule.',
+    para: 'The patience was a mask after all. In your company the old cruelty of the Grob Robotic Collective has come back, colder and more methodical than ever, and the mechanical arm under his cape is out more often than it is hidden. He talks of Steca and of the house of Chompjak in the same measured voice, and the measure is how many of them he means to leave standing: none.',
+    barks: ['Steca was a setback. Not an ending.', 'Flesh is so very fragile. I had nearly forgotten how satisfying that is.', 'The Collective ruled worlds. We could rule more.'], kills: ['Inefficient creature.', 'Recycled.'] },
+  tyrotaronus: { align: 'Patient, polite, and taking a side at last. Tyrotaronus walks beside you now, and nothing is left standing in front of him.',
+    para: 'Whatever great power he once held somewhere out there, he has begun to remember how he used it. He still speaks softly. He no longer waits. Things die around him without his seeming to move, and when he speaks of home now, he speaks of it as somewhere he will return to as a conqueror.',
+    barks: ['I held great power once, in a galaxy far from here. I am remembering how.', 'Waiting is easier in cruel company, it turns out.', 'They are so small, wanderer. I had forgotten how small.'], kills: ['Gone.', 'As it should be.'] },
+  'pbc-gareth': { align: 'Cheerful still, and loyal still, which is the frightening part. Gareth will follow you anywhere, and he has stopped tripping over his conscience.',
+    para: 'Somewhere in your company, the clumsiest man in the Civil Service stopped apologising. He still walks into glass doors, but now he shoots through them first, both pistols blazing at whatever is on the other side. His suit has gone dark, and so has his sense of humour: he files his kills the way he once filed injury forms, cheerfully, and in triplicate.',
+    barks: ['I filed forty-one workplace-injury forms. Now I’m the workplace injury.', 'Ow! Stairs. Right. Anyway, who’s next?', 'My line manager always said I lacked initiative. Look at me now!'], kills: ['Oops! Sorry. Not sorry.', 'Form filed.'] }
+};
+const fallenL = id => COMPANIONS.find(c => c.id === id) || AL_EXTRA.find(c => c.id === id);
+function fallenComp(id) { // started good or neutral, and their chart has gone into the evil
+  alJamesFix(); if (!wanderer || !wanderer.align || !PD_FALLEN[id]) return false;
+  const L = fallenL(id), b = L ? alBaseOf(L) : null; if (b == null || b <= -15) return false;
+  const C = wanderer.align.c && wanderer.align.c[id]; return !!C && C.a <= -15;
+}
+const CRUEL = { t: 60, killT: 0 };
+const cruelPick = a => a[Math.floor(Math.random() * a.length)];
+function cruelBark(id, kind) {
+  const F = PD_FALLEN[id], P = PARTY[id]; if (!F || !P || ex.dlg || cine.on) return;
+  if (kind === 'kill') { if (time - CRUEL.killT < 25 || Math.random() > .4) return; CRUEL.killT = time; vbark(P.name, cruelPick(F.kills), 3200); return; }
+  vbark(P.name, cruelPick(F.barks), 5600);
+}
+function cruelTick(dt, live) { // now and then, one of them says what they've become
+  if ((CRUEL.t -= dt) > 0) return; CRUEL.t = 100 + Math.random() * 70;
+  if (state !== 'explore' || ex.dlg) return;
+  const f = live.filter(fallenComp); if (f.length) cruelBark(cruelPick(f), 'say');
+}
+// Gareth has a Companions file of his own while he's in your crew (the others from Project BC and Sevirrus were born villains, so theirs live with their own games)
+const PD_CREW_FILES = [
+  { id: 'pbc-gareth', tag: 'chGareth', h: 1.85, name: 'GARETH WILLIAMS', title: 'Project BC · Grade 7 Civil Servant',
+    facts: [['Species', 'Human'], ['From', 'Uxbridge, West London'], ['Rank', 'Grade 7 Civil Servant'], ['Fights with', 'Two pistols'], ['Wears', 'A charcoal suit and a burgundy tie'], ['Alignment', 'Neutral Good']],
+    align: 'Cheerful, loyal and almost impossible to keep upright.',
+    get paras() { const c = charById('pbc-gareth'); return c && c.desc ? c.desc.split('\n\n') : []; } }
+];
+// every Pontifex and Sister in your service has a file of their own; go deep enough into evil (−80) and the reactor takes what's left of them
+const PONT_CORRUPT = -80;
+function pontCorrupt(id) { if (!String(id).startsWith('pont:') || !wanderer || !wanderer.align) return false; const C = wanderer.align.c && wanderer.align.c[id]; return !!C && C.a <= PONT_CORRUPT; }
+function pdPontFile(P) {
+  const sis = P.sex === 'f', [he, him, his] = pontHe(P), He = he[0].toUpperCase() + he.slice(1), T = pontTitle(P), nm = P.name;
+  const col = (PONT_PAL.find(([, c]) => (c || '') === (P.col || '')) || ['Their own colour'])[0];
+  return { id: 'pont:' + P.id, tag: 'cpPontifex', mod: sis ? 'sister' : '', pcol: P.col || '', h: sis ? 1.86 : 1.95, pont: true, name: nm.toUpperCase(), title: T + ' · in your service', al: sis ? 'Neutral Evil' : 'Lawful Evil',
+    facts: [['Species', 'Human, once a soldier of Terra Imperia'], ['Rank', T], ['Anointed by', 'You, the wanderer'], ['Heart', 'A reactor of Terra Imperia'], ['Armour', col], ['Level', String(compLevel('pont:' + P.id))], ['Alignment', sis ? 'Neutral Evil' : 'Lawful Evil']],
+    align: sis ? 'Cold, exact and patient. She serves you because you beat her, and she would rather you were cruel.' : 'Obedient to whoever beat him last, and burning for an order worth obeying. He would rather you were cruel.',
+    paras: [`${nm} was a soldier of Terra Imperia until you beat ${him} and anointed ${him}. ${He} rose as a ${T}, with a reactor heart burning in ${his} chest where ${his} own used to be.`,
+      `${He} hunted you across Sol, and when you beat ${him} a second time, ${he} knelt. ${He} serves you now, keeps ${his} own name and colours, and is pleased by every cruel thing you do. Good can sway ${him}, slowly, and ${he} resents it.`] };
+}
+function pontFallen(id) { // a corrupted Pontifex or Sister
+  const P = pontById(String(id).slice(5)); if (!P) return null; const sis = P.sex === 'f';
+  return { title: `${pontTitle(P)} · corrupted`, facts: [['Heart', 'A reactor running far past its limits'], ['Takes orders from', 'No one but you']],
+    align: sis ? 'Nothing left but the fire. She no longer serves Terra Imperia’s memory, only your cruelty, and she wants more of it.' : 'Nothing left but the fire. He no longer serves Terra Imperia’s memory, only your cruelty, and he wants more of it.',
+    para: sis ? 'The reactor in her chest burns hotter than it was ever built to. Every cruel thing you have done in her sight has fed it, and the soldier she was is gone. She kills without being told, leaves nothing standing, and the other Sisters of Hawthorne have begun to whisper that she is what all of them were meant to become.'
+      : 'The reactor in his chest runs hotter than it was ever meant to. Every cruel thing you have done in his sight has fed it, and whatever was left of the soldier underneath has burned away. He no longer waits for orders, and he no longer remembers that he once took them from Hawthorne. Even James Brown, who wore the title first, will not stand beside him.' };
+}
+const pdCrewFiles = () => PD_CREW_FILES.filter(L => wanderer && (wanderer.party || []).includes(L.id)).concat(PONTS().filter(P => P.st === 'ally').map(pdPontFile));
 // companions' files follow their alignment in this save (a new game shows their original alignment)
 const PD_ALIAS = { vcTaro: 'tyrotaronus' }; // the same person filed under the Vectors
 function pdAlign(R) {
-  const cid = COMPANIONS.some(c => c.id === R.id) ? R.id : PD_ALIAS[R.tag];
+  alJamesFix();
+  const cid = COMPANIONS.some(c => c.id === R.id) || AL_EXTRA.some(c => c.id === R.id) || String(R.id).startsWith('pont:') ? R.id : PD_ALIAS[R.tag];
   const C = cid && wanderer && wanderer.align && wanderer.align.c && wanderer.align.c[cid];
   if (!C) return R;
+  const F = fallenComp(cid) ? PD_FALLEN[cid] : pontCorrupt(cid) ? pontFallen(cid) : null; // turned evil in your company (or a Pontifex gone past saving): what they've become, after who they were
+  if (F) {
+    let facts = R.facts; for (const [k, v] of F.facts || []) facts = facts.some(f => f[0] === k) ? facts.map(f => f[0] === k ? [k, v] : f) : [...facts.filter(f => f[0] !== 'Alignment'), [k, v], ...facts.filter(f => f[0] === 'Alignment')];
+    R = Object.assign({}, R, { align: F.align, paras: [...R.paras, F.para], facts }, F.title ? { title: F.title } : {});
+    if (F.label) return Object.assign({}, R, { facts: R.facts.map(f => f[0] === 'Alignment' ? ['Alignment', F.label] : f) }); // Javek goes back to what he was
+  }
   const orig = alFact(R); if (!(orig in AL_BASE)) return R;
   const now = alLabel(orig, C.a); if (now === orig) return R;
   return Object.assign({}, R, { facts: R.facts.map(f => f[0] === 'Alignment' ? ['Alignment', now] : f) });

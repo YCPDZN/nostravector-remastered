@@ -107,6 +107,7 @@ Add one of these to the game's address to jump straight to a scene:
 - `?menu=ch4pre`, `?menu=ch4` or `?menu=ch5` previews the main menu for that chapter.
 - `?ending=tared` plays the Taredesiban nightmare once the title screen is up.
 - `?ending=oilkoumene` plays the Oilkoumene nightmare (The Fall of Obra-Spira), and `?ending=oilkdream` plays the Oilkoumene dream on the ice (Tyrotaronus). Tap once the title screen is up; nothing is saved.
+- `?ch5allteam=evil` (or `=good`, `=neutral`) loads a test wanderer in Chapter V with every companion in the crew (plus a Pontifex and a Sister), all pushed fully that way, aboard the Nostra. It uses your active wanderer's look, press Continue to play, and it can't be saved.
 
 ---
 
