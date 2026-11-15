@@ -130,20 +130,20 @@ A cutscene that plays only if you killed Croxian, straight after the blockade's 
 
 These should be played as real grief, not acting: the breath catching, words breaking off, the crying taking over between lines (lines 3 to 9), then flat and cold from line 10.
 
-Pack: `data/orionGriefVoices.js` (13 slots, in this order). **Not recorded yet:** these show as subtitles.
+Pack: `data/orionGriefVoices.js` (VENGEFULMASCAR1–13, in this order). **All 13 are recorded.**
 
 | File | Speaker | How | Line |
 |---|---|---|---|
-| CH3ORIONGRIEF1.mp3 | Orion Mascar | Standing; rising panic | Croxian? …Croxian. Son, answer me. Answer me. ANSWER ME! |
-| CH3ORIONGRIEF2.mp3 | Orion Mascar | Going down onto the floor | No. No, no, no, no. Please. Please, not him. Not my boy. |
-| CH3ORIONGRIEF3.mp3 | Orion Mascar | Hands over his eyes; can't breathe | I can’t… I can’t breathe. Oh God. Oh God, oh God. |
-| CH3ORIONGRIEF4.mp3 | Orion Mascar | Sobbing through it | He was four. He fell off the sea wall at Dover and split his chin open, and he didn’t cry. He just looked up at me… to see if he should. |
-| CH3ORIONGRIEF5.mp3 | Orion Mascar | Sobbing | I should have dragged him home. I should have gone to London and dragged him home by his collar. And I didn’t, because I was proud. I was so proud of him. |
-| CH3ORIONGRIEF6.mp3 | Orion Mascar | Breaking | He said I was right. He finally said it. And I wasn’t there. I was up here. Listening. Listening to my boy die. |
-| CH3ORIONGRIEF7.mp3 | Orion Mascar (7a · Malia spared) | Rocking; can't finish | And Malia, they spared. They looked at her and chose mercy. And they looked at my son on his knees, and they… they… |
-| CH3ORIONGRIEF8.mp3 | Orion Mascar (7b · Malia killed) | Rocking | Malia too. Both of them. She’d have been my daughter. There’s no one left to tell. There’s no one left. |
-| CH3ORIONGRIEF9.mp3 | Orion Mascar | Rocking, to his son | Croxian. Croxian. I’m sorry. I’m so sorry. Papa’s sorry. Papa’s so sorry. |
-| CH3ORIONGRIEF10.mp3 | Orion Mascar | The crying stops; flat | Nostra. Close the channel. |
-| CH3ORIONGRIEF11.mp3 | Orion Mascar | Getting up | I sat by that bed for two weeks. I held you on that pier. I would have died for you, wanderer. |
-| CH3ORIONGRIEF12.mp3 | Orion Mascar | Cold | So I am going to kill you. Not today. Not quickly. But I will. |
-| CH3ORIONGRIEF13.mp3 | Orion Mascar | Cold | Thomas and I bled together in the war. He told me there would always be a place for me at his side. I’m going to take it. |
+| VENGEFULMASCAR1.mp3 | Orion Mascar | Standing; rising panic | Croxian? …Croxian. Son, answer me. Answer me. ANSWER ME! |
+| VENGEFULMASCAR2.mp3 | Orion Mascar | Going down onto the floor | No. No, no, no, no. Please. Please, not him. Not my boy. |
+| VENGEFULMASCAR3.mp3 | Orion Mascar | Hands over his eyes; can't breathe | I can’t… I can’t breathe. Oh God. Oh God, oh God. |
+| VENGEFULMASCAR4.mp3 | Orion Mascar | Sobbing through it | He was four. He fell off the sea wall at Dover and split his chin open, and he didn’t cry. He just looked up at me… to see if he should. |
+| VENGEFULMASCAR5.mp3 | Orion Mascar | Sobbing | I should have dragged him home. I should have gone to London and dragged him home by his collar. And I didn’t, because I was proud. I was so proud of him. |
+| VENGEFULMASCAR6.mp3 | Orion Mascar | Breaking | He said I was right. He finally said it. And I wasn’t there. I was up here. Listening. Listening to my boy die. |
+| VENGEFULMASCAR7.mp3 | Orion Mascar (7a · Malia spared) | Rocking; can't finish | And Malia, they spared. They looked at her and chose mercy. And they looked at my son on his knees, and they… they… |
+| VENGEFULMASCAR8.mp3 | Orion Mascar (7b · Malia killed) | Rocking | Malia too. Both of them. She’d have been my daughter. There’s no one left to tell. There’s no one left. |
+| VENGEFULMASCAR9.mp3 | Orion Mascar | Rocking, to his son | Croxian. Croxian. I’m sorry. I’m so sorry. Papa’s sorry. Papa’s so sorry. |
+| VENGEFULMASCAR10.mp3 | Orion Mascar | The crying stops; flat | Nostra. Close the channel. |
+| VENGEFULMASCAR11.mp3 | Orion Mascar | Getting up | I sat by that bed for two weeks. I held you on that pier. I would have died for you, wanderer. |
+| VENGEFULMASCAR12.mp3 | Orion Mascar | Cold | So I am going to kill you. Not today. Not quickly. But I will. |
+| VENGEFULMASCAR13.mp3 | Orion Mascar | Cold | Thomas and I bled together in the war. He told me there would always be a place for me at his side. I’m going to take it. |

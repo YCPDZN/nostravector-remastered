@@ -2094,4 +2094,4 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **Then it stops.** He closes the channel, gets up, and his face is empty. He vows to kill the wanderer, and he goes to Thomas Hawthorne, who fought beside him in the Third World War (`ch3.orionToHawthorne`). The scene ends on **ORION MASCAR HAS GONE TO HAWTHORNE**.
 - His rifle stays down until he walks to the lift. The camera works low and close on the floor, from the side, from above and from behind.
 - Orion's rig has no elbows, knees or spine, so the grief is built from what it does have: he sits on the floor with his legs out, the whole body folds forward, his head bows into raised arms, and he's kept on the floor by his legs.
-- Voice pack: `data/orionGriefVoices.js` (CH3ORIONGRIEF1–13, not recorded yet). The script, with direction for each line, is in `assets/audio/karribassa/VOICE_SCRIPT.md`.
+- **Voiced:** `data/orionGriefVoices.js` (VENGEFULMASCAR1–13; 7 and 8 are the two Malia lines). The script, with direction for each line, is in `assets/audio/karribassa/VOICE_SCRIPT.md`.
