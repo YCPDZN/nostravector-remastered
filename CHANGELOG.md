@@ -1967,3 +1967,24 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 ## Hak's marker after the Cygnus; Reset progress removed
 - **Karribassa's marker leads you back to Hak:** while he's waiting (the first meeting, and the return after Sol falls), Karribassa's marker from the sky is gold and reads *Main quest · Hak*. On the ground, the marker points at the Hall of Oaths straight away, before his model has finished loading. If his model fails to load, the game tries again instead of leaving nobody there.
 - **Reset progress is gone** from the Load game screen. It was a temporary testing feature (Chapters I, II at New London, III, and III at Hawthorne).
+
+## A sixth playable race: the Oilkoumene
+- **The Oilkoumene**, of the Cyrannus Galaxy: ancient, primordial, wise and powerful, the race whose bodies the Vectors wear (Tyromairon, Obsidnia, Tyrotaronus, Apolinothanatus, Tyronihlus). Pick them in character creation. They have scales, silver armour, a green glow you can recolour (it changes the glow too) and crown horns you can keep or take off. Their body is the Vectors' own, from Tyrotaronus's model (`data/sp_oilkoumene.js`).
+- **Species bio:** ancient and primordial beings from the Cyrannus Galaxy, wise yet powerful. A single one of them, given the tools, can rule an empire of massive proportions.
+- **Residents:** a wanderer of any race can be sent into the world as a resident, and Oilkoumene residents now have their own chat lines, a ship and a name label set at their height.
+- **The dream on the ice:** an Oilkoumene dreams of Tyrotaronus, shown only as ????. When they wake, Tyrotaronus opens in the Nostrapedia, under Companions and Vectors. Before this he was locked until Chapter IV.
+- **The Chapter III nightmare: The Fall of Obra-Spira.** Obra-Spira, in Cyrannus, under black glass spires and the Cyrannus Galaxy itself. Tyromairon on the throne of the Oilkoumene Empire, Tyronihlus keeping "order", Tyrotaronus refusing to take a side, and the night the empire is lost. It ends with Tyrotaronus speaking to the wanderer directly. It plays on the nightmare's stage, the same way on phones and desktop, with each brother's subtitles in his own colour. Tyromairon and Tyronihlus open in the Nostrapedia once you've seen it, and the nightmare has its own page and can be replayed from Cutscenes.
+- **Species lines:** Khazglar's line, the Chapter IV menu voice's taunts, the Grek dream's non-human lines and Orion and Nico's wake-up are all written for the Oilkoumene. Voices aren't recorded yet, so these are subtitles only.
+
+## Oilkoumene: Tamez, and their lines written for recording
+- **Tamez**, a new star system out on the galaxy's rim (blue-white star, a moon, a ringed gas giant). **Tamez Prime** is a world of silver grass and black glass peaks where the few Oilkoumene in the Milky Way have settled. Oilkoumene residents call it home and come back to it when they fall. It's added after the galaxy is generated, so no other system, colony or save moves.
+- **Khazglar doesn't know what you are.** His line for an Oilkoumene is now: "I do not know what you are… nothing like you has ever climbed it."
+- **Orion and Nico know next to nothing about your people.** Their wake-up after the nightmare is now four lines, and Nico admits she'd never heard of your people before you.
+- **Ready for voices:** the dream (`data/lv_oilkoumene.js`, CH1TYRO1–5), the nightmare (`data/nmOilkVoices.js`, CH3NMOILK1–17), the wake-up (CH3NMWAKEOK1–4, appended to `data/nmWakeVoices.js`) and Khazglar (CH3KHAZ25, the 25th clip in `data/khazVoices.js`) all play their recordings once the files exist, and show subtitles until then. The script is in `assets/audio/oilkoumene/VOICE_SCRIPT.md`.
+
+## Oilkoumene voices: the dream and the nightmare
+- **Tyrotaronus's dream on the ice is voiced:** `data/lv_oilkoumene.js`, CH1OILKOUMENE1–5 (`assets/audio/oilkoumene/`).
+- **The Fall of Obra-Spira is voiced:** `data/nmOilkVoices.js`, CH3NIGHTMAREOILKOUMENE1–17, for Tyromairon, Tyronihlus and Tyrotaronus.
+- Still subtitles only: Orion and Nico's wake-up (CH3NMWAKEOK1–4) and Khazglar's line (CH3KHAZ25).
+- **Khazglar's Oilkoumene line is voiced:** KHAZOILKOUMENE.mp3, added as the 25th clip in `data/khazVoices.js`. Only Orion and Nico's wake-up (CH3NMWAKEOK1–4) is still subtitles.
+- **Orion and Nico's wake-up is voiced:** CH3ORIONOILKOUMENE1–4, added after the Taredesiban lines in `data/nmWakeVoices.js`. Every Oilkoumene line in the game is now voiced.
