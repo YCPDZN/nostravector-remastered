@@ -7043,6 +7043,9 @@ function questTarget() {
   if (DGN.on) return dgnTarget();
   if (NYX.R && NYX.R.root.parent && isPl()) return { x: NYX.x, z: NYX.z, label: 'Nyrexia Erisconos' };
   if (isPl() && world.dgnGate && khzPending()) return { x: world.dgnGate.x, z: world.dgnGate.z, label: 'The way into the mountain' };
+  if (isPl() && (hakQ() || hakBackQ()) && world.planet.P.id === 'janira' && !TIW.hak && !(world.planet.city && world.planet.city.K.name === 'Karribassa')) { // landed away from the city: point the way there
+    const W = world.planet, cd = capDir(W.P), x = cd.dot(W.E), z = cd.dot(W.N), f = Math.hypot(x, z) || 1, dist = Math.acos(clamp(cd.dot(W.D), -1, 1)) * W.R;
+    return { x: x / f * Math.min(dist, 900), z: z / f * Math.min(dist, 900), label: `Karribassa · ${(dist / 1000).toFixed(1)} km · take off and fly there`, far: dist }; }
   if (isPl() && (hakQ() || hakBackQ()) && (TIW.hak || (world.planet.city && world.planet.city.K.name === 'Karribassa'))) { const C = world.planet.city; return TIW.hak ? { x: TIW.hak.x, z: TIW.hak.z, label: 'Hak Chompjak · the Hall of Oaths' } : { x: C.cx, z: C.cz + 46, label: 'Hak Chompjak · the Hall of Oaths' }; } // the city's heart until he's placed
   if (isPl() && TIW.cyg && (cygQ() || cygFarm())) return { x: TIW.cyg.x, z: TIW.cyg.z, label: 'The Cygnus supply shuttle' };
   if (isPl() && TIW.chn && (chnQ() || chnBackQ())) return { x: TIW.chn.x, z: TIW.chn.z, label: 'Charon and Kizna' };
@@ -7212,7 +7215,7 @@ function updateMinimap(dt) {
   if (mapAcc < 1 / 30) return; mapAcc = 0;
   renderMap($('#mmapC'), 110, true, 2, true);
   const q = questTarget(), p = player.position;
-  $('#mmapCap').innerHTML = q ? `<b>◆</b> ${Math.round(Math.hypot(q.x - p.x, q.z - p.z))} m` : AREA_INFO[curArea()].name.toUpperCase();
+  $('#mmapCap').innerHTML = q ? (q.far ? `<b>◆</b> ${(q.far / 1000).toFixed(1)} km` : `<b>◆</b> ${Math.round(Math.hypot(q.x - p.x, q.z - p.z))} m`) : AREA_INFO[curArea()].name.toUpperCase();
   const wxe = $('#mmWx'); if (wxe) { const t = isPl() ? wxLine() : ''; if (wxe.innerHTML !== t) wxe.innerHTML = t; }
 }
 function openMap(on) {
@@ -12841,11 +12844,18 @@ function hakBackTalk() { // Hak, on the bridge before the Hall of Oaths again: h
       { text: tiPhone() ? '“He says you’re next.”' : '“He says you’re next. He’s coming for your crown.”', onPick: () => hakSay(who, [['Everyone who has ever wanted this crown has said so. Most of them said it to my face. None of them are wearing it.', 7]], vo, end) },
       { text: tiPhone() ? '“What now?”' : '“So what do we do now?”', onPick: () => hakSay(who, [['We do what he cannot. We hold.', 8]], vo, end) }
     ], 'YOUR REPLY'));
-    function end() { hakSay(who, [ally ? ['Aridaxx stands with you. Take Sol back world by world, and every one he loses, he will feel. My fleets will follow you in.', 9] : ['My offer of alliance still stands. Until you take it, take Sol back world by world. Every one he loses, he will feel.', 10]], vo, () => {
-      setC3({ hakBack: true }); renderTasks(); sfx.chime(); gainXP(300, 'Returned to Hak Chompjak');
+    function end() { hakSay(who, [ally ? ['Aridaxx stands with you. Take Sol back world by world, and every one he loses, he will feel. My fleets will follow you in.', 9] : ['My offer of alliance still stands. Until you take it, take Sol back world by world. Every one he loses, he will feel.', 10]], vo, () => setTimeout(() => karrVision(karrWake), 600)); }
+    function karrWake() { // back on the bridge: Hak brings you round (CH3NIGHTMAREKARRIBASSA9–11, after Hawthorne's eight lines)
+      const kv = NM.vo.kv || [], say = (L, next) => hakSay(who, L, kv, next);
+      say([['Wanderer! Look at me. You are back. What did you see?', 8]], () => openChoice(who, [
+        { text: tiPhone() ? '“Karribassa, burning.”' : '“Karribassa, burning. Hawthorne was here, using Sevirrus’s words.”', onPick: () => say([['My words. He keeps wearing them like a stolen coat.', 9], ['If what you saw is coming, it is coming soon. Then we make sure it does not happen the way you saw it.', 10]], finish) }
+      ], 'YOUR REPLY'));
+    }
+    function finish() {
+      setC3({ hakBack: true, karrVision: true }); renderTasks(); sfx.chime(); gainXP(300, 'Returned to Hak Chompjak');
       notice('Main quest', tiPhone() ? 'YOU RETURNED TO HAK' : 'YOU RETURNED TO HAK CHOMPJAK', 3600);
       setTimeout(() => lootMsg(tiPhone() ? 'Take Sol back · bombard its worlds' : 'Take Sol back from Terra Imperia: bombard its worlds and beat their governors', '#ffb060'), 2400);
-    }); }
+    }
   };
   pdMeet('hak'); loadDataScript('hakBackVoices').then(ok => ok ? sfx.loadClips('hakBackVoices') : []).catch(() => []).then(v => go(v || []));
 }
@@ -13242,6 +13252,60 @@ function hawCrown() { // a crooked gold crown, like the one Sevirrus put back on
   const band = new THREE.Mesh(new THREE.CylinderGeometry(.17, .16, .07, 20, 1, true), gold); band.material.side = THREE.DoubleSide; g.add(band);
   for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, s = new THREE.Mesh(new THREE.ConeGeometry(.028, .1, 6), gold); s.position.set(Math.cos(a) * .165, .08, Math.sin(a) * .165); g.add(s); }
   return g;
+}
+/* ---- Chapter III, back in Karribassa: the vision of the city ten minutes from now ----
+   Straight after Hak's last word, another episode: Karribassa on fire, Terra Imperia in its streets, and Hawthorne in front of
+   the Hall of Oaths, wearing Sevirrus's words to justify every murder (as he wore his breakdown on the Cygnus). Then Hak brings
+   you round. Plays on the nightmare's stage on every device. Voices: data/karrVisionVoices.js (CH3NIGHTMAREKARRIBASSA1–11: Hawthorne's
+   eight lines, then Hak's three), subtitles until it's recorded. Saves ch3.karrVision; replayable from Cutscenes. ---- */
+const KV = i => ['kv', i];
+function karrVisionScript() {
+  const W = 'THOMAS HAWTHORNE';
+  return { tint: 'saturate(1.25) contrast(1.18) sepia(.15) hue-rotate(-10deg)', kind: 'haw', beats: [
+    { set: 'karrFire', actors: { c1: [-3, 2, 2.6, 'walk'], c2: [2.5, 3, -2.4, 'walk'], s1: [0, -4, 0, 'aim'] }, cam: [[0, 9, 26], [0, 6, 16]], at: [0, 6, -20],
+      lines: [[W, 'Karribassa. The garden of the Chompy Empire. Listen to it, wanderer. That’s what a garden sounds like when it burns.', KV(0)]], fx: [[-1, 'scream'], [-1, 'walkTo', 'c1', [-9, 9]], [-1, 'walkTo', 'c2', [9, 10]], [0, 'boom']] },
+    { set: 'karrFire', actors: { c1: [-1.6, -3, Math.PI, 'kneel'], c2: [0, -3.4, Math.PI, 'kneel'], c3: [1.6, -3, Math.PI, 'kneel'], s1: [-.6, -6.2, 0, 'aim'], s2: [1.4, -6.4, -.2, 'aim'], haw: [0, -8, 0, 'idle'] }, cam: [[4.5, 2, -1], [3.4, 2.2, -2.8]], at: [0, 1.5, -5.5],
+      lines: [[W, 'Everyone kneels. Some of them just need help.', KV(1)], [W, 'Don’t look at me like that. Those aren’t my words. They’re your Emperor’s. He said them first, on Carax, to people just like these.', KV(2)]], fx: [[0, 'strike', 's1', 'c2'], [0, 'scream']] },
+    { set: 'karrFire', actors: { haw: [0, -11.5, 0, 'idle'], s1: [-2.2, -10.4, .3, 'idle'], s2: [2.2, -10.4, -.3, 'idle'] }, cam: [[0, 1.8, -7.4], [0, 1.78, -8.8]], at: [0, 1.75, -11.5],
+      lines: [[W, 'Hak. Little prince. You buried Sevirrus and called it repentance. I dug him up. He was very good at this.', KV(3)], [W, 'Stay with me. I want you to hear your people scream.', KV(4)]], fx: [[1, 'scream'], [1, 'boom']] },
+    { set: 'karrFire', actors: { haw: [0, -5, 0, 'idle'] }, cam: [[.5, 1.8, -1.6], [.25, 1.76, -2.6]], at: [0, 1.74, -5],
+      lines: [[W, 'And you. You took my ship, and you thought that meant something. It bought him ten minutes. Use them well.', KV(5)]] },
+    { set: 'karrFire', actors: { haw: [0, -9, Math.PI, 'idle'], s1: [-1.5, -10.5, Math.PI, 'idle'], s2: [1.5, -10.5, Math.PI, 'idle'] }, cam: [[0, 2.4, -2], [0, 4.5, 2]], at: [0, 3, -12],
+      lines: [[W, 'Once I’m done with the Chompy, I will come for the Grek next. Archiostal’s gardens will burn exactly like these.', KV(6)], [W, 'Long live the Emperor. Whichever one of us is left.', KV(7)]], fx: [[-1, 'boom'], [1, 'scream']] }
+  ] };
+}
+async function karrVision(done) {
+  for (const R of Object.values(NM.actors || {})) if (R.root.parent) R.root.parent.remove(R.root);
+  Object.assign(NM, { on: true, kVision: { done }, race: 'human', phase: 'load', t: 0, bi: -1, ready: false, vo: {}, actors: {}, sevM: null, script: karrVisionScript() });
+  state = 'nightmare'; ex.keys.clear(); vel.set(0, 0, 0); if (ex.dlg) closeDialog(); show(ui.xhud, false);
+  const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.gasp(1.4); sfx.drone(.45);
+  nmStage();
+  const ph = tiPhone();
+  try {
+    const civ = c => townModel('chompy').then(src => src ? (R => (armRig(R, 'none'), R))(autoRig(dressTownsfolk(src, { sp: 'chompy', c }), 1.72)) : null);
+    const [H, s1, s2, c1, c2, c3, kv] = await Promise.all([hawthorneRig(), tiSoldierRig(), ph ? null : tiSoldierRig('f'), civ([0x1f5a5a, 0x7fffe0]), civ([0x5a2a8a, 0xffc35a]), ph ? null : civ([0x2a4a3a, 0x9ad0ff]),
+      loadDataScript('karrVisionVoices').then(ok => ok ? sfx.loadClips('karrVisionVoices') : []).catch(() => [])]);
+    const add = (k, R) => { if (!R) return; R.root.visible = false; R.root.traverse(o => { if (o.isMesh) { o.frustumCulled = false; o.castShadow = !ph; } }); NM.scene.add(R.root); NM.actors[k] = R; };
+    if (H) armRig(H, 'sword'); add('haw', H); add('s1', s1); add('s2', s2); add('c1', c1); add('c2', c2); add('c3', c3);
+    NM.vo.kv = kv || [];
+  } catch (e) { console.error(e); }
+  if (!NM.on) return;
+  if (!NM.actors.haw) { karrVisionEnd(); return; } // he wouldn't load: straight back to Hak
+  NM.phase = 'mem'; NM.saveCam = { near: camera.near, far: camera.far, fov: camera.fov }; camera.near = .1; camera.far = 700; camera.fov = 55; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
+  renderer.domElement.style.filter = NM.script.tint; nmBeat(0);
+  show(ui.xhud, true); ui.xhud.classList.add('cutting'); // just Skip over it
+  fd.style.transition = 'opacity 1.2s'; fd.style.opacity = 0;
+  setTimeout(() => { if (NM.kVision) notice('A vision', tiPhone() ? 'TEN MINUTES FROM NOW' : 'KARRIBASSA · TEN MINUTES FROM NOW', 3400); }, 500);
+}
+function karrVisionEnd() {
+  const d = NM.kVision && NM.kVision.done; NM.kVision = null; NM.on = false; NM.phase = null; fbSubHide(); sfx.drone(0);
+  if (NM.saveCam) { camera.near = NM.saveCam.near; camera.far = NM.saveCam.far; camera.fov = NM.saveCam.fov; camera.updateProjectionMatrix(); NM.saveCam = null; }
+  renderer.domElement.style.filter = ''; for (const R of Object.values(NM.actors)) R.root.visible = false;
+  ui.xhud.classList.remove('cutting'); fbFlash(1, '#ffffff'); sfx.gasp(1.8);
+  if (CUT.on) { show(ui.xhud, false); if (d) d(); return; } // from Cutscenes
+  state = 'explore'; show(ui.xhud, true); ex.snap = true; resize(); clock.getDelta();
+  const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0; setTimeout(() => { fd.style.transition = ''; fbFlash(0); }, 900);
+  if (d) setTimeout(d, 700);
 }
 async function hawStage(done) {
   for (const R of Object.values(NM.actors || {})) if (R.root.parent) R.root.parent.remove(R.root);
@@ -14617,10 +14681,14 @@ function c4eEnd(keepBlack) {
   if (!keepBlack) { state = C4E.from === 'title' ? 'title' : 'explore'; ex.snap = true; clock.getDelta(); const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0; }
 }
 // ?ending=good|neutral|bad|tared: watch an ending (or the Taredesiban nightmare) from the title screen (tap or press a key once the menu is up; nothing is saved or erased)
-{ const m = location.search.match(/[?&]ending=(good|neutral|bad|tared)/); // tared: the Taredesiban nightmare
-  if (m) { const go = () => { if (state !== 'title' || C4E.on) return; removeEventListener('pointerdown', go); removeEventListener('keydown', go); sfx.init && sfx.init(); ch4EndingPlay(m[1], { preview: true }); };
+// ?ending=oilkoumene: the Oilkoumene nightmare (The Fall of Obra-Spira) · ?ending=oilkdream: the Oilkoumene dream on the ice (Tyrotaronus, as ????)
+// Both play through the Cutscenes player and come back to the title: nothing is saved, and no wanderer is needed.
+{ const m = location.search.match(/[?&]ending=(good|neutral|bad|tared|oilkoumene|oilkdream)/); // tared: the Taredesiban nightmare
+  const OILK = { oilkoumene: { id: 'nightmare', play: () => cutNightmare('oilkoumene') },
+    oilkdream: { id: 'oilkDream', play: () => { startDream(() => { const b = $('#blackout'); b.style.transition = ''; b.style.opacity = ''; b.classList.remove('on'); cutDone(); }, { sp: 'oilkoumene' }); } } };
+  if (m) { const go = () => { if (state !== 'title' || C4E.on || CUT.on) return; removeEventListener('pointerdown', go); removeEventListener('keydown', go); sfx.init && sfx.init(); if (OILK[m[1]]) cutPlay(OILK[m[1]]); else ch4EndingPlay(m[1], { preview: true }); };
   addEventListener('pointerdown', go); addEventListener('keydown', go);
-  const hint = () => { if (state === 'title') notice('Preview', m[1] === 'tared' ? 'TAP TO PLAY THE TAREDESIBAN NIGHTMARE' : `TAP TO PLAY THE ${m[1].toUpperCase()} ENDING`, 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500); } }
+  const hint = () => { if (state === 'title') notice('Preview', m[1] === 'tared' ? 'TAP TO PLAY THE TAREDESIBAN NIGHTMARE' : m[1] === 'oilkoumene' ? 'TAP TO PLAY THE OILKOUMENE NIGHTMARE' : m[1] === 'oilkdream' ? 'TAP TO PLAY THE OILKOUMENE DREAM' : `TAP TO PLAY THE ${m[1].toUpperCase()} ENDING`, 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500); } }
 
 // ---- the cutscene player (main menu · Cutscenes): the scenes the active wanderer has reached, replayed from the title ----
 // Each one runs as it does in the story, then comes back here: nothing is saved, no flag is set, no save is touched.
@@ -14638,6 +14706,9 @@ const CUTS = [
   { id: 'nightmare', ch: 'Chapter III', name: () => CUT_NM[nmSeen()] || 'THE NIGHTMARE', sub: 'Nightmare · above Earth', ok: () => !!nmSeen(), play: () => cutNightmare(nmSeen()) },
   { id: 'hawMars', ch: 'Chapter III', name: 'THE GRAND IMPERARCH COMES TO MARS', sub: 'Mars · the plain below Olympus Mons', ok: () => !!CH3S().hawMars || chNow() >= 4, play: () => startHawMars() },
   { id: 'jamesRev', ch: 'Chapter III', name: 'JAMES BROWN, PONTIFEX MAXIMUS', sub: 'The Southern Ocean · off the Antarctic coast', ok: () => !!CH3S().jamesRev || chNow() >= 4, play: () => startJamesRev() },
+  { id: 'erisFall', ch: 'Chapter III', name: 'THE FALL OF ERIS', sub: 'Eris · Alexia Erisconos takes the Citadel', ok: () => !!CH3S().alexiaCoup, play: () => erisCoupStart(true) },
+  { id: 'karrVision', ch: 'Chapter III', name: 'KARRIBASSA BURNS', sub: 'Janira Prime · a vision, ten minutes from now', ok: () => !!CH3S().karrVision, play: () => karrVision(() => cutDone()) },
+  { id: 'hawMirror', ch: 'Chapter III', name: 'THE GRAND IMPERARCH’S BREAKDOWN', sub: 'The Cygnus · Hawthorne’s false breakdown, in his fake castle', ok: () => !!CH3S().cygDone, play: () => hawMirror(() => cutDone()) },
   { id: 'good', ch: 'Chapter IV', name: 'THE CATHARSIS FALLS', sub: 'The good ending', ok: () => cutEnding() === 'good', play: () => ch4EndingPlay('good', { preview: true }) },
   { id: 'neutral', ch: 'Chapter IV', name: 'THE WAR GOES ON', sub: 'The neutral ending', ok: () => cutEnding() === 'neutral' || chNow() >= 5, play: () => ch4EndingPlay('neutral', { preview: true }) },
   { id: 'bad', ch: 'Chapter IV', name: 'NO ONE WILL REMEMBER', sub: 'The bad ending · seen on this device', ok: () => cutsSeen().includes('bad'), play: () => ch4EndingPlay('bad', { preview: true }) }
@@ -16821,8 +16892,14 @@ function atmHudTick(alt) {
   // markers: the places on this world, near enough to fly to
   const box = $('#shMarks'), W = innerWidth, H = innerHeight, pos = A.pos; let h = '';
   for (const Q of A.pois) {
-    const wp = A.tp.copy(Q.c).multiplyScalar(A.Rg + 60), d = wp.distanceTo(pos); if (d > (P.real ? 48000 : 1e9) || d < 220) continue;
-    const v3 = wp.project(camera); if (v3.z > 1) continue; const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; if (x < -40 || x > W + 40 || y < -40 || y > H + 40) continue;
+    const quest = Q.cap && P.id === 'janira' && (hakQ() || hakBackQ()); // the story's destination: always on screen
+    const wp = A.tp.copy(Q.c).multiplyScalar(A.Rg + 60), d = wp.distanceTo(pos); if (d > (P.real ? 48000 : 1e9) || (d < 220 && !quest)) continue;
+    const v3 = wp.project(camera); let x, y;
+    if (quest) { // pinned to the edge of the screen when it's off it or behind you, like the quest markers in space
+      let vx = v3.x, vy = v3.y; if (v3.z > 1) { vx = -vx; vy = -vy; }
+      if (v3.z > 1 || Math.abs(vx) > .92 || Math.abs(vy) > .88) { const k = Math.max(Math.abs(vx) / .92, Math.abs(vy) / .88, 1e-3); vx /= k; vy /= k; }
+      x = (vx * .5 + .5) * W; y = (-vy * .5 + .5) * H;
+    } else { if (v3.z > 1) continue; x = (v3.x * .5 + .5) * W; y = (-v3.y * .5 + .5) * H; if (x < -40 || x > W + 40 || y < -40 || y > H + 40) continue; }
     h += `<div class="sh-mk${Q.nofly ? ' nf' : ''}${(Q.khz && khzPending()) || (Q.cap && P.id === 'janira' && (hakQ() || hakBackQ())) ? ' gold' : ''}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${Q.name.toUpperCase()}<br><small>${d > 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'}${Q.cap && P.id === 'janira' && (hakQ() || hakBackQ()) ? (tiPhone() ? ' · HAK' : ' · MAIN QUEST · HAK') : Q.tag ? ' · ' + Q.tag : ''}</small></span></div>`;
   }
   box.innerHTML = h;
@@ -19722,6 +19799,25 @@ function nmSet(kind) {
     const core = glowSprite(fall ? 0xff6a3a : 0x6fffb8, 2.2, .9); core.position.set(0, 3.4, -15); P.add(core);
     for (let z = -12; z <= 6; z += 4.5) for (const sd of [-1, 1]) { const ob = new THREE.Mesh(new THREE.OctahedronGeometry(.55), glass); ob.scale.y = 3.2; ob.position.set(sd * 4.6, 1.8, z); P.add(ob); const gl = glowSprite(fall ? 0xff6a3a : 0x6fffb8, 1.6, .7); gl.position.set(sd * 4.6, .4, z); P.add(gl); }
     if (fall) { const pl = new THREE.Mesh(new THREE.SphereGeometry(10, 32, 24), M(0x2a0a0a, { emissive: 0xff3a0a, emissiveIntensity: .7 })); pl.position.set(-30, 22, -70); P.add(pl); NM.burn = pl; } // a world of the empire, burning in its sky
+  } else if (kind === 'karrFire') { // Karribassa burning: teal towers, the canals, the Hall of Oaths's white columns, Terra Imperia's ships overhead
+    const ph = tiPhone();
+    Object.assign(look, { fog: 0x3a120c, dens: .016, bg: 0x2a0a06, ground: 0x2a1a18, hemi: 0x9a4a2a, rim: 0xff6a20, key: 0xffb080 });
+    const tower = M(0x1f5a5a, { roughness: .5, metalness: .3, emissive: 0x0a2a2a, emissiveIntensity: .4 }), white = M(0xe8e4dc, { roughness: .6 }), burnt = M(0x1a1412, { roughness: .95 }), water = M(0x2a1a2a, { emissive: 0xff4a10, emissiveIntensity: .35, roughness: .1, metalness: .4 });
+    const sky = new THREE.Mesh(new THREE.PlaneGeometry(400, 140), new THREE.MeshBasicMaterial({ color: 0x5a1a0e, fog: false })); sky.position.set(0, 55, -90); P.add(sky);
+    const glow = new THREE.Mesh(new THREE.PlaneGeometry(400, 30), new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, opacity: .45, fog: false })); glow.position.set(0, 10, -85); P.add(glow);
+    NM.fires = [];
+    const nt = ph ? 9 : 16; for (let i = 0; i < nt; i++) { const sd = i % 2 ? 1 : -1, z = -40 + (i >> 1) * (ph ? 9 : 5.2), x = sd * (11 + (i * 7 % 5) * 2.4), h = 9 + (i * 13 % 7) * 3.2, r = 2 + (i % 3) * .8; // the towers, some broken
+      const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.1, h, 14), i % 4 === 1 ? burnt : tower); t.position.set(x, h / 2, z); P.add(t);
+      if (i % 4 !== 1) { const dm = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), tower); dm.position.set(x, h, z); P.add(dm); }
+      const f = glowSprite(0xff6a1a, 4 + r * 2, .9); f.position.set(x, h * (.5 + (i % 3) * .2), z + 1); P.add(f); NM.fires.push(f); }
+    for (const sd of [-1, 1]) box(2.2, .1, 60, water, sd * 6.5, .05, -14); // the canals, the fire in them
+    for (let i = 0; i < (ph ? 6 : 12); i++) { const sd = i % 2 ? 1 : -1, z = -30 + i * 3.6; const tr = new THREE.Mesh(new THREE.ConeGeometry(.9, 3, 7), M(0x1a0a06, { emissive: 0xff3a0a, emissiveIntensity: .5 })); tr.position.set(sd * 4.4, 1.5, z); P.add(tr); const fl = glowSprite(0xff5a10, 2.6, .85); fl.position.set(sd * 4.4, 2.6, z); P.add(fl); NM.fires.push(fl); } // the glowing trees, burning
+    // the Hall of Oaths: white columns, a broken pediment
+    box(14, .8, 8, white, 0, .4, -16.5); for (let k = -3; k <= 3; k++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(.42, .5, 7, 12), k === 1 ? burnt : white); c.position.set(k * 1.9, 4.2, -14); if (k === 1) { c.rotation.z = .5; c.position.y = 2.6; } P.add(c); }
+    box(14.6, .9, 2, white, -2, 8.2, -14).rotation.z = -.05; const hf = glowSprite(0xff7a2a, 9, .8); hf.position.set(2, 6, -16); P.add(hf); NM.fires.push(hf);
+    for (let i = 0; i < (ph ? 3 : 6); i++) { const sh = makeDropship(); sh.traverse(o => { if (o.isMesh && !o.material.blending) o.material = new THREE.MeshStandardMaterial({ color: 0x15161a, roughness: .6, metalness: .5, emissive: 0xd0343a, emissiveIntensity: .12 }); }); sh.scale.setScalar(.22); sh.position.set(-14 + i * 6, 16 + (i % 3) * 3, -30 - (i % 2) * 8); P.add(sh); } // Terra Imperia's ships
+    const n = ph ? 120 : 300, pos = new Float32Array(n * 3); for (let i = 0; i < n; i++) { pos[i * 3] = (Math.random() - .5) * 50; pos[i * 3 + 1] = Math.random() * 20; pos[i * 3 + 2] = -Math.random() * 45 + 5; }
+    const em = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(pos, 3)), new THREE.PointsMaterial({ size: .18, color: 0xffa040, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false })); P.add(em); NM.embers = em; // embers rising
   } else if (kind === 'stars') { // a world on fire
     Object.assign(look, { fog: 0x05080a, dens: .006, bg: 0x010203, ground: 0x050505, hemi: 0x305040, rim: 0xff5a20 });
     const pl = new THREE.Mesh(new THREE.SphereGeometry(10, 48, 32), M(0x3a1a0a, { emissive: 0xff3a0a, emissiveIntensity: .6 })); pl.position.set(0, 9, -30); P.add(pl); NM.burn = pl;
@@ -19878,7 +19974,7 @@ async function startNightmare() {
   else cast();
 }
 function nmBeat(i) {
-  const B = NM.script.beats[i], A = NM.actors; NM.bi = i; NM.bt = 0; NM.li = -1; NM.lineEnd = 0; NM.walk = {}; NM.shatterT = null; NM.shards = null; NM.flag = null; NM.burn = null;
+  const B = NM.script.beats[i], A = NM.actors; NM.bi = i; NM.bt = 0; NM.li = -1; NM.lineEnd = 0; NM.walk = {}; NM.shatterT = null; NM.shards = null; NM.flag = null; NM.burn = null; NM.fires = null; NM.embers = null;
   nmSet(B.set);
   for (const [k, R] of Object.entries(A)) {
     const s = B.actors[k]; R.root.visible = !!s; if (!s) continue;
@@ -19903,6 +19999,8 @@ function nmFx(f) {
   if (kind === 'walkTo' && R) { NM.walk[a] = b; R.mode = 'walk'; }
   if (kind === 'fall' && R) R.downT = 0;
   if (kind === 'shatter') NM.shatterT = 0;
+  if (kind === 'scream') { sfx.scream(2.6, .26, 300); setTimeout(() => sfx.scream(2, .2, 420), 500); }
+  if (kind === 'boom') { sfx.boom(1); fbFlash(.6, '#ff7a2a'); NM.flashA = .6; NM.shake = .9; }
 }
 function nightmareTick(dt) {
   dt = Math.min(dt, .05); NM.t += dt; const t = NM.t;
@@ -19949,6 +20047,8 @@ function nightmareTick(dt) {
     }
     if (NM.flag) NM.flag.rotation.y = Math.sin(t * 2) * .15;
     if (NM.burn) NM.burn.rotation.y += dt * .1;
+    if (NM.fires) for (let i = 0; i < NM.fires.length; i++) { const f = NM.fires[i]; f.material.opacity = .65 + Math.sin(t * 9 + i * 1.7) * .2 + Math.random() * .1; }
+    if (NM.embers) { const a = NM.embers.geometry.attributes.position.array; for (let i = 1; i < a.length; i += 3) { a[i] += dt * 2.2; if (a[i] > 20) a[i] = 0; } NM.embers.geometry.attributes.position.needsUpdate = true; }
     if (NM.shatterT != null && NM.shards) { NM.shatterT += dt; if (NM.shatterT > 1.2) for (const c of NM.shards) { c.position.addScaledVector(c.userData.v, dt); c.userData.v.y -= 9.8 * dt * .3; c.rotation.x += dt * 2; c.rotation.z += dt * 1.4; } }
     // the camera drifts along its path, shaking
     const kk = smooth(0, Math.max(3, NM.lineEnd || 6), NM.bt), from = new THREE.Vector3().fromArray(B.cam[0]), to = new THREE.Vector3().fromArray(B.cam[1]);
@@ -19971,6 +20071,7 @@ function spaceViewOnly(dt) { // the ship hangs there while they talk you down
 async function nmWake() {
   if (NM.coup) { erisCoupEnd(); return; } // the coup on Eris, for real
   if (NM.hawStage) { hawStageEnd(); return; } // Hawthorne's scene on phones
+  if (NM.kVision) { karrVisionEnd(); return; } // the vision of Karribassa burning
   if (CUT.on === 'nightmare') { cutNmEnd(); return; } // replayed from Cutscenes
   NM.phase = 'wake'; fbSubHide(); sfx.drone(0); if (NM.vo.music) sfx.stopSong(1.5);
   if (NM.saveCam) { camera.near = NM.saveCam.near; camera.far = NM.saveCam.far; camera.fov = NM.saveCam.fov; camera.updateProjectionMatrix(); }
@@ -20013,10 +20114,10 @@ function erisCoupScript(nyx) {
     lines: [['ALEXIA ERISCONOS', 'Send word to the Grand Imperarch. The Erisian Empire is his.', ['eris', 13], 'CH3NYREXIADEATH6'], E[2].lines[0]] });
   return { tint: 'contrast(1.06) saturate(1.05)', kind: 'eris', beats };
 }
-async function erisCoupStart() {
-  if (NM.on) return; const nyx = !c3f('nyxJoined');
+async function erisCoupStart(replay) { // replay: from the Cutscenes menu, as it happened (with Nyrexia only if she died in it), changing nothing
+  if (NM.on) return; const nyx = replay ? c3f('nyxDead') : !c3f('nyxJoined');
   for (const R of Object.values(NM.actors || {})) if (R.root.parent) R.root.parent.remove(R.root);
-  Object.assign(NM, { on: true, coup: { nyx }, race: 'erisian', phase: 'load', t: 0, bi: -1, ready: false, vo: {}, actors: {}, sevM: null, script: erisCoupScript(nyx) });
+  Object.assign(NM, { on: true, coup: { nyx, replay: !!replay }, race: 'erisian', phase: 'load', t: 0, bi: -1, ready: false, vo: {}, actors: {}, sevM: null, script: erisCoupScript(nyx) });
   state = 'nightmare'; ex.keys.clear(); vel.set(0, 0, 0); if (ex.dlg) closeDialog();
   const fd = $('#fade'); fd.style.transition = 'opacity .6s'; fd.style.opacity = 1; sfx.thud(); sfx.drone(.4);
   setTimeout(() => notice('Eris · the Citadel el Erisconos', 'MEANWHILE', 2400), 400);
@@ -20028,9 +20129,10 @@ async function erisCoupStart() {
   show(ui.xhud, true); ui.xhud.classList.add('cutting'); fd.style.transition = 'opacity 1.2s'; fd.style.opacity = 0;
 }
 function erisCoupEnd() {
-  const nyx = NM.coup && NM.coup.nyx; NM.coup = null; NM.on = false; NM.phase = null; fbSubHide(); sfx.drone(0);
-  if (NM.saveCam) { camera.near = NM.saveCam.near; camera.far = NM.saveCam.far; camera.fov = NM.saveCam.fov; camera.updateProjectionMatrix(); }
+  const nyx = NM.coup && NM.coup.nyx, replay = NM.coup && NM.coup.replay; NM.coup = null; NM.on = false; NM.phase = null; fbSubHide(); sfx.drone(0);
+  if (NM.saveCam) { camera.near = NM.saveCam.near; camera.far = NM.saveCam.far; camera.fov = NM.saveCam.fov; camera.updateProjectionMatrix(); NM.saveCam = null; }
   renderer.domElement.style.filter = ''; for (const R of Object.values(NM.actors)) R.root.visible = false;
+  if (replay) { ui.xhud.classList.remove('cutting'); cutDone(); return; } // from Cutscenes: straight back to the menu
   const pdPre = pdStoryIds(); setC3(Object.assign({ alexiaCoup: true }, nyx ? { nyxDead: true, nyxFailed: true } : {})); pdStoryNote(pdPre);
   try { applyChapterFactions(); } catch (e) {} SC.neutSys = '?';
   ui.xhud.classList.remove('cutting'); state = 'explore'; ex.snap = true; clock.getDelta(); renderTasks();

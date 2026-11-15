@@ -1993,3 +1993,22 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **The Fall of Obra-Spira is lighter on phones:** one kneeling Oilkoumene instead of three (the one Tyronihlus strikes down), no shadows, ten spires instead of eighteen, and fewer stars and a smaller galaxy texture in the sky. It plays on the nightmare's stage on every device, like the other races' staged nightmares that already run on phones.
 - **Tyrotaronus's dream on a phone held upright:** the camera steps back so a 2.6 m figure keeps his head and horns in shot.
 - **Karribassa's sky marker** reads just "HAK" on phones.
+
+## Playtest links for the Oilkoumene
+- `?ending=oilkoumene` plays the Oilkoumene nightmare, The Fall of Obra-Spira, from the title screen. `?ending=oilkdream` plays the Oilkoumene dream on the ice. Tap once the title is up. Both run through the Cutscenes player and come back to the title, need no wanderer, and save nothing.
+
+## Cutscenes: the fall of Eris and Hawthorne's false breakdown
+- **The Fall of Eris** (Chapter III) is on the Cutscenes menu once it has happened in your story: Alexia takes the Citadel and Vishara is taken below. Nyrexia is in it only if she died in it in your story. Replaying it changes nothing in your save.
+- **The Grand Imperarch's Breakdown** (Chapter III) is on the menu once you've beaten Hawthorne on the Cygnus: his staged copy of Sevirrus's breakdown, in his fake castle with his fake crown. Desktop plays the montage; phones play the staged version, as in the story.
+- Both come after "James Brown, Pontifex Maximus" in the list, in story order, and go back to the Cutscenes menu when they end or are skipped.
+
+## Karribassa always on the map while Hak waits
+- **In Janira Prime's sky** Karribassa's gold marker now stays on screen. When the city is off to the side, behind you or over the horizon, the marker is pinned to the edge of the screen pointing the way, like the quest markers in space. Before, it only showed while the city was already in front of you.
+- **On the ground,** if you land on Janira Prime away from the city, the minimap and the big map point towards Karribassa and give the distance in km ("take off and fly there"). Before, nothing pointed the way.
+
+## Hak's return voiced, and the vision of Karribassa burning
+- **Hak's return conversation is voiced:** your CH3JANIRAPRIMESIEGE1–11 recordings, in `data/hakBackVoices.js` (copies in `assets/audio/karribassa/`), line for line, the replies and both closings included.
+- **Karribassa burns (a vision, ten minutes from now):** straight after Hak's last word, the wanderer has another episode. It shows Karribassa on fire: rounded teal towers burning, fire on the canals, the glowing trees alight, embers rising, Terra Imperia's black-and-crimson ships overhead, and screams. Terra Imperia soldiers make Chompy citizens kneel and cut one down. In front of the broken columns of the Hall of Oaths, Thomas Hawthorne mocks Hak and the wanderer in Sevirrus's own words to justify the murder ("Everyone kneels. Some of them just need help.", "Stay with me. I want you to hear your people scream."). He ends with: "Once I'm done with the Chompy, I will come for the Grek next." His lines are in cyan, as in his breakdown.
+- **Then Hak brings you round:** you tell him what you saw, and he answers ("My words. He keeps wearing them like a stolen coat."). Then the quest completes as before.
+- It plays on the nightmare's stage on every device, with fewer towers, ships, soldiers and embers on phones and no shadows. It's on the Cutscenes menu once seen ("Karribassa Burns"). Its voices (CH3KARRVISION1–11) aren't recorded yet; the script is in `assets/audio/karribassa/VOICE_SCRIPT.md`.
+- **Karribassa Burns is voiced:** CH3NIGHTMAREKARRIBASSA1–11 in `data/karrVisionVoices.js`, Hawthorne's eight lines and Hak's three (copies in `assets/audio/karribassa/`).
