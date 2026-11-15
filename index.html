@@ -23144,7 +23144,7 @@ function pdEntryLocked(L, tab = pedia.tab) {
   if (tab === 'leaders') return !pdMet('leader:' + L.sp); // a leader opens when you meet them (a dream, the story) or face them in their hall
   return false;
 }
-const pdSet = () => pedia.tab === 'leaders' ? PEDIA_LEADERS : pedia.tab === 'companions' ? companionsNow() : pedia.tab === 'ti' ? (chNow() >= 3 ? PEDIA_TI.filter(L => !L.showIf || L.showIf()) : []) : pedia.tab === 'ancient' ? PEDIA_ANCIENT : pedia.tab === 'events' ? pdEvents() : PRIME_TABS[pedia.tab] ? PRIME_TABS[pedia.tab]() : [];
+const pdSet = () => pedia.tab === 'leaders' ? PEDIA_LEADERS : pedia.tab === 'companions' ? companionsNow() : pedia.tab === 'ti' ? (chNow() >= 3 ? (chNow() >= 4 ? PEDIA_CATH : PEDIA_TI).filter(L => !L.showIf || L.showIf()) : []) : pedia.tab === 'ancient' ? PEDIA_ANCIENT : pedia.tab === 'events' ? pdEvents() : PRIME_TABS[pedia.tab] ? PRIME_TABS[pedia.tab]() : [];
 const pdLocked = () => { const set = pdSet(); return set.length > 0 && set.every(L => pdEntryLocked(L)); };
 const bar = n => `<span class="rd" style="width:${Math.round(n)}ch"></span>`;
 const barsFor = text => text.split(' ').map(w => bar(Math.max(2, w.length * .9))).join(' ');
@@ -23453,12 +23453,12 @@ const PEDIA_TI = [
       'When Darius finally took the government back, Hawthorne did not go quietly. He took Terra Imperia with him.'
     ],
     dyn: ch => ch === 4 ? {
-      tag: 'tiHawC', sil: true, h: 2.2, title: 'Grand Imperarch · status unknown',
-      facts: [['Species', bar(5)], ['Rank', 'Grand Imperarch'], ['Formerly', 'Head of Government, Human Federation of Sol'], ['Rival', 'Darius Ancin'], ['Allegiance', '[Redacted] · unlocks in Chapter V'], ['Alignment', bar(12)]],
+      tag: 'tiHawC', sil: true, h: 2.2, title: 'Grand Imperarch · the Catharsis', // filed under THE CATHARSIS from Chapter IV; what he has become stays hidden until V
+      facts: [['Species', bar(5)], ['Rank', 'Grand Imperarch'], ['Formerly', 'Head of Government, Human Federation of Sol · leader of Terra Imperia'], ['Rival', 'Darius Ancin'], ['Allegiance', 'The Catharsis'], ['Alignment', bar(12)]],
       align: 'Something has changed. Terra Imperia’s own records no longer agree on what he is.',
       paras: [
         'Thomas Hawthorne is the Grand Imperarch of Terra Imperia, and the former Head of Government of the Human Federation of Sol.',
-        `At the start of the war he vanished. When he was seen again he was no longer standing with Terra Imperia. He had joined ${bar(10)}, and what came back wears his name and very little else.`,
+        `At the start of the war he vanished. When he was seen again he was no longer standing with Terra Imperia. He had joined the Catharsis, and what came back wears his name and very little else.`,
         'Hawthorne is gone. Whatever stands in his place has not said what it wants.'
       ]
     } : ch >= 5 ? {
@@ -23517,6 +23517,23 @@ const PEDIA_TI = [
     ] }
 ];
 
+
+/* ---- Nostrapedia: Chapter IV on, the Terra Imperia tab becomes THE CATHARSIS: Hawthorne, Orion (only if he turned:
+   Croxian killed, Orion alive, so he took command of Terra Imperia once Hawthorne was gone) and Lord Zark ---- */
+const PEDIA_CATH = [
+  PEDIA_TI.find(L => L.id === 'hawthorne'),
+  { id: 'orion-cath', tag: 'cpOrion', mod: 'orionTI', h: 1.85, showIf: () => orionVillain(), name: 'ORION MASCAR', title: 'Commander of Terra Imperia · the Catharsis',
+    facts: [['Species', 'Human'], ['Born', '2069 AD'], ['Rank', 'Commander of Terra Imperia'], ['Took command', 'When Hawthorne was gone'], ['Serves', 'The Catharsis'], ['Son', 'Croxian Mascar (deceased), killed by the wanderer'], ['Sworn to', 'Kill the wanderer'], ['Formerly', 'Your companion'], ['Alignment', 'Chaotic Evil']],
+    align: 'Grief that has found an army. Orion answers to no conscience now, only to the vow he made on the floor of the Nostra.',
+    paras: [
+      'Orion Mascar went to Thomas Hawthorne after you killed his son, to take the place at his side that Hawthorne had always promised him. He did not have it for long.',
+      'When the war began, the Hawthorne he had fought beside in the Third World War was gone, taken by the Catharsis. Orion did not mourn him. He took command of Terra Imperia himself, and he brought it with him into the Catharsis.',
+      'He wears its armour, red over black, and he commands its soldiers the way he once did everything: without asking anyone’s permission. Every one of them is pointed at you.'
+    ] },
+  Object.assign({}, PEDIA_PRIMES.find(p => p.tag === 'prZark'), { id: 'zark-cath', prime: true, title: 'The Prime Evil · master of the Catharsis',
+    dyn: ch => ch === 4 ? { facts: [['Nature', 'Unknown'], ['Rules', 'The Catharsis, from Carax'], ['Servants', 'Thomas Hawthorne' + (orionVillain() ? ' · Orion Mascar' : '')], ['Followers', 'The Cult of Zark'], ['Father', 'The Prime Secretary'], ['Opposed by', 'Archamus, the Prime Good'], ['Alignment', 'Chaotic Evil']] } : null })
+];
+const pdTiName = () => chNow() >= 4 ? 'The Catharsis' : 'Terra Imperia';
 
 /* ---- Nostrapedia: your companions ---- */
 const COMPANIONS = [
@@ -23746,7 +23763,7 @@ function pediaClose() {
 }
 function pediaTabs() {
   const c = chNow();
-  $('#pdTabTI').style.display = c >= 3 ? '' : 'none';
+  $('#pdTabTI').style.display = c >= 3 ? '' : 'none'; $('#pdTabTI').textContent = pdTiName();
   $('#pdTabPr').textContent = c >= 4 ? 'Primes' : '▮▮▮▮▮'; $('#pdTabVc').textContent = c >= 4 ? 'Vectors' : '▮▮▮▮▮▮▮';
 }
 function pediaTab(t) {
@@ -23762,7 +23779,7 @@ function pediaList() {
   const set = pdSet();
   if (set.length) {
     const anyLocked = set.some(L => pdEntryLocked(L)), allLocked = pdLocked(), when = pdUnlockText(pedia.tab, set.find(L => pdEntryLocked(L)));
-    pUI.title.textContent = allLocked && pedia.tab !== 'leaders' && pedia.tab !== 'companions' ? '[REDACTED]' : pedia.tab === 'leaders' ? 'THE FIVE LEADERS' : pedia.tab === 'companions' ? 'YOUR COMPANIONS' : pedia.tab === 'ti' ? 'TERRA IMPERIA' : pedia.tab === 'ancient' ? 'ANCIENT FIGURES' : pedia.tab === 'events' ? 'LORE EVENTS' : pedia.tab === 'vectors' ? 'THE OILKOUMENE VECTORS' : 'THE PRIMES';
+    pUI.title.textContent = allLocked && pedia.tab !== 'leaders' && pedia.tab !== 'companions' ? '[REDACTED]' : pedia.tab === 'leaders' ? 'THE FIVE LEADERS' : pedia.tab === 'companions' ? 'YOUR COMPANIONS' : pedia.tab === 'ti' ? pdTiName().toUpperCase() : pedia.tab === 'ancient' ? 'ANCIENT FIGURES' : pedia.tab === 'events' ? 'LORE EVENTS' : pedia.tab === 'vectors' ? 'THE OILKOUMENE VECTORS' : 'THE PRIMES';
     const note = !anyLocked ? (pedia.tab === 'vectors' ? '<div class="sp-card cc-desc"><p>Five brothers born in the Big Bang in the Cyrannus Galaxy, five galaxies from the Milky Way. All are sons of Lord Zark.</p></div>' : '')
       : pedia.tab === 'companions' ? '<div class="sp-card cc-desc rd-card"><p><b>CLASSIFIED.</b> Files marked [Redacted] will be declassified as your story continues.</p></div>'
       : `<div class="sp-card cc-desc rd-card"><p><b>CLASSIFIED.</b> ${allLocked ? 'These files' : 'Files marked [Redacted]'} will be declassified in ${when}.${pedia.tab === 'leaders' ? ' A leader’s file opens when you meet them, in a dream or in person, or face them in their hall.' : ''}</p></div>`;
@@ -23869,14 +23886,15 @@ function pediaPreview() {
     return;
   }
   list.forEach((L0, i) => { const L = pdResolve(L0), n = list.length, ang = (i - (n - 1) / 2) * .6;
-    if (L.sil) { const hx = Math.sin(ang) * 2.3, hz = n > 1 ? Math.cos(ang) * 1.1 - 2.6 : -2.4; const g1 = glowSprite(0xff3b2f, L.h * 2.4, .8); g1.position.set(hx, L.h * .55, hz); ccBg.add(g1); }
-    (L.tag ? loadFigure(L) : loadLeader(L.sp)).then(h => {
+    if (L.sil || L.prime) { const hx = Math.sin(ang) * 2.3, hz = n > 1 ? Math.cos(ang) * 1.1 - 2.6 : -2.4; const g1 = glowSprite(0xff3b2f, L.h * 2.4, L.prime ? .45 : .8); g1.position.set(hx, L.h * .55, hz); ccBg.add(g1); }
+    (L.prime ? loadPrime(L) : L.tag ? loadFigure(L) : loadLeader(L.sp)).then(h => {
     if (!h || tok !== cc.loadTok || state !== 'pedia') return;
     if (pedia.tab === 'companions') alOutfit(h, alCompDarkK(L.id), L.id);
     h.userData.keep = true; h.position.set(Math.sin(ang) * 2.3, 0, n > 1 ? Math.cos(ang) * 1.1 - .9 : 0); h.rotation.y = -ang * .5;
     ccRoot.add(h);
   }); });
-  cc.lookY = 1.1; cc.dist = list.length === 1 ? 4.6 : 7.8;
+  const big = list.length === 1 && list[0].prime; // Lord Zark, a Prime, stands twice as tall
+  cc.lookY = big ? 1.8 : 1.1; cc.dist = big ? 8.2 : list.length === 1 ? 4.6 : 7.8;
 }
 document.querySelectorAll('#pdTabs .tab').forEach(b => b.addEventListener('click', () => { sfx.click(); pediaTab(b.dataset.t); }));
 pUI.list.addEventListener('click', e => { const b = e.target.closest('.mi'); if (!b || pedia.tab === 'mine') return; sfx.click(); pediaEntry(+b.dataset.i); });

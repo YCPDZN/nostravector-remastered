@@ -2099,3 +2099,10 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 ## Orion turns: his Terra Imperia file
 - **After Close the Channel, Orion Mascar is filed under Terra Imperia in the Nostrapedia**, in red armour over black, with his alignment as **Chaotic Evil**. His file covers Croxian's death, his vow to kill the wanderer, and his place at Hawthorne's side. He's no longer listed among your companions.
 - **Kill Croxian or Malia at Terra Imperia's base and they're gone from your companions too** (both, if you killed both). Their Terra Imperia files stay.
+
+## The Catharsis tab
+- **From Chapter IV, the Nostrapedia's Terra Imperia tab becomes THE CATHARSIS.** It holds three files:
+  - **Thomas Hawthorne.** His Chapter IV file now says he joined the Catharsis. What he has become stays a silhouette until Chapter V.
+  - **Orion Mascar, Commander of Terra Imperia** (only if you killed Croxian and Orion lived). When Hawthorne was gone, taken by the Catharsis, Orion took command of Terra Imperia and brought it into the Catharsis. He's in red armour over black, Chaotic Evil.
+  - **Lord Zark, master of the Catharsis**, ruling from Carax, with Hawthorne (and Orion, if he turned) as his servants.
+- Chapter III's Terra Imperia tab is unchanged.
