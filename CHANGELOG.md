@@ -2120,3 +2120,4 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - a villain who does good with a heroic companion (they approve) drags them down toward the villain they follow;
   - a hero who does evil with a villainous companion (they approve) draws them up toward the hero they follow.
   Neutral companions still just drift with your deeds, and Pontifexes and Sisters keep their own rules (evil always pleases them). Before, companions simply moved the way of each deed.
+- **Only companions in your party gain or lose influence.** Anyone waiting aboard the Nostra, lent to another faction or away in a dungeon is left out, whether the influence comes from your deeds, a conversation, or the crew's reactions to James's fate (before, Orion, Khazglar and Nico reacted to that if they'd ever joined you, even from the ship).

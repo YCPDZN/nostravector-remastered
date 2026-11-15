@@ -5246,8 +5246,10 @@ function pickChoice(i) {
 }
 xUI.dlg.addEventListener('click', e => { const b = e.target.closest('button[data-o]'); if (b) { e.stopPropagation(); pickChoice(+b.dataset.o); } }, true);
 // influence with one companion, straight from a conversation (0-100, everyone starts at 50)
+// companions away from your party (waiting aboard the Nostra, lent to another faction, in a dungeon) can't gain or lose influence
+const compAway = id => !!(wanderer && (((wanderer.aboard || {})[id]) || ((wanderer.dip && wanderer.dip.lent) || {})[id] || ((wanderer.dungeon || {})[id])));
 function influence(id, d) {
-  if (!wanderer || !d) return;
+  if (!wanderer || !d || compAway(id)) return;
   const L = COMPANIONS.find(c => c.id === id) || AL_EXTRA.find(c => c.id === id), st = alState(), b = L ? alBaseOf(L) : 0;
   const C = st.c[id] || (st.c[id] = { a: b == null ? 0 : b, inf: 50 });
   C.inf = clamp(C.inf + d, 0, 100); alSave();
@@ -14119,7 +14121,7 @@ const JAMES_REACT = {
     ['nico', () => nicoJoined(), 'Hardest thing in the world, putting down someone who’s already broken. You did right by him.']]
 };
 function jamesCrewReact(fate, delay) {
-  const L = JAMES_REACT[fate].filter(r => r[1]()), d = fate === 'spared' ? -12 : 10; // moderate either way
+  const L = JAMES_REACT[fate].filter(r => r[1]() && partyNow().includes(r[0])), d = fate === 'spared' ? -12 : 10; // moderate either way
   L.forEach(([id, , text], i) => setTimeout(() => { const C = COMPANIONS.find(c => c.id === id); vbark((PARTY[id] || { name: C ? titleName(C.name.split(' ')[0]) : id }).name, text, 5600); influence(id, d); }, delay + i * 6000));
   setTimeout(() => { sfx.thud(); notice('\u00a0', 'YOUR ACTIONS WILL BE REMEMBERED', 4600); }, delay + L.length * 6000 + 400);
 }
