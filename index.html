@@ -5471,7 +5471,7 @@ function exploreCamera(dt) {
 // input (exploration only)
 addEventListener('keydown', e => {
   if (e.code === 'Escape' && !slotUI.root.classList.contains('hidden')) { closeSlots(); return; }
-  if (state === 'hawMars' || state === 'jamesRev' || state === 'c4End') { if (e.code === 'Escape') skipMeeting(); return; }
+  if (state === 'hawMars' || state === 'jamesRev' || state === 'c4End' || state === 'orionCut') { if (e.code === 'Escape') skipMeeting(); return; }
   if (state === 'nightmare' && NM.on) { if (NM.phase === 'wake' && ['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } else if (e.code === 'Escape') { e.preventDefault(); skipMeeting(); } return; }
   if (state === 'dream') { if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } return; }
   if (state === 'wcut') { if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } else if (e.code === 'Escape') skipMeeting(); return; }
@@ -8123,6 +8123,7 @@ function skipMeeting() {
   if (state === 'jamesRev' && JRV.on) { jrvSkip(); return; }
   if (state === 'c4End' && C4E.on) { c4eSkip(); return; }
   if (state === 'hawMars' && HWM.on) { const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(hwmEnd, 450); return; }
+  if (state === 'orionCut' && OCUT.on) { const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(ocutEnd, 450); return; }
   if (state === 'nightmare' && NM.on) { if (NM.phase === 'sev') { const now = performance.now(); sevSkip(now - (NM.skipAt || 0) < 700); NM.skipAt = now; return; } if (NM.phase === 'mem') nmWake(); else if (NM.phase === 'wake') { closeDialog(); nmEnd(); } return; } // Skip: out of the memories, then past the wake-up
   if (state === 'trial' && trial.on && !trial.skipped) { trial.skipped = true; closeDialog(); endTrial(); return; }
   if (!meet.active) return;
@@ -12630,6 +12631,7 @@ function tiLanded(P) {
   if (P.id === 'charon' && (chnQ() || chnBackQ())) chnPlace().catch(e => console.error(e));
   if (P.id === 'janira' && (hakQ() || hakBackQ())) hakPlace().catch(e => console.error(e));
   if (P.id === 'janira' && siegeQ()) setTimeout(() => siegePlace(false), 800); // the blockade: the base, and the rover
+  if (orionCutDue() && c3f('siegeWon')) setTimeout(() => startOrionCut(), 4000); // a save that left before Orion's scene played
   if (P.id === 'janira' && siegeQ() && c3f('siegeLeft')) { setC3({ siegeLeft: false }); if (siegeLeadsOn()) setTimeout(() => { if (state === 'explore') sayAs('DARIUS ANCIN', 'Still standing. Good. Let’s finish this.', 4200); }, 3600); }
   if (P.id === 'mercury' && (cygQ() || cygFarm())) cygPlace();
   if (SPC.cygDock) { SPC.cygDock = false; { const fd = $('#fade'); fd.style.transition = 'none'; fd.style.opacity = 1; } setTimeout(cygDockIn, 350); return; } // you docked with the Cygnus in orbit: straight aboard, and nothing down on Mercury (patrols, a hunter, the war) turns up to announce itself
@@ -12910,7 +12912,7 @@ function hakBackTalk() { // Hak, on the bridge before the Hall of Oaths again: h
     function finish() {
       setC3({ hakBack: true, karrVision: true }); renderTasks(); sfx.chime(); gainXP(300, 'Returned to Hak Chompjak');
       notice('Main quest', tiPhone() ? 'YOU RETURNED TO HAK' : 'YOU RETURNED TO HAK CHOMPJAK', 3600);
-      setTimeout(siegeStart, 3200); // and then the sky fills with Terra Imperia's ships: the blockade of Janira Prime
+      setTimeout(() => orionStepsBack(siegeStart), 2000); // Orion can't stay for this one; and then the sky fills with Terra Imperia's ships: the blockade of Janira Prime
     }
   };
   pdMeet('hak'); loadDataScript('hakBackVoices').then(ok => ok ? sfx.loadClips('hakBackVoices') : []).catch(() => []).then(v => go(v || []));
@@ -12976,6 +12978,126 @@ function siegeCmdUI() {
   el.classList.toggle('on', on); const m = (wanderer && wanderer.cmds && wanderer.cmds['lead:hak']) || 'follow';
   for (const b of el.querySelectorAll('button')) { b.classList.toggle('sel', b.dataset.m === m); b.style.display = b.dataset.m === 'advance' && !SG.base ? 'none' : ''; } // Advance: only on Janira Prime, with the base still standing
 }
+/* ---- before the blockade: Orion goes back to the Nostra. He found you half dead in the heat, sat two weeks by your fever, held you on
+   the pier in Antarctica, and has just watched you go under in the vision. He can't watch it happen again. He waits aboard (and won't
+   come back out) until the blockade is over; after that, call him from the crew deck as usual. Saves: ch3.orionStepped.
+   Voices: data/orionLeaveVoices.js (CH3ORIONLEAVESPARTY1–9: the six, his two replies, and his line on the crew deck). ---- */
+const orionLeaveVo = () => loadDataScript('orionLeaveVoices').then(ok => ok ? sfx.loadClips('orionLeaveVoices') : []).catch(() => []).then(v => v || []);
+const ORION_STEP = [
+  'Wanderer. Before this starts, I need a word. Just us.',
+  'I found you half dead in the heat. I sat by that bed for two weeks. I held you on that pier while you screamed at nothing.',
+  'And just now, in that vision, you went somewhere none of us could follow. Hak was shaking you, and you weren’t there. I couldn’t breathe.',
+  'There’s a name for what that does to me. PTSD. I’ve spent a long time pretending it didn’t have one.',
+  'I can’t stand by and watch it happen again. Not in a real fight. Not with you bleeding in front of me. Not yet.',
+  'So I’m going back to the Nostra. I’ll keep her warm and the comms open. Come back to me in one piece, friend.'
+];
+/* ============ Chapter III · after the blockade, if you killed Croxian: Orion, alone aboard the Nostra ============
+   You never speak to him. The scene cuts away (MEANWHILE · ABOARD THE NOSTRA): Orion on the crew deck with the comms still open,
+   and his son's last words still on them. One line changes with Malia's fate (spared or killed). Then he goes, for good: off your
+   crew, the ship and the main menu, alive (ch3.orionGone; ch3.orionFate 'spared', which Chapter IV reads as Orion taking Terra
+   Imperia). If Croxian lives, nothing plays, whatever happened to Malia. State 'orionCut', Skip ends it. Replay: Cutscenes.
+   Voices: data/orionGriefVoices.js (CH3ORIONGRIEF1–11, by slot below); subtitles until recorded. ---- */
+const OCUT = { on: false };
+const OCUT_O = [.5, 2]; // where he stands on the crew deck, facing aft (−z)
+const OCUT_SHOTS = [ // camera from, camera to, where it looks
+  [[-1.5, 2.4, -4], [-1, 2.2, -2.5], [.5, 1.2, 2]], // the deck, and one man in it
+  [[.5, 1.6, -.8], [.5, 1.65, -.2], [.5, 1.6, 2]], // closer
+  [[.3, 1.7, .9], [.4, 1.7, 1.1], [.5, 1.65, 2]], // close
+  [[2, 1.6, 2.1], [1.8, 1.6, 2], [.5, 1.6, 2]], // his profile
+  [[.8, 1.8, 3], [.7, 1.75, 2.8], [.3, 1.4, -4]], // over his shoulder, at the empty deck
+  [[-1.2, 2.7, 0], [-1, 2.7, .4], [.5, .9, 2]], // from above, small
+  [[.2, 1.3, 1], [.3, 1.35, 1.2], [.5, 1.7, 2]] // low and close
+];
+const OCUT_LINES = [ // [text, voice slot, shot]; a line with `m` plays only for that Malia
+  ['Croxian…? Wanderer, what’s happening down there? Somebody talk to me.', 0, 0],
+  ['“Tell my father he was right.” That’s what he said. That’s what my boy said, with someone standing over him.', 1, 1],
+  ['No. No, no, no. Not like this. Not with me up here, listening.', 2, 2],
+  ['He was four the first time he fell off the sea wall at Dover. Split his chin open. He didn’t cry. He looked up at me to see if he should.', 3, 3],
+  ['I taught him to stand up straight. I taught him to hold a rifle. I never taught him how to come home.', 4, 4],
+  ['And Malia, they spared. Took her in, like a stray. So it was a choice. Someone looked at my son on his knees, and chose.', 5, 5, 'spared'],
+  ['And Malia with him. She’d have been my daughter. They were going to tell me. I know they were. They were waiting for the war to end.', 6, 5, 'killed'],
+  ['I sat by that bed for two weeks. I held you on that pier. I’d have let anyone go for you, wanderer. Anyone.', 7, 6],
+  ['Nostra, close the channel. … Close it.', 8, 3],
+  ['I’m going to bring him home. Whatever’s left of him. It was always supposed to be me.', 9, 2],
+  ['Don’t come looking for me, wanderer. If you ever find me again… I don’t know who I’ll be.', 10, 1]
+];
+const orionCutDue = () => !!(wanderer && wanderer.ch2 && wanderer.ch2.orionJoined && c3f('croxDead') && !c3f('orionGone'));
+async function startOrionCut(replay) {
+  if (OCUT.on || (!replay && (!orionCutDue() || state !== 'explore' || ex.dlg))) return false;
+  OCUT.on = true; OCUT.phase = 'load'; OCUT.t = 0; OCUT.li = -1; OCUT.lineEnd = 0; OCUT.from = state;
+  state = 'orionCut'; ex.keys.clear(); vel.set(0, 0, 0); if (ex.dlg) closeDialog();
+  const fd = $('#fade'); fd.style.transition = 'opacity .6s'; fd.style.opacity = 1; sfx.thud(); sfx.drone(.3); if (sfx.leadOn) { sfx.leadOn = false; sfx.stopSong(.8); } sfx.combat && sfx.combat(false);
+  hwmBarsMake();
+  const malia = (wanderer && wanderer.ch3 && wanderer.ch3.maliaFate) || 'spared';
+  OCUT.lines = OCUT_LINES.filter(L => !L[3] || L[3] === malia);
+  let R = null;
+  try { shipInterior(); [R, OCUT.vo] = await Promise.all([compRigFor('orion').catch(() => null), loadDataScript('orionGriefVoices').then(ok => ok ? sfx.loadClips('orionGriefVoices') : []).catch(() => [])]); } catch (e) { console.error(e); }
+  if (!SHIPI.scene) { ocutEnd(); return false; }
+  OCUT.vo = OCUT.vo || [];
+  // the crew deck, and no one else on it
+  OCUT.decks = SHIPI.decks.map(g => g.visible); SHIPI.decks.forEach((g, i) => { g.visible = i === 1; });
+  OCUT.hid = []; for (const Rg of [...Object.values(SHIPI.rigs), ...Object.values(SHIPI.frigs || {})]) if (Rg && Rg.root && Rg.root.visible) { Rg.root.visible = false; OCUT.hid.push(Rg); }
+  if (R) { R.root.position.set(OCUT_O[0], 0, OCUT_O[1]); R.root.rotation.y = Math.PI; R.mode = 'idle'; R.root.traverse(o => { if (o.isMesh) o.frustumCulled = false; }); SHIPI.decks[1].add(R.root); }
+  OCUT.R = R;
+  OCUT.cam = { near: camera.near, far: camera.far, fov: camera.fov }; camera.near = .05; camera.far = 60; camera.fov = camera.aspect < 1 ? 66 : 46; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
+  renderer.domElement.style.filter = 'contrast(1.1) saturate(.62) brightness(.86)';
+  HWM.bars.classList.add('on'); show(ui.xhud, true); ui.xhud.classList.add('cutting');
+  OCUT.phase = 'open'; OCUT.t = 0; OCUT.shot = OCUT_SHOTS[0]; OCUT.shotT = 0; OCUT.shotDur = 6;
+  fd.style.transition = 'opacity 1.6s'; fd.style.opacity = 0;
+  setTimeout(() => notice('Aboard the Nostra', 'MEANWHILE', 2600), 400);
+  return true;
+}
+function ocutTick(dt) {
+  if (OCUT.phase === 'load' || !SHIPI.scene) return;
+  dt = Math.min(dt, .05); OCUT.t += dt; const t = OCUT.t, R = OCUT.R;
+  fbSubTick();
+  if (OCUT.phase === 'open' && t > 3.4) { OCUT.phase = 'lines'; OCUT.lineEnd = t; }
+  if (OCUT.phase === 'lines' && t >= OCUT.lineEnd) {
+    OCUT.li++;
+    const L = OCUT.lines[OCUT.li];
+    if (L) { const clip = OCUT.vo[L[1]] || null; fbSay('ORION MASCAR', L[0], clip, 1.3); const dur = clip ? clip.duration : L[0].split(/\s+/).length * .36; OCUT.lineEnd = t + dur + (OCUT.li === 2 || OCUT.li === OCUT.lines.length - 3 ? 1.6 : .7); OCUT.shot = OCUT_SHOTS[L[2]]; OCUT.shotT = t; OCUT.shotDur = dur + 1;
+      if (OCUT.lines.length - OCUT.li === 3) sfx.click(); } // the channel closes
+    else { OCUT.phase = 'walk'; OCUT.t = 0; fbSubHide(); OCUT.shot = [[1.6, 1.7, 3.6], [1.4, 1.7, 3.4], [.5, 1.1, -5]]; OCUT.shotT = 0; OCUT.shotDur = 6; if (R) R.root.rotation.y = Math.PI; }
+  }
+  if (OCUT.phase === 'walk') { // he takes his rifle and walks aft, to the lift, and doesn't look back
+    if (R) { const o = R.root.position; if (o.z > -5) { o.z -= dt * 1.25; R.mode = 'walk'; } else R.mode = 'idle'; }
+    if (t > 4.6 && !OCUT.ending) { OCUT.ending = true; const fd = $('#fade'); fd.style.transition = 'opacity 1.8s'; fd.style.opacity = 1; setTimeout(ocutEnd, 1900); }
+  } else if (R) R.mode = 'idle';
+  if (R) { animRig(R, dt); if (OCUT.phase === 'lines' && R.ra && (OCUT.li === 2 || OCUT.li === 3)) R.ra.rotation.x = -1.9; } // a hand over his face
+  if ((OCUT.hb = (OCUT.hb || 0) + dt) > 1.15) { OCUT.hb = 0; sfx.heart(.3); }
+  sfx.drone(.3);
+  const sh = OCUT.shot, k = smooth(0, Math.max(3, OCUT.shotDur || 6), t - (OCUT.shotT || 0)), from = new THREE.Vector3().fromArray(sh[0]), to = new THREE.Vector3().fromArray(sh[1]);
+  camera.position.copy(from.lerp(to, k)); camera.lookAt(new THREE.Vector3().fromArray(sh[2]));
+  renderer.render(SHIPI.scene, camera);
+}
+function ocutEnd() {
+  if (!OCUT.on) return; OCUT.on = false; OCUT.phase = null; OCUT.ending = false; fbSubHide(); sfx.drone(0); try { sfx.stopNarr(); sfx.stopVoice(); } catch (e) {}
+  if (OCUT.cam) { Object.assign(camera, OCUT.cam); camera.updateProjectionMatrix(); OCUT.cam = null; }
+  renderer.domElement.style.filter = ''; if (HWM.bars) HWM.bars.classList.remove('on'); ui.xhud.classList.remove('cutting');
+  if (OCUT.R && OCUT.R.root.parent) OCUT.R.root.parent.remove(OCUT.R.root); OCUT.R = null;
+  if (OCUT.decks) SHIPI.decks.forEach((g, i) => { g.visible = OCUT.decks[i]; }); OCUT.decks = null; for (const Rg of OCUT.hid || []) Rg.root.visible = true; OCUT.hid = [];
+  if (CUT.on) { cutDone(); return; } // replayed from Cutscenes: the save is untouched
+  setC3({ orionGone: true, orionFate: 'spared' }); // gone, and alive
+  for (const k of ['aboard', 'dungeon']) if (wanderer[k]) delete wanderer[k].orion; if (wanderer.dip && wanderer.dip.lent) delete wanderer.dip.lent.orion;
+  const c = curChar(); if (c) { c.aboard = wanderer.aboard; c.dungeon = wanderer.dungeon; c.dip = wanderer.dip; } saveRoster();
+  if (world.orion) world.orion.root.visible = false; if (ex.cSel === 'orion') ex.cSel = null; refreshJamesUI(); shipCrewPlace(); ui.xhud.classList.toggle('comp', companionOn() || partyNow().length > 0);
+  state = OCUT.from === 'title' ? 'title' : 'explore'; ex.snap = true; clock.getDelta();
+  const fd = $('#fade'); fd.style.transition = 'opacity 2.2s'; fd.style.opacity = 0; sfx.thud();
+  setTimeout(() => notice('\u00a0', 'ORION MASCAR HAS LEFT', 4600), 900);
+  setTimeout(() => notice('\u00a0', 'YOUR ACTIONS WILL BE REMEMBERED', 4600), 6200);
+}
+async function orionStepsBack(done) {
+  if (!wanderer || !orionJoined() || !partyNow().includes('orion') || c3f('orionStepped')) { setTimeout(done, 1200); return; } // he's not with you: straight on
+  const vo = await orionLeaveVo(), one = i => vo[i] ? [vo[i]] : undefined;
+  const bye = (line, i) => setTimeout(() => openDialog('ORION MASCAR', [line], false, () => {
+    setC3({ orionStepped: true }); wanderer.aboard = Object.assign({}, wanderer.aboard, { orion: true }); const c = curChar(); if (c) c.aboard = wanderer.aboard; saveRoster();
+    if (world.orion) world.orion.root.visible = false; if (ex.cSel === 'orion') ex.cSel = null; refreshJamesUI(); ui.xhud.classList.toggle('comp', companionOn() || partyNow().length > 0);
+    lootMsg('Orion is waiting aboard the Nostra (crew deck)', compColor('orion')); setTimeout(done, 1800);
+  }, one(i)), 80);
+  openDialog('ORION MASCAR', ORION_STEP, false, () => openChoice('ORION MASCAR', [
+    { text: 'Go. I’ll come back to you.', onPick: () => bye('I know you will. That’s the only reason I can leave.', 6) },
+    { text: 'You don’t have to explain. Go.', onPick: () => bye('Thank you. For not making me say it twice.', 7) }]), vo.length ? vo.slice(0, 6) : undefined);
+}
 function siegeStart() { // straight after Hak's prayer
   if (c3f('siegeOn')) return; setC3({ siegeOn: true });
   wanderer.party = [...new Set([...(wanderer.party || []), ...Object.keys(SIEGE_LEADS)])]; (wanderer.cmds || (wanderer.cmds = {})); for (const id of Object.keys(SIEGE_LEADS)) wanderer.cmds[id] = 'follow';
@@ -12992,7 +13114,7 @@ const SIEGE_LEADS_RIG = R => !!(R && R.siegeLead);
 async function siegePlace(wave) { // the base 1 km from Karribassa, the rover, and (when it starts) the first wave
   const C = world.planet && world.planet.city; if (!C || C.K.name !== 'Karribassa' || !isPl() || TIW.siege) return;
   const area = curArea(), dl = Math.hypot(C.cx, C.cz) || 1, ux = C.cx / dl, uz = C.cz / dl, bx = C.cx + ux * 1000, bz = C.cz + uz * 1000; // beyond the city, away from the spaceport
-  SG.base = { x: bx, z: bz }; SG.bosses = []; SG.fought = false;
+  SG.base = { x: bx, z: bz }; SG.bosses = []; SG.fought = false; SG.pairSaid = false;
   const g = new THREE.Group(); wScene.add(g); const S = TIW.siege = { g, R: [], x: bx, z: bz }; const ph = tiPhone();
   // the rover: a Chompy one, purple and light blue, by the bridge before the Hall of Oaths
   const rv = makeRoverMesh(); rv.traverse(m => { if (!m.isMesh || !m.material.color) return; const h = m.material.color.getHex(); if (h === 0xd8dde4 || h === 0xcfd5dc) { m.material = m.material.clone(); m.material.color.set(0x6a3a9a); } else if (h === 0xe0662a) { m.material = m.material.clone(); m.material.color.set(0x7fd8ff); m.material.emissive = new THREE.Color(0x2a6a8a); m.material.emissiveIntensity = .4; } });
@@ -13021,7 +13143,9 @@ async function siegeBosses() {
   const croxRig = async () => { const src = await embGlb('cpCroxian'); if (!src) return null; const R = autoRig(gearNoMeasure(SkeletonUtils.clone(src)), 1.85); armRig(R, 'none'); return R; };
   const list = [['crox', 'Croxian Mascar', croxRig, 'melee', 9000 + lv * 350], ['malia', 'Malia de Toro', async () => { const R = await companionRig('malia'); if (R) armRig(R, 'rifle'); return R; }, 'ranged', 8000 + lv * 300]];
   if (pont) list.push(['pont', pont.name, () => pontRig(pont), 'melee', 6000 + lv * 250, pont]); if (sis) list.push(['sis', sis.name, () => pontRig(sis), 'melee', 6000 + lv * 250, sis]);
-  const rigs = await Promise.all(list.map(L => L[2]().catch(() => null))); if (TIW.siege !== S) return;
+  const vo = n => loadDataScript(n).then(ok => ok ? sfx.loadClips(n) : []).catch(() => []).then(v => v || []);
+  const [rigs, bvo, svo] = await Promise.all([Promise.all(list.map(L => L[2]().catch(() => null))), vo('blockadeVoices'), vo('croxSpareVoices')]); if (TIW.siege !== S) return;
+  SG.bvo = bvo; SG.svo = svo; // BLOCKADE1–4 (the opening: Croxian, Malia, the Pontifex, Hak; 3 not recorded), CH3CROXIANSPAREORKILL1–10
   list.forEach((L, i) => { const R = rigs[i]; if (!R) return; const a = i * 1.6 + .4, x = bx + Math.sin(a) * 6, z = bz + Math.cos(a) * 6; R.root.position.set(x, wHeight(x, z), z); R.root.traverse(m => { if (m.isMesh) m.castShadow = !tiPhone(); }); S.g.add(R.root);
     const D = { name: `${L[1]} · lv ${lv}`, hp: L[4], r: .8, xp: Math.round(400 + lv * 20), dmg: 0, beast: 'pred', loot: () => [['warpcell', 1], ['medkit', 2]] };
     const c = { type: 'siegeboss', D, lv, mesh: R.root, x, z, y: R.root.position.y, rot: 0, hp: L[4], state: 'hunt', t: 0, cd: 2 + i, home: [x, z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, ext: true, sboss: true, bar: hpBar() };
@@ -13029,9 +13153,9 @@ async function siegeBosses() {
     SG.bosses.push({ R, c, key: L[0], name: L[1], kind: L[3], P: L[5] || null, st: 'chase', cd: 2 + i * .7, leapCd: 6 + i, t: 0, tels: [] });
   });
   sfx.alarm(); leaderPlay('wrong').catch(() => {});
-  const ph = tiPhone(), barks = [['CROXIAN MASCAR', 'Hello again, wanderer. You brought friends this time.'], ['MALIA DE TORO', 'The Emperor himself. Hawthorne will want your head on a plate, Hak.'], ['HAK CHOMPJAK V', 'Then he can come and take it. MASCAR!']];
-  if (pont || sis) barks.splice(2, 0, [`${(pont || sis).name.toUpperCase()}`, 'In the name of the Grand Imperarch. Kneel.']);
-  barks.forEach(([w, t], i) => setTimeout(() => { if (TIW.siege === S) bark(`${ph ? '' : w + ': '}${t}`, 3400); }, 600 + i * 3600));
+  const barks = [['CROXIAN MASCAR', 'Hello again, wanderer. You brought friends this time.', 0], ['MALIA DE TORO', 'The Emperor himself. Hawthorne will want your head on a plate, Hak.', 1], ['HAK CHOMPJAK V', 'Then he can come and take it. MASCAR!', 3]];
+  if (pont || sis) barks.splice(2, 0, [`${(pont || sis).name.toUpperCase()}`, 'In the name of the Grand Imperarch. Kneel.', 2]);
+  setTimeout(() => { for (const [w, t, k] of barks) siegeSay(w, t, 3600, () => TIW.siege === S, bvo[k] || null); }, 600);
   notice('Terra Imperia', SG.bosses.length > 2 ? 'CROXIAN · MALIA · AND HAWTHORNE’S ANOINTED' : 'CROXIAN MASCAR · MALIA DE TORO', 3800);
 }
 function siegeBar() {
@@ -13050,10 +13174,10 @@ function siegeTick(dt) {
   for (const B of SG.bosses) {
     if (B.gone) continue; const R = B.R, c = B.c, q = R.root.position;
     if (c.dead || c.hp <= 0) { B.gone = true; c.dead = 1; const i = fauna.list.indexOf(c); if (i >= 0) fauna.list.splice(i, 1); for (const m of B.tels) if (m.parent) m.parent.remove(m); B.tels = [];
-      burst(q.x, q.y + 1, q.z, 60, 6, 1, .3, .3, 1, 1.4, 2); sfx.thud(); setTimeout(() => { if (R.root.parent) R.root.parent.remove(R.root); }, 400);
-      if (B.P) { notice(pontTitle(B.P), `${B.P.name.toUpperCase()} IS BEATEN`, 3000); setTimeout(() => pontChoice(B.P.id, () => {}), 1200); } // as on the Cygnus: take them in, kill them, or let them go
-      else bark(B.key === 'crox' ? 'Croxian Mascar: This isn’t over. Fall back!' : 'Malia de Toro: Pull out! Back to the ships!', 3200);
-      if (SG.bosses.every(o => o.gone)) siegeWin(); continue; }
+      burst(q.x, q.y + 1, q.z, 60, 6, 1, .3, .3, 1, 1.4, 2); sfx.thud();
+      if (B.P) { setTimeout(() => { if (R.root.parent) R.root.parent.remove(R.root); }, 400); notice(pontTitle(B.P), `${B.P.name.toUpperCase()} IS BEATEN`, 3000); setTimeout(() => pontChoice(B.P.id, () => {}), 1200); } // as on the Cygnus: take them in, kill them, or let them go
+      else { R.mode = 'idle'; animRig(R, 0); notice('Terra Imperia', `${B.name.toUpperCase()} IS BEATEN`, 2600); siegeSay(null, () => siegeFate(B)); } // Croxian and Malia stay down: spare them, or finish them (Chapter IV remembers)
+      if (SG.bosses.every(o => o.gone)) siegeSay(null, () => siegeWin()); continue; } // the blockade breaks once every choice is made
     c.x = q.x; c.z = q.z; c.y = q.y; c.slowT = Math.max(0, (c.slowT || 0) - dt);
     if (c.barT > 0) { c.barT -= dt; c.bar.visible = true; c.bar.quaternion.copy(camera.quaternion).premultiply(tmpQ.copy(R.root.quaternion).invert()); const f = c.bar.userData.fg, k = Math.max(0, c.hp / c.D.hp); f.scale.x = Math.max(.001, k); f.position.x = -(1 - k) / 2; } else c.bar.visible = false;
     if (!live) { R.mode = 'idle'; animRig(R, dt); continue; }
@@ -13085,10 +13209,66 @@ function siegeWin() {
   if (c3f('siegeWon')) return; setC3({ siegeWon: true }); sfx.leadOn = false; sfx.stopSong && sfx.stopSong(1.5); sfx.chime(); gainXP(1500, 'Ended the blockade of Janira Prime');
   $('#bossBar').classList.remove('on'); SG.barOn = false; if (TIW.siege && TIW.siege.beacon) TIW.siege.beacon.visible = false;
   notice('Main quest complete', tiPhone() ? 'THE BLOCKADE IS BROKEN' : 'THE BLOCKADE OF JANIRA PRIME IS BROKEN', 4600); renderTasks();
-  setTimeout(() => bark('Hak Chompjak V: Karribassa stands. Now he knows we are coming.', 4200), 2600);
-  setTimeout(() => sayAs('DARIUS ANCIN', 'That’s our part done. Go take Sol back, wanderer. We’ll hold the line here.', 4200), 7000);
-  setTimeout(() => sayAs('VISHARA ERISCONOS', 'Eris owes you a debt. We will not forget it.', 4000), 11400);
-  setTimeout(() => { siegeLeave(); lootMsg(tiPhone() ? 'Hak, Darius and Vishara return to Karribassa' : 'Hak, Darius and Vishara return to Karribassa · Take Sol back from Terra Imperia: bombard its worlds and beat their governors', '#ffb060'); }, 15600);
+  setTimeout(() => { // after the last boss's line: Hak, then the goodbyes, then they go home
+    siegeSay('HAK CHOMPJAK V', 'Karribassa stands. Now he knows we are coming.', 4200);
+    siegeSay('DARIUS ANCIN', 'That’s our part done. Go take Sol back, wanderer. We’ll hold the line here.', 4600);
+    siegeSay('VISHARA ERISCONOS', 'Eris owes you a debt. We will not forget it.', 4000);
+    siegeSay(null, () => { siegeLeave(); lootMsg(tiPhone() ? 'Hak, Darius and Vishara return to Karribassa' : 'Hak, Darius and Vishara return to Karribassa · Take Sol back from Terra Imperia: bombard its worlds and beat their governors', '#ffb060'); if (orionCutDue()) setTimeout(() => startOrionCut(), 3200); }); // Croxian is dead: the scene cuts away to Orion
+  }, 1200);
+}
+/* ---- Croxian and Malia, beaten: spare them (they join you, there and then), or kill them. Saves ch3.croxFate / ch3.maliaFate ('spared' | 'killed'), which Chapter IV's
+   ending reads. Croxian is Orion's son: kill him, and Orion leaves you for good (his own cutscene after the blockade: startOrionCut). ---- */
+function siegeFate(B) {
+  const crox = B.key === 'crox', who = crox ? 'CROXIAN MASCAR' : 'MALIA DE TORO', R = B.R, other = c3f(crox ? 'maliaDead' : 'croxDead');
+  const away = () => { if (R.root.parent) R.root.parent.remove(R.root); };
+  const bc = (SG.svo || [])[crox ? 0 : 1];
+  openDialog(who, [crox ? 'Go on, then. Hawthorne would.' : 'Well? Make it quick or make it kind. Just make it.'], false, () => openChoice(who, [
+    { text: crox ? 'Spare him.' : 'Spare her.', onPick: () => { siegeJoin(B); siegePairLines(); } },
+    { text: crox ? 'Finish him.' : 'Finish her.', onPick: () => setTimeout(() => { const lw = (SG.svo || [])[crox ? 10 : other ? 12 : 11]; openDialog(who, [crox ? 'Tell my father… tell him he was right. About all of it.' : (other ? 'Wait for me, Croxian. I’m coming.' : 'Tell Croxian I— no. He knows.')], false, () => {
+      setC3(crox ? { croxFate: 'killed', croxDead: true } : { maliaFate: 'killed', maliaDead: true });
+      const q = R.root.position; sfx.swing(); setTimeout(() => { sfx.thud(); ex.shake = .5; burst(q.x, q.y + 1, q.z, 70, 6, .9, .2, .2, 1, 1.3, 2); away(); notice('Terra Imperia', `${who} IS DEAD`, 3600); }, 260);
+      if (crox && orionJoined()) setTimeout(() => lootMsg('The Nostra’s comms are open…', '#ff8f86'), 4200);
+      SSAY.q.unshift({ pause: 1400 }, { line: siegePairLines }); if (!SSAY.busy) siegeSayNext(); // if the other was spared, they speak now, before the victory lines
+    }, lw ? [lw] : undefined); }, 80) }]), bc ? [bc] : undefined); // last words: CH3CROXIANSPAREORKILL11 Croxian, 12 Malia, 13 Malia after Croxian
+}
+// once both are decided: spared together, a four-line exchange (two each); one dead, the survivor's two lines; both dead, nothing
+const SIEGE_PAIR = [['CROXIAN MASCAR', 'You’d let us both walk away? After everything we’ve done?'], ['MALIA DE TORO', 'Don’t question it, Croxian. Hawthorne would have shot us himself for losing.'],
+  ['CROXIAN MASCAR', 'Then I’m done dying for that man. If you’ll have us, wanderer, we’re with you.'], ['MALIA DE TORO', 'Where he goes, I go. Today, that’s with you.']];
+const SIEGE_WIDOW = {
+  crox: ['CROXIAN MASCAR', ['You killed her. And you’d let me live.', 'I should hate you for that. Maybe I will. But Hawthorne sent us both here to die, and he’s the one I want. I’m with you.']],
+  malia: ['MALIA DE TORO', ['You killed him. And now you want me.', 'Fine. I’ll fight beside you. Not for you. For him, against the man who sent him here.']]
+};
+function siegePairLines() {
+  const c = (wanderer && wanderer.ch3) || {}, keys = SG.bosses.filter(o => !o.P).map(o => o.key), fate = k => c[k === 'crox' ? 'croxFate' : 'maliaFate'];
+  if (SG.pairSaid || !keys.length || keys.some(k => !fate(k))) return; // not both decided yet
+  SG.pairSaid = true; const spared = keys.filter(k => fate(k) === 'spared');
+  if (!spared.length) return; // both dead: no one left to speak
+  const vo = SG.svo || [], say = (L, slot, i = 0) => { if (i >= L.length) return; const c = vo[slot + i]; openDialog(L[i][0], [L[i][1]], false, () => say(L, slot, i + 1), c ? [c] : undefined); };
+  if (spared.length === 2) say(SIEGE_PAIR, 2); // CH3CROXIANSPAREORKILL3–6
+  else if (keys.length === 2) { const [who, lines] = SIEGE_WIDOW[spared[0]]; say(lines.map(l => [who, l]), spared[0] === 'crox' ? 6 : 8); } // 7–8 Croxian, 9–10 Malia
+}
+function siegeJoin(B) { // spared, they join you on the spot: Croxian (helmet off) with his blade, Malia with her rifle
+  const crox = B.key === 'crox', id = crox ? 'croxian' : 'malia', R = B.R, q = R.root.position;
+  setC3({ [crox ? 'croxFate' : 'maliaFate']: 'spared', [crox ? 'croxJoined' : 'maliaJoined']: true });
+  burst(q.x, q.y + 1, q.z, 30, 4, .8, .8, .9, .7, 1, 1.2); if (R.root.parent) R.root.parent.remove(R.root);
+  wanderer.party = [...new Set([...(wanderer.party || []), id])]; (wanderer.cmds || (wanderer.cmds = {}))[id] = 'follow';
+  const c = curChar(); if (c) { c.party = wanderer.party; c.cmds = wanderer.cmds; } saveRoster();
+  syncCrewParty(); placeCrew().catch(() => null); refreshJamesUI(); ui.xhud.classList.add('comp'); sfx.chime();
+  notice('Your crew', `${crox ? 'CROXIAN MASCAR' : 'MALIA DE TORO'} JOINS YOU`, 4200); compJoinNotice(id, 4800);
+}
+function siegeSayNow(who, line, ms = 3600) { SSAY.q.unshift({ who, line, ms }); if (!SSAY.busy) siegeSayNext(); } // straight after a choice, before anything already waiting
+// the fight's lines, one at a time, each under its own speaker's name (they used to all go out as Croxian's, and could talk over each other).
+// A line waits while a dialogue is open (a beaten Pontifex's choice); ok(), if given, can drop a line that no longer fits.
+const SSAY = { q: [], busy: false };
+function siegeSay(who, line, ms = 3600, ok, clip) { SSAY.q.push({ who, line, ms, ok, clip }); if (!SSAY.busy) siegeSayNext(); }
+function siegeSayNext() {
+  if (ex.dlg) { SSAY.busy = true; setTimeout(siegeSayNext, 500); return; }
+  const L = SSAY.q.shift(); if (!L) { SSAY.busy = false; return; } SSAY.busy = true;
+  if (L.ok && !L.ok()) { siegeSayNext(); return; }
+  if (L.pause) { setTimeout(siegeSayNext, L.pause); return; } // a beat of silence
+  if (typeof L.line === 'function') { try { L.line(); } catch (e) { console.error(e); } siegeSayNext(); return; } // an action, in turn
+  const ms = L.clip ? Math.max(L.ms, L.clip.duration * 1000 + 300) : L.ms; // a recorded line plays to its end
+  sayAs(L.who, L.line, ms); if (L.clip) sfx.playNarr(L.clip, 1.3); setTimeout(siegeSayNext, ms + 300);
 }
 function siegeLeave() { // the blockade is over: the three go home, from your side, your ship and the main menu
   if (!wanderer) return; const ids = Object.keys(SIEGE_LEADS), had = (wanderer.party || []).some(id => ids.includes(id)) || ids.some(id => wanderer.aboard && wanderer.aboard[id]);
@@ -14939,6 +15119,7 @@ const CUTS = [
   { id: 'erisFall', ch: 'Chapter III', name: 'THE FALL OF ERIS', sub: 'Eris · Alexia Erisconos takes the Citadel', ok: () => !!CH3S().alexiaCoup, play: () => erisCoupStart(true) },
   { id: 'karrVision', ch: 'Chapter III', name: 'KARRIBASSA BURNS', sub: 'Janira Prime · a vision, ten minutes from now', ok: () => !!CH3S().karrVision, play: () => karrVision(() => cutDone()) },
   { id: 'hawMirror', ch: 'Chapter III', name: 'THE GRAND IMPERARCH’S BREAKDOWN', sub: 'The Cygnus · Hawthorne’s false breakdown, in his fake castle', ok: () => !!CH3S().cygDone, play: () => hawMirror(() => cutDone()) },
+  { id: 'orionCut', ch: 'Chapter III', name: 'CLOSE THE CHANNEL', sub: 'The Nostra · Orion, after Janira Prime', ok: () => c3f('orionGone'), play: () => startOrionCut(true) },
   { id: 'good', ch: 'Chapter IV', name: 'THE CATHARSIS FALLS', sub: 'The good ending', ok: () => cutEnding() === 'good', play: () => ch4EndingPlay('good', { preview: true }) },
   { id: 'neutral', ch: 'Chapter IV', name: 'THE WAR GOES ON', sub: 'The neutral ending', ok: () => cutEnding() === 'neutral' || chNow() >= 5, play: () => ch4EndingPlay('neutral', { preview: true }) },
   { id: 'bad', ch: 'Chapter IV', name: 'NO ONE WILL REMEMBER', sub: 'The bad ending · seen on this device', ok: () => cutsSeen().includes('bad'), play: () => ch4EndingPlay('bad', { preview: true }) }
@@ -18775,6 +18956,7 @@ function enterShip(from) {
   ex.yaw = player.rotation.y + Math.PI; ex.pitch = .2; ex.dist = Math.min(ex.dist || 4, 3.4); vel.set(0, 0, 0); ex.snap = true;
   ui.xhud.classList.remove('cutting', 'cineonly', 'dreaming'); renderTasks();
   notice(from === 'space' ? 'Aboard · in flight' : 'Aboard', 'THE NOSTRA', 2400); sfx.whoosh(); renderHotbar(); siegeShipLine(from);
+  if (c3f('orionGone') && !c3f('orionGoneSeen')) { setC3({ orionGoneSeen: true }); setTimeout(() => lootMsg('Orion’s bunk is made. His rifle is gone.', '#cfd6e6'), 2600); } // the first time aboard after he left
 }
 function leaveShip(to) { // to: 'ground' (down the ramp), 'space' (back to the helm), or 'takeoff'
   if (!SHIPI.on) return;
@@ -18887,6 +19069,7 @@ function dismissCompanion(id) {
   ui.xhud.classList.toggle('comp', companionOn() || partyNow().length > 0);
 }
 function aboardTalk(id) {
+  if (id === 'orion' && siegeQ() && c3f('orionStepped')) { orionLeaveVo().then(vo => openDialog('ORION MASCAR', ['Not this one. Finish it, then come and get me. I’ll be right here, with the comms open.'], false, () => {}, vo[8] ? [vo[8]] : undefined)); return; } // he sits the blockade out
   const nm = ((PARTY[id] || {}).full || compName(id)).toUpperCase();
   openChoice(nm, [{ text: 'Come with me.', onPick: () => recallCompanion(id) }, { text: 'Stay aboard for now.', onPick: () => lootMsg(`${compName(id)} stays aboard`, compColor(id)) }]);
 }
@@ -18984,7 +19167,8 @@ function crewTick(dt) {
     // fight anything hostile nearby, with whatever they carry
     const lead = !!SIEGE_LEADS[id], hold = lead && mode === 'hold' && C.holdAt, adv = lead && mode === 'advance' && SG.base;
     let foe = null, fd = guns ? 24 : adv ? 22 : 14;
-    for (const c of fauna.list) { if (c.dead || c.D.passive || (c.D.neutral && c.state !== 'hunt')) continue; const d = Math.hypot(c.x - o.x, c.z - o.z); if (hold && Math.hypot(c.x - C.holdAt[0], c.z - C.holdAt[1]) > (guns ? 26 : 9)) continue; if (d < fd) { fd = d; foe = c; } } // holding: only what comes to them
+    const kin = id === 'croxian' || id === 'malia'; // Croxian and Malia don't fight each other at the base
+    for (const c of fauna.list) { if (c.dead || c.D.passive || (c.D.neutral && c.state !== 'hunt') || (kin && c.type === 'siegeboss')) continue; const d = Math.hypot(c.x - o.x, c.z - o.z); if (hold && Math.hypot(c.x - C.holdAt[0], c.z - C.holdAt[1]) > (guns ? 26 : 9)) continue; if (d < fd) { fd = d; foe = c; } } // holding: only what comes to them
     C.atkT -= dt;
     if (foe) {
       const reach = guns ? 22 : id === 'khazglar' ? 2.8 : 2.2;
@@ -20832,6 +21016,7 @@ const ORION_WAKE = [
   'Get some air. Stretch your legs. Just don’t wander too far, and if anyone asks, you’re my cousin from the coast.'
 ];
 async function placeOrion() {
+  if (wanderer && wanderer.ch3 && wanderer.ch3.orionGone) { if (world.orion) world.orion.root.visible = false; return; } // gone for good, Africa included
   if (wanderer && wanderer.aboard && wanderer.aboard.orion) { if (world.orion) world.orion.root.visible = false; return; } // waiting aboard the Nostra
   if (wanderer && wanderer.dungeon && wanderer.dungeon.orion) { if (world.orion) world.orion.root.visible = false; return; } // off clearing a lair
   if (orionJoined() && wanderer.dip && wanderer.dip.lent && wanderer.dip.lent.orion) { if (world.orion) world.orion.root.visible = false; return; } // serving another faction
@@ -20875,7 +21060,7 @@ const OBARK = {
 };
 const OLABEL = { mine: 'MINING', explore: 'EXPLORING', base: 'AT HOME', wander: 'WANDERING', follow: 'FOLLOWING' };
 const orionC = { mode: 'follow', wp: null, wpT: 0, node: null, swingT: 0, legs: 0 };
-const orionJoined = () => !!(wanderer && wanderer.ch2 && wanderer.ch2.orionJoined);
+const orionJoined = () => !!(wanderer && wanderer.ch2 && wanderer.ch2.orionJoined && !(wanderer.ch3 && wanderer.ch3.orionGone)); // he left you after Croxian died: for good
 function orionLevel() { const c2 = (wanderer && wanderer.ch2) || {}; return clamp(14 + levelInfo((wanderer && wanderer.xp) || 0).level - (c2.orionBase || 1), 14, 100); }
 function orionCmd(mode, quiet) {
   if (!JCMDS.includes(mode)) return;
@@ -23316,7 +23501,7 @@ const COMPANIONS = [
       'Where her sisters are patient and unreadable in the Erisian way, Nyrexia is curious and impatient, and far too interested in the rest of the galaxy for a princess of the oldest court in the solar system. She has slipped her bodyguards more times than the great houses like to admit.',
       'She travels with you partly out of loyalty, partly out of curiosity, and partly, she admits, because it annoys her family.'
     ] },
-  { id: 'croxian', tag: 'cpCroxianU', h: 1.85, unlockAt: 3, metIf: pdMetCh3(() => pdMet('croxian')), name: 'CROXIAN MASCAR', title: 'Former soldier of Terra Imperia', // as your companion his helmet is off (data/cpCroxianU.js, built by nightmare/tools/croxian_unhelmet.py); the story's Croxian keeps it
+  { id: 'croxian', tag: 'cpCroxianU', h: 1.85, unlockAt: 3, weapon: 'sword', metIf: pdMetCh3(() => pdMet('croxian')), name: 'CROXIAN MASCAR', title: 'Former soldier of Terra Imperia', // as your companion his helmet is off (data/cpCroxianU.js, built by nightmare/tools/croxian_unhelmet.py); the story's Croxian keeps it
     facts: [['Species', 'Human'], ['Born', '2094 AD, England, Earth'], ['Father', 'Orion Mascar'], ['Partner', 'Malia de Toro'], ['Formerly', 'A soldier of Terra Imperia'], ['Alignment', 'Neutral Good']],
     align: 'A good man who served a bad cause, and is trying to make up for it one decision at a time.',
     paras: [
@@ -23324,7 +23509,7 @@ const COMPANIONS = [
       'He rose quickly as a soldier of Terra Imperia, and he was good at it. He is a former soldier now. He does not talk about why he left, or about what he saw before he did.',
       'His girlfriend, Malia de Toro, is the one person he never lies to. His father is the one person he cannot bring himself to call.'
     ] },
-  { id: 'malia', tag: 'cpMalia', h: 1.75, unlockAt: 3, metIf: pdMetCh3(() => pdMet('malia')), name: 'MALIA DE TORO', title: 'Terra Imperia',
+  { id: 'malia', tag: 'cpMalia', h: 1.75, unlockAt: 3, weapon: 'rifle', metIf: pdMetCh3(() => pdMet('malia')), name: 'MALIA DE TORO', title: 'Terra Imperia',
     facts: [['Species', 'Human'], ['Born', '2096 AD, Spain'], ['Works for', 'Terra Imperia'], ['Partner', 'Croxian Mascar'], ['Alignment', 'Lawful Neutral']],
     align: 'Professional to the bone. Malia does her job, keeps her word, and keeps her opinions about her employer to herself.',
     paras: [
@@ -25196,6 +25381,7 @@ function loopFrame() {
   if (state === 'brawl') { try { fightTick(dt); } catch (e) { console.error(e); } updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'nightmare') { nightmareTick(dt); sfx.music(0); return; }
   if (state === 'hawMars') { try { hwmTick(dt); } catch (e) { console.error(e); hwmEnd(); } sfx.music(0); return; }
+  if (state === 'orionCut') { try { ocutTick(dt); } catch (e) { console.error(e); ocutEnd(); } sfx.music(0); return; }
   if (state === 'jamesRev') { try { jrvTick(dt); } catch (e) { console.error(e); jrvEnd(); } sfx.music(0); return; }
   if (state === 'c4End') { try { c4eTick(dt); } catch (e) { console.error(e); c4eSkip(); } sfx.music(0); return; }
   if (state === 'space') { spaceTick(dt); try { resSpaceTick(dt); } catch (e) { console.error(e); } try { nmDueTick(dt); } catch (e) { console.error(e); } sfx.music(0); renderer.render(SPC.atmo ? ATM.scene : SPC.scene, camera); return; }

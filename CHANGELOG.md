@@ -2061,3 +2061,30 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 
 ## The faction leaders' themes in the music player
 - **Settings → Combat themes now plays the faction leaders' and Primes' themes too.** After the five combat tracks it goes on to Descendant of Shakhak (Hak), The Child of Eris (Vishara), The Guardian of Humanity (Darius), The Prime Good and The Light Egg (Archamus), The Prime Evil (Zark), The Wrong Enemy and the Final Boss Theme, and then stops. Each theme loads the first time you play it.
+
+## The blockade fight's dialogue, tidied
+- **Every line in the fight at Terra Imperia's base now shows under the right speaker's name.** Before, they all went out under Croxian Mascar's name, with the real speaker squeezed into the line on desktop and missing on phones.
+- **The lines play one at a time,** so the bosses' retreat lines and the victory lines no longer talk over each other. They wait while a beaten Pontifex's choice is on screen, and Hak, Darius and Vishara leave only after their goodbyes have played.
+
+## Orion steps back from the blockade
+- **Straight after Hak's prayer, before Terra Imperia attacks, Orion takes you aside** (if he's with you). He found you half dead in the heat, sat by your fever for two weeks and held you on the pier in Antarctica, and he's just watched you go under in the vision. He tells you it's PTSD, and that he can't stand by and watch it happen again. Then he goes back to the Nostra.
+  - You answer "Go. I'll come back to you." or "You don't have to explain. Go.", and he replies to each.
+  - He stays on the crew deck until the blockade is over. Talk to him there and he asks you to finish it first. Afterwards you can call him back as usual.
+  - Voiced: `data/orionLeaveVoices.js` (CH3ORIONLEAVESPARTY1–9: his six lines, his two replies, and his line on the crew deck). The script is in `assets/audio/karribassa/VOICE_SCRIPT.md`.
+
+## Croxian's fate, and Orion's
+- **Beaten at Terra Imperia's base, Croxian Mascar and Malia de Toro now stay down, and you choose: spare them, or finish them.** Spared, they don't run: they join your crew there and then, Croxian with his helmet off and his blade, Malia with her rifle. That holds even if you killed the other, so only killing both leaves you with neither. Killed, they say their last words; Croxian's are "Tell my father… tell him he was right. About all of it." While one of them is still down there fighting, the one who joined you won't attack them.
+  - **Once both are decided, they speak.** Both spared: a four-line exchange, two lines each. One killed: the survivor says two lines. Both killed: nothing. The blockade breaks after that.
+  - This sets `ch3.croxFate` and `ch3.maliaFate`, which Chapter IV's ending was already reading but nothing had set until now.
+- **Kill Croxian and Orion Mascar leaves you for good, in a cutscene of his own: Close the Channel.** You never speak to him.
+  - Straight after the blockade's goodbyes, the scene cuts away (MEANWHILE · ABOARD THE NOSTRA) to Orion alone on the crew deck, with the comms still open. He heard his son's last words.
+  - He remembers Croxian as a boy and the mercy he'd have shown the wanderer. Then he closes the channel, says he's going to bring his son home, and walks to the lift without looking back.
+  - One line changes with Malia's fate (spared or killed). If Croxian lives, nothing plays, whatever happened to Malia.
+  - He leaves your crew, the Nostra and the main menu for good, and never turns up in Africa again. The next time you board, his bunk is made and his rifle is gone. He leaves alive (`ch3.orionGone`, `ch3.orionFate: 'spared'`), which Chapter IV reads as Orion taking Terra Imperia.
+  - Skip works as in the other cutscenes. Once it has happened, it's on the Cutscenes menu after The Grand Imperarch's Breakdown.
+  - Voice pack: `data/orionGriefVoices.js` (CH3ORIONGRIEF1–11, not recorded yet, so it shows as subtitles). The script is in `assets/audio/karribassa/VOICE_SCRIPT.md`.
+
+## The blockade fight, voiced
+- **The fight's opening is voiced** (`data/blockadeVoices.js`): Croxian (BLOCKADE1), Malia (BLOCKADE2) and Hak (BLOCKADE4). The Pontifex line, BLOCKADE3, isn't recorded yet, so it still shows as a subtitle.
+- **Croxian and Malia's spare-or-kill lines are voiced** (`data/croxSpareVoices.js`, CH3CROXIANSPAREORKILL1–13): their beaten lines, the both-spared exchange, each survivor's two lines, and their last words (11 Croxian, 12 Malia, 13 Malia if Croxian is already dead).
+- Recordings are in `assets/audio/karribassa/`, and the voice script lists them.

@@ -41,3 +41,105 @@ Pack: `data/hakRantVoices.js` (14 slots, in this order). **Recorded** as HAKLOSE
 | CH3HAKRANT12.mp3 | Hak Chompjak V (praying) | Archamus. Prime Good. You answered Taredesiba when the dark came for Timpur. |
 | CH3HAKRANT13.mp3 | Hak Chompjak V (praying) | I have no right to ask. I was Sevirrus. But these people were never him. |
 | CH3HAKRANT14.mp3 | Hak Chompjak V (praying) | Stand with Karribassa. And if you will not stand with me, stand with them. |
+
+
+## Before the blockade: Orion steps back
+
+Straight after Hak's prayer, before Terra Imperia attacks, if Orion is with you. He goes back to the Nostra and stays aboard until the blockade is over.
+
+Pack: `data/orionLeaveVoices.js` (CH3ORIONLEAVESPARTY1–9, in this order). All 9 are recorded.
+
+| File | Speaker | Line |
+|---|---|---|
+| CH3ORIONLEAVESPARTY1.mp3 | Orion Mascar | Wanderer. Before this starts, I need a word. Just us. |
+| CH3ORIONLEAVESPARTY2.mp3 | Orion Mascar | I found you half dead in the heat. I sat by that bed for two weeks. I held you on that pier while you screamed at nothing. |
+| CH3ORIONLEAVESPARTY3.mp3 | Orion Mascar | And just now, in that vision, you went somewhere none of us could follow. Hak was shaking you, and you weren’t there. I couldn’t breathe. |
+| CH3ORIONLEAVESPARTY4.mp3 | Orion Mascar | There’s a name for what that does to me. PTSD. I’ve spent a long time pretending it didn’t have one. |
+| CH3ORIONLEAVESPARTY5.mp3 | Orion Mascar | I can’t stand by and watch it happen again. Not in a real fight. Not with you bleeding in front of me. Not yet. |
+| CH3ORIONLEAVESPARTY6.mp3 | Orion Mascar | So I’m going back to the Nostra. I’ll keep her warm and the comms open. Come back to me in one piece, friend. |
+
+Your answer, and his reply:
+
+| Choice | File | Orion's reply |
+|---|---|---|
+| Go. I’ll come back to you. | CH3ORIONLEAVESPARTY7.mp3 | I know you will. That’s the only reason I can leave. |
+| You don’t have to explain. Go. | CH3ORIONLEAVESPARTY8.mp3 | Thank you. For not making me say it twice. |
+
+Talking to him on the crew deck while the blockade is on:
+
+| File | Speaker | Line |
+|---|---|---|
+| CH3ORIONLEAVESPARTY9.mp3 | Orion Mascar | Not this one. Finish it, then come and get me. I’ll be right here, with the comms open. |
+
+
+## The blockade: the fight's opening
+
+As Croxian and Malia come at you inside Terra Imperia's base. The Pontifex line plays only if a Pontifex Maximus or a Sister of Hawthorne is hunting you.
+
+Pack: `data/blockadeVoices.js` (BLOCKADE1–4, in this order). **Recorded:** 1, 2 and 4. **Still to record:** 3 (shows as a subtitle).
+
+| File | Speaker | Line |
+|---|---|---|
+| BLOCKADE1.mp3 | Croxian Mascar | Hello again, wanderer. You brought friends this time. |
+| BLOCKADE2.mp3 | Malia de Toro | The Emperor himself. Hawthorne will want your head on a plate, Hak. |
+| BLOCKADE3.mp3 | Pontifex Maximus or Sister of Hawthorne | In the name of the Grand Imperarch. Kneel. |
+| BLOCKADE4.mp3 | Hak Chompjak V | Then he can come and take it. MASCAR! |
+
+
+## The blockade: sparing or killing Croxian and Malia
+
+When Croxian Mascar or Malia de Toro is beaten at Terra Imperia's base, they stay down and you choose. Spared, they join your crew there and then; killed, they say their last words. Once both are decided: if both were spared, they have a four-line exchange (two lines each); if one was killed, the survivor says two lines; if both were killed, nothing.
+
+Pack: `data/croxSpareVoices.js` (CH3CROXIANSPAREORKILL1–13): 1–2 the beaten lines, 3–6 both spared, 7–8 Croxian with Malia killed, 9–10 Malia with Croxian killed, 11–13 the last words. **All 13 are recorded.**
+
+| Speaker | When | Line |
+|---|---|---|
+| Croxian Mascar | Beaten (CH3CROXIANSPAREORKILL1) | Go on, then. Hawthorne would. |
+| Malia de Toro | Beaten (CH3CROXIANSPAREORKILL2) | Well? Make it quick or make it kind. Just make it. |
+
+Both spared (CH3CROXIANSPAREORKILL3–6):
+
+| Speaker | Line |
+|---|---|
+| Croxian Mascar | You’d let us both walk away? After everything we’ve done? |
+| Malia de Toro | Don’t question it, Croxian. Hawthorne would have shot us himself for losing. |
+| Croxian Mascar | Then I’m done dying for that man. If you’ll have us, wanderer, we’re with you. |
+| Malia de Toro | Where he goes, I go. Today, that’s with you. |
+
+One killed, the other spared (7–8 Croxian, 9–10 Malia):
+
+| Speaker | Line |
+|---|---|
+| Croxian Mascar (Malia killed) | You killed her. And you’d let me live. |
+| Croxian Mascar (Malia killed) | I should hate you for that. Maybe I will. But Hawthorne sent us both here to die, and he’s the one I want. I’m with you. |
+| Malia de Toro (Croxian killed) | You killed him. And now you want me. |
+| Malia de Toro (Croxian killed) | Fine. I’ll fight beside you. Not for you. For him, against the man who sent him here. |
+
+Last words (CH3CROXIANSPAREORKILL11–13):
+
+| Speaker | When | Line |
+|---|---|---|
+| Croxian Mascar | Killed (11) | Tell my father… tell him he was right. About all of it. |
+| Malia de Toro | Killed (12) | Tell Croxian I— no. He knows. |
+| Malia de Toro | Killed, Croxian already dead (13) | Wait for me, Croxian. I’m coming. |
+
+
+## Close the Channel: Orion, after Croxian's death
+
+A cutscene that plays only if you killed Croxian, straight after the blockade's goodbyes: the scene cuts away to Orion alone on the Nostra's crew deck, the comms still open. The wanderer never speaks to him. Line 6 depends on Malia: 6a if she was spared, 6b if she was killed. If Croxian lives, nothing plays. Then he leaves the party for good.
+
+Pack: `data/orionGriefVoices.js` (11 slots, in this order). **Not recorded yet:** these show as subtitles.
+
+| File | Speaker | Line |
+|---|---|---|
+| CH3ORIONGRIEF1.mp3 | Orion Mascar | Croxian…? Wanderer, what’s happening down there? Somebody talk to me. |
+| CH3ORIONGRIEF2.mp3 | Orion Mascar | “Tell my father he was right.” That’s what he said. That’s what my boy said, with someone standing over him. |
+| CH3ORIONGRIEF3.mp3 | Orion Mascar | No. No, no, no. Not like this. Not with me up here, listening. |
+| CH3ORIONGRIEF4.mp3 | Orion Mascar | He was four the first time he fell off the sea wall at Dover. Split his chin open. He didn’t cry. He looked up at me to see if he should. |
+| CH3ORIONGRIEF5.mp3 | Orion Mascar | I taught him to stand up straight. I taught him to hold a rifle. I never taught him how to come home. |
+| CH3ORIONGRIEF6.mp3 | Orion Mascar (6a · Malia spared) | And Malia, they spared. Took her in, like a stray. So it was a choice. Someone looked at my son on his knees, and chose. |
+| CH3ORIONGRIEF7.mp3 | Orion Mascar (6b · Malia killed) | And Malia with him. She’d have been my daughter. They were going to tell me. I know they were. They were waiting for the war to end. |
+| CH3ORIONGRIEF8.mp3 | Orion Mascar | I sat by that bed for two weeks. I held you on that pier. I’d have let anyone go for you, wanderer. Anyone. |
+| CH3ORIONGRIEF9.mp3 | Orion Mascar | Nostra, close the channel. … Close it. |
+| CH3ORIONGRIEF10.mp3 | Orion Mascar | I’m going to bring him home. Whatever’s left of him. It was always supposed to be me. |
+| CH3ORIONGRIEF11.mp3 | Orion Mascar | Don’t come looking for me, wanderer. If you ever find me again… I don’t know who I’ll be. |
