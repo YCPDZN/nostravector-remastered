@@ -1901,3 +1901,17 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - **He closes** by offering his fleets (if you allied with the Chompy Empire) or repeating his offer of alliance (if not), and tells you to take Sol back world by world.
   - Gives 300 XP. Saves `ch3.solFell`, `ch3.solLost`, `ch3.hakBack` and `dip().surge.fell`.
   - Voices go in `data/hakBackVoices.js` as **CH3HAKBACK1–11** (slots 0–10). Until it exists, the lines play as subtitles.
+
+## Temporary: Reset progress (on the Load game screen)
+- **Load game** (from the title menu or the pause menu) now has a **Temporary** section under the save slots: reset the active wanderer to the start of **Chapter I · Chapter II · Chapter III**. It's for testing only.
+- **Tap a chapter twice.** The first tap only asks ("Tap Chapter II again to reset NOVA to New London, before the trial · unsaved progress is lost").
+- It **keeps** the wanderer's name, species, looks and world seed. **Everything else starts over:** level, items, crew, colonies, diplomacy, Pontifexes, lairs, every quest and where you were.
+- **Chapter I** plays the opening, as for a new wanderer.
+- **Chapter II · New London** puts you in New London **just before the trial**. Chapter I is finished, and Chapter II is done up to Hawthorne: Africa with Orion, Nico at the farm, Ad-Nostra and the fight in The Salt Lantern, the arrest, arriving in New London, the flashback and reporting at Parliament. Hawthorne has come out to meet you, and the Council's summons is on its way. The guard comes for you, then the trial and the escape.
+- **Chapter III** marks Chapters I and II as finished (Orion and Nico aboard, New London behind you) and plays the CHAPTER III · SOL card into space.
+- Nothing is written until you save, so loading your old save undoes it.
+- To remove it: the block marked `TEMPORARY` after the Main menu button's handler, `#slotReset` in the save-slots screen, and the line marked `TEMPORARY` in `openSlots`.
+
+## Fix: the nightmare crashing on phones
+- **The nightmare now always plays out beyond orbit**, as it does on desktop, for all five species (Chompy, Erisian, human, Grek, Taredesiban). If you're within six radii of a world when it starts, as you are in Earth orbit, the ship drifts back out under the black of the episode starting. It stops facing the planet, with the world still ahead of you.
+- **The close-up terrain of every world is let go before it plays:** the planets drop to their far, light versions. A phone was holding Earth's close-up surface in memory as well as the nightmare's scene (for a Chompy, the whole Sevirrus montage), and running out. The close-up terrain is rebuilt as normal when you fly back in.

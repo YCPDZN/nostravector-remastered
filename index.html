@@ -1280,6 +1280,7 @@ body.touch .al-key{display:none}
       <button class="btn small" id="xOptions"><span>Options</span></button>
       <button class="btn small" id="xQuit"><span>Main menu</span></button>
     </div>
+
   </div>
   <div class="panel opt-panel">
     <div class="eyebrow">Paused</div>
@@ -1388,6 +1389,10 @@ body.touch .al-key{display:none}
     <div class="slot-list" id="slotList"></div>
     <div class="slot-msg" id="slotMsg"></div>
     <div class="row slot-io"><button class="btn small" id="slotExport"><span>Export saves</span></button><button class="btn small" id="slotImport"><span>Import saves</span></button></div>
+    <div class="hidden" id="slotReset"><!-- TEMPORARY: reset the active wanderer to the start of a chapter (for testing; remove before release) -->
+      <div class="slot-msg">Temporary · reset <b id="slotResetWho">this wanderer</b> to the start of Chapter I or III, or to New London just before the trial in Chapter II. Keeps name, species and looks; level, items, crew, colonies and quests start over.</div>
+      <div class="row"><button class="btn small" id="slotReset1"><span>Chapter I</span></button><button class="btn small" id="slotReset2"><span>Chapter II · New London</span></button><button class="btn small" id="slotReset3"><span>Chapter III</span></button></div>
+    </div>
     <input type="file" id="slotFile" accept=".json,application/json" hidden>
     <button class="btn small" id="slotBack"><span>Back</span></button>
   </div>
@@ -5533,6 +5538,39 @@ function pauseExplore(on) {
 $('#xMenuBtn').addEventListener('click', () => { sfx.click(); pauseExplore(true); });
 $('#xResume').addEventListener('click', () => { sfx.click(); pauseExplore(false); });
 $('#xQuit').addEventListener('click', () => { sfx.click(); leaveExplore(); });
+/* ---- TEMPORARY: reset progress to the start of Chapter I, II or III (the pause menu's Reset progress) ----
+   Keeps the wanderer's identity (name, species, looks, world seed); everything else starts over. For II and III the chapters
+   before are marked done, as if just finished: Chapter I with the escape from the station; Chapter II with Orion and Nico
+   aboard and New London behind you. Then it starts the chapter the way the story does (the opening, the Chapter II intro,
+   the CHAPTER III · SOL card). Lives on the Load game screen (#slotReset, shown in load mode with a wanderer active), and a
+   chapter takes two taps. Nothing is written until you save. Remove this block, #slotReset and the line in openSlots when done. ---- */
+const RESET_CH1 = { talked: true, seen: [], slept: true, slept2: true, stormHit: true, stormTalk: true, stormSafe: true, stormOver: true, shelterBuilt: true, outside: true, found: true, metOutside: true, jMode: 'follow', roverFound: true, roverTalk: true, campBench: true, campTele: true, campDone: true, sawMeeting: true, ferry: true, betrayed: true, jamesDead: true, escaped: true, ferryGone: true };
+const RESET_CH2 = { started: true, introSeen: true, talkedOrion: true, orionJoined: true, orionBase: 1, orionMode: 'follow', call: true, townFound: true, townSeen: true, farmFound: true, lionsDone: true, husbandFound: true, arrested: true, arrived: true, londonSeen: true, londonTalked: true, metHawthorne: true, trialDone: true, verdict: 'guilty', reportTried: true, cantinaClue: true, doorReached: true, metNico: true, antFlashback: true, flashWhere: 'london', antChoice: 'calm', escapedLondon: true };
+const RESET_CH2_LONDON = Object.fromEntries(Object.entries(RESET_CH2).filter(([k]) => !['trialDone', 'verdict', 'escapedLondon'].includes(k))); // New London: Hawthorne met, waiting for the Council's summons (the trial next)
+function resetToChapter(n, inGame = true) {
+  const c = curChar(); if (!c) return;
+  const keep = new Set([...Object.keys(DEFAULT_W), ...Object.keys(speciesDefaults(spOf(c)) || {}), 'name', 'id', 'worldSeed', 'persona']); keep.delete('chapter');
+  const fresh = {}; for (const k of keep) if (k in c) fresh[k] = c[k];
+  fresh.chapter = n === 1 ? 0 : 2; // a new wanderer; or Chapter I just finished (Chapter III's start moves it on to 3, as the story does)
+  if (n >= 2) fresh.ch1 = Object.assign({}, RESET_CH1, { seen: XSPOTS.map(sp => sp.id) });
+  fresh.ch2 = n === 2 ? Object.assign({}, RESET_CH2_LONDON, { hawMood: spOf(c) === 'human' ? 'friendly' : 'hostile' }) : n === 3 ? Object.assign({}, RESET_CH2, { hawMood: spOf(c) === 'human' ? 'friendly' : 'hostile' }) : undefined;
+  if (!fresh.ch2) delete fresh.ch2;
+  if (inGame) leaveExplore(false); resumePlace = null;
+  const i = roster.findIndex(o => o.id === c.id); roster[i] = fresh; setActive(c.id); saveRoster();
+  state = 'deploying'; show(ui.title, false); const f = $('#fade'); f.style.transition = ''; f.style.opacity = 1; sfx.combat(false); sfx.stopSong && sfx.stopSong(.5); sfx.leadOn = false;
+  setTimeout(() => {
+    f.style.transition = 'opacity 2.2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 2300);
+    if (n === 1) runCutscene(); else if (n === 2) visitNewLondon(null); else beginChapter3(); // Chapter II: New London, just before the trial
+    setTimeout(() => notice('Progress reset', n === 2 ? 'CHAPTER II · NEW LONDON, BEFORE THE TRIAL' : `CHAPTER ${['', 'I', 'II', 'III'][n]} · FROM THE START`, 3200), 4200);
+  }, 650);
+}
+let resetArm = 0; // tap a chapter twice: the first tap only asks
+for (const n of [1, 2, 3]) $('#slotReset' + n).addEventListener('click', () => {
+  sfx.click(); const R = ['', 'I', 'II', 'III'][n];
+  if (resetArm !== n) { resetArm = n; slotMsg(`Tap Chapter ${R} again to reset ${(curChar() || {}).name || 'this wanderer'} to ${n === 2 ? 'New London, before the trial' : 'its start'} · unsaved progress is lost`, true); return; }
+  resetArm = 0; show(slotUI.root, false); resetToChapter(n, slotFrom === 'explore');
+});
+
 $('#tbcKeep').addEventListener('click', () => { sfx.click(); show(ui.tbc, false); if (ui.tbc.dataset.from === 'ch2') { ui.tbc.dataset.from = ''; show(ui.title, true); state = 'title'; openSlots('save', 'title'); return; } state = 'explore'; });
 $('#tbcBtn').addEventListener('click', () => { sfx.click(); if (state === 'ch2soon') { show(ui.tbc, false); show(ui.title, true); state = 'title'; return; } leaveExplore(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && !sceneLocked()) pauseExplore(true); });
@@ -19716,8 +19754,21 @@ function nmDueTick(dt) {
   if (NM.dueT > 3.5) { NM.dueT = 0; startNightmare(); }
 }
 const nmRace = sp => ['chompy', 'erisian', 'human', 'grek', 'taredesiban'].includes(sp) ? sp : 'human'; // a Taredesiban dreams Taredesiba I against Obsidnia (played on the duel's engine: ch4EndingPlay('tared'))
+function nmClearOrbit() { // the nightmare happens out beyond orbit, as it does on desktop, never skimming a planet: a phone can't hold a world's close-up terrain and the nightmare's scene at once
+  const [P] = nearestBody(); if (!P) return;
+  const off = tmpVs.copy(SPC.pos).sub(P.pos), d = off.length();
+  if (d < P.r * 6) { // too close: the ship drifts back out (under the black of the episode starting), the world still filling the view ahead
+    if (d < 1) off.set(0, 0, 1); off.normalize();
+    SPC.pos.copy(P.pos).addScaledVector(off, P.r * 6.5).add(tmpVs2.set(0, P.r * .5, 0));
+    SPC.q.setFromRotationMatrix(new THREE.Matrix4().lookAt(SPC.pos, P.pos, new THREE.Vector3(0, 1, 0)));
+  }
+  SPC.vel = 0; SPC.thr = 0; SPC.pulse = 0; SPC.camInit = false;
+  updateLods(); // the far, light versions of the worlds
+  for (const Q of SPC.bodies) if (Q.lods && Q.lods[2] && Q.lod !== 2) { Q.g.remove(Q.lods[2]); Q.lods[2].geometry.dispose(); Q.lods[2] = null; } // and the close-up terrain let go (it's rebuilt if you fly back in)
+}
 async function startNightmare() {
   if (NM.on) return; NM.on = true; NM.race = nmRace(spOf(wanderer));
+  { const f = $('#fade'); f.style.transition = 'none'; f.style.opacity = 1; nmClearOrbit(); requestAnimationFrame(() => { f.style.transition = 'opacity 1.4s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 1500); }); } // all five: out past orbit first
   NM.phase = 'panic'; NM.t = 0; NM.bi = -1; NM.ready = false; NM.script = NM_SCRIPTS[NM.race];
   state = 'nightmare'; SPC.keys.clear(); for (const k in SPC.btn) SPC.btn[k] = false; const hud = $('#spaceHud'); if (hud) hud.classList.add('hidden');
   sfx.gasp(1.4);
@@ -21082,6 +21133,7 @@ function openSlots(mode, from) {
   slotMode = mode; slotFrom = from; slotArm = -1;
   slotMsg(mode === 'save' && !roster.length ? 'Create a wanderer first — there is nothing to save yet' : (mode === 'save' && dirty ? 'You have unsaved progress' : (mode === 'delete' && !slots.some(Boolean) ? 'There are no saves to delete' : '')), mode === 'save' && !roster.length);
   renderSlots(); show(slotUI.root, true);
+  resetArm = 0; const rw = mode === 'load' && !!curChar(); $('#slotReset').classList.toggle('hidden', !rw); if (rw) $('#slotResetWho').textContent = curChar().name || 'this wanderer'; // TEMPORARY: Reset progress
 }
 function closeSlots() { show(slotUI.root, false); refreshMenu(); refreshDirty(); }
 function currentPlace() {

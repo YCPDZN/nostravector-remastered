@@ -109,6 +109,10 @@ Add one of these to the game's address to jump straight to a scene:
 
 ---
 
+## Temporary
+
+- **Reset progress** (on the Load game screen): back to the start of Chapter I or III, or to New London just before the trial in Chapter II, keeping name, species and looks. For testing; remove before release.
+
 ## Not built yet
 
 - **Hak's voice when you return to him after Sol falls:** CH3HAKBACK1–11 in `data/hakBackVoices.js`. Subtitles only for now.
