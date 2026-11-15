@@ -5942,9 +5942,13 @@ function alignAct(d, why) {
     if (b == null) { C.inf = clamp(C.inf + Math.abs(d) * 1.5, 0, 100); lootMsg(`${nm} approves`, '#cfd6e6'); continue; } // James tells you what you want to hear
     const lean = C.a >= 15 ? 1 : C.a <= -15 ? -1 : 0;
     if (!lean) { C.a = clamp(C.a + d * .35, -100, 100); continue; } // a neutral companion just drifts with you
-    // once you've turned them, each deed keeps pulling them the same way (.35, as a neutral drifts), all the way to an awakened villain or an enlightened hero
-    if (Math.sign(d) === lean) { C.inf = clamp(C.inf + Math.abs(d) * 2, 0, 100); C.a = clamp(C.a + d * .35, -100, 100); lootMsg(`${nm} approves · influence gained`, '#9fe6b0'); }
-    else { C.inf = clamp(C.inf - Math.abs(d) * 2, 0, 100); C.a = clamp(C.a + d * .5, -100, 100); lootMsg(`${nm} disapproves · influence lost`, '#ffb36e'); }
+    // KOTOR-style influence: a hero approves of good deeds, a villain of evil ones. Gain influence and they move TOWARD your alignment;
+    // lose it and they move AWAY from it. So a hero who does evil with a heroic companion pushes them down toward villainy, a villain who
+    // does good with a villainous companion pushes them up, and a villain who does good with a heroic companion (they approve) drags them down.
+    const you = Math.sign(st.p) || Math.sign(d), approve = Math.sign(d) === lean; // a perfectly grey wanderer counts as leaning the way of this deed
+    C.inf = clamp(C.inf + (approve ? 2 : -2) * Math.abs(d), 0, 100);
+    C.a = clamp(C.a + (approve ? you : -you) * Math.abs(d) * .4, -100, 100);
+    lootMsg(`${nm} ${approve ? 'approves · influence gained' : 'disapproves · influence lost'}`, approve ? '#9fe6b0' : '#ffb36e');
   }
   alSave();
   if (!$('#alignScr').classList.contains('hidden')) renderAlign();
