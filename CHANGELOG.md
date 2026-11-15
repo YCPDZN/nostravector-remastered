@@ -1963,3 +1963,7 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 
 ## Hawthorne's staged scene: phones back on the staged version
 - The montage crashed on phones even trimmed, so phones play the staged scene on the nightmare's stage again, as before. Desktop keeps the montage; the slimmer model and the staged fallback stay.
+
+## Hak's marker after the Cygnus; Reset progress removed
+- **Karribassa's marker leads you back to Hak:** while he's waiting (the first meeting, and the return after Sol falls), Karribassa's marker from the sky is gold and reads *Main quest · Hak*. On the ground, the marker points at the Hall of Oaths straight away, before his model has finished loading. If his model fails to load, the game tries again instead of leaving nobody there.
+- **Reset progress is gone** from the Load game screen. It was a temporary testing feature (Chapters I, II at New London, III, and III at Hawthorne).

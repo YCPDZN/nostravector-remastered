@@ -1389,10 +1389,6 @@ body.touch .al-key{display:none}
     <div class="slot-list" id="slotList"></div>
     <div class="slot-msg" id="slotMsg"></div>
     <div class="row slot-io"><button class="btn small" id="slotExport"><span>Export saves</span></button><button class="btn small" id="slotImport"><span>Import saves</span></button></div>
-    <div class="hidden" id="slotReset"><!-- TEMPORARY: reset the active wanderer to the start of a chapter (for testing; remove before release) -->
-      <div class="slot-msg">Temporary · reset <b id="slotResetWho">this wanderer</b> to the start of Chapter I or III, to New London just before the trial in Chapter II, or to the Cygnus's bridge for Hawthorne in Chapter III. Keeps name, species and looks; level, items, crew, colonies and quests start over.</div>
-      <div class="row"><button class="btn small" id="slotReset1"><span>Chapter I</span></button><button class="btn small" id="slotReset2"><span>Chapter II · New London</span></button><button class="btn small" id="slotReset3"><span>Chapter III</span></button><button class="btn small" id="slotReset4"><span>Chapter III · Hawthorne</span></button></div>
-    </div>
     <input type="file" id="slotFile" accept=".json,application/json" hidden>
     <button class="btn small" id="slotBack"><span>Back</span></button>
   </div>
@@ -5538,48 +5534,6 @@ function pauseExplore(on) {
 $('#xMenuBtn').addEventListener('click', () => { sfx.click(); pauseExplore(true); });
 $('#xResume').addEventListener('click', () => { sfx.click(); pauseExplore(false); });
 $('#xQuit').addEventListener('click', () => { sfx.click(); leaveExplore(); });
-/* ---- TEMPORARY: reset progress to the start of Chapter I, II or III (the pause menu's Reset progress) ----
-   Keeps the wanderer's identity (name, species, looks, world seed); everything else starts over. For II and III the chapters
-   before are marked done, as if just finished: Chapter I with the escape from the station; Chapter II with Orion and Nico
-   aboard and New London behind you. Then it starts the chapter the way the story does (the opening, the Chapter II intro,
-   the CHAPTER III · SOL card). Lives on the Load game screen (#slotReset, shown in load mode with a wanderer active), and a
-   chapter takes two taps. Nothing is written until you save. Remove this block, #slotReset and the line in openSlots when done. ---- */
-const RESET_CH1 = { talked: true, seen: [], slept: true, slept2: true, stormHit: true, stormTalk: true, stormSafe: true, stormOver: true, shelterBuilt: true, outside: true, found: true, metOutside: true, jMode: 'follow', roverFound: true, roverTalk: true, campBench: true, campTele: true, campDone: true, sawMeeting: true, ferry: true, betrayed: true, jamesDead: true, escaped: true, ferryGone: true };
-const RESET_CH2 = { started: true, introSeen: true, talkedOrion: true, orionJoined: true, orionBase: 1, orionMode: 'follow', call: true, townFound: true, townSeen: true, farmFound: true, lionsDone: true, husbandFound: true, arrested: true, arrived: true, londonSeen: true, londonTalked: true, metHawthorne: true, trialDone: true, verdict: 'guilty', reportTried: true, cantinaClue: true, doorReached: true, metNico: true, antFlashback: true, flashWhere: 'london', antChoice: 'calm', escapedLondon: true };
-const RESET_CH2_LONDON = Object.fromEntries(Object.entries(RESET_CH2).filter(([k]) => !['trialDone', 'verdict', 'escapedLondon'].includes(k))); // New London: Hawthorne met, waiting for the Council's summons (the trial next)
-// 4 · Chapter III at the Cygnus's bridge: everything before it done (James spared, so he's in your crew with Khazglar; Nyrexia
-// never recruited, so she died in the coup on Eris), the surge under way, the five decks cleared: aboard, at the bridge, Hawthorne ahead
-const RESET_CH3_CYG = { started: true, visited: ['sol', 'janira'], cellsGiven: true, landed: true, warped: true, khzCall: true, khzMet: true, khzBase: 1, dgnSeen: true, hawMars: true, charonLanded: true, charonMet: true, jamesRev: true, jamesFate: 'spared', nyxBeforeJames: false, alexiaCoup: true, nyxDead: true, nyxFailed: true, charonBack: true, hakCall: true, hakMet: true };
-function resetToChapter(n, inGame = true) {
-  const c = curChar(); if (!c) return;
-  const keep = new Set([...Object.keys(DEFAULT_W), ...Object.keys(speciesDefaults(spOf(c)) || {}), 'name', 'id', 'worldSeed', 'persona']); keep.delete('chapter');
-  const fresh = {}; for (const k of keep) if (k in c) fresh[k] = c[k];
-  fresh.chapter = n === 1 ? 0 : n === 4 ? 3 : 2; // a new wanderer; or Chapter I just finished (Chapter III's start moves it on to 3, as the story does)
-  if (n >= 2) fresh.ch1 = Object.assign({}, RESET_CH1, { seen: XSPOTS.map(sp => sp.id) });
-  fresh.ch2 = n === 2 ? Object.assign({}, RESET_CH2_LONDON, { hawMood: spOf(c) === 'human' ? 'friendly' : 'hostile' }) : n >= 3 ? Object.assign({}, RESET_CH2, { hawMood: spOf(c) === 'human' ? 'friendly' : 'hostile' }) : undefined;
-  if (!fresh.ch2) delete fresh.ch2;
-  if (n === 4) { fresh.ch3 = Object.assign({}, RESET_CH3_CYG, { nightmare: nmRace(spOf(c)) }); fresh.party = ['khazglar', 'james-ti']; fresh.lairs = { 'lead~res~cygnus': CYG_FLOORS }; // the five decks: cleared
-    fresh.dip = { realm: '', wars: {}, res: {}, col: {}, lent: {}, surge: { on: true, next: 900, n: 0, own: { earth: 'ti' } } }; }
-  if (inGame) leaveExplore(false); resumePlace = null;
-  const i = roster.findIndex(o => o.id === c.id); roster[i] = fresh; setActive(c.id); saveRoster();
-  state = 'deploying'; show(ui.title, false); const f = $('#fade'); f.style.transition = ''; f.style.opacity = 1; sfx.combat(false); sfx.stopSong && sfx.stopSong(.5); sfx.leadOn = false;
-  setTimeout(() => {
-    f.style.transition = 'opacity 2.2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 2300);
-    if (n === 1) runCutscene(); else if (n === 2) visitNewLondon(null); else if (n === 3) beginChapter3(); // Chapter II: New London, just before the trial
-    else { // the Cygnus: set down on Mercury out of sight, then straight aboard at the bridge
-      f.style.transition = ''; f.style.opacity = 1;
-      SPC.cygDock = true; CYGS.docking = true; // as if docking from orbit: nothing of Mercury shows, and it goes straight aboard (to the bridge: the decks are cleared)
-      startChapter3({ mode: 'explore', area: 'world', where: 'pl:mercury', dir: [0, 1, 0], x: 5, z: 14.5, y: 0, rot: Math.PI * .8, yaw: Math.PI * 1.8, nf: 1 }).catch(e => { console.error(e); SPC.cygDock = CYGS.docking = false; f.style.opacity = 0; });
-    }
-    setTimeout(() => notice('Progress reset', n === 2 ? 'CHAPTER II · NEW LONDON, BEFORE THE TRIAL' : n === 4 ? 'CHAPTER III · THE CYGNUS, HAWTHORNE' : `CHAPTER ${['', 'I', 'II', 'III'][n]} · FROM THE START`, 3200), n === 4 ? 6500 : 4200);
-  }, 650);
-}
-let resetArm = 0; // tap a chapter twice: the first tap only asks
-for (const n of [1, 2, 3, 4]) $('#slotReset' + n).addEventListener('click', () => {
-  sfx.click(); const R = ['', 'I', 'II', 'III', 'III · Hawthorne'][n];
-  if (resetArm !== n) { resetArm = n; slotMsg(`Tap Chapter ${R} again to reset ${(curChar() || {}).name || 'this wanderer'} to ${n === 2 ? 'New London, before the trial' : n === 4 ? 'the Cygnus’s bridge, Hawthorne next' : 'its start'} · unsaved progress is lost`, true); return; }
-  resetArm = 0; show(slotUI.root, false); resetToChapter(n, slotFrom === 'explore');
-});
 
 $('#tbcKeep').addEventListener('click', () => { sfx.click(); show(ui.tbc, false); if (ui.tbc.dataset.from === 'ch2') { ui.tbc.dataset.from = ''; show(ui.title, true); state = 'title'; openSlots('save', 'title'); return; } state = 'explore'; });
 $('#tbcBtn').addEventListener('click', () => { sfx.click(); if (state === 'ch2soon') { show(ui.tbc, false); show(ui.title, true); state = 'title'; return; } leaveExplore(); });
@@ -7076,7 +7030,7 @@ function questTarget() {
   if (DGN.on) return dgnTarget();
   if (NYX.R && NYX.R.root.parent && isPl()) return { x: NYX.x, z: NYX.z, label: 'Nyrexia Erisconos' };
   if (isPl() && world.dgnGate && khzPending()) return { x: world.dgnGate.x, z: world.dgnGate.z, label: 'The way into the mountain' };
-  if (isPl() && TIW.hak && (hakQ() || hakBackQ())) return { x: TIW.hak.x, z: TIW.hak.z, label: 'Hak Chompjak · the Hall of Oaths' };
+  if (isPl() && (hakQ() || hakBackQ()) && (TIW.hak || (world.planet.city && world.planet.city.K.name === 'Karribassa'))) { const C = world.planet.city; return TIW.hak ? { x: TIW.hak.x, z: TIW.hak.z, label: 'Hak Chompjak · the Hall of Oaths' } : { x: C.cx, z: C.cz + 46, label: 'Hak Chompjak · the Hall of Oaths' }; } // the city's heart until he's placed
   if (isPl() && TIW.cyg && (cygQ() || cygFarm())) return { x: TIW.cyg.x, z: TIW.cyg.z, label: 'The Cygnus supply shuttle' };
   if (isPl() && TIW.chn && (chnQ() || chnBackQ())) return { x: TIW.chn.x, z: TIW.chn.z, label: 'Charon and Kizna' };
   if (isPl()) { const LT = lairNearestTarget(player.position); if (LT && Math.hypot(player.position.x, player.position.z) < 160) return LT; return Math.hypot(player.position.x, player.position.z) > 30 ? { x: 0, z: 10, label: 'Your ship' } : null; }
@@ -12898,11 +12852,13 @@ async function hakCall() { // an incoming transmission
     setTimeout(surgeStart, 3800); // and as the line goes dead, the alarms
   }), 900);
 }
-async function hakPlace() { // the Emperor, in the heart of Karribassa: on the bridge before the Hall of Oaths and its white columns
+async function hakPlace(tries = 0) { // the Emperor, in the heart of Karribassa: on the bridge before the Hall of Oaths and its white columns
   const C = world.planet && world.planet.city;
   if (!C || C.K.name !== 'Karribassa') { setTimeout(() => lootMsg(tiPhone() ? 'Hak waits in Karribassa · fly to it' : 'Hak waits in the heart of Karribassa · take off and fly to the city from the sky (its marker), then land', '#ffb060'), 2600); return; }
   const area = curArea(), [R, ...G] = await Promise.all([leadTag('leader_chompy', 2.05)().catch(() => null), ...(tiPhone() ? [] : [0, 1].map(() => loadSpecies('chompy').then(() => townModel('chompy')).then(src => src ? (Rg => (armRig(Rg, 'sword'), Rg))(autoRig(dressTownsfolk(src, { sp: 'chompy', c: [0x1a1418, 0xd0343a] }), 1.8)) : null).catch(() => null)))]);
-  if (curArea() !== area || !(hakQ() || hakBackQ()) || !R) return;
+  if (curArea() !== area || !(hakQ() || hakBackQ())) return;
+  if (!R) { if (tries < 2) setTimeout(() => { if (curArea() === area && !TIW.hak) hakPlace(tries + 1).catch(e => console.error(e)); }, 1500); return; } // his model didn't load: try again
+  if (TIW.hak) return;
   const g = new THREE.Group(), x = C.cx, z = C.cz + 46, y = C.y; wScene.add(g);
   R.root.position.set(x, y, z); R.root.traverse(o => { if (o.isMesh) o.castShadow = !tiPhone(); }); g.add(R.root);
   G.forEach((Rg, i) => { if (!Rg) return; Rg.root.position.set(x + (i ? 2.6 : -2.6), y, z - 1.2); Rg.root.traverse(o => { if (o.isMesh) o.castShadow = !tiPhone(); }); g.add(Rg.root); }); // the Emperor's guard
@@ -16835,7 +16791,7 @@ function atmHudTick(alt) {
   for (const Q of A.pois) {
     const wp = A.tp.copy(Q.c).multiplyScalar(A.Rg + 60), d = wp.distanceTo(pos); if (d > (P.real ? 48000 : 1e9) || d < 220) continue;
     const v3 = wp.project(camera); if (v3.z > 1) continue; const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; if (x < -40 || x > W + 40 || y < -40 || y > H + 40) continue;
-    h += `<div class="sh-mk${Q.nofly ? ' nf' : ''}${Q.khz && khzPending() ? ' gold' : ''}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${Q.name.toUpperCase()}<br><small>${d > 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'}${Q.tag ? ' · ' + Q.tag : ''}</small></span></div>`;
+    h += `<div class="sh-mk${Q.nofly ? ' nf' : ''}${(Q.khz && khzPending()) || (Q.cap && P.id === 'janira' && (hakQ() || hakBackQ())) ? ' gold' : ''}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${Q.name.toUpperCase()}<br><small>${d > 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'}${Q.cap && P.id === 'janira' && (hakQ() || hakBackQ()) ? ' · MAIN QUEST · HAK' : Q.tag ? ' · ' + Q.tag : ''}</small></span></div>`;
   }
   box.innerHTML = h;
 }
@@ -21210,7 +21166,6 @@ function openSlots(mode, from) {
   slotMode = mode; slotFrom = from; slotArm = -1;
   slotMsg(mode === 'save' && !roster.length ? 'Create a wanderer first — there is nothing to save yet' : (mode === 'save' && dirty ? 'You have unsaved progress' : (mode === 'delete' && !slots.some(Boolean) ? 'There are no saves to delete' : '')), mode === 'save' && !roster.length);
   renderSlots(); show(slotUI.root, true);
-  resetArm = 0; const rw = mode === 'load' && !!curChar(); $('#slotReset').classList.toggle('hidden', !rw); if (rw) $('#slotResetWho').textContent = curChar().name || 'this wanderer'; // TEMPORARY: Reset progress
 }
 function closeSlots() { show(slotUI.root, false); refreshMenu(); refreshDirty(); }
 function currentPlace() {
