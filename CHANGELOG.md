@@ -2071,3 +2071,13 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - You answer "Go. I'll come back to you." or "You don't have to explain. Go.", and he replies to each.
   - He stays on the crew deck until the blockade is over. Talk to him there and he asks you to finish it first. Afterwards you can call him back as usual.
   - Voiced: `data/orionLeaveVoices.js` (CH3ORIONLEAVESPARTY1–9: his six lines, his two replies, and his line on the crew deck). The script is in `assets/audio/karribassa/VOICE_SCRIPT.md`.
+
+## Croxian's fate, and Orion's
+- **Beaten at Terra Imperia's base, Croxian Mascar and Malia de Toro now stay down, and you choose: let them go, or finish them.** Spared, they fall back to their ships. Killed, they say their last words. Croxian's are "Tell my father… tell him he was right. About all of it." Each one's lines change if the other is already dead. The blockade breaks once every choice is made.
+  - This sets `ch3.croxFate` and `ch3.maliaFate`, which Chapter IV's ending was already reading but nothing had set until now.
+- **Kill Croxian and Orion Mascar leaves you for good.** The next time you board the Nostra, he's waiting.
+  - If he spent the blockade aboard with the comms open, he heard his son die. If not, he heard it on the news.
+  - He talks about Croxian as a boy, and about the mercy he would have shown, and you can answer in one of three ways. Then he goes to bring his son home, and the screen fades.
+  - He leaves your crew, the Nostra and the main menu for good, and never turns up in Africa again. He leaves alive (`ch3.orionGone`, `ch3.orionFate: 'spared'`), which Chapter IV reads as Orion taking Terra Imperia.
+  - Malia's fate doesn't affect any of this.
+  - The lines are in `assets/audio/karribassa/VOICE_SCRIPT.md`. They aren't recorded yet, so they show as subtitles.

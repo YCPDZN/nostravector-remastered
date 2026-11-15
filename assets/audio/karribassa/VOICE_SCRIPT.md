@@ -70,3 +70,58 @@ Talking to him on the crew deck while the blockade is on:
 | File | Speaker | Line |
 |---|---|---|
 | CH3ORIONLEAVESPARTY9.mp3 | Orion Mascar | Not this one. Finish it, then come and get me. I’ll be right here, with the comms open. |
+
+
+## The blockade: sparing or killing Croxian and Malia
+
+When Croxian Mascar or Malia de Toro is beaten at Terra Imperia's base, they stay down and you choose. **Not recorded yet:** these show as subtitles.
+
+| Speaker | When | Line |
+|---|---|---|
+| Croxian Mascar | Beaten | Go on, then. Hawthorne would. |
+| Croxian Mascar | Spared | This isn’t over. Fall back! |
+| Croxian Mascar | Spared, Malia already dead | Malia… You’ll answer for her. Every one of you. Fall back! |
+| Croxian Mascar | Killed: his last words | Tell my father… tell him he was right. About all of it. |
+| Malia de Toro | Beaten | Well? Make it quick or make it kind. Just make it. |
+| Malia de Toro | Spared | Pull out! Back to the ships! |
+| Malia de Toro | Spared, Croxian already dead | Croxian… You’ll pay for him, wanderer. I swear it. Back to the ships! |
+| Malia de Toro | Killed: her last words | Tell Croxian I— no. He knows. |
+| Malia de Toro | Killed, Croxian already dead | Wait for me, Croxian. I’m coming. |
+
+
+## Orion leaves: after Croxian's death
+
+The next time you board the Nostra after killing Croxian, Orion is waiting. Then he leaves the party for good. **Not recorded yet:** these show as subtitles.
+
+He opens with one of two pairs, depending on whether he was aboard with the comms open during the blockade:
+
+| Speaker | When | Line |
+|---|---|---|
+| Orion Mascar | He heard it on the comms | I heard it. The comms were open. I told you they would be. |
+| Orion Mascar | He heard it on the comms | He asked you to tell me I was right. I waited years to hear my boy say that, and I had to hear it through a speaker, from the one who killed him. |
+| Orion Mascar | He heard it on the news | It’s on every channel. General Croxian Mascar, killed on Janira Prime. |
+| Orion Mascar | He heard it on the news | They said it was you. I didn’t believe them. Not until I saw your face just now. |
+
+Then:
+
+| Speaker | Line |
+|---|---|
+| Orion Mascar | He was four the first time he fell off the sea wall at Dover. Split his chin open. He didn’t cry. He looked up at me to see if he should. |
+| Orion Mascar | I taught him to stand up straight. I taught him to hold a rifle. I never taught him how to come home. |
+| Orion Mascar | You could have let him go. Hak would have. Nico would have. I would have, wanderer, for you. I’d have let anyone go, for you. |
+| Orion Mascar | I sat by your bed for two weeks. I held you on that pier. And you couldn’t spare one minute of mercy for my son. |
+
+Your answer, and his reply:
+
+| Choice | Orion's reply |
+|---|---|
+| I’m sorry, Orion. | Don’t. Don’t say you’re sorry. If you say it, I have to decide whether I believe you, and I can’t. Not today. |
+| He would have killed us all. | Maybe. He was a soldier. So was I. A beaten soldier gets to go home, wanderer. That was the only rule I ever believed in. |
+| [Say nothing] | Nothing. Good. At least you know there’s nothing to say. |
+
+And last:
+
+| Speaker | Line |
+|---|---|
+| Orion Mascar | I’m going to bring him home. Whatever’s left of him. Someone should, and it was always supposed to be me. |
+| Orion Mascar | Don’t follow me. Don’t call. If you ever see me again, wanderer… I don’t know who I’ll be. |

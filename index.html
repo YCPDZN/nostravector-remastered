@@ -12989,6 +12989,53 @@ const ORION_STEP = [
   'I can’t stand by and watch it happen again. Not in a real fight. Not with you bleeding in front of me. Not yet.',
   'So I’m going back to the Nostra. I’ll keep her warm and the comms open. Come back to me in one piece, friend.'
 ];
+/* ---- Croxian is dead, by your hand. The next time you board the Nostra, Orion is waiting. If he was aboard during the blockade, he
+   heard it on the comms he promised to keep open; if not, he heard it on the news. Then he leaves, for good: off your crew, the ship
+   and the main menu, alive (ch3.orionGone, ch3.orionFate 'spared', which Chapter IV's ending reads: he takes Terra Imperia). ---- */
+const ORION_GRIEF_HEARD = [
+  'I heard it. The comms were open. I told you they would be.',
+  'He asked you to tell me I was right. I waited years to hear my boy say that, and I had to hear it through a speaker, from the one who killed him.'
+];
+const ORION_GRIEF_NEWS = [
+  'It’s on every channel. General Croxian Mascar, killed on Janira Prime.',
+  'They said it was you. I didn’t believe them. Not until I saw your face just now.'
+];
+const ORION_GRIEF = [
+  'He was four the first time he fell off the sea wall at Dover. Split his chin open. He didn’t cry. He looked up at me to see if he should.',
+  'I taught him to stand up straight. I taught him to hold a rifle. I never taught him how to come home.',
+  'You could have let him go. Hak would have. Nico would have. I would have, wanderer, for you. I’d have let anyone go, for you.',
+  'I sat by your bed for two weeks. I held you on that pier. And you couldn’t spare one minute of mercy for my son.'
+];
+const ORION_GRIEF_END = [
+  'I’m going to bring him home. Whatever’s left of him. Someone should, and it was always supposed to be me.',
+  'Don’t follow me. Don’t call. If you ever see me again, wanderer… I don’t know who I’ll be.'
+];
+const orionGriefDue = () => !!(wanderer && wanderer.ch2 && wanderer.ch2.orionJoined && c3f('croxDead') && !c3f('orionGone'));
+async function orionGrief() {
+  if (!orionGriefDue() || SHIPI.grief) return; SHIPI.grief = true;
+  const heard = c3f('orionStepped'), deck = SHIPI.decks[SHIPI.deck];
+  let R = null; try { R = await compRigFor('orion'); } catch (e) { R = null; }
+  if (R && deck && SHIPI.on) { const p = player.position, a = player.rotation.y, x = p.x + Math.sin(a) * 1.7, z = p.z + Math.cos(a) * 1.7; deck.add(R.root); R.root.position.set(shipFree(x, z) ? x : p.x, 0, shipFree(x, z) ? z : p.z + 1.2); R.root.rotation.y = Math.atan2(p.x - R.root.position.x, p.z - R.root.position.z); R.mode = 'idle'; SHIPI.griefR = R; }
+  if (wanderer.aboard) delete wanderer.aboard.orion; shipCrewPlace(); // off the crew deck: he's here, in front of you
+  sfx.drone && sfx.drone(.25);
+  const leave = line => setTimeout(() => openDialog('ORION MASCAR', [line, ...ORION_GRIEF_END], false, () => {
+    const fd = $('#fade'); fd.style.transition = 'opacity 1.6s'; fd.style.opacity = 1;
+    setTimeout(() => {
+      if (SHIPI.griefR && SHIPI.griefR.root.parent) SHIPI.griefR.root.parent.remove(SHIPI.griefR.root); SHIPI.griefR = null;
+      setC3({ orionGone: true, orionFate: 'spared' }); // gone, and alive
+      for (const k of ['aboard', 'dungeon']) if (wanderer[k]) delete wanderer[k].orion; if (wanderer.dip && wanderer.dip.lent) delete wanderer.dip.lent.orion;
+      const c = curChar(); if (c) { c.aboard = wanderer.aboard; c.dungeon = wanderer.dungeon; c.dip = wanderer.dip; } saveRoster();
+      if (world.orion) world.orion.root.visible = false; if (ex.cSel === 'orion') ex.cSel = null; refreshJamesUI(); shipCrewPlace(); ui.xhud.classList.toggle('comp', companionOn() || partyNow().length > 0);
+      fd.style.transition = 'opacity 2.4s'; fd.style.opacity = 0; sfx.thud();
+      notice('\u00a0', 'ORION MASCAR HAS LEFT', 4600);
+      setTimeout(() => notice('\u00a0', 'YOUR ACTIONS WILL BE REMEMBERED', 4600), 5200);
+    }, 1800);
+  }), 80);
+  setTimeout(() => openDialog('ORION MASCAR', [...(heard ? ORION_GRIEF_HEARD : ORION_GRIEF_NEWS), ...ORION_GRIEF], false, () => openChoice('ORION MASCAR', [
+    { text: 'I’m sorry, Orion.', onPick: () => leave('Don’t. Don’t say you’re sorry. If you say it, I have to decide whether I believe you, and I can’t. Not today.') },
+    { text: 'He would have killed us all.', onPick: () => leave('Maybe. He was a soldier. So was I. A beaten soldier gets to go home, wanderer. That was the only rule I ever believed in.') },
+    { text: '[Say nothing]', onPick: () => leave('Nothing. Good. At least you know there’s nothing to say.') }])), 1600);
+}
 async function orionStepsBack(done) {
   if (!wanderer || !orionJoined() || !partyNow().includes('orion') || c3f('orionStepped')) { setTimeout(done, 1200); return; } // he's not with you: straight on
   const vo = await orionLeaveVo(), one = i => vo[i] ? [vo[i]] : undefined;
@@ -13075,10 +13122,10 @@ function siegeTick(dt) {
   for (const B of SG.bosses) {
     if (B.gone) continue; const R = B.R, c = B.c, q = R.root.position;
     if (c.dead || c.hp <= 0) { B.gone = true; c.dead = 1; const i = fauna.list.indexOf(c); if (i >= 0) fauna.list.splice(i, 1); for (const m of B.tels) if (m.parent) m.parent.remove(m); B.tels = [];
-      burst(q.x, q.y + 1, q.z, 60, 6, 1, .3, .3, 1, 1.4, 2); sfx.thud(); setTimeout(() => { if (R.root.parent) R.root.parent.remove(R.root); }, 400);
-      if (B.P) { notice(pontTitle(B.P), `${B.P.name.toUpperCase()} IS BEATEN`, 3000); setTimeout(() => pontChoice(B.P.id, () => {}), 1200); } // as on the Cygnus: take them in, kill them, or let them go
-      else siegeSay(B.key === 'crox' ? 'CROXIAN MASCAR' : 'MALIA DE TORO', B.key === 'crox' ? 'This isn’t over. Fall back!' : 'Pull out! Back to the ships!', 3000);
-      if (SG.bosses.every(o => o.gone)) siegeWin(); continue; }
+      burst(q.x, q.y + 1, q.z, 60, 6, 1, .3, .3, 1, 1.4, 2); sfx.thud();
+      if (B.P) { setTimeout(() => { if (R.root.parent) R.root.parent.remove(R.root); }, 400); notice(pontTitle(B.P), `${B.P.name.toUpperCase()} IS BEATEN`, 3000); setTimeout(() => pontChoice(B.P.id, () => {}), 1200); } // as on the Cygnus: take them in, kill them, or let them go
+      else { R.mode = 'idle'; animRig(R, 0); notice('Terra Imperia', `${B.name.toUpperCase()} IS BEATEN`, 2600); siegeSay(null, () => siegeFate(B)); } // Croxian and Malia stay down: spare them, or finish them (Chapter IV remembers)
+      if (SG.bosses.every(o => o.gone)) siegeSay(null, () => siegeWin()); continue; } // the blockade breaks once every choice is made
     c.x = q.x; c.z = q.z; c.y = q.y; c.slowT = Math.max(0, (c.slowT || 0) - dt);
     if (c.barT > 0) { c.barT -= dt; c.bar.visible = true; c.bar.quaternion.copy(camera.quaternion).premultiply(tmpQ.copy(R.root.quaternion).invert()); const f = c.bar.userData.fg, k = Math.max(0, c.hp / c.D.hp); f.scale.x = Math.max(.001, k); f.position.x = -(1 - k) / 2; } else c.bar.visible = false;
     if (!live) { R.mode = 'idle'; animRig(R, dt); continue; }
@@ -13117,6 +13164,23 @@ function siegeWin() {
     siegeSay(null, () => { siegeLeave(); lootMsg(tiPhone() ? 'Hak, Darius and Vishara return to Karribassa' : 'Hak, Darius and Vishara return to Karribassa · Take Sol back from Terra Imperia: bombard its worlds and beat their governors', '#ffb060'); });
   }, 1200);
 }
+/* ---- Croxian and Malia, beaten: let them go, or kill them. Saves ch3.croxFate / ch3.maliaFate ('spared' | 'killed'), which Chapter IV's
+   ending reads. Croxian is Orion's son: kill him, and Orion leaves you for good (orionGrief, the next time you board the Nostra). ---- */
+function siegeFate(B) {
+  const crox = B.key === 'crox', who = crox ? 'CROXIAN MASCAR' : 'MALIA DE TORO', R = B.R, other = c3f(crox ? 'maliaDead' : 'croxDead');
+  const away = () => { if (R.root.parent) R.root.parent.remove(R.root); };
+  openDialog(who, [crox ? 'Go on, then. Hawthorne would.' : 'Well? Make it quick or make it kind. Just make it.'], false, () => openChoice(who, [
+    { text: crox ? 'Let him go.' : 'Let her go.', onPick: () => {
+      setC3({ [crox ? 'croxFate' : 'maliaFate']: 'spared' }); const q = R.root.position; burst(q.x, q.y + 1, q.z, 30, 4, .8, .8, .9, .7, 1, 1.2); away();
+      siegeSayNow(who, crox ? (other ? 'Malia… You’ll answer for her. Every one of you. Fall back!' : 'This isn’t over. Fall back!') : (other ? 'Croxian… You’ll pay for him, wanderer. I swear it. Back to the ships!' : 'Pull out! Back to the ships!'), 3400);
+    } },
+    { text: crox ? 'Finish him.' : 'Finish her.', onPick: () => setTimeout(() => openDialog(who, [crox ? 'Tell my father… tell him he was right. About all of it.' : (other ? 'Wait for me, Croxian. I’m coming.' : 'Tell Croxian I— no. He knows.')], false, () => {
+      setC3(crox ? { croxFate: 'killed', croxDead: true } : { maliaFate: 'killed', maliaDead: true });
+      const q = R.root.position; sfx.swing(); setTimeout(() => { sfx.thud(); ex.shake = .5; burst(q.x, q.y + 1, q.z, 70, 6, .9, .2, .2, 1, 1.3, 2); away(); notice('Terra Imperia', `${who} IS DEAD`, 3600); }, 260);
+      if (crox && orionJoined()) setTimeout(() => lootMsg(c3f('orionStepped') ? 'The Nostra’s comms are open…' : 'Somewhere, Orion Mascar will hear of this', '#ff8f86'), 4200);
+    }), 80) }]));
+}
+function siegeSayNow(who, line, ms = 3600) { SSAY.q.unshift({ who, line, ms }); if (!SSAY.busy) siegeSayNext(); } // straight after a choice, before anything already waiting
 // the fight's lines, one at a time, each under its own speaker's name (they used to all go out as Croxian's, and could talk over each other).
 // A line waits while a dialogue is open (a beaten Pontifex's choice); ok(), if given, can drop a line that no longer fits.
 const SSAY = { q: [], busy: false };
@@ -18786,6 +18850,7 @@ async function shipFollowPlace() {
   }
 }
 function shipFollowTick(dt) {
+  if (SHIPI.griefR) animRig(SHIPI.griefR, dt);
   const want = shipFollowIds(), p = player.position, still = ex.dlg || ex.invOpen;
   want.forEach((id, k) => {
     const R = SHIPI.frigs[id]; if (!R || !R.root.parent) return; const o = R.root.position, dx = p.x - o.x, dz = p.z - o.z, d = Math.hypot(dx, dz) || 1;
@@ -18813,6 +18878,7 @@ function enterShip(from) {
   ex.yaw = player.rotation.y + Math.PI; ex.pitch = .2; ex.dist = Math.min(ex.dist || 4, 3.4); vel.set(0, 0, 0); ex.snap = true;
   ui.xhud.classList.remove('cutting', 'cineonly', 'dreaming'); renderTasks();
   notice(from === 'space' ? 'Aboard · in flight' : 'Aboard', 'THE NOSTRA', 2400); sfx.whoosh(); renderHotbar(); siegeShipLine(from);
+  if (orionGriefDue()) setTimeout(orionGrief, 1400); // Croxian is dead: Orion is waiting
 }
 function leaveShip(to) { // to: 'ground' (down the ramp), 'space' (back to the helm), or 'takeoff'
   if (!SHIPI.on) return;
@@ -20871,6 +20937,7 @@ const ORION_WAKE = [
   'Get some air. Stretch your legs. Just don’t wander too far, and if anyone asks, you’re my cousin from the coast.'
 ];
 async function placeOrion() {
+  if (wanderer && wanderer.ch3 && wanderer.ch3.orionGone) { if (world.orion) world.orion.root.visible = false; return; } // gone for good, Africa included
   if (wanderer && wanderer.aboard && wanderer.aboard.orion) { if (world.orion) world.orion.root.visible = false; return; } // waiting aboard the Nostra
   if (wanderer && wanderer.dungeon && wanderer.dungeon.orion) { if (world.orion) world.orion.root.visible = false; return; } // off clearing a lair
   if (orionJoined() && wanderer.dip && wanderer.dip.lent && wanderer.dip.lent.orion) { if (world.orion) world.orion.root.visible = false; return; } // serving another faction
@@ -20914,7 +20981,7 @@ const OBARK = {
 };
 const OLABEL = { mine: 'MINING', explore: 'EXPLORING', base: 'AT HOME', wander: 'WANDERING', follow: 'FOLLOWING' };
 const orionC = { mode: 'follow', wp: null, wpT: 0, node: null, swingT: 0, legs: 0 };
-const orionJoined = () => !!(wanderer && wanderer.ch2 && wanderer.ch2.orionJoined);
+const orionJoined = () => !!(wanderer && wanderer.ch2 && wanderer.ch2.orionJoined && !(wanderer.ch3 && wanderer.ch3.orionGone)); // he left you after Croxian died: for good
 function orionLevel() { const c2 = (wanderer && wanderer.ch2) || {}; return clamp(14 + levelInfo((wanderer && wanderer.xp) || 0).level - (c2.orionBase || 1), 14, 100); }
 function orionCmd(mode, quiet) {
   if (!JCMDS.includes(mode)) return;
