@@ -5871,8 +5871,11 @@ const AL_EXTRA = [
 ];
 const alFact = L => L.al || ((L.facts || []).find(f => f[0] === 'Alignment') || [])[1];
 const alBaseOf = L => { const f = alFact(L); return f in AL_BASE ? AL_BASE[f] : null; }; // null = unreadable (James, before the pier)
-function alJamesFix() { const A = wanderer && wanderer.align; if (!A || A.jv) return; A.jv = 1; const C = A.c && A.c['james-ti']; if (C) C.a = clamp(C.a + 63, -100, 100); } // James's chart used to start at Lawful Evil (-55); spared, he's Lawful Neutral (8)
-function alState() { if (!wanderer.align) wanderer.align = { p: 0, c: {}, jv: 1 }; alJamesFix(); return wanderer.align; }
+function alJamesFix() { const A = wanderer && wanderer.align; if (!A) return;
+  if (!A.jv) { A.jv = 1; const C = A.c && A.c['james-ti']; if (C) C.a = clamp(C.a + 63, -100, 100); }
+  if (!A.jk) { A.jk = 1; const K = A.c && A.c.javek; if (K && K.a === 0) K.a = clamp(Math.round((A.p || 0) * .5), -100, 100); } // Javek's chart used to be unreadable and never moved: as if he'd moved with you
+} // James's chart used to start at Lawful Evil (-55); spared, he's Lawful Neutral (8)
+function alState() { if (!wanderer.align) wanderer.align = { p: 0, c: {}, jv: 1, jk: 1 }; alJamesFix(); return wanderer.align; }
 function alSave() { const c = curChar(); if (c) c.align = wanderer.align; saveRoster(); }
 function alComp(L) { alJamesFix(); const C = (wanderer.align && wanderer.align.c[L.id]) || null, b = alBaseOf(L); return { a: C ? C.a : b, inf: C ? C.inf : 50, hidden: b == null, met: !!C }; }
 // their written alignment follows where the chart has moved them: law stays their own, good/evil comes from the chart ("Neutral Evil · was Neutral Good")
@@ -5931,12 +5934,21 @@ function alCompDarkK(id) {
   return alDarkK(alComp(L).a);
 }
 let alSyncT = 0;
+function javekSwap() { // Javek's look follows his fall: the fugitive (hood, cape, glasses) or the machine-king (red optic, cloak off)
+  const red = fallenComp('javek'), stale = R => R && R.javekRed !== undefined && R.javekRed !== red, drop = R => { if (R && R.root.parent) R.root.parent.remove(R.root); };
+  const C = CREW.javek; if (C && C.R && stale(C.R)) { drop(C.R); C.R = null; C.loading = false; if (ex.mode === 'world') placeCrew(); }
+  let ship = false;
+  if (stale(SHIPI.rigs && SHIPI.rigs.javek)) { drop(SHIPI.rigs.javek); delete SHIPI.rigs.javek; ship = true; }
+  if (stale(SHIPI.frigs && SHIPI.frigs.javek)) { drop(SHIPI.frigs.javek); delete SHIPI.frigs.javek; ship = true; }
+  if (ship && SHIPI.on) shipCrewPlace();
+}
 function alOutfitSync(dt) {
   if ((alSyncT -= dt) > 0 || !wanderer) return; alSyncT = .5;
   if (james.ready) alOutfit(james.root, alCompDarkK('james'), 'james');
   if (world.orion) alOutfit(world.orion.root, alCompDarkK('orion'), 'orion');
   if (menuOrionR) alOutfit(menuOrionR.root, alCompDarkK('orion'), 'orion');
   if (menuNicoR) alOutfit(menuNicoR.root, alCompDarkK('nico'), 'nico');
+  javekSwap();
   for (const id in CREW) if (CREW[id] && CREW[id].R) alOutfit(CREW[id].R.root, alCompDarkK(id), id); // everyone walking with you: Nico, Nyrexia, Khazglar, Croxian, Malia, Josiah, Tyrotaronus, Gareth...
   const pk = alDarkK((wanderer.align && wanderer.align.p) || 0);
   if (alOutfitSync.pk !== pk) { alOutfitSync.pk = pk; applyLook(wanderer); }
@@ -15223,7 +15235,7 @@ let TEST_RUN = null;
     ids.push('pont:testpm', 'pont:testsh');
     T.party = ids; T.cmds = {}; for (const id of ['orion', 'nico', ...ids]) T.cmds[id] = 'follow';
     T.aboard = {}; T.dungeon = {}; if (T.dip) T.dip = Object.assign({}, T.dip, { lent: {} });
-    T.align = { p: 100 * v, c: {}, jv: 1 };
+    T.align = { p: 100 * v, c: {}, jv: 1, jk: 1 };
     for (const id of ['orion', 'nico', ...ids]) T.align.c[id] = { a: 90 * v, inf: 90 };
     for (const id of ['pont:testpm', 'pont:testsh']) T.align.c[id] = { a: v < 0 ? -95 : v > 0 ? 40 : -20, inf: 90 }; // evil: past −80, so their corrupted files show
     T.place = { mode: 'explore', area: 'space', where: 'space', sys: 'sol', aboard: true, deck: 2 };
@@ -19235,9 +19247,9 @@ async function companionRig(id) { // the rig any companion walks and fights with
   if (id === 'nico') return nicoCompanionRig();
   if (SIEGE_LEADS[id]) { const R = await SIEGE_LEADS[id].rig(); if (!R) throw new Error('no model for ' + id); return R; }
   if (String(id).startsWith('pont:')) { const R = await pontRig(pontById(id.slice(5))); if (!R) throw new Error('no Pontifex ' + id); return R; }
-  const L = COMPANIONS.find(o => o.id === id && o.tag);
-  if (L) { await glbReady(L.tag); const el = document.getElementById(L.tag); if (!el) throw new Error('no model for ' + id); const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-    const sc = await parseGlb(u8.buffer); if (L.mod === 'kizna') feminiseRobot(sc); const R = autoRig(gearNoMeasure(SkeletonUtils.clone(sc)), L.h || 1.9); armRig(R, L.weapon || 'none');
+  const L = COMPANIONS.find(o => o.id === id && o.tag), red = id === 'javek' && fallenComp('javek'), tag = red ? 'cpJavekR' : L && L.tag; // fallen Javek: hood, cape and glasses off, the red optical sensor back in his goggles
+  if (L) { await glbReady(tag); const el = document.getElementById(tag); if (!el) throw new Error('no model for ' + id); const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    const sc = await parseGlb(u8.buffer); if (L.mod === 'kizna') feminiseRobot(sc); const R = autoRig(gearNoMeasure(SkeletonUtils.clone(sc)), L.h || 1.9); armRig(R, L.weapon || 'none'); if (id === 'javek') R.javekRed = red;
     if (id === 'khazglar') { const own = []; R.model.traverse(o => { if (/^weapon$/i.test(o.name || '')) own.push(o); }); for (const o of own) if (o.parent) o.parent.remove(o); // the model carries a hammer of its own: one hammer, not two
       const sock = R.rh ? boneSocket(R.rh) : R.ra ? handSocket(R.ra) : null; if (sock) { const H = makeKhzHammer(); sock.add(H); R.gear.push(H); } R.weapon = 'sword'; } // his legendary hammer
     return R; }
@@ -20316,7 +20328,7 @@ function planetTraders(P) {
    Then Orion and Nico bring them back. It happens once (ch3.nightmare). */
 const NM = { on: false, t: 0, phase: null, bi: -1, scene: null, props: null, actors: {}, cam: new THREE.Vector3(), look: new THREE.Vector3(), q: [], vo: {}, race: 'human' };
 // models fetched the first time they're shown, not at start-up: about 9 MB that phones shouldn't pay for until they need it
-const LAZY_GLB = new Set(['cpJavek', 'cpJavekC', 'cpCroxianU', 'cpPontifex']);
+const LAZY_GLB = new Set(['cpJavek', 'cpJavekC', 'cpJavekR', 'cpCroxianU', 'cpPontifex']); // cpJavekR: Javek fallen, cloak off and the red optic back
 const glbReady = tag => LAZY_GLB.has(tag) ? loadDataScript(tag, 'glb') : Promise.resolve(true);
 function loadDataScript(id, kind) { // fetch a data/<id>.js pack only when it's needed
   return new Promise(res => {
@@ -23886,7 +23898,7 @@ function pdResolve(L) {
   const d = L.dyn && L.dyn(chNow());
   const R = d ? Object.assign({}, L, d) : L;
   if (d && d.paras2) { R.paras = [...L.paras]; R.paras[1] = d.paras2; }
-  return pdAlign(R);
+  return pdAlign(R, COMPANIONS.includes(L) || !!L.crewFile || !!PD_ALIAS[L.tag]);
 }
 // ---- fallen companions: anyone who started good or neutral and has turned evil in your company ----
 // Their Nostrapedia file changes (a new alignment line and what they've become beside you), and out in the world they turn crueller:
@@ -23923,9 +23935,9 @@ const PD_FALLEN = {
     align: 'Loyal to a code, and the code has rotted. James keeps every promise he makes to you, and you have stopped asking for kind ones.',
     para: 'Whatever he was settling with you, the account is closed. Beside you he has become the Pontifex Maximus again in everything but whose orders he follows: the reactor in his chest runs hot, the scythe comes out first, and he carries out cruelty with the same cold punctuality he once gave Terra Imperia. He has stopped calling it a debt. He calls it duty.',
     barks: ['Hawthorne taught me obedience. You taught me what it’s for.', 'I spared nobody for Terra Imperia either. Old habits.', 'You let me live once. I’ve decided nobody else gets that.'], kills: ['Sentence carried out.', 'By your order.'] },
-  javek: { title: 'Leader of the Grob, again', label: 'Lawful Evil · as he once was', facts: [['Status', 'Fugitive no longer'], ['Mechanical arm', 'Never hidden now'], ['Ambition', 'The Grob Robotic Collective, rebuilt']],
+  javek: { tag: 'cpJavekR', title: 'Leader of the Grob, again', label: 'Lawful Evil · as he once was', facts: [['Status', 'Fugitive no longer'], ['Mechanical arm', 'Never hidden now'], ['Ambition', 'The Grob Robotic Collective, rebuilt']],
     align: 'A machine-king who lost everything, and has decided to take it all back. Beside you, Javek remembers what it was to rule.',
-    para: 'The patience was a mask after all. In your company the old cruelty of the Grob Robotic Collective has come back, colder and more methodical than ever, and the mechanical arm under his cape is out more often than it is hidden. He talks of Steca and of the house of Chompjak in the same measured voice, and the measure is how many of them he means to leave standing: none.',
+    para: 'The patience was a mask after all. In your company the old cruelty of the Grob Robotic Collective has come back, colder and more methodical than ever. The hood and cape are gone, and so are the glasses he wore to mock Hak Chompjak: the brass goggles are back, with the red optical sensor burning in them again, and the mechanical arm is out for everyone to see. He talks of Steca and of the house of Chompjak in the same measured voice, and the measure is how many of them he means to leave standing: none.',
     barks: ['Steca was a setback. Not an ending.', 'Flesh is so very fragile. I had nearly forgotten how satisfying that is.', 'The Collective ruled worlds. We could rule more.'], kills: ['Inefficient creature.', 'Recycled.'] },
   tyrotaronus: { align: 'Patient, polite, and taking a side at last. Tyrotaronus walks beside you now, and nothing is left standing in front of him.',
     para: 'Whatever great power he once held somewhere out there, he has begun to remember how he used it. He still speaks softly. He no longer waits. Things die around him without his seeming to move, and when he speaks of home now, he speaks of it as somewhere he will return to as a conqueror.',
@@ -23954,7 +23966,7 @@ function cruelTick(dt, live) { // now and then, one of them says what they've be
 }
 // Gareth has a Companions file of his own while he's in your crew (the others from Project BC and Sevirrus were born villains, so theirs live with their own games)
 const PD_CREW_FILES = [
-  { id: 'pbc-gareth', tag: 'chGareth', h: 1.85, name: 'GARETH WILLIAMS', title: 'Project BC · Grade 7 Civil Servant',
+  { id: 'pbc-gareth', crewFile: true, tag: 'chGareth', h: 1.85, name: 'GARETH WILLIAMS', title: 'Project BC · Grade 7 Civil Servant',
     facts: [['Species', 'Human'], ['From', 'Uxbridge, West London'], ['Rank', 'Grade 7 Civil Servant'], ['Fights with', 'Two pistols'], ['Wears', 'A charcoal suit and a burgundy tie'], ['Alignment', 'Neutral Good']],
     align: 'Cheerful, loyal and almost impossible to keep upright.',
     get paras() { const c = charById('pbc-gareth'); return c && c.desc ? c.desc.split('\n\n') : []; } }
@@ -23965,7 +23977,7 @@ function pontCorrupt(id) { if (!String(id).startsWith('pont:') || !wanderer || !
 function pdPontFile(P) {
   const sis = P.sex === 'f', [he, him, his] = pontHe(P), He = he[0].toUpperCase() + he.slice(1), T = pontTitle(P), nm = P.name;
   const col = (PONT_PAL.find(([, c]) => (c || '') === (P.col || '')) || ['Their own colour'])[0];
-  return { id: 'pont:' + P.id, tag: 'cpPontifex', mod: sis ? 'sister' : '', pcol: P.col || '', h: sis ? 1.86 : 1.95, pont: true, name: nm.toUpperCase(), title: T + ' · in your service', al: sis ? 'Neutral Evil' : 'Lawful Evil',
+  return { id: 'pont:' + P.id, crewFile: true, tag: 'cpPontifex', mod: sis ? 'sister' : '', pcol: P.col || '', h: sis ? 1.86 : 1.95, pont: true, name: nm.toUpperCase(), title: T + ' · in your service', al: sis ? 'Neutral Evil' : 'Lawful Evil',
     facts: [['Species', 'Human, once a soldier of Terra Imperia'], ['Rank', T], ['Anointed by', 'You, the wanderer'], ['Heart', 'A reactor of Terra Imperia'], ['Armour', col], ['Level', String(compLevel('pont:' + P.id))], ['Alignment', sis ? 'Neutral Evil' : 'Lawful Evil']],
     align: sis ? 'Cold, exact and patient. She serves you because you beat her, and she would rather you were cruel.' : 'Obedient to whoever beat him last, and burning for an order worth obeying. He would rather you were cruel.',
     paras: [`${nm} was a soldier of Terra Imperia until you beat ${him} and anointed ${him}. ${He} rose as a ${T}, with a reactor heart burning in ${his} chest where ${his} own used to be.`,
@@ -23981,15 +23993,15 @@ function pontFallen(id) { // a corrupted Pontifex or Sister
 const pdCrewFiles = () => PD_CREW_FILES.filter(L => wanderer && (wanderer.party || []).includes(L.id)).concat(PONTS().filter(P => P.st === 'ally').map(pdPontFile));
 // companions' files follow their alignment in this save (a new game shows their original alignment)
 const PD_ALIAS = { vcTaro: 'tyrotaronus' }; // the same person filed under the Vectors
-function pdAlign(R) {
+function pdAlign(R, own = true) {
   alJamesFix();
   const cid = COMPANIONS.some(c => c.id === R.id) || AL_EXTRA.some(c => c.id === R.id) || String(R.id).startsWith('pont:') ? R.id : PD_ALIAS[R.tag];
   const C = cid && wanderer && wanderer.align && wanderer.align.c && wanderer.align.c[cid];
   if (!C) return R;
-  const F = fallenComp(cid) ? PD_FALLEN[cid] : pontCorrupt(cid) ? pontFallen(cid) : null; // turned evil in your company (or a Pontifex gone past saving): what they've become, after who they were
+  const F = !own ? null : fallenComp(cid) ? PD_FALLEN[cid] : pontCorrupt(cid) ? pontFallen(cid) : null; // turned evil in your company (or a Pontifex gone past saving): what they've become, after who they were
   if (F) {
     let facts = R.facts; for (const [k, v] of F.facts || []) facts = facts.some(f => f[0] === k) ? facts.map(f => f[0] === k ? [k, v] : f) : [...facts.filter(f => f[0] !== 'Alignment'), [k, v], ...facts.filter(f => f[0] === 'Alignment')];
-    R = Object.assign({}, R, { align: F.align, paras: [...R.paras, F.para], facts }, F.title ? { title: F.title } : {});
+    R = Object.assign({}, R, { align: F.align, paras: [...R.paras, F.para], facts }, F.title ? { title: F.title } : {}, F.tag ? { tag: F.tag } : {});
     if (F.label) return Object.assign({}, R, { facts: R.facts.map(f => f[0] === 'Alignment' ? ['Alignment', F.label] : f) }); // Javek goes back to what he was
   }
   const orig = alFact(R); if (!(orig in AL_BASE)) return R;
