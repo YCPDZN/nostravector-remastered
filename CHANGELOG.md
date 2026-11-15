@@ -2106,3 +2106,4 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
   - **Orion Mascar, Commander of Terra Imperia** (only if you killed Croxian and Orion lived). When Hawthorne was gone, taken by the Catharsis, Orion took command of Terra Imperia and brought it into the Catharsis. He's in red armour over black, Chaotic Evil.
   - **Lord Zark, master of the Catharsis**, ruling from Carax, with Hawthorne (and Orion, if he turned) as his servants.
 - Chapter III's Terra Imperia tab is unchanged.
+- **Draven, Disciple of Sevirrus, is on the Catharsis tab too**, between Orion and Lord Zark, in his own model (bearded, in Sevirrus's black-and-red armour, with his sword). He follows the usurper Sevirrus was, who once killed for the Cult of Zark, so when the Catharsis's master turned out to be Zark, he knelt to him. Lawful Evil. Clear the Usurper's Crypt on Aridaxx and his file marks him as fallen. Zark's file lists him among his servants.
