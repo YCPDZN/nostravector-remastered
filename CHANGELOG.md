@@ -2423,3 +2423,10 @@ Docking used to drop you onto what was really a small green planet: open hills, 
 - **If you lead a guild**, your guildmates take orders from their talk menu: **Follow me**, **Wait here**, **You can go now**, or **Guild, follow me!** for every guildmate around. Followers go where you go, to other worlds and **down into lairs**. On each new floor they regroup beside you, and they go after the floor's matriarch and anything hostile.
 - **If you're a member**, guildmates on a world with a lair will come and ask you along ("We’re going into the Hollow Burrow (level 24). Coming?"). You can also ask them yourself ("Want to run a lair together?"). Say yes and they lead you down. When a floor's matriarch falls they make for the way down, and once you're with them they take the whole party to the next floor. At the lair's heart they fight the boss with you.
 - **When the boss falls**, everyone who came down with you counts the clear and heads off to celebrate at the Low-G Lounge. Join them.
+
+### Your guild stays within reach
+- **Guildmates no longer wander off across the galaxy.** Residents in *your* guild keep to your star system and the 5 nearest systems with worlds to land on. You're never stranded far from the people you count on, which matters most with Sol's missions.
+- **Move on and they follow.** Warp somewhere new and any guildmate now out of range warps in to a world near you; the galaxy map shows them "warping to …" for a minute or two. Guildmates already in range carry on from where they are.
+- **Shot down, they respawn near you**, not on their species' homeworld across the galaxy.
+- **Their own dungeon runs** pick lairs within that range. **Their Lounge parties** only pull them to Archiostal when Malana Prime is in range; otherwise they stay close and celebrate once you're back near Malana.
+- **Residents of other guilds** (and those in no guild) roam the galaxy and its dungeons as before, however far away.
