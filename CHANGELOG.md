@@ -2382,3 +2382,16 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **Lore:** the Malana Prime system and the Grek species pages describe the Wards, the Sanctum Ring and the Spire.
 - The main-menu backdrop shows the new station too, sized to match.
 - **Fixed: docking at Archiostal no longer sets you down on snow.** Docking always lands you at the gardens' "north pole", and the gardens used the normal planet colours, polar ice caps and snowy peaks included, so you stepped out onto white ground. Under an artificial sky there's no ice: the poles and high ground are pale highland meadow now.
+
+## Inside Archiostal: a space station, not a planet
+Docking used to drop you onto what was really a small green planet: open hills, a planet sky, nothing to say you were aboard a station. The gardens are now the floor of the Sanctum Ring.
+- **The ring overhead.** Ahead and behind, the far side of the ring curves up out of the haze, over your head and back down: its gardens, its winding river, other districts' towns, the Ward transit line and the hull walls along its edges. At the centre hang the hub, its spokes and the **Spire of Archamus**, gold-banded, its light at the tip.
+- **Space beyond the glass.** The planet sky is gone: above the haze there's black space, stars and a faint galactic band, and **Malana** hangs half-lit beyond the canopy.
+- **Walls and canopy.** Two great hull walls lean in along both sides of the valley, forty decks of lit windows high, with gold-capped buttresses, lamps and teal light strips. The ribs and mullions of the glass canopy arch between them. The walls are solid: you can't walk out of the ring.
+- **Look up.** Inside Archiostal only, drag the camera further down and it drops behind you and tilts up, so you can look straight up at the ring, the hub and the Spire. Everywhere else the camera is unchanged.
+- **Landing pad.** You set down on Dock Seven: an octagonal deck with painted gold and teal markings, a ring of light posts and a sign (*ARCHIOSTAL · THE SANCTUM RING · DOCK SEVEN*). A paved, lamp-lit walk leads from the pad to the temple city's gate.
+- **The Ward transit.** A monorail on pylons runs the length of the ring, with a three-car train gliding back and forth and a platform whose sign lists all seven Wards.
+- **Traffic.** Shuttles cross the habitat in their lanes, with nav lights.
+- **Landscaped ground.** The gardens are meadows, groves, low hills and lakes now, never mountains, so nothing pokes through the walls. The station air is a cooler blue-grey haze, clear enough to see down the ring.
+- Day and night still turn: at night the ring overhead dims with everything else.
+- Scanner name: **The Sanctum Ring** (it was "Garden Station").

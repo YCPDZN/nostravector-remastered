@@ -4402,6 +4402,8 @@ function skyTick(dt) {
   wScene.fog.color.set(areaFog()).lerp(DUSK_C, duskA * .6).lerp(NIGHT_C, (1 - dl) * .9).lerp(stormC, sm);
   wScene.fog.density = isPl() ? (world.planet && world.planet.P.real ? .0009 + (1 - dl) * .0008 + .012 * sm * sm : world.planet && world.planet.city ? .0015 + (1 - dl) * .001 + .012 * sm * sm : .0048 + (1 - dl) * .003 + .032 * sm * sm * (world.wxK && world.wxK.fogK || 1)) : curArea() === 'europe' ? .0042 + (1 - dl) * .003 : .0105 + .045 * sm * sm + (1 - dl) * .006; // London's air is clear enough to see the Eye from the square
   world.snow.material.size = isPl() && world.wxK ? world.wxK.size * (1 + sm * .6) : .08 + .07 * sm;
+  if (stInOn()) wScene.fog.density = .0017 + (1 - dl) * .0006; // station air: clear enough to see down the ring
+  stInTick(dt);
 }
 // ---- after the storm: James makes a bed, you sleep, and someone else is waiting in the dream ----
 const JAMES_BED = ['I’ll make a bed. Feel free to sleep.'];
@@ -5585,7 +5587,7 @@ canvas.addEventListener('pointermove', e => {
   } else if (ex.drags.has(e.pointerId)) {
     const d = ex.drags.get(e.pointerId), sp = e.pointerType === 'mouse' ? .0055 : .0075;
     ex.yaw -= (e.clientX - d.x) * sp;
-    ex.pitch = clamp(ex.pitch + (e.clientY - d.y) * sp * .7, .05, .95);
+    ex.pitch = clamp(ex.pitch + (e.clientY - d.y) * sp * .7, stInOn() ? -.5 : .05, .95); // inside Archiostal you can look up at the ring
     d.x = e.clientX; d.y = e.clientY;
   }
 });
@@ -8713,7 +8715,7 @@ function worldUnstickIn() {
 }
 function worldBlocked(x, z, stationOnly, y = player.position.y) {
   if (DGN.on) return dgnBlocked(x, z); // inside Olympus Mons: its walls
-  if (isPl()) { if (nostraBlocked(x, z)) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2 && (world.planet.P.seaGlow || !WB_SWIM)) return true; if (cityBlocked(x, z)) return true; if (earthBlocked(x, z)) return true; } // your ship, deep water, the towers of a capital and Earth's landmarks
+  if (isPl()) { if (nostraBlocked(x, z)) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2 && (world.planet.P.seaGlow || !WB_SWIM)) return true; if (cityBlocked(x, z)) return true; if (earthBlocked(x, z)) return true; if (stInBlocked(x, z)) return true; } // your ship, deep water, the towers of a capital and Earth's landmarks
   else if (curArea() !== 'europe' && Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true; // the station / Orion's house
   if (isPl() && hallBlocked(x, z)) return true;
   if (world.adVisit && !isPl() && nostraBlocked(x - world.shipAt.x, z - world.shipAt.z)) return true;
@@ -17441,7 +17443,7 @@ const SYSTEMS = [
 const ALL_BODIES = SYSTEMS.flatMap(S => S.bodies.map(P => (P.sys = S.id, P)));
 // inside Archiostal: you dock with the station and walk its gardens (forests and rivers under an artificial sky)
 ALL_BODIES.push({ id: 'archiostal-gardens', name: 'Archiostal', dock: 'archiostal', sys: 'malana', kind: 'earth', r: 2400, amp: .32, seed: 108, landBias: .12, groves: .25,
-  c: { sand: '#5e9a44', low: '#4f8a3a', forest: '#2a6a2a', rock: '#7a8a70', snow: '#a9c98a' }, sea: '#2a7a8a', atmo: null, sky: ['#a8dcc8', '#f4fff0'], fog: '#cfe8d8', faction: 'The Order of Archamus · garden station of the Grek' }); // no ice under an artificial sky: the 'snow' (poles, where you dock, and peaks) is pale highland meadow
+  c: { sand: '#5e9a44', low: '#4f8a3a', forest: '#2a6a2a', rock: '#7a8a70', snow: '#a9c98a' }, sea: '#2a7a8a', atmo: null, sky: ['#a8dcc8', '#f4fff0'], fog: '#aebfc8', faction: 'The Order of Archamus · garden station of the Grek' }); // no ice under an artificial sky: the 'snow' (poles, where you dock, and peaks) is pale highland meadow
 ALL_BODIES.forEach(P => { if (P.c) for (const k in P.c) P.c[k] = C3(P.c[k]); P.land = P.kind !== 'gas' && P.kind !== 'station'; });
 const sysById = id => SYSTEMS.find(S => S.id === id) || SYSTEMS[0];
 
@@ -17475,7 +17477,7 @@ const PTYPES = {
   nadir: ['Frozen Planet', 'Raging blizzards', 'snow', .9], 'nadir-ii': ['Dead Planet', AIRLESS_WX], ossian: ['Scorched Planet', 'Superheated sandstorms', 'dust', .85],
   verdance: ['Paradise Planet', 'Clear skies · no storms'], 'verdance-m': ['Barren Moon', AIRLESS_WX], arcadia: ['Paradise Planet', 'Balmy breezes · no storms'],
   siren: ['Faux Paradise Planet', 'Flash superstorms', 'super', 1], lorelei: ['Faux Paradise Planet', 'Hurricane-force storms', 'super', .95], mirage: ['Faux Paradise Planet', 'Scorching firestorms', 'ember', 1],
-  'archiostal-gardens': ['Garden Station', 'Artificial sky · no storms']
+  'archiostal-gardens': ['The Sanctum Ring', 'Artificial sky · no storms']
 };
 const wxHash = (s, k) => { let x = Math.imul((s | 0) ^ Math.imul(k + 1, 0x9E3779B1 | 0), 0x85EBCA6B | 0); x ^= x >>> 13; x = Math.imul(x, 0xC2B2AE35 | 0); x ^= x >>> 16; return (x >>> 0) / 4294967296; }; // the same answer for a world every time
 const wxPick = (a, s, k) => a[Math.floor(wxHash(s, k) * a.length)];
@@ -17620,7 +17622,7 @@ const driveRange = () => DRIVE_LY[driveTier()];
 const warpCost = (A, B) => A === B ? 0 : Math.max(1, Math.ceil(galDist(A, B) / LY_PER_CELL));
 const inRange = (A, B) => galDist(A, B) <= driveRange();
 const cellsTxt = n => `${n} cell${n === 1 ? '' : 's'}`;
-const planetH = (P, d) => PKIND[P.kind].h(d, P) * (P.amp || (P.amp = P.kind === 'earth' ? 1 : clamp(P.r / 2600, .3, .8))) + (P.id === 'mars' ? olympusH(d) : 0); // smaller worlds, gentler relief (and Mars has Olympus Mons)
+const planetH = (P, d) => { const h = PKIND[P.kind].h(d, P) * (P.amp || (P.amp = P.kind === 'earth' ? 1 : clamp(P.r / 2600, .3, .8))) + (P.id === 'mars' ? olympusH(d) : 0); return P.dock ? 34 * Math.tanh(h / 34) : h; }; // smaller worlds, gentler relief (and Mars has Olympus Mons); a station's gardens are landscaped: meadows and low hills, never mountains
 // ---- the planet meshes: a cube-sphere, displaced, coloured by height; three levels of detail ----
 function cubeSphere(P, N) {
   const faces = [[[1, 0, 0], [0, 0, -1], [0, 1, 0]], [[-1, 0, 0], [0, 0, 1], [0, 1, 0]], [[0, 1, 0], [1, 0, 0], [0, 0, -1]], [[0, -1, 0], [1, 0, 0], [0, 0, 1]], [[0, 0, 1], [1, 0, 0], [0, 1, 0]], [[0, 0, -1], [-1, 0, 0], [0, 1, 0]]];
@@ -21166,14 +21168,14 @@ async function landOn(P, dir, place) {
   if ((!place || fresh) && P.sea) dryLandDir(P, D); // over the sea (Earth's oceans, Europa's cracks): she sets down on the nearest shore
   const E = new THREE.Vector3(0, 1, 0).cross(D); if (E.lengthSq() < .01) E.set(1, 0, 0); E.normalize(); const N = new THREE.Vector3().crossVectors(E, D).normalize(); // x east, z south: the world seen from above
   world.planet = { P, D, E, N, R: atmRg(P), h0: planetH(P, D) }; wxReset(); world.adVisit = false;
-  cityPlan(world.planet); hallPlan(world.planet); khazPlan(world.planet); lairPlan(world.planet); // Alphinos on Aridaxx, Karribassa on Janira Prime, Khazglar's hermitage on Olympus Mons
+  cityPlan(world.planet); hallPlan(world.planet); khazPlan(world.planet); lairPlan(world.planet); stInPlan(world.planet); // Alphinos on Aridaxx, Karribassa on Janira Prime, Khazglar's hermitage on Olympus Mons
   AREA_INFO[key] = { planet: P.name, name: P.name, space: true, stationTp: { x: 1e5, z: 1e5, name: '' } };
   AREA_FOG[key] = new THREE.Color(P.fog).getHex();
   world.area = key; world.builtArea = null; // a new landing spot: the ground is laid out afresh around it
   const nt = planetTraders(P); for (const m of MERCHANTS[key] || []) if (!nt.includes(m) && m.stall) { wScene.remove(m.stall); m.stall = null; } // a stall whose world changed hands goes
   MERCHANTS[key] = nt; for (const m of MERCHANTS[key]) m.seed = null; // its stall finds dry ground near the new spot
   const pl = place || { mode: 'explore', area: 'world', where: key, x: 5, z: 14.5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI }; // by the ramp, clear of the wings
-  enterWorld(pl); buildCity(); buildHall(); buildHermitage(); buildLairGates(); leaderHallBuild(); khzFarHint(); try { earthGroundBuild(world.planet); } catch (e) { console.error(e); } await placeOrion().catch(() => null); placeGivers().catch(() => null);
+  enterWorld(pl); buildCity(); buildHall(); buildHermitage(); buildLairGates(); leaderHallBuild(); stInBuild(); khzFarHint(); try { earthGroundBuild(world.planet); } catch (e) { console.error(e); } await placeOrion().catch(() => null); placeGivers().catch(() => null);
   // your ship, set down on the ground
   if (!world.landShip) world.landShip = makeShip(); podSkin(world.landShip);
   setShipRig(world.landShip, 1, 1);
@@ -21603,10 +21605,191 @@ function planetGroundH(x, z) {
 const plSeaY = () => { const W = world.planet; return W && W.P.sea ? -W.h0 + (W.P.seaH || 0) + .4 : null; };
 function planetLook() {
   const W = world.planet, P = W.P;
+  if (!W.sky && P.dock) W.sky = stInSkyTex(P); // inside a station: space beyond the glass
   if (!W.sky) W.sky = canvasTex(4, 256, (g2) => { const gr = g2.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, P.sky[0]); gr.addColorStop(.48, P.sky[1]); gr.addColorStop(.5, P.fog); gr.addColorStop(1, P.fog); g2.fillStyle = gr; g2.fillRect(0, 0, 4, 256); });
   wScene.background = W.sky;
   if (world.plSea) { wScene.remove(world.plSea); world.plSea = null; }
   const sy = plSeaY(); if (sy != null) { const m = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), new THREE.MeshStandardMaterial(Object.assign({ color: P.sea, roughness: .2, metalness: .15, transparent: true, opacity: .9 }, P.seaGlow ? { emissive: P.sea, emissiveIntensity: .8, opacity: 1, transparent: false } : {}))); m.rotation.x = -Math.PI / 2; m.position.y = sy; wScene.add(m); world.plSea = m; }
+}
+
+/* ---- inside Archiostal: the gardens are the floor of the Sanctum Ring, not a planet ----
+   The ground is a valley between two great hull walls (lit habitation decks, leaning in) under the ribs of a glass canopy. Ahead
+   and behind, the far side of the ring curves up over the horizon and meets overhead; at its centre hang the hub, its spokes and
+   the Spire of Archamus. Space and Malana show beyond the glass. You set down on a landing pad, a lit walk leads to the temple
+   city, the Ward transit runs past on its monorail and shuttles cross overhead. The ring runs north-south (z); the walls stand
+   at x = ±W. The sky pieces follow you along the ring; the walls and canopy step with you so they never seem to slide. */
+const ST_IN = { W: 480, WT: 420, H: 260, RB: 820, Y0: -30, F0: 28 * Math.PI / 180, TX: -170, SEG: 120, STEP: 240, tex: {} };
+const stInOn = () => isPl() && !!world.planet.P.dock;
+const stInBlocked = (x, z) => stInOn() && Math.abs(x) > ST_IN.W - 14; // the hull walls
+function stInPlan(W) { if (W.P.dock) (W.pads || (W.pads = [])).push({ x: 0, z: 0, r: 26, y: 0 }); } // the landing pad sits level where you come in
+const stInRGB = hex => [1, 3, 5].map(i => parseInt(String(hex).slice(i, i + 2), 16));
+function stInSkyTex(P) { // space beyond the glass (equirectangular): stars and a faint galactic band above, the station's own haze at the horizon
+  return ST_IN.tex.sky || (ST_IN.tex.sky = (() => {
+    const t = canvasTex(2048, 1024, (g, w, h) => {
+      const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#02040a'); gr.addColorStop(.36, '#050913'); gr.addColorStop(.46, '#1b2733'); gr.addColorStop(.5, P.fog); gr.addColorStop(1, P.fog);
+      g.fillStyle = gr; g.fillRect(0, 0, w, h);
+      let sd = 4242; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+      const by = x => h * (.2 + .09 * Math.sin(x / w * Math.PI * 2 + .6));
+      for (let i = 0; i < 70; i++) { const x = r() * w, rg = g.createRadialGradient(x, by(x), 0, x, by(x), 40 + r() * 90); rg.addColorStop(0, 'rgba(150,170,220,.07)'); rg.addColorStop(1, 'rgba(150,170,220,0)'); g.fillStyle = rg; g.fillRect(x - 140, by(x) - 140, 280, 280); }
+      for (let i = 0; i < 3200; i++) {
+        const x = r() * w, inBand = r() < .45, y = inBand ? by(x) + (r() - .5) * h * .09 : r() * h * .45; if (y > h * .46) continue;
+        const a = (.35 + r() * .65) * Math.min(1, (h * .46 - y) / (h * .08)), s = r() < .06 ? 2 : 1, c = r();
+        g.fillStyle = c < .1 ? `rgba(255,214,170,${a})` : c < .2 ? `rgba(170,200,255,${a})` : `rgba(240,244,255,${a})`; g.fillRect(x, y, s, s);
+      }
+    });
+    t.mapping = THREE.EquirectangularReflectionMapping; return t;
+  })());
+}
+function stInBandTex(P) { // the far side of the ring: gardens, a lake, district lights, the transit line, the hull walls at its edges; hazier with distance, fading in at the horizon
+  return ST_IN.tex.band || (ST_IN.tex.band = canvasTex(2048, 256, (g, w, h) => {
+    const { F0, RB, W, TX } = ST_IN, hz = stInRGB(P.fog); let sd = 777; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    const im = g.createImageData(w, h), d = im.data;
+    for (let x = 0; x < w; x++) {
+      const u = x / w, lake = .5 + .17 * Math.sin(u * 23) * Math.sin(u * 5.3 + 1);
+      for (let y = 0; y < h; y++) {
+        const v = y / h, i = (y * w + x) * 4, n = .5 + .5 * Math.sin(x * .21 + y * .9) * Math.sin(x * .057 - y * .31), edge = Math.abs(v - .5) * 2;
+        let c;
+        if (edge > .93) c = (x % 12) < 4 && (y % 5) < 2 && r() < .7 ? [255, 214, 140] : [88, 100, 114]; // the hull walls, their decks lit
+        else if (Math.abs(v - lake) < .045) c = [52, 130 + n * 30, 152 + n * 30];
+        else c = [38 + n * 42, 90 + n * 62, 38 + n * 22];
+        d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
+      }
+    }
+    g.putImageData(im, 0, 0);
+    for (let k = 0; k < 30; k++) { const cx = r() * w, cy = h * (.14 + r() * .72), n = 30 + r() * 50 | 0; for (let j = 0; j < n; j++) { g.fillStyle = r() < .5 ? 'rgba(232,226,206,.95)' : 'rgba(255,214,140,1)'; g.fillRect(cx + (r() - .5) * 46, cy + (r() - .5) * 26, 2 + r() * 3, 2 + r() * 3); } } // other districts' towns
+    g.fillStyle = 'rgba(160,240,255,.95)'; g.fillRect(0, (TX + W) / (2 * W) * h - 1, w, 2); // the Ward transit, carrying on round the ring
+    g.fillStyle = 'rgba(216,176,96,.95)'; g.fillRect(0, h * .065, w, 2); g.fillRect(0, h * .935 - 2, w, 2);
+    for (let x = 0; x < w; x++) { const f = F0 + (Math.PI * 2 - 2 * F0) * x / w, dist = 2 * RB * Math.sin(f / 2), a = 1 - Math.exp(-Math.pow(dist * .00062, 2)); g.fillStyle = `rgba(${hz[0]},${hz[1]},${hz[2]},${a.toFixed(3)})`; g.fillRect(x, 0, 1, h); }
+    g.globalCompositeOperation = 'destination-in'; const e = (14 * Math.PI / 180) / (Math.PI * 2 - 2 * F0), fd = g.createLinearGradient(0, 0, w, 0);
+    fd.addColorStop(0, 'rgba(0,0,0,0)'); fd.addColorStop(e, 'rgba(0,0,0,1)'); fd.addColorStop(1 - e, 'rgba(0,0,0,1)'); fd.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = fd; g.fillRect(0, 0, w, h); g.globalCompositeOperation = 'source-over';
+  }));
+}
+function stInWallTex() { // hull panels with decks of lit windows: a colour map and its glow, one tile per buttress bay
+  if (ST_IN.tex.wall) return ST_IN.tex.wall;
+  const draw = emis => { let sd = 99; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647; const t = canvasTex(256, 512, (g, w, h) => {
+    g.fillStyle = emis ? '#000' : '#56616e'; g.fillRect(0, 0, w, h);
+    if (!emis) { g.fillStyle = '#434c58'; for (let y = 0; y < h; y += 64) g.fillRect(0, y, w, 3); for (let x = 0; x < w; x += 64) g.fillRect(x, 0, 2, h); }
+    for (let y = 10; y < h - 30; y += 16) for (let x = 6; x < w - 8; x += 10) { const on = r() < .42, c = r(); g.fillStyle = on ? (c < .75 ? '#ffd690' : '#8ff0ff') : (emis ? '#000' : '#1c222a'); g.fillRect(x, y, 6, 8); }
+    g.fillStyle = '#7ff0ff'; g.fillRect(0, h - 22, w, 4);
+  }); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
+  return (ST_IN.tex.wall = { m: draw(false), e: draw(true) });
+}
+function stInSign(lines, w, h) { // a lit sign: gold lettering on a dark glass panel
+  const t = canvasTex(1024, Math.round(1024 * h / w), (g, cw, ch) => {
+    g.fillStyle = 'rgba(8,16,22,.82)'; g.fillRect(0, 0, cw, ch); g.strokeStyle = '#d8b060'; g.lineWidth = 6; g.strokeRect(8, 8, cw - 16, ch - 16);
+    g.textAlign = 'center'; g.textBaseline = 'middle'; const n = lines.length;
+    lines.forEach(([txt, size, col], i) => { g.font = `600 ${size}px sans-serif`; g.fillStyle = col || '#ffe2a0'; g.fillText(txt, cw / 2, ch * (i + .5) / n); });
+  });
+  return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide }));
+}
+function stInBuild() {
+  if (world.stIn) { wScene.remove(world.stIn.root); world.stIn.root.traverse(o => { if (o.geometry) o.geometry.dispose(); }); world.stIn = null; }
+  if (!stInOn()) return;
+  const W = world.planet, P = W.P, { W: HW, WT, H, RB, Y0, F0, TX, SEG, STEP } = ST_IN, phone = document.body.classList.contains('touch');
+  const root = new THREE.Group(), sky = new THREE.Group(), frame = new THREE.Group(); root.add(sky, frame); wScene.add(root);
+  const S = { root, sky, frame, shuttles: [], cars: [] }; world.stIn = S;
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .45, metalness: .6 }, o));
+  const hull = M(0xc9d0d8, { emissive: 0x1a222c, emissiveIntensity: .5 }), dark = M(0x2a3038, { emissive: 0x0a0e14, emissiveIntensity: .4 }), gold = M(0xe8c27a, { metalness: .85, roughness: .3, emissive: 0x6a4a18, emissiveIntensity: .5 });
+  const teal = new THREE.MeshBasicMaterial({ color: 0x7ff0ff }), warm = new THREE.MeshBasicMaterial({ color: 0xffe3a0 });
+  const add = (par, geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); par.add(m); return m; };
+  const inst = (par, geo, mat, list) => { const m = new THREE.InstancedMesh(geo, mat, list.length), o = new THREE.Object3D(); list.forEach((f, i) => { o.position.set(0, 0, 0); o.quaternion.identity(); o.scale.set(1, 1, 1); f(o); o.updateMatrix(); m.setMatrixAt(i, o.matrix); }); m.frustumCulled = false; par.add(m); return m; };
+  // ---- the sky: the far side of the ring, the hub and its spokes, the Spire, Malana, the shuttles (they follow you along the ring) ----
+  { const Ni = 160, Nj = 8, pos = [], uv = [], idx = [];
+    for (let i = 0; i <= Ni; i++) { const f = F0 + (Math.PI * 2 - 2 * F0) * i / Ni; for (let j = 0; j <= Nj; j++) { const x = -HW + 2 * HW * j / Nj; pos.push(x, Y0 + RB - RB * Math.cos(f), RB * Math.sin(f)); uv.push(i / Ni, j / Nj); } }
+    for (let i = 0; i < Ni; i++) for (let j = 0; j < Nj; j++) { const a = i * (Nj + 1) + j, b = a + Nj + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx);
+    S.bandMat = new THREE.MeshBasicMaterial({ map: stInBandTex(P), transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide });
+    const band = add(sky, geo, S.bandMat); band.renderOrder = -2; band.frustumCulled = false; }
+  const C = new THREE.Vector3(0, Y0 + RB, 0), skyM = o => Object.assign(o, { fog: false });
+  const hubM = skyM(M(0xc9d0d8, { emissive: 0x2a3440, emissiveIntensity: .7 })), goldS = skyM(M(0xe8c27a, { metalness: .85, roughness: .3, emissive: 0x8a6a28, emissiveIntensity: .7 })), spokeM = skyM(M(0x3a4250, { emissive: 0x141a22, emissiveIntensity: .6 }));
+  add(sky, new THREE.SphereGeometry(48, 24, 16), hubM, C.x, C.y, C.z);
+  { const tr = add(sky, new THREE.TorusGeometry(70, 6, 10, 48), goldS, C.x, C.y, C.z); tr.rotation.y = Math.PI / 2; }
+  for (const f of [Math.PI / 4, Math.PI * 3 / 4, Math.PI * 5 / 4, Math.PI * 7 / 4]) { // spokes from the hub out to the ring
+    const end = new THREE.Vector3(0, Y0 + RB - RB * Math.cos(f), RB * Math.sin(f)), mid = end.clone().add(C).multiplyScalar(.5), sp = add(sky, new THREE.CylinderGeometry(7, 9, RB, 10), spokeM, mid.x, mid.y, mid.z);
+    sp.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.clone().sub(C).normalize());
+    for (let k = 1; k < 6; k++) { const l = glowSprite(0x7ff0ff, 14, .9); l.position.copy(C).lerp(end, k / 6); sky.add(l); }
+  }
+  { const sp = add(sky, new THREE.CylinderGeometry(4, 16, 980, 16), hubM, C.x + 520, C.y, C.z); sp.rotation.z = -Math.PI / 2; // the Spire of Archamus, along the axis
+    for (let k = 0; k < 4; k++) { const b = add(sky, new THREE.TorusGeometry(15 - k * 3, 2.4, 8, 24), goldS, C.x + 140 + k * 200, C.y, C.z); b.rotation.y = Math.PI / 2; }
+    const cr = add(sky, new THREE.ConeGeometry(26, 60, 7, 1, true), goldS, C.x + 930, C.y, C.z); cr.rotation.z = Math.PI / 2;
+    const tip = glowSprite(0xffe08a, 150, 1); tip.position.set(C.x + 1010, C.y, C.z); sky.add(tip); add(sky, new THREE.SphereGeometry(12, 12, 10), new THREE.MeshBasicMaterial({ color: 0xfff4d0, fog: false }), C.x + 1010, C.y, C.z);
+    const back = add(sky, new THREE.ConeGeometry(36, 120, 16), spokeM, C.x - 100, C.y, C.z); back.rotation.z = Math.PI / 2; }
+  { const t = ST_IN.tex.malana || (ST_IN.tex.malana = canvasTex(512, 512, (g, w) => { // Malana, half-lit, beyond the glass
+      const R = w * .46, cx = w / 2; g.save(); g.beginPath(); g.arc(cx, cx, R, 0, Math.PI * 2); g.clip();
+      g.fillStyle = '#1d5a6e'; g.fillRect(0, 0, w, w); let sd = 31; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+      for (let i = 0; i < 40; i++) { g.fillStyle = r() < .6 ? '#3f7a3a' : '#c8c08a'; g.beginPath(); g.ellipse(r() * w, r() * w, 20 + r() * 60, 10 + r() * 30, r() * 3, 0, Math.PI * 2); g.fill(); }
+      for (let i = 0; i < 30; i++) { g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.ellipse(r() * w, r() * w, 30 + r() * 70, 4 + r() * 8, r() * .5, 0, Math.PI * 2); g.fill(); }
+      const sh = g.createLinearGradient(cx - R, 0, cx + R, 0); sh.addColorStop(0, 'rgba(0,0,6,0)'); sh.addColorStop(.55, 'rgba(0,0,6,.25)'); sh.addColorStop(.8, 'rgba(0,0,6,.92)'); sh.addColorStop(1, 'rgba(0,0,6,.97)'); g.fillStyle = sh; g.fillRect(0, 0, w, w); g.restore();
+      g.strokeStyle = 'rgba(159,224,192,.6)'; g.lineWidth = 6; g.beginPath(); g.arc(cx, cx, R, Math.PI * .55, Math.PI * 1.45); g.stroke();
+    }));
+    const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, fog: false, depthWrite: false, transparent: true })); m.scale.setScalar(620); m.position.set(-1250, 1180, -260); m.renderOrder = -3; sky.add(m); }
+  for (let i = 0; i < (phone ? 4 : 8); i++) { // shuttles in their lanes, crossing over the canopy
+    const s = new THREE.Group(); add(s, new THREE.BoxGeometry(5, 2.2, 13), skyM(M(0xd8dde2, { emissive: 0x2a3440, emissiveIntensity: .6 }))); const e = glowSprite(i % 3 ? 0x8ff0ff : 0xffd690, 12, .95); e.position.z = 7; s.add(e); const n = glowSprite(0xff5a4a, 5, .9); n.position.z = -6.5; s.add(n);
+    const lane = { x: -330 + (i * 97) % 660, y: 170 + (i * 53) % 100, v: (35 + (i * 17) % 30) * (i % 2 ? 1 : -1), off: i * 410 }; s.userData.lane = lane; s.position.set(lane.x, lane.y, 0); if (lane.v < 0) s.rotation.y = Math.PI; sky.add(s); S.shuttles.push(s);
+  }
+  // ---- the frame: the hull walls and their buttresses, the canopy ribs and mullions (they step with you, a bay at a time) ----
+  const lean = Math.atan2(HW - WT, H), LEN = 3000, wt = stInWallTex();
+  for (const t of [wt.m, wt.e]) t.repeat.set(LEN / 40, (H + 300) / 80); // a tile every 40 m: windows a few metres across, decks stacked forty high
+  const wallM = M(0xbfc6ce, { map: wt.m, emissiveMap: wt.e, emissive: 0xffffff, emissiveIntensity: .75, metalness: .5, roughness: .6 });
+  for (const sd of [-1, 1]) {
+    const g = new THREE.Group(); g.position.x = sd * HW; g.rotation.z = sd * lean; frame.add(g);
+    add(g, new THREE.BoxGeometry(30, H + 300, LEN), wallM, sd * 15, (H - 300) / 2, 0);
+    const n = Math.round(LEN / SEG) + 1, zs = [...Array(n)].map((_, k) => (k - (n - 1) / 2) * SEG);
+    inst(g, new THREE.BoxGeometry(12, H + 300, 16), hull, zs.map(z => o => o.position.set(-sd * 4, (H - 300) / 2, z)));
+    inst(g, new THREE.ConeGeometry(9, 22, 4), gold, zs.map(z => o => { o.position.set(-sd * 4, H + 11, z); o.rotation.y = Math.PI / 4; }));
+    inst(g, new THREE.BoxGeometry(1.2, 1.2, LEN), teal, [o => o.position.set(-sd * 1, 6, 0), o => o.position.set(-sd * 1, H - 30, 0)]);
+    inst(g, new THREE.BoxGeometry(3, 6, 10), warm, zs.map(z => o => o.position.set(-sd * 10, 40, z))); // lamps at the foot of each buttress
+  }
+  { const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-WT, H, 0), new THREE.Vector3(0, H + 280, 0), new THREE.Vector3(WT, H, 0)), ribG = new THREE.TubeGeometry(curve, 32, 2.6, 6, false), lightG = new THREE.TubeGeometry(curve, 32, .7, 4, false);
+    const n = Math.round(LEN / STEP) + 1, zs = [...Array(n)].map((_, k) => (k - (n - 1) / 2) * STEP);
+    inst(frame, ribG, dark, zs.map(z => o => o.position.z = z)); inst(frame, lightG, teal, zs.map(z => o => o.position.set(0, -3, z)));
+    inst(frame, new THREE.CylinderGeometry(1.3, 1.3, LEN, 6), dark, [-1, 0, 1].map(k => o => { o.position.set(k * WT / 2, H + (k ? 105 : 140), 0); o.rotation.x = Math.PI / 2; })); }
+  // ---- on the ground (fixed): the landing pad, the walk to the temple city, the Ward transit ----
+  const G = new THREE.Group(); root.add(G); const gy = (x, z) => wHeight(x, z);
+  { const pad = add(G, new THREE.CylinderGeometry(24, 25.5, 1, 8), M(0x8a949e, { roughness: .7, metalness: .5 }), 0, -.35, 0); pad.receiveShadow = true;
+    const flat = new THREE.MeshBasicMaterial({ color: 0xd8b060, side: THREE.DoubleSide }), ring = add(G, new THREE.RingGeometry(21.1, 21.6, 64), new THREE.MeshBasicMaterial({ color: 0x7ff0ff, side: THREE.DoubleSide }), 0, .17, 0); ring.rotation.x = -Math.PI / 2; // painted markings, flush with the deck
+    const rim = add(G, new THREE.TorusGeometry(25, .22, 6, 8), gold, 0, .14, 0); rim.rotation.x = Math.PI / 2; rim.rotation.z = Math.PI / 8;
+    const mk = add(G, new THREE.RingGeometry(8.5, 9.1, 7), flat, 0, .17, 0); mk.rotation.x = -Math.PI / 2;
+    const posts = [...Array(8)].map((_, k) => k / 8 * Math.PI * 2 + Math.PI / 8);
+    inst(G, new THREE.CylinderGeometry(.22, .3, 5, 6), hull, posts.map(a => o => o.position.set(Math.cos(a) * 27, gy(Math.cos(a) * 27, Math.sin(a) * 27) + 2.5, Math.sin(a) * 27)));
+    for (const a of posts) { const l = glowSprite(0x7ff0ff, 3.2, .95); l.position.set(Math.cos(a) * 27, gy(Math.cos(a) * 27, Math.sin(a) * 27) + 5.2, Math.sin(a) * 27); G.add(l); }
+    const sign = stInSign([['ARCHIOSTAL', 150], ['THE SANCTUM RING  ·  DOCK SEVEN', 54, '#bfefff'], ['Archamus welcomes you, traveller', 46, '#e8d8b0']], 18, 6.5);
+    const sx = -17, sz = -23, sy = gy(sx, sz); sign.position.set(sx, sy + 7.5, sz); sign.rotation.y = Math.PI * .22; G.add(sign);
+    for (const s of [-1, 1]) add(G, new THREE.BoxGeometry(.5, 11, .5), dark, sx + s * 8.6 * Math.cos(Math.PI * .22), sy + 5.5, sz - s * 8.6 * Math.sin(Math.PI * .22)); }
+  const city = W.city;
+  if (city) { // a lit walk from the pad to the temple city's gate
+    const dx = city.cx, dz = city.cz, L = Math.hypot(dx, dz), ux = dx / L, uz = dz / L, end = L - city.R + 6, steps = [], lamps = [];
+    for (let s = 26; s < end; s += 6) steps.push(s); for (let s = 30; s < end; s += 18) lamps.push(s);
+    inst(G, new THREE.BoxGeometry(8, .5, 6.3), M(0xd6d2c4, { roughness: .8, metalness: .1 }), steps.map(s => o => { o.position.set(ux * s, gy(ux * s, uz * s) + .05, uz * s); o.rotation.y = Math.atan2(ux, uz); }));
+    inst(G, new THREE.BoxGeometry(.35, .2, 6.3), gold, steps.flatMap(s => [-1, 1].map(k => o => { const x = ux * s - uz * k * 4, z = uz * s + ux * k * 4; o.position.set(x, gy(ux * s, uz * s) + .33, z); o.rotation.y = Math.atan2(ux, uz); })));
+    const lp = lamps.flatMap(s => [-1, 1].map(k => [ux * s - uz * k * 6, uz * s + ux * k * 6]));
+    inst(G, new THREE.CylinderGeometry(.16, .22, 4.4, 6), hull, lp.map(([x, z]) => o => o.position.set(x, gy(x, z) + 2.2, z)));
+    for (const [x, z] of lp) { const l = glowSprite(0xffe0a0, 2.6, .95); l.position.set(x, gy(x, z) + 4.6, z); G.add(l); }
+  }
+  { // the Ward transit: a monorail on pylons running the length of the ring, its train gliding past every minute or so
+    const zs = [], gh = []; for (let z = -1200; z <= 1200; z += 48) { zs.push(z); gh.push(gy(TX, z)); }
+    const ty = gh.map((_, i) => { let s = 0, n = 0; for (let k = Math.max(0, i - 3); k <= Math.min(gh.length - 1, i + 3); k++) { s += gh[k]; n++; } return Math.max(s / n, gh[i] + 6) + 14; });
+    inst(G, new THREE.CylinderGeometry(1.3, 2, 1, 8), hull, zs.map((z, i) => o => { const h = ty[i] - gh[i] + 3; o.position.set(TX, gh[i] - 3 + h / 2, z); o.scale.y = h; }));
+    const seg = (mat, w, h, dy) => inst(G, new THREE.BoxGeometry(w, h, 1), mat, zs.slice(1).map((z, k) => o => { const z0 = zs[k], y0 = ty[k], y1 = ty[k + 1], l = Math.hypot(z - z0, y1 - y0); o.position.set(TX, (y0 + y1) / 2 + dy, (z + z0) / 2); o.rotation.x = -Math.atan2(y1 - y0, z - z0); o.scale.z = l + .3; }));
+    seg(hull, 3.4, 1.8, 0); seg(teal, 3.6, .25, -1);
+    S.track = { zs, ty, len: zs[zs.length - 1] - zs[0] };
+    const carM = M(0xeef1f4, { emissive: 0x1a222c, emissiveIntensity: .4 }), winM = new THREE.MeshBasicMaterial({ color: 0xffe8b0 });
+    for (let k = 0; k < 3; k++) { const c = new THREE.Group(); add(c, new THREE.BoxGeometry(4.2, 3.4, 13), carM, 0, 0, 0); add(c, new THREE.BoxGeometry(4.35, .9, 11), winM, 0, .5, 0); add(c, new THREE.BoxGeometry(4.4, .3, 13.2), gold, 0, -1.2, 0); G.add(c); S.cars.push(c); }
+    const z0 = 0, i0 = Math.round((z0 - zs[0]) / 48), py = ty[i0]; // a platform and its sign, level with the line
+    add(G, new THREE.BoxGeometry(9, 1, 60), hull, TX + 7.2, py - 1.4, z0); inst(G, new THREE.CylinderGeometry(.8, 1.1, 1, 8), hull, [-24, 0, 24].map(dz => o => { const h = py - gy(TX + 8, z0 + dz); o.position.set(TX + 8, gy(TX + 8, z0 + dz) + h / 2 - 1, z0 + dz); o.scale.y = h; }));
+    const ts = stInSign([['WARD TRANSIT', 120, '#bfefff'], ['01 Command & Cybernetics  ·  02 Bio-Dome & Botany  ·  03 Geo-Quantum', 36], ['04 Gravity Habitation  ·  05 Fusion & Life Support', 36], ['06 Nanomedical  ·  07 Logistics & Transport', 36]], 22, 9);
+    ts.position.set(TX + 11.5, py + 5.5, z0); ts.rotation.y = Math.PI / 2; G.add(ts);
+  }
+  root.traverse(o => { if (o.isMesh) { o.castShadow = false; } });
+}
+function stInTrack(s) { const T = world.stIn.track, z = T.zs[0] + s, i = clamp(Math.floor((z - T.zs[0]) / 48), 0, T.zs.length - 2), k = (z - T.zs[i]) / 48; return [z, lerp(T.ty[i], T.ty[i + 1], k)]; }
+function stInTick(dt) {
+  const S = world.stIn; if (!S) return; const on = stInOn(); S.root.visible = on; if (!on) return;
+  S.sky.position.set(0, 0, camera.position.z); S.frame.position.z = Math.round(player.position.z / ST_IN.STEP) * ST_IN.STEP;
+  const dl = world.dayL == null ? 1 : world.dayL; S.bandMat.color.setScalar(.45 + .55 * dl);
+  for (const s of S.shuttles) { const L = s.userData.lane; s.position.z = ((time * L.v + L.off) % 2400 + 3600) % 2400 - 1200; }
+  if (S.track) { const T = S.track, cyc = T.len * 2, u = (time * 24) % cyc, fwd = u < T.len, s0 = fwd ? u : cyc - u;
+    S.cars.forEach((c, k) => { const s = clamp(s0 - (fwd ? 1 : -1) * k * 14, 0, T.len), [z, y] = stInTrack(s), [z2, y2] = stInTrack(Math.min(T.len, s + 2)); c.position.set(ST_IN.TX, y + 2.9, z); c.rotation.x = -Math.atan2(y2 - y, z2 - z); }); }
 }
 
 /* ---- traders on planets: a stall near where you land. Chompy worlds have Chompy traders, Grek and Order worlds Grek ones;
@@ -23243,6 +23426,8 @@ function worldCamera(dt) {
   let cx = tgt.x + Math.sin(ex.yaw) * Math.cos(ex.pitch) * dd, cz = tgt.z + Math.cos(ex.yaw) * Math.cos(ex.pitch) * dd;
   let cy = tgt.y + Math.sin(ex.pitch) * dd;
   cy = Math.max(cy, wHeight(cx, cz) + .5);
+  if (ex.pitch < .05 && !stInOn()) ex.pitch = .05; // looking up is only for the station
+  if (ex.pitch < 0) tgt.y += -Math.sin(ex.pitch) * dd * 2.4; // the camera drops behind you and tilts up, past your head and into the sky
   const RA = ex.mode === 'world' && roomAround(p); if (RA) { cx = clamp(cx, RA.x0, RA.x1); cz = clamp(cz, RA.z0, RA.z1); cy = Math.min(cy, RA.top); }
   const k = ex.snap ? 1 : Math.min(1, dt * 8);
   camera.position.lerp(tmpV2.set(cx, cy, cz), k);
