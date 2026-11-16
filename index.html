@@ -169,6 +169,26 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 .res-chat div{overflow:hidden;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:2px} /* up to two lines each, so punchlines aren't cut off */
 .res-chat b{font-family:var(--display);font-weight:600;font-size:9.5px;letter-spacing:.14em;margin-right:7px;color:#c9d6e8}
 .res-chat .hero b{color:#8fe3ff}.res-chat .villain b{color:#ff7a6e}
+.res-chat .you b{color:#ffd36a}.res-chat .wh{font-style:italic;color:#f3c6ff}.res-chat .wh b{color:#e9a8ff}.res-chat .trade b{color:#9fe6b0}.res-chat .sys{color:#9aa4b2}
+.chat-in{position:fixed;left:calc(var(--sl) + 20px);bottom:calc(var(--sb) + 132px);width:min(440px,calc(100vw - 40px));z-index:60;display:flex;gap:6px}.chat-in.hidden{display:none}
+.chat-in input{flex:1;min-width:0;background:rgba(7,10,17,.92);border:1px solid var(--line);color:var(--ink);font:inherit;font-size:13px;padding:10px 12px;outline:none}
+.chat-in button{all:unset;cursor:pointer;padding:0 14px;border:1px solid var(--line);background:rgba(7,10,17,.92);font-family:var(--display);font-size:10px;letter-spacing:.2em}
+.chat-btn{all:unset;position:fixed;right:calc(var(--sr) + 16px);top:calc(var(--st) + 118px);z-index:6;cursor:pointer;padding:8px 12px;border:1px solid var(--line);background:rgba(7,10,17,.6);font-family:var(--display);font-size:9px;letter-spacing:.24em;color:var(--ink)}
+.chat-btn small{opacity:.55;margin-left:6px}.chat-btn.hidden{display:none}body.touch .chat-btn small{display:none}
+.tr-box{width:min(780px,100%)}.tr-mood{margin:12px 0 4px;font-size:13px;color:#ffe2a0;font-style:italic}
+.tr-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media (max-width:640px){.tr-cols{grid-template-columns:1fr}}
+.tr-col h4{margin:14px 0 6px;font-family:var(--display);font-size:9px;letter-spacing:.3em;color:var(--mute);font-weight:500}
+.tr-offer,.tr-list{display:flex;flex-wrap:wrap;gap:6px;min-height:34px}.tr-offer{padding:8px;border:1px dashed var(--line);background:rgba(255,255,255,.02)}
+.tr-offer button,.tr-list button,.tr-units button{all:unset;cursor:pointer;padding:7px 9px;border:1px solid var(--line);font-size:11px;letter-spacing:.03em}
+.tr-offer button{border-color:rgba(159,230,176,.45);background:rgba(159,230,176,.08)}.tr-list button[disabled]{opacity:.3;cursor:default}
+.tr-offer small,.tr-list small{margin-left:6px;color:var(--mute);font-size:10px}.tr-offer em,.tr-list em{font-size:11px;color:var(--mute)}
+.tr-units{margin-top:10px;font-size:11px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.tr-bar{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin:16px 0 4px;font-size:11px;color:var(--mute)}
+.tr-bar i{height:5px;background:linear-gradient(90deg,#9fe6b0 0 calc(var(--k) * 100%),rgba(255,255,255,.12) 0)}
+.re-act button.go{border-color:#9fe6b0;color:#9fe6b0}.re-act button[disabled]{opacity:.35;cursor:default}
+.tr-ask{position:fixed;left:50%;top:calc(var(--st) + 70px);transform:translate(-50%,-20px);z-index:65;opacity:0;pointer-events:none;transition:.25s;background:rgba(9,12,20,.95);border:1px solid rgba(159,230,176,.5);padding:12px 16px;text-align:center;font-size:13px;min-width:260px}
+.tr-ask.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}.tr-ask b{color:#9fe6b0}.tr-ask small{display:block;margin:4px 0 8px;font-size:11px;color:var(--mute)}
+.tr-ask button{all:unset;cursor:pointer;padding:7px 14px;margin:0 4px;border:1px solid var(--line);font-family:var(--display);font-size:9px;letter-spacing:.2em}
 body.ch4 .res-chat .neutral b{color:#ffb0a8}
 /* phones: the chat sits above the stick, three lines; held sideways it moves to the top, two lines */
 @media (max-width:720px),(pointer:coarse){
@@ -5549,6 +5569,8 @@ addEventListener('keydown', e => {
   if (state !== 'explore') return;
   if (e.target && e.target.tagName === 'INPUT') return;
   if (ex.dlg && ex.dlg.choice) { const m = /^(?:Digit|Numpad)([1-9])$/.exec(e.code); if (m) { e.preventDefault(); pickChoice(+m[1] - 1); } else if (['KeyE', 'Enter', 'Space'].includes(e.code)) e.preventDefault(); if (e.code !== 'Escape' && e.code !== 'KeyP') return; }
+  if (TR.open) { if (e.code === 'Escape') tradeClose(); return; } // trading: the window has the keys
+  if ((e.code === 'KeyT' || e.code === 'Slash') && ex.mode === 'world' && !ex.dlg && residents.length) { e.preventDefault(); chatOpen(e.code === 'Slash' ? '/' : ''); return; } // the zone chat
   if (e.code === 'Escape' || e.code === 'KeyP') { pauseExplore(true); return; }
   if (ex.invOpen) return;
   if (e.code === 'Space' && ex.mode === 'world' && !ex.dlg) { e.preventDefault(); ex.keys.add('Space'); doJump(); return; }
@@ -25876,7 +25898,7 @@ function resHereChance(c, A) {
 }
 // ?residents=all brings every resident to wherever you are (to preview them); ?resdebug exposes their state for testing
 const RES_ALL = /[?&]residents=all/.test(window.location.search);
-if (/[?&]resdebug/.test(window.location.search)) { window.RES = RES; window.resFF = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; resTick(step); } }; window.resFFs = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; SPC.t = (SPC.t || 0) + step; resSpaceTick(step); } return { ships: RES.sp.map(S => S.c.name + ':' + S.al + ':' + Math.round(S.pos.distanceTo(SPC.pos)) + 'm'), foes: SC.foes.map(f => f.name), bolts: SC.bolts.filter(b => b.friendly).length }; }; window.SCdbg = SC; window.resState = () => ({ state, mode: ex.mode, scene: !!SPC.scene, p: player.position.toArray(), units: units(), near: ex.near && ex.near.id }); window.resGoSpace = p => startChapter3(p); window.resT = () => residents.map(c => { const T = resTravel(c); return `${c.name}:${T.mode}:${(T.body || T.to).name}:${resLevel(c)}`; }); window.resKill = i => resDie(residents[i]); window.resRL = () => !!RL; window.resEmpDbg = () => resEmp; window.resEmpFF = n => { for (let i = 0; i < n; i++) { RES.empT = 0; resEmpTick(15); } return resEmp; }; window.resEmpOpenDbg = () => resEmpOpen(); window.resResDbg = () => residents; window.resBaseAt = (x, z) => resBaseBlocked(x, z); window.resTp = (x, z, ry) => { player.position.set(x, wHeight(x, z), z); if (ry != null) { player.rotation.y = ry; ex.yaw = ry + Math.PI; } ex.snap = true; }; window.resBaseSyncDbg = () => resBaseSync(); window.resDrinkDbg = i => drinkUp(DRINKS[i], 'test', 'BAR'); window.resBoozeDbg = () => ex.booze || 0; window.resEscDbg = () => [...GESC.ids]; window.resBotsDbg = () => RES.bots.map(B => ({ n: B.c.name, task: B.task && (B.task.type + (B.task.kind ? ':' + B.task.kind : '')), booze: +(B.booze || 0).toFixed(2), x: +B.x.toFixed(1), z: +B.z.toFixed(1), p: resPersonaSummary(B.c) })); window.resLogDbg = () => RES.log.map(l => l.who + ': ' + l.text); window.resClubDbg = () => world.hall && world.hall.club ? { x: world.hall.x, z: world.hall.z, inside: world.hall.inside, ready: world.hall.V.ready, dancers: world.hall.club.extra.length } : null; window.resNearDbg = () => ({ sys: resPlayerSys(), near: resNearSet().L.map(S => S.name), res: residents.map(c => { const T = resTravel(c); return `${c.name}${resGuildBound(c) ? ' [guild]' : ''}: ${T.mode} ${(T.body || T.to).name} (${sysById((T.body || T.to).sys).name})`; }) }); window.resFightDbg = () => RES_FDBG; window.resRageFillDbg = () => { for (const B of RES.bots) B.rage = 99; for (const C of Object.values(CREW)) C.rage = 99; return true; }; window.resCrewDbg = () => Object.entries(CREW).filter(([, C]) => C.R && C.R.root.visible).map(([id, C]) => ({ id, d: +Math.hypot(C.R.root.position.x - player.position.x, C.R.root.position.z - player.position.z).toFixed(1), rage: Math.round(C.rage || 0) })); window.resRGDbg = () => !!RG; window.resLairDbg = () => { const g = resGateHere(); return g ? { name: g.L.name, lv: g.L.lv, floors: g.L.floors, x: g.x, z: g.z } : null; }; window.resDunAskDbg = () => { const B = RES.bots.find(o => o.ready); if (B) resDunAsk(B, false); return !!B; }; window.resDgnDbg = () => ({ on: DGN.on, f: DGN.f, top: DGN.on ? dgnTop() : 0, beaten: DGN.on && dgnBeaten(DGN.f), esc: [...GESC.ids], theirs: !!GESC.theirs, bots: RES.bots.map(B => B.c.name + '@' + Math.round(Math.hypot(B.x - player.position.x, B.z - player.position.z)) + 'm:' + (B.task && B.task.type)) }); window.resDgnKillDbg = () => { for (const f of fauna.list) if ((f.dgn || f.boss) && !f.dead) damageFauna(f, 1e6, true); return true; }; window.resDgnUpDbg = () => DGN.up ? { x: DGN.up.x, z: DGN.up.z } : null; window.resEscSetDbg = () => { const G = myGuild(); escortSet(RES.bots.filter(B => G && G.members.includes(B.id)).map(B => B.id)); return [...GESC.ids]; }; }
+if (/[?&]resdebug/.test(window.location.search)) { window.RES = RES; window.resFF = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; resTick(step); } }; window.resFFs = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; SPC.t = (SPC.t || 0) + step; resSpaceTick(step); } return { ships: RES.sp.map(S => S.c.name + ':' + S.al + ':' + Math.round(S.pos.distanceTo(SPC.pos)) + 'm'), foes: SC.foes.map(f => f.name), bolts: SC.bolts.filter(b => b.friendly).length }; }; window.SCdbg = SC; window.resState = () => ({ state, mode: ex.mode, scene: !!SPC.scene, p: player.position.toArray(), units: units(), near: ex.near && ex.near.id }); window.resGoSpace = p => startChapter3(p); window.resT = () => residents.map(c => { const T = resTravel(c); return `${c.name}:${T.mode}:${(T.body || T.to).name}:${resLevel(c)}`; }); window.resKill = i => resDie(residents[i]); window.resRL = () => !!RL; window.resEmpDbg = () => resEmp; window.resEmpFF = n => { for (let i = 0; i < n; i++) { RES.empT = 0; resEmpTick(15); } return resEmp; }; window.resEmpOpenDbg = () => resEmpOpen(); window.resResDbg = () => residents; window.resBaseAt = (x, z) => resBaseBlocked(x, z); window.resTp = (x, z, ry) => { player.position.set(x, wHeight(x, z), z); if (ry != null) { player.rotation.y = ry; ex.yaw = ry + Math.PI; } ex.snap = true; }; window.resBaseSyncDbg = () => resBaseSync(); window.resDrinkDbg = i => drinkUp(DRINKS[i], 'test', 'BAR'); window.resBoozeDbg = () => ex.booze || 0; window.resEscDbg = () => [...GESC.ids]; window.resBotsDbg = () => RES.bots.map(B => ({ n: B.c.name, task: B.task && (B.task.type + (B.task.kind ? ':' + B.task.kind : '')), booze: +(B.booze || 0).toFixed(2), x: +B.x.toFixed(1), z: +B.z.toFixed(1), p: resPersonaSummary(B.c) })); window.resLogDbg = () => RES.log.map(l => l.who + ': ' + l.text); window.resClubDbg = () => world.hall && world.hall.club ? { x: world.hall.x, z: world.hall.z, inside: world.hall.inside, ready: world.hall.V.ready, dancers: world.hall.club.extra.length } : null; window.resNearDbg = () => ({ sys: resPlayerSys(), near: resNearSet().L.map(S => S.name), res: residents.map(c => { const T = resTravel(c); return `${c.name}${resGuildBound(c) ? ' [guild]' : ''}: ${T.mode} ${(T.body || T.to).name} (${sysById((T.body || T.to).sys).name})`; }) }); window.resFightDbg = () => RES_FDBG; window.resChatDbg = t => resChatSend(t); window.resTradeDbg = () => ({ open: TR.open, who: TR.B && TR.B.c.name, mine: TR.mine, theirs: TR.theirs, units: TR.units, theirUnits: TR.theirUnits, verdict: TR.open ? tradeVerdict() : null, mood: TR.mood }); window.resTradeAskDbg = () => { const B = RES.bots.find(o => o.ready); if (B) { B.task = { type: 'face', t: 0, dur: 16 }; tradeAsk(B); } return !!B; }; window.resRageFillDbg = () => { for (const B of RES.bots) B.rage = 99; for (const C of Object.values(CREW)) C.rage = 99; return true; }; window.resCrewDbg = () => Object.entries(CREW).filter(([, C]) => C.R && C.R.root.visible).map(([id, C]) => ({ id, d: +Math.hypot(C.R.root.position.x - player.position.x, C.R.root.position.z - player.position.z).toFixed(1), rage: Math.round(C.rage || 0) })); window.resRGDbg = () => !!RG; window.resLairDbg = () => { const g = resGateHere(); return g ? { name: g.L.name, lv: g.L.lv, floors: g.L.floors, x: g.x, z: g.z } : null; }; window.resDunAskDbg = () => { const B = RES.bots.find(o => o.ready); if (B) resDunAsk(B, false); return !!B; }; window.resDgnDbg = () => ({ on: DGN.on, f: DGN.f, top: DGN.on ? dgnTop() : 0, beaten: DGN.on && dgnBeaten(DGN.f), esc: [...GESC.ids], theirs: !!GESC.theirs, bots: RES.bots.map(B => B.c.name + '@' + Math.round(Math.hypot(B.x - player.position.x, B.z - player.position.z)) + 'm:' + (B.task && B.task.type)) }); window.resDgnKillDbg = () => { for (const f of fauna.list) if ((f.dgn || f.boss) && !f.dead) damageFauna(f, 1e6, true); return true; }; window.resDgnUpDbg = () => DGN.up ? { x: DGN.up.x, z: DGN.up.z } : null; window.resEscSetDbg = () => { const G = myGuild(); escortSet(RES.bots.filter(B => G && G.members.includes(B.id)).map(B => B.id)); return [...GESC.ids]; }; }
 const resMax = () => document.body.classList.contains('touch') ? 3 : 6; // phones draw fewer of them, and without shadows
 function resPresent(c, A) {
   if (RES_ALL) return true;
@@ -26168,12 +26190,8 @@ function resTalk(B) {
     { text: 'Ask something…', onPick: () => resAsk(B) }
   ];
   if (effCh() >= 3) opts.push({ text: 'How’s the war?', onPick: () => { if (resUnsure(B, 'war')) return resSayTo(B, [resUnknownLine(B, x)], back); const W = resWarCtx(); if (W) { x.enemy = W.enemy; x.realm = W.realm; } const set = RL && W && RL.wars[W.kind]; resSayTo(B, [set ? resFill(resPick(Array.isArray(set) ? set : set[B.al]), x) : resFill(resPick(T ? T.war : ['Quiet, for now.']), x)], back); } });
-  if (!V && ex.mode === 'world') { // a small trade
-    const id = resPick(RES_TRADE_RES.filter(k => ITEMS[k])), n = 2 + Math.floor(Math.random() * 3), price = n * (B.al === 'hero' ? 8 : 12);
-    opts.push({ text: `Buy ${n} ${ITEMS[id].name} · ${price} units`, onPick: () => {
-      if (units() < price) { resSay(B, (RT && resPick(RT.broke)) || 'Come back when you’ve got the units.'); return; }
-      addUnits(-price); giveItem(id, n); lootMsg(`+${n} ${ITEMS[id].name} · from ${B.c.name}`, ITEMS[id].color || '#9fe6b0'); resSay(B, (RT && resPick(RT.deal)) || 'Pleasure doing business.'); } });
-  }
+  if (ex.mode === 'world') opts.push({ text: 'Trade…', onPick: () => { closeDialog(); RES.talking = null; tradeOpen(B); } }); // the trade window: both sides, haggling
+
   if (resEmpOf(B.id)) opts.push({ text: 'About your empire\u2026', onPick: () => { const e = resEmpOf(B.id), wars = resEmp.wars.filter(w => w.a === B.id || w.b === B.id); resSayTo(B, [resClean(`${e.name}. ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars.length ? `, at war with ${wars.map(w => (resEmpOf(w.a === B.id ? w.b : w.a) || {}).name).join(' and ')}` : ', at peace for now'}.`)], () => openChoice(resWho(B), [{ text: 'Open Resident Empires', onPick: () => { RES.talking = null; closeDialog(); resEmpOpen(); } }, { text: 'Demand you disband it', onPick: () => { resDisband(B.id); RES.talking = null; } }, { text: 'Back', onPick: back }])); } });
   opts.push(...resGuildCmdOpts(B, back), ...resGuildTalkOpts(B, back));
   opts.push({ text: 'Roleplay\u2026', onPick: () => resRoleplay(B, 1) });
@@ -26287,10 +26305,10 @@ function resPlaceIn(t) { // a world or system named in what you typed (longest n
   named.sort((a, b) => b.name.length - a.name.length);
   return named.find(o => t.includes(' ' + o.name.toLowerCase().replace(/^the /, '').replace(/[^a-z0-9 -]/g, '') + ' ')) || null;
 }
-function resAnswer(B, raw) {
+function resAnswer(B, raw, mode) { // mode: 'chat' (they answer out loud in the zone chat) or 'whisper' (from wherever they are); otherwise a conversation
   const t = ' ' + raw.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9à-ÿ -]/g, ' ').replace(/\s+/g, ' ') + ' ', has = re => re.test(t), x = resCtx(B);
   const again = () => openChoice(resWho(B), [{ text: 'Ask something else', onPick: () => resAsk(B) }, { text: 'Back', onPick: () => resTalk(B) }]);
-  const say = (lines, then) => resSayTo(B, lines, then || again);
+  const say = (lines, then) => mode ? resChatLines(B, lines, mode) : resSayTo(B, lines, then || again);
   const pickAl = set => resFill(resPick((set && (set[B.al] || set.neutral)) || ['...']), x);
   // 1. safety first: never confusion, never a joke
   if (has(/suicid|kill (my ?self|me)|end (it all|my life|everything)|hurt (my ?self)|self ?harm|cut (my ?self)|not safe|want to die|wanna die|dont want to (live|be alive|be here|exist)|no reason to live|better off dead|take my (own )?life/)) return resCareSafety(B);
@@ -26306,6 +26324,11 @@ function resAnswer(B, raw) {
     const k = has(/\bcv\b|resume|résumé/) ? 'cv' : has(/interview/) ? 'interview' : has(/salary|pay rise|\braise\b|paid more|promotion/) ? 'pay' : has(/\bfired\b|laid off|redundan|lost my job|unemploy/) ? 'lost' : has(/burn/) ? 'burnout' : has(/boss|manager|coworker|co worker|colleague|bull|harass/) ? 'conflict' : has(/first job|graduate|intern|apprentice|school leaver/) ? 'first' : has(/change|switch|new career/) ? 'change' : 'search';
     return resJobTopic(B, k, []);
   }
+  // where they are, a trade, following you
+  if (has(/where (are|r) (you|u)|\bwya\b|where you at/)) return say([`I’m ${resWhereLabel(B.c)}.`]);
+  if (has(/what (are|r) (you|u) (doing|up to)|whatcha|\bwyd\b/)) return say([resT('doing', B) || pickAl(RL && RL.talk.doing)]); // (before "who are you", which it also matches)
+  if (has(/\btrade\b|wanna trade|want to trade|\bswap\b/) && !B.whisper && RES.bots.includes(B)) { if (!mode) { closeDialog(); RES.talking = null; resTradeStart(B); return; } say([Math.random() < resGamer(B.c) ? '\u2063sure, opening trade' : 'Sure. Let’s trade.']); setTimeout(() => { if (RES.bots.includes(B) && !TR.open && state === 'explore') resTradeStart(B); }, 1200); return; }
+  if (has(/follow me|come with me/) && !B.whisper && iLeadGuild() && myGuild().members.includes(B.id) && RES.bots.includes(B)) { escortSet([...GESC.ids, B.id]); return say([resT('dungeon', B, null, 'follow') || 'With you.']); }
   if (!RL) return say([resFill(resPick(['Give me a second, I’m still getting my bearings.', 'Ask me again in a moment?']), x)]);
   // 4. leaders and bosses
   const boss = RES_BOSS_WORDS.find(([re]) => has(re));
@@ -26342,7 +26365,7 @@ function resAnswer(B, raw) {
   if (has(/what (are|r) (you|u) (doing|up to)|whatcha|busy/)) return say([pickAl(RL.talk.doing)]);
   if (has(/^ (hi|hello|hey|yo|sup|hiya|howdy|greetings|morning|evening) /)) return say([pickAl(RL.greet)]);
   if (has(/thank|thx|cheers|\bty\b/)) return say([pickAl(RL.thanks)]);
-  if (has(/\bbye\b|goodbye|cya|see you|see ya|later/)) { RES.talking = null; return resSayTo(B, [pickAl(RL.talk.farewell)]); }
+  if (has(/\bbye\b|goodbye|cya|see you|see ya|later/)) { if (mode) return say([pickAl(RL.talk.farewell)]); RES.talking = null; return resSayTo(B, [pickAl(RL.talk.farewell)]); }
   if (has(/james|orion|chapter|story|storm|station|new london|ferry/)) return say([resFill(resPick(RL.chapter[clamp(effCh(), 1, 5)]), x)]);
   // 9. no idea what you mean
   return say([pickAl(RL.confused), resPick(RL.suggest)]);
@@ -26367,7 +26390,7 @@ function resTick(dt) {
   if (!paused) {
     RES.social -= dt; if (RES.social <= 0) { RES.social = 3 + Math.random() * 3; resSocial(); }
     RES.ding -= dt; if (RES.ding <= 0) { RES.ding = 20; for (const B of RES.bots) { B.lv = resLevel(B.c); if (B.lv > B.lastLv) { B.lastLv = B.lv; resSay(B, resLine('ding', B)); } if (B.ready) resGearCheck(B); } }
-    resInviteCheck(dt); resDunAskCheck(dt); resEscortTick(dt); resSmartTick(dt);
+    resInviteCheck(dt); resDunAskCheck(dt); resEscortTick(dt); resSmartTick(dt); resTradeReqCheck(dt); tradeAskTick();
     RES.drunkT = (RES.drunkT == null ? 3 : RES.drunkT) - dt; if (RES.drunkT <= 0) { RES.drunkT = 3.5; resDrunkCheck(); }
   }
   for (const B of [...RES.bots]) {
@@ -26404,7 +26427,7 @@ function resStep(B, dt, p) {
   if (!B.task) resChoose(B);
   const T = B.task; T.t += dt; B.speed = 0;
   if (B.emT > 0) B.emT -= dt; else B.em = null;
-  if (resEscortStep(B, T, dt, p) || resNightStep(B, T, dt, p) || resFightStep(B, T, dt)) { B.y = groundAt(B.x, B.z, B.y + 1.5); return; }
+  if (resEscortStep(B, T, dt, p) || resNightStep(B, T, dt, p) || resFightStep(B, T, dt) || resTradeStep(B, T, dt, p)) { B.y = groundAt(B.x, B.z, B.y + 1.5); return; }
   switch (T.type) {
     case 'wander': if (resMoveTo(B, T.to, dt, T.run) || T.t > 20) B.task = null; break;
     case 'idle': if (T.t > T.dur) B.task = null; else if (dp < 12) resFace(B, p.x, p.z, dt); break;
@@ -27511,6 +27534,190 @@ function crewDodgeTick(C, R, foe, fd, reach, dt) { // dive clear when it's about
   return false;
 }
 
+/* ============ Trading and the zone chat, MMO style ============
+   Trading: residents walk over and ask to trade ("Vela wants to trade with you": accept or decline), or you open a trade yourself
+   (Trade in their talk menu, /trade Name in the chat, or just ask them). The trade window has both sides: put items and units on
+   yours, pick what you want from their goods, haggle, and accept once they're happy. How hard they bargain comes from who they are:
+   heroes and kind souls go easy, villains drive a hard bargain, traders haggle, guildmates give you a discount.
+   Chat: press T (or /, or the CHAT button) and type. Say a resident's name and that resident answers you, and only them; the others
+   leave it alone. /w Name … whispers to a resident anywhere in the galaxy, and they whisper back. ============ */
+const TRADE_GOODS = ['stone', 'ice', 'scrap', 'crystal', 'cloth', 'wood', 'metal', 'obsidian', 'coal', 'cuore', 'feore', 'auore', 'tiore', 'cuing', 'feing', 'auing', 'alienmeat', 'medkit', 'warpcell'];
+const tradeVal = id => SELL[id] != null ? SELL[id] : id === 'medkit' ? 40 : id === 'warpcell' ? 60 : 5;
+const tradeOk = id => !!ITEMS[id] && ITEMS[id].kind !== 'tool' && ITEMS[id].kind !== 'armor' && ITEMS[id].kind !== 'ship' && ITEMS[id].kind !== 'quest';
+function resTradeStock(c) { // what they're carrying to trade: it changes every half hour, more and better the higher their level
+  const k = c.id + '|' + resSlot(); RES.stock = RES.stock || {}; if (RES.stock[c.id] && RES.stock[c.id].k === k) return RES.stock[c.id].bag;
+  const lv = resLevel(c), bag = {}, n = 4 + Math.floor(resHash(k + 'n') * 4), pool = TRADE_GOODS.filter(id => ITEMS[id] && (tradeVal(id) <= 8 + lv * 1.2 || resHash(k + id) < .15));
+  for (let i = 0; i < n && pool.length; i++) { const id = pool[Math.floor(resHash(k + 'i' + i) * pool.length)], v = tradeVal(id); bag[id] = (bag[id] | 0) + Math.max(1, Math.round((3 + resHash(k + 'q' + i) * 10) * (v > 30 ? .2 : v > 12 ? .5 : 1))); }
+  RES.stock[c.id] = { k, bag, units: 40 + lv * 8 }; return bag;
+}
+function resGreed(c) { // how much more than it's worth they want for it
+  const al = resAl(c); let g = al === 'hero' ? .85 : al === 'villain' ? 1.3 : 1;
+  if (resHas(c, 'trading')) g *= 1.1; if (resHas(c, 'kind')) g *= .85; if (resHas(c, 'proud')) g *= 1.08; if (myGuild() && myGuild().members.includes(c.id)) g *= .85;
+  return g;
+}
+const TRADE_TALK = {
+  steal: { game: ['ok that’s a steal, DEAL', 'lmao deal, before you change your mind', 'say less, deal'], plain: ['That’s generous. Deal!', 'You’ve got yourself a deal. A good one, for me.'] },
+  fair: { game: ['deal', 'fair, i’m in', 'aight, done'], plain: ['That’s fair. Deal.', 'All right, I can do that.'] },
+  close: { game: ['close… throw in a bit more', 'almost, sweeten it', 'nah, little more'], plain: ['Close. A little more?', 'Nearly there. Add something?'] },
+  low: { game: ['not even close lol', 'are you trying to rob me', 'bruh'], plain: ['Not quite. Not even close, honestly.', 'I can’t do that.'] },
+  insult: { game: ['lmaooo no', 'is this a joke', 'get the fuck out with that offer'], plain: ['Are you serious?', 'That’s an insult.'] },
+  gift: { game: ['a gift?? for me?? ty!!', 'free stuff, hell yeah'], plain: ['For me? Thank you!', 'That’s kind of you.'] },
+  empty: { game: ['put something on the table then', 'what we trading?'], plain: ['What did you have in mind?', 'Put something on the table.'] },
+  done: { game: ['pleasure doing business o/', 'gg, trade done', 'nice trade'], plain: ['Pleasure doing business.', 'A good trade. Thank you.'] },
+  cancel: { game: ['nvm then', 'fine, whatever', 'ok, maybe next time'], plain: ['Another time, then.', 'No harm done.'] }
+};
+const tradeLine = (B, k) => { const T = TRADE_TALK[k], g = Math.random() < resGamer(B.c); return (g ? '⁣' : '') + resPick(g ? T.game : T.plain); };
+const TR = { open: false, B: null, mine: {}, units: 0, theirs: {}, theirUnits: 0, mood: '' };
+function tradeValues() { const B = TR.B; let give = TR.units, get = TR.theirUnits; for (const id in TR.mine) give += tradeVal(id) * TR.mine[id]; for (const id in TR.theirs) get += tradeVal(id) * TR.theirs[id]; return { give, get, need: get * resGreed(B.c) }; }
+function tradeVerdict() { const { give, get, need } = tradeValues(); if (!give && !get) return 'empty'; if (!get) return 'gift'; const r = give / Math.max(1, need); return r >= 1.3 ? 'steal' : r >= 1 ? 'fair' : r >= .8 ? 'close' : r >= .45 ? 'low' : 'insult'; }
+function tradeOpen(B, prefill) {
+  if (!B || TR.open) return; TR.open = true; TR.B = B; TR.mine = {}; TR.units = 0; TR.theirs = {}; TR.theirUnits = 0; resTradeStock(B.c);
+  if (prefill) { Object.assign(TR.mine, prefill.mine || {}); Object.assign(TR.theirs, prefill.theirs || {}); TR.units = prefill.units || 0; }
+  RES.talking = B; B.task = { type: 'face', t: 0, dur: 9999 }; if (B.partner) resEndPair(B);
+  TR.mood = resT('trade', B) || ''; tradeEl().classList.remove('hidden'); tradeRender(); sfx.click();
+}
+function tradeClose(said) { if (!TR.open) return; TR.open = false; const B = TR.B; tradeEl().classList.add('hidden'); if (B && RES.bots.includes(B)) { if (B.task && B.task.type === 'face') B.task = null; if (!said) resSay(B, tradeLine(B, 'cancel')); } if (RES.talking === B) RES.talking = null; TR.B = null; }
+function tradeEl() {
+  let el = $('#resTrade'); if (el) return el;
+  el = document.createElement('div'); el.id = 'resTrade'; el.className = 'res-emp hidden'; el.innerHTML = '<div class="re-box tr-box"></div>'; document.body.appendChild(el);
+  el.addEventListener('click', e => {
+    const b = e.target.closest('[data-t]'); if (e.target === el) { tradeClose(); return; } if (!b || b.disabled) return; sfx.click();
+    const [act, id] = b.dataset.t.split('|'), B = TR.B, stock = resTradeStock(B.c), U = RES.stock[B.c.id];
+    if (act === 'x') { tradeClose(); return; }
+    if (act === 'add' && have(id) > (TR.mine[id] | 0)) TR.mine[id] = (TR.mine[id] | 0) + 1;
+    if (act === 'rem' && TR.mine[id]) { if (!--TR.mine[id]) delete TR.mine[id]; }
+    if (act === 'want' && (stock[id] | 0) > (TR.theirs[id] | 0)) TR.theirs[id] = (TR.theirs[id] | 0) + 1;
+    if (act === 'unwant' && TR.theirs[id]) { if (!--TR.theirs[id]) delete TR.theirs[id]; }
+    if (act === 'u') TR.units = clamp(TR.units + (+id), 0, units());
+    if (act === 'tu') TR.theirUnits = 0;
+    if (act === 'haggle') { // they make it work: ask you for units, or pay you the difference
+      const { give, need } = tradeValues(), g = resGreed(B.c);
+      if (need > give) { const add = Math.ceil(need - give); if (units() >= TR.units + add) { TR.units += add; TR.mood = resPick([`Add ${add} units and it’s a deal.`, `${add} more units. Final offer.`]); } else TR.mood = 'You don’t have the units for this. Take something off.'; }
+      else { const spare = Math.floor((give - need) / g); if (spare >= 1) { TR.theirUnits = Math.min(U.units, TR.theirUnits + spare); TR.mood = resPick([`I’ll throw in ${TR.theirUnits} units. Fair?`, `${TR.theirUnits} units on my side, then.`]); } else TR.mood = 'That’s already about right.'; }
+      tradeRender(); return;
+    }
+    if (act === 'ok') { tradeAccept(); return; }
+    TR.mood = tradeLine(B, tradeVerdict()).replace('⁣', ''); tradeRender();
+  });
+  return el;
+}
+function tradeRender() {
+  const el = tradeEl(), B = TR.B; if (!B) return; const stock = resTradeStock(B.c), v = tradeValues(), vd = tradeVerdict(), ok = vd === 'steal' || vd === 'fair' || vd === 'gift';
+  const nm = id => reEsc(ITEMS[id] ? ITEMS[id].name : id), alN = { hero: 'Hero', neutral: 'Neutral', villain: 'Villain' }[B.al];
+  const chips = (o, act, tu) => Object.entries(o).map(([id, n]) => `<button data-t="${act}|${id}">${nm(id)} ×${n}<small>${tradeVal(id) * n}</small></button>`).join('') + (tu ? `<button data-t="${tu}">${tu === 'tu' ? TR.theirUnits : TR.units} units</button>` : '');
+  const bag = Object.entries(invState().bag).filter(([id, n]) => n > 0 && tradeOk(id)).sort((a, b) => tradeVal(b[0]) - tradeVal(a[0]));
+  const theirs = Object.entries(stock).filter(([, n]) => n > 0);
+  const k = clamp(v.give / Math.max(1, v.need || 1), 0, 2) / 2;
+  el.querySelector('.tr-box').innerHTML = `<div class="re-head"><div><b>TRADE · ${reEsc(String(B.c.name).toUpperCase())}</b><small>LV ${B.lv} · ${reEsc(resSpLabel(B.c))} · ${alN}${myGuild() && myGuild().members.includes(B.id) ? ' · your guild (discount)' : ''}</small></div><button class="re-x" data-t="x" aria-label="Close">✕</button></div>
+  <p class="tr-mood">“${reEsc(resClean(String(TR.mood || '').replace('⁣', '')))}”</p>
+  <div class="tr-cols"><div class="tr-col"><h4>YOUR OFFER</h4><div class="tr-offer">${chips(TR.mine, 'rem', TR.units ? 'u|-' + TR.units : null) || '<em>nothing yet</em>'}</div>
+  <h4>YOUR BAG · tap to offer</h4><div class="tr-list">${bag.map(([id, n]) => `<button data-t="add|${id}" ${n > (TR.mine[id] | 0) ? '' : 'disabled'}>${nm(id)} <small>${n - (TR.mine[id] | 0)}</small></button>`).join('') || '<em>nothing to trade</em>'}</div>
+  <div class="tr-units">Units ${units() - TR.units} <button data-t="u|-10">−10</button><button data-t="u|10">+10</button><button data-t="u|50">+50</button></div></div>
+  <div class="tr-col"><h4>THEIR OFFER</h4><div class="tr-offer">${chips(TR.theirs, 'unwant', TR.theirUnits ? 'tu' : null) || '<em>nothing yet</em>'}</div>
+  <h4>THEIR GOODS · tap to ask for</h4><div class="tr-list">${theirs.map(([id, n]) => `<button data-t="want|${id}" ${n > (TR.theirs[id] | 0) ? '' : 'disabled'}>${nm(id)} <small>${n - (TR.theirs[id] | 0)}</small></button>`).join('') || '<em>sold out</em>'}</div></div></div>
+  <div class="tr-bar"><span>You give ≈ ${Math.round(v.give)}</span><i style="--k:${k.toFixed(3)}"></i><span>You get ≈ ${Math.round(v.get)}</span></div>
+  <div class="re-act"><button data-t="haggle">Haggle</button><button data-t="ok" class="${ok ? 'go' : ''}" ${ok ? '' : 'disabled'}>Accept trade</button><button data-t="x">Cancel</button></div>`;
+}
+function tradeAccept() {
+  const B = TR.B, stock = resTradeStock(B.c), U = RES.stock[B.c.id];
+  for (const id in TR.mine) if (have(id) < TR.mine[id]) { TR.mood = 'You don’t have all that any more.'; tradeRender(); return; }
+  if (units() < TR.units) { TR.mood = 'You’re short on units.'; tradeRender(); return; }
+  for (const id in TR.mine) { takeItem(id, TR.mine[id]); stock[id] = (stock[id] | 0) + TR.mine[id]; }
+  for (const id in TR.theirs) { giveItem(id, TR.theirs[id]); stock[id] = Math.max(0, (stock[id] | 0) - TR.theirs[id]); }
+  addUnits(TR.theirUnits - TR.units); U.units = Math.max(0, U.units - TR.theirUnits + TR.units);
+  const list = o => Object.entries(o).map(([id, n]) => `${n} ${ITEMS[id].name}`);
+  const gave = list(TR.mine).concat(TR.units ? [`${TR.units} units`] : []), got = list(TR.theirs).concat(TR.theirUnits ? [`${TR.theirUnits} units`] : []);
+  RES.log.push({ who: '⇄ TRADE', al: 'trade', text: `You and ${B.c.name}: gave ${gave.join(', ') || 'nothing'} · got ${got.join(', ') || 'nothing'}`, t: time }); if (RES.log.length > 30) RES.log.shift(); resChatRender();
+  sfx.chime(); lootMsg(`Trade with ${B.c.name} complete`, '#9fe6b0'); resSay(B, tradeLine(B, TR.theirs && Object.keys(TR.theirs).length || TR.theirUnits ? 'done' : 'gift')); B.em = 'wave'; B.emT = 2;
+  tradeClose(true);
+}
+// they come to you: "Vela wants to trade with you"
+function resTradeReqCheck(dt) {
+  if ((RES.trT = (RES.trT == null ? 35 : RES.trT) - dt) > 0) return; RES.trT = 45 + Math.random() * 30;
+  if (TR.open || RES.trAsk || ex.dlg || state !== 'explore' || ex.mode !== 'world' || RES.talking || DGN.on) return;
+  const p = player.position, c = RES.bots.filter(B => B.ready && !B.leaving && !B.partner && !resEscorting(B) && !(B.task && ['hunt', 'brawl', 'drink'].includes(B.task.type)) && Math.hypot(B.x - p.x, B.z - p.z) < 32);
+  if (!c.length || Math.random() > .55) return;
+  const B = c.find(o => resHas(o.c, 'trading')) || resPick(c); B.task = { type: 'tradeReq', t: 0 };
+  const st = resTradeStock(B.c), top = Object.keys(st).sort((a, b) => tradeVal(b) - tradeVal(a))[0];
+  resSay(B, Math.random() < resGamer(B.c) ? `⁣wts ${ITEMS[top] ? ITEMS[top].name.toLowerCase() : 'stuff'}, ${wanderer.name} you buying?` : `${wanderer.name}, I’ve got ${ITEMS[top] ? ITEMS[top].name : 'goods'} to trade, if you’re interested.`);
+}
+function resTradeStep(B, T, dt, p) {
+  if (T.type !== 'tradeReq') return false; const dp = Math.hypot(p.x - B.x, p.z - B.z);
+  if (dp < 3 || resMoveTo(B, { x: p.x + (B.x - p.x) / Math.max(1, dp) * 2.2, z: p.z + (B.z - p.z) / Math.max(1, dp) * 2.2 }, dt, dp > 8)) { if (T.direct) { B.task = null; if (!TR.open && state === 'explore') tradeOpen(B); } else if (!RES.trAsk && !TR.open && !ex.dlg && state === 'explore') { B.task = { type: 'face', t: 0, dur: 16 }; tradeAsk(B); } else B.task = null; }
+  else if (T.t > 25) B.task = null;
+  return true;
+}
+function tradeAsk(B) { // the request banner: accept or decline (it times out by itself)
+  let el = $('#resTradeAsk'); if (!el) { el = document.createElement('div'); el.id = 'resTradeAsk'; el.className = 'tr-ask'; document.body.appendChild(el); el.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (!b) return; sfx.click(); tradeAskEnd(b.dataset.a === 'y'); }); }
+  RES.trAsk = { B, until: time + 15 };
+  const st = resTradeStock(B.c), offer = Object.keys(st).sort((a, b) => tradeVal(b) - tradeVal(a)).slice(0, 2), want = Object.entries(invState().bag).filter(([id, n]) => n > 0 && tradeOk(id) && !offer.includes(id)).sort((a, b) => tradeVal(b[0]) * b[1] - tradeVal(a[0]) * a[1])[0];
+  RES.trAsk.pre = { theirs: Object.fromEntries(offer.map(id => [id, 1])), mine: want ? { [want[0]]: Math.max(1, Math.min(want[1], Math.ceil(offer.reduce((t, id) => t + tradeVal(id), 0) * resGreed(B.c) / tradeVal(want[0])))) } : {} };
+  el.innerHTML = `<b>${reEsc(B.c.name)}</b> wants to trade with you<small>${offer.map(id => reEsc(ITEMS[id].name)).join(' and ')}${want ? ` for your ${reEsc(ITEMS[want[0]].name)}` : ''}</small><div><button data-a="y">Accept</button><button data-a="n">Decline</button></div>`;
+  el.classList.add('on'); sfx.blip && sfx.blip();
+}
+function tradeAskEnd(yes) {
+  const A = RES.trAsk, el = $('#resTradeAsk'); if (el) el.classList.remove('on'); RES.trAsk = null; if (!A) return;
+  const B = A.B; if (!RES.bots.includes(B)) return;
+  if (yes && state === 'explore') tradeOpen(B, A.pre); else { if (B.task && B.task.type === 'face') B.task = null; resSay(B, tradeLine(B, 'cancel')); }
+}
+function tradeAskTick() { const A = RES.trAsk; if (A && (time > A.until || !RES.bots.includes(A.B) || state !== 'explore')) tradeAskEnd(false); }
+function resTradeStart(B) { // you asked: they come over if they're not close enough
+  if (Math.hypot(B.x - player.position.x, B.z - player.position.z) < 10) tradeOpen(B); else { if (B.partner) resEndPair(B); B.task = { type: 'tradeReq', t: 0, direct: true }; }
+}
+// ---- the zone chat: type, and name who you're talking to ----
+function chatEl() {
+  let el = $('#resChatIn'); if (el) return el;
+  el = document.createElement('form'); el.id = 'resChatIn'; el.className = 'chat-in hidden';
+  el.innerHTML = '<input type="text" maxlength="160" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" placeholder="Say a resident’s name to talk to them · /w Name … whispers · /trade Name" aria-label="Chat"><button type="submit">Send</button>';
+  document.body.appendChild(el);
+  const inp = el.querySelector('input');
+  el.addEventListener('submit', e => { e.preventDefault(); const t = inp.value; inp.value = ''; chatClose(); if (t.trim()) resChatSend(t); });
+  inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') { e.preventDefault(); inp.value = ''; chatClose(); } });
+  inp.addEventListener('keyup', e => e.stopPropagation());
+  const btn = document.createElement('button'); btn.id = 'resChatBtn'; btn.className = 'chat-btn hidden'; btn.type = 'button'; btn.innerHTML = 'CHAT <small>T</small>'; document.body.appendChild(btn);
+  btn.addEventListener('click', e => { e.stopPropagation(); sfx.click(); chatOpen(''); });
+  return el;
+}
+function chatOpen(pre) { const el = chatEl(), inp = el.querySelector('input'); el.classList.remove('hidden'); inp.value = pre || ''; ex.keys.clear(); ex.joyX = ex.joyY = 0; vel.set(0, 0, 0); inp.focus(); setTimeout(() => inp.focus(), 30); RES.chatOn = true; }
+function chatClose() { const el = chatEl(); el.classList.add('hidden'); el.querySelector('input').blur(); RES.chatOn = false; }
+function chatSys(text) { RES.log.push({ who: '•', al: 'sys', text, t: time }); if (RES.log.length > 30) RES.log.shift(); resChatRender(); }
+function resNameIn(t, atStart) { // a resident named in what you typed (longest names first): { c, rest }
+  const low = t.toLowerCase(), list = [...residents].sort((a, b) => String(b.name).length - String(a.name).length);
+  for (const c of list) { const n = String(c.name).toLowerCase().trim(); if (!n) continue; const esc = n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), re = new RegExp((atStart ? '^@?' : '(^|[^a-z0-9])@?') + esc + '(?=$|[^a-z0-9])', 'i'), m = re.exec(low);
+    if (m) { const rest = (t.slice(0, m.index) + t.slice(m.index + m[0].length)).replace(/^[\s,:;!.\-–]+/, '').trim(); return { c, rest }; } }
+  return null;
+}
+function resChatSend(raw) {
+  const t = raw.trim().slice(0, 160); let m;
+  if (/^\/(help|\?)$/i.test(t)) { chatSys('Say a resident’s name to talk to them (the others leave it alone) · /w Name … whispers to a resident anywhere · /trade Name opens a trade'); return; }
+  if ((m = /^\/(?:w|whisper|tell|msg)\s+(.+)$/i.exec(t))) { const r = resNameIn(m[1], true); if (!r || !r.rest) { chatSys(r ? 'Whisper what? /w Name message' : 'No resident by that name'); return; } RES.log.push({ who: `To ${r.c.name}`, al: 'you wh', text: r.rest, t: time }); resChatRender(); resChatTo(r.c, r.rest, true); return; }
+  if ((m = /^\/trade\s+(.+)$/i.exec(t))) { const r = resNameIn(m[1], true), B = r && RES.bots.find(o => o.c === r.c && o.ready); if (!r) { chatSys('No resident by that name'); return; } if (!B) { chatSys(`${r.c.name} isn’t here · they’re ${resWhereLabel(r.c)}`); return; } resTradeStart(B); return; }
+  RES.log.push({ who: wanderer.name, al: 'you', text: t, t: time }); if (RES.log.length > 30) RES.log.shift(); resChatRender();
+  const r = resNameIn(t, false);
+  if (r) { resChatTo(r.c, r.rest || t, false); return; }
+  // nobody named: they leave it alone (now and then someone close asks who you mean)
+  const p = player.position, near = RES.bots.filter(B => B.ready && Math.hypot(B.x - p.x, B.z - p.z) < 20);
+  if (near.length > 1 && Math.random() < .2) { const B = resPick(near); setTimeout(() => { if (RES.bots.includes(B)) resSay(B, Math.random() < resGamer(B.c) ? '⁣' + resPick(['who u talking to lol', 'say a name, there’s like ' + near.length + ' of us here', '…was that for me?']) : resPick(['Who are you talking to?', 'Was that for me?', 'Say a name, there are a few of us here.'])); }, 900); }
+}
+function resChatTo(c, msg, whisper) { // the one you named answers: out loud if they're here, in a whisper from wherever they are
+  const B = !whisper && RES.bots.find(o => o.c === c && o.ready);
+  if (B) { if (!B.partner && !(B.task && ['hunt', 'brawl'].includes(B.task.type))) B.task = { type: 'face', t: 0, dur: 3.5 }; setTimeout(() => { if (RES.bots.includes(B)) resAnswer(B, msg, 'chat'); }, 700 + Math.random() * 700); return; }
+  const P = { c, id: c.id, al: resAl(c), sp: spOf(c), lv: resLevel(c), x: 0, z: 0, y: 0, whisper: true };
+  setTimeout(() => resAnswer(P, msg, 'whisper'), 1200 + Math.random() * 1500);
+}
+function resChatLines(B, lines, mode) { // their answer, in the chat
+  lines.filter(Boolean).forEach((l, i) => setTimeout(() => {
+    if (mode === 'whisper') { const text = resVoice(B.c, resNorm(l)); RES.log.push({ who: `${B.c.name} (whisper)`, al: B.al + ' wh', text, t: time }); if (RES.log.length > 30) RES.log.shift(); resChatRender(); }
+    else if (RES.bots.includes(B)) resSay(B, l);
+  }, i * 1500));
+}
+function chatUiTick() { // the CHAT button shows when there's someone to talk to
+  const b = $('#resChatBtn'); if (!b) { if (residents.length) chatEl(); return; }
+  const show = residents.length > 0 && ex.mode === 'world' && state === 'explore' && !ex.dlg && !TR.open && !RES.chatOn && !ui.xhud.classList.contains('modal');
+  b.classList.toggle('hidden', !show);
+  if (RES.chatOn && (state !== 'explore' || ex.mode !== 'world')) chatClose();
+}
+
 // on the galaxy map: their worlds ringed in their colours, the empire's name at its capital
 function resGalEmpires(g, font) {
   for (const e of Object.values(resEmp.emp)) {
@@ -27856,7 +28063,7 @@ function loopFrame() {
   combatTick(dt);
   alOutfitSync(dt);
   try { resUiTick(); resEmpTick(dt); resGuildTick(dt); } catch (e) { console.error(e); }
-  try { drunkTick(dt); } catch (e) {}
+  try { drunkTick(dt); chatUiTick(); } catch (e) {}
   // each region has its own exploration playlist: Antarctica on the ice, Africa on the savanna; New London has its own tracks (lonMusicTick), so no ice music there, not even under the nightmare
   // space has its own playlist (SPACETHEME1-3, Vast Horizons, Wonders of the Galaxies, Inner Tranquility, FREEROAM1-3): out among the
   // stars and on the worlds you land on, in Chapter III, Chapter IV before the time skip, and Chapter V

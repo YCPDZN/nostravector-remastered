@@ -2460,3 +2460,20 @@ Docking used to drop you onto what was really a small green planet: open hills, 
   - Heroes sometimes call down the **Light of Archamus**, which also heals you if you're close.
   - Pontifexes deliver **Pontifex Judgement**; fighters who love brawling spin a **Whirlwind**.
 - **Your crew too.** They walk in a **formation** around and behind you, facing the way you're going, instead of following in single file. They **dive clear** of strikes, and when their rage fills they unleash their signature: Khazglar **Earthbreaker**, the ice mages **Blizzard**, Nico **Bullet Storm**, rifles **Overwatch**, the blockade's leaders **Warlord’s Roar** (which throws enemies back), everyone else **Whirlwind**. Fallen companions' versions become **Blood** abilities.
+
+## Trading and the zone chat, MMO style
+
+### Trading with residents
+- **They come to you.** Now and then a resident walks over ("wts obsidian, you buying?") and a request pops up at the top of the screen: **Vela wants to trade with you · Obsidian and Metal plate for your Frost crystal · Accept / Decline**. It declines itself after 15 seconds.
+- **Or you go to them.** **Trade…** is in every resident's talk menu now (it replaces the old fixed "Buy 3 Stone" offer, and villains trade too). You can also type `/trade Name` in the chat, or just ask them ("Vela, wanna trade?").
+- **The trade window** has both sides. Tap things in your bag to put them on your side, add units (−10 / +10 / +50), and tap their goods to ask for them; tap anything on either offer to take it back off. A bar shows how the two sides compare, and the resident reacts as you build the deal ("Close. A little more?", "lmaooo no", "That’s generous. Deal!").
+- **Haggle** and they make it work: if you're short they name the extra units they want, and if you're overpaying they throw in units of their own. **Accept trade** lights up once they're happy. The swap is logged in the chat (*⇄ TRADE · You and Vela: gave 3 Frost crystal · got 1 Obsidian, 1 Metal plate, 5 units*).
+- **Everyone bargains differently.** Heroes and kind residents go easy, villains drive a hard bargain, residents who love trading haggle harder, proud ones want a bit more, and your guildmates give you a discount.
+- **What they carry** depends on their level (ores, ingots, crystal, metal, obsidian, med kits, warp cells and more) and changes every half hour. What you trade them stays in their stock.
+
+### The zone chat
+- **Press T** (or **/**, or tap the new **CHAT** button) and type into the zone chat.
+- **Say a resident's name and that resident answers you, and only them.** The others leave it alone ("Vela, where are you?" → *Vela: I’m on Malana.*). Messages that don't name anyone get no answers, apart from the odd "who are you talking to?".
+- They understand the same things as **Ask something…**: places, leaders and bosses, species, the war, tips, trading, how you're feeling, who they are, what they're up to. Plus "where are you?", "wanna trade?" (they open a trade) and, if you lead their guild, "follow me".
+- **`/w Name message` whispers** to a resident anywhere in the galaxy, and they whisper back from wherever they are (*Odo (whisper): deciding who to backstab next*). `/help` lists the commands.
+- Your messages show in gold, whispers in violet, trades in green.
