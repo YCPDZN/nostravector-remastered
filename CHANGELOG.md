@@ -2510,3 +2510,10 @@ Docking used to drop you onto what was really a small green planet: open hills, 
 - **Bounties:** a wanted resident's talk menu has **Bring them in · bounty N units**. Win the scuffle and you claim the bounty and some heroism; lose and they get away.
 
 None of this runs in New London, inside a lair, in a cutscene or during any scripted scene, so the main quest is never interrupted.
+
+### Phones
+- **The new buttons and readouts have their own place on phones**, clear of the stick, the action buttons and the minimap. Held upright: CHAT and TAUNT on the left, below the companions button, and the wanted stars below the minimap. Held sideways: CHAT and TAUNT at the top centre, with the stars just under them. The trade request and the prison readout shift to suit.
+- **The chat box opens at the top of the screen on touch screens**, so the on-screen keyboard can't cover it, with 16px text so phones don't zoom in.
+- **Bigger tap targets** in the trade request, the trade window and the lockpick.
+- **CHAT, TAUNT, the trade request and the lockpick answer the moment you touch them**, the way the game's own buttons do (the lockpick's timing especially).
+- The CHAT button hides while you're in prison.
