@@ -2554,3 +2554,6 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **The coloured cylinders are gone.** City crowds drew everyone beyond the nearest few as stand-in capsules in their clothes' colours (the blue and green ones sliding about on Archiostal and Malana). Only real, animated people are drawn now, and more of the crowd near you get real bodies.
 - **Companions keep up.** Everyone in your party loads at once when you arrive (one after another left the last of a big crew minutes behind, so they seemed not to come), and anyone who falls far behind catches up sooner. This is the same for every companion in Chapters III, IV and V.
 - **You never vanish.** Whenever you're on foot or aboard (not driving), you're shown, whatever a cutscene, the pod, a landing or space left behind.
+
+### Planets keep their own colours
+- The blood red stays on the main menu (and the interface's red in Chapter IV). Planets and stations no longer turn red: they keep their own skies, haze and light.
