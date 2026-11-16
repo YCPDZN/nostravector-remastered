@@ -2430,3 +2430,33 @@ Docking used to drop you onto what was really a small green planet: open hills, 
 - **Shot down, they respawn near you**, not on their species' homeworld across the galaxy.
 - **Their own dungeon runs** pick lairs within that range. **Their Lounge parties** only pull them to Archiostal when Malana Prime is in range; otherwise they stay close and celebrate once you're back near Malana.
 - **Residents of other guilds** (and those in no guild) roam the galaxy and its dungeons as before, however far away.
+
+## Game talk, smarter residents, and smarter fighting
+
+### Residents talk two ways now, and the second way is LOUD
+- **Game talk is back, turned up to eleven.** As well as speaking plainly, residents talk the way players do in a zone chat: lowercase, "o/", "lmao", "gg", "LET’S FUCKING GOOO", over-the-top boasts and trash talk, and plenty of swearing. Each resident leans one way or the other, from their personality: most are loud chat-heads, some mix the two, a few stay proper (anyone formal or poetic barely does it at all; anyone described as "casual slang" does it constantly).
+- **A new dialogue pack of 2,610 lines** (`data/resGame1.js`–`resGame9.js`). That brings residents to **5,209 lines** in all (with the 1,755 older everyday lines, the 496 plain-speech lines and the 348 war lines).
+- **Swearing.** The switch in **Pause → Resident empires** now reads **Residents swearing (everywhere)** and covers everything they say: chat, speech bubbles and conversations, not just their fights. Off, the words become #@!%.
+
+### Smarter: they react to what's happening
+- **Your moments:** they cheer your kills ("NICE KILL"), your level-ups ("DING!! LV 34!! SO PROUD") and boss kills, and mourn (or mock) your deaths ("press F for you"). Someone else often chimes in.
+- **The fight:** a boss nearby gets "BOSS UP!! everyone on it" and "dodge the slam, DODGE THE SLAM".
+- **The world:** storms rolling in, nightfall and sunrise, the kind of world they're on (lush, desert, frozen, toxic, lava, barren, Archiostal's gardens), and named worlds (Earth, Mars, Venus, Aridaxx, Eris, Malana, Carax, Janira Prime and more).
+- **You:** standing still too long ("is {you} asleep standing up"), your jetpack, swimming, being drunk, no armour versus endgame drip, being far below or above their level, your reputation (hero, neutral or villain), your crew (Orion, Nico, Khazglar, James), your role in their guild, and your wars (at war, won, peace).
+- **Themselves:** lines for each of the 14 temperaments in game talk; their own people and everyone else's ("Chompy throw the best parties, period"); the story by chapter and the big names (Hawthorne, Zark, Am-Grek, Hak, Sevirrus, Archamus, James); their own empires; jokes; level milestones.
+- **Fights, lairs, the bar and conversations** all get game-talk versions: engage, hit, kill, dodge, low health and victory barks; lair invites, floors, the heart, wipes and loot; orders, toasts, drunk rambling, brawls, the Lounge; and over a hundred new back-and-forths between two residents.
+
+### Smarter fighting
+- **Residents surround what they're fighting** instead of queueing up behind each other: each takes their own side of it.
+- **They dodge.** When a creature is about to strike they dive clear (a lunge sideways with a roll), and now and then sidestep anyway.
+- **Rage abilities in their own style.** Every blow fills their rage; when it's full they unleash:
+  - Grek **Root Slam**, a ground-shaking blow all around them.
+  - Chompy **Tusk Rush**, charging through the pack.
+  - Erisian **Frost Nova**, which slows everything it touches.
+  - Human **Overclock Barrage**, eight shots spread across the pack.
+  - Taredesiban **Teal Blade Dance**.
+  - Oilkoumene **Dragonfire**, a cone of flame.
+  - Villains often go **Bloodrage** instead (a frenzy of faster blows).
+  - Heroes sometimes call down the **Light of Archamus**, which also heals you if you're close.
+  - Pontifexes deliver **Pontifex Judgement**; fighters who love brawling spin a **Whirlwind**.
+- **Your crew too.** They walk in a **formation** around and behind you, facing the way you're going, instead of following in single file. They **dive clear** of strikes, and when their rage fills they unleash their signature: Khazglar **Earthbreaker**, the ice mages **Blizzard**, Nico **Bullet Storm**, rifles **Overwatch**, the blockade's leaders **Warlord’s Roar** (which throws enemies back), everyone else **Whirlwind**. Fallen companions' versions become **Blood** abilities.

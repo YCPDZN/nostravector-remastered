@@ -4142,7 +4142,7 @@ function gainXP(n, why) {
   if (after > before) {
     sfx.chime(); setTimeout(() => sfx.chime(), 260);
     const perk = after >= MAX_LEVEL ? 'MAXIMUM LEVEL' : [20, 50, 80].includes(after) ? 'MINING POWER UP' : `MAX HEALTH ${maxHP()}`;
-    notice(`Level up · ${perk}`, `LEVEL ${after}`, 3400);
+    notice(`Level up · ${perk}`, `LEVEL ${after}`, 3400); try { resEvent('level'); } catch (e) {}
     const p = player.position; burst(p.x, p.y + 1, p.z, 40, 4, 1, .8, .3, 1.2, .2, 2);
     const el = $('#lvl'); el.classList.remove('up'); void el.offsetWidth; el.classList.add('up');
     if (ex.hp != null) { ex.hp = maxHP(); const inv = invState(); inv.hp = ex.hp; }
@@ -7941,7 +7941,7 @@ function hurtPlayer(n, src) {
   const fx = $('#hurtFx'); fx.classList.remove('on'); void fx.offsetWidth; fx.classList.add('on');
   ex.shake = .35;
   if (src) { const dx = player.position.x - src.x, dz = player.position.z - src.z, d = Math.hypot(dx, dz) || 1; vel.x += dx / d * 5; vel.z += dz / d * 5; }
-  if (ex.hp <= 0) { if (DGN.on) dgnDown(); else if (world.betrayal) bossDeath(); else if (esc.on) escapeDeath(); else blackout(); }
+  if (ex.hp <= 0) { try { resEvent('death'); } catch (e) {} if (DGN.on) dgnDown(); else if (world.betrayal) bossDeath(); else if (esc.on) escapeDeath(); else blackout(); }
 }
 function blackout() {
   for (const c of fauna.list) { c.state = 'idle'; c.tgt = null; }
@@ -7973,6 +7973,7 @@ function damageFauna(c, dmg, fromJames) {
   if (c.hp <= 0) {
     c.dead = 1; c.state = 'dead'; c.t = 0;
     gainXP(fromJames ? Math.round(c.D.xp / 2) : c.D.xp, c.D.name);
+    if (!fromJames) try { resEvent('kill'); } catch (e) {}
     if (!fromJames && c.D.beast === 'prey' && ex.hp >= maxHP()) alignAct(-2, 'Killed for sport, not food');
     else if (!fromJames && !c.D.passive && !c.D.neutral && partyNow().length) alignAct(1, 'Protected your companions');
     for (const drop of c.D.loot()) if (drop) { giveItem(drop[0], drop[1]); lootMsg(`+${drop[1]} ${ITEMS[drop[0]].name}`, ITEMS[drop[0]].color); }
@@ -11702,7 +11703,7 @@ function lairBossWin() {
   dgnBossClear(); sfx.chime(); ex.shake = .6; DGN.flashL = 1.5;
   notice('Lair boss defeated', `${Bd.short.toUpperCase()} IS DEAD`, 3600); lbark(Bd.short, Bd.lines.win, 3200);
   if (DGN.lb) { DGN.lb.mesh.rotation.z = Math.PI / 2; DGN.lb.mesh.position.y = .4; }
-  lairSetProg(L, L.floors + 1); try { resPartyWin(L); } catch (e) { console.error(e); }
+  lairSetProg(L, L.floors + 1); try { resPartyWin(L); resEvent('bossWin'); } catch (e) { console.error(e); }
   gainXP(Math.round(260 + L.lv * 18), `Defeated ${Bd.name}`);
   const loot = [['medkit', 2], ['warpcell', 1 + (L.tier > 0)], ['crystal', 2 + L.tier], [L.lv > 40 ? 'obsidian' : 'metal', 2 + L.tier], Math.random() < .5 && ['scrap', 3]];
   if (Bd.armor) setTimeout(() => { const it = ITEMS[Bd.armor], had = have(Bd.armor) > 0; if (!had) giveItem(Bd.armor, 1); notice(had ? 'You already carry it' : 'Endgame armour', it.name.toUpperCase(), 4200); lootMsg(isWorn(Bd.armor) ? `${it.name} · you’re wearing it now` : canWear(Bd.armor) ? `${it.name} · put it on from Inventory → Equipment` : `${it.name} · ${it.desc.split('.')[0]} · it waits in your bag`, '#ffd36a'); armorSync && armorSync(true); }, 2400);
@@ -20617,9 +20618,11 @@ async function placeCrew() {
     R.root.position.set(p.x + 1.4 * k, groundAt(p.x + 1.4 * k, p.z - 1.6, p.y + .5), p.z - 1.6);
   }
 }
+const CREW_FORM = { a: null, p: null };
 function crewTick(dt) {
   if (ex.mode !== 'world') return;
-  const p = player.position, live = crewIds(); cruelTick(dt, partyNow().includes('orion') && world.orion ? ['orion', ...live] : live);
+  const p = player.position, live = crewIds();
+  { const p0 = CREW_FORM.p || (CREW_FORM.p = { x: p.x, z: p.z }), mv = Math.hypot(p.x - p0.x, p.z - p0.z); if (CREW_FORM.a == null) CREW_FORM.a = player.rotation.y; if (mv > .02 && mv < 5) CREW_FORM.a = angLerp(CREW_FORM.a, Math.atan2(p.x - p0.x, p.z - p0.z), Math.min(1, dt * 2.5)); p0.x = p.x; p0.z = p.z; } // the formation faces the way you're going cruelTick(dt, partyNow().includes('orion') && world.orion ? ['orion', ...live] : live);
   for (const id of live) {
     const C = CREW[id]; if (!C || !C.R || !C.R.root.visible || C.R.root.parent !== wScene) continue;
     const R = C.R, o = R.root.position, mode = (wanderer.cmds && wanderer.cmds[id]) || 'follow', name = PARTY[id].name, isN = id === 'nico', ice = ICE_MAGES.includes(id), guns = isN || ice || R.weapon === 'rifle' || R.weapon === 'pistols';
@@ -20639,6 +20642,8 @@ function crewTick(dt) {
     C.atkT -= dt;
     if (foe) {
       const reach = guns ? 22 : id === 'khazglar' ? 2.8 : 2.2;
+      if (crewDodgeTick(C, R, foe, fd, guns ? 2.4 : reach, dt)) { animRig(R, dt); continue; } // diving clear of a strike
+      const wasReady = C.atkT <= 0;
       if (fd > reach) walkTo(foe.x, foe.z, reach * .9, true);
       else { const hpWas = foe.hp; if (isN) nicoGear(R, 'pistols'); R.mode = 'attack'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(foe.x - o.x, foe.z - o.z), Math.min(1, dt * 6));
         if (C.atkT <= 0 && id === 'khazglar') { // his hammer: slow, heavy, and it hits everything around whatever it lands on
@@ -20648,6 +20653,7 @@ function crewTick(dt) {
           if (Math.hypot(player.position.x - foe.x, player.position.z - foe.z) < 8) ex.shake = Math.max(ex.shake || 0, .18);
         } else if (C.atkT <= 0 && ice) { C.atkT = 1; iceBolt(R, foe); damageFauna(foe, cm * compHit(id, 1) * compGap(id, foe), true); // ice magic: a bolt of frost, and the target slows
         } else if (C.atkT <= 0) { C.atkT = isN ? .5 : guns ? .9 : 1.2; if (guns) { sfx.shot(); compTracer(R, foe); } else sfx.swing(); damageFauna(foe, cm * compHit(id, isN ? .5 : guns ? .9 : 1.2) * compGap(id, foe), true); if (lead && !guns) { burst(foe.x, (foe.y || 0) + .8, foe.z, 14, 3, 1, .85, .4, .5, .9, 1); if (Math.hypot(player.position.x - foe.x, player.position.z - foe.z) < 10) ex.shake = Math.max(ex.shake || 0, .12); } } if (cruel && hpWas > 0 && foe.hp <= 0) cruelBark(id, 'kill'); }
+      if (wasReady && C.atkT > 0) { C.rage = (C.rage || 0) + (id === 'khazglar' ? 16 : ice ? 11 : isN ? 5 : guns ? 8 : 11); if (C.rage >= 100 && !foe.dead) { C.rage = 0; crewRage(id, C, R, foe, { isN, ice, guns }); } } // their rage builds with every blow
       animRig(R, dt); continue;
     }
     const dp = Math.hypot(p.x - o.x, p.z - o.z);
@@ -20655,7 +20661,7 @@ function crewTick(dt) {
     if (adv) { const k = live.indexOf(id) - 1, tx = SG.base.x + k * 3, tz = SG.base.z; if (Math.hypot(tx - o.x, tz - o.z) > 140 && dp > 60) { const a = Math.atan2(tx - p.x, tz - p.z); o.set(p.x + Math.sin(a) * 6 + k * 2, 0, p.z + Math.cos(a) * 6); o.y = groundAt(o.x, o.z, p.y + .5); } walkTo(tx, tz, 3, true); animRig(R, dt); continue; } // Advance: on Terra Imperia's base
     if (mode === 'follow' || (mode === 'mine' && !C.node) || (lead && (mode === 'hold' || mode === 'advance'))) { // (a leader told to hold or advance with nowhere to do it follows you)
       if (dp > 40) { const a = player.rotation.y; o.set(p.x - Math.sin(a) * 2.6, 0, p.z - Math.cos(a) * 2.6); o.y = groundAt(o.x, o.z, p.y + .5); }
-      else if (walkTo(p.x, p.z, 2.6 + live.indexOf(id) * .8, dp > 6)) R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - o.x, p.z - o.z), Math.min(1, dt * 3));
+      else { const sl = crewSlot(live.indexOf(id) + (partyNow().includes('orion') && world.orion ? 1 : 0)); if (walkTo(sl.x, sl.z, .7, Math.hypot(sl.x - o.x, sl.z - o.z) > 5)) R.root.rotation.y = angLerp(R.root.rotation.y, CREW_FORM.a, Math.min(1, dt * 3)); } // their own place in the formation, not in a queue behind you
     } else if (mode === 'base') { const bx = isPl() ? 4 : 8, bz = isPl() ? 8 : 4; walkTo(bx + live.indexOf(id), bz, .5, Math.hypot(o.x - bx, o.z - bz) > 10); }
     else if (mode === 'wander' || mode === 'explore') {
       const far = mode === 'explore';
@@ -25870,7 +25876,7 @@ function resHereChance(c, A) {
 }
 // ?residents=all brings every resident to wherever you are (to preview them); ?resdebug exposes their state for testing
 const RES_ALL = /[?&]residents=all/.test(window.location.search);
-if (/[?&]resdebug/.test(window.location.search)) { window.RES = RES; window.resFF = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; resTick(step); } }; window.resFFs = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; SPC.t = (SPC.t || 0) + step; resSpaceTick(step); } return { ships: RES.sp.map(S => S.c.name + ':' + S.al + ':' + Math.round(S.pos.distanceTo(SPC.pos)) + 'm'), foes: SC.foes.map(f => f.name), bolts: SC.bolts.filter(b => b.friendly).length }; }; window.SCdbg = SC; window.resState = () => ({ state, mode: ex.mode, scene: !!SPC.scene, p: player.position.toArray(), units: units(), near: ex.near && ex.near.id }); window.resGoSpace = p => startChapter3(p); window.resT = () => residents.map(c => { const T = resTravel(c); return `${c.name}:${T.mode}:${(T.body || T.to).name}:${resLevel(c)}`; }); window.resKill = i => resDie(residents[i]); window.resRL = () => !!RL; window.resEmpDbg = () => resEmp; window.resEmpFF = n => { for (let i = 0; i < n; i++) { RES.empT = 0; resEmpTick(15); } return resEmp; }; window.resEmpOpenDbg = () => resEmpOpen(); window.resResDbg = () => residents; window.resBaseAt = (x, z) => resBaseBlocked(x, z); window.resTp = (x, z, ry) => { player.position.set(x, wHeight(x, z), z); if (ry != null) { player.rotation.y = ry; ex.yaw = ry + Math.PI; } ex.snap = true; }; window.resBaseSyncDbg = () => resBaseSync(); window.resDrinkDbg = i => drinkUp(DRINKS[i], 'test', 'BAR'); window.resBoozeDbg = () => ex.booze || 0; window.resEscDbg = () => [...GESC.ids]; window.resBotsDbg = () => RES.bots.map(B => ({ n: B.c.name, task: B.task && (B.task.type + (B.task.kind ? ':' + B.task.kind : '')), booze: +(B.booze || 0).toFixed(2), x: +B.x.toFixed(1), z: +B.z.toFixed(1), p: resPersonaSummary(B.c) })); window.resLogDbg = () => RES.log.map(l => l.who + ': ' + l.text); window.resClubDbg = () => world.hall && world.hall.club ? { x: world.hall.x, z: world.hall.z, inside: world.hall.inside, ready: world.hall.V.ready, dancers: world.hall.club.extra.length } : null; window.resNearDbg = () => ({ sys: resPlayerSys(), near: resNearSet().L.map(S => S.name), res: residents.map(c => { const T = resTravel(c); return `${c.name}${resGuildBound(c) ? ' [guild]' : ''}: ${T.mode} ${(T.body || T.to).name} (${sysById((T.body || T.to).sys).name})`; }) }); window.resLairDbg = () => { const g = resGateHere(); return g ? { name: g.L.name, lv: g.L.lv, floors: g.L.floors, x: g.x, z: g.z } : null; }; window.resDunAskDbg = () => { const B = RES.bots.find(o => o.ready); if (B) resDunAsk(B, false); return !!B; }; window.resDgnDbg = () => ({ on: DGN.on, f: DGN.f, top: DGN.on ? dgnTop() : 0, beaten: DGN.on && dgnBeaten(DGN.f), esc: [...GESC.ids], theirs: !!GESC.theirs, bots: RES.bots.map(B => B.c.name + '@' + Math.round(Math.hypot(B.x - player.position.x, B.z - player.position.z)) + 'm:' + (B.task && B.task.type)) }); window.resDgnKillDbg = () => { for (const f of fauna.list) if ((f.dgn || f.boss) && !f.dead) damageFauna(f, 1e6, true); return true; }; window.resDgnUpDbg = () => DGN.up ? { x: DGN.up.x, z: DGN.up.z } : null; window.resEscSetDbg = () => { const G = myGuild(); escortSet(RES.bots.filter(B => G && G.members.includes(B.id)).map(B => B.id)); return [...GESC.ids]; }; }
+if (/[?&]resdebug/.test(window.location.search)) { window.RES = RES; window.resFF = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; resTick(step); } }; window.resFFs = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; SPC.t = (SPC.t || 0) + step; resSpaceTick(step); } return { ships: RES.sp.map(S => S.c.name + ':' + S.al + ':' + Math.round(S.pos.distanceTo(SPC.pos)) + 'm'), foes: SC.foes.map(f => f.name), bolts: SC.bolts.filter(b => b.friendly).length }; }; window.SCdbg = SC; window.resState = () => ({ state, mode: ex.mode, scene: !!SPC.scene, p: player.position.toArray(), units: units(), near: ex.near && ex.near.id }); window.resGoSpace = p => startChapter3(p); window.resT = () => residents.map(c => { const T = resTravel(c); return `${c.name}:${T.mode}:${(T.body || T.to).name}:${resLevel(c)}`; }); window.resKill = i => resDie(residents[i]); window.resRL = () => !!RL; window.resEmpDbg = () => resEmp; window.resEmpFF = n => { for (let i = 0; i < n; i++) { RES.empT = 0; resEmpTick(15); } return resEmp; }; window.resEmpOpenDbg = () => resEmpOpen(); window.resResDbg = () => residents; window.resBaseAt = (x, z) => resBaseBlocked(x, z); window.resTp = (x, z, ry) => { player.position.set(x, wHeight(x, z), z); if (ry != null) { player.rotation.y = ry; ex.yaw = ry + Math.PI; } ex.snap = true; }; window.resBaseSyncDbg = () => resBaseSync(); window.resDrinkDbg = i => drinkUp(DRINKS[i], 'test', 'BAR'); window.resBoozeDbg = () => ex.booze || 0; window.resEscDbg = () => [...GESC.ids]; window.resBotsDbg = () => RES.bots.map(B => ({ n: B.c.name, task: B.task && (B.task.type + (B.task.kind ? ':' + B.task.kind : '')), booze: +(B.booze || 0).toFixed(2), x: +B.x.toFixed(1), z: +B.z.toFixed(1), p: resPersonaSummary(B.c) })); window.resLogDbg = () => RES.log.map(l => l.who + ': ' + l.text); window.resClubDbg = () => world.hall && world.hall.club ? { x: world.hall.x, z: world.hall.z, inside: world.hall.inside, ready: world.hall.V.ready, dancers: world.hall.club.extra.length } : null; window.resNearDbg = () => ({ sys: resPlayerSys(), near: resNearSet().L.map(S => S.name), res: residents.map(c => { const T = resTravel(c); return `${c.name}${resGuildBound(c) ? ' [guild]' : ''}: ${T.mode} ${(T.body || T.to).name} (${sysById((T.body || T.to).sys).name})`; }) }); window.resFightDbg = () => RES_FDBG; window.resRageFillDbg = () => { for (const B of RES.bots) B.rage = 99; for (const C of Object.values(CREW)) C.rage = 99; return true; }; window.resCrewDbg = () => Object.entries(CREW).filter(([, C]) => C.R && C.R.root.visible).map(([id, C]) => ({ id, d: +Math.hypot(C.R.root.position.x - player.position.x, C.R.root.position.z - player.position.z).toFixed(1), rage: Math.round(C.rage || 0) })); window.resRGDbg = () => !!RG; window.resLairDbg = () => { const g = resGateHere(); return g ? { name: g.L.name, lv: g.L.lv, floors: g.L.floors, x: g.x, z: g.z } : null; }; window.resDunAskDbg = () => { const B = RES.bots.find(o => o.ready); if (B) resDunAsk(B, false); return !!B; }; window.resDgnDbg = () => ({ on: DGN.on, f: DGN.f, top: DGN.on ? dgnTop() : 0, beaten: DGN.on && dgnBeaten(DGN.f), esc: [...GESC.ids], theirs: !!GESC.theirs, bots: RES.bots.map(B => B.c.name + '@' + Math.round(Math.hypot(B.x - player.position.x, B.z - player.position.z)) + 'm:' + (B.task && B.task.type)) }); window.resDgnKillDbg = () => { for (const f of fauna.list) if ((f.dgn || f.boss) && !f.dead) damageFauna(f, 1e6, true); return true; }; window.resDgnUpDbg = () => DGN.up ? { x: DGN.up.x, z: DGN.up.z } : null; window.resEscSetDbg = () => { const G = myGuild(); escortSet(RES.bots.filter(B => G && G.members.includes(B.id)).map(B => B.id)); return [...GESC.ids]; }; }
 const resMax = () => document.body.classList.contains('touch') ? 3 : 6; // phones draw fewer of them, and without shadows
 function resPresent(c, A) {
   if (RES_ALL) return true;
@@ -26033,6 +26039,7 @@ function resContextPool(B, x) {
 const RT_MAP = { arrive: 'greet', leave: 'bye', travel: 'travel', mine: 'mine', trade: 'trade', toPlayer: 'toPlayer', hurt: 'hurt', build: 'build', gift: 'gift', steal: 'steal', ding: 'ding' };
 function resLine(kind, B, other) {
   resTalkLoad();
+  if (RG && kind === 'wander' && Math.random() < resGamer(B.c)) { const g = resGameMuse(B); if (g) return g; } // game talk: what's on their mind
   if (RT && kind === 'wander' && Math.random() < .62) { // their own musings: what's on their mind, their old job, what they love
     const p = resPersona(B.c), r = Math.random(), x = Object.assign(resCtx(B, other), resPersonaCtx(B.c));
     if (r < .2 && p && p.job && RT.job[p.job]) return resFill(resPick(RT.job[p.job]), x);
@@ -26050,7 +26057,7 @@ function resLine(kind, B, other) {
 }
 function resSay(B, text) {
   if (!text) return; text = resVoice(B.c, resNorm(text)); if (!text || text === B.lastSaid) return; B.lastSaid = text;
-  B.say = text; B.sayT = 4.5;
+  B.say = resClean(text); B.sayT = 4.5;
   const GT = resGuildOf(B.id); RES.log.push({ who: (GT ? `[${GT.tag}] ` : '') + B.c.name, al: B.al, text, t: time }); if (RES.log.length > 30) RES.log.shift();
   resChatRender();
 }
@@ -26142,7 +26149,7 @@ function resNear(p) { let best = null, bd = 2.8; for (const B of RES.bots) { if 
 const RES_TRADE_RES = ['stone', 'ice', 'scrap', 'crystal', 'cloth'];
 const resWho = (B, ooc) => String(B.c.name).toUpperCase() + (ooc ? ' · OUT OF CHARACTER' : '');
 const resAlName = B => B.al === 'hero' ? 'Enlightened Hero' : B.al === 'villain' ? 'Awakened Villain' : 'Neutral';
-function resSayTo(B, lines, then, ooc) { openDialog(resWho(B, ooc), lines.filter(Boolean).map(l => ooc ? l : resVoice(B.c, resNorm(l))), false, then || null); if (ex.dlg) ex.dlg.silent = true; } // text only: no voice, no typing blips; out of character, they speak plainly
+function resSayTo(B, lines, then, ooc) { openDialog(resWho(B, ooc), lines.filter(Boolean).map(l => ooc ? l : resClean(resVoice(B.c, resNorm(l)))), false, then || null); if (ex.dlg) ex.dlg.silent = true; } // text only: no voice, no typing blips; out of character, they speak plainly
 function resAbout(B) { // who they are, in their own words: where they're from, what they did before, what they love
   const p = resPersona(B.c), x = Object.assign(resCtx(B), resPersonaCtx(B.c)), out = [resT('intro', B) || `I’m ${B.c.name}, from ${x.home}.`];
   if (p && p.job) out.push(RT && RT.job[p.job] ? `I was ${RES_JOB_NAME[p.job]} before all this. ` + resFill(resPick(RT.job[p.job]), x) : `I was ${RES_JOB_NAME[p.job]} before all this.`);
@@ -26347,7 +26354,7 @@ function resTick(dt) {
   if (ex.mode === 'world') resBaseSync(); // their bases stand whether or not they're around
   if (!resGroundOk()) { for (const B of RES.bots) B.root.visible = false; return; }
   const A = curArea(), p = player.position, paused = state !== 'explore';
-  resLinesLoad(); resWarLoad(); resTalkLoad();
+  resLinesLoad(); resWarLoad(); resTalkLoad(); resGameLoad();
   if (RES.talking && !ex.dlg) RES.talking = null;
   RES.chk = (RES.chk || 0) - dt;
   if (RES.area !== A || RES.chk <= 0) { // a new place, or a few seconds on: who's around now?
@@ -26360,7 +26367,7 @@ function resTick(dt) {
   if (!paused) {
     RES.social -= dt; if (RES.social <= 0) { RES.social = 3 + Math.random() * 3; resSocial(); }
     RES.ding -= dt; if (RES.ding <= 0) { RES.ding = 20; for (const B of RES.bots) { B.lv = resLevel(B.c); if (B.lv > B.lastLv) { B.lastLv = B.lv; resSay(B, resLine('ding', B)); } if (B.ready) resGearCheck(B); } }
-    resInviteCheck(dt); resDunAskCheck(dt); resEscortTick(dt);
+    resInviteCheck(dt); resDunAskCheck(dt); resEscortTick(dt); resSmartTick(dt);
     RES.drunkT = (RES.drunkT == null ? 3 : RES.drunkT) - dt; if (RES.drunkT <= 0) { RES.drunkT = 3.5; resDrunkCheck(); }
   }
   for (const B of [...RES.bots]) {
@@ -26397,7 +26404,7 @@ function resStep(B, dt, p) {
   if (!B.task) resChoose(B);
   const T = B.task; T.t += dt; B.speed = 0;
   if (B.emT > 0) B.emT -= dt; else B.em = null;
-  if (resEscortStep(B, T, dt, p) || resNightStep(B, T, dt, p)) { B.y = groundAt(B.x, B.z, B.y + 1.5); return; }
+  if (resEscortStep(B, T, dt, p) || resNightStep(B, T, dt, p) || resFightStep(B, T, dt)) { B.y = groundAt(B.x, B.z, B.y + 1.5); return; }
   switch (T.type) {
     case 'wander': if (resMoveTo(B, T.to, dt, T.run) || T.t > 20) B.task = null; break;
     case 'idle': if (T.t > T.dur) B.task = null; else if (dp < 12) resFace(B, p.x, p.z, dt); break;
@@ -26618,7 +26625,7 @@ function resWarLoad() {
   sc.onload = () => { RW = window.NV_RES_WAR || null; }; sc.onerror = () => { RES.rwLoading = false; };
   document.body.appendChild(sc);
 }
-const RES_SWEAR = /\b(damn(ed)?|hell|bloody|bastards?|arse(hole)?|arsed|shit|piss(ed)?|crap|bollocks|prick|bugger|sod|git|prat|smartarse)\b/gi;
+const RES_SWEAR = /\b(damn(ed)?|hell|bloody|bastards?|arse(hole)?|arsed|shit\w*|piss(ed)?|crap|bollocks|prick|bugger|sod|git|prat|smartarse|\w*fuck\w*|wtf|ffs|bitch(es)?|ass(hole)?|dick|goddamn|bullshit)\b/gi;
 let resSwearOn = store.get('nv_resSwear', true);
 const resClean = t => resSwearOn ? String(t) : String(t).replace(RES_SWEAR, m => '#@!%&'.slice(0, Math.min(5, Math.max(3, m.length))));
 const resEmpOf = id => resEmp.emp[id] || null;
@@ -26807,7 +26814,7 @@ function resEmpRender() {
   const el = $('#resEmpPanel'); if (!el || el.classList.contains('hidden')) return;
   const E = resEmp, es = Object.values(E.emp), I = RES.reIncite, nm = id => { const e = E.emp[id]; return e ? reEsc(e.name) : '?'; };
   const alN = { hero: 'Hero', neutral: 'Neutral', villain: 'Villain' };
-  let h = `<button class="re-tog" data-re="on">Residents found empires: <b>${E.on ? 'ON' : 'OFF'}</b></button><button class="re-tog" data-re="swear">Swearing in their fights: <b>${resSwearOn ? 'ON' : 'OFF'}</b></button>`;
+  let h = `<button class="re-tog" data-re="on">Residents found empires: <b>${E.on ? 'ON' : 'OFF'}</b></button><button class="re-tog" data-re="swear">Residents swearing (everywhere): <b>${resSwearOn ? 'ON' : 'OFF'}</b></button>`;
   if (!es.length) h += `<p class="re-empty">${E.on ? 'No resident has founded an empire yet. Residents found empires on unclaimed worlds once they reach level 35 (villains first), one at a time.' : 'Empire founding is off: residents stick to their guilds. Switch it on above if you want them to carve up the frontier.'} ${residents.length ? '' : 'Send a wanderer into the world from the Wanderers screen to get started.'}</p>`;
   else h += '<h4>Empires</h4>' + es.map(e => {
     const c = resRuler(e), al = c ? resAl(c) : 'neutral', st = e.res ? 'Resistance (no worlds)' : e.over ? `Puppet of ${nm(e.over)}` : e.trib ? `Pays tribute to ${nm(e.trib)}` : '';
@@ -27352,6 +27359,158 @@ function resPartyWin(L) { // the lair's heart falls: everyone who came down with
   if (GESC.theirs) GESC.theirs.done = true;
 }
 
+/* ============ Game talk, smart reactions, and smarter fighting ============
+   Residents talk two ways: plainly (data/resTalk.js) and like players in a zone chat (data/resGame1-9.js: loud, over the top,
+   swearing; Pause → Resident empires → Swearing turns it to #@!%). Each one leans one way or the other, from their personality.
+   They react to what's going on: your kills, your level-ups and deaths, bosses, storms, nightfall, you standing still, your
+   jetpack, your gear, your level, your reputation, your crew, your guild, your wars, the world they're on.
+   In a fight they surround what they're hitting instead of queueing up, dive out of the way when it's about to strike, and when
+   their rage fills they unleash an ability in their own style. Your crew does the same, and walks in a formation now. ============ */
+let RG = null;
+const RES_FDBG = { dodge: 0, rage: [], cdodge: 0, crage: [] }; // counters for the ?resdebug checks
+function resGameLoad() {
+  if (RG || RES.rgLoading) return; RES.rgLoading = true; let left = 9;
+  const done = () => { if (--left) return; const G = window.NV_RES_GAME; if (!G) return; resGameMerge(G, window.NV_RES_GAME_MORE || {});
+    G.muse = resGameMerge(G.muse || {}, G.muse2 || {}); G.pairs = resGameMerge(G.pairs || {}, G.pairs2 || {}); G.dungeon = resGameMerge(G.dungeon || {}, G.dungeon2 || {}); G.drink = resGameMerge(G.drink || {}, G.drink2 || {}); RG = G; };
+  for (let i = 1; i <= 9; i++) { const sc = document.createElement('script'); sc.src = `data/resGame${i}.js`; sc.onload = done; sc.onerror = done; document.body.appendChild(sc); }
+}
+function resGameMerge(G, M) { for (const k in M) { const a = G[k], b = M[k]; if (Array.isArray(b)) G[k] = (Array.isArray(a) ? a : []).concat(b); else if (b && typeof b === 'object') G[k] = resGameMerge(a && typeof a === 'object' && !Array.isArray(a) ? a : {}, b); } return G; }
+function resGamer(c) { // how much they talk like a player in a chat window (vs plainly): from their personality
+  const p = resPersona(c); if (p && (p.styles.includes('formal') || p.styles.includes('poetic'))) return .06; if (p && p.styles.includes('slang')) return .92;
+  const h = resHash(c.id + '|gamer'); return h < .45 ? .82 : h < .8 ? .5 : .16;
+}
+const RG_MAP = { intro: ['about'], guildHi: ['guild', 'hi'], invite: ['guild', 'recruit'] };
+function resG(cat, B, x, sub) { // a game-talk line, marked so it isn't tidied into proper sentences
+  if (!RG || !B) return null; let set = RG[cat]; if (sub != null && set) set = set[sub]; if (!set) return null;
+  const pool = Array.isArray(set) ? set : (set[B.al] || set.neutral || set.hero || set.villain || set.base); if (!pool || !pool.length) return null;
+  const raw = resPick(pool); if (typeof raw !== 'string') return null;
+  return '⁣' + resFill(raw, Object.assign(resCtx(B), resPersonaCtx(B.c), { plv: levelOf(wanderer) }, x || {}));
+}
+function resGFor(cat, B, x, sub) { // the speech pack's category, in game talk
+  if (cat === 'hunt') return sub === 'boss' ? resG('boss', B, x) : resG('combat', B, x, 'engage');
+  const m = RG_MAP[cat]; return m ? resG(m[0], B, x, m[1]) : resG(cat, B, x, sub);
+}
+function resGameMuse(B) { // something on their mind, in game talk: their temperament, this world, their people, the story
+  if (!RG) return null; const p = resPersona(B.c), r = Math.random(), k = resExploreKeys(), x = { kind: k.kind };
+  if (r < .22 && p && p.traits[0] && RG.temp[p.traits[0]]) return resG('temp', B, x, p.traits[0]);
+  if (r < .36) { const kk = k.world && RG.worlds[k.world] ? null : k.kind === 'gardens' ? 'gardens' : ({ earth: 'lush', lush: 'lush', venus: 'toxic', toxic: 'toxic', desert: 'arid', arid: 'arid', ice: 'frozen', frozen: 'frozen', lava: 'lava', rock: 'barren', barren: 'barren' })[k.kind] || (RG.kinds[k.kind] ? k.kind : null); if (k.world && RG.worlds[k.world]) return resG('worlds', B, x, k.world); if (kk) return resG('kinds', B, x, kk); }
+  if (r < .46) { if (Math.random() < .6) return resG('species', B, x, B.sp); const o = resPick(Object.keys(RG.species.about)); return resG('species', Object.assign({}, B, { al: o }), x, 'about'); } // their own people, or someone else's
+  if (r < .54) { const ch = clamp(effCh(), 1, 5); return ch < 3 ? resG('earth', B, x, ch) : resG('chapter', B, x, ch); }
+  if (r < .6) return resG('bosses', B, x, resPick(Object.keys(RG.bosses)));
+  if (r < .64) return resG('jokes', B, x);
+  return resG('muse', B, x);
+}
+// ---- things happening around them: your kills, level-ups, deaths, boss kills ----
+function resEvent(k) { if (!RES.ev) RES.ev = {}; RES.ev[k] = time; if (k !== 'kill' || Math.random() < .5) RES.smartT = Math.min(RES.smartT == null ? 9 : RES.smartT, .7 + Math.random()); }
+function resSmartTick(dt) {
+  if ((RES.smartT = (RES.smartT == null ? 8 : RES.smartT) - dt) > 0 || !RG) return; RES.smartT = 7 + Math.random() * 8;
+  const p = player.position, bots = RES.bots.filter(B => B.ready && !B.leaving && !B.partner && RES.talking !== B && Math.hypot(B.x - p.x, B.z - p.z) < 38 && !(B.task && (B.task.type === 'brawl' || B.task.kind === 'fight')));
+  if (!bots.length) return;
+  const B = resPick(bots), ev = RES.ev || {}, recent = (k, s) => ev[k] != null && time - ev[k] < s, plv = levelOf(wanderer), cd = RES.cd || (RES.cd = {}), opts = [];
+  const add = (w, key, fn) => { if (w > 0 && !(cd[key] > time)) opts.push([w, key, fn]); };
+  add(recent('death', 12) ? 9 : 0, 'death', () => resG('pDeath', B));
+  add(recent('level', 9) ? 9 : 0, 'level', () => resG('pLevel', B));
+  add(recent('bossWin', 10) ? 9 : 0, 'bossWin', () => resG('bossKill', B));
+  add(recent('kill', 5) ? 5 : 0, 'kill', () => resG('kill', B));
+  add(fauna.list.some(f => f.boss && !f.dead && Math.hypot(f.x - p.x, f.z - p.z) < 40) ? 5 : 0, 'boss', () => resG('boss', B));
+  add((ex.booze || 0) > .8 ? 4 : 0, 'pDrunk', () => resG('pDrunk', B));
+  add((world.storm || 0) > .35 ? 2.5 : 0, 'storm', () => resG('storm', B));
+  if (isPl() || curArea() === 'antarctica' || curArea() === 'africa') { const dl = world.dayL == null ? 1 : world.dayL; add(dl < .25 && !RES.night ? 3 : 0, 'night', () => { RES.night = true; return resG('night', B); }); add(dl > .75 && RES.night ? 3 : 0, 'day', () => { RES.night = false; return resG('day', B); }); }
+  if (!RES.stillAt || Math.hypot(p.x - RES.stillAt.x, p.z - RES.stillAt.z) > 1) RES.stillAt = { x: p.x, z: p.z, t: time };
+  add(time - RES.stillAt.t > 45 ? 3 : 0, 'afk', () => resG('afk', B));
+  add(ex.jetting ? 3 : 0, 'jet', () => resG('jet', B)); add(ex.swim ? 3 : 0, 'swim', () => resG('swim', B));
+  try { const w = eqWorn ? Object.keys(eqWorn() || {}).length : 0; add(w === 0 ? 1.1 : 0, 'gearNone', () => resG('gearNone', B)); add(w >= 4 ? .9 : 0, 'gearGood', () => resG('gearGood', B)); } catch (e) {}
+  add(B.lv - plv >= 15 ? 1 : 0, 'lvlLow', () => resG('lvlLow', B)); add(plv - B.lv >= 15 ? 1 : 0, 'lvlHigh', () => resG('lvlHigh', B));
+  add(.6, 'rep', () => { const s = RG.rep && RG.rep[wAlign()]; return s && s.length ? '⁣' + resFill(resPick(s), Object.assign(resCtx(B), { player: wanderer.name })) : null; });
+  { const crew = partyNow ? partyNow() : []; const named = ['orion', 'nico', 'khazglar', 'james'].find(id => crew.includes(id)); add(crew.length ? .9 : 0, 'crew', () => resG('companions', B, null, named || 'any')); }
+  { const G = myGuild(); add(G && G.members.includes(B.id) ? 1.2 : 0, 'guildRole', () => resG(iLeadGuild() ? 'leadGuild' : 'member', B)); }
+  { const W = resWarCtx(); const k = W && (W.kind === 'atWar' ? 'atWar' : W.kind === 'won' || W.kind === 'vassal' || W.kind === 'tributary' ? 'won' : W.kind === 'peace' ? 'peace' : null); add(k ? .8 : 0, 'pwar', () => resG('pwar', B, { enemy: W.enemy, realm: W.realm }, k)); }
+  { const R = resEmpOf(B.id); add(R ? .7 : 0, 'empire', () => resG('empire', B)); }
+  add(.5, 'jokes', () => resG('jokes', B));
+  add(1.2, 'muse', () => resGameMuse(B));
+  if (!opts.length) return;
+  let sum = 0; for (const o of opts) sum += o[0]; let r = Math.random() * sum, pick = opts[0]; for (const o of opts) if ((r -= o[0]) <= 0) { pick = o; break; }
+  const line = pick[2](); if (!line) return; cd[pick[1]] = time + (['death', 'level', 'bossWin', 'kill', 'boss'].includes(pick[1]) ? 6 : 40);
+  resSay(B, line);
+  // someone answers sometimes
+  if (['death', 'level', 'bossWin', 'boss'].includes(pick[1]) && bots.length > 1) { const C = resPick(bots.filter(o => o !== B)); setTimeout(() => { if (RES.bots.includes(C)) resSay(C, resG(pick[1] === 'death' ? 'pDeath' : pick[1] === 'level' ? 'pLevel' : pick[1] === 'boss' ? 'boss' : 'bossKill', C)); }, 1300 + Math.random() * 1500); }
+}
+// ---- fighting smarter: surround it, dodge it, and rage ----
+const RES_RAGE = {
+  slam: { name: 'ROOT SLAM', col: [.55, .85, .3], r: 5.5, k: 5 }, charge: { name: 'TUSK RUSH', col: [1, .6, .2], r: 2.8, k: 5.5 }, frost: { name: 'FROST NOVA', col: [.6, .9, 1], r: 6, k: 4.5, slow: true },
+  barrage: { name: 'OVERCLOCK BARRAGE', col: [1, .85, .4], k: 1.4, shots: 8 }, blades: { name: 'TEAL BLADE DANCE', col: [.3, 1, .9], r: 3.2, k: 1.5, hits: 6 }, fire: { name: 'DRAGONFIRE', col: [1, .45, .1], r: 8, k: 5, cone: true },
+  blood: { name: 'BLOODRAGE', col: [1, .1, .15], r: 4.5, k: 4, frenzy: true }, light: { name: 'LIGHT OF ARCHAMUS', col: [1, .9, .55], r: 6, k: 4, heal: true }, whirl: { name: 'WHIRLWIND', col: [.9, .9, 1], r: 3.6, k: 1.8, hits: 3 },
+  holy: { name: 'PONTIFEX JUDGEMENT', col: [1, .95, .7], r: 6.5, k: 5 }
+};
+function resRageStyle(c) {
+  const h = resHash(c.id + '|rage'), al = resAl(c), p = resPersona(c);
+  if (resIsPont(c)) return 'holy'; if (al === 'villain' && h < .45) return 'blood'; if (al === 'hero' && h < .3) return 'light'; if (p && p.likes.includes('fighting') && h > .7) return 'whirl';
+  return ({ grek: 'slam', chompy: 'charge', erisian: 'frost', human: 'barrage', taredesiban: 'blades', oilkoumene: 'fire' })[resIsTared(c) ? 'taredesiban' : spOf(c)] || 'whirl';
+}
+function rageFlash(x, y, z, col, scale) { const s = glowSprite(new THREE.Color(col[0], col[1], col[2]).getHex(), scale, 1); s.position.set(x, y, z); wScene.add(s); let k = 0; const step = () => { k += .08; s.material.opacity = Math.max(0, 1 - k); s.scale.setScalar(scale * (1 + k * .8)); if (k < 1) setTimeout(step, 30); else wScene.remove(s); }; step(); }
+const rageFoes = (x, z, r) => fauna.list.filter(f => !f.dead && !(f.D.passive && !f.D.huntable) && Math.hypot(f.x - x, f.z - z) < r);
+function rageHit(f, dmg, col) { if (!f || f.dead) return; damageFauna(f, dmg, true); burst(f.x, (f.y || 0) + .8, f.z, 10, 3, col[0], col[1], col[2], .5, .8, 1); }
+function resRage(B, f) { // their rage ability, in their style
+  const S = RES_RAGE[resRageStyle(B.c)] || RES_RAGE.whirl, base = 6 + B.lv * .5, col = S.col, p = player.position, near = Math.hypot(B.x - p.x, B.z - p.z) < 14;
+  resSay(B, resG('combat', B, { ability: S.name }, 'rage') || `${S.name}!`); B.em = 'cheer'; B.emT = 1; sfx.thud && sfx.thud();
+  rageFlash(B.x, B.y + 1.2, B.z, col, 5);
+  if (S.shots) { const tg = rageFoes(B.x, B.z, 22).slice(0, 4); for (let i = 0; i < S.shots; i++) setTimeout(() => { const t = tg[i % Math.max(1, tg.length)] || f; if (!t || t.dead) return; try { compTracer(B.root ? { root: B.root } : null, t); } catch (e) {} sfx.shot && sfx.shot(); rageHit(t, base * S.k, col); }, i * 180); return; }
+  if (S.hits) { for (let i = 0; i < S.hits; i++) setTimeout(() => { for (const t of rageFoes(B.x, B.z, S.r)) rageHit(t, base * S.k, col); burst(B.x, B.y + 1, B.z, 14, 4, col[0], col[1], col[2], .5, .7, 1); B.ry += 2.1; }, i * 160); return; }
+  if (resRageStyle(B.c) === 'charge' && f) { const dx = f.x - B.x, dz = f.z - B.z, d = Math.hypot(dx, dz) || 1, ux = dx / d, uz = dz / d; for (let s = 0; s < 8; s++) { const x = B.x + ux * 1.1, z = B.z + uz * 1.1; if (resBlocked(x, z, B.y)) break; B.x = x; B.z = z; } for (const t of rageFoes(B.x, B.z, S.r + 1.5)) rageHit(t, base * S.k, col); burst(B.x, .4, B.z, 24, 4, col[0], col[1], col[2], .6, .8, 1); if (near) ex.shake = Math.max(ex.shake || 0, .25); return; }
+  let foes = rageFoes(B.x, B.z, S.r);
+  if (S.cone) { const a = Math.atan2(f ? f.x - B.x : Math.sin(B.ry), f ? f.z - B.z : Math.cos(B.ry)); foes = rageFoes(B.x, B.z, S.r).filter(t => Math.abs(angDiff(Math.atan2(t.x - B.x, t.z - B.z), a)) < .7); for (let i = 1; i < 6; i++) burst(B.x + Math.sin(a) * i * 1.4, B.y + 1, B.z + Math.cos(a) * i * 1.4, 12, 3, col[0], col[1], col[2], .6, .8, 1); }
+  else burst(B.x, .4, B.z, 30, 5, col[0], col[1], col[2], .6, .9, 1.2);
+  for (const t of foes) { rageHit(t, base * S.k, col); if (S.slow) t.slowT = 4; }
+  if (S.heal && Math.hypot(B.x - p.x, B.z - p.z) < 10) { const m = maxHP(); ex.hp = Math.min(m, ex.hp + 20); invState().hp = Math.round(ex.hp); lootMsg(`${B.c.name}’s Light of Archamus · +20 health`, '#ffe08a'); }
+  if (S.frenzy) B.frenzyT = time + 5;
+  if (near) ex.shake = Math.max(ex.shake || 0, .2);
+}
+const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; };
+function resFightStep(B, T, dt) { // the hunt, done properly (true when handled)
+  if (T.type !== 'hunt') return false;
+  const f = T.f; if (!f || f.dead || !fauna.list.includes(f) || T.t > T.dur || (DGN.on && T.t > 10 && Math.hypot(f.x - B.x, f.z - B.z) > 6)) { if (f && f.dead && T.hits && Math.random() < .45) resSay(B, resG('combat', B, null, Math.random() < .7 ? 'kill' : 'win')); B.task = null; return true; }
+  const p = player.position, reach = (f.D.r || 1) + 1.4, d = Math.hypot(f.x - B.x, f.z - B.z);
+  // diving clear of a strike
+  if (B.dodge) { const D = B.dodge; D.t += dt; const k = D.t / D.dur, v = 9 * (1 - k) + 1; const nx = B.x + D.dx * v * dt, nz = B.z + D.dz * v * dt; if (!resBlocked(nx, nz, B.y)) { B.x = nx; B.z = nz; } B.speed = 4; B.jump = Math.sin(Math.min(1, k) * Math.PI) * .45; if (B.root) B.root.rotation.z = D.side * Math.sin(Math.min(1, k) * Math.PI) * .9; if (k >= 1) { B.dodge = null; if (B.root) B.root.rotation.z = 0; } return true; }
+  const striking = f.state === 'hunt' && f.cd != null && f.cd < .3 && d < reach + 1.6;
+  if ((striking || (d < reach + .6 && Math.random() < dt * .25)) && !(B.dodgeCd > time)) { // it's about to hit: get out of the way
+    const a = Math.atan2(B.x - f.x, B.z - f.z) + (Math.random() < .5 ? 1 : -1) * (Math.PI / 2 + Math.random() * .6), side = Math.random() < .5 ? 1 : -1;
+    B.dodge = { t: 0, dur: .42, dx: Math.sin(a), dz: Math.cos(a), side }; RES_FDBG.dodge++; B.dodgeCd = time + 1.8 + Math.random() * 2.2; if (Math.random() < .3) resSay(B, resG('combat', B, null, 'dodge')); return true;
+  }
+  // surround it: each of them takes their own side, rather than queueing up behind each other
+  if (B.flank == null) B.flank = (resHash(B.id + '|flank') - .5) * 3.6;
+  const base = Math.atan2(p.x - f.x, p.z - f.z) + Math.PI + B.flank, spot = { x: f.x + Math.sin(base) * reach * .85, z: f.z + Math.cos(base) * reach * .85 };
+  if (d > reach || Math.hypot(spot.x - B.x, spot.z - B.z) > 1.4) resMoveTo(B, spot, dt, true);
+  if (d <= reach + .4) { resFace(B, f.x, f.z, dt); B.em = 'spar'; B.emT = .1;
+    if ((T.hitT = (T.hitT || 0) - dt) <= 0) { T.hitT = B.frenzyT > time ? .55 : 1.1; T.hits = (T.hits || 0) + 1; damageFauna(f, Math.round(6 + B.lv * .5), true);
+      B.rage = Math.min(100, (B.rage || 0) + 11 + Math.random() * 6); if (Math.random() < .12) resSay(B, resG('combat', B, null, 'hit'));
+      if (B.rage >= 100 && !f.dead) { B.rage = 0; RES_FDBG.rage.push(B.c.name + ':' + (RES_RAGE[resRageStyle(B.c)] || {}).name); resRage(B, f); } } }
+  return true;
+}
+// ---- your crew: a formation (not single file), dodges, and rage abilities in their own style ----
+const CREW_SLOTS = [[-1.9, -1.9], [1.9, -1.9], [-3.1, -.3], [3.1, -.3], [0, -3.3], [-2.7, -3.8], [2.7, -3.8], [0, -5.2]];
+function crewSlot(i) { const p = player.position, a = CREW_FORM.a == null ? player.rotation.y : CREW_FORM.a, s = CREW_SLOTS[i % CREW_SLOTS.length], ring = Math.floor(i / CREW_SLOTS.length) * 2, fx = Math.sin(a), fz = Math.cos(a), rx = Math.cos(a), rz = -Math.sin(a); return { x: p.x + rx * s[0] + fx * (s[1] - ring), z: p.z + rz * s[0] + fz * (s[1] - ring) }; }
+function crewRageName(id, isN, ice, guns) { if (id === 'khazglar') return 'EARTHBREAKER'; if (ice) return 'BLIZZARD'; if (isN) return 'BULLET STORM'; if (guns) return 'OVERWATCH'; if (SIEGE_LEADS[id]) return 'WARLORD’S ROAR'; return 'WHIRLWIND'; }
+function crewRage(id, C, R, foe, opt) { // the meter's full: their signature move
+  const o = R.root.position, nm = crewRageName(id, opt.isN, opt.ice, opt.guns), cruel = fallenComp(id), col = cruel ? [1, .1, .15] : id === 'khazglar' ? [1, .55, .2] : opt.ice ? [.6, .9, 1] : opt.guns ? [1, .85, .4] : SIEGE_LEADS[id] ? [1, .8, .3] : [.9, .9, 1];
+  const name = (cruel ? 'BLOOD ' : '') + nm, dmg = compHit(id, 1.2) * (cruel ? 1.25 : 1), p = player.position, near = Math.hypot(o.x - p.x, o.z - p.z) < 16;
+  lootMsg(`${PARTY[id] ? PARTY[id].name : id} · ${name}!`, compColor(id)); RES_FDBG.crage.push(id + ':' + name); rageFlash(o.x, o.y + 1.3, o.z, col, 5); sfx.thud && sfx.thud();
+  if (opt.guns) { const tg = rageFoes(o.x, o.z, 24).slice(0, 4), n = opt.isN ? 10 : 5; for (let i = 0; i < n; i++) setTimeout(() => { const t = tg[i % Math.max(1, tg.length)] || foe; if (!t || t.dead) return; compTracer(R, t); sfx.shot(); rageHit(t, dmg * (opt.isN ? 1.1 : 2.4) * compGap(id, t), col); }, i * (opt.isN ? 110 : 260)); return; }
+  if (nm === 'WHIRLWIND') { for (let i = 0; i < 3; i++) setTimeout(() => { for (const t of rageFoes(o.x, o.z, 3.6)) rageHit(t, dmg * 1.8 * compGap(id, t), col); R.root.rotation.y += 2.1; burst(o.x, o.y + 1, o.z, 14, 4, col[0], col[1], col[2], .5, .7, 1); }, i * 170); return; }
+  const r = id === 'khazglar' ? 6.5 : opt.ice ? 7 : 6, k = id === 'khazglar' ? 6 : opt.ice ? 4.5 : 4.5, c0 = foe || o;
+  burst(c0.x, .4, c0.z, 34, 5, col[0], col[1], col[2], .6, .9, 1.3);
+  for (const t of rageFoes(c0.x, c0.z, r)) { rageHit(t, dmg * k * compGap(id, t), col); if (opt.ice) t.slowT = 4; if (SIEGE_LEADS[id] && !t.boss) { const a = Math.atan2(t.x - c0.x, t.z - c0.z); t.x += Math.sin(a) * 2.5; t.z += Math.cos(a) * 2.5; } }
+  if (near) ex.shake = Math.max(ex.shake || 0, id === 'khazglar' ? .5 : .25);
+}
+function crewDodgeTick(C, R, foe, fd, reach, dt) { // dive clear when it's about to strike (true while diving)
+  const o = R.root.position;
+  if (C.dodge) { const D = C.dodge; D.t += dt; const k = D.t / D.dur, v = 9 * (1 - k) + 1, nx = o.x + D.dx * v * dt, nz = o.z + D.dz * v * dt; if (!worldBlocked(nx, nz, true)) { o.x = nx; o.z = nz; o.y = groundAt(o.x, o.z, o.y + .5); } R.root.rotation.z = D.side * Math.sin(Math.min(1, k) * Math.PI) * .8; R.mode = 'walk'; if (k >= 1) { C.dodge = null; R.root.rotation.z = 0; } return true; }
+  if (!foe || C.dodgeCd > time) return false;
+  const striking = foe.state === 'hunt' && foe.cd != null && foe.cd < .3 && Math.hypot(foe.x - o.x, foe.z - o.z) < reach + 1.8;
+  if (striking || (fd < reach + .6 && Math.random() < dt * .2)) { const a = Math.atan2(o.x - foe.x, o.z - foe.z) + (Math.random() < .5 ? 1 : -1) * (Math.PI / 2 + Math.random() * .6); C.dodge = { t: 0, dur: .42, dx: Math.sin(a), dz: Math.cos(a), side: Math.random() < .5 ? 1 : -1 }; RES_FDBG.cdodge++; C.dodgeCd = time + 2 + Math.random() * 2.5; return true; }
+  return false;
+}
+
 // on the galaxy map: their worlds ringed in their colours, the empire's name at its capital
 function resGalEmpires(g, font) {
   for (const e of Object.values(resEmp.emp)) {
@@ -27473,15 +27632,18 @@ function resTalkSet(set, c, al) {
 }
 const RES_DRINK_NAMES = ['Steca fire-rum', 'Grek root ale', 'Erisian frostwine', 'Chompy gut-punch', 'nebula spritz', 'black-hole stout', 'Malana honey mead', 'Martian dust gin'];
 function resPersonaCtx(c) { const p = resPersona(c); return { name: c.name, job: p && p.job ? RES_JOB_NAME[p.job] : 'a wanderer', like: (p && p.likes[0]) || 'exploring', drink: resPick(RES_DRINK_NAMES) }; }
-function resT(cat, B, x, sub) { // a line from the speech pack, filled in for this resident (null until the pack has loaded)
-  if (!RT || !B) return null; let set = RT[cat]; if (sub && set) set = set[sub]; const pool = resTalkSet(set, B.c, B.al); if (!pool || !pool.length) return null;
+function resT(cat, B, x, sub) { // a line for this resident: in game talk or plain speech, by how they lean (null until a pack has loaded)
+  if (!B) return null; resGameLoad();
+  if (RG && Math.random() < resGamer(B.c)) { const g = resGFor(cat, B, x, sub); if (g) return g; }
+  if (!RT) return RG ? resGFor(cat, B, x, sub) : null; let set = RT[cat]; if (sub && set) set = set[sub]; const pool = resTalkSet(set, B.c, B.al); if (!pool || !pool.length) return null;
   return resFill(resPick(pool), Object.assign(resCtx(B), resPersonaCtx(B.c), x || {}));
 }
 // the older lines were written like a chat window ("o/", "brb", "gtg"): spoken aloud, they're said properly; lines about servers,
 // lag and logging in are never picked
 const RES_META = /\b(log(?:ged|ging)?\s?(?:in|off|on|out)|server|lag+|afk|drop rate|grind\w*|brb|who dis|aggro|noob|nerf\w*|patch(?:ed)?|devs?|pm me|wts|wtb|npc|irl|tourists)\b|(?:^|\s)\\?o\/(?:\s|$)/i;
 function resNorm(t) {
-  let s = String(t == null ? '' : t); if (!s || s.charAt(0) === '​' || s.charAt(0) === '*') return s;
+  let s = String(t == null ? '' : t); if (s.charAt(0) === '\u2063') return s.slice(1); // game talk stays as it was written
+  if (!s || s.charAt(0) === '\u200b' || s.charAt(0) === '*') return s;
   s = s.replace(/\\o\/|(?:^|\s)o\/(?=\s|$)/g, ' ').replace(/\b(lol|lmao|xd|rofl)\b/gi, '').replace(/\bbrb\b/gi, 'back in a bit').replace(/\bgtg\b/gi, 'I have to go').replace(/\bcya\b/gi, 'see you')
     .replace(/\bsup\b/gi, 'what’s up').replace(/\bty\b/gi, 'thank you').replace(/\bgg wp\b/gi, 'good fight, well played').replace(/\bgg\b/gi, 'good fight').replace(/\bidk\b/gi, 'I don’t know')
     .replace(/\b(tbh|ngl)\b/gi, 'honestly').replace(/\bfr\b/gi, '').replace(/\bpls\b/gi, 'please').replace(/\bu\b/g, 'you').replace(/\bur\b/g, 'your').replace(/\bppl\b/gi, 'people').replace(/\bimo\b/gi, 'I think')
