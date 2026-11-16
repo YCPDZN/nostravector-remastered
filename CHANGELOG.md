@@ -2371,3 +2371,27 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 ### Archamus' voice slots (the pod landing)
 - Archamus' 7 lines over the fallen wanderer are ready for voicing: `assets/audio/archamus_ch4/VOICE_SCRIPT.md` lists them as CH4ARCHAMUSPOD1–7 (pack: `data/podArchVoices.js`).
 - Once recorded, they play with the subtitles and the scene waits for each line to finish. Until then, subtitles only, as before.
+
+## Archiostal rebuilt: the Seven Wards
+- **Archiostal has a new shape.** The old single ring of forest is gone. The station now spreads out like a great flower, in the spirit of the big galactic hub stations of classic space opera:
+  - **The Sanctum Ring** at its heart: a band of hull, glazed over, with the gardens (forest and a winding lake, lamps among the trees) on its inner face and gold rims either side.
+  - **The Seven Wards:** seven long arms, each a city of its own, fanning out from the ring and curving gently forward like petals. Their hulls are lit with thousands of windows, warm gold and teal, with teal-lit edges, a skyline of towers along their backs and a light at every tip. Ward 01 Command & Cybernetics, 02 Bio-Dome & Botany, 03 Geo-Quantum, 04 Gravity Habitation, 05 Fusion & Life Support, 06 Nanomedical, 07 Logistics & Transport.
+  - **The Spire of Archamus** rising from the centre into the flower, gold-banded, with a seven-sided gold crown and Archamus's light at its tip.
+  - The whole station still turns slowly, as before.
+- **At war, the Wards close.** While you're at war with whoever holds Archiostal (and haven't taken it), its seven arms slowly fold shut round the Spire, and they open again once the war ends. Docking still works, so you can still reach the leaders' hall.
+- **Lore:** the Malana Prime system and the Grek species pages describe the Wards, the Sanctum Ring and the Spire.
+- The main-menu backdrop shows the new station too, sized to match.
+- **Fixed: docking at Archiostal no longer sets you down on snow.** Docking always lands you at the gardens' "north pole", and the gardens used the normal planet colours, polar ice caps and snowy peaks included, so you stepped out onto white ground. Under an artificial sky there's no ice: the poles and high ground are pale highland meadow now.
+
+## Inside Archiostal: a space station, not a planet
+Docking used to drop you onto what was really a small green planet: open hills, a planet sky, nothing to say you were aboard a station. The gardens are now the floor of the Sanctum Ring.
+- **The ring overhead.** Ahead and behind, the far side of the ring curves up out of the haze, over your head and back down: its gardens, its winding river, other districts' towns, the Ward transit line and the hull walls along its edges. At the centre hang the hub, its spokes and the **Spire of Archamus**, gold-banded, its light at the tip.
+- **Space beyond the glass.** The planet sky is gone: above the haze there's black space, stars and a faint galactic band, and **Malana** hangs half-lit beyond the canopy.
+- **Walls and canopy.** Two great hull walls lean in along both sides of the valley, forty decks of lit windows high, with gold-capped buttresses, lamps and teal light strips. The ribs and mullions of the glass canopy arch between them. The walls are solid: you can't walk out of the ring.
+- **Look up.** Inside Archiostal only, drag the camera further down and it drops behind you and tilts up, so you can look straight up at the ring, the hub and the Spire. Everywhere else the camera is unchanged.
+- **Landing pad.** You set down on Dock Seven: an octagonal deck with painted gold and teal markings, a ring of light posts and a sign (*ARCHIOSTAL · THE SANCTUM RING · DOCK SEVEN*). A paved, lamp-lit walk leads from the pad to the temple city's gate.
+- **The Ward transit.** A monorail on pylons runs the length of the ring, with a three-car train gliding back and forth and a platform whose sign lists all seven Wards.
+- **Traffic.** Shuttles cross the habitat in their lanes, with nav lights.
+- **Landscaped ground.** The gardens are meadows, groves, low hills and lakes now, never mountains, so nothing pokes through the walls. The station air is a cooler blue-grey haze, clear enough to see down the ring.
+- Day and night still turn: at night the ring overhead dims with everything else.
+- Scanner name: **The Sanctum Ring** (it was "Garden Station").
