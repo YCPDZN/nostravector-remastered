@@ -2525,3 +2525,9 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 
 ### Archamus is voiced (the pod landing)
 - Archamus' 7 lines over the fallen wanderer are now voiced. The recordings (CH4ARCHAMUSPRESKIP1–7) are packed into `data/podArchVoices.js`, which the scene already loads, so the lines play out loud instead of showing as subtitles only. The source MP3s sit in `assets/audio/archamus_ch4/`.
+
+### While you slept: the two years (Chapter IV)
+- Straight after Archamus finds you, the narrator tells the two years you missed over a map of the galaxy: every empire's space in its own colour, with its name across it. Human Federation of Sol (blue; it holds Sol, so the Erisian Empire isn't shown), Chompy Empire (purple), Republic of Timpur (cyan), Grek Empire (green) and the Catharsis (red).
+- The Catharsis starts as the Grek's small puppet round the core, sacks Carax, then takes the galaxy system by system. The Grek and the Chompy take ground back, lose it, and take it again, until the Catharsis holds every Grek world but Malana. A counter keeps score for each empire, and the year runs from 2125 to 2127.
+- Ten lines, voiced once `data/skipNarrVoices.js` is recorded (CH4NARRSKIP1–10, script in `assets/audio/narrator_ch4/VOICE_SCRIPT.md`); subtitles until then. Tap or Space for the next line; Skip ends it.
+- The time skip happens here (`ch4.timeSkip`), so the galaxy is the Catharsis's from then on. Replays from Cutscenes (*While you slept*), and `?ending=timeskip` plays it from the title.
