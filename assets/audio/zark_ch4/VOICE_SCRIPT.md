@@ -2,7 +2,7 @@
 
 Speaker: **????** (Lord Zark, but the game never names him; the same voice as the Chapter IV menu's taunts). Cold, close, amused, like he is speaking right behind your ear.
 Plays in-game once you can move again on Archiostal: the HUD turns blood red, then these ten lines come one by one while you walk, with a few seconds between them.
-Pack: `data/zarkWakeVoices.js` (in order). **Recorded 1–9** as CH4MYSTERIOUSVOICE1–9.mp3 (saved here); line 10 still needs CH4MYSTERIOUSVOICE10.mp3 and shows as a subtitle until then. Each line waits for its clip to finish.
+Pack: `data/zarkWakeVoices.js` (in order). **Recorded:** CH4MYSTERIOUSVOICE1–10.mp3, saved here. Each line waits for its clip to finish.
 
 | File | Line |
 |---|---|
