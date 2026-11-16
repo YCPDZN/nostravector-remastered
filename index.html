@@ -4461,6 +4461,29 @@ function skyTick(dt) {
   world.snow.material.size = isPl() && world.wxK ? world.wxK.size * (1 + sm * .6) : .08 + .07 * sm;
   if (stInOn()) wScene.fog.density = .0017 + (1 - dl) * .0006; // station air: clear enough to see down the ring
   stInTick(dt);
+  plRedTick();
+}
+/* Chapter IV's blood red, on the ground: once the interface has turned red (body.ch4: Chapter IV after the voice finds you, and Chapter V's
+   Blood Red style), every planet and station you stand on goes with it: a black-red sky, red haze, a red sun and red ambient light,
+   as the menu's red landscape. Back to the world's own colours the moment the red goes. */
+const PLR = { sun: new THREE.Color(0xff5a3c), fog: new THREE.Color(0x2a0406), hs: new THREE.Color(0x8a2a22), hg: new THREE.Color(0x1a0405), sky: null, base: null, area: null };
+const plRedOn = () => isPl() && !DGN.on && document.body.classList.contains('ch4') && (wanderer && (wanderer.chapter | 0) >= 4);
+function plRedSky() {
+  return PLR.sky || (PLR.sky = canvasTex(4, 256, g => { const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#070102'); gr.addColorStop(.3, '#1e0306'); gr.addColorStop(.47, '#6a120e'); gr.addColorStop(.5, '#3a0608'); gr.addColorStop(1, '#1c0306'); g.fillStyle = gr; g.fillRect(0, 0, 4, 256); }));
+}
+function plRedTick() {
+  const on = plRedOn(), H = world.hemi;
+  if (PLR.area !== curArea()) { PLR.area = curArea(); PLR.base = null; } // each world's own light is remembered afresh
+  if (on) {
+    world.sun.color.copy(PLR.sun); const F = wScene.fog.color, L = F.r * .3 + F.g * .59 + F.b * .11; F.setRGB(Math.min(1, L * .95 + .004), L * .1, L * .085); // the haze keeps its brightness (day, dusk, night, storms) but turns blood red
+    if (H) { if (!PLR.base) PLR.base = [H.color.clone(), H.groundColor.clone()]; H.color.copy(PLR.hs); H.groundColor.copy(PLR.hg); }
+    const sky = plRedSky(); if (wScene.background !== sky) wScene.background = sky;
+    if (world.plSea && world.plSea.material && !world.plSea.userData.red) { world.plSea.userData.red = world.plSea.material.color.getHex(); world.plSea.material.color.lerp(new THREE.Color(0x4a0a0a), .7); }
+  } else {
+    if (PLR.base && H) { H.color.copy(PLR.base[0]); H.groundColor.copy(PLR.base[1]); PLR.base = null; }
+    if (PLR.sky && wScene.background === PLR.sky) { if (isPl()) planetLook(); }
+    if (world.plSea && world.plSea.userData.red != null) { world.plSea.material.color.setHex(world.plSea.userData.red); world.plSea.userData.red = null; }
+  }
 }
 // ---- after the storm: James makes a bed, you sleep, and someone else is waiting in the dream ----
 const JAMES_BED = ['I’ll make a bed. Feel free to sleep.'];
@@ -5242,8 +5265,9 @@ function renderTasks() {
   if (p.talked && allSeen()) h += task(!!p.slept, 'Sleep');
   if (p.slept) h = !p.found ? task(true, 'Sleep') + task(false, 'Find James Brown') : task(true, 'Find James Brown') + task(!!p.metOutside, 'Speak to James Brown') + (p.metOutside ? campTasks(p, task) : '');
   if (curArea() === 'africa' || ((wanderer.chapter | 0) >= 2 && p.escaped)) h = ch2Tasks(task); // Chapter II's objectives follow you, even back to Antarctica
-  if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (c3.hawMars && (wanderer.chapter | 0) === 3 ? task(!!c3.charonLanded, 'Main quest · Head to Charon') : '') + (c3.charonLanded && (wanderer.chapter | 0) === 3 ? task(!!c3.charonMet, 'Meet Charon and Kizna on Charon') : '') + (c3.jamesRev ? task(!!c3.jamesFate, 'Main quest · Defeat James Brown at the Antarctic station') : '') + (c3.jamesFate && (wanderer.chapter | 0) === 3 ? task(!!c3.charonBack, tiPhone() ? 'Main quest · Back to Charon and Kizna' : 'Main quest · Return to Charon and speak to Charon and Kizna') : '') + (c3.hakMet && (wanderer.chapter | 0) === 3 ? task(!!c3.cygDone, tiPhone() ? 'Main quest · Infiltrate the Cygnus (Mercury)' : 'Main quest · Infiltrate the Cygnus Terra Imperius, Terra Imperia’s capital ship, in orbit over Mercury') : '') + (c3.solFell && (wanderer.chapter | 0) === 3 ? task(!!c3.hakBack, tiPhone() ? 'Main quest · Return to Hak in Karribassa' : 'Main quest · Return to Hak Chompjak in Karribassa, on Janira Prime: Sol has fallen') : '') + (c3.siegeOn && (wanderer.chapter | 0) === 3 ? task(!!c3.siegeWon, tiPhone() ? 'Main quest · End the blockade of Janira Prime' : 'Main quest · End the blockade of Janira Prime: take Terra Imperia’s base, 1 km from Karribassa') : '') + (c3.restoreWar && (wanderer.chapter | 0) === 3 ? task(!!c3.chkJoined || (!!c3.hawBeaten && !!c3.alexiaBeaten), tiPhone() ? 'Main quest · Recruit Charon and Kizna' : 'Main quest · Go to Charon and recruit Charon and Kizna') + (c3.chkJoined || c3.hawBeaten || c3.alexiaBeaten ? task(!!c3.alexiaBeaten, tiPhone() ? 'Main quest · Siege of Eris: defeat Alexia' : 'Main quest · Lay siege to Eris: break Terra Imperia’s base and defeat Alexia Erisconos') + task(!!c3.hawBeaten, tiPhone() ? 'Main quest · Siege of Mercury: defeat Hawthorne' : c3.alexiaBeaten ? 'Main quest · Lay siege to Mercury: break Terra Imperia’s base and defeat Thomas Hawthorne' : 'Main quest · Lay siege to Mercury: Hawthorne won’t face you until Alexia is beaten') : '') : '') + (c3.hakCall && (wanderer.chapter | 0) === 3 ? task(!!c3.hakMet, tiPhone() ? 'Main quest · Meet Hak in Karribassa (Janira Prime)' : 'Main quest · Meet Hak Chompjak in Karribassa, on Janira Prime (Janira Proxima, a short jump from Sol)') : '') + (surgeOn() && !c3.hawBeaten ? task(false, surgeTaskText()) : '') + (c3.hawBeaten && (wanderer.chapter | 0) === 3 ? task(true, tiPhone() ? 'Sol has fallen · Sol is free' : 'Sol has fallen to Terra Imperia · Sol is free again') + task(true, tiPhone() ? 'War · take Mercury and Venus' : 'War · take Mercury and Venus from Terra Imperia') : '') + (tiWarOn() ? task(false, tiPhone() ? `War · take Mercury and Venus (${TI_WORLDS.filter(id => dip().col[id]).length}/2)` : `War · take Mercury and Venus from Terra Imperia · bombard, land, defeat the governor (${TI_WORLDS.filter(id => dip().col[id]).length}/2)`) : '') + (c3.hawMars ? (!c3.nyxJoined && c3.jamesFate ? '' : !c3.nyxJoined && c3.nyxFailed ? '<div class="x-task failed"><i></i><span>FAILED: <s>Recruit Nyrexia Erisconos on Eris</s></span></div>' : task(!!c3.nyxJoined, 'Side quest (optional) · Recruit Nyrexia Erisconos on Eris')) : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + (c3.hawDead && (wanderer.chapter | 0) === 3 ? task(!!c3.alienDone, c3.alienDone ? 'Main quest · Explore the galaxy' : `Main quest · Explore the galaxy (${5 - alienWarpsLeft()}/5 jumps)`) : task(false, 'Explore the galaxy')) : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
+  if ((wanderer.chapter | 0) >= 3 && (wanderer.chapter | 0) !== 4 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (c3.hawMars && (wanderer.chapter | 0) === 3 ? task(!!c3.charonLanded, 'Main quest · Head to Charon') : '') + (c3.charonLanded && (wanderer.chapter | 0) === 3 ? task(!!c3.charonMet, 'Meet Charon and Kizna on Charon') : '') + (c3.jamesRev ? task(!!c3.jamesFate, 'Main quest · Defeat James Brown at the Antarctic station') : '') + (c3.jamesFate && (wanderer.chapter | 0) === 3 ? task(!!c3.charonBack, tiPhone() ? 'Main quest · Back to Charon and Kizna' : 'Main quest · Return to Charon and speak to Charon and Kizna') : '') + (c3.hakMet && (wanderer.chapter | 0) === 3 ? task(!!c3.cygDone, tiPhone() ? 'Main quest · Infiltrate the Cygnus (Mercury)' : 'Main quest · Infiltrate the Cygnus Terra Imperius, Terra Imperia’s capital ship, in orbit over Mercury') : '') + (c3.solFell && (wanderer.chapter | 0) === 3 ? task(!!c3.hakBack, tiPhone() ? 'Main quest · Return to Hak in Karribassa' : 'Main quest · Return to Hak Chompjak in Karribassa, on Janira Prime: Sol has fallen') : '') + (c3.siegeOn && (wanderer.chapter | 0) === 3 ? task(!!c3.siegeWon, tiPhone() ? 'Main quest · End the blockade of Janira Prime' : 'Main quest · End the blockade of Janira Prime: take Terra Imperia’s base, 1 km from Karribassa') : '') + (c3.restoreWar && (wanderer.chapter | 0) === 3 ? task(!!c3.chkJoined || (!!c3.hawBeaten && !!c3.alexiaBeaten), tiPhone() ? 'Main quest · Recruit Charon and Kizna' : 'Main quest · Go to Charon and recruit Charon and Kizna') + (c3.chkJoined || c3.hawBeaten || c3.alexiaBeaten ? task(!!c3.alexiaBeaten, tiPhone() ? 'Main quest · Siege of Eris: defeat Alexia' : 'Main quest · Lay siege to Eris: break Terra Imperia’s base and defeat Alexia Erisconos') + task(!!c3.hawBeaten, tiPhone() ? 'Main quest · Siege of Mercury: defeat Hawthorne' : c3.alexiaBeaten ? 'Main quest · Lay siege to Mercury: break Terra Imperia’s base and defeat Thomas Hawthorne' : 'Main quest · Lay siege to Mercury: Hawthorne won’t face you until Alexia is beaten') : '') : '') + (c3.hakCall && (wanderer.chapter | 0) === 3 ? task(!!c3.hakMet, tiPhone() ? 'Main quest · Meet Hak in Karribassa (Janira Prime)' : 'Main quest · Meet Hak Chompjak in Karribassa, on Janira Prime (Janira Proxima, a short jump from Sol)') : '') + (surgeOn() && !c3.hawBeaten ? task(false, surgeTaskText()) : '') + (c3.hawBeaten && (wanderer.chapter | 0) === 3 ? task(true, tiPhone() ? 'Sol has fallen · Sol is free' : 'Sol has fallen to Terra Imperia · Sol is free again') + task(true, tiPhone() ? 'War · take Mercury and Venus' : 'War · take Mercury and Venus from Terra Imperia') : '') + (tiWarOn() ? task(false, tiPhone() ? `War · take Mercury and Venus (${TI_WORLDS.filter(id => dip().col[id]).length}/2)` : `War · take Mercury and Venus from Terra Imperia · bombard, land, defeat the governor (${TI_WORLDS.filter(id => dip().col[id]).length}/2)`) : '') + (c3.hawMars ? (!c3.nyxJoined && c3.jamesFate ? '' : !c3.nyxJoined && c3.nyxFailed ? '<div class="x-task failed"><i></i><span>FAILED: <s>Recruit Nyrexia Erisconos on Eris</s></span></div>' : task(!!c3.nyxJoined, 'Side quest (optional) · Recruit Nyrexia Erisconos on Eris')) : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + (c3.hawDead && (wanderer.chapter | 0) === 3 ? task(!!c3.alienDone, c3.alienDone ? 'Main quest · Explore the galaxy' : `Main quest · Explore the galaxy (${5 - alienWarpsLeft()}/5 jumps)`) : task(false, 'Explore the galaxy')) : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
   if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip) h = task(true, tiPhone() ? 'Escape the Nostra' : 'Escape the Nostra in a pod') + task(false, tiPhone() ? 'Main quest · Survive · find somewhere to land' : 'Main quest · Survive: you’re adrift in an escape pod · find somewhere to land'); // Chapter IV starts here
+  if ((wanderer.chapter | 0) === 4) h = wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip ? h : !(wanderer.ch4 && wanderer.ch4.archMet) ? task(false, tiPhone() ? 'Main quest · Meet Archamus (Archiostal)' : 'Main quest · Meet Archamus in the gardens of Archiostal') : task(false, 'Explore Archiostal'); // after the two years: Chapter IV's own objectives, never Chapter III's
   if ((wanderer.chapter | 0) >= 3) { const tq = sqTracked(); if (tq) h += `<div class="x-task sq-task"><i></i><span>${tq}</span></div>`; } // the side quest you're tracking
   xUI.tasks.innerHTML = h;
   $('#xChap').textContent = liveChapterLabel().toUpperCase();
@@ -5256,6 +5280,7 @@ function notice(small, big, ms = 2800) {
   noticeT = setTimeout(() => xUI.card.classList.remove('on'), ms);
 }
 async function startChapter1(fromCutscene, place) {
+  if (amgWakeDue()) { show(ui.title, false); amgWake(); return; } // saved between the two years and Am-Grek: wake on Archiostal first
   if ((wanderer.chapter | 0) >= 3 && wanderer.ch3) { // Chapter III: space, or the planet you were on (never back to Chapter I's station, whatever older flags say)
     const own = place || (!fromCutscene && resumePlace && resumePlace.who === activeId ? resumePlace : null) || (wanderer.place && wanderer.place.mode === 'explore' ? wanderer.place : null);
     resumePlace = null; return startChapter3(own);
@@ -9216,7 +9241,19 @@ const TOWNSFOLK = [
 const townSrc = {};
 function townModel(sp) {
   if (townSrc[sp]) return townSrc[sp];
-  return (townSrc[sp] = embGlb(sp === 'human' ? 'glb' : sp === 'hfos' ? 'hfosGlb' : 'sp_' + sp).then(sc => sc || null));
+  return (townSrc[sp] = embGlb(sp === 'human' ? 'glb' : sp === 'hfos' ? 'hfosGlb' : 'sp_' + sp).then(sc => sc ? (sp === 'grek' ? grekPivots(sc) : sc) : null));
+}
+// the Grek model is one flat body of parts: give it shoulders and hips (as the playable Grek has, setupSpecies) so every Grek built
+// from it (townsfolk, crowds, wardens, quest givers, Am-Grek) swings its arms and walks on its legs instead of gliding stiff
+function grekPivots(sc) {
+  sc.updateMatrixWorld(true);
+  const piv = (name, x, y) => { const g = new THREE.Group(); g.name = name; g.position.set(x, y, 0); sc.add(g); g.updateMatrixWorld(true); return g; };
+  const P = { ra: piv('rightArm', -1.19, 2.78), la: piv('leftArm', 1.19, 2.78), rl: piv('rightLeg', -.4, 1.86), ll: piv('leftLeg', .4, 1.86) };
+  const ARM = /^(upper arm|elbow|gauntlet|hand|finger|thumb) (-1|1)(\s|$)/, LEG = /^(thigh|knee rim|knee plate|shin|boot toe|boot) (-1|1)(\s|$)/, parts = [];
+  sc.traverse(o => { if (o.isMesh) parts.push(o); });
+  for (const o of parts) { const n = (o.name || '').replace(/_/g, ' ').toLowerCase(); let k;
+    if ((k = n.match(ARM))) (k[2] === '-1' ? P.ra : P.la).attach(o); else if ((k = n.match(LEG))) (k[2] === '-1' ? P.rl : P.ll).attach(o); }
+  return sc;
 }
 const HIDE_RE = /weapon|holster|sidearm|shield|thorn|helmet|visor|backpack|pack battery|hose|chest control|chest vent|main button|switch|dial|wrist|badge|oxygen|status light|crest|cloak|piping|cape/;
 function dressTownsfolk(src, d) {
@@ -14488,6 +14525,7 @@ const HWX_LOOKS = { // per set: saturation, contrast, split tone (shadows → hi
   lit: { sat: .85, con: 1.22, sh: [.95, .78, .8], hi: [1.12, .98, .9], vig: .7, grain: .06, ca: .004, haze: 0, lift: -.03, bloom: .5 },
   sev: { sat: 1.3, con: 1.32, sh: [1.1, .55, .55], hi: [1.28, .82, .72], vig: .85, grain: .065, ca: .009, haze: 0, lift: -.05, bloom: .75 },
   kill: { sat: 1.08, con: 1.15, sh: [1.0, .82, .82], hi: [1.14, 1.0, .93], vig: .55, grain: .05, ca: .003, haze: 0, lift: 0, bloom: .45 }, // Hak puts the sword through him: you see it clearly
+  archiostal: { sat: 1.12, con: 1.16, sh: [.82, .94, 1.0], hi: [1.1, 1.02, .86], vig: .62, grain: .045, ca: .002, haze: 0, lift: -.02, bloom: .42 }, // the garden under glass: soft, warm, a little hazy
   podworld: { sat: 1.0, con: 1.12, sh: [.84, .84, 1.06], hi: [1.12, .98, .84], vig: .72, grain: .06, ca: .003, haze: .5, lift: -.02, bloom: .8 } };
 function hwxComposer() {
   const M = HWX.mods; if (!M) return null; if (HWX.comp) return HWX.comp;
@@ -14509,7 +14547,7 @@ function hwxRender(dt) { // true when it drew the frame
   const C = hwxComposer(); hwxTick(dt); if (!C) return false;
   const pr = renderer.getPixelRatio(), sz = renderer.getSize(new THREE.Vector2()), key = `${sz.x}x${sz.y}@${pr}`;
   if (HWX.size !== key) { HWX.size = key; C.setPixelRatio(pr); C.setSize(sz.x, sz.y); }
-  const kb = NM.script && NM.script.beats && NM.script.beats[NM.bi], L = HWX_LOOKS[(kb && kb.kill) || NM.killShot ? 'kill' : (NM.chan && !NM.chanOff) || (NM.ghost && !(NM.ghost.fade != null)) ? 'sev' : HWX.set === 'bunker' ? (NM.lightsSteady ? 'lit' : 'bunker') : HWX.set === 'podworld' ? 'podworld' : 'mercury'] || HWX_LOOKS.mercury;
+  const kb = NM.script && NM.script.beats && NM.script.beats[NM.bi], L = HWX_LOOKS[(kb && kb.kill) || NM.killShot ? 'kill' : (NM.chan && !NM.chanOff) || (NM.ghost && !(NM.ghost.fade != null)) ? 'sev' : HWX.set === 'bunker' ? (NM.lightsSteady ? 'lit' : 'bunker') : HWX.set === 'podworld' || HWX.set === 'archiostal' ? HWX.set : 'mercury'] || HWX_LOOKS.mercury;
   const U = HWX.grade.uniforms, k = Math.min(1, dt * 2.5), mv = (a, b) => a + (b - a) * k;
   if (!HWX.cur) HWX.cur = JSON.parse(JSON.stringify(L)); const c = HWX.cur;
   for (const p of ['sat', 'con', 'vig', 'grain', 'ca', 'haze', 'lift', 'bloom']) c[p] = mv(c[p], L[p]); for (const p of ['sh', 'hi']) for (let i = 0; i < 3; i++) c[p][i] = mv(c[p][i], L[p][i]);
@@ -16303,14 +16341,17 @@ function c4eEnd(keepBlack) {
   if (!keepBlack) { state = C4E.from === 'title' ? 'title' : 'explore'; ex.snap = true; clock.getDelta(); const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0; }
 }
 // ?ending=good|neutral|bad|tared: watch an ending (or the Taredesiban nightmare) from the title screen (tap or press a key once the menu is up; nothing is saved or erased)
+// ?ending=amgrek: waking on Archiostal (Am-Grek) · ?ending=timeskip: the two years while you slept (the Catharsis takes the galaxy, Chapter IV)
 // ?ending=oilkoumene: the Oilkoumene nightmare (The Fall of Obra-Spira) · ?ending=oilkdream: the Oilkoumene dream on the ice (Tyrotaronus, as ????)
 // Both play through the Cutscenes player and come back to the title: nothing is saved, and no wanderer is needed.
-{ const m = location.search.match(/[?&]ending=(good|neutral|bad|tared|oilkoumene|oilkdream)/); // tared: the Taredesiban nightmare
+{ const m = location.search.match(/[?&]ending=(good|neutral|bad|tared|oilkoumene|oilkdream|timeskip|amgrek)/); // tared: the Taredesiban nightmare
   const OILK = { oilkoumene: { id: 'nightmare', play: () => cutNightmare('oilkoumene') },
+    amgrek: { id: 'amgWake', play: () => amgWake({ replay: true }) },
+    timeskip: { id: 'timeSkip', play: () => skipNarrStart(() => cutDone(), { replay: true }) },
     oilkdream: { id: 'oilkDream', play: () => { startDream(() => { const b = $('#blackout'); b.style.transition = ''; b.style.opacity = ''; b.classList.remove('on'); cutDone(); }, { sp: 'oilkoumene' }); } } };
   if (m) { const go = () => { if (state !== 'title' || C4E.on || CUT.on) return; removeEventListener('pointerdown', go); removeEventListener('keydown', go); sfx.init && sfx.init(); if (OILK[m[1]]) cutPlay(OILK[m[1]]); else ch4EndingPlay(m[1], { preview: true }); };
   addEventListener('pointerdown', go); addEventListener('keydown', go);
-  const hint = () => { if (state === 'title') notice('Preview', m[1] === 'tared' ? 'TAP TO PLAY THE TAREDESIBAN NIGHTMARE' : m[1] === 'oilkoumene' ? 'TAP TO PLAY THE OILKOUMENE NIGHTMARE' : m[1] === 'oilkdream' ? 'TAP TO PLAY THE OILKOUMENE DREAM' : `TAP TO PLAY THE ${m[1].toUpperCase()} ENDING`, 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500); } }
+  const hint = () => { if (state === 'title') notice('Preview', m[1] === 'tared' ? 'TAP TO PLAY THE TAREDESIBAN NIGHTMARE' : m[1] === 'oilkoumene' ? 'TAP TO PLAY THE OILKOUMENE NIGHTMARE' : m[1] === 'oilkdream' ? 'TAP TO PLAY THE OILKOUMENE DREAM' : m[1] === 'timeskip' ? 'TAP TO PLAY THE TWO YEARS WHILE YOU SLEPT' : m[1] === 'amgrek' ? 'TAP TO PLAY THE LAST GARDEN' : `TAP TO PLAY THE ${m[1].toUpperCase()} ENDING`, 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500); } }
 
 // ?ch5allteam=evil (or =good, =neutral; evil if left out): a throwaway Chapter V wanderer for testing, with every companion in the crew at once
 // (Orion, Nico, Khazglar, Charon, Kizna, Nyrexia, Croxian, Malia, James as Pontifex, Josiah II, Javek, Tyrotaronus, and Gareth and the others from
@@ -16366,6 +16407,8 @@ const CUTS = [
   { id: 'orionCut', ch: 'Chapter III', name: 'CLOSE THE CHANNEL', sub: 'The Nostra · Orion, after Janira Prime', ok: () => c3f('orionGone'), play: () => startOrionCut(true) },
   { id: 'hawDeath', ch: 'Chapter III', name: 'THE END OF THE GRAND IMPERARCH', sub: 'Mercury · Hak Chompjak, and Sevirrus, one last time', ok: () => !!CH3S().hawBeaten || chNow() >= 4, play: () => hawDeath(() => cutDone()) },
   { id: 'alexiaFall', ch: 'Chapter III', name: 'NO SISTER OF MINE', sub: 'Eris · Vishara judges Alexia', ok: () => !!CH3S().alexiaBeaten || (chNow() >= 4 && !!CH3S().alexiaCoup), play: () => alexiaFall(() => cutDone()) },
+  { id: 'timeSkip', ch: 'Chapter IV', name: 'WHILE YOU SLEPT', sub: 'The galaxy · two years of the Catharsis', ok: () => !!(wanderer.ch4 && wanderer.ch4.timeSkip) || chNow() >= 5, play: () => skipNarrStart(() => cutDone(), { replay: true }) },
+  { id: 'amgWake', ch: 'Chapter IV', name: 'THE LAST GARDEN', sub: 'Archiostal · Am-Grek, High Hierarch', ok: () => !!(wanderer.ch4 && wanderer.ch4.amgMet) || chNow() >= 5, play: () => amgWake({ replay: true }) },
   { id: 'good', ch: 'Chapter IV', name: 'THE CATHARSIS FALLS', sub: 'The good ending', ok: () => cutEnding() === 'good', play: () => ch4EndingPlay('good', { preview: true }) },
   { id: 'neutral', ch: 'Chapter IV', name: 'THE WAR GOES ON', sub: 'The neutral ending', ok: () => cutEnding() === 'neutral' || chNow() >= 5, play: () => ch4EndingPlay('neutral', { preview: true }) },
   { id: 'bad', ch: 'Chapter IV', name: 'NO ONE WILL REMEMBER', sub: 'The bad ending · seen on this device', ok: () => cutsSeen().includes('bad'), play: () => ch4EndingPlay('bad', { preview: true }) }
@@ -19879,12 +19922,371 @@ function podDeathEnd() {
   ui.xhud.classList.remove('cutting'); renderer.domElement.style.filter = '';
   const fd = $('#fade'); fd.style.transition = 'none'; fd.style.opacity = 1;
   state = 'explore'; try { leaveExplore(true); } catch (e) { console.error(e); } // where you are is remembered: the save picks up on this world
-  const T = ui.tbc, ey = T.querySelector('.eyebrow'), h2 = T.querySelector('h2'), keep = $('#tbcKeep span'), btn = $('#tbcBtn span');
-  T.dataset.orig = JSON.stringify([ey.textContent, h2.innerHTML, keep.textContent, btn.textContent]); T.dataset.from = 'ch4pod';
-  ey.textContent = 'Archamus found you'; h2.innerHTML = 'CHAPTER IV'; keep.textContent = 'Save your game'; btn.textContent = 'Main menu';
-  show(T, true); setTimeout(() => { fd.style.transition = 'opacity 1.2s'; fd.style.opacity = 0; }, 200);
+  skipNarrStart(() => amgWake()); // the two years while you slept, then you wake on Archiostal
 }
 function podTbcClose() { const T = ui.tbc; try { const [a, b, c, d] = JSON.parse(T.dataset.orig || '[]'); if (a) { T.querySelector('.eyebrow').textContent = a; T.querySelector('h2').innerHTML = b; $('#tbcKeep span').textContent = c; $('#tbcBtn span').textContent = d; } } catch (e) {} T.dataset.from = ''; show(T, false); }
+/* ---- Chapter IV · the two years while you slept: the narrator over a map of the galaxy ----
+   Straight after Archamus finds you (podDeathEnd), before To be continued. The galaxy's 490 systems, each empire's space in its own
+   colour with its name across it: the Human Federation of Sol (blue: it holds Sol, so the Erisian Empire isn't shown), the Chompy
+   Empire (purple), the Republic of Timpur (cyan), the Grek Empire (green) and the Catharsis (red). The Catharsis starts as the Grek's
+   small puppet round the core, sacks Carax, then takes the galaxy system by system, losing ground and taking it back, until it holds
+   every Grek world but Malana (the Chapter IV map). Sets ch4.timeSkip. Voiced: data/skipNarrVoices.js (CH4NARRATOR1–10). Replays from Cutscenes; ?ending=timeskip plays it from the title. ---- */
+const SKIP_NARR = [
+  'An alien species known as the Catharsis, once a small puppet of the Grek Empire, now threatens the entire galaxy.',
+  'In the chaos after your death, they turned on their masters, and sacked Carax.',
+  'Am-Grek’s capital burned, and the worlds around the core fell one after another.',
+  'For the next two years, they clashed with the other empires.',
+  'And clashed.',
+  'And clashed.',
+  'World by world, they chipped away at the Grek Empire, until only Malana was left.',
+  'The Chompy Empire threw them back from its borders, lost the ground, and took it back again.',
+  'The Republic of Timpur watched from the edge of the galaxy. The Human Federation of Sol held its home, and waited.',
+  'And through all of it, wanderer, you slept.'
+];
+const SN_EMP = { hfos: ['HUMAN FEDERATION OF SOL', '#4f8fff'], chompy: ['CHOMPY EMPIRE', '#a35cff'], timpur: ['REPUBLIC OF TIMPUR', '#36e2f0'], grek: ['GREK EMPIRE', '#3fd36c'], cath: ['CATHARSIS', '#ff2b2b'] };
+const SN = { on: false };
+function snKey(f) { f = String(f || ''); return /^The Catharsis/.test(f) ? 'cath' : /Timpur/.test(f) ? 'timpur' : /Chompy/.test(f) ? 'chompy' : /Grek|Order of Archamus/.test(f) ? 'grek' : /Human Federation|Terra Imperia|Erisian/.test(f) ? 'hfos' : null; }
+const snRgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+function snDom() {
+  let el = $('#skipNarr'); if (el) return el;
+  const st = document.createElement('style');
+  st.textContent = `#skipNarr{position:fixed;inset:0;z-index:40;background:#020208;display:none;overflow:hidden;user-select:none;-webkit-user-select:none}
+#skipNarr.on{display:block}#skipNarr canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#skipNarr .sn-sub{position:absolute;left:50%;bottom:max(7vh,calc(24px + env(safe-area-inset-bottom,0px)));transform:translateX(-50%);width:min(820px,88vw);text-align:center;font-size:clamp(15px,2vw,22px);line-height:1.65;letter-spacing:.04em;color:#e6e9f0;font-style:italic;opacity:0;transition:opacity .8s;text-shadow:0 2px 14px #000,0 0 30px #000}
+#skipNarr .sn-sub.show{opacity:1}
+#skipNarr .sn-year{position:absolute;left:max(22px,env(safe-area-inset-left,0px));top:max(18px,env(safe-area-inset-top,0px));font-family:var(--display);font-size:clamp(18px,2.6vw,30px);letter-spacing:.3em;color:#e6e9f0;opacity:0;transition:opacity 1s}
+#skipNarr .sn-year small{display:block;font-family:inherit;font-size:9px;letter-spacing:.5em;color:#8c93a1;margin-bottom:6px}
+#skipNarr .sn-leg{position:absolute;right:max(22px,env(safe-area-inset-right,0px));top:max(18px,env(safe-area-inset-top,0px));margin-top:44px;font-size:10px;letter-spacing:.22em;line-height:2.1;color:#c8ccd6;text-align:right;opacity:0;transition:opacity 1s}
+#skipNarr .sn-leg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-left:9px;vertical-align:-1px}
+#skipNarr .sn-leg b{font-weight:500;color:#fff;display:inline-block;min-width:2.6em}
+#skipNarr .sn-leg div{transition:opacity .8s}#skipNarr .sn-leg div.gone{opacity:.25}
+#skipNarr.map .sn-year,#skipNarr.map .sn-leg{opacity:1}
+#skipNarr .sn-card{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;opacity:0;transition:opacity 1.4s;pointer-events:none}
+#skipNarr .sn-card.on{opacity:1}
+#skipNarr .sn-card small{display:block;font-size:10px;letter-spacing:.6em;color:#8c93a1;margin-bottom:14px;text-transform:uppercase}
+#skipNarr .sn-card b{display:block;font-family:var(--display);font-weight:500;font-size:clamp(26px,6vw,62px);letter-spacing:.24em;color:#e6e9f0;text-shadow:0 2px 24px rgba(0,0,0,.8)}
+#skipNarr .sn-skip{position:absolute;right:max(18px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));background:none;border:1px solid rgba(230,233,240,.3);color:#c8ccd6;font:inherit;font-size:10px;letter-spacing:.35em;padding:9px 14px 9px 18px;cursor:pointer}
+#skipNarr .sn-fade{position:absolute;inset:0;background:#000;opacity:1;transition:opacity 1.4s;pointer-events:none}
+@media (max-width:640px){#skipNarr .sn-leg{margin-top:0;top:auto;bottom:max(64px,calc(52px + env(safe-area-inset-bottom,0px)));font-size:8px;line-height:1.9}#skipNarr .sn-sub{bottom:auto;top:max(76px,calc(60px + env(safe-area-inset-top,0px)))}}`;
+  document.head.appendChild(st);
+  el = document.createElement('div'); el.id = 'skipNarr';
+  el.innerHTML = '<canvas></canvas><div class="sn-year"><small>The galaxy</small><span>2125 AD</span></div><div class="sn-leg"></div><div class="sn-sub"></div><div class="sn-card"><small></small><b></b></div><button class="sn-skip" type="button">SKIP ›</button><div class="sn-fade"></div>';
+  document.body.appendChild(el);
+  el.addEventListener('pointerdown', e => { if (!SN.on) return; e.stopPropagation(); if (e.target.closest('.sn-skip')) snSkipAll(); else SN.skipLine = true; });
+  addEventListener('keydown', e => { if (!SN.on) return; e.preventDefault(); e.stopImmediatePropagation(); if (e.code === 'Escape') snSkipAll(); else if (['Space', 'Enter', 'KeyE'].includes(e.code)) SN.skipLine = true; }, true);
+  return el;
+}
+function snBuild() { // the systems, who holds each before and after, and the territory field (nearest system to each cell)
+  const sys = SYSTEMS.map(S => {
+    const o3 = S.id === 'sol' ? 'hfos' : snKey(S.fac3 || S.fac0 || S.faction), o4 = S.id === 'sol' ? 'hfos' : S.fac4 ? snKey(S.fac4) : o3;
+    return { S, x: S.map.x, y: S.map.y, o3, o4, own: o3, col: o3 ? snRgb(SN_EMP[o3][1]) : null, from: null, ft: 9, ring: -9 };
+  });
+  const N = 300, R = .078, lo = -1.06, span = 2.12, cell = span / N, idx = new Int16Array(N * N).fill(-1), dist = new Float32Array(N * N);
+  const B = 24, bk = Array.from({ length: B * B }, () => []), bkOf = v => clamp(Math.floor((v - lo) / span * B), 0, B - 1);
+  sys.forEach((s, i) => { if (s.o3 || s.o4) bk[bkOf(s.y) * B + bkOf(s.x)].push(i); });
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const x = lo + (i + .5) * cell, y = lo + (j + .5) * cell, bx = bkOf(x), by = bkOf(y); let best = -1, bd = R;
+    for (let yy = Math.max(0, by - 1); yy <= Math.min(B - 1, by + 1); yy++) for (let xx = Math.max(0, bx - 1); xx <= Math.min(B - 1, bx + 1); xx++)
+      for (const k of bk[yy * B + xx]) { const d = Math.hypot(sys[k].x - x, sys[k].y - y); if (d < bd) { bd = d; best = k; } }
+    idx[j * N + i] = best; dist[j * N + i] = bd / R;
+  }
+  const off = document.createElement('canvas'); off.width = off.height = N;
+  Object.assign(SN, { sys, N, lo, span, idx, dist, off, octx: off.getContext('2d'), img: off.getContext('2d').createImageData(N, N) });
+  const near = (list, x, y) => list.slice().sort((a, b) => Math.hypot(sys[a].x - x, sys[a].y - y) - Math.hypot(sys[b].x - x, sys[b].y - y));
+  const all = f => sys.map((s, i) => i).filter(i => f(sys[i]));
+  const carax = sys.findIndex(s => s.S.id === 'sgra'), G = near(all(s => s.o3 === 'grek' && s.o4 === 'cath' && s.S.id !== 'sgra'), 0, 0), n = G.length;
+  const cut = f => Math.round(n * f), C = near(all(s => s.o3 === 'chompy'), 0, 0).slice(0, 12);
+  const cen = k => { const L = all(s => s.o3 === k); return L.length ? [L.reduce((t, i) => t + sys[i].x, 0) / L.length, L.reduce((t, i) => t + sys[i].y, 0) / L.length] : [0, 0]; };
+  const sol = sys.find(s => s.S.id === 'sol') || { x: .18, y: .5 }, held = sys.filter(s => s.o3 || s.o4), bx = held.map(s => s.x), by = held.map(s => s.y);
+  const mid = [(Math.min(...bx) + Math.max(...bx)) / 2, (Math.min(...by) + Math.max(...by)) / 2 + .13], fit = 1.6 / Math.max(.4, Math.max(...bx) - Math.min(...bx), (Math.max(...by) - Math.min(...by)) * Math.max(1, innerWidth / innerHeight) * .62); // the claimed galaxy, filling the screen (a little low: the words go underneath)
+  SN.sets = { carax, w1: G.slice(0, cut(.25)), w2: G.slice(cut(.25), cut(.45)), w2b: G.slice(cut(.35), cut(.45)), w3: G.slice(cut(.45), cut(.65)), rest: G.slice(cut(.65)), C,
+    chompyC: cen('chompy'), timpurC: cen('timpur'), sol: [sol.x, sol.y], mid, fit };
+}
+function snFlip(list, own, at, span) { // these systems change hands, one by one, between at and at + span (seconds of this line)
+  list = [].concat(list).filter(i => i >= 0); list.forEach((i, k) => SN.q.push({ t: SN.lineT0 + at + (list.length > 1 ? k / (list.length - 1) : 0) * span, i, own }));
+}
+function snApply(e, now) { const s = SN.sys[e.i]; if (s.own === e.own) return; s.from = s.col || [40, 40, 50]; s.own = e.own; s.ft = now; s.ring = now; if (now - (SN.blipT || 0) > .13) { SN.blipT = now; try { sfx.blip(); } catch (_) {} } }
+const SN_LINES = [ // what the map does under each line: where the camera goes, and who takes what (times in seconds into the line)
+  { cam: () => [SN.sets.mid[0], SN.sets.mid[1], SN.sets.fit], on: () => { SN.pulse = 'cath'; } },
+  { cam: () => [0, 0, 2.7], on: () => { SN.q.push({ t: SN.lineT0 + 2.2, i: SN.sets.carax, own: 'cath', big: true }); } },
+  { cam: () => [0, 0, 2], on: () => snFlip(SN.sets.w1, 'cath', .5, 4), min: 5 },
+  { cam: () => [SN.sets.chompyC[0] * .4, SN.sets.chompyC[1] * .4, 1.25], on: () => { snFlip(SN.sets.w2, 'cath', .3, 3.4); snFlip(SN.sets.C.slice(0, 4), 'cath', 1.4, 2.4); }, year: 2125.5, min: 4.6 },
+  { cam: () => [SN.sets.chompyC[0] * .5, SN.sets.chompyC[1] * .5, 1.4], on: () => { snFlip(SN.sets.w2b, 'grek', .2, 1.6); snFlip(SN.sets.C.slice(0, 2), 'chompy', .6, 1); snFlip(SN.sets.C.slice(4, 7), 'cath', 1.8, 1.8); }, year: 2125.9, min: 4.4 },
+  { cam: () => [SN.sets.chompyC[0] * .3, SN.sets.chompyC[1] * .3, 1.15], on: () => { snFlip(SN.sets.w2b.concat(SN.sets.w3), 'cath', .2, 3.2); snFlip(SN.sets.C.slice(0, 2), 'cath', 1.2, 1.2); }, year: 2126.3, min: 4.2 },
+  { cam: () => [0, 0, 1.6], on: () => snFlip(SN.sets.rest, 'cath', .4, 5.2), year: 2126.8, min: 6.4 },
+  { cam: () => [SN.sets.chompyC[0] * .55, SN.sets.chompyC[1] * .55, 2.2], on: () => { snFlip(SN.sets.C.slice(0, 7), 'chompy', .3, 1.6); snFlip(SN.sets.C.slice(0, 6), 'cath', 2.6, 1.6); snFlip(SN.sets.C, 'chompy', 4.9, 1.6); }, year: 2127.1, min: 7.2 },
+  { cam: k => k < .5 ? [SN.sets.timpurC[0], SN.sets.timpurC[1], 2.2] : [SN.sets.sol[0], SN.sets.sol[1], 3], on: () => { SN.pulse = null; }, year: 2127.3 },
+  { cam: () => [SN.sets.mid[0], SN.sets.mid[1], SN.sets.fit * .9], on: () => { SN.dim = 1; }, year: 2127.4 }
+];
+function snLabels() { // each empire's name over its own space: where its worlds sit thickest, clear of the other names
+  const S = SN.sys, out = {}, placed = [], z = SN.cam[2], kk = Math.min(innerWidth, innerHeight) * .46 * z; // label boxes, in galaxy units at this zoom
+  for (const k of ['cath', 'grek', 'chompy', 'timpur', 'hfos']) {
+    const mine = S.filter(s => s.own === k); if (!mine.length) continue;
+    const fs = clamp(9 + Math.sqrt(mine.length) * 1.5, 10, 22) * Math.min(1.5, Math.sqrt(z)), hw = SN_EMP[k][0].length * fs * .5 / kk + .01, hh = fs * 1.1 / kk + .01;
+    let best = null, bs = -1e9;
+    for (const s of mine) {
+      let sc = 0; for (const o of mine) if (Math.hypot(o.x - s.x, o.y - s.y) < .13) sc++;
+      for (const p of placed) { const ox = p.hw + hw - Math.abs(p.x - s.x), oy = p.hh + hh - Math.abs(p.y - s.y); if (ox > 0 && oy > 0) sc -= 1000 + ox * oy * 1e4; } // never on top of another name
+      if (sc > bs) { bs = sc; best = s; }
+    }
+    out[k] = [best.x, best.y, mine.length]; placed.push({ x: best.x, y: best.y, hw, hh });
+  }
+  for (const k in out) { const L = SN.lab[k]; if (L) { L.tx = out[k][0]; L.ty = out[k][1]; L.n = out[k][2]; } else SN.lab[k] = { x: out[k][0], y: out[k][1], tx: out[k][0], ty: out[k][1], n: out[k][2], a: 0 }; }
+  for (const k in SN.lab) if (!out[k]) SN.lab[k].n = 0;
+}
+function snDraw(dt) {
+  const cv = SN.cv, c = SN.ctx, W = cv.width, H = cv.height, dpr = SN.dpr, now = SN.t;
+  c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#020208'; c.fillRect(0, 0, W, H);
+  const [cx, cy, z] = SN.cam, k = Math.min(W, H) * .46 * z, X = x => W / 2 + (x - cx) * k, Y = y => H / 2 + (y - cy) * k;
+  const core = c.createRadialGradient(X(0), Y(0), 0, X(0), Y(0), k * .5); core.addColorStop(0, 'rgba(255,214,170,.16)'); core.addColorStop(.4, 'rgba(120,90,160,.06)'); core.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = core; c.fillRect(0, 0, W, H);
+  // the systems' colours ease to whoever holds them now
+  for (const s of SN.sys) { if (!s.own) continue; const to = snRgb(SN_EMP[s.own][1]), u = clamp((now - s.ft) / .6, 0, 1); s.col = s.from && u < 1 ? s.from.map((v, i) => v + (to[i] - v) * u) : to; if (u >= 1) s.from = null; }
+  const { N, idx, dist, img } = SN, d = img.data, pulse = SN.pulse ? .5 + .5 * Math.sin(now * 3.2) : 0, dim = SN.dimK || 0;
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const p = j * N + i, q = idx[p], o = p * 4; if (q < 0 || !SN.sys[q].own) { d[o + 3] = 0; continue; }
+    const s = SN.sys[q], own = s.own, r = i + 1 < N ? idx[p + 1] : -1, b = j + 1 < N ? idx[p + N] : -1, l = i > 0 ? idx[p - 1] : -1, t = j > 0 ? idx[p - N] : -1;
+    const ownOf = n => n < 0 ? null : SN.sys[n].own, edge = ownOf(r) !== own || ownOf(b) !== own || ownOf(l) !== own || ownOf(t) !== own;
+    const fresh = clamp(1 - (now - s.ft) / 1.2, 0, 1), fall = 1 - Math.pow(dist[p], 3);
+    let a = edge ? .9 : .3 + fall * .12; a += fresh * .45; if (own === SN.pulse) a += pulse * .12;
+    d[o] = s.col[0]; d[o + 1] = s.col[1]; d[o + 2] = s.col[2]; d[o + 3] = clamp(a * (1 - dim * .55), 0, 1) * 255;
+  }
+  SN.octx.putImageData(img, 0, 0);
+  c.imageSmoothingEnabled = true; const px = SN.span * k / N; if ('filter' in c) c.filter = `blur(${Math.max(.5, px * .45).toFixed(1)}px)`; // soften the cells' edges
+  c.drawImage(SN.off, X(SN.lo), Y(SN.lo), SN.span * k, SN.span * k); if ('filter' in c) c.filter = 'none';
+  // every system: a point of light in its holder's colour
+  const rr = Math.max(1, 1.15 * dpr * Math.sqrt(z));
+  for (const s of SN.sys) {
+    const px = X(s.x), py = Y(s.y); if (px < -20 || py < -20 || px > W + 20 || py > H + 20) continue;
+    c.fillStyle = s.own ? `rgb(${s.col.map(v => Math.min(255, v + 70) | 0).join(',')})` : 'rgba(150,160,185,.38)'; c.fillRect(px - rr, py - rr, rr * 2, rr * 2);
+    const ra = now - s.ring; if (ra >= 0 && ra < 1.1) { const u = ra / 1.1; c.strokeStyle = `rgba(${s.col.map(v => v | 0).join(',')},${1 - u})`; c.lineWidth = 1.5 * dpr; c.beginPath(); c.arc(px, py, (3 + u * 16 * (s.big ? 4 : 1)) * dpr, 0, 6.283); c.stroke(); }
+  }
+  // the names
+  if ((SN.labT = (SN.labT || 0) - dt) <= 0) { SN.labT = .4; snLabels(); }
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  for (const [key, L] of Object.entries(SN.lab)) {
+    L.x += (L.tx - L.x) * Math.min(1, dt * 2.2); L.y += (L.ty - L.y) * Math.min(1, dt * 2.2); L.a += ((L.n > 0 ? 1 : 0) - L.a) * Math.min(1, dt * 2.5); if (L.a < .01) continue;
+    const fs = clamp(9 + Math.sqrt(L.n) * 1.5, 10, 22) * dpr * Math.min(1.5, Math.sqrt(z)), col = SN_EMP[key][1];
+    c.font = `500 ${fs}px ${getComputedStyle(document.body).getPropertyValue('--display') || 'sans-serif'}`; if ('letterSpacing' in c) c.letterSpacing = `${(fs * .18) | 0}px`;
+    c.globalAlpha = L.a * (1 - dim * .5); c.shadowColor = 'rgba(0,0,0,.95)'; c.shadowBlur = 10 * dpr; c.fillStyle = '#fff'; c.fillText(SN_EMP[key][0], X(L.x), Y(L.y) - 10 * dpr);
+    c.shadowBlur = 0; c.fillStyle = col; c.fillRect(X(L.x) - fs * 1.4, Y(L.y) - 10 * dpr + fs * .82, fs * 2.8, Math.max(1, 1.6 * dpr));
+    c.globalAlpha = 1;
+  }
+  if ('letterSpacing' in c) c.letterSpacing = '0px';
+  if (SN.shake > 0) SN.shake = Math.max(0, SN.shake - dt * 1.4);
+}
+function snLegend() {
+  const cnt = {}; for (const s of SN.sys) if (s.own) cnt[s.own] = (cnt[s.own] | 0) + 1;
+  const h = ['cath', 'grek', 'chompy', 'timpur', 'hfos'].map(k => `<div class="${cnt[k] ? '' : 'gone'}">${SN_EMP[k][0]} <b>${cnt[k] | 0}</b><i style="background:${SN_EMP[k][1]}"></i></div>`).join('');
+  if (h !== SN.legH) { SN.legH = h; SN.el.querySelector('.sn-leg').innerHTML = h; }
+}
+function snFrame() {
+  if (!SN.on) return; requestAnimationFrame(snFrame);
+  const nowMs = performance.now(), dt = Math.min(.05, (nowMs - (SN.last || nowMs)) / 1000); SN.last = nowMs; SN.t += dt;
+  const cv = SN.cv, dpr = SN.dpr = Math.min(2, devicePixelRatio || 1), w = Math.round(innerWidth * dpr), h = Math.round(innerHeight * dpr); if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  while (SN.q.length) { let m = 0; for (let i = 1; i < SN.q.length; i++) if (SN.q[i].t < SN.q[m].t) m = i; if (SN.q[m].t > SN.t) break; const e = SN.q.splice(m, 1)[0]; snApply(e, SN.t); if (e.big) { SN.sys[e.i].big = true; SN.shake = 1; try { sfx.thud(); sfx.thud(); } catch (_) {} } }
+  const L = SN_LINES[Math.max(0, SN.line)], lk = SN.lineDur ? clamp((SN.t - SN.lineT0) / SN.lineDur, 0, 1) : 0, tc = L ? L.cam(lk) : [0, 0, 1];
+  const ease = Math.min(1, dt * .9); SN.cam = SN.cam.map((v, i) => v + (tc[i] - v) * ease);
+  if (SN.shake > 0) { SN.cam[0] += (Math.random() - .5) * .006 * SN.shake; SN.cam[1] += (Math.random() - .5) * .006 * SN.shake; }
+  SN.dimK = (SN.dimK || 0) + ((SN.dim || 0) - (SN.dimK || 0)) * Math.min(1, dt * .8);
+  const yr = L && L.year ? SN.yr + (L.year - SN.yr) * Math.min(1, dt * .7) : SN.yr; SN.yr = yr; SN.el.querySelector('.sn-year span').textContent = `${Math.floor(yr + .001)} AD`;
+  snDraw(dt); snLegend();
+}
+async function snLine(i) { // one line of narration: its text, its voice if there is one, and what happens on the map
+  if (!SN.on) return; SN.line = i; SN.skipLine = false; SN.lineT0 = SN.t;
+  const text = SKIP_NARR[i], clip = SN.vo[i], words = text.split(' ').length;
+  SN.lineDur = Math.max(clip && clip.duration ? clip.duration + .8 : Math.max(4.6, 1.6 + words * .36), SN_LINES[i].min || 0); // long enough for the map to finish what this line does
+  SN_LINES[i].on(); const sub = SN.el.querySelector('.sn-sub'); sub.textContent = text; sub.classList.remove('show'); void sub.offsetWidth; sub.classList.add('show');
+  if (clip) sfx.playNarr(clip, 1.3);
+  while (SN.on && !SN.skipLine && SN.t - SN.lineT0 < SN.lineDur) await waitMs(60);
+  if (!SN.on) return;
+  if (SN.skipLine) { try { sfx.stopNarr(); } catch (_) {} } // tapped through: everything this line was going to do happens now
+  for (const e of SN.q.splice(0)) snApply(e, SN.t - .5);
+  sub.classList.remove('show'); await waitMs(450);
+}
+async function skipNarrStart(done, opts = {}) {
+  if (SN.on) return; const el = snDom(); SN.el = el; SN.cv = el.querySelector('canvas'); SN.ctx = SN.cv.getContext('2d');
+  SN.done = done; SN.replay = !!opts.replay; SN.prev = state; state = 'skipNarr';
+  if (!SN.replay && wanderer) { wanderer.ch4 = Object.assign({}, wanderer.ch4, { timeSkip: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); } // two years have gone by
+  Object.assign(SN, { on: true, t: 0, last: 0, q: [], lab: {}, line: -1, lineDur: 0, cam: [0, 0, .8], yr: 2125, dim: 0, dimK: 0, pulse: null, shake: 0, legH: '', vo: [] });
+  el.classList.add('on'); el.classList.remove('map'); const fade = el.querySelector('.sn-fade'), card = el.querySelector('.sn-card');
+  fade.style.transition = 'none'; fade.style.opacity = 1;
+  card.querySelector('small').textContent = 'While you slept'; card.querySelector('b').textContent = '2125 AD';
+  let vo = []; try { [vo] = await Promise.all([loadDataScript('skipNarrVoices').then(ok => ok ? sfx.loadClips('skipNarrVoices') : []).catch(() => []), waitMs(60)]); } catch (e) { console.error(e); }
+  SN.vo = vo || []; snBuild(); SN.cam = [SN.sets.mid[0], SN.sets.mid[1], SN.sets.fit * .85]; if (!SN.on) return;
+  card.classList.add('on'); leaderPlay('primeEvil').catch(() => {});
+  await waitMs(3200); if (!SN.on) return; card.classList.remove('on'); await waitMs(900); if (!SN.on) return;
+  requestAnimationFrame(snFrame); el.classList.add('map'); fade.style.transition = 'opacity 1.6s'; fade.style.opacity = 0; await waitMs(1400);
+  for (let i = 0; i < SKIP_NARR.length && SN.on; i++) await snLine(i);
+  if (SN.on) { await waitMs(1600); snEnd(); }
+}
+function snSkipAll() { if (!SN.on) return; try { sfx.stopNarr(); } catch (_) {} snEnd(); }
+function snEnd() {
+  if (!SN.on) return; SN.on = false; try { sfx.stopNarr(); } catch (_) {}
+  const el = SN.el, fade = el.querySelector('.sn-fade'); fade.style.transition = 'opacity 1s'; fade.style.opacity = 1;
+  if (sfx.leadOn) { sfx.leadOn = false; sfx.stopSong(2); }
+  setTimeout(() => {
+    el.classList.remove('on', 'map'); el.querySelector('.sn-sub').classList.remove('show'); el.querySelector('.sn-card').classList.remove('on');
+    if (state === 'skipNarr') state = SN.prev || 'title'; const cb = SN.done; SN.done = null; if (cb) cb();
+  }, 1050);
+}
+/* ---- Chapter IV · you wake on Archiostal: Am-Grek, and the voice ----
+   After the two years (skipNarrStart), you wake on a stone bier in the Sanctum Ring of Archiostal, the garden station over Malana,
+   under its glass dome and its false sky, Grek wardens round you. Am-Grek, High Hierarch, stands with his back to you; he turns,
+   comes to you, and tells you what you missed (10 lines, voiced: CH4AMGREK1–10 in data/amGrekVoices.js). You stand; the camera climbs out through the dome, the false sky goes dark and a red glow waits beyond it. Then you're
+   playing, on Archiostal (ch4.amgMet; the save picks up there). A moment later the HUD turns blood red and a voice with no name, ????,
+   speaks 10 lines while you walk (CH4MYSTERIOUSVOICE1–9 in data/zarkWakeVoices.js; the 10th is a subtitle until it's recorded; ch4.zarkHeard). It is Lord Zark; nobody says so.
+   Replays from Cutscenes (The last garden); ?ending=amgrek plays it from the title. ---- */
+const AMG_LINES = [ // [when, line] · CH4AMGREK1–10
+  [13.5, 'Easy. Your heart has not beaten in a long time. It is still remembering how.'],
+  [20, 'You are on Archiostal, above Malana. The last free sky the Grek have left.'],
+  [27, 'Archamus carried you here himself, two years ago. He told no one why, and no one dared to ask.'],
+  [34, 'I am Am-Grek, High Hierarch of the Grek Empire. What is left of it.'],
+  [40.5, 'While you slept, the Catharsis broke its chains. I put those chains on them. I watched them break.'],
+  [47.5, 'Carax burned. My capital, my people, my throne. They took our worlds one by one, and they did not stop.'],
+  [54.5, 'Only Malana still stands. Only this glass, and the stubbornness of old roots.'],
+  [60.5, 'I watched you on Mercury, wanderer. I saw you hunt the Grand Imperarch to his last door. I know what you are.'],
+  [67.5, 'So rise. The galaxy has gone on without you long enough.'],
+  [73.5, 'Whatever is coming for us… it is coming for you first.']];
+const ZARK_WAKE = [ // ????, once the red comes · CH4MYSTERIOUSVOICE1–10
+  'There you are.',
+  'Two years, wanderer. I counted every one of them.',
+  'You died in the dust, and something picked you up. It should have left you there.',
+  'Look up. Every star beyond that glass is mine now.',
+  'Carax was the first to burn. It will not be the last.',
+  'The Grek hide behind glass and call it a sanctuary. Glass breaks.',
+  'While you slept, your friends scattered like ash on the wind.',
+  'You do not know my name. You will. Everyone does, at the end.',
+  'Go on. Walk. Fight. Gather whoever is left. It changes nothing.',
+  'Close your eyes, wanderer. I will be waiting there.'];
+const AMG_END = 86.5;
+const amgWakeDue = () => !!(wanderer && (wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.timeSkip && !wanderer.ch4.amgMet);
+const AMG_PLACE = () => ({ mode: 'explore', area: 'world', where: 'pl:archiostal-gardens', x: 5, z: 14.5, y: 0, rot: Math.PI * .8, yaw: Math.PI * 1.8, dir: [0, 1, 0], nf: 1, ev: 0 });
+async function amgWake(opts = {}) {
+  if (NM.on) return false;
+  for (const R of Object.values(NM.actors || {})) if (R.root && R.root.parent) R.root.parent.remove(R.root);
+  Object.assign(NM, { on: true, amgWake: { replay: !!opts.replay }, race: 'human', phase: 'load', t: 0, bi: -1, actors: {}, walk: {}, ghost: null, script: { beats: [] } });
+  state = 'nightmare'; ex.keys.clear(); vel.set(0, 0, 0); if (ex.dlg) closeDialog(); show(ui.xhud, false); show(ui.title, false); show(ui.tbc, false);
+  if (sfx.leadOn) { sfx.leadOn = false; sfx.stopSong(1); }
+  document.body.classList.remove('ch4'); // the original look, for now: the red comes with the voice
+  const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 1; sfx.init();
+  if (wanderer) try { await loadSpecies(spOf(wanderer)).catch(() => null); applyLook(wanderer); } catch (e) { console.error(e); } // you, as you are (the menu's astronaut in a preview with no wanderer)
+  nmStage(); let amg = null, guards = [], vo = [];
+  try {
+    const grek = c => brawlRig({ sp: 'grek', c, name: 'GREK WARDEN' }).then(R => { if (R) armRig(R, 'sword'); return R; }).catch(() => null);
+    [amg, vo, ...guards] = await Promise.all([brawlRig({ sp: 'grek', c: [0x3a4a2e, 0xd8b060], name: 'AM-GREK', scale: 1.07 }).then(R => { if (R) armRig(R, 'none'); return R; }).catch(() => null),
+      loadDataScript('amGrekVoices').then(ok => ok ? sfx.loadClips('amGrekVoices') : []).catch(() => []),
+      grek([0x2a3a24, 0xb08a40]), grek([0x2a3a24, 0xb08a40]), grek([0x2a3a24, 0xb08a40]), grek([0x2a3a24, 0xb08a40]),
+      leaderTheme('laniakea').catch(() => null), hwxLoad()]);
+    guards = guards.slice(0, 4);
+  } catch (e) { console.error(e); }
+  if (!NM.on) return;
+  NM.amgVo = vo || []; nmSet('archiostal');
+  const add = (k, R) => { if (!R) return; if (R.root.parent) R.root.parent.remove(R.root); R.root.traverse(o => { if (o.isMesh) { o.frustumCulled = false; o.castShadow = true; } }); NM.scene.add(R.root); NM.actors[k] = R; R.mode = 'idle'; };
+  add('amg', amg); if (amg) { amg.root.position.set(0, 0, -12); amg.root.rotation.set(0, Math.PI, 0); }
+  [[-3.2, -1.6], [3.2, -1.6], [-3.2, 1.9], [3.2, 1.9]].forEach(([x, z], i) => { const R = guards[i]; if (!R) return; add('g' + i, R); R.root.position.set(x, 0, z); R.root.rotation.set(0, x < 0 ? Math.PI / 2 : -Math.PI / 2, 0); });
+  if (inner && inner.children.length) { // you, laid out on the bier
+    NM.youSave = { parent: player.parent, pos: player.position.clone(), rot: player.rotation.clone(), ir: inner.rotation.clone(), ip: inner.position.clone(), vis: player.visible };
+    resetRig(); inner.rotation.set(0, 0, 0); inner.position.set(0, 0, 0); player.traverse(o => { if (o.isMesh) o.castShadow = true; }); NM.scene.add(player); player.visible = true;
+    player.position.set(0, .93, 1.05); player.rotation.set(-Math.PI / 2, 0, 0); NM.actors.you = { root: player, isYou: true };
+  }
+  NM.phase = 'amg'; NM.t = 0; NM.saveCam = { near: camera.near, far: camera.far, fov: camera.fov }; camera.near = .08; camera.far = 1200; camera.fov = 50; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
+  Object.assign(NM, { amgSaid: new Set(), amgRT: 0, amgEnd: 0, amgHb: 0, amgStood: false, amgMus: false, amgThud: false, amgGasp: false, amgCut: 0 });
+  show(ui.xhud, true); ui.xhud.classList.add('cutting'); renderer.domElement.style.filter = '';
+  if (HWX.mods) { HWX.saveDpr = renderer.getPixelRatio(); const cap = Math.sqrt((tiPhone() ? 4.2e6 : 8.3e6) / Math.max(1, innerWidth * innerHeight)); renderer.setPixelRatio(Math.max(HWX.saveDpr, Math.min((devicePixelRatio || 1) * 1.25, 2, cap))); }
+  sfx.drone(.12);
+}
+function amgTick(dt) {
+  NM.amgRT += dt; const nx = AMG_LINES.find(([at]) => !NM.amgSaid.has(at)), due = nx ? nx[0] : AMG_END - 7;
+  if (NM.t >= due && NM.amgRT < NM.amgEnd + .55) NM.t = Math.max(due - .001, NM.t - dt); // he hasn't finished: hold until he has
+  const t = NM.t, A = NM.actors, G = A.amg, Y = A.you, fd = $('#fade'), sm = smooth;
+  const cam = (a, b, k, at) => { camera.position.set(lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)); camera.lookAt(...at); };
+  const fadeTo = (o, s) => { if (fd.style.opacity !== String(o)) { fd.style.transition = `opacity ${s}s`; fd.style.opacity = o; } };
+  // the heart starts again, in the dark
+  if (t < 5.5) { const iv = lerp(1.5, .75, t / 5.5); if ((NM.amgHb += dt) > iv) { NM.amgHb = 0; sfx.heart(.5 + t * .08); } if (t > 4.6 && !NM.amgGasp) { NM.amgGasp = true; sfx.gasp(1.5); } }
+  if (t > 5.2 && t < 65) fadeTo(0, 2.2);
+  if (t > 9 && !NM.amgMus) { NM.amgMus = true; leaderPlay('laniakea').catch(() => {}); }
+  // Am-Grek: his back to you, looking up through the glass; he turns, and comes to you
+  if (G) {
+    let mode = 'idle';
+    if (t < 17) G.root.rotation.y = Math.PI;
+    else if (t < 18.6) G.root.rotation.y = lerp(Math.PI, Math.PI * 2, sm(17, 18.6, t));
+    else { const k = sm(18.6, 25, t); G.root.position.z = lerp(-12, -2.9, k); if (!NM.amgStood) G.root.rotation.y = 0; mode = k < 1 ? 'walk' : 'idle'; }
+    if (NM.amgStood) G.root.rotation.y = angLerp(G.root.rotation.y, Math.atan2(1.5, 2.3), Math.min(1, dt * 3));
+    G.mode = mode; animRig(G, mode === 'walk' ? dt * .75 : dt);
+  }
+  for (let i = 0; i < 4; i++) { const R = A['g' + i]; if (R) animRig(R, dt); }
+  if (t > 34 && !NM.amgThud) { NM.amgThud = true; sfx.thud(); setTimeout(() => sfx.thud(), 140); } // the wardens ground their blades at his name
+  // the cut: you're on your feet
+  if (t > 65 && t < 66.4) fadeTo(1, .35);
+  if (t > 65.7 && !NM.amgStood && Y) { NM.amgStood = true; Y.root.position.set(1.5, 0, -.6); Y.root.rotation.set(0, Math.atan2(-1.5, -2.3), 0); } // in the black: you're on your feet
+  if (t >= 66.4 && t < 84) fadeTo(0, .6);
+  if (t >= 84) fadeTo(1, 2.2);
+  if (NM.amgSky) NM.amgSky.uniforms.uNight.value = sm(79, 84, t);
+  // the camera
+  const gx = G ? G.root.position.x : 0, gz = G ? G.root.position.z : -3;
+  if (t < 11) { cam([0, 1.15, -.8], [0, 1.18, -.85], sm(5, 11, t), [Math.sin(t * .4) * .6, 30, -6]); }
+  else if (t < 19) cam([7.5, 2.6, 5.5], [6.2, 2.2, 3.8], sm(11, 19, t), [0, 1, -3]);
+  else if (t < 27) cam([.9, 1.2, -.4], [.7, 1.25, -.9], sm(19, 27, t), [gx, 2.05, gz]);
+  else if (t < 34) cam([1.5, 2.05, -.5], [1.3, 2.05, -.75], sm(27, 34, t), [0, 1.95, -2.9]);
+  else if (t < 40.5) cam([1.9, .75, -.4], [1.7, .8, -.6], sm(34, 40.5, t), [0, 2.0, -2.9]);
+  else if (t < 54.5) cam([7, 2.8, -1.5], [5.6, 2.4, -1.2], sm(40.5, 54.5, t), [0, 1.3, -1.6]);
+  else if (t < 60.5) cam([-1.3, 3.1, -4.6], [-1.2, 3.0, -4.4], sm(54.5, 60.5, t), [0, .95, .2]);
+  else if (t < 65.7) cam([-1.4, 2.0, -.6], [-1.25, 2.0, -.8], sm(60.5, 65.7, t), [0, 1.95, -2.9]);
+  else if (t < 73.5) cam([3.1, 2.4, 1.9], [2.9, 2.35, 1.6], sm(65.7, 73.5, t), [-.2, 1.85, -2.9]);
+  else if (t < 79) cam([4.2, 1.6, 3.6], [3.2, 4.5, 5.5], sm(73.5, 79, t), [.6, 1.6, -1.6]);
+  else { const k = sm(79, 86, t); camera.position.set(lerp(3.2, 1.5, k), lerp(4.5, 58, k * k), lerp(5.5, 4, k)); camera.lookAt(0, 90, -30); } // up, out through the glass
+  camera.position.x += Math.sin(t * 1.3) * .02; camera.position.y += Math.sin(t * 1.9 + 1) * .02;
+  if (t >= AMG_END) { amgEnd(); return; }
+  for (const [i, [at, line]] of AMG_LINES.entries()) if (t >= at && !NM.amgSaid.has(at)) { NM.amgSaid.add(at); const clip = NM.amgVo && NM.amgVo[i]; fbSay('AM-GREK', line, clip || null, 1.3); NM.amgEnd = clip && clip.duration ? NM.amgRT + clip.duration : 0; break; }
+  fbSubTick();
+  if (!hwxRender(dt)) renderer.render(NM.scene, camera);
+}
+function amgEnd() {
+  if (!NM.amgWake) return; const replay = NM.amgWake.replay; NM.amgWake = null;
+  fbSubHide(); NM.on = false; NM.phase = null; hwxDrop(); sfx.drone(0); try { sfx.stopNarr(); } catch (e) {} if (sfx.leadOn) { sfx.leadOn = false; sfx.stopSong(3); } fbFlash(0); NM.amgSky = null;
+  if (NM.saveCam) { camera.near = NM.saveCam.near; camera.far = NM.saveCam.far; camera.fov = NM.saveCam.fov; camera.updateProjectionMatrix(); NM.saveCam = null; }
+  for (const [k, R] of Object.entries(NM.actors)) if (k !== 'you' && R.root.parent) R.root.parent.remove(R.root); NM.actors = {};
+  if (NM.youSave) { const S = NM.youSave; (S.parent || wScene).add(player); player.position.copy(S.pos); player.rotation.copy(S.rot); inner.rotation.copy(S.ir); inner.position.copy(S.ip); player.visible = S.vis; resetRig(); NM.youSave = null; }
+  ui.xhud.classList.remove('cutting'); renderer.domElement.style.filter = '';
+  const fd = $('#fade'); fd.style.transition = 'none'; fd.style.opacity = 1;
+  if (replay) { if (isCh4Menu()) document.body.classList.add('ch4'); cutDone(); return; }
+  const place = AMG_PLACE(); wanderer.ch4 = Object.assign({}, wanderer.ch4, { amgMet: true }); wanderer.place = place;
+  { const c = curChar(); if (c) { c.ch4 = wanderer.ch4; c.place = place; } } saveRoster();
+  player.visible = true; inner.visible = true; // you were hidden aboard the pod (and in space); you're on your feet now
+  startChapter3(place).then(() => { player.visible = true; inner.visible = true; }).catch(e => console.error(e)); // on your feet, on Archiostal
+}
+// ---- the red, and the voice ----
+const ZW = { on: false, tok: 0 };
+async function zarkWake() {
+  if (ZW.on) return; ZW.on = true; const tok = ++ZW.tok, W4 = () => wanderer && wanderer.ch4 || {};
+  const live = () => tok === ZW.tok && wanderer && (wanderer.chapter | 0) === 4 && !W4().zarkHeard;
+  const ready = async () => { while (live() && !(state === 'explore' && !ex.dlg && !CUT.on && !NM.on)) await waitMs(500); return live(); };
+  const save = o => { wanderer.ch4 = Object.assign({}, wanderer.ch4, o); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); };
+  try {
+    await waitMs(2600); if (!(await ready())) return;
+    if (!W4().zarkRed) { // the HUD bleeds red
+      let fl = $('#zarkFlash'); if (!fl) { fl = document.createElement('div'); fl.id = 'zarkFlash'; fl.style.cssText = 'position:fixed;inset:0;z-index:29;pointer-events:none;background:radial-gradient(ellipse at center,rgba(120,0,0,.25),rgba(160,0,0,.85));opacity:0'; document.body.appendChild(fl); }
+      sfx.thud(); sfx.drone(.35); fl.style.transition = 'opacity .12s'; fl.style.opacity = .9;
+      await waitMs(160); document.body.classList.add('ch4'); fl.style.transition = 'opacity 2.4s'; fl.style.opacity = 0;
+      setTimeout(() => { sfx.thud(); }, 420); setTimeout(() => sfx.drone(0), 2600);
+      notice('????', 'SOMETHING HAS FOUND YOU', 3800); save({ zarkRed: true }); await waitMs(3200);
+    }
+    const vo = await loadDataScript('zarkWakeVoices').then(ok => ok ? sfx.loadClips('zarkWakeVoices') : []).catch(() => []);
+    for (let i = (W4().zarkI | 0); i < ZARK_WAKE.length; i++) {
+      if (!(await ready())) return;
+      const line = ZARK_WAKE[i], clip = vo && vo[i]; showNarr("????", line);
+      if (clip) await sfx.playNarr(clip, 1.3); else await waitMs(1600 + line.split(' ').length * 330);
+      await waitMs(500); if (tok !== ZW.tok) return; hideNarr(); save({ zarkI: i + 1 });
+      await waitMs(i === ZARK_WAKE.length - 1 ? 0 : 2400 + Math.random() * 2200);
+    }
+    if (live()) save({ zarkHeard: true });
+  } finally { if (tok === ZW.tok) ZW.on = false; }
+}
+setInterval(() => { try { // on Archiostal (or wherever you are) once Am-Grek has woken you: the red, then the voice
+  if (!wanderer || ZW.on || (wanderer.chapter | 0) !== 4 || !wanderer.ch4 || !wanderer.ch4.amgMet || wanderer.ch4.zarkHeard) return;
+  if (state !== 'explore' || ex.dlg || CUT.on || NM.on) return;
+  zarkWake();
+} catch (e) { console.error(e); } }, 2500);
 /* ============ space combat ============
    No Man's Sky style dogfights. Out in space, away from planets, pirates jump you now and then (Terra Imperia's interceptors
    in Sol: Hawthorne's hunt goes on; in Chapter IV, when Hawthorne has gone over to the Catharsis, it's Catharsis ships; by
@@ -20689,11 +21091,16 @@ async function placeCrew() {
   if (!wanderer || ex.mode !== 'world') return;
   syncCrewParty(); const want = crewIds();
   for (const id of Object.keys(CREW)) if (!want.includes(id) && CREW[id].R) CREW[id].R.root.visible = false;
-  for (const id of want) {
+  await Promise.all(want.map(async id => { // everyone loads at once (one after another left the last of a big crew minutes behind)
     const C = CREW[id] || (CREW[id] = { mode: 'follow', wp: null, wpT: 0, node: null, swingT: 0, atkT: 0, legs: 0 });
-    if (!C.R) { if (C.loading) continue; C.loading = true; try { C.R = await companionRig(id); C.R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); registerCompanionRig(id, () => C.R.root); } catch (e) { console.error('crew load failed', id, e); C.loading = false; continue; } C.loading = false; }
+    if (C.R || C.loading) return; C.loading = true;
+    try { C.R = await companionRig(id); C.R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); registerCompanionRig(id, () => C.R.root); } catch (e) { console.error('crew load failed', id, e); } C.loading = false;
+  }));
+  if (ex.mode !== 'world') return; const now = crewIds();
+  for (const id of want) {
+    const C = CREW[id]; if (!C || !C.R) continue;
     const R = C.R; if (R.root.parent !== wScene) wScene.add(R.root);
-    if (!want.includes(id)) continue;
+    if (!now.includes(id)) { R.root.visible = false; continue; }
     const p = player.position, k = want.indexOf(id) + 1; R.root.visible = true; R.mode = 'idle';
     R.root.position.set(p.x + 1.4 * k, groundAt(p.x + 1.4 * k, p.z - 1.6, p.y + .5), p.z - 1.6);
   }
@@ -20740,7 +21147,7 @@ function crewTick(dt) {
     if (hold) { walkTo(C.holdAt[0], C.holdAt[1], .6, Math.hypot(o.x - C.holdAt[0], o.z - C.holdAt[1]) > 6); animRig(R, dt); continue; } // Hold position: where you told them
     if (adv) { const k = live.indexOf(id) - 1, tx = SG.base.x + k * 3, tz = SG.base.z; if (Math.hypot(tx - o.x, tz - o.z) > 140 && dp > 60) { const a = Math.atan2(tx - p.x, tz - p.z); o.set(p.x + Math.sin(a) * 6 + k * 2, 0, p.z + Math.cos(a) * 6); o.y = groundAt(o.x, o.z, p.y + .5); } walkTo(tx, tz, 3, true); animRig(R, dt); continue; } // Advance: on Terra Imperia's base
     if (mode === 'follow' || (mode === 'mine' && !C.node) || (lead && (mode === 'hold' || mode === 'advance'))) { // (a leader told to hold or advance with nowhere to do it follows you)
-      if (dp > 40) { const a = player.rotation.y; o.set(p.x - Math.sin(a) * 2.6, 0, p.z - Math.cos(a) * 2.6); o.y = groundAt(o.x, o.z, p.y + .5); }
+      if (dp > 28) { const a = player.rotation.y; o.set(p.x - Math.sin(a) * 2.6, 0, p.z - Math.cos(a) * 2.6); o.y = groundAt(o.x, o.z, p.y + .5); } // fallen far behind: they catch up
       else { const sl = crewSlot(live.indexOf(id) + (partyNow().includes('orion') && world.orion ? 1 : 0)); if (walkTo(sl.x, sl.z, .7, Math.hypot(sl.x - o.x, sl.z - o.z) > 5)) R.root.rotation.y = angLerp(R.root.rotation.y, CREW_FORM.a, Math.min(1, dt * 3)); } // their own place in the formation, not in a queue behind you
     } else if (mode === 'base') { const bx = isPl() ? 4 : 8, bz = isPl() ? 8 : 4; walkTo(bx + live.indexOf(id), bz, .5, Math.hypot(o.x - bx, o.z - bz) > 10); }
     else if (mode === 'wander' || mode === 'explore') {
@@ -21184,9 +21591,10 @@ async function placeGivers() {
     here.forEach((q, i) => { const a = .9 + i * 1.05; want.push({ q: q.id, name: q.g.split(',')[0].toUpperCase(), sp: giverSpecies(q, m), x: m.px + Math.cos(a) * 5.5, z: m.pz + Math.sin(a) * 5.5 }); });
   }
   SQ_LEADERS.filter(L => L.world === P.id && leaderFree(L)).forEach((L, i) => want.push({ leader: L.id, name: L.name, x: 14 + i * 3.4, z: 16 - i * 1.2 }));
+  if (P.id === 'archiostal-gardens' && ((wanderer.chapter | 0) === 3 || ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.timeSkip))) want.push({ arch3: true, name: 'ARCHAMUS', x: 16, z: 21 }); // Chapter III: he wants nothing to do with you (not yet); Chapter IV: the first quest is to find him here
   for (const w of want) {
     try {
-      const R = w.leader ? await leaderRig(SQ_LEADERS.find(L => L.id === w.leader)) : await giverRig(w.sp, 1.8, w.name);
+      const R = w.leader || w.arch3 ? await leaderRig(SQ_LEADERS.find(L => L.id === (w.leader || 'archamus'))) : await giverRig(w.sp, 1.8, w.name);
       if (!R || GIVERS.area !== area || curArea() !== area) continue;
       let x = w.x, z = w.z; for (let i = 0; i < 30 && plSeaY() != null && wHeight(x, z) < plSeaY() + .6; i++) { x += 3; z -= 2; }
       R.root.position.set(x, wHeight(x, z), z); R.root.rotation.y = Math.atan2(-x, 6 - z); wScene.add(R.root);
@@ -21205,7 +21613,37 @@ function giversTick(dt) {
   }
 }
 function giverNear(p) { for (const G of GIVERS.list) if (Math.hypot(G.x - p.x, G.z - p.z) < 2.8) return G; return null; }
+const ARCH_CH3 = 'I didn’t come to Archiostal looking for company, and I certainly didn’t ask for yours. Whatever you want, find someone else. Go away.'; // ARCHAMUS_CHAPTER_3 (data/archCh3Voice.js)
+async function arch3Talk() { // Chapter III: too soon to meet him
+  const vo = await loadDataScript('archCh3Voice').then(ok => ok ? sfx.loadClips('archCh3Voice') : []).catch(() => []);
+  if (state !== 'explore' || ex.dlg) return; openDialog('ARCHAMUS', [ARCH_CH3], false, null, vo || []);
+}
+/* Chapter IV's first quest: meet Archamus in the gardens of Archiostal, where he stood in Chapter III. He found you; now he talks, and
+   never quite says anything. CH4ARCHAMUSMEET1–10 (data/archMeetVoices.js) once recorded; subtitles until then. Sets ch4.archMet. */
+const ARCH_MEET = [
+  'So. The light I caught has opened its eyes.',
+  'Do not thank me. I did not save you. I only refused to let you finish dying.',
+  'You heard it, didn’t you. The voice without a name. It has waited at the edge of your sleep for two years.',
+  'Names are doors, wanderer. Speak his too soon, and he will walk through.',
+  'Before your stars had names, there were two of us who watched the dark. One of us began to love it.',
+  'The Grek built a faith around me, and I let them. A garden needs a gardener. It does not need the truth.',
+  'The Catharsis is not the fire. It is only the smoke. Look for what is burning.',
+  'Your friends are scattered, not lost. A scattered thing can be gathered.',
+  'I told you that you would owe me a light. I have not yet decided what it will cost.',
+  'Go. Find who is left. When you are ready, I will already know.'];
+async function arch4Talk() {
+  const met = !!(wanderer.ch4 && wanderer.ch4.archMet);
+  const vo = await loadDataScript('archMeetVoices').then(ok => ok ? sfx.loadClips('archMeetVoices') : []).catch(() => []);
+  if (state !== 'explore' || ex.dlg) return;
+  if (met) { openDialog('ARCHAMUS', [ARCH_MEET[9]], false, null, vo && vo[9] ? [vo[9]] : []); return; } // he has said what he will say
+  openDialog('ARCHAMUS', ARCH_MEET, false, () => {
+    if (wanderer.ch4 && wanderer.ch4.archMet) return;
+    wanderer.ch4 = Object.assign({}, wanderer.ch4, { archMet: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster();
+    renderTasks(); gainXP(150); sfx.chime(); setTimeout(() => notice('Archamus, the Prime Good', 'QUEST COMPLETE', 3600), 400);
+  }, vo || []);
+}
 function giverTalk(G) {
+  if (G.arch3) { if ((wanderer.chapter | 0) === 4) arch4Talk(); else arch3Talk(); return; }
   const S = sqs(), L = G.leader && SQ_LEADERS.find(o => o.id === G.leader), q = L ? (Object.keys(S.act).map(sqById).find(o => o && o.leader === L.id) || leaderNext(L)) : S.done[G.q] ? null : sqById(G.q);
   let el = $('#sqGiv');
   if (!el) { el = document.createElement('section'); el.id = 'sqGiv'; el.className = 'screen dim'; document.body.appendChild(el);
@@ -22069,6 +22507,31 @@ function nmSet(kind) {
     HWX.anim.push(dt => { for (const m of smoke) { const k = (m.userData.k = (m.userData.k + dt * .07) % 1); m.position.set(-2.4 + Math.sin(k * 6 + 1) * .3 + k * 3, 1.4 + k * 9, -2.4 + k * 1.5); m.scale.setScalar(.8 + k * 5); m.material.opacity = .34 * Math.sin(k * Math.PI); } });
     NM.podHalo = glowSprite(0xffe2a0, 7, 0); NM.podHalo.position.set(-.3, 2.8, 8.4); P.add(NM.podHalo); // the light behind him, once he's over you
     hwxDust(P, 220, [-10, 10, .1, 3, -6, 16], 0xffd0a0, .06);
+  } else if (kind === 'archiostal') { // the Sanctum Ring of Archiostal: lawns and old trees under a glass dome and a false sky, a lake, a ring of columns, the bier in a shaft of light
+    Object.assign(look, { fog: 0x3e5e56, dens: .011, bg: 0x6a948c, ground: 0x2f5a2a, hemi: 0xbfe0d0, rim: 0xffd890, key: 0xfff0d0 }); NM.key.intensity = 36; NM.hemi.intensity = .55;
+    const sky = new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { uNight: { value: 0 } },
+      vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform float uNight; varying vec3 vP; float h(vec3 p){ return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453); } void main(){ float y = clamp(vP.y, -.1, 1.0); vec3 day = mix(vec3(.46, .6, .56), vec3(.16, .34, .44), smoothstep(0.0, .8, y)) + vec3(1.0, .9, .7) * pow(max(0.0, dot(vP, normalize(vec3(.3, .8, -.5)))), 24.0) * .5; vec3 s = floor(vP * 260.0); float st = step(.9965, h(s)) * (.5 + .5 * h(s + 3.1)); float neb = pow(max(0.0, dot(vP, normalize(vec3(.15, .62, -.77)))), 6.0); vec3 night = vec3(.01, .008, .02) + vec3(st) + vec3(.9, .05, .04) * neb * 1.4; gl_FragColor = vec4(mix(day, night, uNight), 1.0); }' });
+    P.add(new THREE.Mesh(new THREE.SphereGeometry(500, 48, 24), sky)); NM.amgSky = sky;
+    const stone = M(0xcfc6b0, { roughness: .7 }), gold = M(0xd8b060, { metalness: .8, roughness: .3 }), bark = M(0x4a3626, { roughness: .95 }), leaf = M(0x3f7a3a, { roughness: .8, flatShading: true }), leaf2 = M(0x5a8e3e, { roughness: .8, flatShading: true });
+    // the dome: golden ribs, three rings and a breath of glass
+    const rib = new THREE.MeshStandardMaterial({ color: 0xd8c08a, metalness: .85, roughness: .3 });
+    for (let i = 0; i < 12; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(34, .14, 6, 64, Math.PI), rib); r.rotation.y = i / 12 * Math.PI; P.add(r); }
+    for (const [y, rr] of [[12, 31.8], [24, 23.9], [31, 14.7]]) { const r = new THREE.Mesh(new THREE.TorusGeometry(rr, .12, 6, 96), rib); r.rotation.x = Math.PI / 2; r.position.y = y; P.add(r); }
+    P.add(new THREE.Mesh(new THREE.SphereGeometry(33.9, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xdff4ff, transparent: true, opacity: .07, roughness: .05, metalness: .2, side: THREE.DoubleSide, depthWrite: false })));
+    // the bier, a pale path to it, and the light that falls on it
+    box(1.3, .85, 2.9, stone, 0, .425, 0); box(1.42, .06, 3.02, gold, 0, .88, 0);
+    const path = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 20), M(0xd8d0bc)); path.rotation.x = -Math.PI / 2; path.position.set(0, .012, -10); path.receiveShadow = true; P.add(path);
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(.9, 2.2, 22, 24, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff2c8, transparent: true, opacity: .07, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })); shaft.position.set(0, 11, .2); P.add(shaft);
+    // the ring of columns, gold-capped
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2 + .31, x = Math.cos(a) * 9.5, z = Math.sin(a) * 9.5 - 1; const c = new THREE.Mesh(new THREE.CylinderGeometry(.42, .5, 7, 12), stone); c.position.set(x, 3.5, z); c.castShadow = c.receiveShadow = true; P.add(c); box(1.2, .3, 1.2, gold, x, 7.15, z); box(1.2, .3, 1.2, stone, x, .15, z); }
+    // the lake, and the old trees of Malana
+    const lake = new THREE.Mesh(new THREE.CircleGeometry(9, 48), M(0x2a6a6a, { metalness: .9, roughness: .08 })); lake.rotation.x = -Math.PI / 2; lake.position.set(-17, .02, -8); P.add(lake);
+    for (let i = 0; i < 18; i++) { const a = i * 2.1 + .4, r = 15 + (i * 5 % 12), x = Math.cos(a) * r, z = Math.sin(a) * r - 2; if (Math.hypot(x + 17, z + 8) < 10 || Math.abs(x) < 3) continue;
+      const hgt = 5 + (i % 4) * 1.6, tr = new THREE.Mesh(new THREE.CylinderGeometry(.28, .5, hgt, 8), bark); tr.position.set(x, hgt / 2, z); tr.castShadow = true; P.add(tr);
+      for (let k = 0; k < 3; k++) { const cn = new THREE.Mesh(new THREE.IcosahedronGeometry(2.2 - k * .4, 0), k % 2 ? leaf2 : leaf); cn.position.set(x + (k - 1) * .9, hgt + k * 1.1, z + (k % 2) * .6); cn.castShadow = true; P.add(cn); } }
+    const sl = new THREE.DirectionalLight(0xffe6b8, 2.1); sl.position.set(10, 30, -14); sl.target.position.set(0, 0, 0); sl.castShadow = true; Object.assign(sl.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14, near: 1, far: 80 }); sl.shadow.mapSize.set(2048, 2048); sl.shadow.bias = -.0006; sl.shadow.normalBias = .04; P.add(sl, sl.target);
+    hwxDust(P, 260, [-12, 12, .2, 8, -14, 8], 0xffe8b0, .07);
   } else if (kind === 'banner') { // a black banner, and the ships
     Object.assign(look, { fog: 0x42201c, dens: .014, bg: 0x4a2420, ground: 0x2a1614, hemi: 0x8a5a50, rim: 0xff5a3a });
     const glow = new THREE.Mesh(new THREE.PlaneGeometry(400, 40), new THREE.MeshBasicMaterial({ color: 0xff8a50, transparent: true, opacity: .4, fog: false })); glow.position.set(0, 6, -70); P.add(glow); // a burning horizon behind the silhouettes
@@ -22358,6 +22821,7 @@ function nightmareTick(dt) {
   dt = Math.min(dt, .05); NM.t += dt; const t = NM.t;
   if (NM.phase === 'sev') { sevTick(dt); return; }
   if (NM.phase === 'pod') { podTick(dt); return; } // the pod comes down: you, and Archamus
+  if (NM.phase === 'amg') { amgTick(dt); return; } // you wake on Archiostal: Am-Grek
   if (NM.phase === 'hwd') { hwdTick(dt); return; } // the end of the Grand Imperarch
   fbSubTick();
   NM.flashA = Math.max(0, (NM.flashA || 0) - dt * 2.4); fbFlash(NM.flashA, fbFlashEl ? fbFlashEl.style.background : '#fff');
@@ -22449,6 +22913,7 @@ function spaceViewOnly(dt) { // the ship hangs there while they talk you down
 }
 async function nmWake() {
   if (NM.podDeath) { podDeathEnd(); return; } // skipped
+  if (NM.amgWake) { amgEnd(); return; } // Am-Grek's scene, skipped
   if (NM.coup) { erisCoupEnd(); return; } // the coup on Eris, for real
   if (NM.alxFall) { alexiaFallEnd(); return; } // Alexia beaten: Vishara's judgement
   if (NM.hawDeath) { hawDeathEnd(); return; } // Hawthorne beaten: Hak, and Sevirrus
@@ -27819,8 +28284,8 @@ function crowdBuild(spec) { // a place full of people: spec { key, kind, n, mix:
   for (let i = 0; i < spec.n; i++) { const s = spec.spot() || { x: 0, z: 0 }, lk = Math.floor(Math.random() * V), L = looks[lk], hl = spec.homeless !== false && i % 16 === 7;
     agents.push({ i, x: s.x, z: s.z, tx: s.x, tz: s.z, lk, sp: 1 + Math.random() * .5, pause: Math.random() * 4, hp: 40, dead: false, deadT: 0, flee: 0, fx: 0, fz: 0, angry: 0, hitT: 0, homeless: hl, rig: null, px: null, gave: 0, ry: Math.random() * 6.28, name: resPick(CROWD_NAMES[L.sp] || CROWD_NAMES.human), far: 0 });
     sil.setColorAt(i, new THREE.Color(L.c[0])); }
-  sil.instanceColor.needsUpdate = true;
-  const P = Object.assign({ g, sil, agents, looks, poolCap: Math.max(1, Math.ceil((phone ? 6 : 18) / V)), assignT: 0 }, spec); PEOPLE.places.push(P); return P;
+  sil.instanceColor.needsUpdate = true; sil.visible = false; // the stand-in capsules looked like coloured cylinders sliding about: only real bodies are drawn now
+  const P = Object.assign({ g, sil, agents, looks, poolCap: Math.max(1, Math.ceil((phone ? 10 : 28) / V)), assignT: 0 }, spec); PEOPLE.places.push(P); return P;
 }
 function crowdDestroy(P) { for (const a of P.agents) if (a.px) { const i = fauna.list.indexOf(a.px); if (i >= 0) fauna.list.splice(i, 1); a.px = null; } if (P.g.parent) P.g.parent.remove(P.g); P.sil.geometry.dispose(); PEOPLE.places = PEOPLE.places.filter(o => o !== P); }
 function crowdClear(kind) { for (const P of [...PEOPLE.places]) if (!kind || P.kind === kind) crowdDestroy(P); }
@@ -28494,6 +28959,7 @@ function loopFrame() {
   if (state === 'cantinaScene') { updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'brawl') { try { fightTick(dt); } catch (e) { console.error(e); } updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'nightmare') { nightmareTick(dt); sfx.music(0); return; }
+  if (state === 'skipNarr') { sfx.music(0); return; } // the two-year narration draws itself (snFrame)
   if (state === 'hawMars') { try { hwmTick(dt); } catch (e) { console.error(e); hwmEnd(); } sfx.music(0); return; }
   if (state === 'orionCut') { try { ocutTick(dt); } catch (e) { console.error(e); ocutEnd(); } sfx.music(0); return; }
   if (state === 'jamesRev') { try { jrvTick(dt); } catch (e) { console.error(e); jrvEnd(); } sfx.music(0); return; }
@@ -28510,6 +28976,7 @@ function loopFrame() {
   if (state === 'loadingCh' && (SPC.booting || DGN.compiling)) { sfx.music(0); renderer.setClearColor(0x000000, 1); renderer.clear(); return; } // (or a dungeon floor's shaders still building behind the fade: drawing now would stall the game on them) // a Chapter III save starting up: black, not the last scene built (the Antarctic ice)
   if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh' || state === 'sleeping' || state === 'wcut') {
     if (state === 'explore') updateExplore(dt);
+    if ((state === 'explore' || state === 'xpaused') && ex.mode !== 'space' && !ex.vehicle && (!player.visible || !inner.visible)) { player.visible = true; inner.visible = true; } // on foot (or aboard), you're always there: nothing left over from a cutscene, the pod, a landing or space keeps you hidden
     tickDialog(dt);
     if (state !== 'loadingCh') { updateAnim(dt); if (ex.mode === 'world') worldActionPose(dt); else { syncHeld(); hideSuitGear(); armorSync(); } jamesTick(dt); updateParticles(dt); exploreCamera(dt); if (ex.mode === 'world') updateWorldScene(dt); }
     sfx.music(0); renderer.render(ex.mode === 'world' ? wScene : ex.mode === 'ship' && SHIPI.scene ? SHIPI.scene : aScene, camera); return;

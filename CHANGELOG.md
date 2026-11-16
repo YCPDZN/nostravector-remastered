@@ -2525,3 +2525,32 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 
 ### Archamus is voiced (the pod landing)
 - Archamus' 7 lines over the fallen wanderer are now voiced. The recordings (CH4ARCHAMUSPRESKIP1–7) are packed into `data/podArchVoices.js`, which the scene already loads, so the lines play out loud instead of showing as subtitles only. The source MP3s sit in `assets/audio/archamus_ch4/`.
+
+### While you slept: the two years (Chapter IV)
+- Straight after Archamus finds you, the narrator tells the two years you missed over a map of the galaxy: every empire's space in its own colour, with its name across it. Human Federation of Sol (blue; it holds Sol, so the Erisian Empire isn't shown), Chompy Empire (purple), Republic of Timpur (cyan), Grek Empire (green) and the Catharsis (red).
+- The Catharsis starts as the Grek's small puppet round the core, sacks Carax, then takes the galaxy system by system. The Grek and the Chompy take ground back, lose it, and take it again, until the Catharsis holds every Grek world but Malana. A counter keeps score for each empire, and the year runs from 2125 to 2127.
+- Ten lines, voiced (`data/skipNarrVoices.js`, CH4NARRATOR1–10; script in `assets/audio/narrator_ch4/VOICE_SCRIPT.md`). The short lines ("And clashed.") hold until the map has played out. Tap or Space for the next line; Skip ends it.
+- The time skip happens here (`ch4.timeSkip`), so the galaxy is the Catharsis's from then on. Replays from Cutscenes (*While you slept*), and `?ending=timeskip` plays it from the title.
+
+### Waking on Archiostal: Am-Grek, and the voice (Chapter IV)
+- After the two years, you wake on a stone bier in the Sanctum Ring of Archiostal, the Grek's garden station over Malana: lawns, old trees and a lake under a golden-ribbed glass dome and a false sky, Grek wardens standing round you. Am-Grek, High Hierarch, has his back to you; he turns, comes to you and tells you what you missed. You stand, and the camera climbs out through the dome as the false sky goes dark and a red glow waits beyond it. This replaces the To be continued card after the pod.
+- Ten lines for Am-Grek, voiced (CH4AMGREK1–10, `data/amGrekVoices.js`, script in `assets/audio/amgrek_ch4/VOICE_SCRIPT.md`). Skippable.
+- Then you're playing, on Archiostal, by Archiostal's temple city (the save picks up there; `ch4.amgMet`). A few seconds later the HUD flashes and turns blood red (`SOMETHING HAS FOUND YOU`), and a voice with no name, **????**, speaks ten lines while you walk (voiced 1–9 so far: CH4MYSTERIOUSVOICE1–9, `data/zarkWakeVoices.js`, script in `assets/audio/zark_ch4/VOICE_SCRIPT.md`). It's Lord Zark; nobody says so. Quitting partway picks up at the next line (`ch4.zarkI`, `ch4.zarkHeard`).
+- A save made between the two years and Am-Grek wakes on Archiostal first. Replays from Cutscenes (*The last garden*); `?ending=amgrek` plays it from the title.
+
+### Archamus on Archiostal (Chapter III)
+- In Chapter III, Archamus stands in the gardens of Archiostal, hooded and glowing faintly gold. Speak to him and he sends you away, voiced (`data/archCh3Voice.js`): it's too soon to meet him.
+
+### Meet Archamus (Chapter IV's first quest)
+- After waking on Archiostal, the objective is **Main quest · Meet Archamus in the gardens of Archiostal**. He stands where he stood in Chapter III, and this time he talks: ten cryptic lines (CH4ARCHAMUSMEET1–10, `data/archMeetVoices.js`, script in `assets/audio/archamus_ch4/MEET_VOICE_SCRIPT.md`; subtitles until recorded). The quest completes when he's done (150 XP, `ch4.archMet`); after that he only repeats his last line.
+
+### Chapter IV fixes: objectives, an invisible wanderer, and the Grek walk
+- **Chapter IV has its own objectives.** It was showing Chapter III's list (Escape New London, Defeat James Brown, Warp to another star system, Explore the galaxy). After the two years it now shows **Main quest · Meet Archamus in the gardens of Archiostal**, then **Explore Archiostal** once you've met him. The pod keeps its own objectives; Chapter V is unchanged.
+- **You're no longer invisible on Archiostal.** You were hidden in space and aboard the pod, and that carried through Archamus, the two years and Am-Grek onto Archiostal. Waking up now always shows you.
+- **The Grek walk.** Their model is one flat body of parts, so the game couldn't find arms and legs and every Grek glided about stiff: townsfolk, city crowds on Malana, Archiostal and Carax, quest givers, wardens, Am-Grek, residents. They now get shoulders and hips like the playable Grek, so they swing their arms and walk, on every planet.
+
+### Blood red planets, no more sliding cylinders, companions keep up, and you never vanish
+- **Chapter IV's blood red reaches the ground.** Once the interface has turned red (Chapter IV after the voice finds you, and Chapter V's Blood Red style), every planet and station you stand on goes red with it, like the menu's red landscape: a black-red sky, blood red haze that still follows day, dusk, night and storms, a red sun and red ambient light, and darkened seas. The world's own colours come back the moment the red goes.
+- **The coloured cylinders are gone.** City crowds drew everyone beyond the nearest few as stand-in capsules in their clothes' colours (the blue and green ones sliding about on Archiostal and Malana). Only real, animated people are drawn now, and more of the crowd near you get real bodies.
+- **Companions keep up.** Everyone in your party loads at once when you arrive (one after another left the last of a big crew minutes behind, so they seemed not to come), and anyone who falls far behind catches up sooner. This is the same for every companion in Chapters III, IV and V.
+- **You never vanish.** Whenever you're on foot or aboard (not driving), you're shown, whatever a cutscene, the pod, a landing or space left behind.
