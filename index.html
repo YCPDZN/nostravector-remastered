@@ -21549,9 +21549,10 @@ async function placeGivers() {
     here.forEach((q, i) => { const a = .9 + i * 1.05; want.push({ q: q.id, name: q.g.split(',')[0].toUpperCase(), sp: giverSpecies(q, m), x: m.px + Math.cos(a) * 5.5, z: m.pz + Math.sin(a) * 5.5 }); });
   }
   SQ_LEADERS.filter(L => L.world === P.id && leaderFree(L)).forEach((L, i) => want.push({ leader: L.id, name: L.name, x: 14 + i * 3.4, z: 16 - i * 1.2 }));
+  if ((wanderer.chapter | 0) === 3 && P.id === 'archiostal-gardens') want.push({ arch3: true, name: 'ARCHAMUS', x: 16, z: 21 }); // Chapter III: he's here, hooded, and he wants nothing to do with you (not yet)
   for (const w of want) {
     try {
-      const R = w.leader ? await leaderRig(SQ_LEADERS.find(L => L.id === w.leader)) : await giverRig(w.sp, 1.8, w.name);
+      const R = w.leader || w.arch3 ? await leaderRig(SQ_LEADERS.find(L => L.id === (w.leader || 'archamus'))) : await giverRig(w.sp, 1.8, w.name);
       if (!R || GIVERS.area !== area || curArea() !== area) continue;
       let x = w.x, z = w.z; for (let i = 0; i < 30 && plSeaY() != null && wHeight(x, z) < plSeaY() + .6; i++) { x += 3; z -= 2; }
       R.root.position.set(x, wHeight(x, z), z); R.root.rotation.y = Math.atan2(-x, 6 - z); wScene.add(R.root);
@@ -21570,7 +21571,13 @@ function giversTick(dt) {
   }
 }
 function giverNear(p) { for (const G of GIVERS.list) if (Math.hypot(G.x - p.x, G.z - p.z) < 2.8) return G; return null; }
+const ARCH_CH3 = 'I didn’t come to Archiostal looking for company, and I certainly didn’t ask for yours. Whatever you want, find someone else. Go away.'; // ARCHAMUS_CHAPTER_3 (data/archCh3Voice.js)
+async function arch3Talk() { // Chapter III: too soon to meet him
+  const vo = await loadDataScript('archCh3Voice').then(ok => ok ? sfx.loadClips('archCh3Voice') : []).catch(() => []);
+  if (state !== 'explore' || ex.dlg) return; openDialog('ARCHAMUS', [ARCH_CH3], false, null, vo || []);
+}
 function giverTalk(G) {
+  if (G.arch3) { arch3Talk(); return; }
   const S = sqs(), L = G.leader && SQ_LEADERS.find(o => o.id === G.leader), q = L ? (Object.keys(S.act).map(sqById).find(o => o && o.leader === L.id) || leaderNext(L)) : S.done[G.q] ? null : sqById(G.q);
   let el = $('#sqGiv');
   if (!el) { el = document.createElement('section'); el.id = 'sqGiv'; el.className = 'screen dim'; document.body.appendChild(el);

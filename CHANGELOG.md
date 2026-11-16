@@ -2537,3 +2537,6 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - Ten lines for Am-Grek, voiced (CH4AMGREK1–10, `data/amGrekVoices.js`, script in `assets/audio/amgrek_ch4/VOICE_SCRIPT.md`). Skippable.
 - Then you're playing, on Archiostal, by Archiostal's temple city (the save picks up there; `ch4.amgMet`). A few seconds later the HUD flashes and turns blood red (`SOMETHING HAS FOUND YOU`), and a voice with no name, **????**, speaks ten lines while you walk (voiced 1–9 so far: CH4MYSTERIOUSVOICE1–9, `data/zarkWakeVoices.js`, script in `assets/audio/zark_ch4/VOICE_SCRIPT.md`). It's Lord Zark; nobody says so. Quitting partway picks up at the next line (`ch4.zarkI`, `ch4.zarkHeard`).
 - A save made between the two years and Am-Grek wakes on Archiostal first. Replays from Cutscenes (*The last garden*); `?ending=amgrek` plays it from the title.
+
+### Archamus on Archiostal (Chapter III)
+- In Chapter III, Archamus stands in the gardens of Archiostal, hooded and glowing faintly gold. Speak to him and he sends you away, voiced (`data/archCh3Voice.js`): it's too soon to meet him.
