@@ -1,7 +1,7 @@
 # Archamus · the pod landing (Chapter IV)
 
 Speaker: **Archamus**, seen only as a silhouette. Slow, calm, very old, cryptic; he never quite explains.
-Pack: `data/podArchVoices.js` (CH4ARCHAMUSPOD1–7, in order). Until it exists, the lines show as subtitles only. When recorded, the scene waits for each line to finish.
+Pack: `data/podArchVoices.js` (7 clips, in order). **Recorded:** the takes are saved here as CH4ARCHAMUSPRESKIP1–7.mp3 (the slots below were planned as CH4ARCHAMUSPOD1–7). The scene waits for each line to finish.
 
 | File | Line |
 |---|---|
