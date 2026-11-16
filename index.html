@@ -4461,6 +4461,29 @@ function skyTick(dt) {
   world.snow.material.size = isPl() && world.wxK ? world.wxK.size * (1 + sm * .6) : .08 + .07 * sm;
   if (stInOn()) wScene.fog.density = .0017 + (1 - dl) * .0006; // station air: clear enough to see down the ring
   stInTick(dt);
+  plRedTick();
+}
+/* Chapter IV's blood red, on the ground: once the interface has turned red (body.ch4: Chapter IV after the voice finds you, and Chapter V's
+   Blood Red style), every planet and station you stand on goes with it: a black-red sky, red haze, a red sun and red ambient light,
+   as the menu's red landscape. Back to the world's own colours the moment the red goes. */
+const PLR = { sun: new THREE.Color(0xff5a3c), fog: new THREE.Color(0x2a0406), hs: new THREE.Color(0x8a2a22), hg: new THREE.Color(0x1a0405), sky: null, base: null, area: null };
+const plRedOn = () => isPl() && !DGN.on && document.body.classList.contains('ch4') && (wanderer && (wanderer.chapter | 0) >= 4);
+function plRedSky() {
+  return PLR.sky || (PLR.sky = canvasTex(4, 256, g => { const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#070102'); gr.addColorStop(.3, '#1e0306'); gr.addColorStop(.47, '#6a120e'); gr.addColorStop(.5, '#3a0608'); gr.addColorStop(1, '#1c0306'); g.fillStyle = gr; g.fillRect(0, 0, 4, 256); }));
+}
+function plRedTick() {
+  const on = plRedOn(), H = world.hemi;
+  if (PLR.area !== curArea()) { PLR.area = curArea(); PLR.base = null; } // each world's own light is remembered afresh
+  if (on) {
+    world.sun.color.copy(PLR.sun); const F = wScene.fog.color, L = F.r * .3 + F.g * .59 + F.b * .11; F.setRGB(Math.min(1, L * .95 + .004), L * .1, L * .085); // the haze keeps its brightness (day, dusk, night, storms) but turns blood red
+    if (H) { if (!PLR.base) PLR.base = [H.color.clone(), H.groundColor.clone()]; H.color.copy(PLR.hs); H.groundColor.copy(PLR.hg); }
+    const sky = plRedSky(); if (wScene.background !== sky) wScene.background = sky;
+    if (world.plSea && world.plSea.material && !world.plSea.userData.red) { world.plSea.userData.red = world.plSea.material.color.getHex(); world.plSea.material.color.lerp(new THREE.Color(0x4a0a0a), .7); }
+  } else {
+    if (PLR.base && H) { H.color.copy(PLR.base[0]); H.groundColor.copy(PLR.base[1]); PLR.base = null; }
+    if (PLR.sky && wScene.background === PLR.sky) { if (isPl()) planetLook(); }
+    if (world.plSea && world.plSea.userData.red != null) { world.plSea.material.color.setHex(world.plSea.userData.red); world.plSea.userData.red = null; }
+  }
 }
 // ---- after the storm: James makes a bed, you sleep, and someone else is waiting in the dream ----
 const JAMES_BED = ['I’ll make a bed. Feel free to sleep.'];
@@ -21068,11 +21091,16 @@ async function placeCrew() {
   if (!wanderer || ex.mode !== 'world') return;
   syncCrewParty(); const want = crewIds();
   for (const id of Object.keys(CREW)) if (!want.includes(id) && CREW[id].R) CREW[id].R.root.visible = false;
-  for (const id of want) {
+  await Promise.all(want.map(async id => { // everyone loads at once (one after another left the last of a big crew minutes behind)
     const C = CREW[id] || (CREW[id] = { mode: 'follow', wp: null, wpT: 0, node: null, swingT: 0, atkT: 0, legs: 0 });
-    if (!C.R) { if (C.loading) continue; C.loading = true; try { C.R = await companionRig(id); C.R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); registerCompanionRig(id, () => C.R.root); } catch (e) { console.error('crew load failed', id, e); C.loading = false; continue; } C.loading = false; }
+    if (C.R || C.loading) return; C.loading = true;
+    try { C.R = await companionRig(id); C.R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); registerCompanionRig(id, () => C.R.root); } catch (e) { console.error('crew load failed', id, e); } C.loading = false;
+  }));
+  if (ex.mode !== 'world') return; const now = crewIds();
+  for (const id of want) {
+    const C = CREW[id]; if (!C || !C.R) continue;
     const R = C.R; if (R.root.parent !== wScene) wScene.add(R.root);
-    if (!want.includes(id)) continue;
+    if (!now.includes(id)) { R.root.visible = false; continue; }
     const p = player.position, k = want.indexOf(id) + 1; R.root.visible = true; R.mode = 'idle';
     R.root.position.set(p.x + 1.4 * k, groundAt(p.x + 1.4 * k, p.z - 1.6, p.y + .5), p.z - 1.6);
   }
@@ -21119,7 +21147,7 @@ function crewTick(dt) {
     if (hold) { walkTo(C.holdAt[0], C.holdAt[1], .6, Math.hypot(o.x - C.holdAt[0], o.z - C.holdAt[1]) > 6); animRig(R, dt); continue; } // Hold position: where you told them
     if (adv) { const k = live.indexOf(id) - 1, tx = SG.base.x + k * 3, tz = SG.base.z; if (Math.hypot(tx - o.x, tz - o.z) > 140 && dp > 60) { const a = Math.atan2(tx - p.x, tz - p.z); o.set(p.x + Math.sin(a) * 6 + k * 2, 0, p.z + Math.cos(a) * 6); o.y = groundAt(o.x, o.z, p.y + .5); } walkTo(tx, tz, 3, true); animRig(R, dt); continue; } // Advance: on Terra Imperia's base
     if (mode === 'follow' || (mode === 'mine' && !C.node) || (lead && (mode === 'hold' || mode === 'advance'))) { // (a leader told to hold or advance with nowhere to do it follows you)
-      if (dp > 40) { const a = player.rotation.y; o.set(p.x - Math.sin(a) * 2.6, 0, p.z - Math.cos(a) * 2.6); o.y = groundAt(o.x, o.z, p.y + .5); }
+      if (dp > 28) { const a = player.rotation.y; o.set(p.x - Math.sin(a) * 2.6, 0, p.z - Math.cos(a) * 2.6); o.y = groundAt(o.x, o.z, p.y + .5); } // fallen far behind: they catch up
       else { const sl = crewSlot(live.indexOf(id) + (partyNow().includes('orion') && world.orion ? 1 : 0)); if (walkTo(sl.x, sl.z, .7, Math.hypot(sl.x - o.x, sl.z - o.z) > 5)) R.root.rotation.y = angLerp(R.root.rotation.y, CREW_FORM.a, Math.min(1, dt * 3)); } // their own place in the formation, not in a queue behind you
     } else if (mode === 'base') { const bx = isPl() ? 4 : 8, bz = isPl() ? 8 : 4; walkTo(bx + live.indexOf(id), bz, .5, Math.hypot(o.x - bx, o.z - bz) > 10); }
     else if (mode === 'wander' || mode === 'explore') {
@@ -28256,8 +28284,8 @@ function crowdBuild(spec) { // a place full of people: spec { key, kind, n, mix:
   for (let i = 0; i < spec.n; i++) { const s = spec.spot() || { x: 0, z: 0 }, lk = Math.floor(Math.random() * V), L = looks[lk], hl = spec.homeless !== false && i % 16 === 7;
     agents.push({ i, x: s.x, z: s.z, tx: s.x, tz: s.z, lk, sp: 1 + Math.random() * .5, pause: Math.random() * 4, hp: 40, dead: false, deadT: 0, flee: 0, fx: 0, fz: 0, angry: 0, hitT: 0, homeless: hl, rig: null, px: null, gave: 0, ry: Math.random() * 6.28, name: resPick(CROWD_NAMES[L.sp] || CROWD_NAMES.human), far: 0 });
     sil.setColorAt(i, new THREE.Color(L.c[0])); }
-  sil.instanceColor.needsUpdate = true;
-  const P = Object.assign({ g, sil, agents, looks, poolCap: Math.max(1, Math.ceil((phone ? 6 : 18) / V)), assignT: 0 }, spec); PEOPLE.places.push(P); return P;
+  sil.instanceColor.needsUpdate = true; sil.visible = false; // the stand-in capsules looked like coloured cylinders sliding about: only real bodies are drawn now
+  const P = Object.assign({ g, sil, agents, looks, poolCap: Math.max(1, Math.ceil((phone ? 10 : 28) / V)), assignT: 0 }, spec); PEOPLE.places.push(P); return P;
 }
 function crowdDestroy(P) { for (const a of P.agents) if (a.px) { const i = fauna.list.indexOf(a.px); if (i >= 0) fauna.list.splice(i, 1); a.px = null; } if (P.g.parent) P.g.parent.remove(P.g); P.sil.geometry.dispose(); PEOPLE.places = PEOPLE.places.filter(o => o !== P); }
 function crowdClear(kind) { for (const P of [...PEOPLE.places]) if (!kind || P.kind === kind) crowdDestroy(P); }
@@ -28948,6 +28976,7 @@ function loopFrame() {
   if (state === 'loadingCh' && (SPC.booting || DGN.compiling)) { sfx.music(0); renderer.setClearColor(0x000000, 1); renderer.clear(); return; } // (or a dungeon floor's shaders still building behind the fade: drawing now would stall the game on them) // a Chapter III save starting up: black, not the last scene built (the Antarctic ice)
   if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh' || state === 'sleeping' || state === 'wcut') {
     if (state === 'explore') updateExplore(dt);
+    if ((state === 'explore' || state === 'xpaused') && ex.mode !== 'space' && !ex.vehicle && (!player.visible || !inner.visible)) { player.visible = true; inner.visible = true; } // on foot (or aboard), you're always there: nothing left over from a cutscene, the pod, a landing or space keeps you hidden
     tickDialog(dt);
     if (state !== 'loadingCh') { updateAnim(dt); if (ex.mode === 'world') worldActionPose(dt); else { syncHeld(); hideSuitGear(); armorSync(); } jamesTick(dt); updateParticles(dt); exploreCamera(dt); if (ex.mode === 'world') updateWorldScene(dt); }
     sfx.music(0); renderer.render(ex.mode === 'world' ? wScene : ex.mode === 'ship' && SHIPI.scene ? SHIPI.scene : aScene, camera); return;
