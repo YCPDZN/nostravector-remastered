@@ -2543,3 +2543,8 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 
 ### Meet Archamus (Chapter IV's first quest)
 - After waking on Archiostal, the objective is **Main quest · Meet Archamus in the gardens of Archiostal**. He stands where he stood in Chapter III, and this time he talks: ten cryptic lines (CH4ARCHAMUSMEET1–10, `data/archMeetVoices.js`, script in `assets/audio/archamus_ch4/MEET_VOICE_SCRIPT.md`; subtitles until recorded). The quest completes when he's done (150 XP, `ch4.archMet`); after that he only repeats his last line.
+
+### Chapter IV fixes: objectives, an invisible wanderer, and the Grek walk
+- **Chapter IV has its own objectives.** It was showing Chapter III's list (Escape New London, Defeat James Brown, Warp to another star system, Explore the galaxy). After the two years it now shows **Main quest · Meet Archamus in the gardens of Archiostal**, then **Explore Archiostal** once you've met him. The pod keeps its own objectives; Chapter V is unchanged.
+- **You're no longer invisible on Archiostal.** You were hidden in space and aboard the pod, and that carried through Archamus, the two years and Am-Grek onto Archiostal. Waking up now always shows you.
+- **The Grek walk.** Their model is one flat body of parts, so the game couldn't find arms and legs and every Grek glided about stiff: townsfolk, city crowds on Malana, Archiostal and Carax, quest givers, wardens, Am-Grek, residents. They now get shoulders and hips like the playable Grek, so they swing their arms and walk, on every planet.
