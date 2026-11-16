@@ -2540,3 +2540,6 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 
 ### Archamus on Archiostal (Chapter III)
 - In Chapter III, Archamus stands in the gardens of Archiostal, hooded and glowing faintly gold. Speak to him and he sends you away, voiced (`data/archCh3Voice.js`): it's too soon to meet him.
+
+### Meet Archamus (Chapter IV's first quest)
+- After waking on Archiostal, the objective is **Main quest · Meet Archamus in the gardens of Archiostal**. He stands where he stood in Chapter III, and this time he talks: ten cryptic lines (CH4ARCHAMUSMEET1–10, `data/archMeetVoices.js`, script in `assets/audio/archamus_ch4/MEET_VOICE_SCRIPT.md`; subtitles until recorded). The quest completes when he's done (150 XP, `ch4.archMet`); after that he only repeats his last line.
