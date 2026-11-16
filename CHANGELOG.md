@@ -2512,8 +2512,13 @@ Docking used to drop you onto what was really a small green planet: open hills, 
 None of this runs in New London, inside a lair, in a cutscene or during any scripted scene, so the main quest is never interrupted.
 
 ### Phones
-- **The new buttons and readouts have their own place on phones**, clear of the stick, the action buttons and the minimap. Held upright: CHAT and TAUNT on the left, below the companions button, and the wanted stars below the minimap. Held sideways: CHAT and TAUNT at the top centre, with the stars just under them. The trade request and the prison readout shift to suit.
+- **The new buttons and readouts have their own place on phones**, clear of the stick, the action buttons and the minimap. Held upright: CHAT, TAUNT and the wanted stars in one row on the left, under the health bars and clear of the hotbar (higher up on small phones like the iPhone SE, clear of the action prompt). Held sideways: CHAT and TAUNT at the top centre, with the stars just under them. The trade request and the prison readout shift to suit.
 - **The chat box opens at the top of the screen on touch screens**, so the on-screen keyboard can't cover it, with 16px text so phones don't zoom in.
 - **Bigger tap targets** in the trade request, the trade window and the lockpick.
 - **CHAT, TAUNT, the trade request and the lockpick answer the moment you touch them**, the way the game's own buttons do (the lockpick's timing especially).
 - The CHAT button hides while you're in prison.
+- **No more accidental presses after a tap.** Buttons that act the moment you touch them (Accept on a trade request, the minimap, CHAT) used to open something under your finger, and the phone's follow-up click could press whatever was there, such as a button in the trade window. That follow-up click is now ignored when it lands on something other than what you touched.
+- **The trade window's totals and Haggle / Accept trade / Cancel stay pinned to the bottom** however long the lists get, so on a phone held sideways they're never off screen. Sideways, the window is also more compact.
+- **The phone layouts actually apply now.** Some of them (the trade request's place when held sideways, and the trade window's spacing) were being overridden by the normal rules and never showed.
+- **The prison readout** sits under the health bars when held upright, rather than over the objectives.
+- **Held sideways, the zone chat sits at the top centre**, under CHAT and the wanted stars, instead of on top of the movement stick.
