@@ -2460,3 +2460,60 @@ Docking used to drop you onto what was really a small green planet: open hills, 
   - Heroes sometimes call down the **Light of Archamus**, which also heals you if you're close.
   - Pontifexes deliver **Pontifex Judgement**; fighters who love brawling spin a **Whirlwind**.
 - **Your crew too.** They walk in a **formation** around and behind you, facing the way you're going, instead of following in single file. They **dive clear** of strikes, and when their rage fills they unleash their signature: Khazglar **Earthbreaker**, the ice mages **Blizzard**, Nico **Bullet Storm**, rifles **Overwatch**, the blockade's leaders **Warlord’s Roar** (which throws enemies back), everyone else **Whirlwind**. Fallen companions' versions become **Blood** abilities.
+
+## Trading and the zone chat, MMO style
+
+### Trading with residents
+- **They come to you.** Now and then a resident walks over ("wts obsidian, you buying?") and a request pops up at the top of the screen: **Vela wants to trade with you · Obsidian and Metal plate for your Frost crystal · Accept / Decline**. It declines itself after 15 seconds.
+- **Or you go to them.** **Trade…** is in every resident's talk menu now (it replaces the old fixed "Buy 3 Stone" offer, and villains trade too). You can also type `/trade Name` in the chat, or just ask them ("Vela, wanna trade?").
+- **The trade window** has both sides. Tap things in your bag to put them on your side, add units (−10 / +10 / +50), and tap their goods to ask for them; tap anything on either offer to take it back off. A bar shows how the two sides compare, and the resident reacts as you build the deal ("Close. A little more?", "lmaooo no", "That’s generous. Deal!").
+- **Haggle** and they make it work: if you're short they name the extra units they want, and if you're overpaying they throw in units of their own. **Accept trade** lights up once they're happy. The swap is logged in the chat (*⇄ TRADE · You and Vela: gave 3 Frost crystal · got 1 Obsidian, 1 Metal plate, 5 units*).
+- **Everyone bargains differently.** Heroes and kind residents go easy, villains drive a hard bargain, residents who love trading haggle harder, proud ones want a bit more, and your guildmates give you a discount.
+- **What they carry** depends on their level (ores, ingots, crystal, metal, obsidian, med kits, warp cells and more) and changes every half hour. What you trade them stays in their stock.
+
+### The zone chat
+- **Press T** (or **/**, or tap the new **CHAT** button) and type into the zone chat.
+- **Say a resident's name and that resident answers you, and only them.** The others leave it alone ("Vela, where are you?" → *Vela: I’m on Malana.*). Messages that don't name anyone get no answers, apart from the odd "who are you talking to?".
+- They understand the same things as **Ask something…**: places, leaders and bosses, species, the war, tips, trading, how you're feeling, who they are, what they're up to. Plus "where are you?", "wanna trade?" (they open a trade) and, if you lead their guild, "follow me".
+- **`/w Name message` whispers** to a resident anywhere in the galaxy, and they whisper back from wherever they are (*Odo (whisper): deciding who to backstab next*). `/help` lists the commands.
+- Your messages show in gold, whispers in violet, trades in green.
+
+## Crowds, crime, the wanted level and prison (Chapters II–V)
+
+### Busier cities, built to stay fast
+- **Crowded capitals:** Alphinos (90 people), Karribassa, Malana, Archiostal and Carax (60 each; Carax's Grek-era crowd, not Chapter IV's) now have real crowds, with **humans among the locals**: about three in ten.
+- **Earth's cities have people now:** New York (70, every skin tone), **New Kingston (55, Black Jamaicans)**, New Tokyo (70), New Beijing (60), New Paris (60) and New Cairo (55).
+- **Ad-Nostra's streets** have 40 people, mostly Black Kenyans on the coast, from Chapter II on.
+- **Performance-friendly by design.** Every citizen is just a few numbers walking about. Only the nearest wear a full animated body, from a small reusable pool (about 18 on computers, 6 on phones). The rest are simple silhouettes drawn all at once, and far ones barely update. Phones get about a third of the crowd. The capitals with crowds replace their old 14 or 20 full-body strollers with this.
+
+### Menace or hero
+- **Citizens can be hit and killed** (your melee; the rifle never auto-aims at them). Hurting one is assault; killing one is murder, and costs you heroism (more for someone homeless). Some citizens fight back; the rest scatter in a panic.
+- **Killing sprees:** kills close together call out **KILLING SPREE ×3, RAMPAGE ×5, MASSACRE ×8, UNSTOPPABLE ×12, GODLIKE ×20**, with more villainy and more heat.
+- **The homeless** sit on the pavement in every crowd (about one in sixteen people). Walk up and press E to give them 5, 20, 50 or 100 units. Your heroism grows (more for more, the first few times each), they thank you, and hero residents nearby notice.
+- **Rage bait (Y, or TAUNT on phones):** mock the local faction to their faces. A few of them come at you, and the law takes note: more so if you're at war with them through Diplomacy.
+
+### Wanted: GTA-style stars and a bounty
+- **Heat and stars:** crimes raise your heat; heat becomes **1 to 5 stars**, each harder to earn and worse to have (20, 60, 130, 230 and 370 heat), shown under the minimap with your **bounty**.
+- **Who comes:** Federation troopers on Earth and in Africa, Imperial guards on Chompy worlds, Temple wardens on Grek worlds, House wardens on Erisian worlds, Republic guards on Timpur, enforcers under Terra Imperia. At 1 star they come with batons; from 2 stars with rifles. There are more of them, faster, tougher and quicker on the trigger with every star (up to 12 at once; 7 on phones).
+- **Losing them:** get out of sight long enough and you lose a star at a time (the stars flash while they've lost you); the higher you are, the longer it takes.
+- **Your guildmates** have your back against the law. Hero residents won't fight it, villains will.
+
+### Busted: prison
+- **Going down while the law is on you** gets you **BUSTED**, not a blackout. You're fined a tenth of your units and wake in a cell in a detention block nearby, with a sentence that grows with your stars (about 25 seconds at 1 star, about 5½ minutes at 5).
+- **Serve it:** the sentence counts down, and sleeping on the bunk (E) passes 30 seconds at a time. When it's done you're released with a clean slate.
+- **Or break out:** pick the cell lock (E at the door; stop the pin in the gold, three times, with a smaller zone the higher your stars). Then fight past the armed wardens to the way out. A slip costs 10 seconds, and getting caught mid-breakout puts you back in the cell with 30 more. **Out, the hunt carries on where it left off, a star higher** (at least 3).
+
+### Residents live by it too
+- **Their alignment moves with what they do:** killing citizens, giving to the homeless, taunting the locals. When they cross into hero or villain, the chat announces it (*⚖ Odo is now an Awakened Villain*).
+- **Villains go on killing sprees** in crowds ("killing spree incoming lmao"), get **wanted** themselves, and the law comes for *them*. When the law gets them they're busted and gone for a while.
+- **Heroes give to the homeless.** Non-heroes **rage-bait the locals** in the zone chat.
+- **Bounties:** a wanted resident's talk menu has **Bring them in · bounty N units**. Win the scuffle and you claim the bounty and some heroism; lose and they get away.
+
+None of this runs in New London, inside a lair, in a cutscene or during any scripted scene, so the main quest is never interrupted.
+
+### Phones
+- **The new buttons and readouts have their own place on phones**, clear of the stick, the action buttons and the minimap. Held upright: CHAT and TAUNT on the left, below the companions button, and the wanted stars below the minimap. Held sideways: CHAT and TAUNT at the top centre, with the stars just under them. The trade request and the prison readout shift to suit.
+- **The chat box opens at the top of the screen on touch screens**, so the on-screen keyboard can't cover it, with 16px text so phones don't zoom in.
+- **Bigger tap targets** in the trade request, the trade window and the lockpick.
+- **CHAT, TAUNT, the trade request and the lockpick answer the moment you touch them**, the way the game's own buttons do (the lockpick's timing especially).
+- The CHAT button hides while you're in prison.
