@@ -2522,3 +2522,6 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **The phone layouts actually apply now.** Some of them (the trade request's place when held sideways, and the trade window's spacing) were being overridden by the normal rules and never showed.
 - **The prison readout** sits under the health bars when held upright, rather than over the objectives.
 - **Held sideways, the zone chat sits at the top centre**, under CHAT and the wanted stars, instead of on top of the movement stick.
+
+### Archamus is voiced (the pod landing)
+- Archamus' 7 lines over the fallen wanderer are now voiced. The recordings (CH4ARCHAMUSPRESKIP1–7) are packed into `data/podArchVoices.js`, which the scene already loads, so the lines play out loud instead of showing as subtitles only. The source MP3s sit in `assets/audio/archamus_ch4/`.
