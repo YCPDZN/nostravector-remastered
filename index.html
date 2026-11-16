@@ -169,6 +169,17 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 .res-chat div{overflow:hidden;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:2px} /* up to two lines each, so punchlines aren't cut off */
 .res-chat b{font-family:var(--display);font-weight:600;font-size:9.5px;letter-spacing:.14em;margin-right:7px;color:#c9d6e8}
 .res-chat .hero b{color:#8fe3ff}.res-chat .villain b{color:#ff7a6e}
+.wanted{position:fixed;right:calc(var(--sr) + 16px);top:calc(var(--st) + 160px);z-index:6;display:none;text-align:right;pointer-events:none;text-shadow:0 0 8px #000}
+.wanted.on{display:block}.wanted span i{font-style:normal;font-size:22px;color:rgba(255,255,255,.22);margin-left:2px}.wanted span i.on{color:#ffd36a;text-shadow:0 0 10px rgba(255,180,60,.8)}
+.wanted.flash span i.on{animation:wflash .6s steps(2) infinite}@keyframes wflash{50%{color:rgba(255,211,106,.25)}}
+.wanted small{display:block;margin-top:2px;font-family:var(--display);font-size:9px;letter-spacing:.24em;color:#ffb09a}
+.chat-btn.taunt{top:calc(var(--st) + 210px);border-color:rgba(255,138,110,.5);color:#ffb09a}
+.prison-hud{position:fixed;left:50%;top:calc(var(--st) + 18px);transform:translateX(-50%);z-index:6;display:none;text-align:center;background:rgba(9,12,20,.85);border:1px solid rgba(255,138,110,.45);padding:10px 16px;pointer-events:none}
+.prison-hud.on{display:block}.prison-hud b{font-family:var(--display);letter-spacing:.24em;font-size:13px;color:#ffb09a}.prison-hud small{display:block;margin-top:4px;font-size:11px;color:var(--mute)}
+.lock-pick{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:66;display:none;width:min(420px,calc(100vw - 32px));background:rgba(9,12,20,.96);border:1px solid var(--line);padding:16px;text-align:center}
+.lock-pick.on{display:block}.lock-pick b{font-family:var(--display);letter-spacing:.26em;font-size:13px}.lock-pick small{display:block;margin:6px 0 12px;font-size:11px;color:var(--mute)}
+.lp-bar{position:relative;height:16px;background:rgba(255,255,255,.08);border:1px solid var(--line)}.lp-z{position:absolute;top:0;bottom:0;background:rgba(216,176,96,.55)}.lp-n{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1px;background:#fff}
+.lp-h{margin:10px 0;letter-spacing:.3em;color:#ffd36a}.lock-pick button{all:unset;cursor:pointer;padding:9px 18px;border:1px solid var(--line);font-family:var(--display);font-size:10px;letter-spacing:.24em}
 .res-chat .you b{color:#ffd36a}.res-chat .wh{font-style:italic;color:#f3c6ff}.res-chat .wh b{color:#e9a8ff}.res-chat .trade b{color:#9fe6b0}.res-chat .sys{color:#9aa4b2}
 .chat-in{position:fixed;left:calc(var(--sl) + 20px);bottom:calc(var(--sb) + 132px);width:min(440px,calc(100vw - 40px));z-index:60;display:flex;gap:6px}.chat-in.hidden{display:none}
 .chat-in input{flex:1;min-width:0;background:rgba(7,10,17,.92);border:1px solid var(--line);color:var(--ink);font:inherit;font-size:13px;padding:10px 12px;outline:none}
@@ -5419,6 +5430,8 @@ async function interact() {
   } else if (n.id === 'ship') { enterShip('ground');
   } else if (n.id === 'lonsight') { openDialog(n.ref.label.toUpperCase(), n.ref.text, true);
   } else if (n.id === 'brawl') { brawlMenu(n.ref);
+  } else if (n.id === 'homeless') { donateMenu(n.ref);
+  } else if (n.id === 'prisonSleep' || n.id === 'prisonPick' || n.id === 'prisonExit') { prisonUse(n.id);
   } else if (n.id === 'bartender') { barDrink(n.ref);
   } else if (n.id === 'parliament') { lines(PARL_DOOR, () => { if (!wanderer.ch2.reportTried) { setCh2({ reportTried: true }); notice('New London', 'WAIT FOR THE COUNCIL', 3000); } });
   } else if (n.id === 'orion') {
@@ -5570,6 +5583,8 @@ addEventListener('keydown', e => {
   if (e.target && e.target.tagName === 'INPUT') return;
   if (ex.dlg && ex.dlg.choice) { const m = /^(?:Digit|Numpad)([1-9])$/.exec(e.code); if (m) { e.preventDefault(); pickChoice(+m[1] - 1); } else if (['KeyE', 'Enter', 'Space'].includes(e.code)) e.preventDefault(); if (e.code !== 'Escape' && e.code !== 'KeyP') return; }
   if (TR.open) { if (e.code === 'Escape') tradeClose(); return; } // trading: the window has the keys
+  if (PRISON.pick) { if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); pickTry(); } else if (e.code === 'Escape') { PRISON.pick = null; pickEl().classList.remove('on'); } return; } // picking the cell lock
+  if (e.code === 'KeyY' && ex.mode === 'world' && !ex.dlg) { e.preventDefault(); rageBait(); return; } // rage bait
   if ((e.code === 'KeyT' || e.code === 'Slash') && ex.mode === 'world' && !ex.dlg && residents.length) { e.preventDefault(); chatOpen(e.code === 'Slash' ? '/' : ''); return; } // the zone chat
   if (e.code === 'Escape' || e.code === 'KeyP') { pauseExplore(true); return; }
   if (ex.invOpen) return;
@@ -6346,6 +6361,7 @@ function buildBlocked(x, z, y) {
 }
 function groundAt(x, z, y) {
   let g = wHeight(x, z);
+  if (PRISON.on && PRISON.room && x > PRISON.room.x0 - 1 && x < PRISON.room.x1 + 1 && z > PRISON.room.z0 - 1 && z < PRISON.room.z1 + 1) g = Math.max(g, PRISON.y); // the detention block's floor
   const pt = pierTop(x, z); if (pt != null && pt > g && pt <= y + .6) g = pt;
   for (const b of world.build) {
     if (Math.abs(b.data.x - x) > 4 || Math.abs(b.data.z - z) > 4) continue;
@@ -7963,7 +7979,7 @@ function hurtPlayer(n, src) {
   const fx = $('#hurtFx'); fx.classList.remove('on'); void fx.offsetWidth; fx.classList.add('on');
   ex.shake = .35;
   if (src) { const dx = player.position.x - src.x, dz = player.position.z - src.z, d = Math.hypot(dx, dz) || 1; vel.x += dx / d * 5; vel.z += dz / d * 5; }
-  if (ex.hp <= 0) { try { resEvent('death'); } catch (e) {} if (DGN.on) dgnDown(); else if (world.betrayal) bossDeath(); else if (esc.on) escapeDeath(); else blackout(); }
+  if (ex.hp <= 0) { if (PRISON.on) { prisonRecapture(); return; } if (lawBusted()) return; try { resEvent('death'); } catch (e) {} if (DGN.on) dgnDown(); else if (world.betrayal) bossDeath(); else if (esc.on) escapeDeath(); else blackout(); }
 }
 function blackout() {
   for (const c of fauna.list) { c.state = 'idle'; c.tgt = null; }
@@ -7976,6 +7992,8 @@ function blackout() {
 }
 function damageFauna(c, dmg, fromJames) {
   if (c.dead) return;
+  if (c.type === 'citizen') { lawCitizenHit(c, dmg, fromJames); return; } // a citizen: the crowd and the law handle it
+  if (c.type === 'lawguard' && !fromJames) lawCrime(4, 'assaulting the law');
   if (c.boss) dmg = dgnBossDmg(c, dmg); // his ward
   if (!fromJames) { const k = lvGapMul(levelOf(wanderer), faunaLv(c)); if (k === Infinity) { dmg = Math.max(dmg, c.hp); if (!c.D.passive && time - (fauna.osT || -9) > 1.5) { fauna.osT = time; lootMsg('One shot · far beneath your level', '#ffd27a'); } } else dmg *= k; }
   if (c.D.passive && !c.D.huntable) {
@@ -7996,6 +8014,7 @@ function damageFauna(c, dmg, fromJames) {
     c.dead = 1; c.state = 'dead'; c.t = 0;
     gainXP(fromJames ? Math.round(c.D.xp / 2) : c.D.xp, c.D.name);
     if (!fromJames) try { resEvent('kill'); } catch (e) {}
+    if (c.type === 'lawguard') lawGuardDown(c, fromJames);
     if (!fromJames && c.D.beast === 'prey' && ex.hp >= maxHP()) alignAct(-2, 'Killed for sport, not food');
     else if (!fromJames && !c.D.passive && !c.D.neutral && partyNow().length) alignAct(1, 'Protected your companions');
     for (const drop of c.D.loot()) if (drop) { giveItem(drop[0], drop[1]); lootMsg(`+${drop[1]} ${ITEMS[drop[0]].name}`, ITEMS[drop[0]].color); }
@@ -8737,7 +8756,8 @@ function worldUnstickIn() {
   return false;
 }
 function worldBlocked(x, z, stationOnly, y = player.position.y) {
-  if (DGN.on) return dgnBlocked(x, z); // inside Olympus Mons: its walls
+  if (DGN.on) return dgnBlocked(x, z);
+  if (PRISON.on && prisonBlocked(x, z)) return true; // inside Olympus Mons: its walls
   if (isPl()) { if (nostraBlocked(x, z)) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2 && (world.planet.P.seaGlow || !WB_SWIM)) return true; if (cityBlocked(x, z)) return true; if (earthBlocked(x, z)) return true; if (stInBlocked(x, z)) return true; } // your ship, deep water, the towers of a capital and Earth's landmarks
   else if (curArea() !== 'europe' && Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true; // the station / Orion's house
   if (isPl() && hallBlocked(x, z)) return true;
@@ -10487,6 +10507,7 @@ function hallTick(dt) {
 const hallBlocked = (x, z) => { const Hl = world.hall; if (!Hl || !isPl() || Math.abs(x - Hl.x) > 12 || Math.abs(z - Hl.z) > 10) return false; for (const c of Hl.cols) if (x > c[0] - .25 && x < c[1] + .25 && z > c[2] - .25 && z < c[3] + .25) return true; return false; };
 // indoors, the camera stays inside the room
 function roomAround(p) {
+  if (PRISON.on && PRISON.room && p.x > PRISON.room.x0 - .5 && p.x < PRISON.room.x1 + .5 && p.z > PRISON.room.z0 - .5 && p.z < PRISON.room.z1 + .5) return PRISON.room;
   if (isPl() && world.hall && world.hall.inside) { const R = world.hall.V.room; return { x0: R.x0, x1: R.x1, z0: R.z0, z1: R.z1, top: world.hall.y + HALL.h - .35 }; }
   if (curArea() === 'africa' && inCantina(p.x, p.z)) { const R = TOWN.rooms.cantina; return { x0: R.x0 + .1, x1: R.x1 - .1, z0: R.z0 + .1, z1: R.z1 - .1, top: 2.85 }; }
   return null;
@@ -18738,6 +18759,7 @@ function earthGroundBuild(W) {
     if (Q.live) E.live = Q.live(holder, Q);
   }
   W.nearPoi = W.epoi.find(E => !E.line && Math.hypot(E.gx, E.gz) < E.Q.R + 60) || null;
+  try { crowdEarth(W); } catch (e) { console.error(e); } // the people of Earth's cities
 }
 function earthGroundClear() {
   const W = world.planet; if (!W || !W.epoi) return;
@@ -21571,6 +21593,7 @@ function buildCity() {
 
 // ---- the people of a capital: they stroll round the plaza and up and down the avenue, and mind the stalls ----
 async function cityFolk(C, g, aw) {
+  if (crowdCity(C, g, aw)) return; // the busy capitals get the full crowd
   const K = C.K, F = CITY_FOLK[K.style]; if (!F) return; const [sp, h, col] = F, phone = tiPhone();
   await loadSpecies(sp).catch(() => null); const src = await townModel(sp).catch(() => null);
   if (!src || !world.planet || world.planet.city !== C || world.cityG !== g) return;
@@ -23346,6 +23369,8 @@ function updateWorldMode(dt) {
   if (!ex.near) { const fn = ferryNear(p); if (fn) ex.near = fn; }
   if (!ex.near && curArea() === 'europe' && Math.hypot(p.x - (LON.door.x - 1.5), p.z - LON.door.z) < 3.2) ex.near = { id: 'parliament', label: 'Houses of Parliament' };
   if (!ex.near && curArea() === 'europe' && LON.sights) for (const s of LON.sights) if (Math.hypot(p.x - s.x, p.z - s.z) < s.r) ex.near = { id: 'lonsight', ref: s, label: s.label };
+  if (!ex.near) { const PZ = prisonNear(p); if (PZ) ex.near = PZ; }
+  if (!ex.near) { const H = crowdNearHomeless(p); if (H) ex.near = { id: 'homeless', ref: H, label: `Give to ${H.a.name} · homeless` }; }
   if (!ex.near) { const BV = brawlVenueHere(); if (BV) { if (Math.hypot(p.x - BV.mcAt.x, p.z - BV.mcAt.z) < 2.3) ex.near = { id: 'brawl', ref: BV, label: `${titleName(BV.mc)} · fights` }; else if (BV.barAt && Math.hypot(p.x - BV.barAt.x, p.z - BV.barAt.z) < 1.9) ex.near = { id: 'bartender', ref: BV, label: 'Bartender' }; } }
   if (!ex.near && (isPl() || world.adVisit) && Math.hypot(p.x - shipX(), p.z - shipZ() - 10) < 4.5) ex.near = { id: 'ship', label: 'Your ship' };
   if (!ex.near && curArea() === 'africa' && TOWN.npcs.length) { const tn = townNear(p); if (tn) ex.near = { id: 'townsfolk', ref: tn, label: tn.label }; }
@@ -23362,7 +23387,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
+    const PR = { homeless: [ex.near.label, 'GIVE'], prisonSleep: [ex.near.label, 'SLEEP'], prisonPick: [ex.near.label, 'PICK'], prisonExit: [ex.near.label, 'ESCAPE'], bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: ['Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give James orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
@@ -25898,7 +25923,7 @@ function resHereChance(c, A) {
 }
 // ?residents=all brings every resident to wherever you are (to preview them); ?resdebug exposes their state for testing
 const RES_ALL = /[?&]residents=all/.test(window.location.search);
-if (/[?&]resdebug/.test(window.location.search)) { window.RES = RES; window.resFF = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; resTick(step); } }; window.resFFs = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; SPC.t = (SPC.t || 0) + step; resSpaceTick(step); } return { ships: RES.sp.map(S => S.c.name + ':' + S.al + ':' + Math.round(S.pos.distanceTo(SPC.pos)) + 'm'), foes: SC.foes.map(f => f.name), bolts: SC.bolts.filter(b => b.friendly).length }; }; window.SCdbg = SC; window.resState = () => ({ state, mode: ex.mode, scene: !!SPC.scene, p: player.position.toArray(), units: units(), near: ex.near && ex.near.id }); window.resGoSpace = p => startChapter3(p); window.resT = () => residents.map(c => { const T = resTravel(c); return `${c.name}:${T.mode}:${(T.body || T.to).name}:${resLevel(c)}`; }); window.resKill = i => resDie(residents[i]); window.resRL = () => !!RL; window.resEmpDbg = () => resEmp; window.resEmpFF = n => { for (let i = 0; i < n; i++) { RES.empT = 0; resEmpTick(15); } return resEmp; }; window.resEmpOpenDbg = () => resEmpOpen(); window.resResDbg = () => residents; window.resBaseAt = (x, z) => resBaseBlocked(x, z); window.resTp = (x, z, ry) => { player.position.set(x, wHeight(x, z), z); if (ry != null) { player.rotation.y = ry; ex.yaw = ry + Math.PI; } ex.snap = true; }; window.resBaseSyncDbg = () => resBaseSync(); window.resDrinkDbg = i => drinkUp(DRINKS[i], 'test', 'BAR'); window.resBoozeDbg = () => ex.booze || 0; window.resEscDbg = () => [...GESC.ids]; window.resBotsDbg = () => RES.bots.map(B => ({ n: B.c.name, task: B.task && (B.task.type + (B.task.kind ? ':' + B.task.kind : '')), booze: +(B.booze || 0).toFixed(2), x: +B.x.toFixed(1), z: +B.z.toFixed(1), p: resPersonaSummary(B.c) })); window.resLogDbg = () => RES.log.map(l => l.who + ': ' + l.text); window.resClubDbg = () => world.hall && world.hall.club ? { x: world.hall.x, z: world.hall.z, inside: world.hall.inside, ready: world.hall.V.ready, dancers: world.hall.club.extra.length } : null; window.resNearDbg = () => ({ sys: resPlayerSys(), near: resNearSet().L.map(S => S.name), res: residents.map(c => { const T = resTravel(c); return `${c.name}${resGuildBound(c) ? ' [guild]' : ''}: ${T.mode} ${(T.body || T.to).name} (${sysById((T.body || T.to).sys).name})`; }) }); window.resFightDbg = () => RES_FDBG; window.resChatDbg = t => resChatSend(t); window.resTradeDbg = () => ({ open: TR.open, who: TR.B && TR.B.c.name, mine: TR.mine, theirs: TR.theirs, units: TR.units, theirUnits: TR.theirUnits, verdict: TR.open ? tradeVerdict() : null, mood: TR.mood }); window.resTradeAskDbg = () => { const B = RES.bots.find(o => o.ready); if (B) { B.task = { type: 'face', t: 0, dur: 16 }; tradeAsk(B); } return !!B; }; window.resRageFillDbg = () => { for (const B of RES.bots) B.rage = 99; for (const C of Object.values(CREW)) C.rage = 99; return true; }; window.resCrewDbg = () => Object.entries(CREW).filter(([, C]) => C.R && C.R.root.visible).map(([id, C]) => ({ id, d: +Math.hypot(C.R.root.position.x - player.position.x, C.R.root.position.z - player.position.z).toFixed(1), rage: Math.round(C.rage || 0) })); window.resRGDbg = () => !!RG; window.resLairDbg = () => { const g = resGateHere(); return g ? { name: g.L.name, lv: g.L.lv, floors: g.L.floors, x: g.x, z: g.z } : null; }; window.resDunAskDbg = () => { const B = RES.bots.find(o => o.ready); if (B) resDunAsk(B, false); return !!B; }; window.resDgnDbg = () => ({ on: DGN.on, f: DGN.f, top: DGN.on ? dgnTop() : 0, beaten: DGN.on && dgnBeaten(DGN.f), esc: [...GESC.ids], theirs: !!GESC.theirs, bots: RES.bots.map(B => B.c.name + '@' + Math.round(Math.hypot(B.x - player.position.x, B.z - player.position.z)) + 'm:' + (B.task && B.task.type)) }); window.resDgnKillDbg = () => { for (const f of fauna.list) if ((f.dgn || f.boss) && !f.dead) damageFauna(f, 1e6, true); return true; }; window.resDgnUpDbg = () => DGN.up ? { x: DGN.up.x, z: DGN.up.z } : null; window.resEscSetDbg = () => { const G = myGuild(); escortSet(RES.bots.filter(B => G && G.members.includes(B.id)).map(B => B.id)); return [...GESC.ids]; }; }
+if (/[?&]resdebug/.test(window.location.search)) { window.RES = RES; window.resFF = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; resTick(step); } }; window.resFFs = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; SPC.t = (SPC.t || 0) + step; resSpaceTick(step); } return { ships: RES.sp.map(S => S.c.name + ':' + S.al + ':' + Math.round(S.pos.distanceTo(SPC.pos)) + 'm'), foes: SC.foes.map(f => f.name), bolts: SC.bolts.filter(b => b.friendly).length }; }; window.SCdbg = SC; window.resState = () => ({ state, mode: ex.mode, scene: !!SPC.scene, p: player.position.toArray(), units: units(), near: ex.near && ex.near.id }); window.resGoSpace = p => startChapter3(p); window.resT = () => residents.map(c => { const T = resTravel(c); return `${c.name}:${T.mode}:${(T.body || T.to).name}:${resLevel(c)}`; }); window.resKill = i => resDie(residents[i]); window.resRL = () => !!RL; window.resEmpDbg = () => resEmp; window.resEmpFF = n => { for (let i = 0; i < n; i++) { RES.empT = 0; resEmpTick(15); } return resEmp; }; window.resEmpOpenDbg = () => resEmpOpen(); window.resResDbg = () => residents; window.resBaseAt = (x, z) => resBaseBlocked(x, z); window.resTp = (x, z, ry) => { player.position.set(x, wHeight(x, z), z); if (ry != null) { player.rotation.y = ry; ex.yaw = ry + Math.PI; } ex.snap = true; }; window.resBaseSyncDbg = () => resBaseSync(); window.resDrinkDbg = i => drinkUp(DRINKS[i], 'test', 'BAR'); window.resBoozeDbg = () => ex.booze || 0; window.resEscDbg = () => [...GESC.ids]; window.resBotsDbg = () => RES.bots.map(B => ({ n: B.c.name, task: B.task && (B.task.type + (B.task.kind ? ':' + B.task.kind : '')), booze: +(B.booze || 0).toFixed(2), x: +B.x.toFixed(1), z: +B.z.toFixed(1), p: resPersonaSummary(B.c) })); window.resLogDbg = () => RES.log.map(l => l.who + ': ' + l.text); window.resClubDbg = () => world.hall && world.hall.club ? { x: world.hall.x, z: world.hall.z, inside: world.hall.inside, ready: world.hall.V.ready, dancers: world.hall.club.extra.length } : null; window.resNearDbg = () => ({ sys: resPlayerSys(), near: resNearSet().L.map(S => S.name), res: residents.map(c => { const T = resTravel(c); return `${c.name}${resGuildBound(c) ? ' [guild]' : ''}: ${T.mode} ${(T.body || T.to).name} (${sysById((T.body || T.to).sys).name})`; }) }); window.resFightDbg = () => RES_FDBG; window.lawDbg = () => ({ area: curArea(), town: !!world.town, lawOn: lawOn(), heat: LAW.heat, stars: LAW.stars, guards: LAW.guards.filter(g => !g.dead).length, prison: PRISON.on ? { t: Math.round(PRISON.t), open: PRISON.open } : null, places: PEOPLE.places.map(P => P.key + ':' + P.agents.length + '/' + P.agents.filter(a => a.rig).length + 'rig/' + P.agents.filter(a => a.dead).length + 'dead'), proxies: fauna.list.filter(c => c.type === 'citizen').length }); window.lawHitDbg = n => { const p = player.position; const xs = fauna.list.filter(c => c.type === 'citizen' && !c.dead).sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z)).slice(0, n || 1); for (const c of xs) damageFauna(c, 999, false); return xs.length; }; window.lawBustDbg = () => { ex.hp = 1; hurtPlayer(50, null); return PRISON.on; }; window.lawPickDbg = () => { prisonUse('prisonPick'); for (let i = 0; i < 3; i++) { PRISON.pick && (PRISON.pick.k = PRISON.pick.zone); pickTry(); } return PRISON.open; }; window.lawTpDbg = (x, z) => { player.position.set(x, groundAt(x, z, 99), z); ex.snap = true; }; window.earthDirDbg = (la, lo) => earthDir(la, lo).toArray(); window.resAlDbg = () => residents.map(c => c.name + ':' + ((c.align && c.align.p) | 0) + (c.wanted && c.wanted.stars ? ' wanted' + c.wanted.stars : '')); window.lawPrisonDbg = () => PRISON.on ? { exit: PRISON.exit, bunk: PRISON.bunk } : null; window.resChatDbg = t => resChatSend(t); window.resTradeDbg = () => ({ open: TR.open, who: TR.B && TR.B.c.name, mine: TR.mine, theirs: TR.theirs, units: TR.units, theirUnits: TR.theirUnits, verdict: TR.open ? tradeVerdict() : null, mood: TR.mood }); window.resTradeAskDbg = () => { const B = RES.bots.find(o => o.ready); if (B) { B.task = { type: 'face', t: 0, dur: 16 }; tradeAsk(B); } return !!B; }; window.resRageFillDbg = () => { for (const B of RES.bots) B.rage = 99; for (const C of Object.values(CREW)) C.rage = 99; return true; }; window.resCrewDbg = () => Object.entries(CREW).filter(([, C]) => C.R && C.R.root.visible).map(([id, C]) => ({ id, d: +Math.hypot(C.R.root.position.x - player.position.x, C.R.root.position.z - player.position.z).toFixed(1), rage: Math.round(C.rage || 0) })); window.resRGDbg = () => !!RG; window.resLairDbg = () => { const g = resGateHere(); return g ? { name: g.L.name, lv: g.L.lv, floors: g.L.floors, x: g.x, z: g.z } : null; }; window.resDunAskDbg = () => { const B = RES.bots.find(o => o.ready); if (B) resDunAsk(B, false); return !!B; }; window.resDgnDbg = () => ({ on: DGN.on, f: DGN.f, top: DGN.on ? dgnTop() : 0, beaten: DGN.on && dgnBeaten(DGN.f), esc: [...GESC.ids], theirs: !!GESC.theirs, bots: RES.bots.map(B => B.c.name + '@' + Math.round(Math.hypot(B.x - player.position.x, B.z - player.position.z)) + 'm:' + (B.task && B.task.type)) }); window.resDgnKillDbg = () => { for (const f of fauna.list) if ((f.dgn || f.boss) && !f.dead) damageFauna(f, 1e6, true); return true; }; window.resDgnUpDbg = () => DGN.up ? { x: DGN.up.x, z: DGN.up.z } : null; window.resEscSetDbg = () => { const G = myGuild(); escortSet(RES.bots.filter(B => G && G.members.includes(B.id)).map(B => B.id)); return [...GESC.ids]; }; }
 const resMax = () => document.body.classList.contains('touch') ? 3 : 6; // phones draw fewer of them, and without shadows
 function resPresent(c, A) {
   if (RES_ALL) return true;
@@ -26089,6 +26114,7 @@ function resNodes(B, r) { return nodesNear(B.x, B.z).filter(n => !n.dead && Math
 function resChoose(B) {
   if (resEscorting(B)) { resEscortChoose(B); return; } // following you (or leading you down a lair)
   if (resNightChoose(B)) return; // a night out
+  if (resNightOut(B)) return; // a crowd: a villain's spree, a hero's kindness, a taunt
   const p = player.position, dp = Math.hypot(p.x - B.x, p.z - B.z), V = B.al === 'villain', H = B.al === 'hero';
   const nodes = resNodes(B, 26), stalls = merchantsHere().filter(m => m.px != null && Math.hypot(m.px - B.x, m.pz - B.z) < 60);
   const opts = [
@@ -26193,7 +26219,7 @@ function resTalk(B) {
   if (ex.mode === 'world') opts.push({ text: 'Trade…', onPick: () => { closeDialog(); RES.talking = null; tradeOpen(B); } }); // the trade window: both sides, haggling
 
   if (resEmpOf(B.id)) opts.push({ text: 'About your empire\u2026', onPick: () => { const e = resEmpOf(B.id), wars = resEmp.wars.filter(w => w.a === B.id || w.b === B.id); resSayTo(B, [resClean(`${e.name}. ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars.length ? `, at war with ${wars.map(w => (resEmpOf(w.a === B.id ? w.b : w.a) || {}).name).join(' and ')}` : ', at peace for now'}.`)], () => openChoice(resWho(B), [{ text: 'Open Resident Empires', onPick: () => { RES.talking = null; closeDialog(); resEmpOpen(); } }, { text: 'Demand you disband it', onPick: () => { resDisband(B.id); RES.talking = null; } }, { text: 'Back', onPick: back }])); } });
-  opts.push(...resGuildCmdOpts(B, back), ...resGuildTalkOpts(B, back));
+  opts.push(...resBountyOpts(B, back), ...resGuildCmdOpts(B, back), ...resGuildTalkOpts(B, back));
   opts.push({ text: 'Roleplay\u2026', onPick: () => resRoleplay(B, 1) });
   opts.push({ text: 'Real life\u2026', onPick: () => resRealLife(B) });
   opts.push({ text: 'Bye', onPick: () => { RES.talking = null; resSay(B, resFill(resPick(T ? T.farewell[B.al] : ['cya']), x)); } });
@@ -26427,7 +26453,7 @@ function resStep(B, dt, p) {
   if (!B.task) resChoose(B);
   const T = B.task; T.t += dt; B.speed = 0;
   if (B.emT > 0) B.emT -= dt; else B.em = null;
-  if (resEscortStep(B, T, dt, p) || resNightStep(B, T, dt, p) || resFightStep(B, T, dt) || resTradeStep(B, T, dt, p)) { B.y = groundAt(B.x, B.z, B.y + 1.5); return; }
+  if (resEscortStep(B, T, dt, p) || resNightStep(B, T, dt, p) || resFightStep(B, T, dt) || resTradeStep(B, T, dt, p) || resLawStep(B, T, dt)) { B.y = groundAt(B.x, B.z, B.y + 1.5); return; }
   switch (T.type) {
     case 'wander': if (resMoveTo(B, T.to, dt, T.run) || T.t > 20) B.task = null; break;
     case 'idle': if (T.t > T.dur) B.task = null; else if (dp < 12) resFace(B, p.x, p.z, dt); break;
@@ -27061,7 +27087,7 @@ function resDunRun(c) { // a run while you're away: a lair on the world they're 
   resGuildLog(`⚔ ${G && party.length > 1 ? `[${G.tag}] ` : ''}${who} ${ok ? 'cleared' : 'wiped in'} ${L.name}${ok ? ` · ${lairBoss(L).short} is dead` : ''}`);
 }
 // on the ground: residents go for hostile creatures near them, lair creatures and bosses included
-function resHuntTarget(B) { let best = null, bd = 22; for (const f of fauna.list) { if (f.dead || f.D.passive || (f.D.beast === 'prey')) continue; if (!(f.boss || f.dgn || f.state === 'hunt' || f.D.beast === 'pred')) continue; const d = Math.hypot(f.x - B.x, f.z - B.z); if (d < bd) { bd = d; best = f; } } return best; }
+function resHuntTarget(B) { let best = null, bd = 22; for (const f of fauna.list) { if (f.dead || f.D.passive || (f.D.beast === 'prey') || f.type === 'citizen') continue; if (f.type === 'lawguard' && !(B.al === 'villain' || f.tgtRes === B || (myGuild() && myGuild().members.includes(B.id)))) continue; /* heroes don't fight the law (your guild has your back) */ if (!(f.boss || f.dgn || f.state === 'hunt' || f.D.beast === 'pred')) continue; const d = Math.hypot(f.x - B.x, f.z - B.z); if (d < bd) { bd = d; best = f; } } return best; }
 // ---- guild wars ----
 const resGuildWar = (a, b) => (resGuild.wars || []).find(w => (w.a === a && w.b === b) || (w.a === b && w.b === a)) || null;
 function resGuildBrawl(A, C) { // two residents came to blows: if they're in different guilds, it's a guild war, and everyone around piles in
@@ -27718,6 +27744,352 @@ function chatUiTick() { // the CHAT button shows when there's someone to talk to
   if (RES.chatOn && (state !== 'explore' || ex.mode !== 'world')) chatClose();
 }
 
+/* ============ Crowds, crime, the wanted level and prison (Chapters II–V) ============
+   Crowds: the capitals (Alphinos, Karribassa, Malana, Archiostal, Carax), Earth's cities (New York, New Kingston, New Tokyo, New
+   Paris, New Beijing, New Cairo) and Ad-Nostra are busy now, with humans among the locals. To stay light, every citizen is just a
+   few numbers walking about; only the nearest wear a full animated body (a small pool, reused), the rest are simple silhouettes
+   drawn in one go, and the far ones barely update. Some citizens are homeless: give them units and your heroism grows.
+   Crime: hurting or killing citizens, taunting a faction ("rage bait", Y), or fighting the law raises your heat. Heat becomes
+   stars (1 to 5, each harder to earn and worse to have) and a bounty. The law comes for you, in greater numbers and better armed
+   with every star; get out of sight long enough and the stars drop one by one. Go down while wanted and you're BUSTED: serve your
+   sentence (sleep on the bunk to pass the time), or pick the lock and fight your way out, and the wanted level carries on.
+   Residents live by it too: their alignment shifts with what they do, villains go on killing sprees and get wanted, heroes give to
+   the homeless, and you can bring a wanted resident in for their bounty. None of this runs in New London, in a lair, in a cutscene
+   or a scripted scene. ============ */
+const LAW_STARS = [20, 60, 130, 230, 370]; // heat for each star: each one harder to reach
+const LAW = { heat: 0, stars: 0, seenT: 0, guards: [], spawnT: 0, kills: [], spreeN: 0, flash: 0, lastCrime: 0, prevStars: 0 };
+const lawPhone = () => tiPhone();
+function lawOn() { // free roam only, Chapter II on, never in a scripted moment
+  if (!wanderer || (wanderer.chapter | 0) < 2 || ex.mode !== 'world' || DGN.on || PRISON.on) return false;
+  if (curArea() === 'europe' || world.cantinaScene || world.betrayal || world.boss || (typeof arr !== 'undefined' && arr.on)) return false;
+  const cl = ui.xhud.classList; return !(cl.contains('cutting') || cl.contains('cine') || cl.contains('dreaming'));
+}
+const lawStarsFor = h => LAW_STARS.filter(t => h >= t).length;
+const lawBounty = () => Math.round(LAW.heat * 6 + LAW.stars * LAW.stars * 40);
+function lawCrime(heat, why, at) {
+  if (!lawOn()) return; const was = LAW.stars; LAW.heat = Math.min(LAW_STARS[4] + 200, LAW.heat + heat); LAW.stars = lawStarsFor(LAW.heat); LAW.seenT = time; LAW.lastCrime = time;
+  if (LAW.stars > was) { notice(LAW.stars === 1 ? 'Wanted' : `Wanted level ${LAW.stars}`, '★'.repeat(LAW.stars) + '☆'.repeat(5 - LAW.stars) + ` · ${why.toUpperCase()}`, 2600); sfx.alarm && sfx.alarm(); try { resEvent('wanted'); } catch (e) {} }
+  if (at) crowdPanic(at.x, at.z, 26);
+}
+// ---- the crowds ----
+const PEOPLE = { places: [], dummy: new THREE.Object3D() };
+const CROWD_NAMES = { human: ['Amara', 'Kofi', 'Leila', 'Marcus', 'Yuki', 'Hiro', 'Mei', 'Jamal', 'Sofia', 'Andre', 'Nia', 'Tariq', 'Rosa', 'Kenji', 'Aaliyah', 'Omar', 'Chen', 'Imani', 'Lucas', 'Zara'], chompy: ['Grubba', 'Teska', 'Morv', 'Kallik', 'Bruma', 'Zesk'], grek: ['Oska', 'Brann', 'Tuva', 'Holm', 'Rask', 'Ylva'], erisian: ['Selis', 'Ovara', 'Nyth'], taredesiban: ['Aeren', 'Toviel', 'Saryn'] };
+function crowdBuild(spec) { // a place full of people: spec { key, kind, n, mix: [[sp, w, cols]], skins, spot(), y(x,z), blocked(x,z), faction, homeless }
+  const phone = lawPhone(), V = phone ? 5 : 8, looks = [], g = new THREE.Group(); wScene.add(g);
+  const pickW = (arr, r) => { let s = 0; for (const a of arr) s += a[1]; let k = r * s; for (const a of arr) { if ((k -= a[1]) <= 0) return a; } return arr[0]; };
+  for (let v = 0; v < V; v++) { const m = pickW(spec.mix, Math.random()), sp = m[0], cs = m[2] || [[0x3a4a6a, 0xe8dcc6]], c = cs[v % cs.length]; looks.push({ sp, c: [new THREE.Color(c[0]).offsetHSL((Math.random() - .5) * .1, 0, (Math.random() - .5) * .2).getHex(), c[1]], skin: sp === 'human' ? spec.skins[Math.floor(Math.random() * spec.skins.length)] : 2, female: sp === 'human' && v % 2 === 1, h: sp === 'human' ? (v % 2 ? 1.68 : 1.8) : ((SPECIES[sp] && SPECIES[sp].height) || 1.96), rigs: [], loading: false }); }
+  const sil = new THREE.InstancedMesh(new THREE.CapsuleGeometry(.24, 1.12, 2, 6).translate(0, .8, 0), new THREE.MeshLambertMaterial({ color: 0xffffff }), spec.n); sil.frustumCulled = false; sil.castShadow = false; g.add(sil);
+  const agents = [];
+  for (let i = 0; i < spec.n; i++) { const s = spec.spot() || { x: 0, z: 0 }, lk = Math.floor(Math.random() * V), L = looks[lk], hl = spec.homeless !== false && i % 16 === 7;
+    agents.push({ i, x: s.x, z: s.z, tx: s.x, tz: s.z, lk, sp: 1 + Math.random() * .5, pause: Math.random() * 4, hp: 40, dead: false, deadT: 0, flee: 0, fx: 0, fz: 0, angry: 0, hitT: 0, homeless: hl, rig: null, px: null, gave: 0, ry: Math.random() * 6.28, name: resPick(CROWD_NAMES[L.sp] || CROWD_NAMES.human), far: 0 });
+    sil.setColorAt(i, new THREE.Color(L.c[0])); }
+  sil.instanceColor.needsUpdate = true;
+  const P = Object.assign({ g, sil, agents, looks, poolCap: Math.max(1, Math.ceil((phone ? 6 : 18) / V)), assignT: 0 }, spec); PEOPLE.places.push(P); return P;
+}
+function crowdDestroy(P) { for (const a of P.agents) if (a.px) { const i = fauna.list.indexOf(a.px); if (i >= 0) fauna.list.splice(i, 1); a.px = null; } if (P.g.parent) P.g.parent.remove(P.g); P.sil.geometry.dispose(); PEOPLE.places = PEOPLE.places.filter(o => o !== P); }
+function crowdClear(kind) { for (const P of [...PEOPLE.places]) if (!kind || P.kind === kind) crowdDestroy(P); }
+async function crowdRig(P, L) { // a full body for a look, from the pool (built the first time it's needed)
+  if (L.loading) return; L.loading = true;
+  try { if (L.sp !== 'human') await loadSpecies(L.sp); const src = await townModel(L.sp); if (!src || !PEOPLE.places.includes(P)) return;
+    const R = autoRig(dressTownsfolk(src, L), L.h * (.95 + Math.random() * .08)); armRig(R, 'none');
+    R.root.traverse(o => { o.userData.shared = true; if (o.isMesh) { o.castShadow = !lawPhone(); o.frustumCulled = true; } }); R.root.visible = false; P.g.add(R.root); L.rigs.push({ R, a: null });
+  } catch (e) { console.error(e); } finally { L.loading = false; }
+}
+function crowdPanic(x, z, r) { for (const P of PEOPLE.places) for (const a of P.agents) if (!a.dead && !a.homeless && Math.hypot(a.x - x, a.z - z) < r) { a.flee = 6 + Math.random() * 4; a.fx = x; a.fz = z; } }
+function crowdKill(P, a, by) { // a citizen dies: by 'player', a resident (B), or the law
+  a.dead = true; a.deadT = 0; a.angry = 0; if (a.px) { a.px.dead = 1; const i = fauna.list.indexOf(a.px); if (i >= 0) fauna.list.splice(i, 1); a.px = null; }
+  crowdPanic(a.x, a.z, 30); burst(a.x, P.y(a.x, a.z) + .8, a.z, 16, 3, .7, .1, .1, .6, .9, 1);
+  if (by === 'player') { alignAct(a.homeless ? -5 : -3, a.homeless ? 'Killed someone with nothing' : 'Killed an innocent'); lawCrime(22, 'murder', a); lawSpree(); }
+  else if (by && by.c) { resAlignAct(by.c, -5, 'killed a citizen'); resWanted(by, 20); }
+}
+function crowdNearHomeless(p) { for (const P of PEOPLE.places) for (const a of P.agents) if (a.homeless && !a.dead && Math.hypot(a.x - p.x, a.z - p.z) < 2.2) return { P, a }; return null; }
+function peopleTick(dt) {
+  const p = player.position, phone = lawPhone(), silR = phone ? 90 : 160, rigR = phone ? 34 : 55;
+  for (const P of [...PEOPLE.places]) {
+    if (!P.alive()) { crowdDestroy(P); continue; }
+    const vis = ex.mode === 'world' && !DGN.on && !PRISON.on; P.g.visible = vis; if (!vis) continue;
+    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), Yax = new THREE.Vector3(0, 1, 0), Xax = new THREE.Vector3(1, 0, 0), S = new THREE.Vector3(), Vp = new THREE.Vector3(), Z0 = new THREE.Vector3(0, 0, 0);
+    // who gets a full body: the nearest, a few times a second
+    if ((P.assignT -= dt) <= 0) { P.assignT = .25;
+      const near = P.agents.filter(a => !(a.dead && a.deadT > 12) && Math.hypot(a.x - p.x, a.z - p.z) < rigR).sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z));
+      for (const a of P.agents) if (a.rig && !near.includes(a)) { a.rig.a = null; a.rig.R.root.visible = false; a.rig = null; }
+      for (const a of near) { if (a.rig) continue; const L = P.looks[a.lk]; let s = L.rigs.find(r => !r.a); if (!s) { if (L.rigs.length < P.poolCap && !L.loading) crowdRig(P, L); continue; } s.a = a; a.rig = s; s.R.root.visible = true; } }
+    for (const a of P.agents) {
+      const d = Math.hypot(a.x - p.x, a.z - p.z);
+      if (d > 220 && (a.far = (a.far || 0) - dt) > 0) { P.sil.setMatrixAt(a.i, M.compose(Z0, Q.identity(), S.set(0, 0, 0))); continue; } // far away: barely update
+      const k = d > 220 ? .5 : dt; if (d > 220) a.far = .5;
+      if (a.dead) { a.deadT += k; if (a.deadT > 20 && d > 40) { const s = P.spot(); if (s && Math.hypot(s.x - p.x, s.z - p.z) > 40) { a.x = a.tx = s.x; a.z = a.tz = s.z; a.dead = false; a.hp = 40; a.flee = 0; } } }
+      else if (a.homeless) { /* sits where they are */ }
+      else if (a.angry > 0) { a.angry -= k; const dd = Math.max(.1, d); if (d > 1.5) { const nx = a.x + (p.x - a.x) / dd * 4 * k, nz = a.z + (p.z - a.z) / dd * 4 * k; if (!P.blocked(nx, nz)) { a.x = nx; a.z = nz; } } else if ((a.hitT -= k) <= 0) { a.hitT = 1.2; hurtPlayer(Math.round(4 + levelOf(wanderer) * .12), { x: a.x, z: a.z, lv: Math.max(1, levelOf(wanderer) - 5) }); } a.ry = Math.atan2(p.x - a.x, p.z - a.z); }
+      else { const sp = a.flee > 0 ? 4.6 : a.sp; let gx, gz; if (a.flee > 0) { a.flee -= k; const dd = Math.max(.1, Math.hypot(a.x - a.fx, a.z - a.fz)); gx = a.x + (a.x - a.fx) / dd * 5; gz = a.z + (a.z - a.fz) / dd * 5; } else { gx = a.tx; gz = a.tz; }
+        const dx = gx - a.x, dz = gz - a.z, dd = Math.hypot(dx, dz);
+        if (a.flee <= 0 && dd < .4) { if ((a.pause -= k) <= 0) { const s = P.spot(); if (s) { a.tx = s.x; a.tz = s.z; } a.pause = 1 + Math.random() * 5; } a.moving = false; }
+        else { const nx = a.x + dx / dd * sp * k, nz = a.z + dz / dd * sp * k; if (P.blocked(nx, nz)) { const s = P.spot(); if (s) { a.tx = s.x; a.tz = s.z; } a.flee = 0; a.moving = false; } else { a.x = nx; a.z = nz; a.moving = true; a.ry = Math.atan2(dx, dz); } } }
+      // a fauna stand-in when you're close, so blows (and blades) can find them
+      if (!a.dead && d < 32) { if (!a.px) { a.px = { type: 'citizen', agent: a, P, D: { name: a.homeless ? `${a.name} · homeless` : a.name, hp: 40, r: .55, xp: 0, neutral: true, beast: 'citizen', loot: () => [Math.random() < .3 && ['scrap', 1]] }, x: a.x, z: a.z, y: 0, hp: a.hp, state: 'idle', t: 0, cd: 9, home: [a.x, a.z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, rot: 0, ext: true, mesh: PEOPLE.dummy }; } if (!fauna.list.includes(a.px)) fauna.list.push(a.px); a.px.x = a.x; a.px.z = a.z; a.px.y = P.y(a.x, a.z); a.px.state = a.angry > 0 ? 'hunt' : 'idle'; }
+      else if (a.px) { const i = fauna.list.indexOf(a.px); if (i >= 0) fauna.list.splice(i, 1); a.px = null; }
+      // draw: the full body if they have one, otherwise the silhouette
+      const y = P.y(a.x, a.z);
+      if (a.rig) { const R = a.rig.R; R.root.position.set(a.x, y + (a.homeless ? -.45 : 0), a.z); R.root.rotation.set(a.dead ? -Math.PI / 2 : 0, a.ry, 0); if (a.dead) R.root.position.y = y + .15; R.mode = a.moving || a.flee > 0 || a.angry > 0 ? 'walk' : 'idle'; if (d < (phone ? 24 : 40) || Math.random() < .5) animRig(R, dt); if (a.angry > 0 && d < 2) { R.ra.rotation.x = -1.4 * Math.abs(Math.sin(time * 6)); } if (a.homeless) { R.rl.rotation.x = R.ll.rotation.x = -1.4; R.ra.rotation.x = -.6; } P.sil.setMatrixAt(a.i, M.compose(Z0, Q.identity(), S.set(0, 0, 0))); }
+      else if (d < silR) { const L = P.looks[a.lk], h = L.h / 1.9; if (a.dead) Q.setFromAxisAngle(Xax, -Math.PI / 2).premultiply(new THREE.Quaternion().setFromAxisAngle(Yax, a.ry)); else Q.setFromAxisAngle(Yax, a.ry); P.sil.setMatrixAt(a.i, M.compose(Vp.set(a.x, y + (a.dead ? .2 : a.homeless ? -.4 : 0), a.z), Q, S.set(1, a.homeless ? h * .6 : h, 1))); }
+      else P.sil.setMatrixAt(a.i, M.compose(Z0, Q.identity(), S.set(0, 0, 0)));
+    }
+    P.sil.instanceMatrix.needsUpdate = true;
+  }
+}
+function lawCitizenHit(c, dmg, fromJames) { // a blow on a citizen (damageFauna hands it over)
+  const a = c.agent, P = c.P; if (!a || a.dead) return; c.hp -= dmg; a.hp = c.hp; burst(a.x, P.y(a.x, a.z) + .9, a.z, 8, 3, .8, .2, .2, .5, .8, 1);
+  if (c.hp <= 0) { crowdKill(P, a, fromJames ? null : 'player'); return; }
+  if (!fromJames) { lawCrime(6, 'assault', a); alignAct(-1, 'Attacked a citizen'); if (Math.random() < .35) a.angry = 10; else { a.flee = 8; a.fx = player.position.x; a.fz = player.position.z; } }
+}
+function lawSpree() { // kills close together: a killing spree
+  const t = time; LAW.kills = LAW.kills.filter(k => t - k < 12); LAW.kills.push(t); const n = LAW.kills.length;
+  const tier = [[20, 'GODLIKE'], [12, 'UNSTOPPABLE'], [8, 'MASSACRE'], [5, 'RAMPAGE'], [3, 'KILLING SPREE']].find(([m]) => n === m);
+  if (tier) { notice(`${tier[1]} · ×${n}`, 'YOU MONSTER', 2400); ex.shake = Math.max(ex.shake || 0, .3); alignAct(-2, 'A killing spree'); lawCrime(10, 'a killing spree'); try { resEvent('spree'); } catch (e) {} }
+}
+// ---- the law ----
+function lawForce() { // who polices here
+  const A = curArea(); if (A === 'africa' || A === 'antarctica') return { sp: 'hfos', name: 'Federation trooper', c: null };
+  const P = isPl() && world.planet.P; if (!P) return { sp: 'hfos', name: 'Federation trooper' };
+  const f = String(P.baseFac || P.faction || '');
+  if (P.id === 'earth' || /Federation/.test(f)) return { sp: 'hfos', name: 'Federation trooper' };
+  if (/Terra Imperia/.test(f)) return { sp: 'human', name: 'Terra Imperia enforcer', c: [0x15171c, 0x6fe2ff] };
+  if (/Chompy/.test(f)) return { sp: 'chompy', name: 'Imperial guard', c: [0x5a2a8a, 0xffc35a] };
+  if (/Erisian/.test(f)) return { sp: 'erisian', name: 'House warden', c: [0x7a6a98, 0xeda8d4] };
+  if (/Grek|Archamus/.test(f)) return { sp: 'grek', name: 'Temple warden', c: [0x3a5a2e, 0xd8b060] };
+  if (/Timpur|Republic/.test(f)) return { sp: 'taredesiban', name: 'Republic guard', c: [0x2a2a6a, 0x58d8c0] };
+  if (/Catharsis/.test(f)) return { sp: 'human', name: 'Catharsis zealot', c: [0x120c1c, 0x9a5cff] };
+  return { sp: 'human', name: 'Militia', c: [0x3a3a48, 0xff8a4a] };
+}
+async function lawSpawn(tgtRes) {
+  const F = lawForce(), p = tgtRes ? { x: tgtRes.x, z: tgtRes.z } : player.position, a0 = (tgtRes ? Math.random() * 6.28 : ex.yaw + Math.PI) + (Math.random() - .5) * 1.6; let at = null;
+  for (let i = 0; i < 10 && !at; i++) { const a = a0 + i * .6, r = 34 + Math.random() * 18, x = p.x + Math.sin(a) * r, z = p.z + Math.cos(a) * r; if (!worldBlocked(x, z, true)) at = { x, z }; }
+  if (!at) return; if (F.sp !== 'human' && F.sp !== 'hfos') await loadSpecies(F.sp).catch(() => null);
+  const R = await brawlRig({ sp: F.sp, c: F.c || [0x2b4a6b, 0xc9a24a], skin: Math.floor(Math.random() * 6) }).catch(() => null); if (!R || !lawOn() && !tgtRes) { if (R) R.root.visible = false; return; }
+  const st = Math.max(1, LAW.stars), armed = st >= 2 || tgtRes; armRig(R, armed ? 'rifle' : 'sword'); R.weapon = armed ? 'rifle' : 'sword';
+  R.root.position.set(at.x, wHeight(at.x, at.z), at.z); wScene.add(R.root);
+  const lv = Math.max(8, levelOf(wanderer) + st * 2), hp = Math.round((80 + lv * 6) * (1 + st * .25));
+  const D = { name: `${F.name} · lv ${lv}`, hp, r: .7, xp: Math.round(40 + lv * 3), dmg: 0, beast: 'pred', loot: () => [['scrap', 1], Math.random() < .35 && ['medkit', 1]] };
+  const c = { type: 'lawguard', D, lv, mesh: R.root, R, x: at.x, z: at.z, y: wHeight(at.x, at.z), rot: 0, hp, state: 'hunt', t: 0, cd: 1.5 + Math.random(), home: [at.x, at.z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, ext: true, bar: hpBar(), armed, tgtRes: tgtRes || null, hits: 0 };
+  c.bar.position.y = 2.25; c.bar.visible = false; R.root.add(c.bar); fauna.list.push(c); LAW.guards.push(c);
+  if (!tgtRes && LAW.guards.filter(g => !g.dead).length === 1) lootMsg(`${F.name}s are coming for you`, '#ff8f86');
+}
+function lawGuardTick(c, dt) {
+  const R = c.R, q = R.root.position, p = player.position;
+  if (c.dead) { c.t += dt; R.root.rotation.x = -Math.min(Math.PI / 2, c.t * 3); if (c.t > 3) { if (R.root.parent) R.root.parent.remove(R.root); const i = fauna.list.indexOf(c); if (i >= 0) fauna.list.splice(i, 1); LAW.guards = LAW.guards.filter(g => g !== c); } return; }
+  if (!fauna.list.includes(c)) fauna.list.push(c); c.x = q.x; c.z = q.z; c.y = q.y;
+  if (c.barT > 0) { c.barT -= dt; c.bar.visible = true; c.bar.quaternion.copy(camera.quaternion).premultiply(tmpQ.copy(R.root.quaternion).invert()); const f = c.bar.userData.fg, k = Math.max(0, c.hp / c.D.hp); f.scale.x = Math.max(.001, k); f.position.x = -(1 - k) * .5; } else c.bar.visible = false;
+  const B = c.tgtRes && RES.bots.includes(c.tgtRes) && !c.tgtRes.leaving ? c.tgtRes : null, chasing = B || (LAW.stars > 0 && lawOn());
+  const tx = B ? B.x : p.x, tz = B ? B.z : p.z, dx = tx - q.x, dz = tz - q.z, d = Math.hypot(dx, dz);
+  if (!chasing || state !== 'explore') { R.mode = d > 70 ? 'idle' : 'walk'; if (d < 80) { const nx = q.x - dx / Math.max(d, .1) * 2 * dt, nz = q.z - dz / Math.max(d, .1) * 2 * dt; if (!worldBlocked(nx, nz)) { q.x = nx; q.z = nz; q.y = wHeight(nx, nz); } } else { c.dead = 1; c.t = 9; } animRig(R, dt); return; } // stood down: they head off
+  if (!B && d < 42) LAW.seenT = time; // they've got eyes on you
+  R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 6));
+  const reach = c.armed ? 11 : 1.8, sp = (2.6 + LAW.stars * .35) * dt;
+  if (d > reach) { R.mode = 'walk'; const nx = q.x + dx / d * sp, nz = q.z + dz / d * sp; if (!worldBlocked(nx, nz)) { q.x = nx; q.z = nz; q.y = wHeight(nx, nz); } else { const s = Math.sign(Math.sin(time + c.home[0])) || 1, ax = q.x - dz / d * sp * s, az = q.z + dx / d * sp * s; if (!worldBlocked(ax, az)) { q.x = ax; q.z = az; q.y = wHeight(ax, az); } } }
+  else { R.mode = 'attack'; if ((c.cd -= dt) <= 0) { c.cd = Math.max(.6, 1.5 - LAW.stars * .15) + Math.random() * .5;
+    if (B) { if (c.armed) { compTracer(R, { x: B.x, y: B.y + .9, z: B.z }); sfx.shot(); } if (++c.hits >= 4) resBusted(B); }
+    else { if (c.armed) { compTracer(R, { x: p.x, y: p.y + .8, z: p.z }); sfx.shot(); } else sfx.swing(); if (!c.armed || Math.random() < .6 + LAW.stars * .05) hurtPlayer(Math.round((5 + c.lv * .3) * (1 + LAW.stars * .15)), { x: q.x, z: q.z, lv: c.lv }); } } }
+  animRig(R, dt);
+}
+function lawTick(dt) {
+  try { peopleTick(dt); } catch (e) { console.error(e); }
+  for (const c of [...LAW.guards]) lawGuardTick(c, dt);
+  prisonTick(dt); lawHud();
+  if (!lawOn()) return;
+  if (LAW.stars > 0) {
+    const want = (lawPhone() ? [0, 2, 3, 4, 6, 7] : [0, 2, 4, 6, 9, 12])[LAW.stars], alive = LAW.guards.filter(g => !g.dead && !g.tgtRes).length;
+    if (alive < want && (LAW.spawnT -= dt) <= 0) { LAW.spawnT = Math.max(1.5, 4 - LAW.stars * .4); lawSpawn(); }
+    // out of sight long enough and you lose a star
+    const lose = 7 + LAW.stars * 5, unseen = time - LAW.seenT; LAW.flash = unseen > 2.5;
+    if (unseen > lose) { LAW.stars--; LAW.heat = LAW.stars ? LAW_STARS[LAW.stars - 1] : 0; LAW.seenT = time; lootMsg(LAW.stars ? `Wanted level down · ${'★'.repeat(LAW.stars)}` : 'You lost them · no longer wanted', '#9fe6b0'); }
+  }
+}
+function lawHud() {
+  let el = $('#wantedHud'); if (!el) { el = document.createElement('div'); el.id = 'wantedHud'; el.className = 'wanted'; document.body.appendChild(el); }
+  const show = LAW.stars > 0 && ex.mode === 'world' && (state === 'explore' || state === 'xpaused') && !PRISON.on;
+  el.classList.toggle('on', show); if (!show) return;
+  el.classList.toggle('flash', LAW.flash);
+  const h = '<span>' + [1, 2, 3, 4, 5].map(i => `<i class="${i <= LAW.stars ? 'on' : ''}">★</i>`).join('') + `</span><small>BOUNTY ${lawBounty().toLocaleString()}</small>`;
+  if (el.dataset.h !== h) { el.innerHTML = h; el.dataset.h = h; }
+}
+function lawGuardDown(c, fromJames) { if (c.tgtRes) return; lawCrime(fromJames ? 22 : 45, 'killing the law'); alignAct(-2, 'Killed the law'); }
+function lawBusted() { // you went down while wanted: prison, not a blackout
+  if (LAW.stars <= 0 || !lawOn() || !LAW.guards.some(g => !g.dead && !g.tgtRes)) return false;
+  prisonStart(); return true;
+}
+function lawClear() { LAW.heat = 0; LAW.stars = 0; for (const g of LAW.guards) if (!g.tgtRes) g.state = 'idle'; }
+// ---- rage bait: taunt the locals (Y) ----
+function rageBait() {
+  if (!lawOn() || ex.dlg || state !== 'explore') return; const p = player.position, F = isPl() ? dipFacOf(world.planet.P.baseFac || world.planet.P.faction || '') : null;
+  let near = []; for (const P of PEOPLE.places) for (const a of P.agents) if (!a.dead && !a.homeless && Math.hypot(a.x - p.x, a.z - p.z) < 14) near.push(a);
+  const guards = LAW.guards.filter(g => !g.dead && Math.hypot(g.x - p.x, g.z - p.z) < 20);
+  if (!near.length && !guards.length) { lootMsg('Nobody around to taunt', '#cfd6e6'); return; }
+  const war = F && typeof dipWar === 'function' && dipWar(F.id), who = F ? dipFacName(F) : 'the locals';
+  sfx.thud && sfx.thud(); lootMsg(resPick([`You taunt ${who}`, `You mock ${who} to their faces`, `You spit at ${who}’s feet`]), '#ff8f86');
+  near.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z)).slice(0, war ? 4 : 2).forEach(a => { a.angry = 12; });
+  lawCrime(war ? 35 : 10, war ? `rage-baiting ${who} (at war)` : 'rage bait'); alignAct(-1, 'Rage-baited the locals');
+  for (const B of RES.bots) if (B.ready && Math.random() < .35 && Math.hypot(B.x - p.x, B.z - p.z) < 25) { setTimeout(() => resSay(B, resPick(B.al === 'villain' ? ['⁣LMAO get them', '⁣yes!! make them cry', '⁣i love this energy'] : B.al === 'hero' ? ['⁣bro why', '⁣stop picking fights', '⁣this is gonna end badly'] : ['⁣oh here we go', '⁣lol', '⁣popcorn time'])), 700); break; }
+}
+// ---- giving to the homeless ----
+function donateMenu(ref) {
+  const { a } = ref, nm = a.name.toUpperCase();
+  openDialog(nm, [resPick(['Spare anything? Anything at all helps.', 'Haven’t eaten since yesterday. Anything, please.', 'Got a few units for someone down on their luck?', 'Lost everything in the war. Anything helps.'])], false, () => openChoice(nm, [5, 20, 50, 100].map(n => ({ text: `Give ${n} units`, onPick: () => {
+    if (units() < n) { lootMsg('Not enough units', '#ff8f86'); return; } addUnits(-n); const first = a.gave < 3; a.gave++;
+    if (first) alignAct(n >= 100 ? 6 : n >= 50 ? 4 : n >= 20 ? 2 : 1, 'Gave to someone in need'); sfx.chime();
+    openDialog(nm, [n >= 50 ? resPick(['…You mean it? Thank you. Thank you so much.', 'I don’t know what to say. Archamus bless you.', 'That’s a week of meals. Bless you, truly.']) : resPick(['Thank you, friend.', 'Bless you.', 'That’s kind of you. Really.'])]);
+    for (const B of RES.bots) if (B.ready && B.al === 'hero' && Math.random() < .4 && Math.hypot(B.x - player.position.x, B.z - player.position.z) < 20) { setTimeout(() => resSay(B, resPick(['⁣aww, wholesome', 'That was kind of you.', '⁣hero shit, respect'])), 900); break; }
+  } })).concat([{ text: 'Not today', onPick: () => {} }])));
+}
+// ---- residents: alignment, sprees, donations, taunts, bounties ----
+function resAlignAct(c, d, why) {
+  if (!c) return; const was = resAl(c); c.align = { p: clamp(((c.align && c.align.p) | 0) + d, -100, 100) }; const now = resAl(c);
+  if (now !== was) { RES.log.push({ who: '⚖', al: now, text: `${c.name} is now ${now === 'hero' ? 'an Enlightened Hero' : now === 'villain' ? 'an Awakened Villain' : 'Neutral'} (${why})`, t: time }); if (RES.log.length > 30) RES.log.shift(); resChatRender(); for (const B of RES.bots) if (B.c === c) B.al = now; }
+}
+function resWanted(B, heat) { const c = B.c, w = c.wanted || (c.wanted = { heat: 0, stars: 0 }); w.heat += heat; w.stars = lawStarsFor(w.heat); w.t = resNow(); if (w.stars >= 1 && lawOn() && !LAW.guards.some(g => g.tgtRes === B && !g.dead) && Math.random() < .6) lawSpawn(B); }
+const resBounty = c => c.wanted && c.wanted.stars > 0 && resNow() - (c.wanted.t || 0) < 3 * 3600e3 ? Math.round(c.wanted.heat * 8 + c.wanted.stars * c.wanted.stars * 50) : 0;
+function resBusted(B) { // the law took them down
+  if (!RES.bots.includes(B) || B.leaving) return; resSay(B, resPick(['⁣FUCK. busted', '⁣ok ok i give up', 'You haven’t seen the last of me!', '⁣gg cops. respawning']));
+  if (B.c.wanted) B.c.wanted = { heat: 0, stars: 0 }; B.leaving = true; B.task = { type: 'leave', t: 0, dur: 3 };
+  for (const g of LAW.guards) if (g.tgtRes === B) g.tgtRes = null, g.state = 'idle';
+}
+function resNightOut(B) { // the crowd gives them something to do: a villain's spree, a hero's kindness, a taunt (true when they picked something)
+  if (!lawOn() || !PEOPLE.places.length || B.partner || resEscorting(B)) return false;
+  const p = { x: B.x, z: B.z }, agents = []; for (const P of PEOPLE.places) for (const a of P.agents) if (!a.dead && Math.hypot(a.x - p.x, a.z - p.z) < 30) agents.push([P, a]);
+  if (!agents.length) return false;
+  const r = Math.random();
+  if (B.al === 'villain' && r < .06) { B.task = { type: 'spree', t: 0, n: 2 + Math.floor(Math.random() * 4), kills: 0 }; resSay(B, resPick(['⁣time to have some fun', '⁣who wants to die first', '⁣killing spree incoming lmao', 'Let’s see how fast they run.'])); return true; }
+  if (B.al === 'hero' && r < .07) { const h = agents.find(([, a]) => a.homeless); if (h) { B.task = { type: 'donate', t: 0, P: h[0], a: h[1] }; return true; } }
+  if (B.al !== 'hero' && r < .1) { const F = isPl() ? dipFacOf(world.planet.P.baseFac || world.planet.P.faction || '') : null, who = F ? dipFacName(F) : 'you lot'; resSay(B, resPick([`⁣${who.toLowerCase()} are a bunch of cowards`, `⁣${who.toLowerCase()} smell like wet dog lmao`, `Hey, ${who}! Your leader’s a fraud!`, `⁣come at me ${who.toLowerCase()}, i dare you`])); resAlignAct(B.c, -1, 'taunted the locals'); resWanted(B, 12); for (const [, a] of agents.slice(0, 2)) a.angry = 0, a.flee = 6, a.fx = B.x, a.fz = B.z; return true; }
+  return false;
+}
+function resLawStep(B, T, dt) {
+  if (T.type === 'spree') { let best = null, bd = 40; for (const P of PEOPLE.places) for (const a of P.agents) { if (a.dead) continue; const d = Math.hypot(a.x - B.x, a.z - B.z); if (d < bd) { bd = d; best = [P, a]; } }
+    if (!best || T.kills >= T.n || T.t > 40) { if (T.kills >= 3) resSay(B, resPick(['⁣KILLING SPREE BABY', '⁣who’s next lmao', '⁣that was too easy'])); B.task = null; return true; }
+    const [P, a] = best; if (bd > 1.6) resMoveTo(B, { x: a.x, z: a.z }, dt, true); else { resFace(B, a.x, a.z, dt); B.em = 'spar'; B.emT = .1; if ((T.hitT = (T.hitT || 0) - dt) <= 0) { T.hitT = .8; a.hp -= 16 + B.lv * .2; if (a.hp <= 0) { crowdKill(P, a, B); T.kills++; if (Math.random() < .4) resSay(B, resPick(['⁣one down', '⁣next', '⁣lol bye', '⁣rip'])); } else { a.flee = 4; a.fx = B.x; a.fz = B.z; } } }
+    return true; }
+  if (T.type === 'donate') { const a = T.a; if (!a || a.dead) { B.task = null; return true; } if (Math.hypot(a.x - B.x, a.z - B.z) > 1.6) { if (resMoveTo(B, { x: a.x + .8, z: a.z + .8 }, dt) && T.t > 15) B.task = null; } else { resFace(B, a.x, a.z, dt); B.em = 'wave'; B.emT = 1.5; resSay(B, resPick(['Here, get yourself something to eat.', '⁣here, take these, get some food', 'Stay warm, friend.', '⁣donated 50u, be nice to each other'])); resAlignAct(B.c, 4, 'gave to someone in need'); B.task = null; } return true; }
+  return false;
+}
+function resBountyOpts(B, back) { // a wanted resident: bring them in
+  const n = resBounty(B.c); if (!n) return [];
+  return [{ text: `Bring them in · bounty ${n} units`, onPick: () => {
+    RES.talking = null; closeDialog(); B.task = { type: 'face', t: 0, dur: 5 }; B.em = 'spar'; B.emT = 4; sfx.thud && sfx.thud();
+    resSay(B, B.al === 'villain' ? '⁣you think you can take me? come on then' : 'Fine. Let’s do this the hard way.');
+    setTimeout(() => { if (!RES.bots.includes(B)) return; const win = Math.random() < clamp(.5 + (levelOf(wanderer) - B.lv) * .03, .15, .9);
+      if (win) { addUnits(n); alignAct(3, 'Brought a wanted criminal to justice'); notice('Bounty claimed', `+${n} UNITS · ${String(B.c.name).toUpperCase()}`, 3000); sfx.chime(); resBusted(B); }
+      else { resSay(B, '⁣lol nope, later loser'); B.leaving = true; B.task = { type: 'leave', t: 0, dur: 2 }; lootMsg(`${B.c.name} got away`, '#ff8f86'); } }, 3500);
+  } }];
+}
+// ---- prison ----
+const PRISON = { on: false, t: 0, stars: 0, G: null, cols: [], open: false, pick: null, room: null };
+function prisonSite() { // a flat patch near where they caught you
+  const p = player.position; let best = null;
+  for (let r = 50; r <= 170 && !best; r += 30) for (let k = 0; k < 12; k++) { const a = k / 12 * 6.28, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r, hs = [];
+    for (const [dx, dz] of [[0, 0], [-9, -6], [9, -6], [-9, 6], [9, 6]]) hs.push(wHeight(x + dx, z + dz));
+    const lo = Math.min(...hs), hi = Math.max(...hs), sea = isPl() ? plSeaY() : null; if (hi - lo > .8 || (sea != null && lo < sea + .5) || worldBlocked(x, z, true)) continue; best = { x, z, y: hi + .05 }; break; }
+  return best || { x: p.x + 60, z: p.z, y: wHeight(p.x + 60, p.z) + .05 };
+}
+function prisonStart() {
+  PRISON.stars = LAW.stars; PRISON.t = Math.round(25 * Math.pow(LAW.stars, 1.6)); const fine = Math.round(units() * .1); if (fine) addUnits(-fine);
+  LAW.prevStars = LAW.stars; lawClear(); for (const g of [...LAW.guards]) { if (g.R.root.parent) g.R.root.parent.remove(g.R.root); const i = fauna.list.indexOf(g); if (i >= 0) fauna.list.splice(i, 1); } LAW.guards = [];
+  notice('BUSTED', `SENTENCE ${Math.floor(PRISON.t / 60)}:${String(PRISON.t % 60).padStart(2, '0')}${fine ? ` · FINED ${fine} UNITS` : ''}`, 3400); sfx.alarm && sfx.alarm();
+  const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1;
+  setTimeout(() => { try { prisonBuild(prisonSite()); } catch (e) { console.error(e); } ex.hp = Math.round(maxHP() * .6); invState().hp = ex.hp; fd.style.transition = 'opacity .9s'; fd.style.opacity = 0; }, 600);
+}
+function prisonBuild(S) {
+  const G = new THREE.Group(); G.position.set(S.x, S.y, S.z); wScene.add(G); PRISON.G = G; PRISON.on = true; PRISON.open = false; PRISON.site = S;
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .8, metalness: .2 }, o));
+  const box = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; G.add(o); return o; };
+  const wall = M(0x4a4f57), floor = M(0x2a2d33, { roughness: .9 }), bar = M(0x8a8f96, { metalness: .8, roughness: .3 }), light = new THREE.MeshBasicMaterial({ color: 0xfff0c8 });
+  // the block: a corridor along z, three cells on the west side (yours in the middle), the way out at the north end
+  box(18, .3, 12, floor, 0, -.15, 0); box(.3, 3.4, 12, wall, -9, 1.7, 0); box(.3, 3.4, 12, wall, 9, 1.7, 0); box(18, 3.4, .3, wall, 0, 1.7, 6); box(7, 3.4, .3, wall, -5.5, 1.7, -6); box(7, 3.4, .3, wall, 5.5, 1.7, -6);
+  for (const z of [-2, 2]) box(8, 3.4, .25, wall, -5, 1.7, z); // cell walls
+  const doorBars = []; for (const [z0, mine] of [[-4, false], [0, true], [4, false]]) for (let k = -1.5; k <= 1.5; k += .5) { const b = box(.08, 3.2, .08, bar, -1, 1.6, z0 + k); if (mine) doorBars.push(b); }
+  box(1.8, .4, .8, M(0x5a4a3a), -7.8, .2, 1.1); box(1.8, .1, .8, M(0xd8d0c0), -7.8, .45, 1.1); // the bunk
+  for (const z of [-4, 0, 4]) { const l = box(.6, .08, .6, light, -5, 3.3, z); void l; } for (const z of [-3, 3]) box(.8, .08, .8, light, 4, 3.3, z);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(4, .7), new THREE.MeshBasicMaterial({ map: signTex('DETENTION BLOCK', '#ff8a6e'), transparent: true, depthWrite: false })); sign.position.set(0, 2.9, -6.2); sign.rotation.y = Math.PI; G.add(sign);
+  PRISON.doorBars = doorBars;
+  const X = S.x, Z = S.z; PRISON.room = { x0: X - 8.8, x1: X + 8.8, z0: Z - 5.8, z1: Z + 5.8, top: S.y + 3.1 };
+  PRISON.cols = [[X - 9.2, X - 8.8, Z - 6, Z + 6], [X + 8.8, X + 9.2, Z - 6, Z + 6], [X - 9, X + 9, Z + 5.8, Z + 6.2], [X - 9, X - 2, Z - 6.2, Z - 5.8], [X + 2, X + 9, Z - 6.2, Z - 5.8],
+    [X - 9, X - 1, Z - 2.15, Z - 1.85], [X - 9, X - 1, Z + 1.85, Z + 2.15], [X - 1.1, X - .9, Z - 6, Z - 2], [X - 1.1, X - .9, Z + 2, Z + 6], [X - 1.1, X - .9, Z - 2, Z + 2]];
+  PRISON.bunk = { x: X - 7.8, z: Z + 1.1 }; PRISON.door = { x: X - .7, z: Z }; PRISON.exit = { x: X, z: Z - 6.6 }; PRISON.y = S.y;
+  const p = player.position; p.set(X - 5, S.y, Z); player.rotation.y = Math.PI / 2; ex.yaw = -Math.PI / 2; ex.snap = true; vel.set(0, 0, 0);
+  PRISON.wardens = []; for (const z of [-3, 3]) brawlRig({ sp: 'hfos', c: [0x2b4a6b, 0xc9a24a], skin: 2 }).then(R => { if (!R || !PRISON.on) return; armRig(R, 'rifle'); R.root.position.set(X + 5, S.y, Z + z); R.root.rotation.y = -Math.PI / 2; G.add(R.root); PRISON.wardens.push({ R, hp: 160, x: X + 5, z: Z + z, cd: 1 }); }).catch(() => null);
+}
+const prisonBlocked = (x, z) => { if (!PRISON.on) return false; for (const c of PRISON.cols) { if (c === PRISON.cols[9] && PRISON.open) continue; if (x > c[0] - .25 && x < c[1] + .25 && z > c[2] - .25 && z < c[3] + .25) return true; } return false; };
+function prisonNear(p) {
+  if (!PRISON.on) return null; const d = o => o && Math.hypot(p.x - o.x, p.z - o.z);
+  if (!PRISON.open && d(PRISON.bunk) < 2) return { id: 'prisonSleep', label: `Sleep · ${prisonClock()} left` };
+  if (!PRISON.open && d(PRISON.door) < 1.8) return { id: 'prisonPick', label: 'Pick the lock · break out' };
+  if (PRISON.open && d(PRISON.exit) < 2.2) return { id: 'prisonExit', label: 'The way out' };
+  return null;
+}
+const prisonClock = () => `${Math.floor(Math.max(0, PRISON.t) / 60)}:${String(Math.max(0, Math.ceil(PRISON.t)) % 60).padStart(2, '0')}`;
+function prisonUse(id) {
+  if (id === 'prisonSleep') { const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(() => { PRISON.t -= 30; fd.style.opacity = 0; if (PRISON.t <= 0) prisonRelease(); else lootMsg(`You sleep · ${prisonClock()} left`, '#cfd6e6'); }, 700); return; }
+  if (id === 'prisonPick') { PRISON.pick = { k: 0, dir: 1, hits: 0, zone: .5 + Math.random() * .3, w: Math.max(.07, .2 - PRISON.stars * .025) }; pickEl().classList.add('on'); return; }
+  if (id === 'prisonExit') prisonEscape();
+}
+function pickEl() { let el = $('#lockPick'); if (!el) { el = document.createElement('div'); el.id = 'lockPick'; el.className = 'lock-pick'; el.innerHTML = '<b>PICK THE LOCK</b><small>Press E (or tap) when the pin is in the gold · three times</small><div class="lp-bar"><i class="lp-z"></i><i class="lp-n"></i></div><div class="lp-h"></div><button>PICK</button>'; document.body.appendChild(el); el.addEventListener('click', e => { e.stopPropagation(); pickTry(); }); } return el; }
+function pickTry() {
+  const L = PRISON.pick; if (!L) return; const hit = Math.abs(L.k - L.zone) < L.w / 2;
+  if (hit) { L.hits++; sfx.blip && sfx.blip(); L.zone = .15 + Math.random() * .7; if (L.hits >= 3) { PRISON.pick = null; pickEl().classList.remove('on'); PRISON.open = true; for (const b of PRISON.doorBars) b.visible = false; sfx.chime(); notice('The cell door is open', 'GET TO THE WAY OUT', 2600); for (const w of PRISON.wardens) w.hostile = true; } }
+  else { sfx.thud && sfx.thud(); PRISON.t += 10; L.hits = Math.max(0, L.hits - 1); if (Math.random() < .3) { lootMsg('A warden heard that · +10 s', '#ff8f86'); } }
+}
+function prisonTick(dt) {
+  if (!PRISON.on) { const h = $('#prisonHud'); if (h) h.classList.remove('on'); return; }
+  let h = $('#prisonHud'); if (!h) { h = document.createElement('div'); h.id = 'prisonHud'; h.className = 'prison-hud'; document.body.appendChild(h); }
+  h.classList.add('on'); h.innerHTML = PRISON.open ? '<b>BREAKOUT</b><small>Get to the way out at the end of the corridor</small>' : `<b>SENTENCE ${prisonClock()}</b><small>Sleep on the bunk (E) to pass time · or pick the cell lock (E at the door) to break out</small>`;
+  if (state === 'explore' && !PRISON.open) { PRISON.t -= dt; if (PRISON.t <= 0) { prisonRelease(); return; } }
+  if (PRISON.pick) { const L = PRISON.pick; L.k += L.dir * dt * (.9 + PRISON.stars * .15); if (L.k > 1 || L.k < 0) { L.dir *= -1; L.k = clamp(L.k, 0, 1); } const el = pickEl(); el.querySelector('.lp-n').style.left = (L.k * 100) + '%'; const z = el.querySelector('.lp-z'); z.style.left = ((L.zone - L.w / 2) * 100) + '%'; z.style.width = (L.w * 100) + '%'; el.querySelector('.lp-h').textContent = '● '.repeat(L.hits) + '○ '.repeat(3 - L.hits); }
+  const p = player.position, R0 = PRISON.room; if (p.x < R0.x0 - .5 || p.x > R0.x1 + .5 || p.z < R0.z0 - 1.5 || p.z > R0.z1 + .5) { if (PRISON.open) prisonEscape(); else { p.set(PRISON.bunk.x + 2, PRISON.y, PRISON.bunk.z - 1); ex.snap = true; } } // no walking through walls
+  p.y = Math.max(p.y, PRISON.y);
+  for (const w of PRISON.wardens) { const R = w.R, q = R.root.position; R.mode = 'idle'; if (w.hostile && w.hp > 0 && state === 'explore') { const dx = p.x - q.x, dz = p.z - q.z, d = Math.hypot(dx, dz); R.root.rotation.y = Math.atan2(dx, dz); R.mode = 'attack'; if ((w.cd -= dt) <= 0 && d < 14) { w.cd = 1.6; compTracer(R, { x: p.x, y: p.y + .8, z: p.z }); sfx.shot(); if (Math.random() < .5) hurtPlayer(Math.round(6 + levelOf(wanderer) * .3), { x: q.x, z: q.z, lv: levelOf(wanderer) }); } } animRig(R, dt); }
+}
+function prisonLeave() { const G = PRISON.G; PRISON.on = false; PRISON.pick = null; const el = $('#lockPick'); if (el) el.classList.remove('on'); if (G && G.parent) G.parent.remove(G); PRISON.G = null; PRISON.cols = []; const S = PRISON.site, p = player.position; if (S) { p.set(S.x, wHeight(S.x, S.z - 9), S.z - 9); ex.snap = true; vel.set(0, 0, 0); } }
+function prisonRelease() { prisonLeave(); lawClear(); LAW.prevStars = 0; alignAct(2, 'Served your sentence'); notice('Released', 'SENTENCE SERVED · YOUR SLATE IS CLEAN', 3200); try { resEvent('released'); } catch (e) {} }
+function prisonEscape() { // out, and the hunt picks up where it left off (and then some)
+  const st = Math.min(5, Math.max(2, LAW.prevStars || PRISON.stars) + 1); prisonLeave(); LAW.heat = LAW_STARS[st - 1]; LAW.stars = st; LAW.seenT = time; LAW.spawnT = 1.5;
+  notice('You broke out', `WANTED ${'★'.repeat(st)}${'☆'.repeat(5 - st)}`, 3000); sfx.alarm && sfx.alarm(); alignAct(-2, 'Broke out of prison'); try { resEvent('escaped'); } catch (e) {}
+}
+
+// ---- where the crowds are ----
+const HUMCOLS = [[0x3a4a6a, 0xe8dcc6], [0x6a3a2a, 0xf0e0c0], [0x2a5a4a, 0xd8d0c0], [0x5a5a62, 0xffd08a], [0x8a2a3a, 0xe8dcc6], [0x2b2f36, 0x6fe2ff], [0xc9a24a, 0x2b2f36], [0x7a5a9a, 0xf0e0c0]];
+function crowdCity(C, g, aw) { // the capitals named for it get a real crowd (humans among the locals); the rest keep their strollers
+  const K = C.K, id = world.planet.P.id; if (!(['aridaxx', 'janira', 'malana', 'archiostal-gardens'].includes(id) || (id === 'carax' && FAC_CH !== 4))) return false;
+  const F = CITY_FOLK[K.style]; if (!F) return false; const phone = lawPhone(), big = K.R > 200, sx = C.cx, sz = C.cz, canal = K.style === 'imperial' ? 5.5 : 0;
+  const spot = () => { for (let i = 0; i < 8; i++) { const r = Math.random(); let x, z;
+    if (r < .45) { const a = Math.random() * 6.28, rr = K.plaza + 1.5 + Math.random() * 5; x = sx + Math.cos(a) * rr; z = sz + Math.sin(a) * rr; }
+    else if (r < .8) { x = sx + (Math.random() < .5 ? -1 : 1) * (canal + 1 + Math.random() * Math.max(1, aw / 2 - canal - 6)); z = sz + K.plaza + 6 + Math.random() * (K.R - K.plaza - 14); }
+    else { const a = Math.random() * 6.28, rr = Math.random() * K.plaza * .85; x = sx + Math.cos(a) * rr; z = sz + Math.sin(a) * rr; }
+    if (!worldBlocked(x, z, true)) return { x, z }; } return null; };
+  crowdBuild({ key: 'city:' + id, kind: 'city', C, n: phone ? (big ? 30 : 20) : (big ? 90 : 60), mix: [[F[0], 7, [F[2]]], ['human', 3, HUMCOLS]], skins: [0, 1, 2, 3, 4, 5], spot, y: () => C.y, blocked: (x, z) => worldBlocked(x, z, true), alive: () => !!(isPl() && world.planet && world.planet.city === C && world.cityG === g) });
+  return true;
+}
+const EARTH_CROWD = { newyork: [[0, 1, 2, 3, 4, 5, 3, 4], 70], kingston: [[4, 5, 5, 4, 5, 3], 55], tokyo: [[0, 1, 1, 2, 1], 70], beijing: [[0, 1, 1, 2, 1], 60], paris: [[0, 1, 2, 3, 4, 5, 1], 60], cairo: [[2, 3, 3, 4, 2], 55] }; // skin tones that fit each city
+function crowdEarth(W) {
+  crowdClear('earth'); if (!W || !W.epoi || !W.P || W.P.id !== 'earth' || (wanderer.chapter | 0) < 2) return; const phone = lawPhone(), p = player.position;
+  for (const E of W.epoi) { const Q = E.Q, cfg = Q && EARTH_CROWD[Q.id]; if (!cfg || E.line || Math.hypot(E.gx - p.x, E.gz - p.z) > Q.R + 900) continue;
+    const sy = plSeaY(), spot = () => { for (let i = 0; i < 10; i++) { const lx = (Math.random() - .5) * Q.R * 1.1, lz = (Math.random() - .5) * Q.R * 1.1, x = E.gx + lx * E.ux - lz * E.uz, z = E.gz + lx * E.uz + lz * E.ux; if (!worldBlocked(x, z, true) && (sy == null || wHeight(x, z) > sy + .6)) return { x, z }; } return null; };
+    crowdBuild({ key: 'earth:' + Q.id, kind: 'earth', n: phone ? Math.round(cfg[1] * .35) : cfg[1], mix: [['human', 1, HUMCOLS]], skins: cfg[0], spot, y: (x, z) => wHeight(x, z), blocked: (x, z) => worldBlocked(x, z, true), alive: () => !!(isPl() && world.planet === W) });
+  }
+}
+function crowdAfrica() { // Ad-Nostra's streets
+  if (typeof TOWN === 'undefined' || !world.town) return;
+  const spot = () => { for (let i = 0; i < 10; i++) { const x = TOWN.x0 + 10 + Math.random() * (TOWN.x1 - TOWN.x0 - 14), z = TOWN.z0 + 4 + Math.random() * (TOWN.z1 - TOWN.z0 - 8); if (!worldBlocked(x, z, true) && wHeight(x, z) > TOWN.sea + .3 && !inCantina(x, z)) return { x, z }; } return null; };
+  crowdBuild({ key: 'africa', kind: 'africa', n: lawPhone() ? 16 : 40, mix: [['human', 1, HUMCOLS]], skins: [3, 4, 4, 5, 5, 2], spot, y: (x, z) => wHeight(x, z), blocked: (x, z) => worldBlocked(x, z, true) || inCantina(x, z), alive: () => curArea() === 'africa' && !!world.town && !isPl() });
+}
+function peopleSpawnTick() { if ((wanderer.chapter | 0) >= 2 && curArea() === 'africa' && !isPl() && world.town && !PEOPLE.places.some(P => P.kind === 'africa')) crowdAfrica(); }
+function prisonRecapture() { // they caught you mid-breakout: back in the cell, with time added
+  ex.hp = Math.round(maxHP() * .6); invState().hp = ex.hp; PRISON.open = false; for (const b of PRISON.doorBars || []) b.visible = true; for (const w of PRISON.wardens || []) w.hostile = false;
+  PRISON.t += 30; const p = player.position; p.set(PRISON.bunk.x + 2, PRISON.y, PRISON.bunk.z - 1); ex.snap = true; vel.set(0, 0, 0); notice('Caught', `BACK IN THE CELL · +30 S · ${prisonClock()} LEFT`, 2800);
+}
+function tauntBtnTick() { // phones: a TAUNT button when there are locals to bait
+  let b = $('#tauntBtn'); if (!b) { b = document.createElement('button'); b.id = 'tauntBtn'; b.className = 'chat-btn taunt hidden'; b.type = 'button'; b.innerHTML = 'TAUNT <small>Y</small>'; document.body.appendChild(b); b.addEventListener('click', e => { e.stopPropagation(); rageBait(); }); }
+  let show = false; if (lawOn() && state === 'explore' && !ex.dlg) { const p = player.position; show = PEOPLE.places.some(P => P.agents.some(a => !a.dead && !a.homeless && Math.hypot(a.x - p.x, a.z - p.z) < 14)); }
+  b.classList.toggle('hidden', !show);
+}
+
 // on the galaxy map: their worlds ringed in their colours, the empire's name at its capital
 function resGalEmpires(g, font) {
   for (const e of Object.values(resEmp.emp)) {
@@ -28064,6 +28436,7 @@ function loopFrame() {
   alOutfitSync(dt);
   try { resUiTick(); resEmpTick(dt); resGuildTick(dt); } catch (e) { console.error(e); }
   try { drunkTick(dt); chatUiTick(); } catch (e) {}
+  try { if (wanderer) { peopleSpawnTick(); lawTick(dt); tauntBtnTick(); } } catch (e) { console.error(e); }
   // each region has its own exploration playlist: Antarctica on the ice, Africa on the savanna; New London has its own tracks (lonMusicTick), so no ice music there, not even under the nightmare
   // space has its own playlist (SPACETHEME1-3, Vast Horizons, Wonders of the Galaxies, Inner Tranquility, FREEROAM1-3): out among the
   // stars and on the worlds you land on, in Chapter III, Chapter IV before the time skip, and Chapter V
