@@ -2371,3 +2371,13 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 ### Archamus' voice slots (the pod landing)
 - Archamus' 7 lines over the fallen wanderer are ready for voicing: `assets/audio/archamus_ch4/VOICE_SCRIPT.md` lists them as CH4ARCHAMUSPOD1–7 (pack: `data/podArchVoices.js`).
 - Once recorded, they play with the subtitles and the scene waits for each line to finish. Until then, subtitles only, as before.
+
+## Archiostal rebuilt: the Seven Wards
+- **Archiostal has a new shape.** The old single ring of forest is gone. The station now spreads out like a great flower, in the spirit of the big galactic hub stations of classic space opera:
+  - **The Sanctum Ring** at its heart: a band of hull, glazed over, with the gardens (forest and a winding lake, lamps among the trees) on its inner face and gold rims either side.
+  - **The Seven Wards:** seven long arms, each a city of its own, fanning out from the ring and curving gently forward like petals. Their hulls are lit with thousands of windows, warm gold and teal, with teal-lit edges, a skyline of towers along their backs and a light at every tip. Ward 01 Command & Cybernetics, 02 Bio-Dome & Botany, 03 Geo-Quantum, 04 Gravity Habitation, 05 Fusion & Life Support, 06 Nanomedical, 07 Logistics & Transport.
+  - **The Spire of Archamus** rising from the centre into the flower, gold-banded, with a seven-sided gold crown and Archamus's light at its tip.
+  - The whole station still turns slowly, as before.
+- **At war, the Wards close.** While you're at war with whoever holds Archiostal (and haven't taken it), its seven arms slowly fold shut round the Spire, and they open again once the war ends. Docking still works, so you can still reach the leaders' hall.
+- **Lore:** the Malana Prime system and the Grek species pages describe the Wards, the Sanctum Ring and the Spire.
+- The main-menu backdrop shows the new station too, sized to match.
