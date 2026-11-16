@@ -2381,3 +2381,4 @@ I checked every major screen and mode on four phone sizes, upright and sideways:
 - **At war, the Wards close.** While you're at war with whoever holds Archiostal (and haven't taken it), its seven arms slowly fold shut round the Spire, and they open again once the war ends. Docking still works, so you can still reach the leaders' hall.
 - **Lore:** the Malana Prime system and the Grek species pages describe the Wards, the Sanctum Ring and the Spire.
 - The main-menu backdrop shows the new station too, sized to match.
+- **Fixed: docking at Archiostal no longer sets you down on snow.** Docking always lands you at the gardens' "north pole", and the gardens used the normal planet colours, polar ice caps and snowy peaks included, so you stepped out onto white ground. Under an artificial sky there's no ice: the poles and high ground are pale highland meadow now.
