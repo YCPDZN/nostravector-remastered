@@ -2,7 +2,7 @@
 
 Speaker: **Am-Grek, High Hierarch of the Grek Empire**. Old, deep, heavy with loss but unbroken; a king who has watched his empire burn and is still standing. Never shouts.
 Plays after the two-year narration: you wake on a stone bier in the Sanctum Ring of Archiostal, and he tells you what you missed.
-Pack: `data/amGrekVoices.js` (CH4AMGREK1–10, in order). Until it exists, the lines show as subtitles only. When recorded, the scene waits for each line to finish.
+Pack: `data/amGrekVoices.js` (CH4AMGREK1–10, in order). **Recorded:** the takes are saved here. The scene waits for each line to finish.
 Line 1 is spoken with his back to you.
 
 | File | Line |
