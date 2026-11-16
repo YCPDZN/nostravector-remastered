@@ -2395,3 +2395,31 @@ Docking used to drop you onto what was really a small green planet: open hills, 
 - **Landscaped ground.** The gardens are meadows, groves, low hills and lakes now, never mountains, so nothing pokes through the walls. The station air is a cooler blue-grey haze, clear enough to see down the ring.
 - Day and night still turn: at night the ring overhead dims with everything else.
 - Scanner name: **The Sanctum Ring** (it was "Garden Station").
+
+## Residents with real personalities, drinks, the Low-G Lounge, and guild dungeon parties
+
+### They have personalities now, and they talk like people
+- **Every resident has a personality, written or not.** Residents you never described used to have no personality at all. Now each one gets a temperament (sometimes two: shy, bold, funny, grumpy, kind, sarcastic, cheerful, calm, curious, dramatic, lazy, charming, proud or loyal), something they love, a job they had before (miner, freight pilot, medic, soldier, trader, ship's cook, teacher, farmer, smuggler, engineer, pilgrim or musician) and sometimes a catchphrase. Villains lean grumpy, proud and sarcastic; heroes lean kind, loyal and cheerful. It's worked out from who they are, so it never changes on its own. Anything you write in their personality box takes over the parts it covers.
+- **They talk normally.** The old lines read like a chat window ("o/", "brb food", "gtg", "lag is real today"). A new speech pack (`data/resTalk.js`) gives them natural, in-world lines for greetings, goodbyes, musings, work, trading, gifts, level-ups, travel, fights, follows and conversations between two residents, written for each temperament. A grumpy miner and a cheerful pilgrim no longer sound the same.
+- **They talk about themselves.** Idle chatter includes memories of their old job ("Ten years with a drill in my hands...") and the thing they love. A new **Tell me about yourself** option in the talk menu has them introduce themselves in their own voice. **What are you up to?** shows their personality, including their old job.
+- **The older lines are cleaned up when they're spoken**: chat-speak becomes proper speech ("gtg" → "I have to go"), sentences start with capitals and end with punctuation, and lines about servers, lag, logging in or "pm me" are never picked.
+- The cheesy add-ons ("um...", "Ugh.", "✨", "*yawns*") are gone. Speaking styles (formal, pirate, few words, loud, poetic) and catchphrases still apply.
+
+### Drinks at the bar (Chapters II–V)
+- **Every bar pours real drinks**: the Salt Lantern (from Chapter II), every world's cantina and the Low-G Lounge. The menu has water (on the house), the local ale and spirit (Grek root ale and Malana honey mead, Steca fire-rum, Erisian frostwine, Harbour lager...) and the house special. Each one gives back a little health.
+- **They go to your head.** Tipsy, then drunk: the screen swims and the colours drift, the camera rolls, and your feet wander off course. Then wasted: the bartender cuts you off and offers water. It wears off over a couple of minutes, and water helps.
+- Residents nearby raise a glass when you drink.
+
+### The Low-G Lounge (Archiostal, Ward 04)
+- **A nightclub at the Ward 04 concourse**, just east of the landing pad in Archiostal's gardens. It has a neon sign, a dance floor of lit tiles that chase the beat, a DJ at the decks between speaker stacks, a mirror ball, sweeping lasers, a bar with glowing bottles and lounge seats by the door. Dancers fill the floor.
+- **The gravity is turned down inside**, so your jumps float.
+- **Residents party there after clearing a dungeon.** After a successful run (yours with them, or one of their own while you're away), they head to Archiostal to celebrate for about half an hour. You'll find them inside, already a drink or two in: dancing, ordering rounds, telling each other about the boss they killed. The Wanderers screen and the galaxy map say where they are ("celebrating at the Low-G Lounge on Archiostal").
+
+### Drunk residents start fights
+- Residents in a bar or the club drink. Drunk, they walk unsteadily and say drunk things ("You’re my besht friend. Did I tell you that?").
+- **Once they're drunk they look for trouble.** If anyone from a guild or empire they're at war with is there at the same time, they go straight for them, and their guilds pile in. Otherwise they pick on a regular: the cantina crowd or the club's dancers square up and fight back, and the bartender or bouncer shouts at them to take it outside. A fight sobers them up a little.
+
+### Guilds: lead them, or be led
+- **If you lead a guild**, your guildmates take orders from their talk menu: **Follow me**, **Wait here**, **You can go now**, or **Guild, follow me!** for every guildmate around. Followers go where you go, to other worlds and **down into lairs**. On each new floor they regroup beside you, and they go after the floor's matriarch and anything hostile.
+- **If you're a member**, guildmates on a world with a lair will come and ask you along ("We’re going into the Hollow Burrow (level 24). Coming?"). You can also ask them yourself ("Want to run a lair together?"). Say yes and they lead you down. When a floor's matriarch falls they make for the way down, and once you're with them they take the whole party to the next floor. At the lair's heart they fight the boss with you.
+- **When the boss falls**, everyone who came down with you counts the clear and heads off to celebrate at the Low-G Lounge. Join them.
