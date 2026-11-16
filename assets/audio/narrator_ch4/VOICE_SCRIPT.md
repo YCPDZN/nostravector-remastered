@@ -2,7 +2,7 @@
 
 Speaker: **the Narrator** (the same voice as the opening and the storm). Grave, unhurried, like a history being read aloud.
 Plays straight after Archamus finds you, over a map of the galaxy where the Catharsis takes system after system.
-Pack: `data/skipNarrVoices.js` (CH4NARRSKIP1–10, in order). Until it exists, the lines show as subtitles only. When recorded, each line waits for its clip to finish.
+Pack: `data/skipNarrVoices.js` (10 clips, in order). **Recorded:** the takes are saved here as CH4NARRATOR1–10.mp3 (planned as CH4NARRSKIP1–10). Each line waits for its clip, and for the map to finish that line's moves.
 Lines 5 and 6 are short on purpose: the map does the talking (systems change hands while they play).
 
 | File | Line |
