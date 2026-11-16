@@ -9286,6 +9286,7 @@ function talkTownsfolk(n) {
   if (!n || ex.dlg) return;
   const c2 = wanderer.ch2 || {}, sp = spOf(wanderer), say = l => typeof l === 'function' ? l(sp) : l, lines = n.d.lines.map(say);
   if (n.d.at === 'cantina' && brawlOn()) { world.townTalk = n; sfx.click(); openDialog(n.d.name, ['Ever since Orion put Daniel Brown on my floor, the regulars want a fight every night. So now they get one.', 'Irie runs it from up on the bar. Talk to him if you want in. And if you need something to steady your hands first…'], false, () => { world.townTalk = null; barDrink(saltVenue()); }); return; }
+  if (n.d.at === 'cantina' && drinksOn() && !(c2.cantinaClue && !c2.husbandFound)) { world.townTalk = n; sfx.click(); openDialog(n.d.name, [lines[0]], false, () => { world.townTalk = null; barDrink(saltVenue()); }); return; } // a drink, Chapter II on
   const toCantina = c2.metNico && !c2.husbandFound && n.d.name === 'HARBOUR CLERK' && danielClues() >= DANIEL_CLUES.length;
   if (toCantina) lines.push('Daniel Brown. Let me see… no. He never boarded anything. But that cart of his has been sitting outside The Salt Lantern since last night. Try the cantina.');
   else if (c2.metNico && !c2.husbandFound && n.d.husband) lines.push(say(n.d.husband));
@@ -10340,12 +10341,7 @@ function brawlDone(won, quit) {
   setTimeout(() => { for (const g of V.decals || []) g.parent && g.parent.remove(g); if (V.decals) V.decals.length = 0; }, 45000); // the floor gets mopped
   renderTasks();
 }
-// a drink at the bar: a little health back for a few units
-function barDrink(V) {
-  const nm = V.salt ? 'CANTINA OWNER' : 'BARTENDER', cost = 15;
-  openChoice(nm, [{ text: `A drink · ${cost} units · +30 health`, onPick: () => { if (units() < cost) { lootMsg('Not enough units', '#ff8f86'); return; } addUnits(-cost); const m = maxHP(); ex.hp = Math.min(m, ex.hp + 30); invState().hp = Math.round(ex.hp); sfx.blip(); lootMsg('You knock it back · +30 health', '#ffc94a'); } },
-    { text: 'Who runs the fights?', onPick: () => openDialog(nm, [`${titleName(V.mc)}, up on the bar. Three fighters, three purses, and the champion takes on anyone. Talk to the MC if you want in.`]) }, { text: 'Nothing, thanks', onPick: () => {} }]);
-}
+// (drinks at the bar: barDrink, with the night-out code further down)
 
 /* ---- the cantina on an inhabited world: a hall a short walk from where you land, its door facing your ship. Each species builds
    its own (Chompy violet and gold, Erisian crystal, Grek timber, human steel and neon); inside, the ring, the bar, the MC and the
@@ -10358,7 +10354,9 @@ const HALL_STYLE = {
   human: { wall: 0x3e434a, wall2: 0x2a2e34, trim: 0xd8762a, neon: 0xffa04a, floor: '#33302c', floor2: '#26231f', accent: 0x6fe2ff, roof: 0x22252a }
 };
 function hallPlan(W) { // where the hall goes (and the pad it stands on), decided before the ground is laid out
-  W.pads = []; W.hall = null; const H = houseFor(W.P); if (!H || !brawlOn()) return;
+  W.pads = []; W.hall = null;
+  if (W.P.dock && (wanderer.chapter | 0) >= 3) { clubPlan(W); return; } // Archiostal: no cantina, but the Low-G Lounge
+  const H = houseFor(W.P); if (!H || !brawlOn()) return;
   const raw = (x, z) => planetH(W.P, plDir(x, z)) - W.h0, sea = W.P.sea ? (W.P.seaH || 0) - W.h0 + 2 : -1e9;
   let best = null;
   for (const [x, z] of [[-40, -4], [-40, 18], [-44, -24], [34, -20], [-58, 6], [40, 26]]) { // dry and fairly flat, clear of the ship and the trader
@@ -10384,11 +10382,12 @@ function signTex(text, col) {
 function hallClear() {
   const Hl = world.hall; if (!Hl) return; world.hall = null;
   const off = o => o && o.parent && o.parent.remove(o);
-  off(Hl.G); for (const m of Hl.V.crowd || []) off(m.R.root); if (Hl.bartender) off(Hl.bartender.root); if (Hl.V.foeR) off(Hl.V.foeR.root); for (const g of Hl.V.decals || []) off(g);
+  off(Hl.G); for (const m of Hl.V.crowd || []) off(m.R.root); for (const m of (Hl.club && Hl.club.extra) || []) off(m.R.root); if (Hl.bartender) off(Hl.bartender.root); if (Hl.V.foeR) off(Hl.V.foeR.root); for (const g of Hl.V.decals || []) off(g);
 }
 function buildHall() {
   hallClear();
   const W = world.planet, P0 = W && W.hall; if (!P0 || !isPl()) return;
+  if (P0.club) { buildClub(P0); return; }
   const Hs = P0.H, S = HALL_STYLE[Hs.style] || HALL_STYLE.human, G = new THREE.Group(); G.position.set(P0.x, P0.y, P0.z);
   const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .8 }, o));
   const box = (w, hh, d, m, x, y, z, ry = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = o.receiveShadow = true; G.add(o); return o; };
@@ -10458,7 +10457,8 @@ function hallTick(dt) {
   const p = player.position, R = Hl.V.room, inside = p.x > R.x0 - .3 && p.x < R.x1 + .3 && p.z > R.z0 - .3 && p.z < R.z1 + .3;
   if (inside !== Hl.inside) { Hl.inside = inside; Hl.roof.visible = !inside; }
   const near = Math.hypot(p.x - Hl.x, p.z - Hl.z) < 45; if (!near) return;
-  if (Hl.V.crowd.length && state === 'explore') crowdTick(dt, .18, Hl.V);
+  if (Hl.V.crowd.length && state === 'explore') { crowdTick(dt, .18, Hl.V); for (const m of Hl.V.crowd) if (m.fightT > 0) citizenFight(m, dt, Hl.y); }
+  if (Hl.club && state === 'explore') clubTick(dt, Hl);
   if (Hl.bartender) { Hl.bartender.mode = 'idle'; animRig(Hl.bartender, dt); }
 }
 const hallBlocked = (x, z) => { const Hl = world.hall; if (!Hl || !isPl() || Math.abs(x - Hl.x) > 12 || Math.abs(z - Hl.z) > 10) return false; for (const c of Hl.cols) if (x > c[0] - .25 && x < c[1] + .25 && z > c[2] - .25 && z < c[3] + .25) return true; return false; };
@@ -10806,7 +10806,7 @@ function dgnEnter(f, at, quick) { // go to floor f: at = { x, z } (a save), 'top
     player.rotation.y = Math.PI; ex.yaw = 0; ex.snap = true; vel.set(0, 0, 0); ex.air = false;
     dgnPopulate(f);
     placeOrion().then(() => { if (world.orion && DGN.on) world.orion.root.position.set(p.x - 1.5, 0, p.z + 1.2); }).catch(() => null);
-    placeCrew().catch(() => null);
+    placeCrew().catch(() => null); resRegroup();
     renderTasks(); clock.getDelta();
     if (DGN.lair && DGN.lair.cyg) { const L = DGN.lair; notice(f === dgnTop() ? (lairCleared(L) ? 'The Cygnus · the bridge, empty now' : `The Cygnus · the bridge · ${lairBoss(L).name}`) : `The Cygnus Terra Imperius · deck ${f} of ${L.floors}`, f === dgnTop() ? 'THE BRIDGE' : CYG_DECKS[f].toUpperCase(), 3600); }
     else if (DGN.lair) { const L = DGN.lair; notice(f === dgnTop() ? (lairCleared(L) ? `${L.name} · the heart, empty now` : `${L.name} · the heart · ${lairBoss(L).name}`) : `${L.name} · floor ${f} of ${L.floors} · the ${natSp(L.S).name}`, f === dgnTop() ? 'THE LAIR’S HEART' : `FLOOR ${f}`, 3600); if (f === 1 && !lairProg(L)) setTimeout(() => lootMsg(natSp(L.S).desc, '#d8c8ff'), 2400); }
@@ -10843,7 +10843,7 @@ function dgnLeave() { // back out onto the slope, by the door
       dgnClearFloor(); DGN.on = false; DGN.open = null; DGN.lair = null; for (const ch of world.chunks.values()) ch.visible = true; dgnRestoreLook();
       const G = LR ? LR.gate : world.dgnGate, p = player.position; if (G) p.set(G.x, wHeight(G.x, G.z + 2), G.z + 2); else p.set(5, wHeight(5, 14.5), 14.5);
       player.rotation.y = 0; ex.yaw = Math.PI; ex.snap = true; vel.set(0, 0, 0); updateChunks(99);
-      placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
+      placeOrion().catch(() => null); placeCrew().catch(() => null); resRegroup(); renderTasks();
     } catch (e) { console.error(e); DGN.on = false; DGN.open = null; DGN.lair = null; }
     if (LR && LR.fromSpace && cygSpaceOn()) { // you came aboard from orbit: you leave the same way
       try { rememberPlaceSafe(); spaceOn(cygUndockPlace()); } catch (e) { console.error(e); state = 'explore'; }
@@ -10890,7 +10890,7 @@ function dgnTick(dt) {
   // the warden falls: the stairs open
   if (DGN.warden && DGN.warden.dead && !dgnBeaten(DGN.f)) {
     if (DGN.lair && DGN.lair.cyg) { lairSetProg(DGN.lair, DGN.f); DGN.warden = null; sfx.chime(); notice(`Deck ${DGN.f} cleared`, DGN.f + 1 === dgnTop() ? `THE LIFT TO THE BRIDGE IS OPEN · ${lairBoss(DGN.lair).short.toUpperCase()}` : 'THE LIFT UP IS OPEN', 3400); }
-    else if (DGN.lair) { lairSetProg(DGN.lair, DGN.f); DGN.warden = null; sfx.chime(); notice(`Floor ${DGN.f} cleared`, DGN.f + 1 === dgnTop() ? `${lairBoss(DGN.lair).short.toUpperCase()} AWAITS BELOW` : 'THE WAY DOWN IS OPEN', 3400); }
+    else if (DGN.lair) { lairSetProg(DGN.lair, DGN.f); DGN.warden = null; sfx.chime(); resPartyFloor(); notice(`Floor ${DGN.f} cleared`, DGN.f + 1 === dgnTop() ? `${lairBoss(DGN.lair).short.toUpperCase()} AWAITS BELOW` : 'THE WAY DOWN IS OPEN', 3400); }
     else { wanderer.ch3 = Object.assign({}, wanderer.ch3, { dgnMax: DGN.f }); const c = curChar(); if (c) c.ch3 = wanderer.ch3; saveRoster();
     DGN.warden = null; sfx.chime(); notice(`Floor ${DGN.f} cleared`, DGN.f === 7 ? 'THE WAY TO THE SUMMIT IS OPEN' : 'THE STAIRS UP ARE OPEN', 3400); } renderTasks();
   }
@@ -11702,7 +11702,7 @@ function lairBossWin() {
   dgnBossClear(); sfx.chime(); ex.shake = .6; DGN.flashL = 1.5;
   notice('Lair boss defeated', `${Bd.short.toUpperCase()} IS DEAD`, 3600); lbark(Bd.short, Bd.lines.win, 3200);
   if (DGN.lb) { DGN.lb.mesh.rotation.z = Math.PI / 2; DGN.lb.mesh.position.y = .4; }
-  lairSetProg(L, L.floors + 1);
+  lairSetProg(L, L.floors + 1); try { resPartyWin(L); } catch (e) { console.error(e); }
   gainXP(Math.round(260 + L.lv * 18), `Defeated ${Bd.name}`);
   const loot = [['medkit', 2], ['warpcell', 1 + (L.tier > 0)], ['crystal', 2 + L.tier], [L.lv > 40 ? 'obsidian' : 'metal', 2 + L.tier], Math.random() < .5 && ['scrap', 3]];
   if (Bd.armor) setTimeout(() => { const it = ITEMS[Bd.armor], had = have(Bd.armor) > 0; if (!had) giveItem(Bd.armor, 1); notice(had ? 'You already carry it' : 'Endgame armour', it.name.toUpperCase(), 4200); lootMsg(isWorn(Bd.armor) ? `${it.name} · you’re wearing it now` : canWear(Bd.armor) ? `${it.name} · put it on from Inventory → Equipment` : `${it.name} · ${it.desc.split('.')[0]} · it waits in your bag`, '#ffd36a'); armorSync && armorSync(true); }, 2400);
@@ -23216,6 +23216,7 @@ function updateWorldMode(dt) {
   ex.speedMode = speed > 7 ? 'sprint' : speed > 3 ? 'run' : 'walk';
   const fx_ = -Math.sin(ex.yaw), fz = -Math.cos(ex.yaw), rx = Math.cos(ex.yaw), rz = -Math.sin(ex.yaw);
   let wx = (rx * ix + fx_ * iy) * speed, wz = (rz * ix + fz * iy) * speed;
+  if ((ex.booze || 0) > .3 && !ex.swim) { const kd = drunkK(), a = (Math.sin(time * 1.3) * .45 + Math.sin(time * 3.1) * .18) * kd, c = Math.cos(a), s2 = Math.sin(a); [wx, wz] = [wx * c - wz * s2, wx * s2 + wz * c]; if (kd > .6 && !d) { wx += Math.sin(time * .8) * .8 * kd; wz += Math.cos(time * 1.1) * .8 * kd; } } // drunk: your feet have their own ideas
   const A = ex.act;
   if (A) {
     A.t += dt;
@@ -23255,7 +23256,7 @@ function updateWorldMode(dt) {
   else {
   if (!ex.air && p.y > ground + .35) { ex.air = true; ex.vy = 0; } // stepped off a ledge
   if (ex.air) {
-    ex.vy -= 18 * dt; p.y += ex.vy * dt;
+    ex.vy -= (clubLowG() ? 6.5 : 18) * dt; p.y += ex.vy * dt; // the Low-G Lounge lives up to its name
     if (p.y <= ground) { p.y = ground; ex.air = false; ex.vy = 0; burst(p.x, p.y + .05, p.z, 10, 2, .9, .95, 1, .6, .4, .5); }
   } else p.y += (ground - p.y) * Math.min(1, dt * 18);
   }
@@ -23434,6 +23435,7 @@ function worldCamera(dt) {
   lookTarget.lerp(tgt, ex.snap ? 1 : Math.min(1, dt * 12));
   ex.snap = false;
   camera.lookAt(lookTarget);
+  if ((ex.booze || 0) > .3) camera.rotateZ(Math.sin(time * 1.1) * drunkK() * .07); // the room tilts
 }
 
 /* ============ the dream: your species' leader speaks ============ */
@@ -25795,7 +25797,28 @@ function resAnchor(c) {
   if (!c.trv || !bodyById(c.trv.body)) { const k = resPlaceKey(c), P = k && k.startsWith('pl:') ? bodyById(k.slice(3)) : null; c.trv = { body: (P || resHomeBody(c)).id, t0: c.sentAt || resNow() }; }
   return c.trv;
 }
+// ---- your own guild stays within reach: guildmates keep to your star system and the 5 nearest (that have worlds to land on),
+// so the people you count on are never stranded across the galaxy (Sol's missions especially). Move on, and the ones left out of
+// range warp in after you. Residents of other guilds roam the galaxy and its dungeons as they always have. ----
+const RES_NEAR_N = 5;
+function resPlayerSys() { const s = (typeof SPC !== 'undefined' && SPC.sys) || 'sol'; return sysById(s) ? s : 'sol'; }
+const RES_NEAR = new Map();
+function resNearSet(id = resPlayerSys()) { // your system and the 5 nearest, worked out once per system
+  let N = RES_NEAR.get(id); if (N) return N;
+  const S = sysById(id) || sysById('sol'), L = [S, ...SYSTEMS.filter(o => o !== S && resLandIn(o.id).length).sort((a, b) => galDist(S, a) - galDist(S, b)).slice(0, RES_NEAR_N)].filter(o => resLandIn(o.id).length);
+  N = { id, L, ids: new Set(L.map(o => o.id)) }; RES_NEAR.set(id, N); return N;
+}
+const resGuildBound = c => !!(c && resTravels() && wanderer && wanderer.guild && myGuild() && myGuild().members.includes(c.id));
+function resNearBody(c, k, avoid, around) { const N = resNearSet(around).L, S = N[Math.floor(resHash(`${c.id}|${k}|s`) * N.length)] || sysById('sol'), bl = resLandIn(S.id); if (!bl.length) return bodyById('earth'); let P = bl[Math.floor(resHash(`${c.id}|${k}|p`) * bl.length)]; if (avoid && P.id === avoid.id) P = bl.length > 1 ? bl[(bl.indexOf(P) + 1) % bl.length] : resLandIn(N[(N.indexOf(S) + 1) % N.length].id)[0] || P; return P; }
+function resGuildLeash(c, now) { // you moved on (or they just joined you): carry on from where they are if that's in range, or warp in to a world near you
+  const N = resNearSet(); if (c.trvNear === N.id) return; c.trvNear = N.id;
+  const cur = resTravelCore(c, now), at = cur.mode === 'warp' ? cur.to : cur.body;
+  if (at && N.ids.has(at.sys) && cur.mode !== 'respawn') c.trv = { body: at.id, t0: now, near: N.id };
+  else { const to = resNearBody(c, 'leash' + N.id + now, at), warp = (1 + resHash(c.id + '|lw' + now) * 1.5) * 60e3; c.trv = { body: to.id, t0: now + warp, from: at ? at.id : null, warp, near: N.id }; }
+  RES_CACHE.tc.delete(c.id);
+}
 function resNextBody(c, from, i, t0) {
+  if (resGuildBound(c)) return resNearBody(c, `${t0}|${i}`, from, (c.trv && c.trv.near) || resPlayerSys()); // your guild stays near you (near where you were when this leg of their trail began)
   const r = resHash(`${c.id}|${t0}|n${i}`), r2 = resHash(`${c.id}|${t0}|b${i}`), H = resHomeBody(c);
   if (r < .22 && from.id !== H.id) return H; // home for a while
   let S = r < .7 ? resHubs()[Math.floor(r2 * resHubs().length)] : (n => n.length ? n[Math.floor(r2 * n.length)] : sysById(from.sys))(resNeighbours(sysById(from.sys)));
@@ -25804,10 +25827,11 @@ function resNextBody(c, from, i, t0) {
   if (P.id === from.id) P = bl.length > 1 ? bl[(bl.indexOf(P) + 1) % bl.length] : H;
   return P;
 }
-function resTravel(c, now = resNow()) {
+function resTravel(c, now = resNow()) { if (resGuildBound(c)) resGuildLeash(c, now); return resTravelCore(c, now); }
+function resTravelCore(c, now = resNow()) {
   const A = resAnchor(c), hit = RES_CACHE.tc.get(c.id); if (hit && now - hit.at < 1000 && hit.t0 === A.t0 && hit.b === A.body) return hit.v;
   let v;
-  if (now < A.t0) v = { mode: 'respawn', body: bodyById(A.body), until: A.t0 };
+  if (now < A.t0) v = A.from && bodyById(A.from) ? { mode: 'warp', from: bodyById(A.from), to: bodyById(A.body), k: clamp(1 - (A.t0 - now) / (A.warp || 6e4), 0, 1), until: A.t0 } : { mode: 'respawn', body: bodyById(A.body), until: A.t0 }; // (a guildmate catching up with you is warping, not respawning)
   else {
     let body = bodyById(A.body), t = A.t0, i = 0;
     for (let guard = 0; guard < 5000; guard++) {
@@ -25825,12 +25849,13 @@ function resTravel(c, now = resNow()) {
 }
 // shot down (in space): back home after a short wait, with a fresh ship
 function resDie(c) {
-  const H = resHomeBody(c); c.trv = { body: H.id, t0: resNow() + 90e3 }; c.deaths = (c.deaths | 0) + 1; RES_CACHE.tc.delete(c.id); saveRoster();
+  const H = resGuildBound(c) ? resNearBody(c, 'die' + resNow()) : resHomeBody(c); // a guildmate respawns near you, not across the galaxy c.trv = { body: H.id, t0: resNow() + 90e3 }; if (resGuildBound(c)) { c.trvNear = resNearSet().id; c.trv.near = c.trvNear; } c.deaths = (c.deaths | 0) + 1; RES_CACHE.tc.delete(c.id); saveRoster();
   const al = resAl(c), pool = (RL && RL.amb.death[al]) || ['down! respawning at {home}', 'gg, back to {home}'];
   RES.log.push({ who: c.name, al, text: resFill(resPick(pool), Object.assign(resCtx(null), { home: H.name })), t: time }); if (RES.log.length > 30) RES.log.shift(); resChatRender();
 }
 const resTravels = () => effCh() >= 3;
 function resWhereLabel(c) {
+  if (resPartying(c)) return `celebrating at the Low-G Lounge on Archiostal (after ${c.party.lair})`;
   if (resTravels()) { const T = resTravel(c); return T.mode === 'at' ? `on ${T.body.name}` : T.mode === 'warp' ? `warping to ${T.to.name}` : `respawning on ${T.body.name}`; }
   const k = resPlaceKey(c); if (!k) return 'somewhere out there';
   if (k.startsWith('pl:')) { const P = bodyById(k.slice(3)); return P ? `last seen on ${P.name}` : 'somewhere out there'; }
@@ -25845,10 +25870,12 @@ function resHereChance(c, A) {
 }
 // ?residents=all brings every resident to wherever you are (to preview them); ?resdebug exposes their state for testing
 const RES_ALL = /[?&]residents=all/.test(window.location.search);
-if (/[?&]resdebug/.test(window.location.search)) { window.RES = RES; window.resFF = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; resTick(step); } }; window.resFFs = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; SPC.t = (SPC.t || 0) + step; resSpaceTick(step); } return { ships: RES.sp.map(S => S.c.name + ':' + S.al + ':' + Math.round(S.pos.distanceTo(SPC.pos)) + 'm'), foes: SC.foes.map(f => f.name), bolts: SC.bolts.filter(b => b.friendly).length }; }; window.SCdbg = SC; window.resState = () => ({ state, mode: ex.mode, scene: !!SPC.scene, p: player.position.toArray(), units: units(), near: ex.near && ex.near.id }); window.resGoSpace = p => startChapter3(p); window.resT = () => residents.map(c => { const T = resTravel(c); return `${c.name}:${T.mode}:${(T.body || T.to).name}:${resLevel(c)}`; }); window.resKill = i => resDie(residents[i]); window.resRL = () => !!RL; window.resEmpDbg = () => resEmp; window.resEmpFF = n => { for (let i = 0; i < n; i++) { RES.empT = 0; resEmpTick(15); } return resEmp; }; window.resEmpOpenDbg = () => resEmpOpen(); window.resResDbg = () => residents; window.resBaseAt = (x, z) => resBaseBlocked(x, z); window.resTp = (x, z, ry) => { player.position.set(x, wHeight(x, z), z); if (ry != null) { player.rotation.y = ry; ex.yaw = ry + Math.PI; } ex.snap = true; }; window.resBaseSyncDbg = () => resBaseSync(); }
+if (/[?&]resdebug/.test(window.location.search)) { window.RES = RES; window.resFF = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; resTick(step); } }; window.resFFs = (sec, step = .1) => { for (let t = 0; t < sec; t += step) { time += step; SPC.t = (SPC.t || 0) + step; resSpaceTick(step); } return { ships: RES.sp.map(S => S.c.name + ':' + S.al + ':' + Math.round(S.pos.distanceTo(SPC.pos)) + 'm'), foes: SC.foes.map(f => f.name), bolts: SC.bolts.filter(b => b.friendly).length }; }; window.SCdbg = SC; window.resState = () => ({ state, mode: ex.mode, scene: !!SPC.scene, p: player.position.toArray(), units: units(), near: ex.near && ex.near.id }); window.resGoSpace = p => startChapter3(p); window.resT = () => residents.map(c => { const T = resTravel(c); return `${c.name}:${T.mode}:${(T.body || T.to).name}:${resLevel(c)}`; }); window.resKill = i => resDie(residents[i]); window.resRL = () => !!RL; window.resEmpDbg = () => resEmp; window.resEmpFF = n => { for (let i = 0; i < n; i++) { RES.empT = 0; resEmpTick(15); } return resEmp; }; window.resEmpOpenDbg = () => resEmpOpen(); window.resResDbg = () => residents; window.resBaseAt = (x, z) => resBaseBlocked(x, z); window.resTp = (x, z, ry) => { player.position.set(x, wHeight(x, z), z); if (ry != null) { player.rotation.y = ry; ex.yaw = ry + Math.PI; } ex.snap = true; }; window.resBaseSyncDbg = () => resBaseSync(); window.resDrinkDbg = i => drinkUp(DRINKS[i], 'test', 'BAR'); window.resBoozeDbg = () => ex.booze || 0; window.resEscDbg = () => [...GESC.ids]; window.resBotsDbg = () => RES.bots.map(B => ({ n: B.c.name, task: B.task && (B.task.type + (B.task.kind ? ':' + B.task.kind : '')), booze: +(B.booze || 0).toFixed(2), x: +B.x.toFixed(1), z: +B.z.toFixed(1), p: resPersonaSummary(B.c) })); window.resLogDbg = () => RES.log.map(l => l.who + ': ' + l.text); window.resClubDbg = () => world.hall && world.hall.club ? { x: world.hall.x, z: world.hall.z, inside: world.hall.inside, ready: world.hall.V.ready, dancers: world.hall.club.extra.length } : null; window.resNearDbg = () => ({ sys: resPlayerSys(), near: resNearSet().L.map(S => S.name), res: residents.map(c => { const T = resTravel(c); return `${c.name}${resGuildBound(c) ? ' [guild]' : ''}: ${T.mode} ${(T.body || T.to).name} (${sysById((T.body || T.to).sys).name})`; }) }); window.resLairDbg = () => { const g = resGateHere(); return g ? { name: g.L.name, lv: g.L.lv, floors: g.L.floors, x: g.x, z: g.z } : null; }; window.resDunAskDbg = () => { const B = RES.bots.find(o => o.ready); if (B) resDunAsk(B, false); return !!B; }; window.resDgnDbg = () => ({ on: DGN.on, f: DGN.f, top: DGN.on ? dgnTop() : 0, beaten: DGN.on && dgnBeaten(DGN.f), esc: [...GESC.ids], theirs: !!GESC.theirs, bots: RES.bots.map(B => B.c.name + '@' + Math.round(Math.hypot(B.x - player.position.x, B.z - player.position.z)) + 'm:' + (B.task && B.task.type)) }); window.resDgnKillDbg = () => { for (const f of fauna.list) if ((f.dgn || f.boss) && !f.dead) damageFauna(f, 1e6, true); return true; }; window.resDgnUpDbg = () => DGN.up ? { x: DGN.up.x, z: DGN.up.z } : null; window.resEscSetDbg = () => { const G = myGuild(); escortSet(RES.bots.filter(B => G && G.members.includes(B.id)).map(B => B.id)); return [...GESC.ids]; }; }
 const resMax = () => document.body.classList.contains('touch') ? 3 : 6; // phones draw fewer of them, and without shadows
 function resPresent(c, A) {
   if (RES_ALL) return true;
+  if (GESC.ids.has(c.id)) return true; // your escort goes where you go
+  if (resPartying(c)) return A === 'pl:archiostal-gardens'; // celebrating at the Low-G Lounge
   if (resTravels()) { const T = resTravel(c); return T.mode === 'at' && 'pl:' + T.body.id === A; } // they're here if their journey has them here
   return resHash(`${c.id}|${resSlot()}|${A}`) < resHereChance(c, A);
 }
@@ -25905,14 +25932,17 @@ async function resSpawn(c, near) {
   const B = { c, id: c.id, al: resAl(c), sp: spOf(c), root: new THREE.Group(), body: null, L: null, ready: false, task: null, t: 0, say: null, sayT: 0,
     x: 0, z: 0, y: 0, ry: Math.random() * 6.28, speed: 0, walk: 0, jump: 0, anchor: null, partner: null, leaving: false, lv: resLevel(c), lastLv: resLevel(c) };
   const a = Math.random() * Math.PI * 2, r = near ? 8 + Math.random() * 8 : 12 + Math.random() * 16, p = player.position;
-  const sp0 = resSafeSpot(p.x + Math.cos(a) * r, p.z + Math.sin(a) * r); B.x = sp0.x; B.z = sp0.z; B.anchor = { x: B.x, z: B.z }; B.y = wHeight(B.x, B.z);
+  const sp0 = resSafeSpot(p.x + Math.cos(a) * r, p.z + Math.sin(a) * r); B.x = sp0.x; B.z = sp0.z;
+  { const Hl = world.hall; if (Hl && isPl() && ((resPartying(c) && Hl.club) || Hl.inside)) { const q = resRoomSpot(Hl.V, resPartying(c) && Hl.club); B.x = q.x; B.z = q.z; } } // a night out: they're already inside
+  if (resPartying(c)) B.booze = .3 + Math.random() * .4;
+  B.anchor = { x: B.x, z: B.z }; B.y = wHeight(B.x, B.z);
   RES.bots.push(B);
   const md = await resModel(c).catch(e => { console.error(e); return null; });
   if (!md || !RES.bots.includes(B)) return;
   B.body = md.m; B.L = md.L; B.human = md.human; B.root.add(md.m); wScene.add(B.root); B.ready = true;
   B.root.position.set(B.x, B.y, B.z); B.root.rotation.y = B.ry;
   resAlOutfit(B); resGearDress(B);
-  const GM = myGuild(); resSay(B, GM && GM.members.includes(B.id) ? `[${GM.tag}] ${resPick(['hey', 'yo', 'o/'])} ${wanderer.name}!` : resLine('arrive', B));
+  const GM = myGuild(); resSay(B, resPartying(c) && clubHere() ? (resT('party', B, resPartyCtx(B), 'arrive') || 'Who’s ready to celebrate?') : GM && GM.members.includes(B.id) ? (resT('guildHi', B) || `Good to see you, ${wanderer.name}!`) : resLine('arrive', B));
 }
 // villains look the part: their outfit darkens like any wanderer's does
 function resAlOutfit(B) { try { if (!B.human) return; const k = alDarkK((B.c.align && B.c.align.p) || 0); if (k) B.body.traverse(o => { if (o.isMesh && o.material && o.material.color && !/visor|glass|skin|face/i.test(o.material.name || '')) o.material.color.lerp(AL_DARK, k * .7); }); } catch (e) {} }
@@ -26000,15 +26030,26 @@ function resContextPool(B, x) {
   const W = resWarCtx(); if (W) { x.enemy = W.enemy; x.realm = W.realm; const set = RL.wars[W.kind]; return Array.isArray(set) ? set : set[B.al]; }
   return RL.amb.wander[B.al];
 }
+const RT_MAP = { arrive: 'greet', leave: 'bye', travel: 'travel', mine: 'mine', trade: 'trade', toPlayer: 'toPlayer', hurt: 'hurt', build: 'build', gift: 'gift', steal: 'steal', ding: 'ding' };
 function resLine(kind, B, other) {
+  resTalkLoad();
+  if (RT && kind === 'wander' && Math.random() < .62) { // their own musings: what's on their mind, their old job, what they love
+    const p = resPersona(B.c), r = Math.random(), x = Object.assign(resCtx(B, other), resPersonaCtx(B.c));
+    if (r < .2 && p && p.job && RT.job[p.job]) return resFill(resPick(RT.job[p.job]), x);
+    if (r < .34 && p && p.likes[0] && RT.likes[p.likes[0]]) return resFill(resPick(RT.likes[p.likes[0]]), x);
+    return resT('muse', B, x);
+  }
+  if (RT && RT_MAP[kind]) { const l = resT(RT_MAP[kind], B, other ? { b: other.c.name } : null); if (l) return l; }
   const x = resCtx(B, other); let pool = null;
   if (RL && kind === 'wander') pool = resContextPool(B, x);
   if (!pool || !pool.length) { const set = (RL && RL.amb[kind]) || RES_LINES[kind]; if (!set) return null; pool = set[B.al] || set.neutral || set.hero || set.villain || []; if (!RL && kind === 'wander' && Math.random() < .3) pool = RES_LINES.species[B.sp] || pool; }
   if (!pool || !pool.length) return null;
-  return resFill(resPick(pool), x);
+  let raw = resPick(pool); for (let i = 0; i < 6 && RES_META.test(raw); i++) raw = resPick(pool); // nobody talks about servers
+  if (RES_META.test(raw)) return RT ? resT('muse', B) : null;
+  return resFill(raw, x);
 }
 function resSay(B, text) {
-  if (!text) return; text = resVoice(B.c, text);
+  if (!text) return; text = resVoice(B.c, resNorm(text)); if (!text || text === B.lastSaid) return; B.lastSaid = text;
   B.say = text; B.sayT = 4.5;
   const GT = resGuildOf(B.id); RES.log.push({ who: (GT ? `[${GT.tag}] ` : '') + B.c.name, al: B.al, text, t: time }); if (RES.log.length > 30) RES.log.shift();
   resChatRender();
@@ -26017,6 +26058,8 @@ function resSay(B, text) {
 // ---- the AI: every bot weighs what it could do right now, picks one, and sees it through ----
 function resNodes(B, r) { return nodesNear(B.x, B.z).filter(n => !n.dead && Math.hypot(n.x - B.x, n.z - B.z) < r); }
 function resChoose(B) {
+  if (resEscorting(B)) { resEscortChoose(B); return; } // following you (or leading you down a lair)
+  if (resNightChoose(B)) return; // a night out
   const p = player.position, dp = Math.hypot(p.x - B.x, p.z - B.z), V = B.al === 'villain', H = B.al === 'hero';
   const nodes = resNodes(B, 26), stalls = merchantsHere().filter(m => m.px != null && Math.hypot(m.px - B.x, m.pz - B.z) < 60);
   const opts = [
@@ -26041,11 +26084,11 @@ function resChoose(B) {
   else if (pick === 'mine') { const n = resPick(nodes); T.node = n; T.to = { x: n.x + (B.x - n.x) / Math.max(1, Math.hypot(B.x - n.x, B.z - n.z)) * (n.r + .8), z: n.z + (B.z - n.z) / Math.max(1, Math.hypot(B.x - n.x, B.z - n.z)) * (n.r + .8) }; T.dur = 5 + Math.random() * 5; if (Math.random() < .4) resSay(B, resLine('mine', B)); }
   else if (pick === 'stall') { const m = resPick(stalls); T.to = { x: m.px + (Math.random() - .5) * 3, z: m.pz + 2 + Math.random() * 2 }; T.dur = 4 + Math.random() * 4; if (Math.random() < .5) resSay(B, resLine('trade', B)); }
   else if (pick === 'toPlayer') { T.dur = 5; }
-  else if (pick === 'follow') { T.dur = 12 + Math.random() * 10; resSay(B, resPick(['following you {player}, lead the way', 'mind if I tag along?', 'where we going?']).replace('{player}', wanderer.name)); }
+  else if (pick === 'follow') { T.dur = 12 + Math.random() * 10; resSay(B, resT('follow', B) || `Mind if I walk with you, ${wanderer.name}?`); }
   else if (pick === 'steal') { const ns = resNodes({ x: p.x, z: p.z }, 14); const n = resPick(ns); T.node = n; T.to = { x: n.x + .9, z: n.z + .9 }; T.dur = 5; T.type = 'mine'; T.steal = true; }
   else if (pick === 'jet') { T.dur = 1.6; }
-  else if (pick === 'hunt') { T.f = resHuntTarget(B); T.dur = 25; if (Math.random() < .5) resSay(B, resPick(T.f && T.f.boss ? ['BOSS! everyone on it', 'focus the boss!', 'I’ve got aggro, hit it!'] : ['incoming!', 'on it', 'pull it to me', 'got this one'])); }
-  else if (pick === 'craft') { T.dur = 5 + Math.random() * 4; const g = resGear(B.c), next = Object.values(g)[0], S = next && ITEMS[next] && ARMOR_SETS.find(x => x.id === ITEMS[next].set); if (Math.random() < .55) resSay(B, resPick(['smelting some {m}', 'brb, at the forge', 'hammering out a new {p}', 'need more {m} for this lol']).replace('{m}', S ? ITEMS[S.mat].name.toLowerCase() : 'copper').replace('{p}', next ? PIECE[ITEMS[next].slot || 'chest'][1] : 'helmet')); }
+  else if (pick === 'hunt') { T.f = resHuntTarget(B); T.dur = 25; if (Math.random() < .5) resSay(B, (RT && resPick(T.f && T.f.boss ? RT.hunt.boss : RT.hunt.base)) || 'Watch out!'); }
+  else if (pick === 'craft') { T.dur = 5 + Math.random() * 4; const g = resGear(B.c), next = Object.values(g)[0], S = next && ITEMS[next] && ARMOR_SETS.find(x => x.id === ITEMS[next].set); if (Math.random() < .55) resSay(B, resPick((RT && RT.craft.base) || ['Smelting some {m}.', 'Hammering out a new {p}.']).replace('{m}', S ? ITEMS[S.mat].name.toLowerCase() : 'copper').replace('{p}', next ? PIECE[ITEMS[next].slot || 'chest'][1] : 'helmet')); }
   else if (pick === 'build') { const b = resBasesOf(B.c)[curArea()], site = b ? { x: b.x, z: b.z } : resBaseSite(B); if (!site) { T.type = 'idle'; T.dur = 2; } else { T.site = site; T.to = resSafeSpot(site.x + 4.5, site.z + 4.5); T.dur = 14 + Math.random() * 8; if (Math.random() < .5) resSay(B, b ? 'working on my base' : 'gonna build myself a camp here'); } }
   B.task = T;
 }
@@ -26069,14 +26112,14 @@ function resSocial() {
     resPair(A, C, k);
   }
   // three or more in one place: sometimes the whole group gathers
-  if (free.length >= 3 && Math.random() < .2) { const c = free[0]; for (const B of free) { B.task = { type: 'gather', t: 0, to: { x: c.x + (Math.random() - .5) * 4, z: c.z + (Math.random() - .5) * 4 }, dur: 8, em: resPick(['dance', 'cheer']) }; } resSay(c, resPick(['group photo!', 'everyone over here', 'party at {place}']).replace('{place}', resCtx(c).place)); }
+  if (free.length >= 3 && Math.random() < .2) { const c = free[0]; for (const B of free) { B.task = { type: 'gather', t: 0, to: { x: c.x + (Math.random() - .5) * 4, z: c.z + (Math.random() - .5) * 4 }, dur: 8, em: resPick(['dance', 'cheer']) }; } resSay(c, (RT && resPick(RT.gather)) || 'Everyone, over here!'); }
 }
 function resPair(A, C, kind, rally) {
   const ga = resGuildOf(A.id), gc = resGuildOf(C.id), rivals = ga && gc && ga !== gc;
   if (kind === 'argue' && rivals && Math.random() < .35) kind = 'fight'; // words turn to blows
   A.partner = C; C.partner = A;
   const ctxA = resCtx(A, C), wx = kind === 'fight' ? resWarCtx2(A.id, C.id) : null, fx = wx && resExchange('fight', A.c, C.c);
-  const [la, lc] = fx ? [resFill(fx[0], wx), resFill(fx[1], Object.assign({}, wx, { a: wx.b, b: wx.a, ea: wx.eb, eb: wx.ea }))] : resPick((RL && RL.pairs[kind === 'fight' ? 'spar' : kind]) || RES_PAIR[kind === 'fight' ? 'spar' : kind]).map(t => resFill(t, ctxA));
+  const [la, lc] = fx ? [resFill(fx[0], wx), resFill(fx[1], Object.assign({}, wx, { a: wx.b, b: wx.a, ea: wx.eb, eb: wx.ea }))] : resPick((RT && RT.pairs[kind]) || (RL && RL.pairs[kind === 'fight' ? 'spar' : kind]) || RES_PAIR[kind === 'fight' ? 'spar' : kind]).map(t => resFill(t, Object.assign({}, ctxA, { home: resHomeBody(A.c).name })));
   const mid = { x: (A.x + C.x) / 2, z: (A.z + C.z) / 2 }, ang = Math.atan2(C.z - A.z, C.x - A.x), gap = kind === 'spar' || kind === 'fight' ? 1.4 : 1.1;
   const spotA = resSafeSpot(mid.x - Math.cos(ang) * gap, mid.z - Math.sin(ang) * gap), spotC = resSafeSpot(mid.x + Math.cos(ang) * gap, mid.z + Math.sin(ang) * gap);
   const T = (to, extra) => Object.assign({ type: 'pair', kind, t: 0, to, dur: kind === 'dance' ? 7 : kind === 'spar' ? 6 : kind === 'fight' ? 8 : 5 }, extra || {});
@@ -26089,7 +26132,7 @@ function resPair(A, C, kind, rally) {
 function resEndPair(B) {
   const P = B.partner, k = B.task && B.task.kind;
   if (P && P.partner === B && (k === 'spar' || k === 'race') && !B.task.done) {
-    const ek = k === 'spar' ? 'sparEnd' : 'raceEnd', end = resFill(resPick((RL && RL.pairs[ek]) || RES_PAIR[ek])[0], resCtx(B, P));
+    const ek = k === 'spar' ? 'sparEnd' : 'raceEnd', end = resFill(resPick((RT && RT.pairs[ek]) || (RL && RL.pairs[ek]) || RES_PAIR[ek])[0], resCtx(B, P));
     B.task.done = true; if (P.task) P.task.done = true; resSay(B, end);
   }
   if (P) { P.partner = null; P.task = null; } B.partner = null; B.task = null;
@@ -26099,12 +26142,20 @@ function resNear(p) { let best = null, bd = 2.8; for (const B of RES.bots) { if 
 const RES_TRADE_RES = ['stone', 'ice', 'scrap', 'crystal', 'cloth'];
 const resWho = (B, ooc) => String(B.c.name).toUpperCase() + (ooc ? ' · OUT OF CHARACTER' : '');
 const resAlName = B => B.al === 'hero' ? 'Enlightened Hero' : B.al === 'villain' ? 'Awakened Villain' : 'Neutral';
-function resSayTo(B, lines, then, ooc) { openDialog(resWho(B, ooc), lines.filter(Boolean).map(l => ooc ? l : resVoice(B.c, l)), false, then || null); if (ex.dlg) ex.dlg.silent = true; } // text only: no voice, no typing blips; out of character, they speak plainly
+function resSayTo(B, lines, then, ooc) { openDialog(resWho(B, ooc), lines.filter(Boolean).map(l => ooc ? l : resVoice(B.c, resNorm(l))), false, then || null); if (ex.dlg) ex.dlg.silent = true; } // text only: no voice, no typing blips; out of character, they speak plainly
+function resAbout(B) { // who they are, in their own words: where they're from, what they did before, what they love
+  const p = resPersona(B.c), x = Object.assign(resCtx(B), resPersonaCtx(B.c)), out = [resT('intro', B) || `I’m ${B.c.name}, from ${x.home}.`];
+  if (p && p.job) out.push(RT && RT.job[p.job] ? `I was ${RES_JOB_NAME[p.job]} before all this. ` + resFill(resPick(RT.job[p.job]), x) : `I was ${RES_JOB_NAME[p.job]} before all this.`);
+  if (p && p.likes[0]) out.push(RT && RT.likes[p.likes[0]] ? resFill(resPick(RT.likes[p.likes[0]]), x) : `I love ${p.likes[0]}.`);
+  if (p && p.catch && Math.random() < .5) out.push(`People say I say “${p.catch}” too much. I don’t see it.`);
+  return out;
+}
 function resTalk(B) {
-  resLinesLoad(); RES.talking = B; B.task = { type: 'face', t: 0, dur: 4 }; B.em = 'wave'; B.emT = 2.2;
+  resLinesLoad(); resTalkLoad(); RES.talking = B; B.task = { type: 'face', t: 0, dur: 4 }; B.em = 'wave'; B.emT = 2.2;
   const x = resCtx(B), V = B.al === 'villain', T = RL && RL.talk, back = () => resTalk(B);
   const opts = [
-    { text: 'What are you up to?', onPick: () => resSayTo(B, [resFill(resPick(T ? T.doing[B.al] : ['Just exploring.']), x), `\u200bLV ${B.lv} · ${resSpLabel(B.c)} · ${resAlName(B)}${resTravels() ? ` · home: ${resHomeBody(B.c).name}` : ''}`, '\u200bGear: ' + resGearText(B.c) + ` · Lairs cleared: ${resLairsDone(B.id)}` + (resGuildOf(B.id) ? ` · Guild: ${resGuildOf(B.id).name} [${resGuildOf(B.id).tag}]` : ''), resPersonaSummary(B.c) ? '\u200bPersonality: ' + resPersonaSummary(B.c) : null], back) },
+    { text: 'What are you up to?', onPick: () => resSayTo(B, [resT('doing', B) || resFill(resPick(T ? T.doing[B.al] : ['Just exploring.']), x), `\u200bLV ${B.lv} · ${resSpLabel(B.c)} · ${resAlName(B)}${resTravels() ? ` · home: ${resHomeBody(B.c).name}` : ''}`, '\u200bGear: ' + resGearText(B.c) + ` · Lairs cleared: ${resLairsDone(B.id)}` + (resGuildOf(B.id) ? ` · Guild: ${resGuildOf(B.id).name} [${resGuildOf(B.id).tag}]` : ''), resPersonaSummary(B.c) ? '\u200bPersonality: ' + resPersonaSummary(B.c) : null], back) },
+    { text: 'Tell me about yourself', onPick: () => resSayTo(B, resAbout(B), back) },
     { text: 'Tell me about this place', onPick: () => { if (resUnsure(B, 'place')) return resSayTo(B, [resUnknownLine(B, x)], back); const k = resExploreKeys(), w = RL && k.world && RL.explore.worlds[k.world]; resSayTo(B, [resFill(resPick(T ? T.place : ['Nice place.']), x), RL ? resFill(resPick(w || RL.explore.kinds[k.kind] || RL.talk.place), x) : null], back); } },
     { text: 'Any tips?', onPick: () => resSayTo(B, resUnsure(B, 'tips') ? [resUnknownLine(B, x)] : T ? resPickN(T.tips, 2) : ['Save often.'], back) },
     { text: 'Ask something…', onPick: () => resAsk(B) }
@@ -26113,11 +26164,11 @@ function resTalk(B) {
   if (!V && ex.mode === 'world') { // a small trade
     const id = resPick(RES_TRADE_RES.filter(k => ITEMS[k])), n = 2 + Math.floor(Math.random() * 3), price = n * (B.al === 'hero' ? 8 : 12);
     opts.push({ text: `Buy ${n} ${ITEMS[id].name} · ${price} units`, onPick: () => {
-      if (units() < price) { resSay(B, 'come back when you’ve got the units'); return; }
-      addUnits(-price); giveItem(id, n); lootMsg(`+${n} ${ITEMS[id].name} · from ${B.c.name}`, ITEMS[id].color || '#9fe6b0'); resSay(B, resPick(['pleasure doing business', 'ty!', 'enjoy'])); } });
+      if (units() < price) { resSay(B, (RT && resPick(RT.broke)) || 'Come back when you’ve got the units.'); return; }
+      addUnits(-price); giveItem(id, n); lootMsg(`+${n} ${ITEMS[id].name} · from ${B.c.name}`, ITEMS[id].color || '#9fe6b0'); resSay(B, (RT && resPick(RT.deal)) || 'Pleasure doing business.'); } });
   }
   if (resEmpOf(B.id)) opts.push({ text: 'About your empire\u2026', onPick: () => { const e = resEmpOf(B.id), wars = resEmp.wars.filter(w => w.a === B.id || w.b === B.id); resSayTo(B, [resClean(`${e.name}. ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars.length ? `, at war with ${wars.map(w => (resEmpOf(w.a === B.id ? w.b : w.a) || {}).name).join(' and ')}` : ', at peace for now'}.`)], () => openChoice(resWho(B), [{ text: 'Open Resident Empires', onPick: () => { RES.talking = null; closeDialog(); resEmpOpen(); } }, { text: 'Demand you disband it', onPick: () => { resDisband(B.id); RES.talking = null; } }, { text: 'Back', onPick: back }])); } });
-  opts.push(...resGuildTalkOpts(B, back));
+  opts.push(...resGuildCmdOpts(B, back), ...resGuildTalkOpts(B, back));
   opts.push({ text: 'Roleplay\u2026', onPick: () => resRoleplay(B, 1) });
   opts.push({ text: 'Real life\u2026', onPick: () => resRealLife(B) });
   opts.push({ text: 'Bye', onPick: () => { RES.talking = null; resSay(B, resFill(resPick(T ? T.farewell[B.al] : ['cya']), x)); } });
@@ -26296,20 +26347,21 @@ function resTick(dt) {
   if (ex.mode === 'world') resBaseSync(); // their bases stand whether or not they're around
   if (!resGroundOk()) { for (const B of RES.bots) B.root.visible = false; return; }
   const A = curArea(), p = player.position, paused = state !== 'explore';
-  resLinesLoad(); resWarLoad();
+  resLinesLoad(); resWarLoad(); resTalkLoad();
   if (RES.talking && !ex.dlg) RES.talking = null;
   RES.chk = (RES.chk || 0) - dt;
   if (RES.area !== A || RES.chk <= 0) { // a new place, or a few seconds on: who's around now?
     const fresh = RES.area !== A; if (fresh) resClearGround();
     RES.area = A; RES.chk = 5;
-    const want = residents.filter(c => resPresent(c, A)).slice(0, resMax());
+    const want = residents.filter(c => resPresent(c, A)).sort((a, b) => (GESC.ids.has(b.id) || resPartying(b)) - (GESC.ids.has(a.id) || resPartying(a))).slice(0, resMax());
     for (const B of RES.bots) if (!want.includes(B.c) && !B.leaving && RES.talking !== B) { B.leaving = true; B.task = { type: 'leave', t: 0, dur: 4 }; const T = resTravels() ? resTravel(B.c) : null; resSay(B, resLine(T && T.mode === 'warp' ? 'travel' : 'leave', B)); }
     for (const c of want) if (!RES.bots.some(B => B.c === c)) resSpawn(c, !fresh && Math.random() < .5);
   }
   if (!paused) {
     RES.social -= dt; if (RES.social <= 0) { RES.social = 3 + Math.random() * 3; resSocial(); }
     RES.ding -= dt; if (RES.ding <= 0) { RES.ding = 20; for (const B of RES.bots) { B.lv = resLevel(B.c); if (B.lv > B.lastLv) { B.lastLv = B.lv; resSay(B, resLine('ding', B)); } if (B.ready) resGearCheck(B); } }
-    resInviteCheck(dt);
+    resInviteCheck(dt); resDunAskCheck(dt); resEscortTick(dt);
+    RES.drunkT = (RES.drunkT == null ? 3 : RES.drunkT) - dt; if (RES.drunkT <= 0) { RES.drunkT = 3.5; resDrunkCheck(); }
   }
   for (const B of [...RES.bots]) {
     if (!B.ready) continue;
@@ -26326,6 +26378,7 @@ function resMoveTo(B, to, dt, run) {
   const sp = (run ? 5.4 : 2.3) * (B.task && B.task.slow || 1), k = Math.min(d, sp * dt);
   // walls, buildings, stalls and deep water stop them like they stop you: step round, or give up and think again
   let ux = dx / d, uz = dz / d;
+  if ((B.booze || 0) > .8) { const a = Math.sin(time * 2.3 + B.id.length) * .55, c = Math.cos(a), s2 = Math.sin(a); [ux, uz] = [ux * c - uz * s2, ux * s2 + uz * c]; } // drunk: never quite in a straight line
   if (resBlocked(B.x + ux * (k + .35), B.z + uz * (k + .35), B.y)) {
     let ok = false;
     for (const a of [.8, -.8, 1.5, -1.5]) { const c = Math.cos(a), s2 = Math.sin(a), vx = ux * c - uz * s2, vz = ux * s2 + uz * c; if (!resBlocked(B.x + vx * (k + .35), B.z + vz * (k + .35), B.y)) { ux = vx; uz = vz; ok = true; break; } }
@@ -26337,12 +26390,14 @@ function resMoveTo(B, to, dt, run) {
 const resFace = (B, x, z, dt) => { B.ry = angLerp(B.ry, Math.atan2(x - B.x, z - B.z), Math.min(1, dt * 6)); };
 function resStep(B, dt, p) {
   const dp = Math.hypot(p.x - B.x, p.z - B.z);
-  if (dp > 95 && !B.leaving) { // you walked off: they pop back in near you if they're still around, like players streaming in
+  if (B.booze > 0) B.booze = Math.max(0, B.booze - dt * .008);
+  if (dp > 95 && !B.leaving && !(resPartying(B.c) && clubHere())) { // you walked off: they pop back in near you if they're still around, like players streaming in
     const a = Math.random() * 6.28; B.x = p.x + Math.cos(a) * 40; B.z = p.z + Math.sin(a) * 40; B.anchor = { x: B.x, z: B.z }; B.task = null; if (B.partner) resEndPair(B);
   }
   if (!B.task) resChoose(B);
   const T = B.task; T.t += dt; B.speed = 0;
   if (B.emT > 0) B.emT -= dt; else B.em = null;
+  if (resEscortStep(B, T, dt, p) || resNightStep(B, T, dt, p)) { B.y = groundAt(B.x, B.z, B.y + 1.5); return; }
   switch (T.type) {
     case 'wander': if (resMoveTo(B, T.to, dt, T.run) || T.t > 20) B.task = null; break;
     case 'idle': if (T.t > T.dur) B.task = null; else if (dp < 12) resFace(B, p.x, p.z, dt); break;
@@ -26358,10 +26413,10 @@ function resStep(B, dt, p) {
       else { resFace(B, p.x, p.z, dt); if (T.t > T.dur) B.task = null; }
       break;
     }
-    case 'follow': { const to = { x: p.x - Math.sin(player.rotation.y) * 2.6 + 1.2, z: p.z - Math.cos(player.rotation.y) * 2.6 }; resMoveTo(B, to, dt, dp > 7); if (dp < 3.5) resFace(B, p.x, p.z, dt); if (T.t > T.dur) { B.task = null; B.anchor = { x: B.x, z: B.z }; resSay(B, resPick(['ok I’m off, cya', 'thanks for the tour'])); } break; }
+    case 'follow': { const to = { x: p.x - Math.sin(player.rotation.y) * 2.6 + 1.2, z: p.z - Math.cos(player.rotation.y) * 2.6 }; resMoveTo(B, to, dt, dp > 7); if (dp < 3.5) resFace(B, p.x, p.z, dt); if (T.t > T.dur) { B.task = null; B.anchor = { x: B.x, z: B.z }; resSay(B, (RT && resFill(resPick(RT.follow.end), resCtx(B))) || 'Thanks for the company.'); } break; }
     case 'build': if (!T.at) { if (resMoveTo(B, T.to, dt, true) || T.t > 20) { T.at = true; T.t = 0; } } else { resFace(B, T.site.x, T.site.z, dt); B.em = 'mine'; B.emT = .1; if (Math.random() < dt * 4) emit(T.site.x + (Math.random() - .5) * 4, wHeight(T.site.x, T.site.z) + 1 + Math.random() * 2, T.site.z + (Math.random() - .5) * 4, 0, 1.5, 0, .9, .8, .6, .7); if (T.t > T.dur) { B.task = null; resBuildDone(B, T.site); } } break;
     case 'craft': B.em = 'mine'; B.emT = .1; if (Math.random() < dt * 5) emit(B.x + Math.sin(B.ry) * .9, B.y + .7, B.z + Math.cos(B.ry) * .9, (Math.random() - .5) * 2, 1.5 + Math.random() * 2, (Math.random() - .5) * 2, 1, .65, .25, .5); if (T.t > T.dur) B.task = null; break;
-    case 'hunt': { const f = T.f; if (!f || f.dead || !fauna.list.includes(f) || T.t > T.dur) { B.task = null; break; }
+    case 'hunt': { const f = T.f; if (!f || f.dead || !fauna.list.includes(f) || T.t > T.dur || (DGN.on && T.t > 10 && Math.hypot(f.x - B.x, f.z - B.z) > 6)) { B.task = null; break; }
       const d = Math.hypot(f.x - B.x, f.z - B.z), reach = (f.D.r || 1) + 1.4;
       if (d > reach) resMoveTo(B, { x: f.x + (B.x - f.x) / Math.max(.1, d) * reach * .8, z: f.z + (B.z - f.z) / Math.max(.1, d) * reach * .8 }, dt, true);
       else { resFace(B, f.x, f.z, dt); B.em = 'spar'; B.emT = .1; if ((T.hitT = (T.hitT || 0) - dt) <= 0) { T.hitT = 1.1; damageFauna(f, Math.round(6 + B.lv * .5), true); } }
@@ -26396,7 +26451,7 @@ function resGift(B) {
   const mate = myGuild() && myGuild().members.includes(B.id); if ((B.al === 'villain' && !mate) || Math.random() > (mate ? .5 : B.al === 'hero' ? .35 : .12)) return; // guildmates look after their own
   const k = B.id + '|' + resSlot(); if (RES.gifts[k]) return; RES.gifts[k] = true;
   const id = resPick(RES_TRADE_RES.filter(x => ITEMS[x])), n = 1 + Math.floor(Math.random() * 3);
-  setTimeout(() => { if (state !== 'explore' || ex.mode !== 'world') return; giveItem(id, n); lootMsg(`+${n} ${ITEMS[id].name} · a gift from ${B.c.name}`, ITEMS[id].color || '#9fe6b0'); resSay(B, resFill(resPick(RES_LINES.gift[B.al] || RES_LINES.gift.hero), Object.assign(resCtx(B), { res: ITEMS[id].name }))); }, 1400);
+  setTimeout(() => { if (state !== 'explore' || ex.mode !== 'world') return; giveItem(id, n); lootMsg(`+${n} ${ITEMS[id].name} · a gift from ${B.c.name}`, ITEMS[id].color || '#9fe6b0'); resSay(B, resT('gift', B, { res: ITEMS[id].name }) || resFill(resPick(RES_LINES.gift[B.al] || RES_LINES.gift.hero), Object.assign(resCtx(B), { res: ITEMS[id].name }))); }, 1400);
 }
 // limbs, the same way the player's own are moved
 function resAnim(B, dt) {
@@ -26481,7 +26536,7 @@ function resGalMarks() {
   if (!residents.length || !resTravels()) return [];
   return residents.map((c, i) => ({ c, i, T: resTravel(c), al: resAl(c), lv: resLevel(c) }));
 }
-function resSpaceSay(S, text) { RES.log.push({ who: S.c.name, al: S.al, text, t: time }); if (RES.log.length > 30) RES.log.shift(); resChatRender(); spaceMsg(`${S.c.name}: ${text}`); }
+function resSpaceSay(S, text) { text = resNorm(text); RES.log.push({ who: S.c.name, al: S.al, text, t: time }); if (RES.log.length > 30) RES.log.shift(); resChatRender(); spaceMsg(`${S.c.name}: ${text}`); }
 function resClearSpace() { if (SPC.scene) for (const S of RES.sp) SPC.scene.remove(S.m); RES.sp = []; RES.spSys = null; }
 
 // ---- nameplates, speech bubbles and the zone chat (fixed overlay, laid out for phones too) ----
@@ -26580,7 +26635,7 @@ function resFreeWorlds() {
   return RES.free.filter(P => !D[P.id] && !taken.has(P.id));
 }
 function resEmpLog(text) { resEmp.log.push({ t: resNow(), text }); if (resEmp.log.length > 40) resEmp.log.shift(); }
-function resWarSay(c, text, x) { if (!c || !text) return; RES.log.push({ who: c.name, al: resAl(c), text: resVoice(c, resFill(text, x)), t: time, war: true }); if (RES.log.length > 30) RES.log.shift(); resChatRender(); }
+function resWarSay(c, text, x) { if (!c || !text) return; RES.log.push({ who: c.name, al: resAl(c), text: resVoice(c, resNorm(resFill(text, x))), t: time, war: true }); if (RES.log.length > 30) RES.log.shift(); resChatRender(); }
 function resWarCtx2(a, b, cb) { const A = resEmpOf(a), B = resEmpOf(b), ca = residents.find(c => c.id === a), cbr = residents.find(c => c.id === b); return { a: ca ? ca.name : '?', b: cbr ? cbr.name : '?', ea: A ? A.name : 'their empire', eb: B ? B.name : 'their empire', cb: cb ? CBS[cb].name.toUpperCase() : '', player: wanderer ? wanderer.name : 'you' }; }
 // which exchanges fit two alignments, and who says which half
 function resMatch(al1, al2) { const o = { hero: 'h', neutral: 'n', villain: 'v' }, a = o[al1], b = o[al2]; if (a === b) return { k: a + a, swap: false }; const ord = 'hnv'; return ord.indexOf(a) < ord.indexOf(b) ? { k: a + b, swap: false } : { k: b + a, swap: true }; }
@@ -26806,7 +26861,7 @@ function resGearCheck(B) { // they levelled into a new piece: they say so, and p
   const k = resGearKey(B.c); if (k === B.gearKey) return;
   const was = B.gearKey ? JSON.parse(B.gearKey) : {}, now = JSON.parse(k), id = Object.values(now).find(x => !Object.values(was).includes(x));
   resGearDress(B);
-  if (id && ITEMS[id]) { const S = ARMOR_SETS.find(x => x.id === ITEMS[id].set); resSay(B, resPick(RES_CRAFT_LINES).replace('{piece}', ITEMS[id].name.toLowerCase()).replace('{mat}', S ? ITEMS[S.mat].name.toLowerCase() : 'ore')); }
+  if (id && ITEMS[id]) { const S = ARMOR_SETS.find(x => x.id === ITEMS[id].set); resSay(B, resPick((RT && RT.craft.done) || RES_CRAFT_LINES).replace('{piece}', ITEMS[id].name.toLowerCase()).replace('{mat}', S ? ITEMS[S.mat].name.toLowerCase() : 'ore')); }
 }
 // ---- guilds ----
 const RES_GUILD_A = ['Iron', 'Void', 'Crimson', 'Silver', 'Starfall', 'Ember', 'Frost', 'Golden', 'Hollow', 'Thunder', 'Obsidian', 'Lantern', 'Comet', 'Night', 'Dawn', 'Rust', 'Azure', 'Wild'];
@@ -26873,7 +26928,7 @@ function resInviteCheck(dt) {
   if (!cand.length || Math.random() > .5) return;
   const [B, G] = resPick(cand); if (RES.asked && RES.asked[G.id + resSlot()]) return; (RES.asked || (RES.asked = {}))[G.id + resSlot()] = true;
   B.task = { type: 'invite', t: 0, G };
-  resSay(B, resPick(['hey {player}, got a sec?', '{player}! wait up', 'oi, {player}']).replace('{player}', wanderer.name));
+  resSay(B, resT('invite', B) || `${wanderer.name}, have you got a minute?`);
 }
 const wAlign = () => { const v = (wanderer && wanderer.align && wanderer.align.p) | 0; return v >= 34 ? 'hero' : v <= -34 ? 'villain' : 'neutral'; };
 function resInviteAsk(B, G) {
@@ -26961,6 +27016,7 @@ const resLairsDone = id => resDun().n[id] | 0;
 function resDunRun(c) { // a run while you're away: a lair on the world they're on (or one at their level), with up to three guildmates
   if (!resTravels()) return;
   const T = resTravel(c); let L = null, all = lairsAll().list.filter(q => !q.ch4);
+  if (resGuildBound(c)) { const N = resNearSet().ids; all = all.filter(q => q.S && N.has(q.S.id)); } // your guild runs the lairs near you
   if (T && T.mode === 'at' && T.body) { const here = lairsOn(T.body).filter(q => !q.ch4); if (here.length) L = resPick(here); }
   const lv = resLevel(c);
   if (!L) { const fit = all.filter(q => Math.abs(q.lv - lv) < 10); L = fit.length ? resPick(fit) : null; }
@@ -26970,7 +27026,7 @@ function resDunRun(c) { // a run while you're away: a lair on the world they're 
   const avg = party.reduce((t, o) => t + resLevel(o), 0) / party.length, ok = Math.random() < clamp(.5 + (avg - L.lv) * .03 + .08 * (party.length - 1), .1, .95);
   const D = resDun(), names = party.map(o => o.name);
   D.recent.push({ lair: L.id, names, ok, t: resNow(), g: G ? G.tag : null }); if (D.recent.length > 30) D.recent.shift();
-  if (ok) { for (const o of party) D.n[o.id] = (D.n[o.id] | 0) + 1; D.cleared[L.id] = { by: names, t: resNow() }; }
+  if (ok) { for (const o of party) D.n[o.id] = (D.n[o.id] | 0) + 1; D.cleared[L.id] = { by: names, t: resNow() }; if (Math.random() < .6) resStartParty(party, L); } // and then to the Lounge
   const who = names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0];
   resGuildLog(`⚔ ${G && party.length > 1 ? `[${G.tag}] ` : ''}${who} ${ok ? 'cleared' : 'wiped in'} ${L.name}${ok ? ` · ${lairBoss(L).short} is dead` : ''}`);
 }
@@ -27030,6 +27086,272 @@ function compDungeonTick() {
   }
   placeOrion().catch(() => null); placeCrew().catch(() => null); refreshJamesUI(); ui.xhud.classList.toggle('comp', companionOn() || partyNow().length > 0);
 }
+/* ============ Drinks, the Low-G Lounge, drunken brawls, and guild dungeon parties ============
+   Every bar pours real drinks from Chapter II on (the Salt Lantern, every world's cantina, and the Low-G Lounge on Archiostal). Each
+   one warms you up (a little health) and goes to your head: tipsy, then drunk (the room sways, your feet wander), then wasted (the
+   bartender cuts you off). It wears off over a couple of minutes.
+   The Low-G Lounge is a nightclub in the Ward 04 concourse, at the edge of Archiostal's gardens: a lit dance floor, a DJ, a bar and
+   the gravity turned down. Residents who've just cleared a dungeon go there to celebrate; they drink, they dance, and once they're
+   drunk they start fights: with the regulars, or with anyone from an empire or guild they're at war with who happens to be there too.
+   Guilds: lead one and your guildmates follow your orders, out in the open and down into the lairs, floor by floor. Belong to one and
+   your guildmates ask you along on their own dungeon runs, and lead the way down. ============ */
+const DRINKS = [
+  { id: 'water', name: 'Water', cost: 0, b: -.15, hp: 4 },
+  { id: 'ale', cost: 10, b: .28, hp: 12 },
+  { id: 'spirit', cost: 18, b: .45, hp: 18 },
+  { id: 'house', name: 'The house special', cost: 30, b: .75, hp: 25 }
+];
+const DRINK_LOCAL = { human: ['Harbour lager', 'Ad-Nostra dark rum'], grek: ['Grek root ale', 'Malana honey mead'], chompy: ['Chompy gut-punch ale', 'Steca fire-rum'], erisian: ['Erisian frost ale', 'Erisian frostwine'], club: ['Low-G fizz', 'Nebula spritz'] };
+const DRUNK_MSG = ['Sober · your head is clear again', 'Tipsy · everything is warm and a little funny', 'Drunk · the room won’t sit still', 'Wasted · the bartender is giving you a look'];
+const drunkTier = (b = ex.booze || 0) => b >= 1.3 ? 3 : b >= .8 ? 2 : b >= .3 ? 1 : 0;
+const drinksOn = () => !!wanderer && (wanderer.chapter | 0) >= 2;
+function barDrink(V) {
+  if (!V) return;
+  const nm = V.salt ? 'CANTINA OWNER' : V.club ? 'BARTENDER · THE LOW-G LOUNGE' : 'BARTENDER', L = DRINK_LOCAL[V.club ? 'club' : V.sp] || DRINK_LOCAL.human, tier = drunkTier();
+  const nameOf = d => d.id === 'ale' ? L[0] : d.id === 'spirit' ? L[1] : d.name;
+  const opts = DRINKS.map(d => ({ text: d.cost ? `${nameOf(d)} · ${d.cost} units` : `${nameOf(d)} · on the house`, onPick: () => drinkUp(d, nameOf(d), nm) }));
+  if (!V.club) opts.push({ text: 'Who runs the fights?', onPick: () => openDialog(nm, [`${titleName(V.mc)}, up on the bar. Three fighters, three purses, and the champion takes on anyone. Talk to the MC if you want in.`]) });
+  opts.push({ text: 'Nothing, thanks', onPick: () => {} });
+  const greet = tier >= 3 ? 'I think you’ve had enough, friend. Water?' : tier === 2 ? 'Steady there. What’ll it be?' : V.club ? 'Welcome to the Lounge. What are we drinking tonight?' : V.salt ? 'What can I get you?' : 'What’ll it be?';
+  openDialog(nm, [greet], false, () => openChoice(nm, opts));
+}
+function drinkUp(d, name, nm) {
+  if (d.b > 0 && drunkTier() >= 3) { openDialog(nm, ['No. You’re cut off. Sit down and drink some water.']); return; }
+  if (units() < d.cost) { lootMsg('Not enough units', '#ff8f86'); return; }
+  addUnits(-d.cost); const m = maxHP(); ex.hp = Math.min(m, ex.hp + d.hp); invState().hp = Math.round(ex.hp);
+  const was = drunkTier(); ex.booze = Math.max(0, (ex.booze || 0) + d.b); sfx.blip();
+  lootMsg(d.id === 'water' ? 'Water · your head clears a little' : `${name} · +${d.hp} health`, '#ffc94a');
+  const now = drunkTier(); if (now !== was) setTimeout(() => lootMsg(DRUNK_MSG[now], now ? '#ffb070' : '#9fe6ff'), 900);
+  if (d.b > 0) for (const B of RES.bots) if (B.ready && Math.random() < .35 && Math.hypot(B.x - player.position.x, B.z - player.position.z) < 9) { setTimeout(() => resSay(B, resPick(['Cheers!', 'To your health!', `Go on, ${wanderer.name}!`, 'Another round!'])), 600 + Math.random() * 1200); break; }
+}
+function drunkTick(dt) { // every frame: it wears off; in the open world the screen swims while you're drunk
+  const b = ex.booze || 0;
+  if (b > 0) { const was = drunkTier(); ex.booze = Math.max(0, b - dt * .011); const now = drunkTier(); if (now !== was && ex.mode === 'world') lootMsg(DRUNK_MSG[now], now ? '#ffb070' : '#9fe6ff'); }
+  const on = (ex.booze || 0) > .3 && ex.mode === 'world' && (state === 'explore' || state === 'xpaused');
+  if (on) { const k = Math.min(1, (ex.booze - .3) / 1.1), phone = document.body.classList.contains('touch'); renderer.domElement.style.filter = `${phone ? '' : `blur(${(k * 1.4).toFixed(2)}px) `}saturate(${(1 + k * .6).toFixed(2)}) hue-rotate(${(Math.sin(time * .7) * k * 22).toFixed(1)}deg)`; ex.drunkFx = true; }
+  else if (ex.drunkFx) { ex.drunkFx = false; renderer.domElement.style.filter = ''; }
+}
+const drunkK = () => clamp(((ex.booze || 0) - .3) / 1.1, 0, 1);
+// ---- the Low-G Lounge: Archiostal's nightclub, at the Ward 04 concourse beside the gardens (the door faces the landing pad) ----
+const CLUB = { x: 72, z: -34, w: 20, d: 16, name: 'THE LOW-G LOUNGE', ward: 'WARD 04 · GRAVITY HABITATION · CONCOURSE' };
+const clubHere = () => !!(isPl() && world.hall && world.hall.club);
+const clubInside = () => clubHere() && world.hall.inside;
+function clubPlan(W) { let y = 0; try { y = planetGroundH(CLUB.x, CLUB.z); } catch (e) {} W.hall = { x: CLUB.x, z: CLUB.z, y, club: true }; W.pads.push({ x: CLUB.x, z: CLUB.z, r: 15, y }); }
+function buildClub(P0) {
+  const G = new THREE.Group(); G.position.set(P0.x, P0.y, P0.z);
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .5, metalness: .5 }, o)), B = c => new THREE.MeshBasicMaterial({ color: c });
+  const box = (w, hh, d, m, x, y, z, ry = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = o.receiveShadow = true; G.add(o); return o; };
+  const hw = CLUB.w / 2, hd = CLUB.d / 2, hh = HALL.h, T = .4, door = 1.6;
+  const wall = M(0x2a2238, { metalness: .5, roughness: .4, emissive: 0x2a1840, emissiveIntensity: .55 }), wall2 = M(0x15121c, { roughness: .6, emissive: 0x120a1c, emissiveIntensity: .5 }), trim = M(0xe8c27a, { metalness: .85, roughness: .3, emissive: 0x4a3410, emissiveIntensity: .4 });
+  const pink = B(0xff4ad8), cyan = B(0x4af0ff);
+  const fl = new THREE.Mesh(new THREE.PlaneGeometry(CLUB.w + 4, CLUB.d + 4), M(0x14121c, { roughness: .2, metalness: .6, emissive: 0x1a0f26, emissiveIntensity: .6 })); fl.rotation.x = -Math.PI / 2; fl.position.y = .04; fl.receiveShadow = true; G.add(fl);
+  box(CLUB.w + 4.4, .5, CLUB.d + 4.4, wall2, 0, -.2, 0);
+  box(T, hh, CLUB.d, wall, hw, hh / 2, 0); box(CLUB.w, hh, T, wall, 0, hh / 2, -hd); box(CLUB.w, hh, T, wall, 0, hh / 2, hd);
+  box(T, hh, hd - door, wall, -hw, hh / 2, -(hd + door) / 2); box(T, hh, hd - door, wall, -hw, hh / 2, (hd + door) / 2); box(T, hh - 3, door * 2, wall, -hw, hh - (hh - 3) / 2, 0);
+  for (const [x, z, w2, d2, m] of [[0, -hd + .25, CLUB.w - .6, .08, pink], [0, hd - .25, CLUB.w - .6, .08, cyan], [hw - .25, 0, .08, CLUB.d - .6, pink]]) { box(w2, .1, d2, m, x, .45, z); box(w2, .1, d2, m === pink ? cyan : pink, x, hh - .35, z); }
+  for (const [x, z] of [[-hw, -hd], [hw, -hd], [-hw, hd], [hw, hd]]) box(.7, hh + .6, .7, trim, x, (hh + .6) / 2, z);
+  // the dance floor: lit tiles that chase the beat
+  const TX = 7, TZ = 5, TS = 1.5, fx0 = 1.6, tiles = new THREE.InstancedMesh(new THREE.BoxGeometry(TS - .08, .06, TS - .08), B(0xffffff), TX * TZ), o3 = new THREE.Object3D(), tc = new THREE.Color();
+  for (let i = 0; i < TX; i++) for (let k = 0; k < TZ; k++) { o3.position.set(fx0 + (i - (TX - 1) / 2) * TS, .08, (k - (TZ - 1) / 2) * TS); o3.updateMatrix(); tiles.setMatrixAt(i * TZ + k, o3.matrix); tiles.setColorAt(i * TZ + k, tc.setHSL(i / TX, 1, .4)); }
+  G.add(tiles);
+  // the DJ booth on the far wall, speaker stacks either side
+  box(1.4, 1.15, 4.2, M(0x15181e, { metalness: .7 }), hw - 1.5, .58, 0); box(1.5, .08, 4.3, cyan, hw - 1.5, 1.18, 0); box(.05, .5, 3.6, pink, hw - 2.22, .7, 0);
+  for (const z of [-3.6, 3.6]) { box(1.2, 2.8, 1.2, M(0x0d0f13, { roughness: .8 }), hw - 1.0, 1.4, z); for (const y of [.8, 1.9]) { const c = new THREE.Mesh(new THREE.CircleGeometry(.38, 20), M(0x22262e, { emissive: 0x4af0ff, emissiveIntensity: .3 })); c.position.set(hw - 1.62, y, z); c.rotation.y = -Math.PI / 2; G.add(c); } }
+  // the bar along the near wall, bottles glowing behind it
+  const bz = -hd + 1.2; box(8, 1.1, 1, M(0x2a2236, { metalness: .4, roughness: .3 }), -4.4, .55, bz); box(8.2, .08, 1.2, trim, -4.4, 1.12, bz); box(8, .06, .1, pink, -4.4, .2, bz + .52);
+  const BOT = [0xff4ad8, 0x4af0ff, 0xffd690, 0x9fe07f, 0xb07aff].map(c => M(c, { emissive: c, emissiveIntensity: .45, roughness: .15 }));
+  for (const y of [1.7, 2.4]) { box(8, .06, .3, trim, -4.4, y, -hd + .3); for (let x = -8.2; x < -.6; x += .32) { const b = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, .3, 6), BOT[Math.floor(Math.abs(x * 5 + y * 3)) % BOT.length]); b.position.set(x, y + .18, -hd + .3); G.add(b); } }
+  // lounge seats by the door, a raised booth in the corner
+  for (const z of [hd - 1.3, -hd + 3.3]) { box(3.6, .5, 1.2, M(0x3a1e4a, { roughness: .9 }), -hw + 2.4, .25, z); box(3.6, .9, .3, M(0x3a1e4a, { roughness: .9 }), -hw + 2.4, .7, z + (z > 0 ? .5 : -.5)); }
+  box(1.2, .7, 1.2, M(0x15181e), -hw + 2.4, .35, hd - 3.1);
+  // the ball, the lasers, coloured light pools
+  const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(.45, 1), M(0xe8eef4, { metalness: 1, roughness: .05, flatShading: true, emissive: 0x6070a0, emissiveIntensity: .3 })); ball.position.set(fx0, hh - .7, 0); G.add(ball);
+  const lasers = []; for (const [x, z, c] of [[-hw + .6, -hd + .6, 0xff4ad8], [hw - .6, -hd + .6, 0x4af0ff], [-hw + .6, hd - .6, 0x4af0ff], [hw - .6, hd - .6, 0xff4ad8]]) { const g = new THREE.Group(); g.position.set(x, hh - .3, z); const l = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, 14, 4, 1, true), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false })); l.position.y = -7; g.add(l); G.add(g); lasers.push(g); }
+  const pools = []; for (let i = 0; i < 4; i++) { const s = glowSprite(i % 2 ? 0x4af0ff : 0xff4ad8, 7, .4); s.position.set(fx0 + (i % 2 ? 2.5 : -2.5), .3, i < 2 ? -1.8 : 1.8); G.add(s); pools.push(s); }
+  // the roof (hidden while you're inside), the sign over the door
+  const roof = new THREE.Group(); G.add(roof);
+  const rf = new THREE.Mesh(new THREE.BoxGeometry(CLUB.w + 1, .5, CLUB.d + 1), M(0x14171d, { metalness: .6 })); rf.position.y = hh + .25; rf.castShadow = true; roof.add(rf);
+  for (const [x, c] of [[-3, 0xff4ad8], [3, 0x4af0ff]]) { const s = glowSprite(c, 4, .6); s.position.set(x, hh + 1.2, 0); roof.add(s); }
+  const sg = new THREE.Mesh(new THREE.PlaneGeometry(10, 1.6), new THREE.MeshBasicMaterial({ map: signTex(CLUB.name, '#ff4ad8'), transparent: true, depthWrite: false })); sg.position.set(-hw - .32, hh - .6, 0); sg.rotation.y = -Math.PI / 2; G.add(sg);
+  const sw = new THREE.Mesh(new THREE.PlaneGeometry(8, .9), new THREE.MeshBasicMaterial({ map: signTex(CLUB.ward, '#4af0ff'), transparent: true, depthWrite: false })); sw.position.set(-hw - .32, hh - 1.55, 0); sw.rotation.y = -Math.PI / 2; G.add(sw);
+  for (const z of [-door - .5, door + .5]) { const l = glowSprite(z < 0 ? 0xff4ad8 : 0x4af0ff, 1.8, .9); l.position.set(-hw - .6, 2.6, z); G.add(l); }
+  wScene.add(G);
+  const X = P0.x, Z = P0.z, cols = [[X + hw - .3, X + hw + .3, Z - hd, Z + hd], [X - hw, X + hw, Z - hd - .3, Z - hd + .3], [X - hw, X + hw, Z + hd - .3, Z + hd + .3], [X - hw - .3, X - hw + .3, Z - hd, Z - door], [X - hw - .3, X - hw + .3, Z + door, Z + hd],
+    [X + hw - 2.3, X + hw, Z - 4.3, Z + 4.3], [X - 8.5, X - .3, Z + bz - .6, Z + bz + .6], [X - hw, X - hw + 4.3, Z + hd - 2, Z + hd], [X - hw, X - hw + 4.3, Z - hd + 2.6, Z - hd + 4]];
+  const V = { id: 'club', club: true, brawl: false, name: CLUB.name, mc: 'DJ', sp: 'grek', tier: 1, foes: [], hype: HYPE_SETS.grek, y: P0.y, arena: { x: X + fx0, z: Z, r: 4 },
+    room: { x0: X - hw + .3, x1: X + hw - .3, z0: Z - hd + .3, z1: Z + hd - .3 }, floor: { x0: X + fx0 - TX * TS / 2, x1: X + fx0 + TX * TS / 2, z0: Z - TZ * TS / 2, z1: Z + TZ * TS / 2 },
+    parent: wScene, crowd: [], decals: [], mcAt: { x: 1e5, z: 1e5 }, barAt: { x: X - 4.4, z: Z + bz + 1.3 }, door: { x: X - hw - 2, z: Z }, ready: false };
+  world.hall = { G, roof, cols, V, x: X, z: Z, y: P0.y, inside: false, club: { tiles, TX, TZ, ball, lasers, pools, extra: [] } };
+  clubCrowd(world.hall).catch(e => console.error(e));
+  setTimeout(() => { if (world.hall && world.hall.V === V) lootMsg('The Low-G Lounge · a nightclub at the Ward 04 concourse, just east of the pad', '#ff8ae0'); }, 5200);
+}
+async function clubCrowd(Hl) { // dancers on the floor, the DJ at the decks, a bartender pouring
+  const V = Hl.V, X = Hl.x, Z = Hl.z, Y = Hl.y, ex2 = Hl.club.extra, phone = document.body.classList.contains('touch');
+  const mix = ['grek', 'grek', 'human', 'chompy', 'erisian', 'grek', 'human', 'chompy'], cols = [[0xff4ad8, 0x2b2f36], [0x4af0ff, 0x1a1a22], [0xffd690, 0x3a1e4a], [0x9fe07f, 0x2a2236], [0xb07aff, 0xe8dcc6]];
+  for (let i = 0; i < (phone ? 4 : 8); i++) {
+    const R = await brawlRig({ sp: mix[i], c: cols[i % cols.length], skin: i % 6, female: mix[i] === 'human' && i % 2 === 1 }); if (!R || world.hall !== Hl) return;
+    const x = lerp(V.floor.x0 + .8, V.floor.x1 - .8, ((i * 37) % 10) / 10), z = lerp(V.floor.z0 + .8, V.floor.z1 - .8, ((i * 53) % 10) / 10);
+    R.root.position.set(x, Y, z); wScene.add(R.root); ex2.push({ R, home: { x, z }, ph: i * 1.7 });
+  }
+  const dj = await brawlRig({ sp: 'grek', c: [0x1a1a22, 0x4af0ff], skin: 2 }); if (dj && world.hall === Hl) { dj.root.position.set(X + CLUB.w / 2 - .7, Y, Z); dj.root.rotation.y = -Math.PI / 2; wScene.add(dj.root); ex2.push({ R: dj, dj: true, home: { x: X + CLUB.w / 2 - .7, z: Z }, ph: 0 }); }
+  const bt = await brawlRig({ sp: 'grek', c: [0x2b2f36, 0xff4ad8], skin: 3 }); if (bt && world.hall === Hl) { bt.root.position.set(V.barAt.x, Y, Z - CLUB.d / 2 + .55); wScene.add(bt.root); Hl.bartender = bt; }
+  V.ready = true;
+}
+function clubTick(dt, Hl) {
+  const C = Hl.club, beat = Math.max(0, Math.sin(time * 13.1)), tc = new THREE.Color();
+  for (let i = 0; i < C.TX; i++) for (let k = 0; k < C.TZ; k++) { const n = i * C.TZ + k, on = ((i + k + Math.floor(time * 2.2)) % 3) === 0; C.tiles.setColorAt(n, tc.setHSL((i * .11 + k * .07 + time * .15) % 1, 1, on ? .32 + beat * .3 : .08)); }
+  C.tiles.instanceColor.needsUpdate = true;
+  C.ball.rotation.y += dt * 1.2; C.lasers.forEach((g, i) => { g.rotation.z = Math.sin(time * .9 + i) * .7; g.rotation.x = Math.cos(time * .7 + i * 1.3) * .6; });
+  C.pools.forEach((s, i) => { s.material.opacity = .25 + beat * .3 * ((i + Math.floor(time * 2)) % 2); });
+  for (const m of C.extra) { // dancing, slowly, the way you can when the floor lets go of you
+    const R = m.R, P = R.root.position, t = time * 3 + m.ph; R.mode = 'idle'; animRig(R, dt);
+    if (m.fightT > 0) { citizenFight(m, dt, Hl.y); continue; }
+    if (m.dj) { P.y = Hl.y + Math.abs(Math.sin(time * 6.55)) * .05; R.ra.rotation.x = -1.2 - Math.sin(time * 13.1) * .25; R.la.rotation.x = -1.0 - Math.max(0, Math.sin(time * 3)) * 1.6; continue; }
+    const hop = (m.ph * 7 + Math.floor(time / 4)) % 5 === 0 ? Math.max(0, Math.sin((time % 4) / 4 * Math.PI)) * 1.6 : Math.abs(Math.sin(t)) * .12;
+    P.set(m.home.x + Math.sin(t * .3) * .4, Hl.y + hop, m.home.z + Math.cos(t * .27) * .4); R.root.rotation.y += dt * (.6 + (m.ph % 1));
+    R.ra.rotation.x = -1.6 - Math.sin(t * 2) * 1.1; R.la.rotation.x = -1.6 + Math.sin(t * 2) * 1.1;
+  }
+}
+const clubLowG = () => clubInside();
+// ---- residents and the bar: a drink, then another; drunk, they wobble, say silly things, and pick fights ----
+function resBarSpot() { const Hl = world.hall; if (!Hl || !isPl() || !Hl.V.barAt) return null; return { x: Hl.V.barAt.x + (Math.random() - .5) * 3, z: Hl.V.barAt.z + .5 + Math.random() }; }
+const resInRoom = B => { const Hl = world.hall; if (!Hl || !isPl()) return false; const R = Hl.V.room; return B.x > R.x0 && B.x < R.x1 && B.z > R.z0 && B.z < R.z1; };
+function resRoomSpot(V, onFloor) { const R = onFloor && V.floor ? V.floor : V.room; for (let i = 0; i < 12; i++) { const x = lerp(R.x0 + .6, R.x1 - .6, Math.random()), z = lerp(R.z0 + .6, R.z1 - .6, Math.random()); if (!resBlocked(x, z, V.y)) return { x, z }; } return { x: (R.x0 + R.x1) / 2, z: (R.z0 + R.z1) / 2 }; }
+const resPartying = c => !!(c && c.party && c.party.until > resNow()) && !(resGuildBound(c) && !resNearSet().ids.has('malana')); // your guildmates only head to the Lounge if Malana Prime is within reach of you
+function resNightChoose(B) { // inside a bar or the club: drink, dance, mingle (returns false when that doesn't apply)
+  const Hl = world.hall; if (!Hl || !isPl()) return false;
+  const near = Math.hypot(B.x - Hl.x, B.z - Hl.z) < 30, party = resPartying(B.c) && Hl.club;
+  if (!party && !(near && Hl.inside)) return false;
+  if (!party && Math.random() < .45) return false; // in a cantina they do their own thing as well
+  const V = Hl.V, b = B.booze || 0, w = [['drink', b < 1.6 ? 2.2 : .3], ['dance', Hl.club ? 3 : 1], ['mingle', 1.2]];
+  let sum = 0; for (const o of w) sum += o[1]; let r = Math.random() * sum, k = 'dance'; for (const [n, v] of w) if ((r -= v) <= 0) { k = n; break; }
+  if (k === 'drink') { const to = resBarSpot(); if (!to) return false; B.task = { type: 'drink', t: 0, to, dur: 4 }; }
+  else if (k === 'dance') { B.task = { type: 'gather', t: 0, to: resRoomSpot(V, true), dur: 8 + Math.random() * 8, em: 'dance' }; if (Math.random() < .35) resSay(B, resT('party', B, resPartyCtx(B), 'dance') || 'This song!'); }
+  else { B.task = { type: 'gather', t: 0, to: resRoomSpot(V, false), dur: 6, em: Math.random() < .5 ? 'cheer' : null }; if (Math.random() < .5) resSay(B, b >= .8 ? resT('drink', B, null, 'drunk') : party ? resT('party', B, resPartyCtx(B), 'chat') : resT('drink', B, null, 'tipsy')); }
+  return true;
+}
+function resPartyCtx(B) { const p = B.c.party || {}, G = resGuildOf(B.id); return { lair: p.lair || 'the lair', boss: p.boss || 'the boss', guild: G ? G.name : 'guild', club: 'the Lounge' }; }
+function resDrinkDone(B) { const was = B.booze || 0; B.booze = Math.min(2, was + .35); resSay(B, was >= .8 ? resT('drink', B, null, 'drunk') : resT('drink', B, null, 'order')); B.em = 'cheer'; B.emT = 1.5; }
+// who could get hit: the regulars round a cantina's walls, the club's dancers, the Salt Lantern crowd
+function resCitizens() {
+  const out = [], Hl = world.hall;
+  if (Hl && isPl()) { for (const m of Hl.V.crowd || []) if (!(m.c && m.c.mc)) out.push(m); for (const m of (Hl.club && Hl.club.extra) || []) if (!m.dj) out.push(m); }
+  if (curArea() === 'africa' && typeof cant !== 'undefined' && cant.crowd) for (const m of cant.crowd) if (!(m.c && m.c.mc)) out.push(m);
+  return out.filter(m => m.R && m.R.root.visible !== false);
+}
+function citizenFight(m, dt, y0) { // a regular squares up to the drunk who started it
+  const R = m.R, P = R.root.position, f = m.foe; m.fightT -= dt;
+  if (f && RES.bots.includes(f)) R.root.rotation.y = Math.atan2(f.x - P.x, f.z - P.z);
+  const k = (time * 2.4 + (m.ph || 0)) % 2; R.ra.rotation.x = k < 1 ? -1.5 * Math.sin(k * Math.PI) : -.6; R.la.rotation.x = k >= 1 ? -1.5 * Math.sin((k - 1) * Math.PI) : -.6;
+  P.y = (y0 || 0) + Math.abs(Math.sin(time * 5)) * .05;
+  if (m.fightT <= 0) m.foe = null;
+}
+function resDrunkCheck() { // the drunk ones look for trouble
+  const drunk = RES.bots.filter(B => B.ready && !B.leaving && (B.booze || 0) >= .8 && RES.talking !== B && !(B.task && (B.task.kind === 'fight' || B.task.type === 'brawl')));
+  for (const B of drunk) {
+    if ((B.brawlCd || 0) > time || Math.random() > ((B.booze || 0) >= 1.3 ? .55 : .3)) continue;
+    B.brawlCd = time + 20 + Math.random() * 20; // one fight at a time, then a breather
+    // anyone here from an empire or guild they're at war with: no more talking
+    const foe = RES.bots.find(C => C !== B && C.ready && !C.leaving && RES.talking !== C && Math.hypot(C.x - B.x, C.z - B.z) < 30 && (resAtWar(B.id, C.id) || (() => { const a = resGuildOf(B.id), b = resGuildOf(C.id); return a && b && a !== b && resGuildWar(a.id, b.id); })()));
+    if (foe) {
+      if (B.partner) resEndPair(B); if (foe.partner) resEndPair(foe);
+      const E = resEmpOf(foe.id), G = resGuildOf(foe.id); resSay(B, resT('brawl', B, { enemy: E ? E.name : G ? G.name : foe.c.name }, 'war') || 'This is for the war!');
+      setTimeout(() => { if (RES.bots.includes(B) && RES.bots.includes(foe) && !B.partner && !foe.partner) resPair(B, foe, 'fight'); }, 900); continue;
+    }
+    // or a regular who looked at them wrong
+    const cits = resCitizens().filter(m => !(m.fightT > 0) && Math.hypot(m.R.root.position.x - B.x, m.R.root.position.z - B.z) < 16);
+    if (cits.length && Math.random() < .6) { if (B.partner) resEndPair(B); const m = resPick(cits); B.task = { type: 'brawl', t: 0, m, dur: 9 }; resSay(B, resT('brawl', B, null, Math.random() < .5 ? 'citizen' : 'start') || 'What did you just say to me?'); }
+  }
+}
+function resNightStep(B, T, dt, p) { // the night-out tasks (true when handled)
+  if (T.type === 'drink') { if (!T.at) { if (resMoveTo(B, T.to, dt) || T.t > 14) { T.at = true; T.t = 0; } } else { const Hl = world.hall; if (Hl) resFace(B, Hl.V.barAt.x, Hl.V.barAt.z - 2, dt); if (T.t > T.dur) { resDrinkDone(B); B.task = null; } } return true; }
+  if (T.type === 'brawl') { const m = T.m, P = m && m.R.root.position; if (!P) { B.task = null; return true; }
+    const d = Math.hypot(P.x - B.x, P.z - B.z);
+    if (!T.at) { if (d < 1.5 || resMoveTo(B, { x: P.x + (B.x - P.x) / Math.max(.1, d) * 1.2, z: P.z + (B.z - P.z) / Math.max(.1, d) * 1.2 }, dt, true) || T.t > 10) { T.at = true; T.t = 0; m.foe = B; m.fightT = T.dur; sfx.thud && sfx.thud(); } }
+    else { resFace(B, P.x, P.z, dt); B.em = 'spar'; B.emT = .1; if (Math.random() < dt * 2.5) emit((B.x + P.x) / 2, B.y + 1.3, (B.z + P.z) / 2, (Math.random() - .5) * 3, 1.5, (Math.random() - .5) * 3, 1, .6, .4, .5);
+      if (T.t > T.dur) { B.task = null; B.booze = Math.max(0, (B.booze || 0) - .25); resSay(B, resT('brawl', B, null, 'end') || 'All right. I’m done.'); const Hl = world.hall; if (Hl && Math.random() < .7) lbark(Hl.club ? 'BOUNCER' : 'BARTENDER', resPick((RT && RT.brawl.bouncer) || ['Take it outside!']), 2600); } }
+    return true; }
+  return false;
+}
+// ---- after a dungeon: off to the Lounge ----
+function resStartParty(cs, L) { const until = resNow() + 35 * 60e3; for (const c of cs) if (c) c.party = { until, lair: L ? L.name : 'a lair', boss: L ? lairBoss(L).short : 'the boss' }; saveRoster(); }
+// ---- guild escorts: they follow you (as your guild's leader) or lead you (as a member, on their own run) ----
+const GESC = { ids: new Set(), stay: false, theirs: null, askT: 50, adv: 0 };
+const resEscorting = B => GESC.ids.has(B.id);
+const iLeadGuild = () => { const G = myGuild(); return !!G && G.leader === 'you'; };
+function escortSet(ids, theirs) { GESC.ids = new Set(ids); GESC.stay = false; GESC.theirs = theirs || null; GESC.adv = 0; for (const B of RES.bots) if (GESC.ids.has(B.id)) { if (B.partner) resEndPair(B); B.task = null; } }
+function escortEnd(quiet) { const had = GESC.ids.size; GESC.ids.clear(); GESC.theirs = null; GESC.stay = false; if (had && !quiet) lootMsg('Your guildmates go back to their own business', '#cfd6e6'); }
+function resGuildCmdOpts(B, back) { // the talk menu, for your guildmates
+  const G = myGuild(), out = []; if (!G || !G.members.includes(B.id)) return out;
+  if (iLeadGuild()) {
+    if (!resEscorting(B)) out.push({ text: 'Follow me', onPick: () => { escortSet([...GESC.ids, B.id]); resSay(B, resT('dungeon', B, null, 'follow') || 'Lead on.'); RES.talking = null; } });
+    else { out.push({ text: GESC.stay ? 'Follow me again' : 'Wait here', onPick: () => { GESC.stay = !GESC.stay; resSay(B, GESC.stay ? (resT('dungeon', B, null, 'stay') || 'Holding here.') : (resT('dungeon', B, null, 'follow') || 'With you.')); RES.talking = null; } }); out.push({ text: 'You can go now', onPick: () => { GESC.ids.delete(B.id); B.task = null; resSay(B, 'Call me if you need me.'); RES.talking = null; } }); }
+    const mates = RES.bots.filter(o => o.ready && !o.leaving && G.members.includes(o.id));
+    if (mates.length > 1) out.push({ text: `Guild, follow me! (${mates.length} here)`, onPick: () => { escortSet(mates.map(o => o.id)); for (const o of mates) setTimeout(() => resSay(o, resT('dungeon', o, null, 'follow') || 'With you!'), Math.random() * 1500); lootMsg(`${mates.length} guildmates follow you · into the lairs too`, '#9fe6b0'); RES.talking = null; } });
+  } else if (effCh() >= 3 && resGateHere()) out.push({ text: 'Want to run a lair together?', onPick: () => { RES.talking = null; resDunAsk(B, true); } });
+  return out;
+}
+function resGateHere() { if (!isPl() || DGN.on) return null; const p = player.position; const gs = (world.lairGates || []).filter(G => G.g && G.g.visible && !G.L.ch4 && !G.L.lead && !G.L.cyg).sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z)); return gs[0] || null; }
+function resDunAskCheck(dt) { // a guildmate asks you along on their run
+  if ((GESC.askT -= dt) > 0) return; GESC.askT = 70;
+  const G = myGuild(); if (!G || iLeadGuild() || GESC.ids.size || DGN.on || ex.dlg || state !== 'explore' || RES.talking || effCh() < 3) return;
+  if (!resGateHere()) return;
+  const p = player.position, mates = RES.bots.filter(B => B.ready && !B.leaving && !B.partner && G.members.includes(B.id) && Math.hypot(B.x - p.x, B.z - p.z) < 40);
+  if (!mates.length || Math.random() > .6) return;
+  const B = resPick(mates); B.task = { type: 'dunAsk', t: 0 }; resSay(B, resT('invite', B) || `${wanderer.name}, have you got a minute?`);
+}
+function resDunAsk(B, mine) {
+  const Gt = resGateHere(); if (!Gt) { resSayTo(B, ['There’s no lair worth the trip around here. Another time.']); return; }
+  const L = Gt.L, G = myGuild(); RES.talking = B; B.task = { type: 'face', t: 0, dur: 4 };
+  const party = RES.bots.filter(o => o.ready && !o.leaving && G && G.members.includes(o.id)).slice(0, 4);
+  const line = mine ? `${L.name}? Level ${L.lv}. With the guild behind us, why not.` : resT('dungeon', B, { lair: `${L.name} (level ${L.lv})` }, 'ask') || `We’re going into ${L.name}. Coming?`;
+  resSayTo(B, [line], () => openChoice(resWho(B), [
+    { text: `Lead the way · ${L.name}, level ${L.lv}`, onPick: () => { RES.talking = null; escortSet(party.map(o => o.id), { L, lead: B.id }); for (const o of party) setTimeout(() => resSay(o, resT('dungeon', o, null, 'yes') || 'Let’s go.'), Math.random() * 1200); lootMsg(`${party.map(o => o.c.name).join(', ')} lead you down into ${L.name}`, '#9fe6b0'); setTimeout(() => { if (state === 'explore' && !DGN.on) { const g = (world.lairGates || []).find(q => q.L === L) || Gt; lairEnter(L, g, 1); } }, 1600); } },
+    { text: 'Not this time', onPick: () => { RES.talking = null; resSay(B, resT('dungeon', B, null, 'no') || 'Next time, then.'); GESC.askT = 600; } }]));
+}
+function resRegroup() { // a new floor (or back outside): your escort comes with you
+  if (!GESC.ids.size) return; const p = player.position; let i = 0;
+  for (const B of RES.bots) { if (!GESC.ids.has(B.id)) continue; i++; let ok = false;
+    for (let r = 2; r < 9 && !ok; r += 1.2) for (let k = 0; k < 12 && !ok; k++) { const a = k / 12 * 6.28 + i, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r; if (!resBlocked(x, z, 0)) { B.x = x; B.z = z; ok = true; } }
+    B.anchor = { x: B.x, z: B.z }; B.task = null; if (B.partner) resEndPair(B); }
+}
+function resEscortTarget(B) { // what to fight: in a lair, the floor's warden or anything hostile in reach; outside, whatever's coming for you
+  if (DGN.on) { const W = DGN.warden && !DGN.warden.dead ? DGN.warden : null; let best = null, bd = 40; for (const f of fauna.list) { if (f.dead || !(f.dgn || f.boss)) continue; const d = Math.hypot(f.x - B.x, f.z - B.z); if (d < bd) { bd = d; best = f; } } return best || W; }
+  return resHuntTarget(B);
+}
+function resEscortChoose(B) {
+  const f = resEscortTarget(B);
+  if (f) { B.task = { type: 'hunt', f, t: 0, dur: 25 }; if (Math.random() < .25) resSay(B, (RT && resPick(f.boss ? RT.hunt.boss : RT.hunt.base)) || 'On it!'); return; }
+  if (DGN.on && GESC.theirs && dgnBeaten(DGN.f) && DGN.up) { B.task = { type: 'toStairs', t: 0 }; return; }
+  B.task = GESC.stay ? { type: 'idle', t: 0, dur: 3 } : { type: 'escort', t: 0, dur: 3 };
+}
+function resEscortStep(B, T, dt, p) {
+  if (T.type === 'escort') { const i = [...GESC.ids].indexOf(B.id), a = player.rotation.y + Math.PI + (i - 1) * .6, to = { x: p.x + Math.sin(a) * (2.4 + (i % 2)), z: p.z + Math.cos(a) * (2.4 + (i % 2)) }; const dp = Math.hypot(p.x - B.x, p.z - B.z); if (dp > 1.6) resMoveTo(B, to, dt, dp > 6); else resFace(B, p.x + Math.sin(player.rotation.y) * 6, p.z + Math.cos(player.rotation.y) * 6, dt); if (dp > 60) { B.x = to.x; B.z = to.z; } if (T.t > T.dur) B.task = null; return true; }
+  if (T.type === 'toStairs') { const U = DGN.up; if (!U || !DGN.on) { B.task = null; return true; } const to = { x: U.x + (B.id.length % 3 - 1) * 1.2, z: U.z + 2.2 }; resMoveTo(B, to, dt, true); if (T.t > 5 && Math.hypot(B.x - U.x, B.z - U.z) > 10 && !resBlocked(to.x, to.z, 0)) { B.x = to.x; B.z = to.z; } if (T.t > 6) B.task = null; return true; } // the lair's corridors twist: if they can't find the way, they catch up at the stairs
+  if (T.type === 'dunAsk') { const dp = Math.hypot(p.x - B.x, p.z - B.z); if (dp < 3 || resMoveTo(B, { x: p.x + (B.x - p.x) / Math.max(1, dp) * 2.2, z: p.z + (B.z - p.z) / Math.max(1, dp) * 2.2 }, dt, dp > 8)) { if (!ex.dlg && state === 'explore' && !RES.talking) resDunAsk(B, false); else B.task = null; } else if (T.t > 20) B.task = null; return true; }
+  return false;
+}
+function resEscortTick(dt) { // their run, their lead: once the floor's clear they make for the stairs and take you down with them
+  if (!GESC.ids.size) return;
+  if (DGN.on && GESC.theirs) GESC.theirs.entered = true;
+  if (!DGN.on) { if (GESC.theirs && (GESC.theirs.done || GESC.theirs.entered)) escortEnd(!GESC.theirs.entered || GESC.theirs.done); return; } // their run ends when you come back up (cleared or not)
+  if (!GESC.theirs || state !== 'explore' || !dgnBeaten(DGN.f) || DGN.f >= dgnTop() || !DGN.up) { GESC.adv = 0; return; }
+  const p = player.position, U = DGN.up, dpl = Math.hypot(p.x - U.x, p.z - U.z), team = RES.bots.filter(B => GESC.ids.has(B.id)), there = team.filter(B => Math.hypot(B.x - U.x, B.z - U.z) < 7).length;
+  if (!team.length) return;
+  if (dpl < 22) { void there; if (!GESC.adv) { GESC.adv = time; resSay(team[0], resT('dungeon', team[0], null, DGN.f + 1 === dgnTop() ? 'heart' : 'floor') || 'Next floor!'); } if (time - GESC.adv > 3.2) { GESC.adv = 0; dgnEnter(DGN.f + 1); } }
+  else if (dpl >= 22 && (GESC.callT = (GESC.callT || 0) - dt) <= 0) { GESC.callT = 12; resSay(team[0], `This way, ${wanderer.name}! The way down is open.`); }
+}
+function resPartyFloor() { const B = RES.bots.find(o => GESC.ids.has(o.id)); if (B && !GESC.theirs) resSay(B, resT('dungeon', B, null, 'floor') || 'Floor cleared!'); }
+function resPartyWin(L) { // the lair's heart falls: everyone who came down with you is off to celebrate
+  const team = RES.bots.filter(B => GESC.ids.has(B.id) || (DGN.on && Math.hypot(B.x - player.position.x, B.z - player.position.z) < 30 && myGuild() && myGuild().members.includes(B.id)));
+  if (!team.length) return;
+  const D = resDun(), names = team.map(B => B.c.name); for (const B of team) D.n[B.id] = (D.n[B.id] | 0) + 1; D.cleared[L.id] = { by: names.concat([wanderer.name]), t: resNow() };
+  D.recent.push({ lair: L.id, names: names.concat([wanderer.name]), ok: true, t: resNow(), g: myGuild() ? myGuild().tag : null }); if (D.recent.length > 30) D.recent.shift();
+  resStartParty(team.map(B => B.c), L); team.forEach((B, i) => setTimeout(() => resSay(B, resT('dungeon', B, { lair: L.name }, 'win') || 'We did it!'), 1200 + i * 900));
+  setTimeout(() => lootMsg(resNearSet().ids.has('malana') ? `${names.join(', ')} ${names.length > 1 ? 'are' : 'is'} off to celebrate at the Low-G Lounge on Archiostal · join them!` : `${names.join(', ')} will celebrate at the Low-G Lounge once you’re back near Malana Prime · they stay close to you until then`, '#ff8ae0'), 4200);
+  if (GESC.theirs) GESC.theirs.done = true;
+}
+
 // on the galaxy map: their worlds ringed in their colours, the empire's name at its capital
 function resGalEmpires(g, font) {
   for (const e of Object.values(resEmp.emp)) {
@@ -27082,37 +27404,93 @@ const RES_LIKES = {
   cooking: /\b(cook\w*|food|chef|baking|eat\w*)\b/, flying: /\b(fly\w*|pilot\w*|ships?)\b/, nature: /\b(nature|plants?|garden\w*|animals?|trees?)\b/
 };
 const RES_STYLES = { formal: /\b(formal|polite|posh|proper|eloquent|refined)\b/, slang: /\b(slang|casual|gamer|internet|zoomer)\b/, pirate: /\b(pirate\w*)\b/, poetic: /\b(poet\w*|philosoph\w*|wise)\b/, terse: /\b(few words|terse|blunt|man of few|woman of few|curt)\b/, loud: /\b(loud|shouts?|yells?|booming)\b/ };
+// every resident has a personality, written or not: a temperament (or two), something they love, a past job and maybe a
+// catchphrase. Worked out from who they are (their id and alignment), so it never changes on its own; anything you write for
+// them takes over the parts it covers.
+const RES_TEMPS = ['shy', 'bold', 'funny', 'grumpy', 'kind', 'sarcastic', 'cheerful', 'calm', 'curious', 'dramatic', 'lazy', 'charming', 'proud', 'loyal'];
+const RES_TEMP_AL = { hero: ['kind', 'cheerful', 'loyal', 'calm', 'charming', 'curious', 'funny', 'bold', 'shy', 'kind', 'loyal'], villain: ['grumpy', 'proud', 'sarcastic', 'bold', 'dramatic', 'charming', 'lazy', 'proud', 'sarcastic'], neutral: RES_TEMPS };
+const RES_TEMP_CLASH = [['shy', 'bold'], ['cheerful', 'grumpy'], ['calm', 'dramatic'], ['lazy', 'bold'], ['shy', 'proud'], ['shy', 'dramatic']];
+const RES_JOBS = ['miner', 'pilot', 'medic', 'soldier', 'trader', 'cook', 'scholar', 'farmer', 'smuggler', 'engineer', 'pilgrim', 'musician'];
+const RES_JOB_NAME = { miner: 'a miner', pilot: 'a freight pilot', medic: 'a medic', soldier: 'a soldier', trader: 'a trader', cook: 'a ship’s cook', scholar: 'a teacher', farmer: 'a farmer', smuggler: 'a smuggler', engineer: 'an engineer', pilgrim: 'a pilgrim', musician: 'a musician' };
+const RES_CATCH = ['by the stars', 'steady on', 'that’s the spirit', 'not today', 'easy does it', 'well, well', 'mark my words', 'onwards', 'no regrets', 'every day a new sky', 'what a time to be alive', 'slow and steady'];
+const RES_AUTO = new Map();
+function resAutoPersona(c) {
+  if (!c || !c.id) return null; const al = resAl(c), key = c.id + '|' + al; let A = RES_AUTO.get(key); if (A) return A;
+  const h = k => resHash(c.id + '|' + k), pk = (a, k) => a[Math.floor(h(k) * a.length) % a.length];
+  const t1 = pk(RES_TEMP_AL[al] || RES_TEMPS, 't1'), t2 = pk(RES_TEMPS, 't2');
+  const traits = h('t2n') < .45 && t2 !== t1 && !RES_TEMP_CLASH.some(([x, y]) => (x === t1 && y === t2) || (x === t2 && y === t1)) ? [t1, t2] : [t1];
+  const r = h('st'), styles = r < .06 ? ['formal'] : r < .09 ? ['poetic'] : r < .13 ? ['terse'] : r < .15 ? ['loud'] : r < .16 ? ['pirate'] : [];
+  A = { traits, likes: [pk(Object.keys(RES_LIKES), 'l1')], styles, catch: h('cq') < .4 ? pk(RES_CATCH, 'cq2') : null, job: pk(RES_JOBS, 'job'), auto: true };
+  RES_AUTO.set(key, A); return A;
+}
 function resPersona(c) {
-  const P = c.persona; if (!P || !P.text) return null;
-  if (P.parsed && P.parsedOf === P.text) return P.parsed;
-  const t = ' ' + P.text.toLowerCase() + ' ', pick = M => Object.keys(M).filter(k => M[k].test(t));
-  const q = P.text.match(/["“”]([^"“”]{2,60})["“”]/);
-  const parsed = { traits: pick(RES_TRAITS), likes: pick(RES_LIKES), styles: pick(RES_STYLES), catch: q ? q[1].trim() : null };
-  P.parsed = parsed; P.parsedOf = P.text; return parsed;
+  const P = c && c.persona, auto = resAutoPersona(c);
+  if (!P || !P.text) return auto;
+  if (!(P.parsed && P.parsedOf === P.text)) {
+    const t = ' ' + P.text.toLowerCase() + ' ', pick = M => Object.keys(M).filter(k => M[k].test(t));
+    const q = P.text.match(/["“”]([^"“”]{2,60})["“”]/);
+    P.parsed = { traits: pick(RES_TRAITS), likes: pick(RES_LIKES), styles: pick(RES_STYLES), catch: q ? q[1].trim() : null }; P.parsedOf = P.text;
+  }
+  const W = P.parsed; if (!auto) return W;
+  const key = c.id + '|m|' + P.text + '|' + resAl(c); let M = RES_AUTO.get(key);
+  if (!M) { M = { traits: W.traits.length ? W.traits : auto.traits, likes: W.likes.length ? W.likes : auto.likes, styles: W.styles, catch: W.catch || (W.traits.length ? null : auto.catch), job: auto.job, auto: false }; RES_AUTO.set(key, M); }
+  return M;
 }
 const resHas = (c, k) => { const p = resPersona(c); return !!p && (p.traits.includes(k) || p.likes.includes(k) || p.styles.includes(k)); };
 function resPersonaSummary(c) {
   const p = resPersona(c); if (!p) return '';
   const bits = [...p.traits, ...p.styles.map(s => ({ formal: 'formal', slang: 'casual', pirate: 'talks like a pirate', poetic: 'poetic', terse: 'a person of few words', loud: 'loud' })[s])];
-  return [bits.length ? bits.join(', ') : '', p.likes.length ? 'loves ' + p.likes.join(', ') : '', p.catch ? `catchphrase “${p.catch}”` : ''].filter(Boolean).join(' · ');
+  return [bits.length ? bits.join(', ') : '', p.likes.length ? 'loves ' + p.likes.join(', ') : '', p.job ? 'used to be ' + RES_JOB_NAME[p.job] : '', p.catch ? `says “${p.catch}”` : ''].filter(Boolean).join(' · ');
 }
-// how they talk: their own speaking style laid over any line (written text only, never audio)
+// how they talk: the lines are already written for their temperament; their speaking style (formal, pirate, few words...) and
+// catchphrase go on top (written text only, never audio)
 function resVoice(c, text) {
-  const p = c && resPersona(c); if (!p || !text || String(text).charAt(0) === '\u200b') return text; let s = String(text); const r = () => Math.random(); // \u200b marks plain info lines
+  const p = c && resPersona(c); if (!p || !text || String(text).charAt(0) === '​') return text; let s = String(text); const r = () => Math.random(); // ​ marks plain info lines
   const st = p.styles, tr = p.traits;
-  if (st.includes('terse')) { s = s.split(/[.!?]\s|,\s/)[0]; if (s.length > 48) s = s.slice(0, 46).replace(/\s\S*$/, '') + '.'; }
-  if (st.includes('formal')) { s = s.replace(/\blol\b/gi, 'how amusing').replace(/\bgtg\b/gi, 'I must take my leave').replace(/\bbrb\b/gi, 'I shall return shortly').replace(/\bidk\b/gi, 'I do not know').replace(/\btbh\b/gi, 'to be frank').replace(/\b(sup|yo)\b/gi, 'good day').replace(/\bok\b/gi, 'very well').replace(/\bcya\b/gi, 'farewell'); s = s.charAt(0).toUpperCase() + s.slice(1); if (!/[.!?]$/.test(s)) s += '.'; }
-  if (st.includes('slang') && r() < .35) s = s.toLowerCase().replace(/[.]$/, '') + resPick([' lol', ' tbh', ' fr', ' ngl']);
-  if (st.includes('pirate')) { s = s.replace(/\bmy\b/gi, 'me').replace(/\byou\b/gi, 'ye').replace(/\b(hello|hi|hey)\b/gi, 'ahoy'); if (r() < .35) s += resPick([' Arr!', ' Yo ho!', ' Savvy?']); }
-  if (st.includes('loud') || (tr.includes('bold') && r() < .15)) { if (r() < .4) s = s.toUpperCase(); if (!/!$/.test(s)) s = s.replace(/[.]?$/, '!'); }
+  if (st.includes('terse')) { s = s.split(/(?<=[.!?])\s/)[0]; if (s.length > 52) s = s.slice(0, 50).replace(/\s\S*$/, '') + '.'; }
+  if (st.includes('formal')) { s = s.replace(/\bI’m\b/g, 'I am').replace(/\bdon’t\b/g, 'do not').replace(/\bcan’t\b/g, 'cannot').replace(/\bit’s\b/g, 'it is').replace(/\bIt’s\b/g, 'It is').replace(/\bwon’t\b/g, 'will not').replace(/\byou’re\b/g, 'you are').replace(/\bokay\b/gi, 'very well').replace(/\b(Hey|Hi)\b/g, 'Good day').replace(/\bthanks\b/gi, 'thank you'); }
+  if (st.includes('slang') && r() < .35) s = s.replace(/[.]$/, '') + resPick([', honestly', ', no lie', ', for real']) + '.';
+  if (st.includes('pirate')) { s = s.replace(/\bmy\b/g, 'me').replace(/\byou\b/g, 'ye').replace(/\b(Hello|Hi|Hey)\b/g, 'Ahoy'); if (r() < .3) s = s.replace(/[.!]?$/, '') + resPick(['. Arr!', '! Yo ho!', ', savvy?']); }
+  if (st.includes('loud') || (tr.includes('bold') && r() < .08)) { if (r() < .35) s = s.toUpperCase(); s = s.replace(/[.]$/, '!'); }
   if (st.includes('poetic') && r() < .2) s += resPick([' Like stars, we drift.', ' Such is the way of dust and light.', ' The void listens.']);
-  if (tr.includes('shy') && r() < .35) s = 'um... ' + s.charAt(0).toLowerCase() + s.slice(1);
-  if (tr.includes('grumpy') && r() < .3) s = 'Ugh. ' + s;
-  if (tr.includes('sarcastic') && r() < .25) s = 'Oh, wonderful. ' + s;
-  if (tr.includes('cheerful') && r() < .35) s = s.replace(/[.]?$/, '') + resPick([' :)', '!', ' ✨']);
-  if (tr.includes('dramatic') && r() < .25) s = s.replace(/[.!]?$/, '') + '... truly!';
-  if (tr.includes('lazy') && r() < .2) s += ' *yawns*';
-  if (p.catch && r() < .15) s += ` — ${p.catch}`;
+  if (p.catch && r() < .12) s = s.replace(/[.!?]?$/, m => m || '.') + ' ' + p.catch.charAt(0).toUpperCase() + p.catch.slice(1) + '.';
+  return s;
+}
+// ---- the speech pack (data/resTalk.js): everyday lines in natural speech, by temperament, then alignment, then the base ----
+let RT = null;
+function resTalkLoad() {
+  if (RT || RES.rtLoading) return; RES.rtLoading = true;
+  const sc = document.createElement('script'); sc.src = 'data/resTalk.js';
+  sc.onload = () => { RT = window.NV_RES_TALK || null; }; sc.onerror = () => { RES.rtLoading = false; };
+  document.body.appendChild(sc);
+}
+function resTalkSet(set, c, al) {
+  if (!set) return null; if (Array.isArray(set)) return set;
+  const p = resPersona(c), own = (p ? [...p.traits, ...p.likes] : []).map(k => set[k]).filter(Boolean), alp = set[al], r = Math.random();
+  if (own.length && r < .55) return resPick(own);
+  if (alp && r < .8) return alp;
+  return set.base || alp || own[0] || null;
+}
+const RES_DRINK_NAMES = ['Steca fire-rum', 'Grek root ale', 'Erisian frostwine', 'Chompy gut-punch', 'nebula spritz', 'black-hole stout', 'Malana honey mead', 'Martian dust gin'];
+function resPersonaCtx(c) { const p = resPersona(c); return { name: c.name, job: p && p.job ? RES_JOB_NAME[p.job] : 'a wanderer', like: (p && p.likes[0]) || 'exploring', drink: resPick(RES_DRINK_NAMES) }; }
+function resT(cat, B, x, sub) { // a line from the speech pack, filled in for this resident (null until the pack has loaded)
+  if (!RT || !B) return null; let set = RT[cat]; if (sub && set) set = set[sub]; const pool = resTalkSet(set, B.c, B.al); if (!pool || !pool.length) return null;
+  return resFill(resPick(pool), Object.assign(resCtx(B), resPersonaCtx(B.c), x || {}));
+}
+// the older lines were written like a chat window ("o/", "brb", "gtg"): spoken aloud, they're said properly; lines about servers,
+// lag and logging in are never picked
+const RES_META = /\b(log(?:ged|ging)?\s?(?:in|off|on|out)|server|lag+|afk|drop rate|grind\w*|brb|who dis|aggro|noob|nerf\w*|patch(?:ed)?|devs?|pm me|wts|wtb|npc|irl|tourists)\b|(?:^|\s)\\?o\/(?:\s|$)/i;
+function resNorm(t) {
+  let s = String(t == null ? '' : t); if (!s || s.charAt(0) === '​' || s.charAt(0) === '*') return s;
+  s = s.replace(/\\o\/|(?:^|\s)o\/(?=\s|$)/g, ' ').replace(/\b(lol|lmao|xd|rofl)\b/gi, '').replace(/\bbrb\b/gi, 'back in a bit').replace(/\bgtg\b/gi, 'I have to go').replace(/\bcya\b/gi, 'see you')
+    .replace(/\bsup\b/gi, 'what’s up').replace(/\bty\b/gi, 'thank you').replace(/\bgg wp\b/gi, 'good fight, well played').replace(/\bgg\b/gi, 'good fight').replace(/\bidk\b/gi, 'I don’t know')
+    .replace(/\b(tbh|ngl)\b/gi, 'honestly').replace(/\bfr\b/gi, '').replace(/\bpls\b/gi, 'please').replace(/\bu\b/g, 'you').replace(/\bur\b/g, 'your').replace(/\bppl\b/gi, 'people').replace(/\bimo\b/gi, 'I think')
+    .replace(/\bok\b/g, 'okay').replace(/\byo\b/gi, 'hey').replace(/\bwts\b/gi, 'selling').replace(/\bwtb\b/gi, 'buying').replace(/\bgonna\b/g, 'going to').replace(/\bwanna\b/g, 'want to');
+  s = s.replace(/\s{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1').trim().replace(/^[,.;:\s]+/, '').replace(/[,;:\s]+$/, '');
+  if (!s) return s;
+  s = s.replace(/\bi\b/g, 'I').replace(/\bi’m\b/g, 'I’m').replace(/\bi’ll\b/g, 'I’ll').replace(/\bi’ve\b/g, 'I’ve');
+  s = s.charAt(0).toUpperCase() + s.slice(1); s = s.replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase());
+  if (!/[.!?…)*”"]$/.test(s)) s += '.';
   return s;
 }
 // what they love doing tilts what they choose
@@ -27316,6 +27694,7 @@ function loopFrame() {
   combatTick(dt);
   alOutfitSync(dt);
   try { resUiTick(); resEmpTick(dt); resGuildTick(dt); } catch (e) { console.error(e); }
+  try { drunkTick(dt); } catch (e) {}
   // each region has its own exploration playlist: Antarctica on the ice, Africa on the savanna; New London has its own tracks (lonMusicTick), so no ice music there, not even under the nightmare
   // space has its own playlist (SPACETHEME1-3, Vast Horizons, Wonders of the Galaxies, Inner Tranquility, FREEROAM1-3): out among the
   // stars and on the worlds you land on, in Chapter III, Chapter IV before the time skip, and Chapter V
