@@ -13102,7 +13102,7 @@ function tiNear(p) {
 }
 function tiUse(n) {
   if (n.id === 'chn') (chkQ() ? chkTalk : chnBackQ() ? chnBackTalk : chnTalk)();
-  else if (n.id === 'hak') (hakQ() ? hakMeet : hakBackTalk)();
+  else if (n.id === 'hak') { const E = !hakQ() && eggFor('hak'); if (E) eggTalk(E); else (hakQ() ? hakMeet : hakBackTalk)(); } // Sevirrus with you: once the meeting's done
   else if (n.id === 'cygShuttle') cygBoard();
   else if (n.id === 'hawm') hawMercTalk();
   else if (n.id === 'alx') alexiaTalk();
@@ -21999,17 +21999,61 @@ const JOS_ARCH = [
   ['ARCHAMUS', ['Leave Archiostal, Prime Secretary. And take your rules with you.']],
   ['JOSIAH RICHARDS', ['Rules are the only thing that ever kept the dark out, son. You of all people should know that.']],
   ['ARCHAMUS', ['Watch him, wanderer. He has never broken a rule he wrote himself, and he wrote all of them.']]];
-const josArchQ = () => { const ch = wanderer.chapter | 0; return ch >= 3 && ch <= 5 && !(wanderer.eggs && wanderer.eggs.josArch) && mapCompanions().includes('pbc-josiah') && !compAway('pbc-josiah'); };
-async function josArchTalk() {
-  const vo = await loadDataScript('josArchVoices').then(ok => ok ? sfx.loadClips('josArchVoices') : []).catch(() => []);
+/* Easter egg: bring Lord Sevirrus (from Sevirrus) along and speak to Hak Chompjak V, in Chapters III–V. Hak was Sevirrus, three hundred
+   years ago: the boy meets the old emperor he becomes, glasses and all. SEVHAK1–18 (data/sevHakVoices.js); subtitles until recorded. */
+const SEV_HAK = [
+  ['LORD SEVIRRUS', ['So this is what the throne looks like, three hundred years on. Spectacles. How… scholarly.']],
+  ['HAK CHOMPJAK V', ['Hello, Sevirrus.']],
+  ['LORD SEVIRRUS', ['You know my name. Good. Then you know to kneel.']],
+  ['HAK CHOMPJAK V', ['I know your name better than anyone alive. I wore it for fifty years.']],
+  ['LORD SEVIRRUS', ['No. No, I would never become this. A soft old emperor, praying to a garden.']],
+  ['HAK CHOMPJAK V', ['You will. Arixal will break you at Alphinos, in front of our mother, and you will spend the next three centuries learning what you did.']],
+  ['LORD SEVIRRUS', ['Arixal is a child with a borrowed sword.']],
+  ['HAK CHOMPJAK V', ['So were you. Tell me, does the voice still talk to you at night? The one that calls you its prince?']],
+  ['LORD SEVIRRUS', ['He tells me I was born to be feared.']],
+  ['HAK CHOMPJAK V', ['He told me that too. He lied. He needed hands, and you were the only Chompjak who would hold the knife.']],
+  ['LORD SEVIRRUS', ['Damix begged, you know. You must remember. It was beautiful.']],
+  ['HAK CHOMPJAK V', ['I remember every word he said. I say them back to him every morning.']],
+  ['LORD SEVIRRUS', ['Everyone kneels, old man.']],
+  ['HAK CHOMPJAK V', ['Everyone kneels. I said that on Carax. Then I knelt, and I am still kneeling. That is the end of your story, little prince.']],
+  ['LORD SEVIRRUS', ['Then I will write a different one.']],
+  ['HAK CHOMPJAK V', ['I hope you do. Truly. Now go, before I remember how good it felt to be you.']],
+  ['LORD SEVIRRUS', ['You still feel it. I can see it behind those glasses.']],
+  ['HAK CHOMPJAK V', ['Every day. That is why I wear them.']]];
+/* Easter egg: bring Lord Sevirrus along and speak to Archamus, in Chapters III–V. Sevirrus is the Prince of Zark, the Prime Evil, and the
+   Prime Good knows his brother's handiwork when he sees it. SEVARCH1–15 (data/sevArchVoices.js); subtitles until recorded. */
+const SEV_ARCH = [
+  ['ARCHAMUS', ['Wanderer. You walk with my brother’s handiwork.']],
+  ['LORD SEVIRRUS', ['And you must be the gardener. The Grek light candles to you. I find that very funny.']],
+  ['ARCHAMUS', ['Hak Chompjak. Usurper of Janira. The boy who called a massacre on Carax a coronation.']],
+  ['LORD SEVIRRUS', ['The boy who was right. Everyone kneels, priest. Even you, eventually.']],
+  ['ARCHAMUS', ['You will kneel first, on the floor of Alphinos, with your mother watching. It will be the first honest thing you ever do.']],
+  ['LORD SEVIRRUS', ['Your brother says you are a coward who hides among flowers.']],
+  ['ARCHAMUS', ['My brother says many things. He told you that you were chosen. You were only available.']],
+  ['LORD SEVIRRUS', ['He gave me a crown.']],
+  ['ARCHAMUS', ['He gave you a leash, and painted it gold.']],
+  ['LORD SEVIRRUS', ['And what would you give me? Absolution? Prayers?']],
+  ['ARCHAMUS', ['Nothing, yet. One day an old emperor in blue glasses will kneel in my garden and ask me to forgive a boy named Sevirrus.']],
+  ['LORD SEVIRRUS', ['And will you?']],
+  ['ARCHAMUS', ['I have not decided. Ask him how long he has been waiting.']],
+  ['LORD SEVIRRUS', ['Keep your garden, gardener. I will burn it on my way out.']],
+  ['ARCHAMUS', ['You will try. Do not turn your back on him, wanderer. He has three hundred years of becoming someone else ahead of him, and not one of them has started.']]];
+// the hidden conversations: who you bring, who you speak to, once per playthrough each (eggs.<id>), in place of that conversation
+const EGGS = [
+  { id: 'josArch', comp: 'pbc-josiah', to: 'archamus', seq: JOS_ARCH, vo: 'josArchVoices', who: 'Josiah Richards and Archamus', title: 'FATHER AND SON?' },
+  { id: 'sevArch', comp: 'sev-sevirrus', to: 'archamus', seq: SEV_ARCH, vo: 'sevArchVoices', who: 'Lord Sevirrus and Archamus', title: 'THE PRINCE OF ZARK' },
+  { id: 'sevHak', comp: 'sev-sevirrus', to: 'hak', seq: SEV_HAK, vo: 'sevHakVoices', who: 'Lord Sevirrus and Hak Chompjak V', title: 'BEFORE HE WAS HAK' }];
+const eggFor = to => { const ch = wanderer.chapter | 0; if (ch < 3 || ch > 5) return null; const here = mapCompanions(); return EGGS.find(E => E.to === to && !(wanderer.eggs && wanderer.eggs[E.id]) && here.includes(E.comp) && !compAway(E.comp)) || null; };
+async function eggTalk(E) {
+  const vo = await loadDataScript(E.vo).then(ok => ok ? sfx.loadClips(E.vo) : []).catch(() => []);
   if (state !== 'explore' || ex.dlg) return;
-  wanderer.eggs = Object.assign({}, wanderer.eggs, { josArch: true }); const c = curChar(); if (c) c.eggs = wanderer.eggs; saveRoster(); // seen, even if you walk off halfway
-  lootMsg('Hidden dialogue · Josiah Richards and Archamus', '#ffd88a');
-  dialogSeq(JOS_ARCH, () => { sfx.chime(); notice('Hidden dialogue', 'FATHER AND SON?', 3600); }, vo || []);
+  wanderer.eggs = Object.assign({}, wanderer.eggs, { [E.id]: true }); const c = curChar(); if (c) c.eggs = wanderer.eggs; saveRoster(); // seen, even if you walk off halfway
+  lootMsg(`Hidden dialogue · ${E.who}`, '#ffd88a');
+  dialogSeq(E.seq, () => { sfx.chime(); notice('Hidden dialogue', E.title, 3600); }, vo || []);
 }
 function giverTalk(G) {
   if (G.josiah) { josiahTalk(); return; }
-  if ((G.arch3 || G.leader === 'archamus') && josArchQ()) { josArchTalk(); return; } // Josiah Richards is with you: the hidden conversation first
+  { const E = eggFor(G.arch3 || G.leader === 'archamus' ? 'archamus' : G.leader === 'hak' ? 'hak' : ''); if (E) { eggTalk(E); return; } } // Josiah Richards or Lord Sevirrus is with you: the hidden conversation first
   if (G.arch3) { if ((wanderer.chapter | 0) === 4) arch4Talk(); else arch3Talk(); return; }
   const S = sqs(), L = G.leader && SQ_LEADERS.find(o => o.id === G.leader), q = L ? (Object.keys(S.act).map(sqById).find(o => o && o.leader === L.id) || leaderNext(L)) : S.done[G.q] ? null : sqById(G.q);
   let el = $('#sqGiv');
