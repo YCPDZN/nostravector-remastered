@@ -1356,6 +1356,7 @@ body.ch4 .bar.sta i{background:#ff8a7e}
       </div>
       <div class="pane" data-pane="look">
         <div class="field"><label>Skin tone</label><div class="sws" id="crSkin"></div></div>
+        <div class="field" id="fFace"><label>Face</label><div class="chips" id="crFace"></div></div>
         <div class="field" id="fHair"><label>Hair style</label><div class="chips" id="crHair"></div></div>
         <div class="field" id="fBeard"><label>Facial hair</label><div class="chips" id="crBeard"></div></div>
         <div class="field" id="fHairC"><label id="lHairC">Hair colour</label><div class="sws" id="crHairC"></div></div>
@@ -2238,11 +2239,16 @@ const IDENT = {
   female: { label: 'Female', pro: 'She / her', sw: .92, hw: 1.06, h: .965 },
   nb: { label: 'Non-binary', pro: 'They / them', sw: .99, hw: 1, h: .985 }
 };
-const HAIRS = [['none', 'None'], ['buzz', 'Buzz'], ['crop', 'Crop'], ['bob', 'Bob'], ['long', 'Long'], ['ponytail', 'Ponytail'], ['bun', 'Bun'], ['curls', 'Curls'], ['mohawk', 'Mohawk']];
+const HAIRS = [['theirs', 'Theirs'], ['none', 'None'], ['buzz', 'Buzz'], ['crop', 'Crop'], ['bob', 'Bob'], ['long', 'Long'], ['ponytail', 'Ponytail'], ['bun', 'Bun'], ['curls', 'Curls'], ['mohawk', 'Mohawk']];
+/* faces for a human: modelled on the people of the story (their own heads, from their models), coloured with your skin and hair.
+   A wanderer with no face chosen gets one that suits their gender: Darius for a man, Malia for a woman, Orion otherwise. */
+const FACES = [['darius', 'Darius'], ['hawthorne', 'Hawthorne'], ['orion', 'Orion'], ['croxian', 'Croxian'], ['malia', 'Malia'], ['classic', 'Classic']];
+const FACE_SRC = { darius: 'leader_human', hawthorne: 'tiHaw', orion: 'cpOrion', croxian: 'cpCroxianU', malia: 'cpMalia' };
+const faceOf = c => FACES.some(f => f[0] === (c && c.face)) ? c.face : c && c.identity === 'female' ? 'malia' : c && c.identity === 'male' ? 'darius' : 'orion';
 const DESIGNS = [['standard', 'Standard'], ['pilot', 'Pilot'], ['vanguard', 'Vanguard'], ['survey', 'Survey']];
 const DESIGN_REGIONS = { standard: [], pilot: ['fore', 'shin'], vanguard: ['torso', 'helmet'], survey: ['upper', 'thigh'] };
 const VISORS = { smoke: ['Smoke', '#1b2433', .5, .6], gold: ['Gold', '#c9a24a', .6, 1], ice: ['Ice', '#7cc0ee', .4, .4], clear: ['Clear', '#d6e8ff', .14, .2] };
-const DEFAULT_W = { species: 'human', beard: false, chapter: 0, name: 'WANDERER', identity: 'nb', skin: 2, hair: 'crop', hairColor: 1, suit: 0, accent: 1, design: 'standard', visor: 'smoke' };
+const DEFAULT_W = { species: 'human', beard: false, chapter: 0, name: 'WANDERER', identity: 'nb', skin: 2, hair: 'theirs', hairColor: 1, suit: 0, accent: 1, design: 'standard', visor: 'smoke' };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 /* ---- save slots: progress is written ONLY when the player chooses Save ----
    Saves live in IndexedDB, which has room for hundreds of megabytes, so big rosters and long playthroughs always fit.
@@ -2362,7 +2368,7 @@ function paletteFor(sp) {
   return (palCache[sp] = { skin: shades(d.skin), hair: [d.hair, ...HAIRC], suit: [d.armour, ...SUITC], accent: [d.rim, ...ACCC] });
 }
 function speciesDefaults(sp) {
-  if (sp === 'human') return { species: 'human', skin: 2, hair: 'crop', hairColor: 1, suit: 0, accent: 1, beard: false };
+  if (sp === 'human') return { species: 'human', skin: 2, hair: 'theirs', hairColor: 1, suit: 0, accent: 1, beard: false };
   const S = SPECIES[sp];
   return { species: sp, skin: 0, hair: S.defaults.hair, hairColor: 0, suit: 0, accent: 0, beard: S.defaults.beard };
 }
@@ -2566,14 +2572,18 @@ function initLook(m) {
   }
   const nose = new THREE.Mesh(new THREE.SphereGeometry(.014, 10, 8), look.skinMat); nose.position.set(0, -.012, .113); head.add(nose);
   const mouth = new THREE.Mesh(new THREE.BoxGeometry(.034, .006, .01), new THREE.MeshStandardMaterial({ color: 0x5a2f2a, roughness: .6 })); mouth.position.set(0, -.052, .105); head.add(mouth);
+  look.head = head; look.procFace = head.children.filter(o => o !== neck); // the Classic face: hidden while a face from the story is on
+  look.skinDark = new THREE.MeshStandardMaterial({ color: SKIN[2], roughness: .7 });
   look.hair = new THREE.Group(); head.add(look.hair);
   const beard = new THREE.Group(); head.add(beard); look.beard = beard;
   const bm = new THREE.Mesh(new THREE.SphereGeometry(.123, 24, 12, Math.PI / 2 - 1.15, 2.3, Math.PI * .58, Math.PI * .34), look.hairMat);
   bm.scale.set(.92, 1.1, 1.04); beard.add(bm);
   const mo = new THREE.Mesh(new THREE.BoxGeometry(.07, .014, .02), look.hairMat); mo.position.set(0, -.034, .109); beard.add(mo);
+  look.procBeard = [bm, mo];
   beard.visible = false;
   look.ready = true;
   applyLook(wanderer);
+  setTimeout(() => { for (const k in FACE_SRC) faceTemplate(k).then(() => { if (look.faceFor && look.faceFor.split('+')[0] === k && wanderer && spOf(wanderer) === 'human') applyLook(wanderer); }); }, 1500); // every face ready before it's wanted
 }
 
 function buildHair(style) {
@@ -2612,6 +2622,50 @@ function buildHair(style) {
   }
 }
 
+// ---- faces from the story: the face, eyes, brows, nose, lips and ears (and beard) lifted from that character's own model ----
+const FACE_PART = /^(face|jaw|nose|nose bridge|nose tip|clean chin|eye white|iris|hazel iris|pupil|eye glint|eye catchlight|eye liner|eyebrow|ear|ear inner|mouth interior|mouth neutral|upper lip|lower lip|upper teeth|brow detail|cybernetic eye housing|cybernetic eye lens|cybernetic eye indicator)( -?1)?$/;
+const FACE_BEARD = /^(beard|moustache|grey beard|full beard|central beard|[lr] beard|[lr] cheek beard)/;
+const FACE_HAIR = /^(hair scalp|hair swept ridge|hair cap|short brushed hair|swept hair crown|swept hair strand|braided hair)/; // 'Theirs': the hair that goes with the face
+const FACE_SKIN = /^(face|jaw|nose|nose bridge|nose tip|clean chin|ear|brow detail)( -?1)?$/;
+const faceTpl = {}, faceTplV = {}; // promises, and what they resolved to (so a loaded face goes on at once: residents are copied from you straight after)
+function faceTemplate(key) { // the parts, in head space: centred where the Classic head is and scaled to its size
+  if (faceTpl[key]) return faceTpl[key];
+  return faceTpl[key] = loadDataScript(FACE_SRC[key], 'glb').then(() => embGlb(FACE_SRC[key])).then(sc => { // some (Croxian unmasked) load only when first wanted
+    if (!sc) return null; sc.updateMatrixWorld(true);
+    const parts = [];
+    sc.traverse(o => { if (!o.isMesh) return; const n = (o.name || '').replace(/_/g, ' ').toLowerCase().replace(/^(croxian|malia) /, '');
+      const beard = FACE_BEARD.test(n), hair = FACE_HAIR.test(n); if (!beard && !hair && !FACE_PART.test(n)) return;
+      parts.push({ geo: o.geometry.clone().applyMatrix4(o.matrixWorld), role: beard ? 'beard' : hair ? 'scalp' : n.startsWith('ear inner') ? 'skinDark' : FACE_SKIN.test(n) ? 'skin' : /^eyebrow/.test(n) ? 'hair' : null, mat: o.material, n }); });
+    const core = parts.filter(q => /^(face|jaw|clean chin)$/.test(q.n)), box = new THREE.Box3(); for (const q of (core.length ? core : parts)) { q.geo.computeBoundingBox(); box.union(q.geo.boundingBox); }
+    if (box.isEmpty()) return null;
+    const c = box.getCenter(new THREE.Vector3()), k = .25 / Math.max(.01, box.max.y - box.min.y);
+    for (const q of parts) { q.geo.translate(-c.x, -c.y, -c.z); q.geo.scale(k, k, k); q.geo.translate(0, -.008, .004); q.geo.computeBoundingSphere(); }
+    return parts;
+  }).catch(e => { console.warn('face', key, e); return null; }).then(v => (faceTplV[key] = v));
+}
+function applyFace(c) {
+  const theirs = c.hair === 'theirs', key = faceOf(c) + (theirs ? '+hair' : ''), base = faceOf(c); look.faceFor = key;
+  const clear = () => { for (const g of [look.faceG, look.beardG]) if (g && g.parent) g.parent.remove(g); look.faceG = look.beardG = null; look.faceKey = null; };
+  const classic = on => { for (const o of look.procFace) o.visible = on; for (const o of look.procBeard) o.visible = on; };
+  if (base === 'classic' || !FACE_SRC[base]) { clear(); classic(true); return; }
+  if (look.faceKey === key) return;
+  const build = parts => {
+    if (look.faceFor !== key || look.faceKey === key) return;
+    if (!parts) { clear(); classic(true); return; }
+    clear(); classic(false);
+    const face = new THREE.Group(), beard = new THREE.Group(), own = {};
+    for (const q of parts) {
+      if (q.role === 'scalp' && !theirs) continue;
+      const m = q.role === 'skin' ? look.skinMat : q.role === 'skinDark' ? look.skinDark : q.role === 'hair' || q.role === 'beard' || q.role === 'scalp' ? look.hairMat : (own[q.mat.uuid] || (own[q.mat.uuid] = q.mat.clone()));
+      const o = new THREE.Mesh(q.geo, m); o.castShadow = false; (q.role === 'beard' ? beard : face).add(o);
+    }
+    if (!parts.some(q => q.role === 'beard') && faceTplV.hawthorne) for (const q of faceTplV.hawthorne) if (q.role === 'beard') beard.add(new THREE.Mesh(q.geo, look.hairMat)); // a face with no beard of its own borrows Hawthorne's: it's shaped for these faces
+    look.head.add(face); look.faceG = face; look.faceKey = key;
+    if (beard.children.length) { look.beard.add(beard); look.beardG = beard; for (const o of look.procBeard) o.visible = false; } // their own beard, when they have one
+    else for (const o of look.procBeard) o.visible = true;
+  };
+  if (base in faceTplV) build(faceTplV[base]); else faceTemplate(base).then(build);
+}
 function applyHumanLook(c) {
   if (!look.ready) return;
   const P = look.parts, acc = DESIGN_REGIONS[c.design] || [];
@@ -2630,8 +2684,8 @@ function applyHumanLook(c) {
     if ('metalness' in look.visor) { look.visor.metalness = v[3]; look.visor.roughness = .08; }
   }
   { const k = alDarkK((c.align && c.align.p) || 0) * .8; if (k) for (const m of [look.base, look.accent, look.hBase, look.hAccent, look.trim]) if (m) m.color.lerp(AL_DARK, k); }
-  look.skinMat.color.set(SKIN[c.skin] || SKIN[2]); look.hairMat.color.set(HAIRC[c.hairColor] || HAIRC[1]);
-  buildHair(c.hair);
+  look.skinMat.color.set(SKIN[c.skin] || SKIN[2]); look.hairMat.color.set(HAIRC[c.hairColor] || HAIRC[1]); look.skinDark.color.copy(look.skinMat.color).multiplyScalar(.78);
+  buildHair(c.hair === 'theirs' && faceOf(c) === 'classic' ? 'crop' : c.hair); applyFace(c); // 'Theirs' with the Classic face: the crop it always had
   const id = IDENT[c.identity] || IDENT.nb;
   const setSX = (n, k) => { if (P[n]) P[n].scale.x = k; };
   const setPX = (n, cx, k) => { if (P[n]) P[n].position.x = cx * (k - 1); };
@@ -3493,6 +3547,7 @@ function buildCreateUI() {
   chips($('#crIdent'), Object.entries(IDENT).map(([k, v]) => [k, v.label]), 'identity');
   swatches($('#crSkin'), pal.skin, 'skin');
   chips($('#crHair'), human ? HAIRS : (SPECIES[sp].hairs || []), 'hair');
+  chips($('#crFace'), FACES, 'face');
   chips($('#crBeard'), [['yes', 'Beard'], ['no', 'Clean-shaven']], 'beard', v => { draft.beard = v === 'yes'; });
   swatches($('#crHairC'), pal.hair, 'hairColor');
   swatches($('#crSuit'), pal.suit, 'suit');
@@ -3514,7 +3569,8 @@ function refreshCreate() {
   $('#fHair').classList.toggle('hide', !(human || SPECIES[sp].hairs));
   $('#fHairC').classList.toggle('hide', (sp === 'grek' || sp === 'taredesiban') && !hasBeard(draft));
   $('#lHairC').textContent = sp === 'grek' || sp === 'taredesiban' ? 'Beard colour' : sp === 'oilkoumene' ? 'Horn colour' : 'Hair colour';
-  $('#fDesign').classList.toggle('hide', !human); $('#fVisor').classList.toggle('hide', !human);
+  $('#fDesign').classList.toggle('hide', !human); $('#fVisor').classList.toggle('hide', !human); $('#fFace').classList.toggle('hide', !human);
+  for (const b of $('#crFace').children) b.classList.toggle('on', b.dataset.v === faceOf(draft));
   const lore = LORE[sp];
   $('#spHome').textContent = lore.home;
   $('#spDesc').innerHTML = lore.paras.map(t => `<p>${t}</p>`).join('');
@@ -3567,7 +3623,7 @@ $('#crRandom').addEventListener('click', () => {
   const sp = spOf(draft), pal = paletteFor(sp), hairs = sp === 'human' ? HAIRS : (SPECIES[sp].hairs || [['none', 'None']]);
   Object.assign(draft, {
     identity: pick(Object.keys(IDENT)), skin: idx(pal.skin), hair: pick(hairs)[0], hairColor: idx(pal.hair),
-    suit: idx(pal.suit), accent: idx(pal.accent), design: pick(DESIGNS)[0], visor: pick(Object.keys(VISORS)), beard: Math.random() < .5
+    suit: idx(pal.suit), accent: idx(pal.accent), face: pick(FACES)[0], design: pick(DESIGNS)[0], visor: pick(Object.keys(VISORS)), beard: Math.random() < .5
   });
   sfx.click(); refreshCreate();
 });
