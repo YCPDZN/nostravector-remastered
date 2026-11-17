@@ -13035,7 +13035,7 @@ function tiLanded(P) {
   tiWorldClear(); TIW.area = curArea(); if (!P) return;
   if (podMode() && !(wanderer.ch4 && wanderer.ch4.podLanded)) { setTimeout(() => podDeath(P), 1600); return; } // the first world the pod comes down on
   if (P.id === 'charon' && (chnQ() || chnBackQ() || chkQ())) chnPlace().catch(e => console.error(e));
-  if (P.id === 'janira' && (hakQ() || hakBackQ())) hakPlace().catch(e => console.error(e));
+  if (P.id === 'janira' && (hakQ() || hakBackQ() || hakStayQ())) hakPlace().catch(e => console.error(e));
   if (P.id === 'janira' && siegeQ()) { setTimeout(() => siegePlace(false), 800); setTimeout(siegePatrolsLand, 1600); } // the blockade: the base, the rover, and Terra Imperia's patrols all over the planet
   if (orionCutDue() && c3f('siegeWon')) setTimeout(() => startOrionCut(), 4000); // a save that left before Orion's scene played
   if (P.id === 'janira' && siegeQ() && c3f('siegeLeft')) { setC3({ siegeLeft: false }); if (siegeLeadsOn()) setTimeout(() => { if (state === 'explore') sayAs('DARIUS ANCIN', 'Still standing. Good. Let’s finish this.', 4200); }, 3600); }
@@ -13102,7 +13102,7 @@ function tiNear(p) {
 }
 function tiUse(n) {
   if (n.id === 'chn') (chkQ() ? chkTalk : chnBackQ() ? chnBackTalk : chnTalk)();
-  else if (n.id === 'hak') { const E = !hakQ() && eggFor('hak'); if (E) eggTalk(E); else (hakQ() ? hakMeet : hakBackTalk)(); } // Sevirrus with you: once the meeting's done
+  else if (n.id === 'hak') { const E = !hakQ() && eggFor('hak'); if (E) eggTalk(E); else (hakQ() ? hakMeet : hakBackQ() ? hakBackTalk : hakIdleTalk)(); } // Sevirrus with you: once the meeting's done
   else if (n.id === 'cygShuttle') cygBoard();
   else if (n.id === 'hawm') hawMercTalk();
   else if (n.id === 'alx') alexiaTalk();
@@ -13304,6 +13304,9 @@ function solFalls() {
   say(lost ? 15000 : 10300, 'Main quest', ph ? 'RETURN TO HAK' : 'RETURN TO HAK CHOMPJAK IN KARRIBASSA', ph ? 'Warp to Janira Proxima · Karribassa' : 'Warp to Janira Proxima and land on Janira Prime: Hak waits in the heart of Karribassa', '#ffb060');
 }
 function hakBackQ() { const c = CH3S(); return ch3Now() && !!c.solFell && !c.hakBack; }
+// the rest of Chapter III: once you've met him, Hak keeps court in Karribassa, before the Hall of Oaths (not while he's out fighting at your side)
+const hakStayQ = () => ch3Now() && c3f('hakMet') && !siegeQ() && !partyNow().includes('lead:hak');
+function hakIdleTalk() { const who = tiPhone() ? 'HAK CHOMPJAK V' : 'HAK CHOMPJAK V · EMPEROR OF THE CHOMPY EMPIRE'; openDialog(who, ['Wanderer. Karribassa remembers its friends, and the Hall of Oaths keeps its doors open for you. Go carefully out there.']); }
 function hakBackTalk() { // Hak, on the bridge before the Hall of Oaths again: he tells you what you missed (CH3HAKBACK1–11, subtitles until they're recorded)
   const who = tiPhone() ? 'HAK CHOMPJAK V' : 'HAK CHOMPJAK V · EMPEROR OF THE CHOMPY EMPIRE', ally = chompyAlly(), lost = (CH3S().solLost | 0) > 0;
   const go = vo => {
@@ -13380,14 +13383,14 @@ async function hakPlace(tries = 0) { // the Emperor, in the heart of Karribassa:
   const C = world.planet && world.planet.city;
   if (!C || C.K.name !== 'Karribassa') { setTimeout(() => lootMsg(tiPhone() ? 'Hak waits in Karribassa · fly to it' : 'Hak waits in the heart of Karribassa · take off and fly to the city from the sky (its marker), then land', '#ffb060'), 2600); return; }
   const area = curArea(), [R, ...G] = await Promise.all([leadTag('leader_chompy', 2.05)().catch(() => null), ...(tiPhone() ? [] : [0, 1].map(() => loadSpecies('chompy').then(() => townModel('chompy')).then(src => src ? (Rg => (armRig(Rg, 'sword'), Rg))(autoRig(dressTownsfolk(src, { sp: 'chompy', c: [0x1a1418, 0xd0343a] }), 1.8)) : null).catch(() => null)))]);
-  if (curArea() !== area || !(hakQ() || hakBackQ())) return;
+  if (curArea() !== area || !(hakQ() || hakBackQ() || hakStayQ())) return;
   if (!R) { if (tries < 2) setTimeout(() => { if (curArea() === area && !TIW.hak) hakPlace(tries + 1).catch(e => console.error(e)); }, 1500); return; } // his model didn't load: try again
   if (TIW.hak) return;
   const g = new THREE.Group(), x = C.cx, z = C.cz + 46, y = C.y; wScene.add(g);
   R.root.position.set(x, y, z); R.root.traverse(o => { if (o.isMesh) o.castShadow = !tiPhone(); }); g.add(R.root);
   G.forEach((Rg, i) => { if (!Rg) return; Rg.root.position.set(x + (i ? 2.6 : -2.6), y, z - 1.2); Rg.root.traverse(o => { if (o.isMesh) o.castShadow = !tiPhone(); }); g.add(Rg.root); }); // the Emperor's guard
   TIW.hak = { g, R: [R, ...G.filter(Boolean)], face: true, x, z };
-  setTimeout(() => lootMsg(tiPhone() ? 'Hak waits at the Hall of Oaths' : 'Hak Chompjak waits in the heart of Karribassa, before the Hall of Oaths · follow the gold marker', '#ffb060'), 2600);
+  if (hakQ() || hakBackQ()) setTimeout(() => lootMsg(tiPhone() ? 'Hak waits at the Hall of Oaths' : 'Hak Chompjak waits in the heart of Karribassa, before the Hall of Oaths · follow the gold marker', '#ffb060'), 2600);
 }
 /* ---- Chapter III: the blockade of Janira Prime ----
    After Hak's prayer, Terra Imperia attacks. Hak (his sword), Darius Ancin (a rifle) and Vishara Erisconos (ice magic) join you at
@@ -21735,7 +21738,13 @@ async function placeGivers() {
     const here = [...sqOffers(m), ...Object.entries(S.act).filter(([, A]) => A.at === P.id).map(([id]) => sqById(id)).filter(q => q && !q.leader && q.k !== 'deliver' && q.k !== 'visit')];
     here.forEach((q, i) => { const a = .9 + i * 1.05; want.push({ q: q.id, name: q.g.split(',')[0].toUpperCase(), sp: giverSpecies(q, m), x: m.px + Math.cos(a) * 5.5, z: m.pz + Math.sin(a) * 5.5 }); });
   }
-  SQ_LEADERS.filter(L => L.world === P.id && leaderFree(L)).forEach((L, i) => want.push({ leader: L.id, name: L.name, x: 14 + i * 3.4, z: 16 - i * 1.2 }));
+  SQ_LEADERS.filter(L => L.world === P.id && leaderFree(L) && L.id !== 'hak').forEach((L, i) => want.push({ leader: L.id, name: L.name, x: 14 + i * 3.4, z: 16 - i * 1.2 }));
+  { const ch = wanderer.chapter | 0, H = SQ_LEADERS.find(L => L.id === 'hak'), C = world.planet.city; // Hak keeps court in Alphinos, in Chapter IV (after the two years) and as a leader in Chapter V
+    const want4 = ch === 4 && wanderer.ch4 && wanderer.ch4.timeSkip, want5 = ch === 5 && H && leaderFree(H);
+    if (P.id === 'aridaxx' && (want4 || want5)) {
+      if (C && C.K.name === 'Alphinos') want.push({ leader: 'hak', hak4: want4, name: 'EMPEROR HAK CHOMPJAK V', x: C.cx, z: C.cz + 40, y: C.y }); // on the plaza, in the heart of the city
+      else setTimeout(() => lootMsg(tiPhone() ? 'Hak is in Alphinos · fly to it' : 'Emperor Hak Chompjak holds court in Alphinos · take off and fly to the city from the sky (its marker), then land', '#b07aff'), 3200);
+    } }
   if (P.id === 'archiostal-gardens' && ((wanderer.chapter | 0) === 3 || ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.timeSkip))) want.push({ arch3: true, name: 'ARCHAMUS', x: 16, z: 21 }); // Chapter III: he wants nothing to do with you (not yet); Chapter IV: the first quest is to find him here
   if (P.id === 'earth' && josiahQ()) { // Chapter IV: at his father's grave near wherever you set down, on the quiet side, away from the stall and its crowd
     const wet = (x, z) => plSeaY() != null && wHeight(x, z) < plSeaY() + .6, steep = (x, z) => Math.abs(wHeight(x + 2, z) - wHeight(x - 2, z)) + Math.abs(wHeight(x, z + 2) - wHeight(x, z - 2)) > 2.4 || Math.abs(wHeight(x, z) - wHeight(0, 0)) > 6;
@@ -21747,7 +21756,7 @@ async function placeGivers() {
       const R = w.josiah ? await josiahRig() : w.leader || w.arch3 ? await leaderRig(SQ_LEADERS.find(L => L.id === (w.leader || 'archamus'))) : await giverRig(w.sp, 1.8, w.name);
       if (!R || GIVERS.area !== area || curArea() !== area) continue;
       let x = w.x, z = w.z; for (let i = 0; i < 30 && plSeaY() != null && wHeight(x, z) < plSeaY() + .6; i++) { x += 3; z -= 2; }
-      R.root.position.set(x, wHeight(x, z), z); R.root.rotation.y = Math.atan2(-x, 6 - z); wScene.add(R.root);
+      R.root.position.set(x, w.y != null ? w.y : wHeight(x, z), z); R.root.rotation.y = Math.atan2(-x, 6 - z); wScene.add(R.root);
       if (w.josiah) { const gx = x + 1.6, gz = z - 1.2; w.extra = makeGrave('JOSIAH WILLIAMS', ['Beloved father', 'Taken by Terra Imperia', 'during the occupation of Earth']); w.extra.position.set(gx, wHeight(gx, gz), gz); w.extra.rotation.y = Math.atan2(x - gx, z - gz); wScene.add(w.extra); w.faceGrave = Math.atan2(gx - x, gz - z); R.root.rotation.y = w.faceGrave; }
       GIVERS.list.push(Object.assign(w, { R, x, z }));
     } catch (e) { console.warn('quest giver failed', w.name, e); }
@@ -22051,9 +22060,17 @@ async function eggTalk(E) {
   lootMsg(`Hidden dialogue · ${E.who}`, '#ffd88a');
   dialogSeq(E.seq, () => { sfx.chime(); notice('Hidden dialogue', E.title, 3600); }, vo || []);
 }
+// Chapter IV: Hak in Alphinos, two years on (CH4HAKALPHINOS1–2, data/hak4Voices.js once recorded; subtitles until then)
+const HAK4 = ['Two years, wanderer. They told me you were dead. I have learned not to believe that sort of thing about the people who matter.',
+  'The Catharsis took every Grek world while you slept. Alphinos still stands, and I mean to keep it that way.'];
+async function hak4Talk() {
+  const vo = await loadDataScript('hak4Voices').then(ok => ok ? sfx.loadClips('hak4Voices') : []).catch(() => []);
+  if (state !== 'explore' || ex.dlg) return; openDialog(tiPhone() ? 'HAK CHOMPJAK V' : 'HAK CHOMPJAK V · EMPEROR OF THE CHOMPY EMPIRE', HAK4, false, null, vo || []);
+}
 function giverTalk(G) {
   if (G.josiah) { josiahTalk(); return; }
   { const E = eggFor(G.arch3 || G.leader === 'archamus' ? 'archamus' : G.leader === 'hak' ? 'hak' : ''); if (E) { eggTalk(E); return; } } // Josiah Richards or Lord Sevirrus is with you: the hidden conversation first
+  if (G.hak4) { hak4Talk(); return; }
   if (G.arch3) { if ((wanderer.chapter | 0) === 4) arch4Talk(); else arch3Talk(); return; }
   const S = sqs(), L = G.leader && SQ_LEADERS.find(o => o.id === G.leader), q = L ? (Object.keys(S.act).map(sqById).find(o => o && o.leader === L.id) || leaderNext(L)) : S.done[G.q] ? null : sqById(G.q);
   let el = $('#sqGiv');
