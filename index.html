@@ -27296,6 +27296,181 @@ function resPlaceIn(t) { // a world or system named in what you typed (longest n
   named.sort((a, b) => b.name.length - a.name.length);
   return named.find(o => t.includes(' ' + o.name.toLowerCase().replace(/^the /, '').replace(/[^a-z0-9 -]/g, '') + ' ')) || null;
 }
+// ---- conversation (data/resConvo.js): residents keep track of a conversation, so it can go back and forth like one ----
+/* Each resident remembers, for a few minutes: the last thing you talked about, the question they just asked you (and so what your
+   "yes", "no" or one-word answer means), what you've told them (your name, your mood, what you like), and the lines they've already
+   used, so they don't repeat themselves. Face to face they talk in full sentences (talk); in the chat or a whisper, the ones who type
+   like players use the chat lines (chat), the rest still talk properly. Over a thousand lines each, by hero, neutral and villain. */
+let RC = null;
+function resConvoLoad() {
+  if (RC || RES.rcLoading) return; RES.rcLoading = true;
+  const sc = document.createElement('script'); sc.src = 'data/resConvo.js';
+  sc.onload = () => { RC = window.NV_RES_CONVO || null; }; sc.onerror = () => { RES.rcLoading = false; };
+  document.body.appendChild(sc);
+}
+const RES_CONVO_MEM = {};
+function resMem(B) { const id = B.id || (B.c && B.c.id); let M = RES_CONVO_MEM[id]; if (!M || time - M.at > 300) M = RES_CONVO_MEM[id] = { at: time, turns: 0, used: new Set(), told: {}, asked: {}, said: [] }; M.at = time; return M; }
+// what you said, sorted into what they'd hear in it (first match wins; questions about them come before statements about you)
+const RES_CONVO_INTENTS = [
+  ['bot', /are (you|u) (a |an )?(bot|robot|real|human|ai|npc|program|computer|alive|machine|person|player)\b|(you|u|youre|ur) (a )?(bot|npc|robot)\b|r u real|are you real|is this (a )?bot/],
+  ['myname', /\bmy name is \w+|\bcall me \w+|\bim called \w+/],
+  ['birthday', /(my|its my) (birthday|bday)|birthday today|\bbday\b/],
+  ['love', /i love (you|u)\b|\bily\b|marry me|will you marry|date me|go out with me|be my (girlfriend|boyfriend|partner|wife|husband)|\bkiss\b|crush on (you|u)|(youre|you are|ur|u r) (cute|hot|sexy)/],
+  ['friends', /be (my )?friends?|are we friends|wanna be friends|want to be friends|best friends|\bbff\b|you are my friend|youre my friend/],
+  ['likeme', /do (you|u) like me|(what|how) do (you|u) (think|feel) (of|about) me|am i (cool|nice|good|annoying|weird|your friend)|you like me|what am i to you/],
+  ['insult', /(you are|youre|ur|u r|you r) (so )?(stupid|dumb|useless|ugly|annoying|weird|lame|trash|bad|boring|an idiot|a loser|pathetic|slow|a joke|worthless|a bot)\b|\bidiot\b|\bmoron\b|\bloser\b|shut up|\bstfu\b|go away|nobody likes (you|u)|i hate (you|u)\b|(you|u) suck|\bnoob\b/],
+  ['compliment', /(you are|youre|ur|u r|you r|you look) (so |really |very )?(cool|awesome|great|nice|amazing|the best|funny|smart|kind|sweet|pretty|beautiful|handsome|strong|brave|epic|a legend|lovely|clever|wise|helpful)|i like you\b|love your|(nice|cool|great|awesome|sick) (armou?r|outfit|look|hair|base|ship|gear|sword|name)|good job|well done|great job|youre the best/],
+  ['hug', /\bhug|\*hugs?\*|cuddle/],
+  ['highfive', /high ?five|\bhi5\b|\bup top\b/],
+  ['dance', /\bdance|\bdancing\b/],
+  ['sing', /\bsing\b|sing (me|for me|a song)|song for me/],
+  ['joke', /\bjoke|make me laugh|something funny|tell me a pun|\bpun\b|another (one|joke)|one more( joke)?|tell me another|more jokes/],
+  ['rather', /would (you|u) rather|wyr\b/],
+  ['secret', /\bsecret|fun fact|tell me something( interesting| new)?\b|something interesting/],
+  ['meaning', /meaning of life|meaning of it all|why are we here|what is life|point of (it all|life|everything)|purpose of life|why do we exist/],
+  ['philosophy', /do (you|u) believe|\bgods?\b|afterlife|\bsoul\b|\bfate\b|destiny|\bkarma\b/],
+  ['dream', /(your|ur) (dream|goal|ambition|wish)|what do (you|u) want (most|in life|someday)|if (you|u) could (do|have|be) anything|\bdreams?\b/],
+  ['fear', /(what|whats) scares (you|u)|are (you|u) (afraid|scared) of|what are (you|u) (afraid|scared) of|(your|ur) (biggest )?fear|do (you|u) get scared/],
+  ['family', /\bfamily\b|\bparents\b|\bmother\b|\bfather\b|\bmum\b|\bmom\b|\bdad\b|siblings|\bbrother\b|\bsister\b|\bkids\b|\bchildren\b|are (you|u) married/],
+  ['pets', /\bpets?\b|\bdogs?\b|\bcats?\b|\banimals?\b|\bcritters?\b/],
+  ['fav_food', /(favou?rite|fav|fave) (food|dish|meal|snack)|what do (you|u) (like to )?eat|best food|whats good to eat/],
+  ['hungry', /(im|i am|so|really) (hungry|starving|famished)|need (food|to eat)/],
+  ['fav_color', /(favou?rite|fav|fave) colou?r|what colou?r do (you|u) like|(your|ur) colou?r/],
+  ['fav_music', /(favou?rite|fav|fave) (music|song|band|tune)|what music|what do (you|u) listen to|\bplaylist\b|\bmusic\b/],
+  ['fav_place', /(favou?rite|fav|fave) (place|planet|world|system|spot)|best (planet|place|world|system)|most beautiful (place|planet|world)/],
+  ['drink', /\bdrinks?\b|\bbeer\b|\bale\b|\bwine\b|\bmead\b|\bthirsty\b|\bpub\b|\bcantina\b|\bbar\b/],
+  ['goodnight', /good ?night|\bgn\b|going to (bed|sleep)|off to (bed|sleep)|nighty|nite\b/],
+  ['tired', /(im|i am|so|really|feeling) (tired|sleepy|exhausted|knackered|wiped)|need (sleep|a nap|rest)/],
+  ['leaving', /\bbye\b|\bbye bye\b|goodbye|\bcya\b|see (you|ya|u)( later| soon| around)?\b|\blater\b|farewell|take care|\bttyl\b|\bpeace out\b|\bgtg\b|got to go|gotta go|have to go|need to go|\bbrb\b|be right back|\bafk\b|logging off|heading off|i must go/],
+  ['back', /^ (im |i am )?back\b|\bi(m| am) back\b|\bback now\b/],
+  ['missed', /i missed (you|u)|miss me|where have (you|u) been|long time no see|its been (a while|ages)/],
+  ['meet', /nice to meet (you|u)|pleased to meet|good to (see|meet) (you|u)|glad to meet/],
+  ['bored', /\bbored\b|\bboring\b|nothing to do|so dull/],
+  ['whattodo', /what (should|can|shall) we do|lets do something|wanna do something|want to do something|any ideas|entertain me|what do (you|u) want to do/],
+  ['helpoffer', /can i help (you|u)|do (you|u) need (help|anything|something)|need a hand\b|anything i can do|how can i help/],
+  ['askme', /can i ask (you|u)|(i have|ive got|got) a question|may i ask|question for (you|u)/],
+  ['wait', /^ (wait|hold on|one sec|one second|hang on|sec|1 sec|gimme a sec|give me a (sec|second|minute)) /],
+  ['lifeadvice', /life advice|any advice|advice for (me|life)|words of wisdom|what should i do with my life/],
+  ['games', /\bgames?\b|play (cards|dice|chess)|\bcards\b|\bchess\b|\bdice\b/],
+  ['level', /what level|(your|ur) level|\blvl\b|how strong are (you|u)/],
+  ['gear', /\bgear\b|\barmou?r\b|\bweapons?\b|\bswords?\b|\bguns?\b|\brifles?\b|\bloot\b|\bequipment\b/],
+  ['mining', /\bmin(e|ing)\b|\bores?\b|\bpickaxe\b|\bdeposits?\b/],
+  ['ship', /\bship\b|spaceship|\bwarp\b|\bflying\b|\bpilot\b/],
+  ['base', /\bbase\b|\bhouse\b|\bfortress\b|\bcamp\b|\bbuild(ing)?\b/],
+  ['guild', /\bguilds?\b|\bclan\b|team up|party up/],
+  ['money', /\bmoney\b|\bbroke\b|\brich\b|lend me|give me (money|units|cash)|\bloan\b|\bunits\b/],
+  ['gift', /(give|got) (me )?(something|anything|a gift|stuff|a present)|\bgifts?\b|\bpresent\b|free stuff/],
+  ['newplayer', /(im|i am) (new|a beginner|a newbie)|just started|first (time|day)|\bnewbie\b/],
+  ['achieve', /i (did it|won|beat|levell?ed( up)?|finished|made it|killed|defeated|got a|found a)|\blevel(l)?ed up\b|\bwe won\b/],
+  ['weather', /\bweather\b|\braining\b|\brain\b|\bstorm\b|\bsunny\b|\bsnow\b|\bwindy\b/],
+  ['time', /what time|whats the time|time is it|what day is it/],
+  ['age', /how old|(your|ur) age|when were (you|u) born/],
+  ['from', /where (are|r) (you|u) from|where (you|u) from|(your|ur) (home|homeworld|hometown)|where do (you|u) live|where were (you|u) born/],
+  ['hobby', /\bhobb(y|ies)\b|for fun\b|free time|spare time|what do (you|u) (like|enjoy|love) (doing|to do)/],
+  ['job', /what do (you|u) do( for (a living|work))?\b(?! for fun)|(your|ur) job|for a living|(your|ur) (profession|occupation|work)/],
+  ['name', /(whats|what is) (your|ur) name|who (are|r) (you|u)\b|(your|ur) name\b/],
+  ['howru', /how (are|r) (you|u|ya)\b|how (you|u) doing|how are things|hows it going|how is it going|how (have|ve) (you|u) been|how u been|(are|r) (you|u) (ok|okay|alright|good|well)\b|\bhru\b|hows (your|ur) day|how was (your|ur) day/],
+  ['whatsup', /whats up|\bwassup\b|\bwhatsup\b|whats new|whats happening|anything new|\bsup\b/],
+  ['earth', /\bearth\b|\bhumans\b|human race/],
+  ['aliens', /\baliens?\b|extraterrestrial|life out there/],
+  ['space', /\bstars\b|\buniverse\b|\bgalaxy\b|\bcosmos\b|black hole|\bnebula/],
+  ['c_orion', /\borion\b/], ['c_nico', /\bnico\b/], ['c_james', /\bjames\b/], ['c_darius', /\bdarius\b|\bpresident\b/], ['c_vishara', /\bvishara\b|\bmatriarch\b/], ['c_josiah', /\bjosiah\b/], ['c_javek', /\bjavek\b/],
+  ['greet', /^ (hi|hello|hey|heya|hiya|yo|howdy|greetings|good (morning|afternoon|evening|day)|morning|evening|oi|hallo|hola|ahoy|hai|helo|hii+|heyy+|o\/|sup) /],
+  ['thanks', /\bthank|\bthx\b|\bcheers\b|\bty\b|\btysm\b|appreciate it/]];
+// short replies that only make sense after something (checked first, while the conversation is going)
+const RES_CONVO_FOLLOW = [
+  ['fu_you', /^ ((and|what about|how about) (you|u|yourself)|(you|u|hbu|wbu|and u|u too|you too|yourself)) $| (hbu|wbu|and you|and u|how about you|what about you|how about u|what about u) $/],
+  ['fu_why', /^ (why|how come|why not|but why|whys that|why is that|why so|how so|whys) $/],
+  ['fu_really', /^ (really|seriously|for real|fr|no way|are you sure|you sure|srsly|rly|wow really|omg really|no kidding) $/],
+  ['fu_laugh', /^ (lol|lmao|lmfao|ha+|(ha)+|he(he)+|rofl|xd|lul|kek|haha+\w*|ahaha+) $/],
+  ['fu_sorry', /\b(sorry|my bad|apologies|forgive me|soz|sry)\b/],
+  ['fu_agree', /^ (true|exactly|same|me too|agreed|i agree|facts|so true|totally|yeah true|thats true|right|ikr|indeed|same here|true that) $/],
+  ['fu_disagree', /\b(i disagree|thats not true|thats wrong|youre wrong|you are wrong|no its not|not true|i dont think so|nope wrong|disagree)\b/],
+  ['fu_what', /^ (what|huh|what do you mean|wdym|meaning|eh|pardon|come again|what\?|explain|i dont understand|i dont get it|confused) $/],
+  ['fu_yes', /^ (yes|yeah|yep|yup|ya|yea|sure|of course|definitely|absolutely|totally|aye|ok sure|yes please|ye|ofc|certainly|i do|i am|i have|i did) $/],
+  ['fu_no', /^ (no|nope|nah|not really|never|no thanks|nah thanks|not yet|i dont|im not|i havent|i didnt|no way) $/],
+  ['fu_ack', /^ (ok|okay|k|kk|okie|cool|nice|alright|aight|got it|i see|right|fair|fair enough|makes sense|neat|sweet|great|awesome|oh|ah|oh ok|ah ok|mhm|hmm+|interesting|wow|oh nice|good|noted|understood|gotcha) $/]];
+const RES_STOP = new Set('the a an and or but so to of in on at for with about is are was were be been am im i you u me my your ur it its this that these those do does did have has had can could would should will just like really very what whats who how why when where which there their they them we our us he she him her his hers not no yes yeah ok okay hey hi hello please tell know think thing things something anything stuff kind sort get got go going make want any some much many more most also too than then if as from by up down out over into all one ever been being lol haha omg wow well oh'.split(' '));
+function resTopicWord(t) { const w = t.trim().split(' ').filter(x => x.length > 2 && !RES_STOP.has(x) && !/^\d+$/.test(x)); if (!w.length) return null; w.sort((a, b) => b.length - a.length); return w[0]; }
+function resAnsOf(raw) { // the gist of an answer: "i'd say probably malana prime!" → "Malana Prime"
+  let s = String(raw).trim().replace(/[.!?…]+$/, ''); s = s.replace(/^(well|hmm+|um+|uh+|oh|honestly|probably|maybe|i guess|i think|i suppose|definitely|easily|prob|prolly)[,\s]+/i, '');
+  s = s.replace(/^(i(’|')?d say|i would say|my favou?rite( one)? (is|would be)|i (really |totally )?(like|love|enjoy|adore|listen to|eat|do|play)|it(’|')?s|its|i am|i(’|')?m|im|from|probably|maybe|definitely|the)\s+/i, '').replace(/^(the|a|an)\s+/i, '');
+  s = s.split(/\s*(?:[,;]|\bbut\b|\bbecause\b|\bcos\b|\bbc\b|\band you\b|\bwbu\b|\bhbu\b|\bwhat about you\b)\s*/i)[0].trim().replace(/(\s+(probably|maybe|i guess|i think|tbh|honestly|lol|haha|for sure|definitely|i suppose|tho|though|really|mostly|you|u|and you|and u|hbu|wbu|too))+$/i, '');
+  const w = s.split(/\s+/).slice(0, 5).join(' '); return w || 'that';
+}
+function resConvoPool(set, intent, B) { const d = set && set[intent]; if (!d) return null; if (Array.isArray(d)) return d; const k = B.al === 'hero' ? 'h' : B.al === 'villain' ? 'v' : 'n'; return d[k] && d[k].length ? d[k] : d.n || d.h || d.v; }
+const resCap = l => l && l.charAt(0) !== '\u2063' ? l.charAt(0).toUpperCase() + l.slice(1) : l; // talk lines start with a capital, whatever was filled in
+function resConvoPick(pool, M) { const fresh = pool.filter(l => !M.used.has(l)); const l = resPick(fresh.length ? fresh : pool); M.used.add(l); if (M.used.size > 400) M.used.clear(); return l; }
+function resConvoQ(B, M, chat, x, intent) { // now and then they ask you something back
+  const ids = (RC.after && RC.after[intent]) || []; if (!ids.length) return null;
+  const pr = intent === 'howru' ? .85 : intent === 'greet' ? .6 : intent === 'fu_ack' ? .45 : intent === 'unknown' ? .5 : .4; if (Math.random() > pr) return null;
+  const qid = resPick(ids.filter(q => !M.asked[q] || q === 'howru' && intent === 'howru') .concat([])), Q = qid && RC.q[qid]; if (!Q) return null;
+  const a = Q.ask[chat ? 'chat' : 'talk'], pool = Array.isArray(a) ? a : a[B.al === 'hero' ? 'h' : B.al === 'villain' ? 'v' : 'n'];
+  M.ask = qid; M.askAt = time; M.asked[qid] = true; return resFill(resConvoPick(pool, M), x);
+}
+function resConvo(B, t, raw, mode, stage) { // stage 'pre': follow-ups and answers to their question; 'topic': the topics; 'fallback': nothing else understood it
+  resConvoLoad(); if (!RC) return null; t = ' ' + t.trim().replace(/\s+/g, ' ') + ' '; // one space each side, whatever punctuation came off
+  const M = resMem(B), chat = !!mode && resHash(String(B.c && B.c.id) + '|cv') < resGamer(B.c), set = chat ? RC.chat : RC.talk, has = re => re.test(t), words = t.trim().split(' ').filter(Boolean).length;
+  const x = Object.assign(resCtx(B), resPersonaCtx(B.c), { pname: M.told.name || wanderer.name }); if (M.told.name) x.player = M.told.name;
+  let intent = null, lead = null;
+  if (stage === 'pre') {
+    // the question they just asked you: what your answer means
+    const isQ = /\?/.test(raw) || has(/^ (what|whats|why|how|hows|who|whos|where|wheres|when|which|are (you|u)|r u|do (you|u)|did (you|u)|can (you|u)|could (you|u)|will (you|u)|would (you|u)|have (you|u)|is it|tell me) /);
+    const newTopic = RES_CONVO_INTENTS.some(([k, re]) => !/^(greet|thanks|space|earth|games|weather)$/.test(k) && re.test(t)) || has(/\bi (hate|dislike|cant stand|despise)\b/);
+    if (M.ask && (isQ || newTopic) && !(RC.q[M.ask] && RC.q[M.ask].kind === 'open' && has(/\bi (really |totally )?(like|love|enjoy|adore)\b/))) M.ask = null; // you've moved on
+    if (M.ask && time - M.askAt < 150 && words <= 9) {
+      const Q = RC.q[M.ask], qid = M.ask; M.ask = null;
+      if (Q && Q.kind === 'howru' && has(/^ (not much|nothing|nm|nothing much|not a lot|same|same old|just chilling|chilling|nothing really|the usual|usual)\b/)) intent = 'nm';
+      else if (Q && Q.kind === 'howru') { intent = has(/\b(bad|awful|terrible|horrible|rough|tired|meh|sad|not (great|good|well|so good)|bored|sick|exhausted|crap|shit|stressed|ugh)\b/) ? (has(/\bmeh|okay|ok|alright|so so|not bad\b/) && !has(/\b(bad|awful|terrible|horrible|sad)\b/) ? 'ans_meh' : 'ans_bad') : has(/\b(okay|ok|alright|so so|fine i guess|could be better|not bad)\b/) ? 'ans_meh' : 'ans_good'; M.told.mood = intent; }
+      else if (Q && Q.kind === 'yn') { const yes = RES_CONVO_FOLLOW.find(f => f[0] === 'fu_yes')[1], no = RES_CONVO_FOLLOW.find(f => f[0] === 'fu_no')[1];
+        const r = has(no) || has(/\b(no|nope|nah|never|not really|not yet)\b/) ? 'no' : has(yes) || has(/\b(yes|yeah|yep|yup|sure|of course|definitely|i do|i am|ofc)\b/) ? 'yes' : null;
+        if (r) { M.last = 'fu_ack'; M.lastAt = time; const pool = B.al === 'villain' && RC.qv && Math.random() < .7 ? RC.qv[r][chat ? 'chat' : 'talk'] : Q[r][chat ? 'chat' : 'talk']; return [resFill(resConvoPick(pool, M), x)].map(l => chat ? '\u2063' + l : resCap(l)); } }
+      else if (Q && Q.kind === 'open') { const ans = resAnsOf(raw); M.last = 'fu_ack'; M.lastAt = time; if (qid === 'fav_place' || qid === 'food' || qid === 'hobby' || qid === 'music' || qid === 'color') M.told.likes = [...(M.told.likes || []), ans].slice(-5);
+        const pool = B.al === 'villain' && RC.qv && Math.random() < .75 ? RC.qv.open[chat ? 'chat' : 'talk'] : Q.reply[chat ? 'chat' : 'talk']; return [resFill(resConvoPick(pool, M), Object.assign(x, { ans }))].map(l => chat ? '\u2063' + l : resCap(l)); }
+    }
+    if (!intent && words <= 5 && (!M.last || /^(greet|howru|whatsup|fu_you|missed|back)$/.test(M.last)) && has(/^ (not bad|not too bad|good|great|fine|well|ok|okay|alright|amazing|awesome|meh|so so|bad|terrible|awful|rough|tired|could be better|been better|pretty good|really good|very good|all good|im good|im fine|im ok|im okay|doing (good|well|fine|great|ok|okay|alright))( thanks| thank you| ty| thx| you| u| and you| hbu| wbu)* $/)) {
+      intent = has(/\b(bad|terrible|awful|rough|tired|been better)\b/) && !has(/not (too )?bad/) ? 'ans_bad' : has(/\b(meh|so so|could be better|ok|okay|alright)\b/) && !has(/\b(good|great|amazing|awesome)\b/) ? 'ans_meh' : 'ans_good'; M.told.mood = intent; }
+    if (!intent && words <= 5 && /^(greet|howru|whatsup|fu_you)$/.test(M.last || '') && has(/^ (not much|nothing|nm|nothin|nothing much|not a lot|same|same old|same old same old|just chilling|chilling|chillin|just vibing|vibing|nothing really|not much really|nothing special|the usual|usual|just walking|just exploring)( you| u| hbu| wbu| and you)* $/)) intent = 'nm';
+    if (!intent && words <= 6) { const tt = t.replace(/^ (lol|lmao|haha+|hehe|xd|ha) (?=\S)/, ' '), f = RES_CONVO_FOLLOW.find(([, re]) => re.test(tt)); if (f) intent = f[0]; }
+    const FAVQ = { fav_food: 'food', fav_music: 'music', fav_color: 'color', fav_place: 'fav_place', hobby: 'hobby', from: 'from', dream: 'dream', fear: 'fear', self_like: 'hobby' };
+    if (!intent && FAVQ[M.last] && time - M.lastAt < 90 && words <= 5 && !/\?/.test(raw) && !RES_CONVO_INTENTS.some(([, re]) => has(re))) { // they told you theirs; that was yours
+      const Q = RC.q[FAVQ[M.last]], ans = resAnsOf(raw); M.last = 'fu_ack'; M.told.likes = [...(M.told.likes || []), ans].slice(-5);
+      return [resFill(resConvoPick(B.al === 'villain' && RC.qv && Math.random() < .75 ? RC.qv.open[chat ? 'chat' : 'talk'] : Q.reply[chat ? 'chat' : 'talk'], M), Object.assign(x, { ans }))].map(l => chat ? '\u2063' + l : resCap(l)); }
+    if (intent === 'fu_you') intent = !M.last || /^(ans_|greet|missed|back|unknown|gibberish|fu_)/.test(M.last) ? 'howru' : /^(howru|whatsup|hobby|fav_\w+|from|job|age|name|dream|fear|family|pets|level|drink|base|ship|games|tired|bored|meaning|philosophy|self_like)$/.test(M.last) ? (M.last === 'name' ? 'name' : M.last) : 'fu_you'; // "and you?": the same question, about them
+    if ((intent === 'fu_what') && !M.said.length) intent = null;
+    if (!intent) { // things you tell them about yourself
+      let m; if ((m = /\bmy name is (\w+)|\bcall me (\w+)|\bim called (\w+)/.exec(t))) { M.told.name = (m[1] || m[2] || m[3]).replace(/^\w/, c => c.toUpperCase()); x.pname = M.told.name; intent = 'myname'; }
+      else if (has(/^ (im|i am|i feel|feeling|im feeling|i feel so) (good|great|happy|awesome|fine|well|amazing|fantastic|excited|wonderful|brilliant|chill|good thanks|great thanks|alright) /)) { intent = 'ans_good'; M.told.mood = intent; }
+      else if (has(/^ (im|i am|i feel|feeling|im feeling) (bad|meh|not great|not good|rough|sick|down|awful|terrible|not so good|kinda bad|lonely|sad) /)) { intent = 'ans_bad'; M.told.mood = intent; }
+      else if ((m = /\bi (?:really |totally |just )?(?:like|love|enjoy|adore|am into|m into) (.{2,40})/.exec(t)) && !/\bi love (you|u)\b/.test(t)) { intent = 'ilike'; x.ans = resAnsOf(m[1]); M.told.likes = [...(M.told.likes || []), x.ans].slice(-5); }
+      else if ((m = /\bi (?:really |totally )?(?:hate|dislike|cant stand|despise) (.{2,40})/.exec(t)) && !/\bi hate (you|u)\b/.test(t)) { intent = 'ihate'; x.ans = resAnsOf(m[1]); }
+      else if ((m = /^ (?:im|i am) (?:a|an) (.{2,30})/.exec(t)) && words <= 8) { intent = 'iam'; x.ans = resAnsOf(m[1]); }
+    }
+    if (!intent) return null;
+    if (/^(ans_|ilike|ihate|iam)/.test(intent) && has(/((and|what about|how about) (you|u|yourself)|\bhbu|\bwbu|\byou too|\bu too) $| (you|u) $/)) { // "…and you?": they answer theirs too
+      const own = resConvoPool(set, /^ans_/.test(intent) ? 'howru' : 'self_like', B); if (own) lead = '\u0000' + resFill(resConvoPick(own, M), x); }
+  } else if (stage === 'topic') {
+    const other = resNameIn(raw, false); // another resident, by name
+    if (other && other.c.id !== (B.c && B.c.id) && has(/think|opinion|feel about|know|like|thoughts|about|who is|whos/)) { const ga = resAl(other.c), bad = (B.al === 'hero' && ga === 'villain') || (B.al === 'villain' && ga === 'hero'); intent = bad ? 'opinion_bad' : 'opinion'; x.who = other.c.name; }
+    else if (has(/(what|how) do (you|u) (think|feel) (of|about) (me|wanderer)|(your|ur) opinion (of|on) me/) || (wanderer.name && has(new RegExp('(think|opinion|feel).*\\b' + String(wanderer.name).toLowerCase().replace(/[^a-z0-9]/g, '') + '\\b')))) intent = 'opinion_player';
+    else { const hit = RES_CONVO_INTENTS.find(([, re]) => has(re)); if (hit) intent = hit[0]; }
+    if (!intent) return null;
+    if (M.last === intent && M.lastAt && time - M.lastAt < 40 && !/^(greet|fu_|thanks|joke|howru|ans_)/.test(intent) && Math.random() < .5) { lead = resConvoPick(resConvoPool(set, 'repeat', B), M); }
+  } else {
+    const bad = t.replace(/[^a-z]/g, ''), rows = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'], vow = (bad.match(/[aeiouy]/g) || []).length;
+    const mash = bad.length >= 5 && rows.some(r => { for (let i = 0; i + 5 <= bad.length; i++) if (r.includes(bad.slice(i, i + 5)) || r.split('').reverse().join('').includes(bad.slice(i, i + 5))) return true; return false; });
+    if (bad.length >= 4 && (!vow || /(.)\1{4,}/.test(bad) || mash || (bad.length >= 7 && vow / bad.length < .18 && t.trim().split(' ').length <= 2))) intent = 'gibberish';
+    else { const w = resTopicWord(t); if (!w) { if (words > 3) return null; intent = 'fu_ack'; } else { intent = 'unknown'; x.topic = w; } } // nothing to pick up on in a few words: keep it going
+  }
+  const pool = resConvoPool(set, intent, B); if (!pool) return null;
+  if (intent === 'fu_what') x.last = M.said[M.said.length - 1] || '';
+  const tail = lead && lead.charAt(0) === '\u0000' ? lead.slice(1) : null; if (tail) lead = null; // their own answer goes after yours
+  const out = [lead, resFill(resConvoPick(pool, M), x), tail].filter(Boolean);
+  if (intent === 'name' && resPersonaSummary(B.c)) out.push(`People say I\u2019m ${resPersonaSummary(B.c).replace(/ \u00b7 /g, '; ')}.`); // who they are, as before
+  const q = !M.ask ? resConvoQ(B, M, chat, x, intent) : null; if (q) out.push(q);
+  M.last = intent; M.lastAt = time; M.turns++; RES.cvIntent = intent; M.said.push(out[out.length - 1 - (q ? 1 : 0)]); if (M.said.length > 6) M.said.shift();
+  return chat ? out.map(l => '\u2063' + l) : out.map(resCap);
+}
 function resAnswer(B, raw, mode) { // mode: 'chat' (they answer out loud in the zone chat) or 'whisper' (from wherever they are); otherwise a conversation
   const t = ' ' + raw.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9à-ÿ -]/g, ' ').replace(/\s+/g, ' ') + ' ', has = re => re.test(t), x = resCtx(B);
   const again = () => openChoice(resWho(B), [{ text: 'Ask something else', onPick: () => resAsk(B) }, { text: 'Back', onPick: () => resTalk(B) }]);
@@ -27304,23 +27479,24 @@ function resAnswer(B, raw, mode) { // mode: 'chat' (they answer out loud in the 
   // 1. safety first: never confusion, never a joke
   if (has(/suicid|kill (my ?self|me)|end (it all|my life|everything)|hurt (my ?self)|self ?harm|cut (my ?self)|not safe|want to die|wanna die|dont want to (live|be alive|be here|exist)|no reason to live|better off dead|take my (own )?life/)) return resCareSafety(B);
   // 2. how you're feeling
-  if (has(/stress|anxi|depress|\bsad\b|overwhelm|panic|lonely|alone|cant cope|cannot cope|struggl|worried|worry|upset|crying|\bcry\b|exhaust|burn ?out|burnt out|mental health|feel (bad|awful|terrible|low|down|lost)|hopeless|scared|afraid/)) {
+  if (!has(/(what|whats) scares (you|u)|are (you|u) (afraid|scared)|(what|are) (you|u) (afraid|scared) of|do (you|u) get scared|(your|ur) (biggest )?fear/) && has(/stress|anxi|depress|\bsad\b|overwhelm|panic|lonely|alone|cant cope|cannot cope|struggl|worried|worry|upset|crying|\bcry\b|exhaust|burn ?out|burnt out|mental health|feel (bad|awful|terrible|low|down|lost)|hopeless|scared|afraid/)) {
     if (!RL) return resCare(B);
     const k = has(/exam|school|uni\b|university|college|study|homework|coursework/) ? 'study' : has(/money|bills|debt|rent|broke|afford/) ? 'money' : has(/partner|girlfriend|boyfriend|wife|husband|family|mum|mom|dad|parent|friend|breakup|break up|divorce/) ? 'relationships' : has(/health|ill\b|sick|pain|doctor|hospital|diagnos/) ? 'health' : has(/lonely|alone|no friends/) ? 'lonely' : has(/work|job|boss|shift|office/) ? 'work' : 'everything';
     return resSayTo(B, [resPick(RL.care.intro.filter(l => B.al === 'villain' || !/villain/i.test(l)))], () => resCareTopic(B, k), true);
   }
   // 3. real-world jobs
-  if (has(/\bjobs?\b|career|\bcv\b|resume|résumé|interview|salary|pay rise|\braise\b|promotion|hired|hiring|\bfired\b|laid off|redundan|unemploy|apprentice|internship|\bintern\b|graduate|coworker|co worker|colleague|my manager|my boss|workplace/)) {
+  if (!has(/(your|ur) (job|work|career)|what do (you|u) do\b|what (is|s) (your|ur) job|whats (your|ur) job/) && has(/\bjobs?\b|career|\bcv\b|resume|résumé|interview|salary|pay rise|\braise\b|promotion|hired|hiring|\bfired\b|laid off|redundan|unemploy|apprentice|internship|\bintern\b|graduate|coworker|co worker|colleague|my manager|my boss|workplace/)) {
     if (!RL) return resJobs(B);
     const k = has(/\bcv\b|resume|résumé/) ? 'cv' : has(/interview/) ? 'interview' : has(/salary|pay rise|\braise\b|paid more|promotion/) ? 'pay' : has(/\bfired\b|laid off|redundan|lost my job|unemploy/) ? 'lost' : has(/burn/) ? 'burnout' : has(/boss|manager|coworker|co worker|colleague|bull|harass/) ? 'conflict' : has(/first job|graduate|intern|apprentice|school leaver/) ? 'first' : has(/change|switch|new career/) ? 'change' : 'search';
     return resJobTopic(B, k, []);
   }
   // where they are, a trade, following you
-  if (has(/where (are|r) (you|u)|\bwya\b|where you at/)) return say([`I’m ${resWhereLabel(B.c)}.`]);
+  if (!has(/\b(from|live|born|grow up|grew up)\b/) && has(/where (are|r) (you|u)|\bwya\b|where you at/)) return say([`I’m ${resWhereLabel(B.c)}.`]);
   if (has(/what (are|r) (you|u) (doing|up to)|whatcha|\bwyd\b/)) return say([resT('doing', B) || pickAl(RL && RL.talk.doing)]); // (before "who are you", which it also matches)
   if (has(/\btrade\b|wanna trade|want to trade|\bswap\b/) && !B.whisper && RES.bots.includes(B)) { if (!mode) { closeDialog(); RES.talking = null; resTradeStart(B); return; } say([Math.random() < resGamer(B.c) ? '\u2063sure, opening trade' : 'Sure. Let’s trade.']); setTimeout(() => { if (RES.bots.includes(B) && !TR.open && state === 'explore') resTradeStart(B); }, 1200); return; }
   if (has(/follow me|come with me/) && !B.whisper && iLeadGuild() && myGuild().members.includes(B.id) && RES.bots.includes(B)) { escortSet([...GESC.ids, B.id]); return say([resT('dungeon', B, null, 'follow') || 'With you.']); }
-  if (!RL) return say([resFill(resPick(['Give me a second, I’m still getting my bearings.', 'Ask me again in a moment?']), x)]);
+  { const pre = resConvo(B, t, raw, mode, 'pre'); if (pre) return say(pre); } // a follow-up, or the answer to what they just asked you
+  if (!RL) { const top = resConvo(B, t, raw, mode, 'topic'); if (top) return say(top); return say([resFill(resPick(['Give me a second, I’m still getting my bearings.', 'Ask me again in a moment?']), x)]); }
   // 4. leaders and bosses
   const boss = RES_BOSS_WORDS.find(([re]) => has(re));
   if (boss) return say([resUnsure(B, 'boss') ? resUnknownLine(B, x) : resFill(resPick(RL.bosses[boss[1]]), x)]);
@@ -27345,12 +27521,13 @@ function resAnswer(B, raw, mode) { // mode: 'chat' (they answer out loud in the 
     const set = W && RL.wars[W.kind]; return say([set ? resFill(resPick(Array.isArray(set) ? set : set[B.al]), x) : resFill(resPick(RL.talk.war), x)]);
   }
   // 8. tips, trading, them, what they're doing, greetings, thanks, goodbye
-  if (has(/\btips?\b|advice|how do i|how to|help me|what should i|hint|stuck/)) { // tips about what you asked, if they have any
+  if (!has(/life advice|advice for (me|life)|words of wisdom|any advice\b(?! (on|for|about) (mining|fighting|combat|gear|armou?r|ships?|warp|building|bases?|trading))|with my life/) && has(/\btips?\b|advice|how do i|how to|help me|what should i|hint|stuck/)) { // tips about what you asked, if they have any
     if (resUnsure(B, 'tips')) return say([resUnknownLine(B, x)]);
     const words = t.split(' ').filter(w => w.length > 3 && !/tips|advice|help|what|should|how|with|about|that|this|have|your|need|want|some|good|best/.test(w)).map(w => w.replace(/s$/, ''));
     const hit = RL.talk.tips.filter(tip => words.some(w => tip.toLowerCase().includes(w)));
     return say(hit.length ? resPickN(hit, 2) : resPickN(RL.talk.tips, 2));
   }
+  { RES.cvIntent = null; const top = resConvo(B, t, raw, mode, 'topic'); if (top) { if (RES.cvIntent === 'leaving' && !mode) { RES.talking = null; return resSayTo(B, top); } return say(top); } } // small talk, them, you, other residents, the people of the story (a goodbye ends it)
   if (has(/trade|\bbuy|\bsell|price|units|\bshop|stall|cheap|expensive|warp cell/)) return say([pickAl(RL.amb.trade)]);
   if (has(/who are you|your name|what are you|where are you from|where you from|what level|your level|about you|yourself|how old/)) return say([resFill(resPick(RL.me[B.al]), Object.assign(x, { name: B.c.name })), resPersonaSummary(B.c) ? `People say I\u2019m ${resPersonaSummary(B.c).replace(/ \u00b7 /g, '; ')}.` : null]);
   if (has(/what (are|r) (you|u) (doing|up to)|whatcha|busy/)) return say([pickAl(RL.talk.doing)]);
@@ -27358,7 +27535,8 @@ function resAnswer(B, raw, mode) { // mode: 'chat' (they answer out loud in the 
   if (has(/thank|thx|cheers|\bty\b/)) return say([pickAl(RL.thanks)]);
   if (has(/\bbye\b|goodbye|cya|see you|see ya|later/)) { if (mode) return say([pickAl(RL.talk.farewell)]); RES.talking = null; return resSayTo(B, [pickAl(RL.talk.farewell)]); }
   if (has(/james|orion|chapter|story|storm|station|new london|ferry/)) return say([resFill(resPick(RL.chapter[clamp(effCh(), 1, 5)]), x)]);
-  // 9. no idea what you mean
+  // 9. nothing matched: they pick up on what you said and ask about it, rather than just being confused
+  { const fb = resConvo(B, t, raw, mode, 'fallback'); if (fb) return say(fb); }
   return say([pickAl(RL.confused), resPick(RL.suggest)]);
 }
 
@@ -27368,7 +27546,7 @@ function resTick(dt) {
   if (ex.mode === 'world') resBaseSync(); // their bases stand whether or not they're around
   if (!resGroundOk()) { for (const B of RES.bots) B.root.visible = false; return; }
   const A = curArea(), p = player.position, paused = state !== 'explore';
-  resLinesLoad(); resWarLoad(); resTalkLoad(); resGameLoad();
+  resLinesLoad(); resWarLoad(); resTalkLoad(); resGameLoad(); resConvoLoad();
   if (RES.talking && !ex.dlg) RES.talking = null;
   RES.chk = (RES.chk || 0) - dt;
   if (RES.area !== A || RES.chk <= 0) { // a new place, or a few seconds on: who's around now?
@@ -28398,7 +28576,7 @@ function resG(cat, B, x, sub) { // a game-talk line, marked so it isn't tidied i
   if (!RG || !B) return null; let set = RG[cat]; if (sub != null && set) set = set[sub]; if (!set) return null;
   const pool = Array.isArray(set) ? set : (set[B.al] || set.neutral || set.hero || set.villain || set.base); if (!pool || !pool.length) return null;
   const raw = resPick(pool); if (typeof raw !== 'string') return null;
-  return '⁣' + resFill(raw, Object.assign(resCtx(B), resPersonaCtx(B.c), { plv: levelOf(wanderer) }, x || {}));
+  return '\u2063' + resFill(raw, Object.assign(resCtx(B), resPersonaCtx(B.c), { plv: levelOf(wanderer) }, x || {}));
 }
 function resGFor(cat, B, x, sub) { // the speech pack's category, in game talk
   if (cat === 'hunt') return sub === 'boss' ? resG('boss', B, x) : resG('combat', B, x, 'engage');
@@ -28435,7 +28613,7 @@ function resSmartTick(dt) {
   add(ex.jetting ? 3 : 0, 'jet', () => resG('jet', B)); add(ex.swim ? 3 : 0, 'swim', () => resG('swim', B));
   try { const w = eqWorn ? Object.keys(eqWorn() || {}).length : 0; add(w === 0 ? 1.1 : 0, 'gearNone', () => resG('gearNone', B)); add(w >= 4 ? .9 : 0, 'gearGood', () => resG('gearGood', B)); } catch (e) {}
   add(B.lv - plv >= 15 ? 1 : 0, 'lvlLow', () => resG('lvlLow', B)); add(plv - B.lv >= 15 ? 1 : 0, 'lvlHigh', () => resG('lvlHigh', B));
-  add(.6, 'rep', () => { const s = RG.rep && RG.rep[wAlign()]; return s && s.length ? '⁣' + resFill(resPick(s), Object.assign(resCtx(B), { player: wanderer.name })) : null; });
+  add(.6, 'rep', () => { const s = RG.rep && RG.rep[wAlign()]; return s && s.length ? '\u2063' + resFill(resPick(s), Object.assign(resCtx(B), { player: wanderer.name })) : null; });
   { const crew = partyNow ? partyNow() : []; const named = ['orion', 'nico', 'khazglar', 'james'].find(id => crew.includes(id)); add(crew.length ? .9 : 0, 'crew', () => resG('companions', B, null, named || 'any')); }
   { const G = myGuild(); add(G && G.members.includes(B.id) ? 1.2 : 0, 'guildRole', () => resG(iLeadGuild() ? 'leadGuild' : 'member', B)); }
   { const W = resWarCtx(); const k = W && (W.kind === 'atWar' ? 'atWar' : W.kind === 'won' || W.kind === 'vassal' || W.kind === 'tributary' ? 'won' : W.kind === 'peace' ? 'peace' : null); add(k ? .8 : 0, 'pwar', () => resG('pwar', B, { enemy: W.enemy, realm: W.realm }, k)); }
@@ -28557,7 +28735,7 @@ const TRADE_TALK = {
   done: { game: ['pleasure doing business o/', 'gg, trade done', 'nice trade'], plain: ['Pleasure doing business.', 'A good trade. Thank you.'] },
   cancel: { game: ['nvm then', 'fine, whatever', 'ok, maybe next time'], plain: ['Another time, then.', 'No harm done.'] }
 };
-const tradeLine = (B, k) => { const T = TRADE_TALK[k], g = Math.random() < resGamer(B.c); return (g ? '⁣' : '') + resPick(g ? T.game : T.plain); };
+const tradeLine = (B, k) => { const T = TRADE_TALK[k], g = Math.random() < resGamer(B.c); return (g ? '\u2063' : '') + resPick(g ? T.game : T.plain); };
 const TR = { open: false, B: null, mine: {}, units: 0, theirs: {}, theirUnits: 0, mood: '' };
 function tradeValues() { const B = TR.B; let give = TR.units, get = TR.theirUnits; for (const id in TR.mine) give += tradeVal(id) * TR.mine[id]; for (const id in TR.theirs) get += tradeVal(id) * TR.theirs[id]; return { give, get, need: get * resGreed(B.c) }; }
 function tradeVerdict() { const { give, get, need } = tradeValues(); if (!give && !get) return 'empty'; if (!get) return 'gift'; const r = give / Math.max(1, need); return r >= 1.3 ? 'steal' : r >= 1 ? 'fair' : r >= .8 ? 'close' : r >= .45 ? 'low' : 'insult'; }
@@ -28588,7 +28766,7 @@ function tradeEl() {
       tradeRender(); return;
     }
     if (act === 'ok') { tradeAccept(); return; }
-    TR.mood = tradeLine(B, tradeVerdict()).replace('⁣', ''); tradeRender();
+    TR.mood = tradeLine(B, tradeVerdict()).replace('\u2063', ''); tradeRender();
   });
   return el;
 }
@@ -28600,7 +28778,7 @@ function tradeRender() {
   const theirs = Object.entries(stock).filter(([, n]) => n > 0);
   const k = clamp(v.give / Math.max(1, v.need || 1), 0, 2) / 2;
   el.querySelector('.tr-box').innerHTML = `<div class="re-head"><div><b>TRADE · ${reEsc(String(B.c.name).toUpperCase())}</b><small>LV ${B.lv} · ${reEsc(resSpLabel(B.c))} · ${alN}${myGuild() && myGuild().members.includes(B.id) ? ' · your guild (discount)' : ''}</small></div><button class="re-x" data-t="x" aria-label="Close">✕</button></div>
-  <p class="tr-mood">“${reEsc(resClean(String(TR.mood || '').replace('⁣', '')))}”</p>
+  <p class="tr-mood">“${reEsc(resClean(String(TR.mood || '').replace('\u2063', '')))}”</p>
   <div class="tr-cols"><div class="tr-col"><h4>YOUR OFFER</h4><div class="tr-offer">${chips(TR.mine, 'rem', TR.units ? 'u|-' + TR.units : null) || '<em>nothing yet</em>'}</div>
   <h4>YOUR BAG · tap to offer</h4><div class="tr-list">${bag.map(([id, n]) => `<button data-t="add|${id}" ${n > (TR.mine[id] | 0) ? '' : 'disabled'}>${nm(id)} <small>${n - (TR.mine[id] | 0)}</small></button>`).join('') || '<em>nothing to trade</em>'}</div>
   <div class="tr-units">Units ${units() - TR.units} <button data-t="u|-10">−10</button><button data-t="u|10">+10</button><button data-t="u|50">+50</button></div></div>
@@ -28688,7 +28866,7 @@ function resChatSend(raw) {
   if (r) { resChatTo(r.c, r.rest || t, false); return; }
   // nobody named: they leave it alone (now and then someone close asks who you mean)
   const p = player.position, near = RES.bots.filter(B => B.ready && Math.hypot(B.x - p.x, B.z - p.z) < 20);
-  if (near.length > 1 && Math.random() < .2) { const B = resPick(near); setTimeout(() => { if (RES.bots.includes(B)) resSay(B, Math.random() < resGamer(B.c) ? '⁣' + resPick(['who u talking to lol', 'say a name, there’s like ' + near.length + ' of us here', '…was that for me?']) : resPick(['Who are you talking to?', 'Was that for me?', 'Say a name, there are a few of us here.'])); }, 900); }
+  if (near.length > 1 && Math.random() < .2) { const B = resPick(near); setTimeout(() => { if (RES.bots.includes(B)) resSay(B, Math.random() < resGamer(B.c) ? '\u2063' + resPick(['who u talking to lol', 'say a name, there’s like ' + near.length + ' of us here', '…was that for me?']) : resPick(['Who are you talking to?', 'Was that for me?', 'Say a name, there are a few of us here.'])); }, 900); }
 }
 function resChatTo(c, msg, whisper) { // the one you named answers: out loud if they're here, in a whisper from wherever they are
   const B = !whisper && RES.bots.find(o => o.c === c && o.ready);
