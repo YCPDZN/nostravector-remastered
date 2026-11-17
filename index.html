@@ -21978,8 +21978,36 @@ async function josiahTalk() {
     renderTasks(); gainXP(150); sfx.chime(); setTimeout(() => notice('New objective', 'BRING JOSIAH BACK INTO THE LIGHT', 4200), 400);
   }, vo || []);
 }
+/* Easter egg: bring Josiah Richards (Project BC) along and speak to Archamus, in any of Chapters III–V. Josiah calls him son; Archamus
+   accuses him of tampering with the timeline. Once per playthrough (eggs.josArch), in place of that conversation; after it, Archamus is
+   himself again. EGGJOSARCH1–15 (data/josArchVoices.js) once recorded, in order across both speakers; subtitles until then. */
+const JOS_ARCH = [
+  ['ARCHAMUS', ['Wanderer. You have brought someone who should not be here.']],
+  ['JOSIAH RICHARDS', ['Hello, son.']],
+  ['ARCHAMUS', ['Do not call me that.']],
+  ['JOSIAH RICHARDS', ['I have called you that since before you had a name. Before you had a garden, or a faith, or a light to hide behind.']],
+  ['ARCHAMUS', ['You are a Prime Secretary of a Britain that never was, from a year that ended a century ago. You have no place in this one.']],
+  ['JOSIAH RICHARDS', ['I have a place wherever I decide to file one. You of all people should know that.']],
+  ['ARCHAMUS', ['You have tampered with the timeline. I felt it. One thread pulled in your world, and a hundred others unravelling to match it.']],
+  ['JOSIAH RICHARDS', ['I corrected an error. Emma would have understood.']],
+  ['ARCHAMUS', ['Emma is the reason you did it. Do not dress your grief up as procedure.']],
+  ['JOSIAH RICHARDS', ['And you dress yours up in robes and call it worship. We are more alike than you would like, son.']],
+  ['ARCHAMUS', ['Every change you make, I must mend. Every door you open, the other one watches through.']],
+  ['JOSIAH RICHARDS', ['Then mend it. That is what good sons do.']],
+  ['ARCHAMUS', ['Leave Archiostal, Prime Secretary. And take your rules with you.']],
+  ['JOSIAH RICHARDS', ['Rules are the only thing that ever kept the dark out, son. You taught me that. Or you will.']],
+  ['ARCHAMUS', ['Watch him, wanderer. He has never broken a rule he wrote himself, and he wrote all of them.']]];
+const josArchQ = () => { const ch = wanderer.chapter | 0; return ch >= 3 && ch <= 5 && !(wanderer.eggs && wanderer.eggs.josArch) && mapCompanions().includes('pbc-josiah') && !compAway('pbc-josiah'); };
+async function josArchTalk() {
+  const vo = await loadDataScript('josArchVoices').then(ok => ok ? sfx.loadClips('josArchVoices') : []).catch(() => []);
+  if (state !== 'explore' || ex.dlg) return;
+  wanderer.eggs = Object.assign({}, wanderer.eggs, { josArch: true }); const c = curChar(); if (c) c.eggs = wanderer.eggs; saveRoster(); // seen, even if you walk off halfway
+  lootMsg('Hidden dialogue · Josiah Richards and Archamus', '#ffd88a');
+  dialogSeq(JOS_ARCH, () => { sfx.chime(); notice('Hidden dialogue', 'FATHER AND SON?', 3600); }, vo || []);
+}
 function giverTalk(G) {
   if (G.josiah) { josiahTalk(); return; }
+  if ((G.arch3 || G.leader === 'archamus') && josArchQ()) { josArchTalk(); return; } // Josiah Richards is with you: the hidden conversation first
   if (G.arch3) { if ((wanderer.chapter | 0) === 4) arch4Talk(); else arch3Talk(); return; }
   const S = sqs(), L = G.leader && SQ_LEADERS.find(o => o.id === G.leader), q = L ? (Object.keys(S.act).map(sqById).find(o => o && o.leader === L.id) || leaderNext(L)) : S.done[G.q] ? null : sqById(G.q);
   let el = $('#sqGiv');

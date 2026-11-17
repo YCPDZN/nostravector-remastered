@@ -2587,3 +2587,7 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **Faces load lighter on phones.** Instead of preparing all five faces at start-up, a phone prepares only the faces your wanderers and residents wear (and Hawthorne's, for the borrowed beard); any other face loads when you pick it.
 - **Archamus' projection on a phone** is a little shorter, leaving more of the world on screen above the dialogue box.
 - Checked on an emulated iPhone: the creator's Face and Outfit rows wrap and scroll, and the projection fits the dialogue box.
+
+### Easter egg: Josiah Richards meets Archamus
+- Bring **Josiah Richards** (Project BC) along in your party and speak to **Archamus** on Archiostal, in any of Chapters III–V, and a hidden conversation plays instead of his usual one: fifteen lines between the two of them. Josiah calls Archamus his son; Archamus tells him not to, and accuses him of tampering with the timeline ("One thread pulled in your world, and a hundred others unravelling to match it"). Emma comes up. It ends with Archamus warning you about him.
+- Once per playthrough (`eggs.josArch`); afterwards Archamus talks as he normally would. Voiced by EGGJOSARCH1–15 once recorded (`data/josArchVoices.js`, script in `assets/audio/easter_eggs/JOSIAH_ARCHAMUS_SCRIPT.md`); subtitles until then.
