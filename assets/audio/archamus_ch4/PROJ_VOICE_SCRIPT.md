@@ -26,3 +26,17 @@ Pack: `data/archProjVoices.js` (CH4ARCHAMUSPROJ1–20, in order). Until it exist
 | CH4ARCHAMUSPROJ18.mp3 | Josiah has not truly woken since. He fell into a darkness of his own, deeper than your sleep, and far lonelier. |
 | CH4ARCHAMUSPROJ19.mp3 | Do not go to him as a soldier with questions. He has had enough of soldiers. Go to him as someone who has also lost two years. |
 | CH4ARCHAMUSPROJ20.mp3 | Earth is waiting, wanderer. Find Josiah Williams II. Bring him back into the light, and he will show you where the dark is hiding. |
+
+## Line 3 by species
+
+Line 3 names the wanderer's own homeworld. CH4ARCHAMUSPROJ3 is the human version. The others play as subtitles until they're recorded; if you record them, name them as below and tell Claude to wire them in.
+
+| Species | File | Line |
+|---|---|---|
+| Human | CH4ARCHAMUSPROJ3.mp3 | Here is Sol, where you were born. And here, a short jump away, Archiostal, where you slept. |
+| Erisian | CH4ARCHAMUSPROJ3_ERISIAN.mp3 | Here is Eris, at the frozen edge of Sol, where you were born. And here, a short jump away, Archiostal, where you slept. |
+| Chompy | CH4ARCHAMUSPROJ3_CHOMPY.mp3 | Here is Aridaxx, where you were born, the heart of the Chompy Empire. And here, a long way from it, Archiostal, where you slept. |
+| Grek | CH4ARCHAMUSPROJ3_GREK.mp3 | Here is Malana, where you were born. And here, circling above it, Archiostal, where you slept. You never truly left home. |
+| Oilkoumene | CH4ARCHAMUSPROJ3_OILKOUMENE.mp3 | Here is Tamez Prime, where you were born. And here, a long way from it, Archiostal, where you slept. |
+| Taredesiban | CH4ARCHAMUSPROJ3_TAREDESIBAN.mp3 | Here is Timpur Prime, out at the far edge of the galaxy, where you were born. And here, a long way from it, Archiostal, where you slept. |
+

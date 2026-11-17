@@ -21655,16 +21655,31 @@ const ARCH_PROJ = [
   'Do not go to him as a soldier with questions. He has had enough of soldiers. Go to him as someone who has also lost two years.',
   'Earth is waiting, wanderer. Find Josiah Williams II. Bring him back into the light, and he will show you where the dark is hiding.'];
 const ARCH_PROJ_FOCUS = ['gal', 'gal', 'home', 'cath', 'grow', 'ships', 'lost', 'lost', 'lost', 'cath', 'shell', 'shell', 'shell', 'cath', 'sol', 'josiah', 'josiah', 'josiah', 'josiah', 'earth'];
+// line 3 names where YOU were born: Sol for a human, your own species' homeworld otherwise (the hologram points at it too, holoHome)
+const ARCH_PROJ_HOME = {
+  human: 'Here is Sol, where you were born. And here, a short jump away, Archiostal, where you slept.',
+  erisian: 'Here is Eris, at the frozen edge of Sol, where you were born. And here, a short jump away, Archiostal, where you slept.',
+  chompy: 'Here is Aridaxx, where you were born, the heart of the Chompy Empire. And here, a long way from it, Archiostal, where you slept.',
+  grek: 'Here is Malana, where you were born. And here, circling above it, Archiostal, where you slept. You never truly left home.',
+  oilkoumene: 'Here is Tamez Prime, where you were born. And here, a long way from it, Archiostal, where you slept.',
+  taredesiban: 'Here is Timpur Prime, out at the far edge of the galaxy, where you were born. And here, a long way from it, Archiostal, where you slept.' };
+const HOME_BODY = { human: 'earth', erisian: 'eris', chompy: 'aridaxx', grek: 'malana', oilkoumene: 'tamez' };
+function holoHome() { // your species' homeworld and its system, for the projection
+  const sp = spOf(wanderer), P = sp === 'taredesiban' ? ALL_BODIES.find(o => o.name === 'Timpur Prime') : bodyById(HOME_BODY[sp] || 'earth');
+  const S = (P && SYSTEMS.find(Y => Y.id === P.sys)) || holoSys('sol'); return { S, name: P ? P.name : 'Earth' };
+}
+const archProjLines = () => ARCH_PROJ.map((l, i) => i === 2 ? ARCH_PROJ_HOME[spOf(wanderer)] || l : l);
 async function archProjTalk() {
   const done = !!(wanderer.ch4 && wanderer.ch4.archProj);
   const vo = await loadDataScript('archProjVoices').then(ok => ok ? sfx.loadClips('archProjVoices') : []).catch(() => []);
   if (state !== 'explore' || ex.dlg) return;
   if (done) { openDialog('ARCHAMUS', [ARCH_PROJ[19]], false, null, vo && vo[19] ? [vo[19]] : []); holoOn(['earth']); return; } // he has shown you what he will show you
-  openDialog('ARCHAMUS', ARCH_PROJ, false, () => {
+  const sp = spOf(wanderer), pv = vo && vo.length ? vo.slice() : []; if (sp !== 'human' && pv.length > 2) pv[2] = null; // the recorded line 3 says Sol: other species get theirs as subtitles until it's recorded per species
+  openDialog('ARCHAMUS', archProjLines(), false, () => {
     if (wanderer.ch4 && wanderer.ch4.archProj) return;
     wanderer.ch4 = Object.assign({}, wanderer.ch4, { archProj: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster();
     renderTasks(); sfx.chime(); setTimeout(() => notice('New objective', 'FIND JOSIAH WILLIAMS II ON EARTH', 4200), 400);
-  }, vo || []);
+  }, pv);
   holoOn(ARCH_PROJ_FOCUS);
 }
 // ---- the hologram: the galaxy map's own Milky Way (galImage) and systems, tinted, turning slowly, inside the dialogue box ----
@@ -21691,7 +21706,8 @@ const holoSys = id => SYSTEMS.find(S => S.id === id);
 function holoFocus(f, snap) {
   if (!HOLO.on || !f || f === HOLO.f) return; HOLO.f = f; HOLO.ft = 0;
   const sol = holoSys('sol'), mal = holoSys('malana');
-  const V = f === 'home' ? [(sol.map.x + mal.map.x) / 2, (sol.map.y + mal.map.y) / 2, 4.2] : f === 'sol' || f === 'earth' || f === 'josiah' ? [sol.map.x, sol.map.y, f === 'sol' ? 3.2 : 5] : HOLO_VIEW[f] || HOLO_VIEW.gal;
+  const hm = holoHome().S, hd = Math.hypot(hm.map.x - mal.map.x, hm.map.y - mal.map.y);
+  const V = f === 'home' ? [(hm.map.x + mal.map.x) / 2, (hm.map.y + mal.map.y) / 2, hd < .02 ? 6 : clamp(.9 / hd, 1.1, 4.2)] : f === 'sol' || f === 'earth' || f === 'josiah' ? [sol.map.x, sol.map.y, f === 'sol' ? 3.2 : 5] : HOLO_VIEW[f] || HOLO_VIEW.gal;
   HOLO.to = { x: V[0], y: V[1], z: V[2] }; if (snap) Object.assign(HOLO.v, HOLO.to);
 }
 const HOLO_CATH = .27; // the Catharsis' reach in Chapter IV: the core and every Grek world round it (genGalaxy's ring)
@@ -21735,13 +21751,17 @@ function holoTick(now) {
     if (f === 'lost') { const c = P(0, 0); label(c.x, c.y, 'NONE RETURNED', `rgba(255,200,200,${.5 + pulse * .4})`, (cr * S * tilt + 16) / pr); }
   }
   // Sol and Archiostal
-  const sol = holoSys('sol'), mal = holoSys('malana'), qs = P(sol.map.x, sol.map.y), qm = P(mal.map.x, mal.map.y), solHot = /home|sol|earth|josiah/.test(f), malHot = f === 'home' || f === 'gal';
+  const H0 = holoHome(), hS = H0.S, atHome = f === 'home', homeHere = hS.id === 'malana'; // a Grek: home and Archiostal are the same system
+  const sol = holoSys('sol'), mal = holoSys('malana'), qs = P(sol.map.x, sol.map.y), qm = P(mal.map.x, mal.map.y), solHot = /sol|earth|josiah/.test(f) || (atHome && hS.id === 'sol'), malHot = atHome || f === 'gal';
+  if (atHome && hS.id !== 'sol' && !homeHere) { const qh = P(hS.map.x, hS.map.y); g.fillStyle = '#bfffd8'; g.beginPath(); g.arc(qh.x, qh.y, 2.6 * pr, 0, Math.PI * 2); g.fill();
+    ring(hS.map.x, hS.map.y, .03 * (1 + pulse * .4), `rgba(170,255,210,${.4 + pulse * .5})`, 1.2); label(qh.x, qh.y, `${H0.name.toUpperCase()} · YOUR HOME`, 'rgba(200,255,225,.95)', 16); }
   g.fillStyle = solHot ? '#bfe8ff' : 'rgba(160,220,255,.7)'; g.beginPath(); g.arc(qs.x, qs.y, (solHot ? 2.6 : 1.8) * pr, 0, Math.PI * 2); g.fill();
   g.fillStyle = malHot ? '#ffe2a0' : 'rgba(255,216,138,.65)'; g.beginPath(); g.arc(qm.x, qm.y, (malHot ? 2.6 : 1.8) * pr, 0, Math.PI * 2); g.fill();
   if (solHot) ring(sol.map.x, sol.map.y, (f === 'josiah' || f === 'earth' ? .012 : .03) * (1 + pulse * .4), `rgba(170,225,255,${.4 + pulse * .5})`, 1.2);
   if (f === 'josiah' || f === 'earth') label(qs.x, qs.y, 'EARTH · JOSIAH WILLIAMS II', 'rgba(200,236,255,.95)', -16);
-  else if (solHot) label(qs.x, qs.y, 'SOL · EARTH', 'rgba(190,230,255,.9)', f === 'home' ? 16 : -14);
-  if (malHot) label(qm.x, qm.y, f === 'home' ? 'ARCHIOSTAL · YOU ARE HERE' : 'ARCHIOSTAL', 'rgba(255,224,160,.9)', -12);
+  else if (solHot) label(qs.x, qs.y, atHome ? `SOL · ${H0.name.toUpperCase()} · YOUR HOME` : 'SOL · EARTH', 'rgba(190,230,255,.9)', -14);
+  if (malHot) label(qm.x, qm.y, atHome && homeHere ? 'MALANA · YOUR HOME · ARCHIOSTAL · YOU ARE HERE' : atHome ? 'ARCHIOSTAL · YOU ARE HERE' : 'ARCHIOSTAL', 'rgba(255,224,160,.9)', atHome && hS.id === 'sol' ? 18 : -12); // Sol's label above, Archiostal's below: they sit close
+  if (atHome && homeHere) ring(mal.map.x, mal.map.y, .012 * (1 + pulse * .4), `rgba(255,224,160,${.4 + pulse * .5})`, 1.2);
   // scanlines over the lot
   g.globalCompositeOperation = 'source-over'; g.fillStyle = 'rgba(0,10,20,.22)'; for (let y = (t * 30 * pr) % (3 * pr); y < H; y += 3 * pr) g.fillRect(0, y, W, pr);
 }

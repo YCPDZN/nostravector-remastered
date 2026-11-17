@@ -2569,3 +2569,7 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **He looks the way he feels.** From a distance he stands still with his head bowed over the grave and his arms hanging. Come within a few metres and he slowly turns to you and half lifts his head; walk away and he turns back to the stone.
 - **Nine lines** (CH4JOSIAHMEET1–9, `data/josiahMeetVoices.js`, script in `assets/audio/josiah_ch4/MEET_VOICE_SCRIPT.md`; subtitles until recorded): he isn't interested, recognises the look of someone who came back from somewhere, tells you about his dad and the door-to-door raids, says he isn't broken, just finished, refuses to talk about the dreams, and asks you to leave him with his father.
 - **Objectives:** Find Josiah Williams II completes (150 XP, `ch4.josiahMet`) and the main quest becomes **Bring Josiah Williams II back into the light**. Talking to him again repeats his last line.
+
+### Archamus names your own homeworld
+- In the projection, Archamus' third line used to say "Here is Sol, where you were born" whatever your species. He now names your species' homeworld, and the hologram flies to it and marks it **YOUR HOME**: Sol for a Human, Eris (at the edge of Sol) for an Erisian, Aridaxx for a Chompy, Tamez Prime for an Oilkoumene, Timpur Prime for a Taredesiban. For a Grek it is Malana, which Archiostal circles: "You never truly left home."
+- The recorded line 3 is the human one; the other five show as subtitles until recorded (names in `assets/audio/archamus_ch4/PROJ_VOICE_SCRIPT.md`).
