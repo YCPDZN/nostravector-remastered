@@ -2633,3 +2633,6 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **So is the projection of the Milky Way:** all twenty lines (CH4ARCHAMUSPROJ1–20, `data/archProjVoices.js`), from "Before you go. Look." to sending you to Earth to find Josiah Williams II.
 - **He names your own homeworld out loud, whatever your species:** line 3 is recorded for Erisian, Chompy, Grek, Oilkoumene and Taredesiban as well as Human (CH4ARCHAMUSPROJ3_<SPECIES>, packed after the twenty main lines). Until now, non-human wanderers only saw that line as a subtitle.
 - The recordings are kept in `assets/audio/archamus_ch4/`, and both voice scripts there are marked as recorded.
+
+### Hak's rant at Karribassa is fully voiced (Chapter III)
+- The missing line 11, "I will find you, Hawthorne. I will pursue you to Earth.", is recorded (HAKLOSESIT14) and fills its empty slot in `data/hakRantVoices.js`, so the rant no longer drops to a subtitle partway through.
