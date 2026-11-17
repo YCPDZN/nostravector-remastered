@@ -1362,6 +1362,7 @@ body.ch4 .bar.sta i{background:#ff8a7e}
         <div class="field" id="fHairC"><label id="lHairC">Hair colour</label><div class="sws" id="crHairC"></div></div>
       </div>
       <div class="pane" data-pane="suit">
+        <div class="field" id="fOutfit"><label>Outfit</label><div class="chips" id="crOutfit"></div></div>
         <div class="field"><label id="lSuit">Suit colour</label><div class="sws" id="crSuit"></div></div>
         <div class="field"><label id="lAcc">Accent colour</label><div class="sws" id="crAcc"></div></div>
         <div class="field" id="fDesign"><label>Suit design</label><div class="chips" id="crDesign"></div></div>
@@ -2245,6 +2246,12 @@ const HAIRS = [['theirs', 'Theirs'], ['none', 'None'], ['buzz', 'Buzz'], ['crop'
 const FACES = [['darius', 'Darius'], ['hawthorne', 'Hawthorne'], ['orion', 'Orion'], ['croxian', 'Croxian'], ['malia', 'Malia'], ['classic', 'Classic']];
 const FACE_SRC = { darius: 'leader_human', hawthorne: 'tiHaw', orion: 'cpOrion', croxian: 'cpCroxianU', malia: 'cpMalia' };
 const faceOf = c => FACES.some(f => f[0] === (c && c.face)) ? c.face : c && c.identity === 'female' ? 'malia' : c && c.identity === 'male' ? 'darius' : 'orion';
+/* outfits for a human: the spacesuit, or armour worn by the people of the story (their own bodies, with your head on). Colour 0 of an
+   outfit keeps its own colours; the rest repaint its armour and trim. */
+const OUTFITS = [['suit', 'Spacesuit'], ['federation', 'Federation plate'], ['imperia', 'Imperia plate'], ['pontifex', 'Pontifex armour'], ['mascar', 'Mascar armour'], ['ranger', 'Orion’s kit'], ['strider', 'Malia’s kit']];
+const OUTFIT_SRC = { federation: 'leader_human', imperia: 'tiHaw', pontifex: 'cpPontifex', mascar: 'cpCroxian', ranger: 'cpOrion', strider: 'cpMalia' };
+const OUTFIT_COL = { imperia: ['#1c1d23', '#d0343a'] }; // Hawthorne's model is the Federation plate: Terra Imperia's black and crimson are its own colours here
+const outfitOf = c => c && spOf(c) === 'human' && OUTFIT_SRC[c.outfit] ? c.outfit : 'suit';
 const DESIGNS = [['standard', 'Standard'], ['pilot', 'Pilot'], ['vanguard', 'Vanguard'], ['survey', 'Survey']];
 const DESIGN_REGIONS = { standard: [], pilot: ['fore', 'shin'], vanguard: ['torso', 'helmet'], survey: ['upper', 'thigh'] };
 const VISORS = { smoke: ['Smoke', '#1b2433', .5, .6], gold: ['Gold', '#c9a24a', .6, 1], ice: ['Ice', '#7cc0ee', .4, .4], clear: ['Clear', '#d6e8ff', .14, .2] };
@@ -2482,7 +2489,12 @@ function applyLook(c) {
     return;
   }
   pendingLook = null;
-  if (sp === 'human') { if (!look.ready) return; swapModel('human'); applyHumanLook(c); }
+  if (sp === 'human') {
+    if (!look.ready) return; look.lastC = c;
+    const k = outfitOf(c), info = k !== 'suit' ? outfitInfo[k] : null;
+    if (k !== 'suit' && !info) loadOutfit(k).then(i => { if (i && look.lastC === c) applyLook(c); if (i && state === 'create') buildCreateUI(); }); // the suit until it's ready
+    swapModel(info ? 'human_' + k : 'human'); applyHumanLook(c, info);
+  }
   else { swapModel(sp); applyAltLook(sp, speciesInfo[sp], c); }
 }
 function headYFor(c) {
@@ -2666,7 +2678,63 @@ function applyFace(c) {
   };
   if (base in faceTplV) build(faceTplV[base]); else faceTemplate(base).then(build);
 }
-function applyHumanLook(c) {
+// ---- outfits: a character's body from the story, head off, arms and legs on your rig, your head where theirs was ----
+const outfitInfo = {}, outfitLoad = {};
+function loadOutfit(k) {
+  if (outfitLoad[k]) return outfitLoad[k];
+  const tag = OUTFIT_SRC[k];
+  return outfitLoad[k] = loadDataScript(tag, 'glb').then(() => embGlb(tag)).then(sc => {
+    if (!sc) return null; const info = setupOutfit(sc); if (OUTFIT_COL[k]) [info.baseHex, info.trimHex] = OUTFIT_COL[k], info.own = true; outfitInfo[k] = info; speciesInfo['human_' + k] = info; return info;
+  }).catch(e => { console.warn('outfit', k, e); return null; });
+}
+function setupOutfit(m) {
+  const holder = new THREE.Group(); holder.add(m); m.updateMatrixWorld(true);
+  const nm = o => (o.name || '').replace(/_/g, ' ').toLowerCase().replace(/^(croxian|malia) /, '');
+  const WPN = /^(weapon|scythe|staff|blade coupling|polearm|right wrist weapon|wrist emitter|cyan muzzle)/, gone = []; m.traverse(o => { if (WPN.test(nm(o))) gone.push(o); }); for (const o of gone) if (o.parent) o.parent.remove(o); // no weapons: they'd be measured into the height, and you carry your own
+  m.updateMatrixWorld(true);
+  const box0 = new THREE.Box3().setFromObject(m); m.position.y -= box0.min.y; m.updateMatrixWorld(true);
+  const Hm = box0.max.y - box0.min.y, faceB = new THREE.Box3(); let skinRef = null, headNode = null;
+  m.traverse(o => { const n = nm(o); if (n === 'head' && !headNode) headNode = o; if (o.isMesh && /^(face|jaw|clean chin)$/.test(n)) { faceB.union(new THREE.Box3().setFromObject(o)); if (n === 'face' && o.material && o.material.color) skinRef = o.material.color.clone(); } });
+  if (faceB.isEmpty() && headNode) { const hb = new THREE.Box3().setFromObject(headNode), c = hb.getCenter(new THREE.Vector3()), h = (hb.max.y - hb.min.y) * .78; faceB.setFromCenterAndSize(c, new THREE.Vector3(h * .8, h, h)); } // a masked head (Croxian's): the size of the head under it
+  const kill = []; m.traverse(o => { const n = nm(o); if (o === headNode || (o.isMesh && (FACE_PART.test(n) || FACE_HAIR.test(n) || FACE_BEARD.test(n) || /^(neck|exposed neck|bare head|centre face shield|helmet cheek|cyan eye|cybernetic eye)/.test(n)))) kill.push(o); });
+  for (const o of kill) if (o.parent) o.parent.remove(o);
+  m.updateMatrixWorld(true);
+  const meshes = []; m.traverse(o => { if (!o.isMesh) return; o.castShadow = true; o.receiveShadow = true; if (o.material && !Array.isArray(o.material)) { o.material = o.material.clone(); o.userData.orig = o.material.color.clone(); } meshes.push(o); });
+  // arms and legs onto pivots at the shoulders and hips (which side is which from where it sits: your right is -x, as on the suit)
+  const ARM = /(upper ?arm|lower ?arm|pauldron|bicep|bracer|forearm|elbow|hand|glove|finger|thumb|gauntlet|wrist|cuff|sleeve)/, LEG = /(thigh|shin|knee|foot|boot|ankle|toe|tibia|leg lock|greave|calf|\bleg\b)/;
+  const grp = { ra: [], la: [], rl: [], ll: [] }, cen = new THREE.Vector3();
+  for (const o of meshes) { const n = nm(o), b = new THREE.Box3().setFromObject(o); if (b.isEmpty()) continue; b.getCenter(cen); const r = cen.x < 0;
+    if (ARM.test(n) && !/harness/.test(n)) grp[r ? 'ra' : 'la'].push([o, b]); else if (LEG.test(n)) grp[r ? 'rl' : 'll'].push([o, b]); }
+  const rig = {};
+  for (const k of ['ra', 'la', 'rl', 'll']) {
+    const U = new THREE.Box3(); for (const [, b] of grp[k]) U.union(b);
+    const arm = k[1] === 'a', sx = k[0] === 'r' ? -1 : 1, c = U.isEmpty() ? new THREE.Vector3(sx * Hm * .13, Hm * (arm ? .78 : .5), 0) : U.getCenter(new THREE.Vector3());
+    const g = new THREE.Group(); g.position.set(c.x, (U.isEmpty() ? c.y : U.max.y - (arm ? Hm * .03 : 0)) - m.position.y, c.z); m.add(g); m.updateMatrixWorld(true);
+    for (const [o] of grp[k]) g.attach(o); rig[k] = g;
+  }
+  // your head goes where theirs was, at the size theirs was
+  const anchor = new THREE.Group(), fc = faceB.getCenter(new THREE.Vector3()); anchor.position.set(fc.x, fc.y - m.position.y, fc.z); anchor.scale.setScalar((faceB.max.y - faceB.min.y) / .25); m.add(anchor);
+  // colours: the commonest armour colour is its base, the next its trim; anything skin-coloured (hands) follows your skin
+  const near = (a, b, t = .06) => a && b && Math.abs(a.r - b.r) + Math.abs(a.g - b.g) + Math.abs(a.b - b.b) < t, lum = c => (c.r * .3 + c.g * .59 + c.b * .11) || 1e-3;
+  const tally = [];
+  for (const o of meshes) { const c = o.userData.orig; if (!c || near(c, skinRef, .08) || lum(c) < .035) continue; const b = new THREE.Box3().setFromObject(o), v = b.getSize(new THREE.Vector3()), w = Math.max(1e-6, v.x * v.y + v.y * v.z + v.x * v.z);
+    const T = tally.find(t => near(t.c, c, .09)); if (T) T.w += w; else tally.push({ c, w }); }
+  tally.sort((a, b) => b.w - a.w);
+  const baseC = tally[0] ? tally[0].c : null, trimC = tally.find(t => !near(t.c, baseC, .25)); 
+  for (const o of meshes) { const c = o.userData.orig; if (!c) continue; o.userData.role = near(c, skinRef, .08) ? 'skin' : near(c, baseC, .09) ? 'armour' : trimC && near(c, trimC.c, .09) ? 'rim' : null;
+    const ref = o.userData.role === 'skin' ? skinRef : o.userData.role === 'armour' ? baseC : o.userData.role === 'rim' ? trimC.c : null; if (ref) o.userData.k = lum(c) / lum(ref); }
+  const base = 1.86 / Hm; holder.scale.setScalar(base);
+  return { model: holder, rig, anchor, meshes, base, headY: (fc.y - box0.min.y) * base, lieY: .26, baseHex: baseC ? '#' + baseC.getHexString() : '#888888', trimHex: trimC ? '#' + trimC.c.getHexString() : '#aaaaaa' };
+}
+function applyOutfitLook(info, c, id) {
+  const cols = { skin: look.skinMat.color, armour: c.oSuit ? new THREE.Color(SUITC[c.oSuit - 1] || SUITC[0]) : info.own ? new THREE.Color(info.baseHex) : null, rim: c.oAcc ? new THREE.Color(ACCC[c.oAcc - 1] || ACCC[0]) : info.own ? new THREE.Color(info.trimHex) : null };
+  const dk = alDarkK((c.align && c.align.p) || 0) * .8;
+  for (const o of info.meshes) { const r = o.userData.role; if (!o.userData.orig) continue;
+    if (r && cols[r]) o.material.color.copy(cols[r]).multiplyScalar(o.userData.k || 1); else o.material.color.copy(o.userData.orig);
+    if (dk && r !== 'skin') o.material.color.lerp(AL_DARK, dk); }
+  const xf = c.identity === 'female' ? .94 : c.identity === 'male' ? 1.03 : 1; info.model.scale.set(info.base * id.h * xf, info.base * id.h, info.base * id.h);
+}
+function applyHumanLook(c, outfit) {
   if (!look.ready) return;
   const P = look.parts, acc = DESIGN_REGIONS[c.design] || [];
   const region = n => n === 'helmet shell' ? 'helmet' : /upper arm/.test(n) ? 'upper' : /forearm/.test(n) ? 'fore' : /thigh/.test(n) ? 'thigh' : /shin|boot/.test(n) ? 'shin' : 'torso';
@@ -2692,9 +2760,11 @@ function applyHumanLook(c) {
   setSX('torso', id.sw); setSX('life support backpack', Math.min(1.03, id.sw + .03));
   for (const [n, cx] of [['right shoulder', -.239], ['left shoulder', .239], ['right shoulder strap', -.1605], ['left shoulder strap', .1605], ['mission badge', -.2875]]) setPX(n, cx, id.sw);
   setSX('pelvis', id.hw); setSX('belt', id.hw);
-  if (rig.ra) { rig.ra.position.x = -.27 * id.sw; rig.la.position.x = .27 * id.sw; rig.rl.position.x = -.12 * id.hw; rig.ll.position.x = .12 * id.hw; }
+  if (rig.ra && !outfit) { rig.ra.position.x = -.27 * id.sw; rig.la.position.x = .27 * id.sw; rig.rl.position.x = -.12 * id.hw; rig.ll.position.x = .12 * id.hw; }
   look.model.scale.setScalar(id.h);
   if (look.beard) look.beard.visible = hasBeard(c);
+  if (outfit) { outfit.anchor.add(look.head); look.head.position.set(0, 0, 0); applyOutfitLook(outfit, c, id); } // your head, on their armour
+  else if (look.head.parent !== look.model) { look.model.add(look.head); look.head.position.set(0, 1.655, .02); }
 }
 
 const pedestal = new THREE.Group();
@@ -3550,11 +3620,13 @@ function buildCreateUI() {
   chips($('#crFace'), FACES, 'face');
   chips($('#crBeard'), [['yes', 'Beard'], ['no', 'Clean-shaven']], 'beard', v => { draft.beard = v === 'yes'; });
   swatches($('#crHairC'), pal.hair, 'hairColor');
-  swatches($('#crSuit'), pal.suit, 'suit');
-  swatches($('#crAcc'), pal.accent, 'accent');
-  $('#lSuit').textContent = human ? 'Suit colour' : 'Armour colour';
-  $('#lAcc').textContent = human ? 'Accent colour' : 'Trim colour';
-  $('#tabSuit').textContent = human ? 'Spacesuit' : 'Armour';
+  const of = outfitOf(draft), oi = of !== 'suit' ? outfitInfo[of] : null, suitOn = of === 'suit';
+  chips($('#crOutfit'), OUTFITS, 'outfit', v => { draft.outfit = v; buildCreateUI(); return false; });
+  swatches($('#crSuit'), suitOn ? pal.suit : [oi ? oi.baseHex : '#888888', ...SUITC], suitOn ? 'suit' : 'oSuit'); // an outfit's first colour is its own
+  swatches($('#crAcc'), suitOn ? pal.accent : [oi ? oi.trimHex : '#aaaaaa', ...ACCC], suitOn ? 'accent' : 'oAcc');
+  $('#lSuit').textContent = human && suitOn ? 'Suit colour' : 'Armour colour';
+  $('#lAcc').textContent = human && suitOn ? 'Accent colour' : 'Trim colour';
+  $('#tabSuit').textContent = human ? 'Outfit' : 'Armour';
   chips($('#crDesign'), DESIGNS, 'design');
   chips($('#crVisor'), Object.entries(VISORS).map(([k, v]) => [k, v[0]]), 'visor');
   $('#crName').value = draft.name === 'WANDERER' ? '' : draft.name;
@@ -3569,15 +3641,17 @@ function refreshCreate() {
   $('#fHair').classList.toggle('hide', !(human || SPECIES[sp].hairs));
   $('#fHairC').classList.toggle('hide', (sp === 'grek' || sp === 'taredesiban') && !hasBeard(draft));
   $('#lHairC').textContent = sp === 'grek' || sp === 'taredesiban' ? 'Beard colour' : sp === 'oilkoumene' ? 'Horn colour' : 'Hair colour';
-  $('#fDesign').classList.toggle('hide', !human); $('#fVisor').classList.toggle('hide', !human); $('#fFace').classList.toggle('hide', !human);
+  const suitOn = outfitOf(draft) === 'suit';
+  $('#fDesign').classList.toggle('hide', !human || !suitOn); $('#fVisor').classList.toggle('hide', !human || !suitOn); $('#fFace').classList.toggle('hide', !human); $('#fOutfit').classList.toggle('hide', !human);
+  for (const b of $('#crOutfit').children) b.classList.toggle('on', b.dataset.v === outfitOf(draft));
   for (const b of $('#crFace').children) b.classList.toggle('on', b.dataset.v === faceOf(draft));
   const lore = LORE[sp];
   $('#spHome').textContent = lore.home;
   $('#spDesc').innerHTML = lore.paras.map(t => `<p>${t}</p>`).join('');
   for (const [id, key] of [['crSpecies', 'species'], ['crIdent', 'identity'], ['crHair', 'hair'], ['crDesign', 'design'], ['crVisor', 'visor']])
     for (const b of $('#' + id).children) b.classList.toggle('on', b.dataset.v === draft[key]);
-  for (const [id, key] of [['crSkin', 'skin'], ['crHairC', 'hairColor'], ['crSuit', 'suit'], ['crAcc', 'accent']])
-    for (const b of $('#' + id).children) b.classList.toggle('on', +b.dataset.i === draft[key]);
+  for (const [id, key] of [['crSkin', 'skin'], ['crHairC', 'hairColor'], ['crSuit', suitOn ? 'suit' : 'oSuit'], ['crAcc', suitOn ? 'accent' : 'oAcc']])
+    for (const b of $('#' + id).children) b.classList.toggle('on', +b.dataset.i === (draft[key] | 0));
   $('#crPro').textContent = (IDENT[draft.identity] || IDENT.nb).pro;
   applyLook(draft);
 }
@@ -3623,7 +3697,7 @@ $('#crRandom').addEventListener('click', () => {
   const sp = spOf(draft), pal = paletteFor(sp), hairs = sp === 'human' ? HAIRS : (SPECIES[sp].hairs || [['none', 'None']]);
   Object.assign(draft, {
     identity: pick(Object.keys(IDENT)), skin: idx(pal.skin), hair: pick(hairs)[0], hairColor: idx(pal.hair),
-    suit: idx(pal.suit), accent: idx(pal.accent), face: pick(FACES)[0], design: pick(DESIGNS)[0], visor: pick(Object.keys(VISORS)), beard: Math.random() < .5
+    suit: idx(pal.suit), accent: idx(pal.accent), face: pick(FACES)[0], outfit: pick(OUTFITS)[0], oSuit: Math.random() < .5 ? 0 : 1 + idx(SUITC), oAcc: Math.random() < .5 ? 0 : 1 + idx(ACCC), design: pick(DESIGNS)[0], visor: pick(Object.keys(VISORS)), beard: Math.random() < .5
   });
   sfx.click(); refreshCreate();
 });
@@ -26713,7 +26787,7 @@ async function resModel(c) {
     });
     m.position.set(0, 0, 0); m.rotation.set(0, 0, 0);
   } finally { applyLook(wanderer); resetRig(); if (hp) hp.add(held); }
-  return { m, L, human: sp === 'human' };
+  return { m, L, human: curSpecies === 'human' }; // the spacesuit's A-pose arms come down; an outfit's already hang
 }
 async function resSpawn(c, near) {
   const B = { c, id: c.id, al: resAl(c), sp: spOf(c), root: new THREE.Group(), body: null, L: null, ready: false, task: null, t: 0, say: null, sayT: 0,
