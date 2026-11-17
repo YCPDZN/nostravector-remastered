@@ -2675,3 +2675,7 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 
 ### Chapter IV objectives in flight
 - **The objective in space and in a world's sky now follows Chapter IV's main quest,** like the list on foot, instead of staying stuck on the pod's "Survive · you're adrift" once you've woken on Archiostal or have the Jewel. It tells you where to fly for each step: Meet Archamus and Hear Archamus out (warp to Malana Prime, fly to Archiostal, land in the gardens), Find Josiah Williams II (warp to Sol, fly to Earth, land anywhere), then Bring Josiah back into the light. The pod's message shows only while you're adrift in it.
+
+### Fix: stuck over a city after taking off again
+- **Land, walk about, take off again: the ship no longer gets stuck** hovering over the ground, unable to climb out. Going into a world's sky never cleared the last landing, so the ship kept trying to finish it. When the pod was added, a comment had been written into the middle of that line, switching off the rest of it (clearing the landing, the flight timer, the camera shake and the messages). The Jewel is the first ship in Chapter IV that lands and takes off again, so it showed up with her.
+- Two more lines had lost their ends the same way, and both work again: the colour grade in the nightmares and the death scenes (shadow and highlight tints, glow), and residents who die (they now respawn properly, their deaths are counted and it's saved).
