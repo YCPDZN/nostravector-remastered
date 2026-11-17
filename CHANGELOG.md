@@ -2557,3 +2557,9 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 
 ### Planets keep their own colours
 - The blood red stays on the main menu (and the interface's red in Chapter IV). Planets and stations no longer turn red: they keep their own skies, haze and light.
+
+### Archamus' projection: the ships that never came back, and Josiah Williams II (Chapter IV)
+- **Straight after the meeting, Archamus shows you the galaxy.** He goes on talking, and a projection of the Milky Way rises inside the normal dialogue box, above his words, with no cutscene. It is the galaxy map's own Milky Way and star systems, in a flickering hologram blue, turning slowly, and it moves to whatever he's talking about on each line: Sol and Archiostal ("you are here"), Catharsis space glowing red at the core and spreading over the old Grek ring, ships flying in and their lights going out ("none returned"), the carapace, and finally Earth.
+- **Twenty lines** (CH4ARCHAMUSPROJ1–20, `data/archProjVoices.js`, script in `assets/audio/archamus_ch4/PROJ_VOICE_SCRIPT.md`; subtitles until recorded). While you slept, ships went into Catharsis space and none came back. The Catharsis' carapace can't be shot by your ordinary rifles. A man on Earth knows where they are: **Josiah Williams II**, who fell into a deep depression two years ago after Terra Imperia killed his father during its occupation of Earth.
+- **New objective:** after **Meet Archamus**, the main quest is **Find Josiah Williams II on Earth** (it replaces Explore Archiostal; `ch4.archProj`). Talking to Archamus again shows Earth in the projection and repeats his last line. A save that met him before this update hears the projection the next time you speak to him.
+- Josiah Williams II's Nostrapedia entry now mentions his father's death and his depression.
