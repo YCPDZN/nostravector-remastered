@@ -2672,3 +2672,6 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **Going into the sky:** no stutter the first time she appears in a new sky. She no longer carries a light of her own, which made every scene rebuild its shaders.
 - **Boarding:** her keel no longer cuts through the ramp as a black block.
 - **On the ground:** you can't walk through her any more. She has her own outline (hull, mandibles, wings and engine pods), not the smaller Nostra's, and the ramp under her stern stays open.
+
+### Chapter IV objectives in flight
+- **The objective in space and in a world's sky now follows Chapter IV's main quest,** like the list on foot, instead of staying stuck on the pod's "Survive · you're adrift" once you've woken on Archiostal or have the Jewel. It tells you where to fly for each step: Meet Archamus and Hear Archamus out (warp to Malana Prime, fly to Archiostal, land in the gardens), Find Josiah Williams II (warp to Sol, fly to Earth, land anywhere), then Bring Josiah back into the light. The pod's message shows only while you're adrift in it.
