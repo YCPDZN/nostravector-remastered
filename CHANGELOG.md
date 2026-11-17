@@ -2638,7 +2638,7 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - The missing line 11, "I will find you, Hawthorne. I will pursue you to Earth.", is recorded (HAKLOSESIT14) and fills its empty slot in `data/hakRantVoices.js`, so the rant no longer drops to a subtitle partway through.
 
 ### The Jewel of Archamus (Chapter IV)
-- **Archamus gives you a ship.** Straight after the projection of the Milky Way he has five more lines, and gives you the **Jewel of Archamus**, the Grek's finest ship, built for him long ago and waiting beneath Archiostal. A save that has already seen the projection gets the gift the next time you speak to him. Voices: CH4ARCHAMUSGIFT1–5 (`data/archGiftVoices.js`), subtitles until recorded.
+- **Archamus gives you a ship.** Straight after the projection of the Milky Way he has five more lines, and gives you the **Jewel of Archamus**, the Grek's finest ship, built for him long ago and waiting beneath Archiostal. A save that has already seen the projection gets the gift the next time you speak to him. Fully voiced: CH4ARCHAMUSGIFT1–7 (`data/archGiftVoices.js`), all seven lines including the two about pets.
 - **She replaces the pod**, and from then on she is your ship everywhere the Nostra was: landed on the ground, in orbit, in space, in a world's sky, and on the main menu. The prompt is now **Board the Jewel of Archamus**. She stays yours in Chapter V.
 - **The best ship in the game:**
   - **Extremely fast:** over twice the Nostra's speed on the throttle (620 against 240) and on the pulse drive (19,000 against 9,000), and twice as fast in a world's sky.

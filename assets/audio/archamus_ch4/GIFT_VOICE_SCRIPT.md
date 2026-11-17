@@ -2,7 +2,7 @@
 
 Speaker: **Archamus**, hooded. Slow, calm, very old, as in the projection; a little warmer here, almost proud of her.
 Straight after the projection, he gives you the Jewel of Archamus, the Grek's finest ship, in place of the escape pod, then tells you about the cats and dogs of Earth's cities (lines 6–7). Afterwards, talking to him repeats the projection's last line.
-Pack: `data/archGiftVoices.js` (CH4ARCHAMUSGIFT1–7, in order). Until it exists, the lines show as subtitles only.
+Pack: `data/archGiftVoices.js` (CH4ARCHAMUSGIFT1–7, in order). **Recorded.**
 
 | File | Line |
 |---|---|
