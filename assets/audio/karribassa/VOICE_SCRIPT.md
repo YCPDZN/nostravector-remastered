@@ -23,7 +23,7 @@ Pack: `data/karrVisionVoices.js` (CH3NIGHTMAREKARRIBASSA1–11, in this order). 
 
 In Karribassa, on the bridge before the Hall of Oaths (in the game, not a cutscene). After line 2, Darius Ancin and Vishara Erisconos walk out of the Hall and stand at his side, silent. After line 4 Hak takes off his glasses, and says his last seven lines (5–11) without them; then he puts them back on, kneels, and prays to Archamus (12–14).
 
-Pack: `data/hakRantVoices.js` (14 slots, in this order). **Recorded** as HAKLOSESIT1–13: HAKLOSESIT1–10 are lines 1–10, and HAKLOSESIT11–13 are the prayer (lines 12–14). **Still to record:** line 11, "I will find you, Hawthorne. I will pursue you to Earth." Its slot is empty, so it shows as a subtitle.
+Pack: `data/hakRantVoices.js` (14 slots, in this order). **All 14 recorded** as HAKLOSESIT1–14: HAKLOSESIT1–10 are lines 1–10, HAKLOSESIT11–13 are the prayer (lines 12–14), and HAKLOSESIT14 is line 11, "I will find you, Hawthorne. I will pursue you to Earth."
 
 | File | Speaker | Line |
 |---|---|---|
