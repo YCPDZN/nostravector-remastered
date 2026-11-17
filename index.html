@@ -457,7 +457,8 @@ body.touch .x-prompt kbd{display:none}
 .x-dlg .line{font-weight:300;font-size:clamp(14px,2vw,18px);line-height:1.6;min-height:3.2em}
 .x-dlg .tap{font-size:8px;letter-spacing:.42em;color:var(--mute);margin-top:6px;text-transform:uppercase;opacity:0;transition:opacity .3s}
 .x-dlg.ready .tap{opacity:.85}
-.x-dlg .holo{display:block;width:100%;height:clamp(130px,30vh,260px);margin:-4px 0 12px;border-radius:4px;background:radial-gradient(ellipse at 50% 55%,rgba(40,120,180,.18),rgba(0,0,0,0) 70%);border-bottom:1px solid rgba(120,210,255,.18);pointer-events:none}
+@media (max-width:600px),(max-height:500px){.x-dlg .holo{height:clamp(96px,22vh,180px);margin-bottom:8px}} /* phones: the projection leaves room for the world */
+.x-dlg .holo{display:block;width:100%;height:clamp(110px,30vh,260px);margin:-4px 0 12px;border-radius:4px;background:radial-gradient(ellipse at 50% 55%,rgba(40,120,180,.18),rgba(0,0,0,0) 70%);border-bottom:1px solid rgba(120,210,255,.18);pointer-events:none}
 .x-hint{position:absolute;left:50%;top:calc(var(--st) + 22px);transform:translateX(-50%);font-size:9px;letter-spacing:.3em;color:var(--mute);text-transform:uppercase;white-space:nowrap;transition:opacity 1.2s;text-shadow:0 0 8px #000}
 @media (max-width:720px){ .x-hint{top:auto;bottom:calc(var(--sb) + 170px)} .x-prompt{bottom:calc(var(--sb) + 230px)} }
 @media (pointer:coarse),(max-width:720px){ .x-hint{white-space:normal;width:min(560px,calc(100vw - 40px));text-align:center;line-height:1.7;letter-spacing:.22em} } /* the controls hint wraps on phones instead of running off both edges */
@@ -2595,7 +2596,10 @@ function initLook(m) {
   beard.visible = false;
   look.ready = true;
   applyLook(wanderer);
-  setTimeout(() => { for (const k in FACE_SRC) faceTemplate(k).then(() => { if (look.faceFor && look.faceFor.split('+')[0] === k && wanderer && spOf(wanderer) === 'human') applyLook(wanderer); }); }, 1500); // every face ready before it's wanted
+  setTimeout(() => { // every face ready before it's wanted; on a phone only the faces your wanderers and residents wear (and Hawthorne's, for the borrowed beard)
+    const phone = document.body.classList.contains('touch'), want = new Set(['hawthorne']);
+    for (const c of [wanderer, ...roster, ...residents]) if (c && spOf(c) === 'human') want.add(faceOf(c));
+    for (const k in FACE_SRC) if (!phone || want.has(k)) faceTemplate(k).then(() => { if (look.faceFor && look.faceFor.split('+')[0] === k && wanderer && spOf(wanderer) === 'human') applyLook(wanderer); }); }, 1500);
 }
 
 function buildHair(style) {
@@ -2605,6 +2609,8 @@ function buildHair(style) {
   const add = (geo, x, y, z, rx = 0, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(geo, M); m.position.set(x, y, z); m.rotation.x = rx; m.scale.set(sx, sy, sz); g.add(m); return m; };
   const cap = r => add(new THREE.SphereGeometry(r, 28, 14, 0, Math.PI * 2, 0, Math.PI * .52), 0, .012, -.006, -.32, .93, 1.12, 1.02);
   switch (style) {
+    case 'theirs': // their hair comes with the face and covers the top and front; this is the back of the head, which their models leave bare
+      add(new THREE.SphereGeometry(.124, 28, 14, Math.PI - .3, Math.PI + .6, 0, Math.PI * .6), 0, .006, -.004, 0, .95, 1.1, 1.04); break; // wrapped a little past the ears
     case 'buzz': cap(.121); break;
     case 'crop': cap(.127); add(new THREE.BoxGeometry(.15, .028, .05), 0, .088, .076, .5); break;
     case 'bob': cap(.128);
@@ -2721,10 +2727,41 @@ function setupOutfit(m) {
     const T = tally.find(t => near(t.c, c, .09)); if (T) T.w += w; else tally.push({ c, w }); }
   tally.sort((a, b) => b.w - a.w);
   const baseC = tally[0] ? tally[0].c : null, trimC = tally.find(t => !near(t.c, baseC, .25)); 
-  for (const o of meshes) { const c = o.userData.orig; if (!c) continue; o.userData.role = near(c, skinRef, .08) ? 'skin' : near(c, baseC, .09) ? 'armour' : trimC && near(c, trimC.c, .09) ? 'rim' : null;
+  for (const o of meshes) { const c = o.userData.orig; if (!c) continue; o.userData.role = near(c, skinRef, .08) ? 'skin' : trimC && near(c, trimC.c, .09) ? 'rim' : baseC && lum(c) >= .035 ? 'armour' : null; // every other colour follows the armour, at its own shade
     const ref = o.userData.role === 'skin' ? skinRef : o.userData.role === 'armour' ? baseC : o.userData.role === 'rim' ? trimC.c : null; if (ref) o.userData.k = lum(c) / lum(ref); }
+  const merged = mergeOutfit(m, [rig.ra, rig.la, rig.rl, rig.ll, m], meshes, { skin: skinRef, armour: baseC, rim: trimC && trimC.c });
   const base = 1.86 / Hm; holder.scale.setScalar(base);
-  return { model: holder, rig, anchor, meshes, base, headY: (fc.y - box0.min.y) * base, lieY: .26, baseHex: baseC ? '#' + baseC.getHexString() : '#888888', trimHex: trimC ? '#' + trimC.c.getHexString() : '#aaaaaa' };
+  return { model: holder, rig, anchor, meshes: merged, base, headY: (fc.y - box0.min.y) * base, lieY: .26, baseHex: baseC ? '#' + baseC.getHexString() : '#888888', trimHex: trimC ? '#' + trimC.c.getHexString() : '#aaaaaa' };
+}
+/* an outfit is hundreds of small parts (the Pontifex armour, four hundred): one draw call each is too many for a phone. Each limb's parts
+   are merged by colour role into a handful of meshes. Each vertex keeps its own colour as a ratio of its role's colour, so repainting
+   the armour or trim is still one material colour, and every bevel keeps its shade. Glowing, see-through or textured parts stay as they are. */
+function mergeOutfit(m, holders, meshes, refs) {
+  m.updateMatrixWorld(true);
+  const groups = new Map(), keep = [], hs = new Set(holders);
+  for (const o of meshes) {
+    const mt = o.material; if (Array.isArray(mt) || mt.map || mt.transparent || (mt.emissive && mt.emissive.getHex()) || !o.userData.orig) { keep.push(o); continue; }
+    let a = o.parent; while (a && !hs.has(a)) a = a.parent; if (!a) { keep.push(o); continue; }
+    const r = o.userData.role || '', key = [holders.indexOf(a), r, Math.round((mt.metalness || 0) * 4), Math.round((mt.roughness == null ? 1 : mt.roughness) * 4)].join('|');
+    if (!groups.has(key)) groups.set(key, { a, r, mt, list: [] }); groups.get(key).list.push(o);
+  }
+  const out = [...keep];
+  for (const { a, r, mt, list } of groups.values()) {
+    const inv = new THREE.Matrix4().copy(a.matrixWorld).invert(), ref = r ? refs[r] : null, parts = []; let n = 0;
+    for (const o of list) {
+      const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(), mx = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld); g.applyMatrix4(mx);
+      if (mx.determinant() < 0) for (const k of ['position', 'normal']) { const at = g.attributes[k]; if (!at) continue; const A = at.array; for (let t = 0; t + 8 < A.length; t += 9) for (let c = 0; c < 3; c++) { const tmp = A[t + 3 + c]; A[t + 3 + c] = A[t + 6 + c]; A[t + 6 + c] = tmp; } }
+      const c = o.userData.orig, q = ref ? [c.r / Math.max(.02, ref.r), c.g / Math.max(.02, ref.g), c.b / Math.max(.02, ref.b)] : [c.r, c.g, c.b];
+      parts.push([g, q]); n += g.attributes.position.count;
+    }
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3); let k = 0;
+    for (const [g, q] of parts) { const cnt = g.attributes.position.count; pos.set(g.attributes.position.array, k * 3); if (g.attributes.normal) nor.set(g.attributes.normal.array, k * 3); for (let i = 0; i < cnt; i++) col.set(q, (k + i) * 3); k += cnt; g.dispose(); }
+    const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); mg.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); mg.setAttribute('color', new THREE.BufferAttribute(col, 3)); mg.computeBoundingSphere(); mg.boundingSphere.radius += .3;
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, color: ref ? ref.clone() : 0xffffff, metalness: mt.metalness || 0, roughness: mt.roughness == null ? 1 : mt.roughness, side: mt.side });
+    const mesh = new THREE.Mesh(mg, mat); mesh.castShadow = true; mesh.receiveShadow = true; mesh.userData = { role: r || null, orig: ref ? ref.clone() : new THREE.Color(1, 1, 1), k: 1, merged: true }; a.add(mesh); out.push(mesh);
+    for (const o of list) { if (o.parent) o.parent.remove(o); o.material.dispose(); }
+  }
+  return out;
 }
 function applyOutfitLook(info, c, id) {
   const cols = { skin: look.skinMat.color, armour: c.oSuit ? new THREE.Color(SUITC[c.oSuit - 1] || SUITC[0]) : info.own ? new THREE.Color(info.baseHex) : null, rim: c.oAcc ? new THREE.Color(ACCC[c.oAcc - 1] || ACCC[0]) : info.own ? new THREE.Color(info.trimHex) : null };

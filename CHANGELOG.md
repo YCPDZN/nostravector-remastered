@@ -2580,3 +2580,10 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **Beards.** With Facial hair on, Hawthorne and Orion wear their own beards; the other faces borrow Hawthorne's, shaped for these faces.
 - **Armour sets.** The Spacesuit tab is now **Outfit**: the Spacesuit, or **Federation plate** (Darius's), **Imperia plate** (Hawthorne's, black and crimson), **Pontifex armour**, **Mascar armour** (Croxian's), **Orion's kit** or **Malia's kit**. Each is that character's own armoured body, without their weapon or head, with your face and hair on top, and it walks and animates like the suit. The first armour and trim colour keep the outfit's own colours; the rest repaint it. Suit design and visor apply to the spacesuit only.
 - Residents copied from a wanderer get the same face and outfit. Equipment you wear (helmets, chestplates and so on) still goes on over any outfit.
+
+### Phones, and the back of your head
+- **Hair all the way round.** With **Theirs** hair, the back of the head was bare skin (their models only have hair on top and in front), which showed whenever you wore an outfit. It's now covered, wrapping just past the ears, in your hair colour.
+- **Outfits are light enough for phones.** Each outfit was hundreds of separate parts (the Pontifex armour about four hundred), each its own draw call. A limb's parts are now merged by colour into a handful of meshes (Federation and Imperia plate 18, Pontifex 37), with every bevel keeping its shade, so they look the same and cost far less. Repainting covers the whole outfit, each part at its own shade.
+- **Faces load lighter on phones.** Instead of preparing all five faces at start-up, a phone prepares only the faces your wanderers and residents wear (and Hawthorne's, for the borrowed beard); any other face loads when you pick it.
+- **Archamus' projection on a phone** is a little shorter, leaving more of the world on screen above the dialogue box.
+- Checked on an emulated iPhone: the creator's Face and Outfit rows wrap and scroll, and the projection fits the dialogue box.
