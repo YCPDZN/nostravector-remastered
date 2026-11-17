@@ -2665,3 +2665,10 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 
 ### Josiah Williams II, too soon (Chapter III)
 - **Josiah is already on Earth in Chapter III,** near wherever you land, standing alone (no grave yet). As with Archamus on Archiostal, it's too soon to meet him: speak to him and he sends you away, voiced (`data/josCh3Voice.js`, JOSIAH_WILLIAMS_CHAPTER_3).
+
+### Jewel of Archamus fixes
+- **Taking off:** the takeoff camera sits further back for the Jewel and picks an angle with a clear view of her, so it no longer ends up inside a city tower while she lifts off.
+- **Flying in a world's sky (and in space):** the chase camera sits further back and higher, so she rides low in the frame and you can see where you're going. Her main engine glows a calm blue instead of flaring into a white blob in the middle of the screen.
+- **Going into the sky:** no stutter the first time she appears in a new sky. She no longer carries a light of her own, which made every scene rebuild its shaders.
+- **Boarding:** her keel no longer cuts through the ramp as a black block.
+- **On the ground:** you can't walk through her any more. She has her own outline (hull, mandibles, wings and engine pods), not the smaller Nostra's, and the ramp under her stern stays open.
