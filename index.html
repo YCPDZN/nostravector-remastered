@@ -22048,18 +22048,46 @@ const SEV_ARCH = [
   ['ARCHAMUS', ['I have not decided. Ask him how long he has been waiting.']],
   ['LORD SEVIRRUS', ['Keep your garden, gardener. I will burn it on my way out.']],
   ['ARCHAMUS', ['You will try. Do not turn your back on him, wanderer. He has three hundred years of becoming someone else ahead of him, and not one of them has started.']]];
+/* Easter egg: bring Javek along and speak to Hak Chompjak V, in Chapters IV–V. The last leader of the Grob, whom Hak's ancestor Shakhak broke
+   at Steca, meets the emperor who wears the same glasses. If Javek has fallen back into the machine-king, the last three lines change.
+   JAVHAK1–19 (data/javHakVoices.js): 1–13 shared, 14–16 the fugitive's ending, 17–19 the machine-king's; subtitles until recorded. */
+const JAV_HAK = [
+  ['HAK CHOMPJAK V', ['Javek. You are wearing my glasses.']],
+  ['JAVEK', ['Your glasses, Emperor? I wore this style before your empire had a name. You are wearing mine.']],
+  ['HAK CHOMPJAK V', ['Then one of us should find a new tailor. Do you know what is painted on the ceiling of the throne hall behind me?']],
+  ['JAVEK', ['Steca. Your ancestor’s boot on my chest. I have seen it. It flatters him.']],
+  ['HAK CHOMPJAK V', ['Shakhak spared you. Every child on Aridaxx is taught that it was mercy.']],
+  ['JAVEK', ['It was arithmetic. He could not afford another century of war, and I could afford to wait.']],
+  ['HAK CHOMPJAK V', ['A billion years of waiting, and you come back as a stray in the wanderer’s crew.']],
+  ['JAVEK', ['Patience is not idleness. I have watched your house since Shakhak’s funeral. I was there, at the back. Nobody checks the back.']],
+  ['HAK CHOMPJAK V', ['Then you watched me too. Before the crown.']],
+  ['JAVEK', ['Before the crown, and before the name. I watched a boy on Carax do in one afternoon what took my Collective a thousand years. I was almost proud.']],
+  ['HAK CHOMPJAK V', ['Do not.']],
+  ['JAVEK', ['Forgive me. I forget that you are sensitive about him.']],
+  ['HAK CHOMPJAK V', ['By the law of my house you are still at war with us. Shakhak never signed a peace, and neither did you.']]];
+const JAV_HAK_END = [
+  ['JAVEK', ['Then sign one with me now, Emperor. Two old monsters in matching glasses. Your historians would never recover.']],
+  ['HAK CHOMPJAK V', ['Walk with the wanderer, Javek. If you so much as look at Steca, I will finish what Shakhak started.']],
+  ['JAVEK', ['He means it, you know. I rather like him.']]];
+const JAV_HAK_FALLEN = [
+  ['JAVEK', ['Peace? I have my Collective back, Emperor. I have no more use for peace than your ancestor had for mercy.']],
+  ['HAK CHOMPJAK V', ['Then hear the law of Shakhak, machine. The house of Chompjak does not lose at Steca. Not then. Not ever.']],
+  ['JAVEK', ['Steca is a long way from here, little emperor. Enjoy the glasses while you can.']]];
 // the hidden conversations: who you bring, who you speak to, once per playthrough each (eggs.<id>), in place of that conversation
 const EGGS = [
   { id: 'josArch', comp: 'pbc-josiah', to: 'archamus', seq: JOS_ARCH, vo: 'josArchVoices', who: 'Josiah Richards and Archamus', title: 'FATHER AND SON?' },
   { id: 'sevArch', comp: 'sev-sevirrus', to: 'archamus', seq: SEV_ARCH, vo: 'sevArchVoices', who: 'Lord Sevirrus and Archamus', title: 'THE PRINCE OF ZARK' },
-  { id: 'sevHak', comp: 'sev-sevirrus', to: 'hak', seq: SEV_HAK, vo: 'sevHakVoices', who: 'Lord Sevirrus and Hak Chompjak V', title: 'BEFORE HE WAS HAK' }];
-const eggFor = to => { const ch = wanderer.chapter | 0; if (ch < 3 || ch > 5) return null; const here = mapCompanions(); return EGGS.find(E => E.to === to && !(wanderer.eggs && wanderer.eggs[E.id]) && here.includes(E.comp) && !compAway(E.comp)) || null; };
+  { id: 'sevHak', comp: 'sev-sevirrus', to: 'hak', seq: SEV_HAK, vo: 'sevHakVoices', who: 'Lord Sevirrus and Hak Chompjak V', title: 'BEFORE HE WAS HAK' },
+  { id: 'javHak', comp: 'javek', to: 'hak', ch: [4, 5], seq: () => [...JAV_HAK, ...(fallenComp('javek') ? JAV_HAK_FALLEN : JAV_HAK_END)], clips: v => fallenComp('javek') ? [...v.slice(0, 13), ...v.slice(16, 19)] : v.slice(0, 16),
+    vo: 'javHakVoices', who: 'Javek and Hak Chompjak V', title: 'MATCHING GLASSES' }];
+const eggFor = to => { const ch = wanderer.chapter | 0, here = mapCompanions(); return EGGS.find(E => E.to === to && ch >= (E.ch || [3, 5])[0] && ch <= (E.ch || [3, 5])[1] && !(wanderer.eggs && wanderer.eggs[E.id]) && here.includes(E.comp) && !compAway(E.comp)) || null; };
 async function eggTalk(E) {
   const vo = await loadDataScript(E.vo).then(ok => ok ? sfx.loadClips(E.vo) : []).catch(() => []);
   if (state !== 'explore' || ex.dlg) return;
   wanderer.eggs = Object.assign({}, wanderer.eggs, { [E.id]: true }); const c = curChar(); if (c) c.eggs = wanderer.eggs; saveRoster(); // seen, even if you walk off halfway
   lootMsg(`Hidden dialogue · ${E.who}`, '#ffd88a');
-  dialogSeq(E.seq, () => { sfx.chime(); notice('Hidden dialogue', E.title, 3600); }, vo || []);
+  const seq = typeof E.seq === 'function' ? E.seq() : E.seq, clips = E.clips ? E.clips(vo || []) : vo || [];
+  dialogSeq(seq, () => { sfx.chime(); notice('Hidden dialogue', E.title, 3600); }, clips);
 }
 // Chapter IV: Hak in Alphinos, two years on (CH4HAKALPHINOS1–2, data/hak4Voices.js once recorded; subtitles until then)
 const HAK4 = ['Two years, wanderer. They told me you were dead. I have learned not to believe that sort of thing about the people who matter.',
