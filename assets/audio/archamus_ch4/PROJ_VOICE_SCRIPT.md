@@ -2,7 +2,7 @@
 
 Speaker: **Archamus**, hooded. Slow, calm, very old, as in the meeting. He holds a projection of the Milky Way in his hand while he speaks, so these lines are a little more direct than the meeting's; he grows gentle when he talks about Josiah.
 Straight after the meeting he goes on, with the galaxy shown in the dialogue box (not a cutscene). Afterwards he only repeats the last line.
-Pack: `data/archProjVoices.js` (CH4ARCHAMUSPROJ1–20, in order). Until it exists, the lines show as subtitles only.
+Pack: `data/archProjVoices.js` (CH4ARCHAMUSPROJ1–20, in order). **Recorded**, including every species version of line 3 (packed after the 20 main clips, in the order of the table below).
 
 | File | Line |
 |---|---|
@@ -29,7 +29,7 @@ Pack: `data/archProjVoices.js` (CH4ARCHAMUSPROJ1–20, in order). Until it exist
 
 ## Line 3 by species
 
-Line 3 names the wanderer's own homeworld. CH4ARCHAMUSPROJ3 is the human version. The others play as subtitles until they're recorded; if you record them, name them as below and tell Claude to wire them in.
+Line 3 names the wanderer's own homeworld. CH4ARCHAMUSPROJ3 is the human version. All six are recorded and wired in.
 
 | Species | File | Line |
 |---|---|---|

@@ -2627,3 +2627,9 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **They don't make things up.** Ask about something they don't know (“who was Zorblax the Mighty?”) and they say they don't know rather than guess.
 - **Framed by who they are:** heroes are warm (“Great question! Here's a quick overview:”), neutrals are matter-of-fact, villains condescend (“Knowledge is power. Here's some, free of charge:”), but the facts themselves are always said plainly, never cut short or restyled.
 - Whispers only: face to face and in the open chat, residents are their usual selves. Safety still comes first, and in-game places, bosses and residents still get their in-world answers. The facts load with your first whisper (`data/resKnow.js`, built from `nightmare/tools/res_know/`).
+
+### Archamus speaks: the meeting and the projection are voiced (Chapter IV)
+- **Meeting Archamus in the gardens is now fully voiced:** all ten lines (CH4ARCHAMUSMEET1–10, `data/archMeetVoices.js`).
+- **So is the projection of the Milky Way:** all twenty lines (CH4ARCHAMUSPROJ1–20, `data/archProjVoices.js`), from "Before you go. Look." to sending you to Earth to find Josiah Williams II.
+- **He names your own homeworld out loud, whatever your species:** line 3 is recorded for Erisian, Chompy, Grek, Oilkoumene and Taredesiban as well as Human (CH4ARCHAMUSPROJ3_<SPECIES>, packed after the twenty main lines). Until now, non-human wanderers only saw that line as a subtitle.
+- The recordings are kept in `assets/audio/archamus_ch4/`, and both voice scripts there are marked as recorded.
