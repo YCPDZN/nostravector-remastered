@@ -2636,3 +2636,20 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 
 ### Hak's rant at Karribassa is fully voiced (Chapter III)
 - The missing line 11, "I will find you, Hawthorne. I will pursue you to Earth.", is recorded (HAKLOSESIT14) and fills its empty slot in `data/hakRantVoices.js`, so the rant no longer drops to a subtitle partway through.
+
+### The Jewel of Archamus (Chapter IV)
+- **Archamus gives you a ship.** Straight after the projection of the Milky Way he has five more lines, and gives you the **Jewel of Archamus**, the Grek's finest ship, built for him long ago and waiting beneath Archiostal. A save that has already seen the projection gets the gift the next time you speak to him. Voices: CH4ARCHAMUSGIFT1–5 (`data/archGiftVoices.js`), subtitles until recorded.
+- **She replaces the pod**, and from then on she is your ship everywhere the Nostra was: landed on the ground, in orbit, in space, in a world's sky, and on the main menu. The prompt is now **Board the Jewel of Archamus**. She stays yours in Chapter V.
+- **The best ship in the game:**
+  - **Extremely fast:** over twice the Nostra's speed on the throttle (620 against 240) and on the pulse drive (19,000 against 9,000), and twice as fast in a world's sky.
+  - **Extremely durable:** her hull and shields take under a quarter of the damage, and her shields come back twice as soon and over twice as fast.
+  - **Hits extremely hard:** four gold cannons instead of two, firing faster (every 0.07 s) with faster bolts, each doing nearly four times the damage (42 against 11).
+  - **Hyperdrive Mk III built in:** 25,000 ly of range without buying the upgrade.
+- **Her look:** a long gold blade with black seams and stripes, five decks of lit windows down both flanks, mandibles past the needle nose, twin raked fins, four engines (two high on the tail, two on open-frame wings) and a main drive, her name in black on the nose, and a crystal of living light on her spine that breathes as she flies. Her own legs and ramp fold and lower like the Nostra's.
+- **Five decks you can walk**, in ivory, white marble and gold, with candles in Grek alcoves:
+  1. **Hangar bay:** the ramp, cargo, a little gold skiff hovering in its berth, and the crafting bench.
+  2. **The Light Core:** a column of living light inside three turning gold rings (warp cells, hull and drive).
+  3. **Crew deck:** bunks, the galley and the mess, where companions you've dismissed wait.
+  4. **The garden:** a white tree of light on an island in a glowing pool, under a glass dome of stars, with flower beds and benches. Sit a while to restore your health, or light a candle to Archamus at the bow.
+  5. **Bridge:** a great curved window, the pilot's seat, the holo-table and the captain's chair.
+- The same lift, taps and saves as the Nostra. A save made aboard puts you back on the same deck of the same ship. Chapter III's scenes aboard the Nostra still use the Nostra.
