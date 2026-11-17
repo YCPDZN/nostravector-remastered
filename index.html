@@ -8948,9 +8948,18 @@ function buildWorld(seed) {
 let WB_SWIM = false; // true while moving the player: deep water is for swimming, not a wall (lava stays a wall)
 function nostraBlocked(x, z) { // the landed ship, at the landing spot's centre (nose to -z)
   if (!world.landShip || !world.landShip.visible) return false;
+  if (world.landShip.userData.skin === 'jewel') return jewelBlocked(x, z);
   const ax = Math.abs(x);
   if (ax < 3.3 && z > -17 && z < 10.2) return true; // the hull (under it to the stern; the ramp end, past z 10.2, is open)
   if (ax >= 3.3 && ax < 9.6 && z > 3.0 && z < 9.8) return true; // the wings and the engine pods
+  return false;
+}
+function jewelBlocked(x, z) { // the Jewel, landed: her hull from the mandibles to the stern, the wings and the engine pods; the ramp under the stern is open
+  const ax = Math.abs(x);
+  if (ax < 1.6 && z > 8.6 && z < 13.4) return false; // the ramp
+  if (z > -31 && z < 11.9) { const P = [[0, -31], [.4, -27], [1.15, -24], [1.95, -20], [2.75, -15.5], [3.45, -10.5], [3.95, -5], [4.2, 0], [4.2, 4], [3.95, 7.5], [3.45, 10.2], [2.85, 11.8]]; let r = 0; for (let i = 1; i < P.length; i++) if (z <= P[i][1]) { r = P[i - 1][0] + (P[i][0] - P[i - 1][0]) * (z - P[i - 1][1]) / (P[i][1] - P[i - 1][1]); break; } if (ax < Math.max(.8, r * .92)) return true; }
+  if (ax >= 3.4 && ax < 10.9 && z > 2.6 && z < 10.4) return true; // the wings and the wing pods
+  if (ax < 2.2 && z >= 11.9 && z < 14.2 && !(ax < 1.6)) return true; // the main engine's housing either side of the ramp
   return false;
 }
 // you've ended up inside something solid you can't walk out of (the ship, deep water, a tower): the nearest open ground
@@ -18396,7 +18405,7 @@ function spaceTick(dt) {
   // the ship, its engines, and the chase camera
   const sh = SPC.ship; sh.position.copy(SPC.pos); sh.quaternion.copy(SPC.q); sh.rotateZ(clamp(yawIn, -1, 1) * .35); shipNavBlink(sh, SPC.t);
   for (const f of sh.userData.flames) { f.scale.set(1, .4 + SPC.thr * .8 + SPC.pulse * 2.2, 1); f.material.opacity = .4 + SPC.thr * .4 + SPC.pulse * .2; }
-  const JC = sh.userData.skin === 'jewel' ? 1.28 : 1, back = (46 + SPC.pulse * 14) * JC, cp = (SPC.cp || (SPC.cp = new THREE.Vector3())).copy(SPC.pos).addScaledVector(fwd, -back).addScaledVector(up, 11.5 * JC);
+  const JC = sh.userData.skin === 'jewel' ? 1.45 : 1, back = (46 + SPC.pulse * 14) * JC, cp = (SPC.cp || (SPC.cp = new THREE.Vector3())).copy(SPC.pos).addScaledVector(fwd, -back).addScaledVector(up, 11.5 * (JC > 1 ? 1.8 : 1));
   spaceCamFollow(cp, dt, 5); camera.position.copy(SPC.camPos);
   camera.up.copy(up); camera.lookAt(SPC.camLook.copy(SPC.pos).addScaledVector(fwd, 40).addScaledVector(up, 6)); // the ship sits low in the frame, the view ahead stays clear
   camera.fov = lerp(camera.fov, 62 + SPC.pulse * 16, Math.min(1, dt * 3)); camera.updateProjectionMatrix();
@@ -18791,10 +18800,10 @@ function atmoTick(dt) {
   sh.position.copy(A.pos); sh.quaternion.copy(A.q); sh.rotateZ(clamp(yawIn, -1, 1) * .45); shipNavBlink(sh, A.t);
   for (const f of sh.userData.flames) { f.visible = true; f.scale.set(1, .4 + A.thr * .7 + A.boost * 1.8, 1); f.material.opacity = .4 + A.thr * .35 + A.boost * .25; }
   A.fwdT = (A.fwdT || new THREE.Vector3()).copy(fwd).addScaledVector(up, -fwd.dot(up));
-  const JC = sh.userData.skin === 'jewel' ? 1.3 : 1, back = (34 + A.boost * 10) * JC, cp = A.look.copy(A.pos).addScaledVector(fwd, -back).addScaledVector(sup, 8.5 * JC);
+  const JW = sh.userData.skin === 'jewel', back = (34 + A.boost * 10) * (JW ? 1.6 : 1), cp = A.look.copy(A.pos).addScaledVector(fwd, -back).addScaledVector(sup, 8.5 * (JW ? 2.1 : 1));
   if (!A.camInit) { A.camPos.copy(cp); A.camShip = A.pos.clone(); A.camInit = true; }
   A.camPos.add(A.t1.subVectors(A.pos, A.camShip)); A.camShip.copy(A.pos); A.camPos.lerp(cp, Math.min(1, dt * 5));
-  { const off = A.t1.subVectors(A.camPos, cp), dd = off.length(); if (dd > 14) A.camPos.copy(cp).addScaledVector(off, 14 / dd); }
+  { const off = A.t1.subVectors(A.camPos, cp), dd = off.length(), lim = JW ? 22 : 14; if (dd > lim) A.camPos.copy(cp).addScaledVector(off, lim / dd); }
   { const cr = A.camPos.length(), cd = A.t1.copy(A.camPos).divideScalar(cr), cg = Math.max(planetH(P, cd), P.sea ? (P.seaH || 0) : -1e9) + A.Rg + 3; if (cr < cg) A.camPos.copy(cd).multiplyScalar(cg); } // never under the ground
   camera.position.copy(A.camPos); if (A.shake > 0) { camera.position.addScaledVector(A.t1.set(Math.random() - .5, Math.random() - .5, Math.random() - .5), A.shake * 1.6); A.shake = Math.max(0, A.shake - dt * 1.5); }
   const dip = Math.acos(clamp(A.Rg / (A.Rg + Math.max(alt, 1)), -1, 1)); // the higher you are the further the horizon drops: look down to keep it in view
@@ -20042,7 +20051,7 @@ function jewelMats() {
     glass: M(0x050a10, { roughness: .04, metalness: .95, emissive: 0x1a4a6a, emissiveIntensity: .45 }),
     win: new THREE.MeshStandardMaterial({ color: 0xdffaff, emissive: 0x9fe8ff, emissiveIntensity: 1.8 }),
     run: new THREE.MeshBasicMaterial({ color: 0x8ff0ff }),
-    bell: new THREE.MeshBasicMaterial({ color: 0x4fb8ee }),
+    bell: new THREE.MeshBasicMaterial({ color: 0x4fb8ee }), bellMain: new THREE.MeshBasicMaterial({ color: 0x1e5a86 }),
     light: new THREE.MeshStandardMaterial({ color: 0xfff6dc, emissive: 0xffe6a0, emissiveIntensity: 2.4, roughness: .1, transparent: true, opacity: .92 }),
     flame: () => new THREE.MeshBasicMaterial({ color: 0x7fe6ff, transparent: true, opacity: .8, blending: THREE.AdditiveBlending, depthWrite: false })
   };
@@ -20065,7 +20074,7 @@ function jewelMesh() {
   for (const z of [-18, -7, 5]) { const t2 = add(new THREE.TorusGeometry(R(z) + .01, .035, 6, 56), m.gold, 0, Y, z); t2.scale.y = FL; }
   // the dorsal spine and the keel
   box(1.3, .6, 30, m.skin, 0, Y + FL * 4.2 - .1, -1.5); box(1.36, .08, 30.2, m.gold, 0, Y + FL * 4.2 + .22, -1.5); for (const s of [-1, 1]) box(.06, .3, 30, m.dark, s * .69, Y + FL * 4.2 - .05, -1.5);
-  box(1.6, .5, 22, m.dark, 0, Y - FL * 4.2 + .1, 0); box(1.66, .06, 22.2, m.gold, 0, Y - FL * 4.2 - .17, 0);
+  box(1.6, .5, 15, m.dark, 0, Y - FL * 4.2 + .1, -4); box(1.66, .06, 15.2, m.gold, 0, Y - FL * 4.2 - .17, -4); // the keel stops short of the ramp
   // five decks of windows down both flanks, cold white light, and running lights between them
   for (const s of [-1, 1]) {
     for (let r = 0; r < 5; r++) { const yy = -2.3 + r * 1.15; for (let i = 0; i < 18; i++) { const z = -15 + i * 1.35 + (r % 2 ? .6 : 0); if (z > 8.5 || ((i + r * 3) % 7 === 3)) continue; const rr = hw(R(z), yy); if (rr < .5) continue; const a = Math.asin(clamp(yy / (FL * R(z)), -.95, .95)); box(.07, .2, .62, m.win, s * (rr + .02), Y + yy, z, 0, 0, s * -a * .9); } }
@@ -20101,9 +20110,9 @@ function jewelMesh() {
     add(new THREE.ConeGeometry(r * .82, len * .32, 22), m.skin, 0, 0, -len / 2 - len * .16, -Math.PI / 2, 0, 0, e);
     add(new THREE.TorusGeometry(r * .97, .05, 6, 22), m.gold, 0, 0, -.25 * len, 0, 0, 0, e); add(new THREE.TorusGeometry(r * .99, .06, 6, 22), m.dark, 0, 0, .3 * len, 0, 0, 0, e);
     add(new THREE.CylinderGeometry(r * 1.02, r * .9, len * .2, 22, 1, true), m.dark, 0, 0, len / 2 + len * .08, Math.PI / 2, 0, 0, e);
-    add(new THREE.CircleGeometry(r * .82, 22), m.bell, 0, 0, len / 2 + len * .17, 0, 0, 0, e);
+    add(new THREE.CircleGeometry(r * .82, 22), r > 1.5 ? m.bellMain : m.bell, 0, 0, len / 2 + len * .17, 0, 0, 0, e);
     const fl = add(new THREE.ConeGeometry(r * .78, len * 1.25, 18, 1, true), m.flame(), 0, 0, len / 2 + len * .8, Math.PI / 2, 0, 0, e); U.flames.push(fl);
-    const gl = glowSprite(0x7fdcff, r * 2.8, .75); gl.position.set(0, 0, len / 2 + len * .3); e.add(gl);
+    const gl = glowSprite(0x7fdcff, Math.min(r * 2.8, 3.4), r > 1.5 ? .4 : .75); gl.position.set(0, 0, len / 2 + len * .3); e.add(gl);
     return e;
   };
   // the main engine at the stern, two dorsal nacelles high on the tail, two wing pods low and wide
@@ -20138,8 +20147,6 @@ function jewelMesh() {
   for (let i = 0; i < 7; i++) box(2.5, .03, .09, m.dark, 0, .095, .4 + i * .58, 0, 0, 0, ramp);
   for (const s of [-1, 1]) { box(.07, .5, 4.3, m.gold, s * 1.36, .25, 2.2, 0, 0, 0, ramp); box(.06, .06, 4.2, m.run, s * 1.2, .1, 2.2, 0, 0, 0, ramp); }
   const rl = new THREE.PointLight(0xfff0c8, 0, 8, 2); rl.position.set(0, .9, 1.3); ramp.add(rl); U.rampLight = rl;
-  // her own light: a warm glow off the hull, so she shines on the ground and in a dark sky
-  const own = new THREE.PointLight(0xffd890, 2.2, 30, 2); own.position.set(0, Y + 6, -2); g.add(own);
   g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   return { g, rig: U };
 }
@@ -22286,18 +22293,19 @@ async function placeGivers() {
       else setTimeout(() => lootMsg(tiPhone() ? 'Hak is in Alphinos · fly to it' : 'Emperor Hak Chompjak holds court in Alphinos · take off and fly to the city from the sky (its marker), then land', '#b07aff'), 3200);
     } }
   if (P.id === 'archiostal-gardens' && ((wanderer.chapter | 0) === 3 || ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.timeSkip))) want.push({ arch3: true, name: 'ARCHAMUS', x: 16, z: 21 }); // Chapter III: he wants nothing to do with you (not yet); Chapter IV: the first quest is to find him here
-  if (P.id === 'earth' && josiahQ()) { // Chapter IV: at his father's grave near wherever you set down, on the quiet side, away from the stall and its crowd
+  if (P.id === 'earth' && (josiahQ() || (wanderer.chapter | 0) === 3)) { // Chapter IV: at his father's grave near wherever you set down, on the quiet side, away from the stall and its crowd; Chapter III: there already, but it's too soon to meet him
     const wet = (x, z) => plSeaY() != null && wHeight(x, z) < plSeaY() + .6, steep = (x, z) => Math.abs(wHeight(x + 2, z) - wHeight(x - 2, z)) + Math.abs(wHeight(x, z + 2) - wHeight(x, z - 2)) > 2.4 || Math.abs(wHeight(x, z) - wHeight(0, 0)) > 6;
     const far = ([x, z]) => (wet(x, z) ? -100 : 0) + (steep(x, z) ? -50 : 0) + Math.min(m ? Math.hypot(m.px - x, m.pz - z) : 99, ...want.map(w => Math.hypot(w.x - x, w.z - z)), 99);
     const [x, z] = [[17, -15], [-17, -16], [18, 19], [-18, 20], [24, 2], [-24, 0], [0, -24], [8, 26]].sort((a, b) => far(b) - far(a))[0];
-    want.push({ josiah: true, name: 'JOSIAH WILLIAMS II', x, z }); }
+    want.push({ josiah: true, jos3: (wanderer.chapter | 0) === 3, name: 'JOSIAH WILLIAMS II', x, z }); }
   for (const w of want) {
     try {
       const R = w.josiah ? await josiahRig() : w.leader || w.arch3 ? await leaderRig(SQ_LEADERS.find(L => L.id === (w.leader || 'archamus'))) : await giverRig(w.sp, 1.8, w.name);
       if (!R || GIVERS.area !== area || curArea() !== area) continue;
       let x = w.x, z = w.z; for (let i = 0; i < 30 && !w.noSea && plSeaY() != null && wHeight(x, z) < plSeaY() + .6; i++) { x += 3; z -= 2; }
       R.root.position.set(x, w.y != null ? w.y : wHeight(x, z), z); R.root.rotation.y = w.noSea ? 0 : Math.atan2(-x, 6 - z); wScene.add(R.root); // Hak faces down the avenue
-      if (w.josiah) { const gx = x + 1.6, gz = z - 1.2; w.extra = makeGrave('JOSIAH WILLIAMS', ['Beloved father', 'Taken by Terra Imperia', 'during the occupation of Earth']); w.extra.position.set(gx, wHeight(gx, gz), gz); w.extra.rotation.y = Math.atan2(x - gx, z - gz); wScene.add(w.extra); w.faceGrave = Math.atan2(gx - x, gz - z); R.root.rotation.y = w.faceGrave; }
+      if (w.josiah && w.jos3) { w.faceGrave = R.root.rotation.y; } // Chapter III: no grave yet, he just stands there, alone
+      else if (w.josiah) { const gx = x + 1.6, gz = z - 1.2; w.extra = makeGrave('JOSIAH WILLIAMS', ['Beloved father', 'Taken by Terra Imperia', 'during the occupation of Earth']); w.extra.position.set(gx, wHeight(gx, gz), gz); w.extra.rotation.y = Math.atan2(x - gx, z - gz); wScene.add(w.extra); w.faceGrave = Math.atan2(gx - x, gz - z); R.root.rotation.y = w.faceGrave; }
       GIVERS.list.push(Object.assign(w, { R, x, z }));
     } catch (e) { console.warn('quest giver failed', w.name, e); }
   }
@@ -22315,6 +22323,11 @@ function giversTick(dt) {
   }
 }
 function giverNear(p) { for (const G of GIVERS.list) if (Math.hypot(G.x - p.x, G.z - p.z) < 2.8) return G; return null; }
+const JOS_CH3 = 'I don’t know who sent you, and I don’t want to know. I’ve nothing to offer you. Go away. Leave me alone.'; // JOSIAH_WILLIAMS_CHAPTER_3 (data/josCh3Voice.js)
+async function jos3Talk() { // Chapter III: Josiah Williams II, on Earth, and it's too soon to meet him (as with Archamus)
+  const vo = await loadDataScript('josCh3Voice').then(ok => ok ? sfx.loadClips('josCh3Voice') : []).catch(() => []);
+  if (state !== 'explore' || ex.dlg) return; openDialog('JOSIAH WILLIAMS II', [JOS_CH3], false, null, vo || []);
+}
 const ARCH_CH3 = 'I didn’t come to Archiostal looking for company, and I certainly didn’t ask for yours. Whatever you want, find someone else. Go away.'; // ARCHAMUS_CHAPTER_3 (data/archCh3Voice.js)
 async function arch3Talk() { // Chapter III: too soon to meet him
   const vo = await loadDataScript('archCh3Voice').then(ok => ok ? sfx.loadClips('archCh3Voice') : []).catch(() => []);
@@ -22664,6 +22677,7 @@ async function hak4Talk() {
   if (state !== 'explore' || ex.dlg) return; openDialog(tiPhone() ? 'HAK CHOMPJAK V' : 'HAK CHOMPJAK V · EMPEROR OF THE CHOMPY EMPIRE', HAK4, false, null, vo || []);
 }
 function giverTalk(G) {
+  if (G.josiah && G.jos3) { jos3Talk(); return; }
   if (G.josiah) { josiahTalk(); return; }
   { const E = eggFor(G.arch3 || G.leader === 'archamus' ? 'archamus' : G.leader === 'hak' ? 'hak' : ''); if (E) { eggTalk(E); return; } } // Josiah Richards or Lord Sevirrus is with you: the hidden conversation first
   if (G.hak4) { hak4Talk(); return; }
@@ -22760,7 +22774,8 @@ function takeOff() {
 function shipUpTick(dt) {
   const A = SPC.ascent, S = world.landShip, X0 = shipX(), Z0 = shipZ(), gy = wHeight(X0, Z0) + 2.7; A.t += dt; const k = A.t * A.t * .35; setShipRig(S, 1 - smooth(.3, 1.4, A.t), 1 - smooth(0, .5, A.t));
   S.position.set(X0, gy + k * 30, Z0 - k * 18); S.rotation.x = -Math.min(.4, A.t * .2);
-  camera.position.set(X0 + 22, gy + 10 + k * 8, Z0 + 28); camera.lookAt(S.position);
+  if (!A.camOff) { const J = S.userData.skin === 'jewel' ? 1.5 : 1, opts = [[22, 28], [-22, 28], [30, -6], [-30, -6], [0, 36], [26, 16], [-26, 16]].map(([x, z]) => [x * J, z * J]); A.camOff = opts.find(([x, z]) => { for (let t = .35; t <= 1; t += .2) if (worldBlocked(X0 + x * t, Z0 + z * t, true)) return false; return true; }) || opts[0]; A.camJ = J; } // a clear line to the ship
+  camera.position.set(X0 + A.camOff[0], gy + 10 * A.camJ + k * 8, Z0 + A.camOff[1]); camera.lookAt(S.position);
   if (A.t > 2.6) {
     const W = world.planet; S.visible = false; setShipRig(S, 1, 1); if (world.orion) world.orion.root.visible = true;
     rememberPlaceSafe(); ui.xhud.classList.remove('world');

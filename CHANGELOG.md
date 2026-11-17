@@ -2662,3 +2662,13 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **On the ground,** the last few pets you tamed trot after you round town. **Aboard the Jewel,** every pet you own roams her five decks, the garden most of all. Walk up and press **PET** for a purr or a wag. (She shows up to 30 of them at once, 12 on phones; you keep the rest.)
 - **New London is open again:** fly over it in Earth's sky and land in Parliament Square. The Jewel sets down on the lawn where the escape ship once stood. Walk Westminster with its music and its strays, then board her to leave. None of Chapter II happens again.
 - **The crew walk the Jewel:** companions you dismiss no longer stand on the crew deck. Aboard the Jewel they wander all five decks, stopping when you come near and turning to you when you talk, and now and then they move to another deck while you're away from it. Talk to them wherever you find them.
+
+### Josiah Williams II, too soon (Chapter III)
+- **Josiah is already on Earth in Chapter III,** near wherever you land, standing alone (no grave yet). As with Archamus on Archiostal, it's too soon to meet him: speak to him and he sends you away, voiced (`data/josCh3Voice.js`, JOSIAH_WILLIAMS_CHAPTER_3).
+
+### Jewel of Archamus fixes
+- **Taking off:** the takeoff camera sits further back for the Jewel and picks an angle with a clear view of her, so it no longer ends up inside a city tower while she lifts off.
+- **Flying in a world's sky (and in space):** the chase camera sits further back and higher, so she rides low in the frame and you can see where you're going. Her main engine glows a calm blue instead of flaring into a white blob in the middle of the screen.
+- **Going into the sky:** no stutter the first time she appears in a new sky. She no longer carries a light of her own, which made every scene rebuild its shaders.
+- **Boarding:** her keel no longer cuts through the ramp as a black block.
+- **On the ground:** you can't walk through her any more. She has her own outline (hull, mandibles, wings and engine pods), not the smaller Nostra's, and the ramp under her stern stays open.
