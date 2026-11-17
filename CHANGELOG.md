@@ -2557,3 +2557,33 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 
 ### Planets keep their own colours
 - The blood red stays on the main menu (and the interface's red in Chapter IV). Planets and stations no longer turn red: they keep their own skies, haze and light.
+
+### Archamus' projection: the ships that never came back, and Josiah Williams II (Chapter IV)
+- **Straight after the meeting, Archamus shows you the galaxy.** He goes on talking, and a projection of the Milky Way rises inside the normal dialogue box, above his words, with no cutscene. It is the galaxy map's own Milky Way and star systems, in a flickering hologram blue, turning slowly, and it moves to whatever he's talking about on each line: Sol and Archiostal ("you are here"), Catharsis space glowing red at the core and spreading over the old Grek ring, ships flying in and their lights going out ("none returned"), the carapace, and finally Earth.
+- **Twenty lines** (CH4ARCHAMUSPROJ1–20, `data/archProjVoices.js`, script in `assets/audio/archamus_ch4/PROJ_VOICE_SCRIPT.md`; subtitles until recorded). While you slept, ships went into Catharsis space and none came back. The Catharsis' carapace can't be shot by your ordinary rifles. A man on Earth knows where they are: **Josiah Williams II**, who fell into a deep depression two years ago after Terra Imperia killed his father during its occupation of Earth.
+- **New objective:** after **Meet Archamus**, the main quest is **Find Josiah Williams II on Earth** (it replaces Explore Archiostal; `ch4.archProj`). Talking to Archamus again shows Earth in the projection and repeats his last line. A save that met him before this update hears the projection the next time you speak to him.
+- Josiah Williams II's Nostrapedia entry now mentions his father's death and his depression.
+
+### Josiah Williams II, at his father's grave (Chapter IV)
+- **Josiah is in the game.** Once Archamus has sent you, land anywhere on Earth and Josiah Williams II is standing near your ship, on dry, level ground away from the trader's stall, at a headstone: *JOSIAH WILLIAMS · Beloved father · Taken by Terra Imperia during the occupation of Earth*, with flowers someone keeps bringing. He uses his Nostrapedia model (`data/cpJosiah2.js`).
+- **He looks the way he feels.** From a distance he stands still with his head bowed over the grave and his arms hanging. Come within a few metres and he slowly turns to you and half lifts his head; walk away and he turns back to the stone.
+- **Nine lines** (CH4JOSIAHMEET1–9, `data/josiahMeetVoices.js`, script in `assets/audio/josiah_ch4/MEET_VOICE_SCRIPT.md`; subtitles until recorded): he isn't interested, recognises the look of someone who came back from somewhere, tells you about his dad and the door-to-door raids, says he isn't broken, just finished, refuses to talk about the dreams, and asks you to leave him with his father.
+- **Objectives:** Find Josiah Williams II completes (150 XP, `ch4.josiahMet`) and the main quest becomes **Bring Josiah Williams II back into the light**. Talking to him again repeats his last line.
+
+### Archamus names your own homeworld
+- In the projection, Archamus' third line used to say "Here is Sol, where you were born" whatever your species. He now names your species' homeworld, and the hologram flies to it and marks it **YOUR HOME**: Sol for a Human, Eris (at the edge of Sol) for an Erisian, Aridaxx for a Chompy, Tamez Prime for an Oilkoumene, Timpur Prime for a Taredesiban. For a Grek it is Malana, which Archiostal circles: "You never truly left home."
+- The recorded line 3 is the human one; the other five show as subtitles until recorded (names in `assets/audio/archamus_ch4/PROJ_VOICE_SCRIPT.md`).
+
+### Human faces from the story, and armour sets
+- **Faces.** A human wanderer's face was a plain sphere with dots for eyes. Appearance → **Face** now offers faces modelled on **Darius**, **Hawthorne**, **Orion** (cybernetic eye included), **Croxian** and **Malia**: their own face, eyes, brows, nose, lips and ears, taken from their models and coloured with your skin tone. **Classic** keeps the old face. A wanderer who never picked one gets Darius (male), Malia (female) or Orion (non-binary), so existing humans look better straight away.
+- **Theirs hair.** A new first hair style, **Theirs**, gives you the hair that goes with the face: Darius's and Hawthorne's swept hair, Orion's and Croxian's short brushed hair, Malia's swept crown and braids. It's the default for new humans; existing wanderers keep their hair. Hair colour still applies.
+- **Beards.** With Facial hair on, Hawthorne and Orion wear their own beards; the other faces borrow Hawthorne's, shaped for these faces.
+- **Armour sets.** The Spacesuit tab is now **Outfit**: the Spacesuit, or **Federation plate** (Darius's), **Imperia plate** (Hawthorne's, black and crimson), **Pontifex armour**, **Mascar armour** (Croxian's), **Orion's kit** or **Malia's kit**. Each is that character's own armoured body, without their weapon or head, with your face and hair on top, and it walks and animates like the suit. The first armour and trim colour keep the outfit's own colours; the rest repaint it. Suit design and visor apply to the spacesuit only.
+- Residents copied from a wanderer get the same face and outfit. Equipment you wear (helmets, chestplates and so on) still goes on over any outfit.
+
+### Phones, and the back of your head
+- **Hair all the way round.** With **Theirs** hair, the back of the head was bare skin (their models only have hair on top and in front), which showed whenever you wore an outfit. It's now covered, wrapping just past the ears, in your hair colour.
+- **Outfits are light enough for phones.** Each outfit was hundreds of separate parts (the Pontifex armour about four hundred), each its own draw call. A limb's parts are now merged by colour into a handful of meshes (Federation and Imperia plate 18, Pontifex 37), with every bevel keeping its shade, so they look the same and cost far less. Repainting covers the whole outfit, each part at its own shade.
+- **Faces load lighter on phones.** Instead of preparing all five faces at start-up, a phone prepares only the faces your wanderers and residents wear (and Hawthorne's, for the borrowed beard); any other face loads when you pick it.
+- **Archamus' projection on a phone** is a little shorter, leaving more of the world on screen above the dialogue box.
+- Checked on an emulated iPhone: the creator's Face and Outfit rows wrap and scroll, and the projection fits the dialogue box.

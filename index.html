@@ -457,6 +457,8 @@ body.touch .x-prompt kbd{display:none}
 .x-dlg .line{font-weight:300;font-size:clamp(14px,2vw,18px);line-height:1.6;min-height:3.2em}
 .x-dlg .tap{font-size:8px;letter-spacing:.42em;color:var(--mute);margin-top:6px;text-transform:uppercase;opacity:0;transition:opacity .3s}
 .x-dlg.ready .tap{opacity:.85}
+@media (max-width:600px),(max-height:500px){.x-dlg .holo{height:clamp(96px,22vh,180px);margin-bottom:8px}} /* phones: the projection leaves room for the world */
+.x-dlg .holo{display:block;width:100%;height:clamp(110px,30vh,260px);margin:-4px 0 12px;border-radius:4px;background:radial-gradient(ellipse at 50% 55%,rgba(40,120,180,.18),rgba(0,0,0,0) 70%);border-bottom:1px solid rgba(120,210,255,.18);pointer-events:none}
 .x-hint{position:absolute;left:50%;top:calc(var(--st) + 22px);transform:translateX(-50%);font-size:9px;letter-spacing:.3em;color:var(--mute);text-transform:uppercase;white-space:nowrap;transition:opacity 1.2s;text-shadow:0 0 8px #000}
 @media (max-width:720px){ .x-hint{top:auto;bottom:calc(var(--sb) + 170px)} .x-prompt{bottom:calc(var(--sb) + 230px)} }
 @media (pointer:coarse),(max-width:720px){ .x-hint{white-space:normal;width:min(560px,calc(100vw - 40px));text-align:center;line-height:1.7;letter-spacing:.22em} } /* the controls hint wraps on phones instead of running off both edges */
@@ -1355,11 +1357,13 @@ body.ch4 .bar.sta i{background:#ff8a7e}
       </div>
       <div class="pane" data-pane="look">
         <div class="field"><label>Skin tone</label><div class="sws" id="crSkin"></div></div>
+        <div class="field" id="fFace"><label>Face</label><div class="chips" id="crFace"></div></div>
         <div class="field" id="fHair"><label>Hair style</label><div class="chips" id="crHair"></div></div>
         <div class="field" id="fBeard"><label>Facial hair</label><div class="chips" id="crBeard"></div></div>
         <div class="field" id="fHairC"><label id="lHairC">Hair colour</label><div class="sws" id="crHairC"></div></div>
       </div>
       <div class="pane" data-pane="suit">
+        <div class="field" id="fOutfit"><label>Outfit</label><div class="chips" id="crOutfit"></div></div>
         <div class="field"><label id="lSuit">Suit colour</label><div class="sws" id="crSuit"></div></div>
         <div class="field"><label id="lAcc">Accent colour</label><div class="sws" id="crAcc"></div></div>
         <div class="field" id="fDesign"><label>Suit design</label><div class="chips" id="crDesign"></div></div>
@@ -2237,11 +2241,22 @@ const IDENT = {
   female: { label: 'Female', pro: 'She / her', sw: .92, hw: 1.06, h: .965 },
   nb: { label: 'Non-binary', pro: 'They / them', sw: .99, hw: 1, h: .985 }
 };
-const HAIRS = [['none', 'None'], ['buzz', 'Buzz'], ['crop', 'Crop'], ['bob', 'Bob'], ['long', 'Long'], ['ponytail', 'Ponytail'], ['bun', 'Bun'], ['curls', 'Curls'], ['mohawk', 'Mohawk']];
+const HAIRS = [['theirs', 'Theirs'], ['none', 'None'], ['buzz', 'Buzz'], ['crop', 'Crop'], ['bob', 'Bob'], ['long', 'Long'], ['ponytail', 'Ponytail'], ['bun', 'Bun'], ['curls', 'Curls'], ['mohawk', 'Mohawk']];
+/* faces for a human: modelled on the people of the story (their own heads, from their models), coloured with your skin and hair.
+   A wanderer with no face chosen gets one that suits their gender: Darius for a man, Malia for a woman, Orion otherwise. */
+const FACES = [['darius', 'Darius'], ['hawthorne', 'Hawthorne'], ['orion', 'Orion'], ['croxian', 'Croxian'], ['malia', 'Malia'], ['classic', 'Classic']];
+const FACE_SRC = { darius: 'leader_human', hawthorne: 'tiHaw', orion: 'cpOrion', croxian: 'cpCroxianU', malia: 'cpMalia' };
+const faceOf = c => FACES.some(f => f[0] === (c && c.face)) ? c.face : c && c.identity === 'female' ? 'malia' : c && c.identity === 'male' ? 'darius' : 'orion';
+/* outfits for a human: the spacesuit, or armour worn by the people of the story (their own bodies, with your head on). Colour 0 of an
+   outfit keeps its own colours; the rest repaint its armour and trim. */
+const OUTFITS = [['suit', 'Spacesuit'], ['federation', 'Federation plate'], ['imperia', 'Imperia plate'], ['pontifex', 'Pontifex armour'], ['mascar', 'Mascar armour'], ['ranger', 'Orion’s kit'], ['strider', 'Malia’s kit']];
+const OUTFIT_SRC = { federation: 'leader_human', imperia: 'tiHaw', pontifex: 'cpPontifex', mascar: 'cpCroxian', ranger: 'cpOrion', strider: 'cpMalia' };
+const OUTFIT_COL = { imperia: ['#1c1d23', '#d0343a'] }; // Hawthorne's model is the Federation plate: Terra Imperia's black and crimson are its own colours here
+const outfitOf = c => c && spOf(c) === 'human' && OUTFIT_SRC[c.outfit] ? c.outfit : 'suit';
 const DESIGNS = [['standard', 'Standard'], ['pilot', 'Pilot'], ['vanguard', 'Vanguard'], ['survey', 'Survey']];
 const DESIGN_REGIONS = { standard: [], pilot: ['fore', 'shin'], vanguard: ['torso', 'helmet'], survey: ['upper', 'thigh'] };
 const VISORS = { smoke: ['Smoke', '#1b2433', .5, .6], gold: ['Gold', '#c9a24a', .6, 1], ice: ['Ice', '#7cc0ee', .4, .4], clear: ['Clear', '#d6e8ff', .14, .2] };
-const DEFAULT_W = { species: 'human', beard: false, chapter: 0, name: 'WANDERER', identity: 'nb', skin: 2, hair: 'crop', hairColor: 1, suit: 0, accent: 1, design: 'standard', visor: 'smoke' };
+const DEFAULT_W = { species: 'human', beard: false, chapter: 0, name: 'WANDERER', identity: 'nb', skin: 2, hair: 'theirs', hairColor: 1, suit: 0, accent: 1, design: 'standard', visor: 'smoke' };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 /* ---- save slots: progress is written ONLY when the player chooses Save ----
    Saves live in IndexedDB, which has room for hundreds of megabytes, so big rosters and long playthroughs always fit.
@@ -2361,7 +2376,7 @@ function paletteFor(sp) {
   return (palCache[sp] = { skin: shades(d.skin), hair: [d.hair, ...HAIRC], suit: [d.armour, ...SUITC], accent: [d.rim, ...ACCC] });
 }
 function speciesDefaults(sp) {
-  if (sp === 'human') return { species: 'human', skin: 2, hair: 'crop', hairColor: 1, suit: 0, accent: 1, beard: false };
+  if (sp === 'human') return { species: 'human', skin: 2, hair: 'theirs', hairColor: 1, suit: 0, accent: 1, beard: false };
   const S = SPECIES[sp];
   return { species: sp, skin: 0, hair: S.defaults.hair, hairColor: 0, suit: 0, accent: 0, beard: S.defaults.beard };
 }
@@ -2475,7 +2490,12 @@ function applyLook(c) {
     return;
   }
   pendingLook = null;
-  if (sp === 'human') { if (!look.ready) return; swapModel('human'); applyHumanLook(c); }
+  if (sp === 'human') {
+    if (!look.ready) return; look.lastC = c;
+    const k = outfitOf(c), info = k !== 'suit' ? outfitInfo[k] : null;
+    if (k !== 'suit' && !info) loadOutfit(k).then(i => { if (i && look.lastC === c) applyLook(c); if (i && state === 'create') buildCreateUI(); }); // the suit until it's ready
+    swapModel(info ? 'human_' + k : 'human'); applyHumanLook(c, info);
+  }
   else { swapModel(sp); applyAltLook(sp, speciesInfo[sp], c); }
 }
 function headYFor(c) {
@@ -2565,14 +2585,21 @@ function initLook(m) {
   }
   const nose = new THREE.Mesh(new THREE.SphereGeometry(.014, 10, 8), look.skinMat); nose.position.set(0, -.012, .113); head.add(nose);
   const mouth = new THREE.Mesh(new THREE.BoxGeometry(.034, .006, .01), new THREE.MeshStandardMaterial({ color: 0x5a2f2a, roughness: .6 })); mouth.position.set(0, -.052, .105); head.add(mouth);
+  look.head = head; look.procFace = head.children.filter(o => o !== neck); // the Classic face: hidden while a face from the story is on
+  look.skinDark = new THREE.MeshStandardMaterial({ color: SKIN[2], roughness: .7 });
   look.hair = new THREE.Group(); head.add(look.hair);
   const beard = new THREE.Group(); head.add(beard); look.beard = beard;
   const bm = new THREE.Mesh(new THREE.SphereGeometry(.123, 24, 12, Math.PI / 2 - 1.15, 2.3, Math.PI * .58, Math.PI * .34), look.hairMat);
   bm.scale.set(.92, 1.1, 1.04); beard.add(bm);
   const mo = new THREE.Mesh(new THREE.BoxGeometry(.07, .014, .02), look.hairMat); mo.position.set(0, -.034, .109); beard.add(mo);
+  look.procBeard = [bm, mo];
   beard.visible = false;
   look.ready = true;
   applyLook(wanderer);
+  setTimeout(() => { // every face ready before it's wanted; on a phone only the faces your wanderers and residents wear (and Hawthorne's, for the borrowed beard)
+    const phone = document.body.classList.contains('touch'), want = new Set(['hawthorne']);
+    for (const c of [wanderer, ...roster, ...residents]) if (c && spOf(c) === 'human') want.add(faceOf(c));
+    for (const k in FACE_SRC) if (!phone || want.has(k)) faceTemplate(k).then(() => { if (look.faceFor && look.faceFor.split('+')[0] === k && wanderer && spOf(wanderer) === 'human') applyLook(wanderer); }); }, 1500);
 }
 
 function buildHair(style) {
@@ -2582,6 +2609,8 @@ function buildHair(style) {
   const add = (geo, x, y, z, rx = 0, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(geo, M); m.position.set(x, y, z); m.rotation.x = rx; m.scale.set(sx, sy, sz); g.add(m); return m; };
   const cap = r => add(new THREE.SphereGeometry(r, 28, 14, 0, Math.PI * 2, 0, Math.PI * .52), 0, .012, -.006, -.32, .93, 1.12, 1.02);
   switch (style) {
+    case 'theirs': // their hair comes with the face and covers the top and front; this is the back of the head, which their models leave bare
+      add(new THREE.SphereGeometry(.124, 28, 14, Math.PI - .3, Math.PI + .6, 0, Math.PI * .6), 0, .006, -.004, 0, .95, 1.1, 1.04); break; // wrapped a little past the ears
     case 'buzz': cap(.121); break;
     case 'crop': cap(.127); add(new THREE.BoxGeometry(.15, .028, .05), 0, .088, .076, .5); break;
     case 'bob': cap(.128);
@@ -2611,7 +2640,138 @@ function buildHair(style) {
   }
 }
 
-function applyHumanLook(c) {
+// ---- faces from the story: the face, eyes, brows, nose, lips and ears (and beard) lifted from that character's own model ----
+const FACE_PART = /^(face|jaw|nose|nose bridge|nose tip|clean chin|eye white|iris|hazel iris|pupil|eye glint|eye catchlight|eye liner|eyebrow|ear|ear inner|mouth interior|mouth neutral|upper lip|lower lip|upper teeth|brow detail|cybernetic eye housing|cybernetic eye lens|cybernetic eye indicator)( -?1)?$/;
+const FACE_BEARD = /^(beard|moustache|grey beard|full beard|central beard|[lr] beard|[lr] cheek beard)/;
+const FACE_HAIR = /^(hair scalp|hair swept ridge|hair cap|short brushed hair|swept hair crown|swept hair strand|braided hair)/; // 'Theirs': the hair that goes with the face
+const FACE_SKIN = /^(face|jaw|nose|nose bridge|nose tip|clean chin|ear|brow detail)( -?1)?$/;
+const faceTpl = {}, faceTplV = {}; // promises, and what they resolved to (so a loaded face goes on at once: residents are copied from you straight after)
+function faceTemplate(key) { // the parts, in head space: centred where the Classic head is and scaled to its size
+  if (faceTpl[key]) return faceTpl[key];
+  return faceTpl[key] = loadDataScript(FACE_SRC[key], 'glb').then(() => embGlb(FACE_SRC[key])).then(sc => { // some (Croxian unmasked) load only when first wanted
+    if (!sc) return null; sc.updateMatrixWorld(true);
+    const parts = [];
+    sc.traverse(o => { if (!o.isMesh) return; const n = (o.name || '').replace(/_/g, ' ').toLowerCase().replace(/^(croxian|malia) /, '');
+      const beard = FACE_BEARD.test(n), hair = FACE_HAIR.test(n); if (!beard && !hair && !FACE_PART.test(n)) return;
+      parts.push({ geo: o.geometry.clone().applyMatrix4(o.matrixWorld), role: beard ? 'beard' : hair ? 'scalp' : n.startsWith('ear inner') ? 'skinDark' : FACE_SKIN.test(n) ? 'skin' : /^eyebrow/.test(n) ? 'hair' : null, mat: o.material, n }); });
+    const core = parts.filter(q => /^(face|jaw|clean chin)$/.test(q.n)), box = new THREE.Box3(); for (const q of (core.length ? core : parts)) { q.geo.computeBoundingBox(); box.union(q.geo.boundingBox); }
+    if (box.isEmpty()) return null;
+    const c = box.getCenter(new THREE.Vector3()), k = .25 / Math.max(.01, box.max.y - box.min.y);
+    for (const q of parts) { q.geo.translate(-c.x, -c.y, -c.z); q.geo.scale(k, k, k); q.geo.translate(0, -.008, .004); q.geo.computeBoundingSphere(); }
+    return parts;
+  }).catch(e => { console.warn('face', key, e); return null; }).then(v => (faceTplV[key] = v));
+}
+function applyFace(c) {
+  const theirs = c.hair === 'theirs', key = faceOf(c) + (theirs ? '+hair' : ''), base = faceOf(c); look.faceFor = key;
+  const clear = () => { for (const g of [look.faceG, look.beardG]) if (g && g.parent) g.parent.remove(g); look.faceG = look.beardG = null; look.faceKey = null; };
+  const classic = on => { for (const o of look.procFace) o.visible = on; for (const o of look.procBeard) o.visible = on; };
+  if (base === 'classic' || !FACE_SRC[base]) { clear(); classic(true); return; }
+  if (look.faceKey === key) return;
+  const build = parts => {
+    if (look.faceFor !== key || look.faceKey === key) return;
+    if (!parts) { clear(); classic(true); return; }
+    clear(); classic(false);
+    const face = new THREE.Group(), beard = new THREE.Group(), own = {};
+    for (const q of parts) {
+      if (q.role === 'scalp' && !theirs) continue;
+      const m = q.role === 'skin' ? look.skinMat : q.role === 'skinDark' ? look.skinDark : q.role === 'hair' || q.role === 'beard' || q.role === 'scalp' ? look.hairMat : (own[q.mat.uuid] || (own[q.mat.uuid] = q.mat.clone()));
+      const o = new THREE.Mesh(q.geo, m); o.castShadow = false; (q.role === 'beard' ? beard : face).add(o);
+    }
+    if (!parts.some(q => q.role === 'beard') && faceTplV.hawthorne) for (const q of faceTplV.hawthorne) if (q.role === 'beard') beard.add(new THREE.Mesh(q.geo, look.hairMat)); // a face with no beard of its own borrows Hawthorne's: it's shaped for these faces
+    look.head.add(face); look.faceG = face; look.faceKey = key;
+    if (beard.children.length) { look.beard.add(beard); look.beardG = beard; for (const o of look.procBeard) o.visible = false; } // their own beard, when they have one
+    else for (const o of look.procBeard) o.visible = true;
+  };
+  if (base in faceTplV) build(faceTplV[base]); else faceTemplate(base).then(build);
+}
+// ---- outfits: a character's body from the story, head off, arms and legs on your rig, your head where theirs was ----
+const outfitInfo = {}, outfitLoad = {};
+function loadOutfit(k) {
+  if (outfitLoad[k]) return outfitLoad[k];
+  const tag = OUTFIT_SRC[k];
+  return outfitLoad[k] = loadDataScript(tag, 'glb').then(() => embGlb(tag)).then(sc => {
+    if (!sc) return null; const info = setupOutfit(sc); if (OUTFIT_COL[k]) [info.baseHex, info.trimHex] = OUTFIT_COL[k], info.own = true; outfitInfo[k] = info; speciesInfo['human_' + k] = info; return info;
+  }).catch(e => { console.warn('outfit', k, e); return null; });
+}
+function setupOutfit(m) {
+  const holder = new THREE.Group(); holder.add(m); m.updateMatrixWorld(true);
+  const nm = o => (o.name || '').replace(/_/g, ' ').toLowerCase().replace(/^(croxian|malia) /, '');
+  const WPN = /^(weapon|scythe|staff|blade coupling|polearm|right wrist weapon|wrist emitter|cyan muzzle)/, gone = []; m.traverse(o => { if (WPN.test(nm(o))) gone.push(o); }); for (const o of gone) if (o.parent) o.parent.remove(o); // no weapons: they'd be measured into the height, and you carry your own
+  m.updateMatrixWorld(true);
+  const box0 = new THREE.Box3().setFromObject(m); m.position.y -= box0.min.y; m.updateMatrixWorld(true);
+  const Hm = box0.max.y - box0.min.y, faceB = new THREE.Box3(); let skinRef = null, headNode = null;
+  m.traverse(o => { const n = nm(o); if (n === 'head' && !headNode) headNode = o; if (o.isMesh && /^(face|jaw|clean chin)$/.test(n)) { faceB.union(new THREE.Box3().setFromObject(o)); if (n === 'face' && o.material && o.material.color) skinRef = o.material.color.clone(); } });
+  if (faceB.isEmpty() && headNode) { const hb = new THREE.Box3().setFromObject(headNode), c = hb.getCenter(new THREE.Vector3()), h = (hb.max.y - hb.min.y) * .78; faceB.setFromCenterAndSize(c, new THREE.Vector3(h * .8, h, h)); } // a masked head (Croxian's): the size of the head under it
+  const kill = []; m.traverse(o => { const n = nm(o); if (o === headNode || (o.isMesh && (FACE_PART.test(n) || FACE_HAIR.test(n) || FACE_BEARD.test(n) || /^(neck|exposed neck|bare head|centre face shield|helmet cheek|cyan eye|cybernetic eye)/.test(n)))) kill.push(o); });
+  for (const o of kill) if (o.parent) o.parent.remove(o);
+  m.updateMatrixWorld(true);
+  const meshes = []; m.traverse(o => { if (!o.isMesh) return; o.castShadow = true; o.receiveShadow = true; if (o.material && !Array.isArray(o.material)) { o.material = o.material.clone(); o.userData.orig = o.material.color.clone(); } meshes.push(o); });
+  // arms and legs onto pivots at the shoulders and hips (which side is which from where it sits: your right is -x, as on the suit)
+  const ARM = /(upper ?arm|lower ?arm|pauldron|bicep|bracer|forearm|elbow|hand|glove|finger|thumb|gauntlet|wrist|cuff|sleeve)/, LEG = /(thigh|shin|knee|foot|boot|ankle|toe|tibia|leg lock|greave|calf|\bleg\b)/;
+  const grp = { ra: [], la: [], rl: [], ll: [] }, cen = new THREE.Vector3();
+  for (const o of meshes) { const n = nm(o), b = new THREE.Box3().setFromObject(o); if (b.isEmpty()) continue; b.getCenter(cen); const r = cen.x < 0;
+    if (ARM.test(n) && !/harness/.test(n)) grp[r ? 'ra' : 'la'].push([o, b]); else if (LEG.test(n)) grp[r ? 'rl' : 'll'].push([o, b]); }
+  const rig = {};
+  for (const k of ['ra', 'la', 'rl', 'll']) {
+    const U = new THREE.Box3(); for (const [, b] of grp[k]) U.union(b);
+    const arm = k[1] === 'a', sx = k[0] === 'r' ? -1 : 1, c = U.isEmpty() ? new THREE.Vector3(sx * Hm * .13, Hm * (arm ? .78 : .5), 0) : U.getCenter(new THREE.Vector3());
+    const g = new THREE.Group(); g.position.set(c.x, (U.isEmpty() ? c.y : U.max.y - (arm ? Hm * .03 : 0)) - m.position.y, c.z); m.add(g); m.updateMatrixWorld(true);
+    for (const [o] of grp[k]) g.attach(o); rig[k] = g;
+  }
+  // your head goes where theirs was, at the size theirs was
+  const anchor = new THREE.Group(), fc = faceB.getCenter(new THREE.Vector3()); anchor.position.set(fc.x, fc.y - m.position.y, fc.z); anchor.scale.setScalar((faceB.max.y - faceB.min.y) / .25); m.add(anchor);
+  // colours: the commonest armour colour is its base, the next its trim; anything skin-coloured (hands) follows your skin
+  const near = (a, b, t = .06) => a && b && Math.abs(a.r - b.r) + Math.abs(a.g - b.g) + Math.abs(a.b - b.b) < t, lum = c => (c.r * .3 + c.g * .59 + c.b * .11) || 1e-3;
+  const tally = [];
+  for (const o of meshes) { const c = o.userData.orig; if (!c || near(c, skinRef, .08) || lum(c) < .035) continue; const b = new THREE.Box3().setFromObject(o), v = b.getSize(new THREE.Vector3()), w = Math.max(1e-6, v.x * v.y + v.y * v.z + v.x * v.z);
+    const T = tally.find(t => near(t.c, c, .09)); if (T) T.w += w; else tally.push({ c, w }); }
+  tally.sort((a, b) => b.w - a.w);
+  const baseC = tally[0] ? tally[0].c : null, trimC = tally.find(t => !near(t.c, baseC, .25)); 
+  for (const o of meshes) { const c = o.userData.orig; if (!c) continue; o.userData.role = near(c, skinRef, .08) ? 'skin' : trimC && near(c, trimC.c, .09) ? 'rim' : baseC && lum(c) >= .035 ? 'armour' : null; // every other colour follows the armour, at its own shade
+    const ref = o.userData.role === 'skin' ? skinRef : o.userData.role === 'armour' ? baseC : o.userData.role === 'rim' ? trimC.c : null; if (ref) o.userData.k = lum(c) / lum(ref); }
+  const merged = mergeOutfit(m, [rig.ra, rig.la, rig.rl, rig.ll, m], meshes, { skin: skinRef, armour: baseC, rim: trimC && trimC.c });
+  const base = 1.86 / Hm; holder.scale.setScalar(base);
+  return { model: holder, rig, anchor, meshes: merged, base, headY: (fc.y - box0.min.y) * base, lieY: .26, baseHex: baseC ? '#' + baseC.getHexString() : '#888888', trimHex: trimC ? '#' + trimC.c.getHexString() : '#aaaaaa' };
+}
+/* an outfit is hundreds of small parts (the Pontifex armour, four hundred): one draw call each is too many for a phone. Each limb's parts
+   are merged by colour role into a handful of meshes. Each vertex keeps its own colour as a ratio of its role's colour, so repainting
+   the armour or trim is still one material colour, and every bevel keeps its shade. Glowing, see-through or textured parts stay as they are. */
+function mergeOutfit(m, holders, meshes, refs) {
+  m.updateMatrixWorld(true);
+  const groups = new Map(), keep = [], hs = new Set(holders);
+  for (const o of meshes) {
+    const mt = o.material; if (Array.isArray(mt) || mt.map || mt.transparent || (mt.emissive && mt.emissive.getHex()) || !o.userData.orig) { keep.push(o); continue; }
+    let a = o.parent; while (a && !hs.has(a)) a = a.parent; if (!a) { keep.push(o); continue; }
+    const r = o.userData.role || '', key = [holders.indexOf(a), r, Math.round((mt.metalness || 0) * 4), Math.round((mt.roughness == null ? 1 : mt.roughness) * 4)].join('|');
+    if (!groups.has(key)) groups.set(key, { a, r, mt, list: [] }); groups.get(key).list.push(o);
+  }
+  const out = [...keep];
+  for (const { a, r, mt, list } of groups.values()) {
+    const inv = new THREE.Matrix4().copy(a.matrixWorld).invert(), ref = r ? refs[r] : null, parts = []; let n = 0;
+    for (const o of list) {
+      const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(), mx = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld); g.applyMatrix4(mx);
+      if (mx.determinant() < 0) for (const k of ['position', 'normal']) { const at = g.attributes[k]; if (!at) continue; const A = at.array; for (let t = 0; t + 8 < A.length; t += 9) for (let c = 0; c < 3; c++) { const tmp = A[t + 3 + c]; A[t + 3 + c] = A[t + 6 + c]; A[t + 6 + c] = tmp; } }
+      const c = o.userData.orig, q = ref ? [c.r / Math.max(.02, ref.r), c.g / Math.max(.02, ref.g), c.b / Math.max(.02, ref.b)] : [c.r, c.g, c.b];
+      parts.push([g, q]); n += g.attributes.position.count;
+    }
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3); let k = 0;
+    for (const [g, q] of parts) { const cnt = g.attributes.position.count; pos.set(g.attributes.position.array, k * 3); if (g.attributes.normal) nor.set(g.attributes.normal.array, k * 3); for (let i = 0; i < cnt; i++) col.set(q, (k + i) * 3); k += cnt; g.dispose(); }
+    const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); mg.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); mg.setAttribute('color', new THREE.BufferAttribute(col, 3)); mg.computeBoundingSphere(); mg.boundingSphere.radius += .3;
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, color: ref ? ref.clone() : 0xffffff, metalness: mt.metalness || 0, roughness: mt.roughness == null ? 1 : mt.roughness, side: mt.side });
+    const mesh = new THREE.Mesh(mg, mat); mesh.castShadow = true; mesh.receiveShadow = true; mesh.userData = { role: r || null, orig: ref ? ref.clone() : new THREE.Color(1, 1, 1), k: 1, merged: true }; a.add(mesh); out.push(mesh);
+    for (const o of list) { if (o.parent) o.parent.remove(o); o.material.dispose(); }
+  }
+  return out;
+}
+function applyOutfitLook(info, c, id) {
+  const cols = { skin: look.skinMat.color, armour: c.oSuit ? new THREE.Color(SUITC[c.oSuit - 1] || SUITC[0]) : info.own ? new THREE.Color(info.baseHex) : null, rim: c.oAcc ? new THREE.Color(ACCC[c.oAcc - 1] || ACCC[0]) : info.own ? new THREE.Color(info.trimHex) : null };
+  const dk = alDarkK((c.align && c.align.p) || 0) * .8;
+  for (const o of info.meshes) { const r = o.userData.role; if (!o.userData.orig) continue;
+    if (r && cols[r]) o.material.color.copy(cols[r]).multiplyScalar(o.userData.k || 1); else o.material.color.copy(o.userData.orig);
+    if (dk && r !== 'skin') o.material.color.lerp(AL_DARK, dk); }
+  const xf = c.identity === 'female' ? .94 : c.identity === 'male' ? 1.03 : 1; info.model.scale.set(info.base * id.h * xf, info.base * id.h, info.base * id.h);
+}
+function applyHumanLook(c, outfit) {
   if (!look.ready) return;
   const P = look.parts, acc = DESIGN_REGIONS[c.design] || [];
   const region = n => n === 'helmet shell' ? 'helmet' : /upper arm/.test(n) ? 'upper' : /forearm/.test(n) ? 'fore' : /thigh/.test(n) ? 'thigh' : /shin|boot/.test(n) ? 'shin' : 'torso';
@@ -2629,17 +2789,19 @@ function applyHumanLook(c) {
     if ('metalness' in look.visor) { look.visor.metalness = v[3]; look.visor.roughness = .08; }
   }
   { const k = alDarkK((c.align && c.align.p) || 0) * .8; if (k) for (const m of [look.base, look.accent, look.hBase, look.hAccent, look.trim]) if (m) m.color.lerp(AL_DARK, k); }
-  look.skinMat.color.set(SKIN[c.skin] || SKIN[2]); look.hairMat.color.set(HAIRC[c.hairColor] || HAIRC[1]);
-  buildHair(c.hair);
+  look.skinMat.color.set(SKIN[c.skin] || SKIN[2]); look.hairMat.color.set(HAIRC[c.hairColor] || HAIRC[1]); look.skinDark.color.copy(look.skinMat.color).multiplyScalar(.78);
+  buildHair(c.hair === 'theirs' && faceOf(c) === 'classic' ? 'crop' : c.hair); applyFace(c); // 'Theirs' with the Classic face: the crop it always had
   const id = IDENT[c.identity] || IDENT.nb;
   const setSX = (n, k) => { if (P[n]) P[n].scale.x = k; };
   const setPX = (n, cx, k) => { if (P[n]) P[n].position.x = cx * (k - 1); };
   setSX('torso', id.sw); setSX('life support backpack', Math.min(1.03, id.sw + .03));
   for (const [n, cx] of [['right shoulder', -.239], ['left shoulder', .239], ['right shoulder strap', -.1605], ['left shoulder strap', .1605], ['mission badge', -.2875]]) setPX(n, cx, id.sw);
   setSX('pelvis', id.hw); setSX('belt', id.hw);
-  if (rig.ra) { rig.ra.position.x = -.27 * id.sw; rig.la.position.x = .27 * id.sw; rig.rl.position.x = -.12 * id.hw; rig.ll.position.x = .12 * id.hw; }
+  if (rig.ra && !outfit) { rig.ra.position.x = -.27 * id.sw; rig.la.position.x = .27 * id.sw; rig.rl.position.x = -.12 * id.hw; rig.ll.position.x = .12 * id.hw; }
   look.model.scale.setScalar(id.h);
   if (look.beard) look.beard.visible = hasBeard(c);
+  if (outfit) { outfit.anchor.add(look.head); look.head.position.set(0, 0, 0); applyOutfitLook(outfit, c, id); } // your head, on their armour
+  else if (look.head.parent !== look.model) { look.model.add(look.head); look.head.position.set(0, 1.655, .02); }
 }
 
 const pedestal = new THREE.Group();
@@ -3492,13 +3654,16 @@ function buildCreateUI() {
   chips($('#crIdent'), Object.entries(IDENT).map(([k, v]) => [k, v.label]), 'identity');
   swatches($('#crSkin'), pal.skin, 'skin');
   chips($('#crHair'), human ? HAIRS : (SPECIES[sp].hairs || []), 'hair');
+  chips($('#crFace'), FACES, 'face');
   chips($('#crBeard'), [['yes', 'Beard'], ['no', 'Clean-shaven']], 'beard', v => { draft.beard = v === 'yes'; });
   swatches($('#crHairC'), pal.hair, 'hairColor');
-  swatches($('#crSuit'), pal.suit, 'suit');
-  swatches($('#crAcc'), pal.accent, 'accent');
-  $('#lSuit').textContent = human ? 'Suit colour' : 'Armour colour';
-  $('#lAcc').textContent = human ? 'Accent colour' : 'Trim colour';
-  $('#tabSuit').textContent = human ? 'Spacesuit' : 'Armour';
+  const of = outfitOf(draft), oi = of !== 'suit' ? outfitInfo[of] : null, suitOn = of === 'suit';
+  chips($('#crOutfit'), OUTFITS, 'outfit', v => { draft.outfit = v; buildCreateUI(); return false; });
+  swatches($('#crSuit'), suitOn ? pal.suit : [oi ? oi.baseHex : '#888888', ...SUITC], suitOn ? 'suit' : 'oSuit'); // an outfit's first colour is its own
+  swatches($('#crAcc'), suitOn ? pal.accent : [oi ? oi.trimHex : '#aaaaaa', ...ACCC], suitOn ? 'accent' : 'oAcc');
+  $('#lSuit').textContent = human && suitOn ? 'Suit colour' : 'Armour colour';
+  $('#lAcc').textContent = human && suitOn ? 'Accent colour' : 'Trim colour';
+  $('#tabSuit').textContent = human ? 'Outfit' : 'Armour';
   chips($('#crDesign'), DESIGNS, 'design');
   chips($('#crVisor'), Object.entries(VISORS).map(([k, v]) => [k, v[0]]), 'visor');
   $('#crName').value = draft.name === 'WANDERER' ? '' : draft.name;
@@ -3513,14 +3678,17 @@ function refreshCreate() {
   $('#fHair').classList.toggle('hide', !(human || SPECIES[sp].hairs));
   $('#fHairC').classList.toggle('hide', (sp === 'grek' || sp === 'taredesiban') && !hasBeard(draft));
   $('#lHairC').textContent = sp === 'grek' || sp === 'taredesiban' ? 'Beard colour' : sp === 'oilkoumene' ? 'Horn colour' : 'Hair colour';
-  $('#fDesign').classList.toggle('hide', !human); $('#fVisor').classList.toggle('hide', !human);
+  const suitOn = outfitOf(draft) === 'suit';
+  $('#fDesign').classList.toggle('hide', !human || !suitOn); $('#fVisor').classList.toggle('hide', !human || !suitOn); $('#fFace').classList.toggle('hide', !human); $('#fOutfit').classList.toggle('hide', !human);
+  for (const b of $('#crOutfit').children) b.classList.toggle('on', b.dataset.v === outfitOf(draft));
+  for (const b of $('#crFace').children) b.classList.toggle('on', b.dataset.v === faceOf(draft));
   const lore = LORE[sp];
   $('#spHome').textContent = lore.home;
   $('#spDesc').innerHTML = lore.paras.map(t => `<p>${t}</p>`).join('');
   for (const [id, key] of [['crSpecies', 'species'], ['crIdent', 'identity'], ['crHair', 'hair'], ['crDesign', 'design'], ['crVisor', 'visor']])
     for (const b of $('#' + id).children) b.classList.toggle('on', b.dataset.v === draft[key]);
-  for (const [id, key] of [['crSkin', 'skin'], ['crHairC', 'hairColor'], ['crSuit', 'suit'], ['crAcc', 'accent']])
-    for (const b of $('#' + id).children) b.classList.toggle('on', +b.dataset.i === draft[key]);
+  for (const [id, key] of [['crSkin', 'skin'], ['crHairC', 'hairColor'], ['crSuit', suitOn ? 'suit' : 'oSuit'], ['crAcc', suitOn ? 'accent' : 'oAcc']])
+    for (const b of $('#' + id).children) b.classList.toggle('on', +b.dataset.i === (draft[key] | 0));
   $('#crPro').textContent = (IDENT[draft.identity] || IDENT.nb).pro;
   applyLook(draft);
 }
@@ -3566,7 +3734,7 @@ $('#crRandom').addEventListener('click', () => {
   const sp = spOf(draft), pal = paletteFor(sp), hairs = sp === 'human' ? HAIRS : (SPECIES[sp].hairs || [['none', 'None']]);
   Object.assign(draft, {
     identity: pick(Object.keys(IDENT)), skin: idx(pal.skin), hair: pick(hairs)[0], hairColor: idx(pal.hair),
-    suit: idx(pal.suit), accent: idx(pal.accent), design: pick(DESIGNS)[0], visor: pick(Object.keys(VISORS)), beard: Math.random() < .5
+    suit: idx(pal.suit), accent: idx(pal.accent), face: pick(FACES)[0], outfit: pick(OUTFITS)[0], oSuit: Math.random() < .5 ? 0 : 1 + idx(SUITC), oAcc: Math.random() < .5 ? 0 : 1 + idx(ACCC), design: pick(DESIGNS)[0], visor: pick(Object.keys(VISORS)), beard: Math.random() < .5
   });
   sfx.click(); refreshCreate();
 });
@@ -5244,7 +5412,7 @@ function renderTasks() {
   if (curArea() === 'africa' || ((wanderer.chapter | 0) >= 2 && p.escaped)) h = ch2Tasks(task); // Chapter II's objectives follow you, even back to Antarctica
   if ((wanderer.chapter | 0) >= 3 && (wanderer.chapter | 0) !== 4 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (c3.hawMars && (wanderer.chapter | 0) === 3 ? task(!!c3.charonLanded, 'Main quest · Head to Charon') : '') + (c3.charonLanded && (wanderer.chapter | 0) === 3 ? task(!!c3.charonMet, 'Meet Charon and Kizna on Charon') : '') + (c3.jamesRev ? task(!!c3.jamesFate, 'Main quest · Defeat James Brown at the Antarctic station') : '') + (c3.jamesFate && (wanderer.chapter | 0) === 3 ? task(!!c3.charonBack, tiPhone() ? 'Main quest · Back to Charon and Kizna' : 'Main quest · Return to Charon and speak to Charon and Kizna') : '') + (c3.hakMet && (wanderer.chapter | 0) === 3 ? task(!!c3.cygDone, tiPhone() ? 'Main quest · Infiltrate the Cygnus (Mercury)' : 'Main quest · Infiltrate the Cygnus Terra Imperius, Terra Imperia’s capital ship, in orbit over Mercury') : '') + (c3.solFell && (wanderer.chapter | 0) === 3 ? task(!!c3.hakBack, tiPhone() ? 'Main quest · Return to Hak in Karribassa' : 'Main quest · Return to Hak Chompjak in Karribassa, on Janira Prime: Sol has fallen') : '') + (c3.siegeOn && (wanderer.chapter | 0) === 3 ? task(!!c3.siegeWon, tiPhone() ? 'Main quest · End the blockade of Janira Prime' : 'Main quest · End the blockade of Janira Prime: take Terra Imperia’s base, 1 km from Karribassa') : '') + (c3.restoreWar && (wanderer.chapter | 0) === 3 ? task(!!c3.chkJoined || (!!c3.hawBeaten && !!c3.alexiaBeaten), tiPhone() ? 'Main quest · Recruit Charon and Kizna' : 'Main quest · Go to Charon and recruit Charon and Kizna') + (c3.chkJoined || c3.hawBeaten || c3.alexiaBeaten ? task(!!c3.alexiaBeaten, tiPhone() ? 'Main quest · Siege of Eris: defeat Alexia' : 'Main quest · Lay siege to Eris: break Terra Imperia’s base and defeat Alexia Erisconos') + task(!!c3.hawBeaten, tiPhone() ? 'Main quest · Siege of Mercury: defeat Hawthorne' : c3.alexiaBeaten ? 'Main quest · Lay siege to Mercury: break Terra Imperia’s base and defeat Thomas Hawthorne' : 'Main quest · Lay siege to Mercury: Hawthorne won’t face you until Alexia is beaten') : '') : '') + (c3.hakCall && (wanderer.chapter | 0) === 3 ? task(!!c3.hakMet, tiPhone() ? 'Main quest · Meet Hak in Karribassa (Janira Prime)' : 'Main quest · Meet Hak Chompjak in Karribassa, on Janira Prime (Janira Proxima, a short jump from Sol)') : '') + (surgeOn() && !c3.hawBeaten ? task(false, surgeTaskText()) : '') + (c3.hawBeaten && (wanderer.chapter | 0) === 3 ? task(true, tiPhone() ? 'Sol has fallen · Sol is free' : 'Sol has fallen to Terra Imperia · Sol is free again') + task(true, tiPhone() ? 'War · take Mercury and Venus' : 'War · take Mercury and Venus from Terra Imperia') : '') + (tiWarOn() ? task(false, tiPhone() ? `War · take Mercury and Venus (${TI_WORLDS.filter(id => dip().col[id]).length}/2)` : `War · take Mercury and Venus from Terra Imperia · bombard, land, defeat the governor (${TI_WORLDS.filter(id => dip().col[id]).length}/2)`) : '') + (c3.hawMars ? (!c3.nyxJoined && c3.jamesFate ? '' : !c3.nyxJoined && c3.nyxFailed ? '<div class="x-task failed"><i></i><span>FAILED: <s>Recruit Nyrexia Erisconos on Eris</s></span></div>' : task(!!c3.nyxJoined, 'Side quest (optional) · Recruit Nyrexia Erisconos on Eris')) : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + (c3.hawDead && (wanderer.chapter | 0) === 3 ? task(!!c3.alienDone, c3.alienDone ? 'Main quest · Explore the galaxy' : `Main quest · Explore the galaxy (${5 - alienWarpsLeft()}/5 jumps)`) : task(false, 'Explore the galaxy')) : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
   if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip) h = task(true, tiPhone() ? 'Escape the Nostra' : 'Escape the Nostra in a pod') + task(false, tiPhone() ? 'Main quest · Survive · find somewhere to land' : 'Main quest · Survive: you’re adrift in an escape pod · find somewhere to land'); // Chapter IV starts here
-  if ((wanderer.chapter | 0) === 4) h = wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip ? h : !(wanderer.ch4 && wanderer.ch4.archMet) ? task(false, tiPhone() ? 'Main quest · Meet Archamus (Archiostal)' : 'Main quest · Meet Archamus in the gardens of Archiostal') : task(false, 'Explore Archiostal'); // after the two years: Chapter IV's own objectives, never Chapter III's
+  if ((wanderer.chapter | 0) === 4) h = wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip ? h : !(wanderer.ch4 && wanderer.ch4.archMet) ? task(false, tiPhone() ? 'Main quest · Meet Archamus (Archiostal)' : 'Main quest · Meet Archamus in the gardens of Archiostal') : !wanderer.ch4.archProj ? task(true, 'Meet Archamus') + task(false, 'Main quest · Hear Archamus out') : !wanderer.ch4.josiahMet ? task(true, 'Meet Archamus') + task(false, tiPhone() ? 'Main quest · Find Josiah Williams II (Earth)' : 'Main quest · Find Josiah Williams II on Earth') : task(true, 'Find Josiah Williams II') + task(false, tiPhone() ? 'Main quest · Help Josiah' : 'Main quest · Bring Josiah Williams II back into the light'); // after the two years: Chapter IV's own objectives, never Chapter III's
   if ((wanderer.chapter | 0) >= 3) { const tq = sqTracked(); if (tq) h += `<div class="x-task sq-task"><i></i><span>${tq}</span></div>`; } // the side quest you're tracking
   xUI.tasks.innerHTML = h;
   $('#xChap').textContent = liveChapterLabel().toUpperCase();
@@ -5344,7 +5512,7 @@ function blocked(lx, lz) {
   return false;
 }
 function dlgLine(d) {
-  d.lineT = 0;
+  d.lineT = 0; if (d.holo) holoFocus(d.holo[d.i]); // a hologram in the box (Archamus' galaxy): it looks at what this line is about
   const buf = d.bufs && d.bufs[d.i], len = d.lines[d.i].length;
   d.rate = buf ? clamp(buf.duration * .82 / len, .012, .05) : .026;
   if (buf) sfx.playBuf(buf, 1.25); else sfx.stopVoice();
@@ -5380,7 +5548,7 @@ function influence(id, d) {
   C.inf = clamp(C.inf + d, 0, 100); alSave();
   lootMsg(`${(PARTY[id] || { name: L ? titleName(L.name.split(' ')[0]) : id }).name} · influence ${d > 0 ? '+' : '−'}${Math.abs(d)}`, d > 0 ? '#9fe6b0' : '#ffb36e');
 }
-function closeDialog() { if (ex.dlg) sfx.stopVoice(); xUI.dlg.classList.remove('choice'); ex.dlg = null; if (cine.on) { cine.on = false; ui.xhud.classList.remove('cine'); ex.snap = false; } xUI.dlg.classList.remove('on', 'ready'); ui.xhud.classList.remove('talking'); }
+function closeDialog() { holoOff(); if (ex.dlg) sfx.stopVoice(); xUI.dlg.classList.remove('choice'); ex.dlg = null; if (cine.on) { cine.on = false; ui.xhud.classList.remove('cine'); ex.snap = false; } xUI.dlg.classList.remove('on', 'ready'); ui.xhud.classList.remove('talking'); }
 function advanceDialog() {
   const d = ex.dlg; if (!d || d.choice) return;
   const text = d.lines[d.i];
@@ -21559,7 +21727,7 @@ async function leaderRig(L) {
   const R = autoRig(SkeletonUtils.clone(src), L.h); armRig(R, 'none'); try { bakeRig(R); } catch (e) {} return R;
 }
 async function placeGivers() {
-  for (const G of GIVERS.list) if (G.R && G.R.root.parent) G.R.root.parent.remove(G.R.root);
+  for (const G of GIVERS.list) { if (G.R && G.R.root.parent) G.R.root.parent.remove(G.R.root); if (G.extra && G.extra.parent) G.extra.parent.remove(G.extra); }
   GIVERS.list = []; GIVERS.area = curArea();
   if (!isPl() || (wanderer.chapter | 0) < 3) return;
   const P = world.planet.P, m = merchantsHere()[0], S = sqs(), area = GIVERS.area, want = [];
@@ -21569,23 +21737,31 @@ async function placeGivers() {
   }
   SQ_LEADERS.filter(L => L.world === P.id && leaderFree(L)).forEach((L, i) => want.push({ leader: L.id, name: L.name, x: 14 + i * 3.4, z: 16 - i * 1.2 }));
   if (P.id === 'archiostal-gardens' && ((wanderer.chapter | 0) === 3 || ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.timeSkip))) want.push({ arch3: true, name: 'ARCHAMUS', x: 16, z: 21 }); // Chapter III: he wants nothing to do with you (not yet); Chapter IV: the first quest is to find him here
+  if (P.id === 'earth' && josiahQ()) { // Chapter IV: at his father's grave near wherever you set down, on the quiet side, away from the stall and its crowd
+    const wet = (x, z) => plSeaY() != null && wHeight(x, z) < plSeaY() + .6, steep = (x, z) => Math.abs(wHeight(x + 2, z) - wHeight(x - 2, z)) + Math.abs(wHeight(x, z + 2) - wHeight(x, z - 2)) > 2.4 || Math.abs(wHeight(x, z) - wHeight(0, 0)) > 6;
+    const far = ([x, z]) => (wet(x, z) ? -100 : 0) + (steep(x, z) ? -50 : 0) + Math.min(m ? Math.hypot(m.px - x, m.pz - z) : 99, ...want.map(w => Math.hypot(w.x - x, w.z - z)), 99);
+    const [x, z] = [[17, -15], [-17, -16], [18, 19], [-18, 20], [24, 2], [-24, 0], [0, -24], [8, 26]].sort((a, b) => far(b) - far(a))[0];
+    want.push({ josiah: true, name: 'JOSIAH WILLIAMS II', x, z }); }
   for (const w of want) {
     try {
-      const R = w.leader || w.arch3 ? await leaderRig(SQ_LEADERS.find(L => L.id === (w.leader || 'archamus'))) : await giverRig(w.sp, 1.8, w.name);
+      const R = w.josiah ? await josiahRig() : w.leader || w.arch3 ? await leaderRig(SQ_LEADERS.find(L => L.id === (w.leader || 'archamus'))) : await giverRig(w.sp, 1.8, w.name);
       if (!R || GIVERS.area !== area || curArea() !== area) continue;
       let x = w.x, z = w.z; for (let i = 0; i < 30 && plSeaY() != null && wHeight(x, z) < plSeaY() + .6; i++) { x += 3; z -= 2; }
       R.root.position.set(x, wHeight(x, z), z); R.root.rotation.y = Math.atan2(-x, 6 - z); wScene.add(R.root);
+      if (w.josiah) { const gx = x + 1.6, gz = z - 1.2; w.extra = makeGrave('JOSIAH WILLIAMS', ['Beloved father', 'Taken by Terra Imperia', 'during the occupation of Earth']); w.extra.position.set(gx, wHeight(gx, gz), gz); w.extra.rotation.y = Math.atan2(x - gx, z - gz); wScene.add(w.extra); w.faceGrave = Math.atan2(gx - x, gz - z); R.root.rotation.y = w.faceGrave; }
       GIVERS.list.push(Object.assign(w, { R, x, z }));
     } catch (e) { console.warn('quest giver failed', w.name, e); }
   }
 }
 function giversTick(dt) {
   if (!GIVERS.list.length) return;
-  if (GIVERS.area !== curArea()) { for (const G of GIVERS.list) if (G.R.root.parent) G.R.root.parent.remove(G.R.root); GIVERS.list = []; return; }
+  if (GIVERS.area !== curArea()) { for (const G of GIVERS.list) { if (G.R.root.parent) G.R.root.parent.remove(G.R.root); if (G.extra && G.extra.parent) G.extra.parent.remove(G.extra); } GIVERS.list = []; return; }
   const p = player.position;
   for (const G of GIVERS.list) {
     const d = Math.hypot(p.x - G.x, p.z - G.z);
-    if (d < 10) G.R.root.rotation.y = angLerp(G.R.root.rotation.y, Math.atan2(p.x - G.x, p.z - G.z), Math.min(1, dt * 3));
+    if (G.josiah) { const near = d < 4.5; G.R.slumpK = clamp((G.R.slumpK == null ? 1 : G.R.slumpK) + (near ? -dt : dt) * .8, .45, 1); // he looks up a little when you come close, and back down at the grave when you go
+      G.R.root.rotation.y = angLerp(G.R.root.rotation.y, near ? Math.atan2(p.x - G.x, p.z - G.z) : G.faceGrave, Math.min(1, dt * (near ? 1.4 : .8))); }
+    else if (d < 10) G.R.root.rotation.y = angLerp(G.R.root.rotation.y, Math.atan2(p.x - G.x, p.z - G.z), Math.min(1, dt * 3));
     if (!G.R.static) { try { G.R.mode = 'idle'; animRig(G.R, dt); } catch (e) { G.R.static = true; } }
   }
 }
@@ -21612,14 +21788,198 @@ async function arch4Talk() {
   const met = !!(wanderer.ch4 && wanderer.ch4.archMet);
   const vo = await loadDataScript('archMeetVoices').then(ok => ok ? sfx.loadClips('archMeetVoices') : []).catch(() => []);
   if (state !== 'explore' || ex.dlg) return;
-  if (met) { openDialog('ARCHAMUS', [ARCH_MEET[9]], false, null, vo && vo[9] ? [vo[9]] : []); return; } // he has said what he will say
+  if (met) { archProjTalk(); return; } // after the meeting: the projection (or, once you've seen it, his last word on it)
   openDialog('ARCHAMUS', ARCH_MEET, false, () => {
     if (wanderer.ch4 && wanderer.ch4.archMet) return;
     wanderer.ch4 = Object.assign({}, wanderer.ch4, { archMet: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster();
     renderTasks(); gainXP(150); sfx.chime(); setTimeout(() => notice('Archamus, the Prime Good', 'QUEST COMPLETE', 3600), 400);
+    setTimeout(() => archProjTalk(), 900); // and before you can go, he opens his hand: the galaxy
+  }, vo || []);
+}
+/* Chapter IV: straight after the meeting, Archamus opens his hand over the dialogue box and a projection of the Milky Way rises out of
+   it: no cutscene, the conversation simply carries on with the galaxy turning above the words. Twenty lines, each with what the
+   projection looks at (ARCH_PROJ_FOCUS). CH4ARCHAMUSPROJ1–20 (data/archProjVoices.js) once recorded; subtitles until then.
+   Sets ch4.archProj, and the main quest becomes finding Josiah Williams II on Earth. */
+const ARCH_PROJ = [
+  'Before you go. Look.',
+  'This is your galaxy, as the stars remember it. A hundred billion lights, and every one of them a story somebody is still telling.',
+  'Here is Sol, where you were born. And here, a short jump away, Archiostal, where you slept.',
+  'And here, at the heart, around the black sun your people call Sagittarius A*, is Catharsis space.',
+  'Two years ago it was a ring of Grek worlds. Now every one of them answers to the Catharsis.',
+  'While you slept, ships went in. Grek warships. Chompy raiders. Freighters whose captains were paid too well to ask why.',
+  'None of them came back.',
+  'No wreckage drifts out of the core. No distress calls. No bodies. Whatever goes in is simply… kept.',
+  'The Grek sent their finest fleet last spring. I watched its lights go out one by one, like candles in a closing hand.',
+  'You will want to go in after them. Of course you will. You were made that way.',
+  'Then hear me first. The Catharsis wear a carapace, grown from something older than your sun.',
+  'Your rifles will not touch it. Your rounds will break on that shell like rain on glass.',
+  'I have watched brave soldiers empty every charge they carried into one of them, and leave it only curious.',
+  'So you will not find them by force, and you will not find them by searching. The core is wide, and they do not wish to be found.',
+  'But there is a man on Earth who knows where they are.',
+  'His name is Josiah Williams II. He dreams of things no mortal should be able to know.',
+  'Two years ago, while Terra Imperia held Earth, they came for his father. They killed him.',
+  'Josiah has not truly woken since. He fell into a darkness of his own, deeper than your sleep, and far lonelier.',
+  'Do not go to him as a soldier with questions. He has had enough of soldiers. Go to him as someone who has also lost two years.',
+  'Earth is waiting, wanderer. Find Josiah Williams II. Bring him back into the light, and he will show you where the dark is hiding.'];
+const ARCH_PROJ_FOCUS = ['gal', 'gal', 'home', 'cath', 'grow', 'ships', 'lost', 'lost', 'lost', 'cath', 'shell', 'shell', 'shell', 'cath', 'sol', 'josiah', 'josiah', 'josiah', 'josiah', 'earth'];
+// line 3 names where YOU were born: Sol for a human, your own species' homeworld otherwise (the hologram points at it too, holoHome)
+const ARCH_PROJ_HOME = {
+  human: 'Here is Sol, where you were born. And here, a short jump away, Archiostal, where you slept.',
+  erisian: 'Here is Eris, at the frozen edge of Sol, where you were born. And here, a short jump away, Archiostal, where you slept.',
+  chompy: 'Here is Aridaxx, where you were born, the heart of the Chompy Empire. And here, a long way from it, Archiostal, where you slept.',
+  grek: 'Here is Malana, where you were born. And here, circling above it, Archiostal, where you slept. You never truly left home.',
+  oilkoumene: 'Here is Tamez Prime, where you were born. And here, a long way from it, Archiostal, where you slept.',
+  taredesiban: 'Here is Timpur Prime, out at the far edge of the galaxy, where you were born. And here, a long way from it, Archiostal, where you slept.' };
+const HOME_BODY = { human: 'earth', erisian: 'eris', chompy: 'aridaxx', grek: 'malana', oilkoumene: 'tamez' };
+function holoHome() { // your species' homeworld and its system, for the projection
+  const sp = spOf(wanderer), P = sp === 'taredesiban' ? ALL_BODIES.find(o => o.name === 'Timpur Prime') : bodyById(HOME_BODY[sp] || 'earth');
+  const S = (P && SYSTEMS.find(Y => Y.id === P.sys)) || holoSys('sol'); return { S, name: P ? P.name : 'Earth' };
+}
+const archProjLines = () => ARCH_PROJ.map((l, i) => i === 2 ? ARCH_PROJ_HOME[spOf(wanderer)] || l : l);
+async function archProjTalk() {
+  const done = !!(wanderer.ch4 && wanderer.ch4.archProj);
+  const vo = await loadDataScript('archProjVoices').then(ok => ok ? sfx.loadClips('archProjVoices') : []).catch(() => []);
+  if (state !== 'explore' || ex.dlg) return;
+  if (done) { openDialog('ARCHAMUS', [ARCH_PROJ[19]], false, null, vo && vo[19] ? [vo[19]] : []); holoOn(['earth']); return; } // he has shown you what he will show you
+  const sp = spOf(wanderer), pv = vo && vo.length ? vo.slice() : []; if (sp !== 'human' && pv.length > 2) pv[2] = null; // the recorded line 3 says Sol: other species get theirs as subtitles until it's recorded per species
+  openDialog('ARCHAMUS', archProjLines(), false, () => {
+    if (wanderer.ch4 && wanderer.ch4.archProj) return;
+    wanderer.ch4 = Object.assign({}, wanderer.ch4, { archProj: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster();
+    renderTasks(); sfx.chime(); setTimeout(() => notice('New objective', 'FIND JOSIAH WILLIAMS II ON EARTH', 4200), 400);
+  }, pv);
+  holoOn(ARCH_PROJ_FOCUS);
+}
+// ---- the hologram: the galaxy map's own Milky Way (galImage) and systems, tinted, turning slowly, inside the dialogue box ----
+const HOLO = { cv: null, img: null, on: false, f: 'gal', ft: 0, v: { x: 0, y: 0, z: 1 }, ships: [], raf: 0, last: 0 };
+const HOLO_VIEW = { gal: [0, 0, 1], home: null, sol: null, earth: null, josiah: null, cath: [0, 0, 2.6], grow: [0, 0, 2.2], ships: [0, 0, 1.5], lost: [0, 0, 1.9], shell: [0, 0, 3.4] };
+function holoImg() {
+  if (HOLO.img) return HOLO.img;
+  const src = galImage(), N = src.width, cv = document.createElement('canvas'); cv.width = cv.height = N; const g = cv.getContext('2d');
+  g.drawImage(src, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(90,200,255,.55)'; g.fillRect(0, 0, N, N); // a projection's blue, only where there's light
+  return HOLO.img = cv;
+}
+function holoOn(focus) {
+  if (!xUI.dlg) return;
+  if (!HOLO.cv) { HOLO.cv = document.createElement('canvas'); HOLO.cv.className = 'holo'; }
+  xUI.dlg.insertBefore(HOLO.cv, xUI.dlg.firstChild); xUI.dlg.classList.add('holo-on');
+  if (ex.dlg) ex.dlg.holo = focus; HOLO.on = true; HOLO.ships = []; HOLO.f = ''; holoFocus(focus[0], true);
+  HOLO.last = performance.now(); cancelAnimationFrame(HOLO.raf); HOLO.raf = requestAnimationFrame(holoTick);
+}
+function holoOff() {
+  if (!HOLO.on) return; HOLO.on = false; cancelAnimationFrame(HOLO.raf);
+  if (HOLO.cv && HOLO.cv.parentNode) HOLO.cv.parentNode.removeChild(HOLO.cv); xUI.dlg.classList.remove('holo-on');
+}
+const holoSys = id => SYSTEMS.find(S => S.id === id);
+function holoFocus(f, snap) {
+  if (!HOLO.on || !f || f === HOLO.f) return; HOLO.f = f; HOLO.ft = 0;
+  const sol = holoSys('sol'), mal = holoSys('malana');
+  const hm = holoHome().S, hd = Math.hypot(hm.map.x - mal.map.x, hm.map.y - mal.map.y);
+  const V = f === 'home' ? [(hm.map.x + mal.map.x) / 2, (hm.map.y + mal.map.y) / 2, hd < .02 ? 6 : clamp(.9 / hd, 1.1, 4.2)] : f === 'sol' || f === 'earth' || f === 'josiah' ? [sol.map.x, sol.map.y, f === 'sol' ? 3.2 : 5] : HOLO_VIEW[f] || HOLO_VIEW.gal;
+  HOLO.to = { x: V[0], y: V[1], z: V[2] }; if (snap) Object.assign(HOLO.v, HOLO.to);
+}
+const HOLO_CATH = .27; // the Catharsis' reach in Chapter IV: the core and every Grek world round it (genGalaxy's ring)
+function holoTick(now) {
+  if (!HOLO.on) return; HOLO.raf = requestAnimationFrame(holoTick);
+  const dt = Math.min(.05, (now - HOLO.last) / 1000); HOLO.last = now; HOLO.ft += dt;
+  const cv = HOLO.cv, r = cv.getBoundingClientRect(), pr = Math.min(2, devicePixelRatio || 1), W = Math.max(1, r.width * pr | 0), H = Math.max(1, r.height * pr | 0);
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  const g = cv.getContext('2d'), v = HOLO.v, to = HOLO.to || v, k = 1 - Math.exp(-dt * 2.2);
+  v.x += (to.x - v.x) * k; v.y += (to.y - v.y) * k; v.z += (to.z - v.z) * k;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H);
+  const S = Math.min(W, H * 1.9) * .5 * v.z, rot = now / 1000 * .035, tilt = .52, f = HOLO.f, t = now / 1000;
+  const P = (mx, my) => { const c = Math.cos(rot), s = Math.sin(rot), x = mx - v.x, y = my - v.y; return { x: W / 2 + (x * c - y * s) * S, y: H / 2 + (x * s + y * c) * S * tilt }; }; // map space → the box, turning and tilted
+  const flick = .86 + Math.sin(t * 23) * .03 + (Math.random() < .02 ? -.18 : 0);
+  // the galaxy itself
+  g.save(); g.globalAlpha = .9 * flick; g.translate(W / 2, H / 2); g.scale(1, tilt); g.rotate(rot); g.translate(-v.x * S, -v.y * S);
+  const img = holoImg(); g.globalCompositeOperation = 'lighter'; g.drawImage(img, -S, -S, S * 2, S * 2); g.restore();
+  g.globalCompositeOperation = 'lighter';
+  const label = (x, y, txt, col, dy) => { g.font = `${Math.round(9 * pr)}px "Space Grotesk", system-ui, sans-serif`; g.fillStyle = col; g.textAlign = 'center'; g.fillText(txt, x, y + (dy || -12) * pr); };
+  const ring = (mx, my, rad, col, w, dash) => { g.save(); g.translate(...Object.values(P(mx, my))); g.scale(1, tilt); g.beginPath(); g.arc(0, 0, rad * S, 0, Math.PI * 2); g.restore(); g.strokeStyle = col; g.lineWidth = (w || 1) * pr; g.setLineDash(dash ? dash.map(d => d * pr) : []); g.stroke(); g.setLineDash([]); };
+  // Catharsis space: the red at the heart, spreading over the Grek ring as he says it
+  const cathOn = /cath|grow|ships|lost|shell/.test(f), grow = f === 'grow' ? Math.min(1, HOLO.ft / 2.5) : f === 'gal' || f === 'home' ? 1 : 1;
+  const cr = f === 'grow' ? .14 + (HOLO_CATH - .14) * grow : HOLO_CATH, pulse = .5 + .5 * Math.sin(t * (f === 'shell' ? 5 : 2.4));
+  { const c = P(0, 0), gr = g.createRadialGradient(c.x, c.y, 0, c.x, c.y, cr * S); gr.addColorStop(0, `rgba(255,40,50,${cathOn ? .5 : .22})`); gr.addColorStop(.7, `rgba(255,30,40,${cathOn ? .22 : .08})`); gr.addColorStop(1, 'rgba(255,30,40,0)');
+    g.save(); g.translate(c.x, c.y); g.scale(1, tilt); g.translate(-c.x, -c.y); g.fillStyle = gr; g.beginPath(); g.arc(c.x, c.y, cr * S, 0, Math.PI * 2); g.fill(); g.restore();
+    ring(0, 0, cr, `rgba(255,60,70,${cathOn ? .5 + pulse * .4 : .3})`, cathOn ? 1.4 : .8, [4, 4]);
+    if (f === 'shell') for (let i = 0; i < 3; i++) ring(0, 0, cr * (.35 + i * .2) * (1 + pulse * .05), `rgba(255,90,90,${.25 + .2 * pulse})`, 1); }
+  // its systems, the old Grek worlds among them
+  for (const Y of SYSTEMS) if (Y.gen && Math.hypot(Y.map.x, Y.map.y) < (f === 'grow' ? cr : HOLO_CATH) && (Y.fac4 === 'The Catharsis')) { const q = P(Y.map.x, Y.map.y); g.fillStyle = `rgba(255,70,70,${cathOn ? .9 : .45})`; g.fillRect(q.x - pr, q.y - pr, 2 * pr, 2 * pr); }
+  if (cathOn) { const c = P(0, 0); label(c.x, c.y, f === 'shell' ? 'THE CATHARSIS · CARAPACE' : 'CATHARSIS SPACE', 'rgba(255,120,120,.95)', -(cr * S * tilt + 8) / pr); }
+  // the ships that went in and never came out
+  if (f === 'ships' || f === 'lost') {
+    if (HOLO.ships.length < 9 && Math.random() < dt * 5) { const a = Math.random() * Math.PI * 2, d = .5 + Math.random() * .35; HOLO.ships.push({ x: Math.cos(a) * d, y: Math.sin(a) * d, sp: .07 + Math.random() * .05, a: 1 }); }
+    for (const sh of HOLO.ships) {
+      const d = Math.hypot(sh.x, sh.y), q0 = P(sh.x, sh.y); sh.x -= sh.x / d * sh.sp * dt; sh.y -= sh.y / d * sh.sp * dt;
+      if (d < HOLO_CATH * .9) sh.a -= dt * (f === 'lost' ? 1.6 : .8); // inside, the lights simply go out
+      const q = P(sh.x, sh.y); g.strokeStyle = `rgba(200,240,255,${Math.max(0, sh.a) * .35})`; g.lineWidth = pr; g.setLineDash([2 * pr, 3 * pr]); g.beginPath(); g.moveTo(q0.x + (q0.x - q.x) * 30, q0.y + (q0.y - q.y) * 30); g.lineTo(q.x, q.y); g.stroke(); g.setLineDash([]);
+      g.fillStyle = `rgba(230,250,255,${Math.max(0, sh.a)})`; g.beginPath(); g.arc(q.x, q.y, 1.8 * pr, 0, Math.PI * 2); g.fill();
+    }
+    HOLO.ships = HOLO.ships.filter(sh => sh.a > 0);
+    if (f === 'lost') { const c = P(0, 0); label(c.x, c.y, 'NONE RETURNED', `rgba(255,200,200,${.5 + pulse * .4})`, (cr * S * tilt + 16) / pr); }
+  }
+  // Sol and Archiostal
+  const H0 = holoHome(), hS = H0.S, atHome = f === 'home', homeHere = hS.id === 'malana'; // a Grek: home and Archiostal are the same system
+  const sol = holoSys('sol'), mal = holoSys('malana'), qs = P(sol.map.x, sol.map.y), qm = P(mal.map.x, mal.map.y), solHot = /sol|earth|josiah/.test(f) || (atHome && hS.id === 'sol'), malHot = atHome || f === 'gal';
+  if (atHome && hS.id !== 'sol' && !homeHere) { const qh = P(hS.map.x, hS.map.y); g.fillStyle = '#bfffd8'; g.beginPath(); g.arc(qh.x, qh.y, 2.6 * pr, 0, Math.PI * 2); g.fill();
+    ring(hS.map.x, hS.map.y, .03 * (1 + pulse * .4), `rgba(170,255,210,${.4 + pulse * .5})`, 1.2); label(qh.x, qh.y, `${H0.name.toUpperCase()} · YOUR HOME`, 'rgba(200,255,225,.95)', 16); }
+  g.fillStyle = solHot ? '#bfe8ff' : 'rgba(160,220,255,.7)'; g.beginPath(); g.arc(qs.x, qs.y, (solHot ? 2.6 : 1.8) * pr, 0, Math.PI * 2); g.fill();
+  g.fillStyle = malHot ? '#ffe2a0' : 'rgba(255,216,138,.65)'; g.beginPath(); g.arc(qm.x, qm.y, (malHot ? 2.6 : 1.8) * pr, 0, Math.PI * 2); g.fill();
+  if (solHot) ring(sol.map.x, sol.map.y, (f === 'josiah' || f === 'earth' ? .012 : .03) * (1 + pulse * .4), `rgba(170,225,255,${.4 + pulse * .5})`, 1.2);
+  if (f === 'josiah' || f === 'earth') label(qs.x, qs.y, 'EARTH · JOSIAH WILLIAMS II', 'rgba(200,236,255,.95)', -16);
+  else if (solHot) label(qs.x, qs.y, atHome ? `SOL · ${H0.name.toUpperCase()} · YOUR HOME` : 'SOL · EARTH', 'rgba(190,230,255,.9)', -14);
+  if (malHot) label(qm.x, qm.y, atHome && homeHere ? 'MALANA · YOUR HOME · ARCHIOSTAL · YOU ARE HERE' : atHome ? 'ARCHIOSTAL · YOU ARE HERE' : 'ARCHIOSTAL', 'rgba(255,224,160,.9)', atHome && hS.id === 'sol' ? 18 : -12); // Sol's label above, Archiostal's below: they sit close
+  if (atHome && homeHere) ring(mal.map.x, mal.map.y, .012 * (1 + pulse * .4), `rgba(255,224,160,${.4 + pulse * .5})`, 1.2);
+  // scanlines over the lot
+  g.globalCompositeOperation = 'source-over'; g.fillStyle = 'rgba(0,10,20,.22)'; for (let y = (t * 30 * pr) % (3 * pr); y < H; y += 3 * pr) g.fillRect(0, y, W, pr);
+}
+/* Chapter IV: Josiah Williams II, on Earth once Archamus has sent you (ch4.archProj). He stands at his father's grave near wherever you
+   land, head down, and only half looks up when you come close. His father, Josiah Williams, was killed by Terra Imperia during the
+   occupation, two years ago, and Josiah hasn't come out of it. Nine lines, CH4JOSIAHMEET1–9 (data/josiahMeetVoices.js) once recorded;
+   subtitles until then. Sets ch4.josiahMet; the main quest becomes bringing him back into the light. */
+const josiahQ = () => (wanderer.chapter | 0) === 4 && !!(wanderer.ch4 && wanderer.ch4.archProj);
+const JOSIAH_MEET = [
+  'Whatever you’re selling, I don’t want it.',
+  '…No. You’re not selling anything. You’ve got that look. Like you went somewhere you weren’t supposed to come back from.',
+  'This is my dad. Josiah Williams. Same name as me, without the two little lines. He used to joke that I got the upgrade.',
+  'Terra Imperia came through here during the occupation. Door to door. He stood in front of ours.',
+  'That was two years ago. I keep waiting for it to feel like two years.',
+  'People tell me to get up. Eat something. Go outside. I am outside. I come here every day.',
+  'If somebody sent you to fix me, tell them I’m not broken. I’m just… finished.',
+  'And if you’re here about the dreams, I don’t talk about the dreams.',
+  'Go on. Leave me with him.'];
+async function josiahRig() {
+  const R = await glbRig('cpJosiah2', 1.85, 'none'); if (!R) return null;
+  try { bakeRig(R); } catch (e) {}
+  R.slump = true; R.slumpK = 1; R.slumpDir = -1; return R; // this model's head pivot tips back on +x
+}
+function makeGrave(name, lines) { // a plain headstone with a name on it, and flowers someone keeps bringing
+  const g = new THREE.Group(), stone = new THREE.MeshStandardMaterial({ color: 0x8a8d92, roughness: .92 });
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(.9, 1.05, .16), stone); slab.position.y = .52; slab.castShadow = true; g.add(slab);
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, .16, 24, 1, false, Math.PI / 2, Math.PI), stone); top.rotation.x = Math.PI / 2; // the rounded top: half a disc, flat side down top.position.y = 1.05; g.add(top);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.1, .14, .4), stone); base.position.y = .07; g.add(base);
+  const tex = canvasTex(256, 300, (c, w, h) => { c.fillStyle = '#8a8d92'; c.fillRect(0, 0, w, h); c.fillStyle = '#2b2d31'; c.textAlign = 'center';
+    c.font = 'bold 26px Georgia, serif'; c.fillText(name, w / 2, 70); c.font = 'italic 19px Georgia, serif'; lines.forEach((l, i) => c.fillText(l, w / 2, 130 + i * 34));
+    c.strokeStyle = '#2b2d31'; c.lineWidth = 2; c.beginPath(); c.moveTo(60, 92); c.lineTo(w - 60, 92); c.stroke(); });
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(.84, .98), new THREE.MeshStandardMaterial({ map: tex, roughness: .9 })); face.position.set(0, .55, .081); g.add(face);
+  const stem = new THREE.MeshStandardMaterial({ color: 0x3f6a34, roughness: .8 });
+  [0xf2f0ea, 0xe8c45a, 0xf2f0ea].forEach((c, i) => { const f = new THREE.Mesh(new THREE.SphereGeometry(.06, 8, 6), new THREE.MeshStandardMaterial({ color: c, roughness: .7 })); f.position.set(-.18 + i * .16, .2, .32); g.add(f);
+    const s2 = new THREE.Mesh(new THREE.CylinderGeometry(.008, .008, .18), stem); s2.position.set(-.18 + i * .16, .1, .32); g.add(s2); });
+  g.traverse(o => { if (o.isMesh) o.userData.noBake = true; });
+  return g;
+}
+async function josiahTalk() {
+  const met = !!(wanderer.ch4 && wanderer.ch4.josiahMet);
+  const vo = await loadDataScript('josiahMeetVoices').then(ok => ok ? sfx.loadClips('josiahMeetVoices') : []).catch(() => []);
+  if (state !== 'explore' || ex.dlg) return;
+  if (met) { openDialog('JOSIAH WILLIAMS II', [JOSIAH_MEET[8]], false, null, vo && vo[8] ? [vo[8]] : []); return; }
+  openDialog('JOSIAH WILLIAMS II', JOSIAH_MEET, false, () => {
+    if (wanderer.ch4 && wanderer.ch4.josiahMet) return;
+    wanderer.ch4 = Object.assign({}, wanderer.ch4, { josiahMet: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster();
+    renderTasks(); gainXP(150); sfx.chime(); setTimeout(() => notice('New objective', 'BRING JOSIAH BACK INTO THE LIGHT', 4200), 400);
   }, vo || []);
 }
 function giverTalk(G) {
+  if (G.josiah) { josiahTalk(); return; }
   if (G.arch3) { if ((wanderer.chapter | 0) === 4) arch4Talk(); else arch3Talk(); return; }
   const S = sqs(), L = G.leader && SQ_LEADERS.find(o => o.id === G.leader), q = L ? (Object.keys(S.act).map(sqById).find(o => o && o.leader === L.id) || leaderNext(L)) : S.done[G.q] ? null : sqById(G.q);
   let el = $('#sqGiv');
@@ -24494,6 +24854,12 @@ function animRig(R, dt) {
       if ((R.twitchAt -= dt) <= 0) { R.twitch = .62; R.twitchDir = 1; /* always snaps the same way */ R.twitchAt = 2.2 + Math.random() * 4; }
     }
   } else if (R.head && R.kind !== 'auto') S(R.head, 'y', Math.sin(t * .7) * .12);
+  if (R.slump) { // grief (Josiah Williams II at his father's grave): head down, shoulders in, arms hanging still
+    const k = R.slumpK == null ? 1 : R.slumpK, b = Math.sin(t * 1.1) * .015;
+    if (nk) S(nk, 'x', (R.slumpDir || 1) * (.38 * k + b)); if (R.head && R.head !== nk) S(R.head, 'x', (R.slumpDir || 1) * .12 * k);
+    if (R.torso && R.kind === 'skeleton') S(R.torso, 'x', (R.slumpDir || 1) * .16 * k); // a pivot model's 'body' is the whole figure: only a real spine bends
+    S(R.ra, 'x', ra * (1 - k)); S(R.la, 'x', la * (1 - k)); S(R.ra, 'z', raz * (1 - k) - .06 * k); S(R.la, 'z', laz * (1 - k) + .06 * k);
+  }
 }
 // which way the off-hand arm swings in to support a rifle. Worked out in the character's own space and remembered: measured in the world it flipped
 // whenever they faced sideways (both arms at nearly the same world x), so the arm snapped back and forth every frame (Peter, the rifle-carrying humans)
@@ -25926,7 +26292,8 @@ const COMPANIONS = [
     paras: [
       'Josiah Williams II is the grandson of this timeline’s Gareth Williams and the great-grandson of this timeline’s Josiah Richards. In this world both were ordinary men, a cheerful, clumsy civil servant and a quiet, careful one, and Josiah Richards died in 2047 AD, long before his great-grandson was born.',
       'He grew up hearing stories about both of them, and he has inherited a little of each: Gareth’s good humour and, thankfully, not his balance; Richards’s sharp mind and his habit of noticing everything.',
-      'Lately he has been having dreams about a version of his great-grandfather he never knew, and a title he has never heard anyone say aloud.'
+      'Lately he has been having dreams about a version of his great-grandfather he never knew, and a title he has never heard anyone say aloud.',
+      'Two years ago, during Terra Imperia’s occupation of Earth, soldiers of the Imperia killed his father. Josiah fell into a deep depression and has barely left it since. Archamus says he knows where the Catharsis are.'
     ] },
   { id: 'javek', tag: 'cpJavekC', h: 1.9, unlockAt: 4, al: 'True Neutral', name: 'JAVEK', title: 'Last leader of the Grob · fugitive', // data/cpJavekC.js: glasses, black hood and cape (nightmare/tools/javek_fugitive.py); the Ancient Figures file keeps his goggles
     facts: [['Species', 'Grob, part machine and part flesh'], ['Once led', 'The Grob Robotic Collective'], ['Defeated', 'At Steca, by Shakhak Chompjak'], ['Status', 'Fugitive'], ['Met', 'Director Josiah Richards, Cabinet Office, 2014'], ['Alignment', 'True Neutral (formerly Lawful Evil)']],
@@ -26457,7 +26824,7 @@ async function resModel(c) {
     });
     m.position.set(0, 0, 0); m.rotation.set(0, 0, 0);
   } finally { applyLook(wanderer); resetRig(); if (hp) hp.add(held); }
-  return { m, L, human: sp === 'human' };
+  return { m, L, human: curSpecies === 'human' }; // the spacesuit's A-pose arms come down; an outfit's already hang
 }
 async function resSpawn(c, near) {
   const B = { c, id: c.id, al: resAl(c), sp: spOf(c), root: new THREE.Group(), body: null, L: null, ready: false, task: null, t: 0, say: null, sayT: 0,
