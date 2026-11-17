@@ -2600,6 +2600,7 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 
 ### Where Hak is: Karribassa, then Alphinos
 - **Chapter III: Karribassa.** Hak used to stand before the Hall of Oaths only for his two story conversations. Once you've met him he now keeps court there for the rest of Chapter III (except while he's out fighting at your side in the blockade), with his guards, and greets you when there's nothing more to say: "Karribassa remembers its friends, and the Hall of Oaths keeps its doors open for you."
-- **Chapter IV: Alphinos.** After the two years he's on the plaza in the heart of Alphinos, on Aridaxx, with two lines of his own (CH4HAKALPHINOS1–2, `data/hak4Voices.js`, script in `assets/audio/hak_ch4/ALPHINOS_VOICE_SCRIPT.md`; subtitles until recorded).
-- **Chapter V: Alphinos.** As a leader he now stands on that plaza too, instead of beside wherever you set down on Aridaxx.
+- **Chapter IV: Alphinos.** After the two years he stands on the steps of the Imperial Palace in the heart of Alphinos, on Aridaxx, facing the grand avenue, with two lines of his own (CH4HAKALPHINOS1–2, `data/hak4Voices.js`, script in `assets/audio/hak_ch4/ALPHINOS_VOICE_SCRIPT.md`; subtitles until recorded).
+- **Chapter V: Alphinos.** As a leader he now stands on the palace steps too, instead of beside wherever you set down on Aridaxx (the spaceport).
 - Land elsewhere on Aridaxx and you're told he's in Alphinos and to fly to the city. Bring Lord Sevirrus to him in any of these places for the hidden conversation.
+- Fix: Hak's first spot in Alphinos was 40 m from the city's heart, which is inside the Imperial Palace (a ziggurat 140 m across); he now stands outside it, on its steps.
