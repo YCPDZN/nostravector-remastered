@@ -1,6 +1,6 @@
 # Easter egg · Lord Sevirrus and Archamus (Chapters III–V)
 
-Bring **Lord Sevirrus** along in your party and speak to **Archamus** on Archiostal, in any of Chapters III–V. Sevirrus is the Prince of Zark; Archamus, the Prime Good, is Zark's brother.
+Bring **Lord Sevirrus** along in your party and speak to **Archamus** on Archiostal, in any of Chapters III–V. Sevirrus is the Prince of Zark; Archamus, the Prime Good, is Zark's brother. Archamus calls him by the name he'll carry: Hak Chompjak (it is the same person, three hundred years apart).
 **Archamus:** slow, very old, cold, unhurried; he knows exactly what Sevirrus will become. **Sevirrus:** mocking and theatrical, until "And will you?", which is the one line he means.
 Pack: `data/sevArchVoices.js` (SEVARCH1–15, in order across both speakers). Once per playthrough, in place of that conversation. Until the pack exists, the lines show as subtitles only.
 
@@ -8,7 +8,7 @@ Pack: `data/sevArchVoices.js` (SEVARCH1–15, in order across both speakers). On
 |---|---|---|
 | SEVARCH1.mp3 | Archamus | Wanderer. You walk with my brother’s handiwork. |
 | SEVARCH2.mp3 | Lord Sevirrus | And you must be the gardener. The Grek light candles to you. I find that very funny. |
-| SEVARCH3.mp3 | Archamus | Sevirrus Chompjak. Usurper of Janira. The boy who called a massacre on Carax a coronation. |
+| SEVARCH3.mp3 | Archamus | Hak Chompjak. Usurper of Janira. The boy who called a massacre on Carax a coronation. |
 | SEVARCH4.mp3 | Lord Sevirrus | The boy who was right. Everyone kneels, priest. Even you, eventually. |
 | SEVARCH5.mp3 | Archamus | You will kneel first, on the floor of Alphinos, with your mother watching. It will be the first honest thing you ever do. |
 | SEVARCH6.mp3 | Lord Sevirrus | Your brother says you are a coward who hides among flowers. |
