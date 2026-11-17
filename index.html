@@ -27471,6 +27471,65 @@ function resConvo(B, t, raw, mode, stage) { // stage 'pre': follow-ups and answe
   M.last = intent; M.lastAt = time; M.turns++; RES.cvIntent = intent; M.said.push(out[out.length - 1 - (q ? 1 : 0)]); if (M.said.length > 6) M.said.shift();
   return chat ? out.map(l => '\u2063' + l) : out.map(resCap);
 }
+// ---- what residents know (data/resKnow.js): real-world history and people, answered in whispers like an assistant ----
+/* Whisper a resident a question about history ("who was Napoleon?", "when did the Berlin Wall fall?", "tell me about the Incas") and
+   they answer like a helpful chatbot: the gist first, the date if you asked when, why it matters if you asked why, then an offer to go
+   on; "tell me more" / "go on" / "what else" keeps going through what they know, and they say so when they've run out. If they don't
+   know something they say so, rather than make it up. 712 topics, 5,000 facts. Only in whispers: face to face they're themselves. */
+let RK = null, RK_IDX = null;
+function resKnowLoad() {
+  if (RK || RES.rkLoading) return; RES.rkLoading = true;
+  const sc = document.createElement('script'); sc.src = 'data/resKnow.js';
+  sc.onload = () => { RK = window.NV_RES_KNOW || null; if (RK) { RK_IDX = []; RK.kb.forEach((e, i) => e.n.forEach(a => RK_IDX.push([' ' + a.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9à-ÿ -]/g, ' ').replace(/\s+/g, ' ').trim() + ' ', i]))); RK_IDX.sort((a, b) => b[0].length - a[0].length); } };
+  sc.onerror = () => { RES.rkLoading = false; };
+  document.body.appendChild(sc);
+}
+const RK_NOT = /^(you|u|your|ur|yours|yourself|this|that|it|he|she|they|them|there|here|up|wrong|going on|happening|new|the time|the weather|my|me|i|we|us|good|bad|best|worst|next|love|life|the point|the plan|the deal|a|an|the)$/;
+function resKnow(B, t, raw) {
+  resKnowLoad(); if (!RK) return null;
+  t = ' ' + t.trim().replace(/\s+/g, ' ') + ' ';
+  const M = resMem(B), al = B.al === 'hero' ? 'h' : B.al === 'villain' ? 'v' : 'n', F = k => RK.frame[k + '_' + al] || RK.frame[k] || [''], x = Object.assign(resCtx(B), { player: M.told.name || wanderer.name });
+  const fr = (k, q) => { const l = resFill(resPick(F(k)), Object.assign(x, q ? { q } : {})); return (/:$/.test(l) ? '\u200b' : '\u2063') + l; }, words = t.trim().split(' ').length, fact = s => '​' + s; // facts are said as written: no persona tics cutting them short
+  const show = (e, idx) => { M.kn = M.kn && M.kn.e === e ? M.kn : { e, used: new Set() }; idx.forEach(i => M.kn.used.add(i)); M.knAt = time; return idx.map(i => RK.kb[e].s[i]).join(' '); };
+  // more of the same topic
+  if (M.kn && time - M.knAt < 300 && words <= 6 && /^ (tell me more|more|go on|continue|and|and then|what else|keep going|more please|anything else|tell me more about (it|that|him|her|them)|more about (it|that)|go on then|ok go on|yes tell me more|yes more|sure tell me more|interesting|really interesting|wow tell me more|yes please|yes|sure|ok more|carry on) $/.test(t)) {
+    const S = RK.kb[M.kn.e].s, next = S.map((_, i) => i).filter(i => !M.kn.used.has(i)).slice(0, 3);
+    if (!next.length) { M.kn = null; return [fr('end')]; }
+    return [fr('cont'), fact(show(M.kn.e, next)), next.length && S.some((_, i) => !M.kn.used.has(i)) && Math.random() < .5 ? fr('more') : null].filter(Boolean);
+  }
+  // "why?" / "when?" about the topic you're on
+  if (M.kn && time - M.knAt < 300 && words <= 6) {
+    const S = RK.kb[M.kn.e].s, w = /^ (why|why is (it|that) important|why does it matter|why is it famous|why do people remember (it|him|her)|why does that matter|so what) $/.test(t) ? S.length - 1 : /^ (when|when was that|when was it|what year|when did (it|that) happen|when did (he|she) live) $/.test(t) ? 1 : -1;
+    if (w >= 0) return [fr(w === 1 ? 'when_lead' : 'why_lead'), fact(show(M.kn.e, [w]))];
+  }
+  // what they know about
+  if (/^ (what do you know|what can you tell me( about)?|what topics|what do you know about|teach me something|tell me some history|history|history lesson|teach me history|tell me a fact|tell me a history fact|random fact|history fact) $/.test(t)) {
+    if (/fact|teach me something/.test(t)) { const e = Math.floor(Math.random() * RK.kb.length), S = RK.kb[e].s, i = 2 + Math.floor(Math.random() * Math.max(1, S.length - 3)); return [fact(show(e, [0, Math.min(i, S.length - 1)])), fr('more')]; }
+    return [fr('topics')];
+  }
+  const cue = /\b(who|what|whats|when|where|why|how|tell me|explain|know about|history of|story of|facts? about|did|was|were|describe|info|information|teach me|learn about|heard of|talk about)\b/.test(t);
+  const hit = RK_IDX.find(([a]) => t.includes(a));
+  if (hit && (cue || words <= 2)) {
+    const e = hit[1], S = RK.kb[e].s, last = S.length - 1, out = [];
+    let idx;
+    if (/\b(when|what year|which year|what century|what date|how long ago|how old)\b/.test(t)) idx = [1, 0];
+    else if (/\b(why|important|significan|legacy|impact|matter|remembered|famous for|known for)\b/.test(t)) idx = [0, last];
+    else if (/\b(fun fact|interesting fact|something interesting|surprising)\b/.test(t)) idx = [2 + Math.floor(Math.random() * Math.max(1, last - 2))];
+    else idx = [0, 1, 2].filter(i => i < S.length);
+    idx = [...new Set(idx)].filter(i => i >= 0 && i <= last);
+    M.kn = null; // a new topic
+    if (Math.random() < .75) out.push(fr('intro'));
+    out.push(fact(show(e, idx)));
+    if (S.length > idx.length && Math.random() < .6) out.push(fr('more'));
+    M.last = 'know'; M.lastAt = time;
+    return out;
+  }
+  // a question about something they don't know: say so, don't make it up
+  const m = /^ (?:who (?:was|is|were)|what (?:was|is|were)|when (?:was|did|were)|where (?:was|is)|tell me about|what do you know about|explain|who invented|who discovered|who founded|who wrote|who painted|have you heard of|do you know (?:about|who|what)) (?:the |a |an )?(.{3,40}?) $/.exec(t);
+  if (m && !RK_NOT.test(m[1].trim()) && !/\b(you|your|u|ur)\b/.test(m[1]) && !RES_BOSS_WORDS.some(([re]) => re.test(t)) && !resPlaceIn(t) && !resNameIn(raw, false) && !RES_CONVO_INTENTS.some(([, re]) => re.test(t)))
+    return [fr('unknown', m[1].trim())];
+  return null;
+}
 function resAnswer(B, raw, mode) { // mode: 'chat' (they answer out loud in the zone chat) or 'whisper' (from wherever they are); otherwise a conversation
   const t = ' ' + raw.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9à-ÿ -]/g, ' ').replace(/\s+/g, ' ') + ' ', has = re => re.test(t), x = resCtx(B);
   const again = () => openChoice(resWho(B), [{ text: 'Ask something else', onPick: () => resAsk(B) }, { text: 'Back', onPick: () => resTalk(B) }]);
@@ -27478,6 +27537,7 @@ function resAnswer(B, raw, mode) { // mode: 'chat' (they answer out loud in the 
   const pickAl = set => resFill(resPick((set && (set[B.al] || set.neutral)) || ['...']), x);
   // 1. safety first: never confusion, never a joke
   if (has(/suicid|kill (my ?self|me)|end (it all|my life|everything)|hurt (my ?self)|self ?harm|cut (my ?self)|not safe|want to die|wanna die|dont want to (live|be alive|be here|exist)|no reason to live|better off dead|take my (own )?life/)) return resCareSafety(B);
+  if (mode === 'whisper') { const k = resKnow(B, t, raw); if (k) return say(k); } // in a whisper they know real-world history
   // 2. how you're feeling
   if (!has(/(what|whats) scares (you|u)|are (you|u) (afraid|scared)|(what|are) (you|u) (afraid|scared) of|do (you|u) get scared|(your|ur) (biggest )?fear/) && has(/stress|anxi|depress|\bsad\b|overwhelm|panic|lonely|alone|cant cope|cannot cope|struggl|worried|worry|upset|crying|\bcry\b|exhaust|burn ?out|burnt out|mental health|feel (bad|awful|terrible|low|down|lost)|hopeless|scared|afraid/)) {
     if (!RL) return resCare(B);
@@ -28847,7 +28907,7 @@ function chatEl() {
   btn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); sfx.click(); chatOpen(''); });
   return el;
 }
-function chatOpen(pre) { const el = chatEl(), inp = el.querySelector('input'); el.classList.remove('hidden'); inp.value = pre || ''; ex.keys.clear(); ex.joyX = ex.joyY = 0; vel.set(0, 0, 0); inp.focus(); setTimeout(() => inp.focus(), 30); RES.chatOn = true; }
+function chatOpen(pre) { resKnowLoad(); const el = chatEl(), inp = el.querySelector('input'); el.classList.remove('hidden'); inp.value = pre || ''; ex.keys.clear(); ex.joyX = ex.joyY = 0; vel.set(0, 0, 0); inp.focus(); setTimeout(() => inp.focus(), 30); RES.chatOn = true; }
 function chatClose() { const el = chatEl(); el.classList.add('hidden'); el.querySelector('input').blur(); RES.chatOn = false; }
 function chatSys(text) { RES.log.push({ who: '•', al: 'sys', text, t: time }); if (RES.log.length > 30) RES.log.shift(); resChatRender(); }
 function resNameIn(t, atStart) { // a resident named in what you typed (longest names first): { c, rest }
@@ -28871,8 +28931,9 @@ function resChatSend(raw) {
 function resChatTo(c, msg, whisper) { // the one you named answers: out loud if they're here, in a whisper from wherever they are
   const B = !whisper && RES.bots.find(o => o.c === c && o.ready);
   if (B) { if (!B.partner && !(B.task && ['hunt', 'brawl'].includes(B.task.type))) B.task = { type: 'face', t: 0, dur: 3.5 }; setTimeout(() => { if (RES.bots.includes(B)) resAnswer(B, msg, 'chat'); }, 700 + Math.random() * 700); return; }
-  const P = { c, id: c.id, al: resAl(c), sp: spOf(c), lv: resLevel(c), x: 0, z: 0, y: 0, whisper: true };
-  setTimeout(() => resAnswer(P, msg, 'whisper'), 1200 + Math.random() * 1500);
+  const P = { c, id: c.id, al: resAl(c), sp: spOf(c), lv: resLevel(c), x: 0, z: 0, y: 0, whisper: true }; resKnowLoad();
+  const t0 = performance.now(), go = () => { if (RK || performance.now() - t0 > 6000) resAnswer(P, msg, 'whisper'); else setTimeout(go, 200); }; // what they know loads with the first whisper: give it a moment
+  setTimeout(go, 1200 + Math.random() * 1500);
 }
 function resChatLines(B, lines, mode) { // their answer, in the chat
   lines.filter(Boolean).forEach((l, i) => setTimeout(() => {
