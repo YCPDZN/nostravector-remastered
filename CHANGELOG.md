@@ -2604,3 +2604,8 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **Chapter V: Alphinos.** As a leader he now stands on the palace steps too, instead of beside wherever you set down on Aridaxx (the spaceport).
 - Land elsewhere on Aridaxx and you're told he's in Alphinos and to fly to the city. Bring Lord Sevirrus to him in any of these places for the hidden conversation.
 - Fix: Hak's first spot in Alphinos was 40 m from the city's heart, which is inside the Imperial Palace (a ziggurat 140 m across); he now stands outside it, on its steps.
+
+### Easter egg: Javek meets Hak
+- Bring **Javek** along and speak to **Hak Chompjak V** on the steps of the Imperial Palace in Alphinos, in Chapter IV or V, and a hidden conversation plays: the last leader of the Grob, whom Hak's ancestor Shakhak broke at Steca, meets the emperor in matching glasses. They argue over whose glasses they are; Shakhak's "mercy" was arithmetic; Javek was at the back of Shakhak's funeral, and watched a boy on Carax before the crown ("I was almost proud." "Do not."); and by the law of the house of Chompjak they are still at war.
+- **Two endings.** If Javek is still the fugitive, he offers a peace ("Two old monsters in matching glasses") and Hak lets him walk with you, with a warning about Steca. If he has fallen back into the machine-king, he refuses, and Hak answers with the law of Shakhak.
+- Once per playthrough (`eggs.javHak`), sixteen lines. If Sevirrus is with you too, his conversation with Hak plays first. Script in `assets/audio/easter_eggs/JAVEK_HAK_SCRIPT.md` (JAVHAK1–19); subtitles until recorded. Hidden conversations can now be limited to particular chapters.
