@@ -2653,3 +2653,12 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   4. **The garden:** a white tree of light on an island in a glowing pool, under a glass dome of stars, with flower beds and benches. Sit a while to restore your health, or light a candle to Archamus at the bow.
   5. **Bridge:** a great curved window, the pilot's seat, the holo-table and the captain's chair.
 - The same lift, taps and saves as the Nostra. A save made aboard puts you back on the same deck of the same ship. Chapter III's scenes aboard the Nostra still use the Nostra.
+
+### Cats and dogs, New London open again, and a crew that walks the Jewel (Chapter IV)
+- **Archamus has two more lines** after giving you the Jewel (CH4ARCHAMUSGIFT6–7): there's room aboard for your animals, and any city on Earth has cats and dogs waiting to be taken in.
+- **Cats and dogs in Earth's cities:** once you have the Jewel, strays wander the streets of New York, Paris, Tokyo, Beijing, Cairo, Kingston and Earth's other cities, plus New London and Ad-Nostra. There are always a few about you, and more turn up as you walk.
+  - Seven cat coats (ginger, black, white, grey, tabby, calico, Siamese) and eight dog coats (golden, black, chocolate, white, grey, spotted, husky, beagle), in little, medium and big dogs with pointed or floppy ears. Dogs come over to see you; cats keep an eye on you.
+- **Taming:** walk up to one and press **TAME**. It's yours, with its own name, and **there's no limit** to how many you can keep (they're saved with your wanderer).
+- **On the ground,** the last few pets you tamed trot after you round town. **Aboard the Jewel,** every pet you own roams her five decks, the garden most of all. Walk up and press **PET** for a purr or a wag. (She shows up to 30 of them at once, 12 on phones; you keep the rest.)
+- **New London is open again:** fly over it in Earth's sky and land in Parliament Square. The Jewel sets down on the lawn where the escape ship once stood. Walk Westminster with its music and its strays, then board her to leave. None of Chapter II happens again.
+- **The crew walk the Jewel:** companions you dismiss no longer stand on the crew deck. Aboard the Jewel they wander all five decks, stopping when you come near and turning to you when you talk, and now and then they move to another deck while you're away from it. Talk to them wherever you find them.

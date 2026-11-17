@@ -2518,7 +2518,7 @@ function chapterOf(c) {
   return { short: `Ch. ${CHN_ROMAN[n]}${area ? ' · ' + area : ''}`, full: `Chapter ${CHN_ROMAN[n]}${area ? ' · ' + area : ''}` };
 }
 function liveChapterLabel() {
-  const shipAt = () => SHIPI.from === 'space' ? (sysById(SPC.sys) || {}).name : world.adVisit && !isPl() ? (world.visitAt === 'antarctica' ? 'Antarctica' : 'Ad-Nostra') : world.planet ? world.planet.P.name : null;
+  const shipAt = () => SHIPI.from === 'space' ? (sysById(SPC.sys) || {}).name : world.adVisit && !isPl() ? (world.visitAt === 'antarctica' ? 'Antarctica' : world.visitAt === 'europe' ? 'New London' : 'Ad-Nostra') : world.planet ? world.planet.P.name : null;
   const n = (wanderer && wanderer.chapter) | 0, far = ex.mode === 'ship' ? ['The Nostra', shipAt()].filter(Boolean).join(' · ') : ex.mode === 'space' ? (sysById(SPC.sys) || {}).name : ex.mode === 'world' && isPl() ? world.planet.P.name : ex.mode === 'world' && world.adVisit && curArea() === 'africa' ? 'Earth · Ad-Nostra' : null;
   if (wanderer && wanderer.ch2 && wanderer.ch2.escapedLondon && n <= 3) return `Chapter III · ${far || 'Sol'}`;
   if (far) return `Chapter ${CHN_ROMAN[Math.max(1, n)]} · ${far}`;
@@ -5623,6 +5623,7 @@ async function interact() {
   } else if (n.id === 'farmDoor') { farmDoorTalk();
   } else if (n.id === 'townsfolk') { talkTownsfolk(n.ref);
   } else if (n.id === 'ferry') { startFerryTrip();
+  } else if (n.id === 'stray') { petTame(n.ref);
   } else if (n.id === 'ship') { enterShip('ground');
   } else if (n.id === 'lonsight') { openDialog(n.ref.label.toUpperCase(), n.ref.text, true);
   } else if (n.id === 'brawl') { brawlMenu(n.ref);
@@ -9010,7 +9011,7 @@ function applyAreaLook() {
   else if (pl) planetLook();
   else if (world.iceSky) wScene.background = world.iceSky;
   if (!pl && world.plSea) world.plSea.visible = false;
-  if (!pl && world.landShip && !(world.adVisit && (curArea() === 'africa' || curArea() === 'antarctica'))) world.landShip.visible = false;
+  if (!pl && world.landShip && !(world.adVisit && (curArea() === 'africa' || curArea() === 'antarctica' || curArea() === 'europe'))) world.landShip.visible = false;
   wScene.fog.color.set(areaFog());
   const ice = !af && !eu && !pl;
   if (world.snow) { world.snow.visible = ice; if (ice) { world.snow.material.color.set(0xffffff); world.snow.material.opacity = .9; } }
@@ -10760,6 +10761,30 @@ function shipFlyToAnt() {
   const f = $('#fade'); f.style.transition = 'opacity .6s'; f.style.opacity = 1; sfx.whoosh();
   setTimeout(async () => { SHIPI.on = false; ui.xhud.classList.remove('aboard'); xUI.prompt.classList.remove('on'); xUI.act.classList.remove('on'); if (world.landShip) world.landShip.visible = false;
     try { await visitAntBase(null); } catch (e) { console.error(e); } f.style.transition = 'opacity 1.2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 1300); }, 650);
+}
+/* ---- Chapter IV on: New London, open again. Land in Parliament Square and the Jewel sets down on the lawn where the escape ship
+   once stood; walk Westminster (its music, its river, its cats and dogs), and board her to leave. None of Chapter II happens again. ---- */
+function lonOpen() { try { return jewelOn(); } catch (e) { return false; } } // a function, so the airspace check can ask it at any time
+const lonDir = () => { epoiInit(EP_LONDON); return EP_LONDON.c.clone(); };
+const LON_PARK = { x: -64, z: -2 };
+async function visitLondon4(place) {
+  spaceOff(); state = 'loadingCh'; earthGroundClear(); earthFarClear();
+  world.planet = null; world.area = 'europe'; world.adVisit = true; world.visitAt = 'europe'; world.shipAt = { x: LON_PARK.x, z: LON_PARK.z };
+  const sx = LON_PARK.x, sz = LON_PARK.z;
+  hallClear(); if (world.cityG) world.cityG.visible = false;
+  await Promise.all([loadSpecies(spOf(wanderer)).catch(() => null), loadWorldHD()]);
+  enterWorld(Object.assign(place && place.where === 'europe' ? place : { mode: 'explore', area: 'world', where: 'europe', x: sx + 3, z: sz + 15, y: 0, rot: Math.PI * .85, yaw: Math.PI * .85 + Math.PI }, { adVisit: true }));
+  player.visible = true; { const fl = $('#shFlash'); if (fl) fl.classList.remove('on'); }
+  ui.xhud.classList.add('world');
+  if (!world.landShip) world.landShip = makeShip(); podSkin(world.landShip);
+  setShipRig(world.landShip, 1, 1); wScene.add(world.landShip); world.landShip.position.set(sx, wHeight(sx, sz) + 2.7, sz); world.landShip.rotation.set(0, 0, 0); world.landShip.visible = true;
+  for (const f of world.landShip.userData.flames) f.visible = false;
+  if (world.escShip) world.escShip.visible = false;
+  worldUnstick(); await placeOrion().catch(() => null); placeCrew().catch(() => null);
+  const W3 = wanderer.ch3 = Object.assign({}, wanderer.ch3, { lastPlanet: 'earth' }); const c = curChar(); if (c) c.ch3 = W3;
+  state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks();
+  notice('Earth · Europe', 'NEW LONDON', 3400);
+  if (!place) setTimeout(() => lootMsg(tiPhone() ? 'New London · open again' : 'New London is open to you again · cats and dogs about the streets', '#ffb8d0'), 2400);
 }
 async function visitAdNostra(place) {
   spaceOff(); state = 'loadingCh'; earthGroundClear(); earthFarClear();
@@ -18696,6 +18721,7 @@ function atmLand() {
   const S = atmLandSpot(), P = A.P;
   if (S.Q && S.Q.nofly) { spaceMsg(S.Q.nofly); sfx.thud && sfx.thud(); return; }
   if (P.real && S.Q && S.Q.id === 'adnostra') { A.landing = { t: 0, d: S.d, Q: S.Q, adn: true }; spaceMsg('Setting down at Ad-Nostra'); return; }
+  if (P.real && S.Q && S.Q.id === 'london' && lonOpen()) { A.landing = { t: 0, d: S.d, Q: S.Q, lon: true }; spaceMsg('Setting down in Parliament Square'); return; }
   if (P.real && S.Q && S.Q.id === 'antstation') { A.landing = { t: 0, d: S.d, Q: S.Q, ant: true }; spaceMsg('Setting down by the research station'); return; }
   const sea = P.sea ? (P.seaH || 0) : -1e9, wet = planetH(P, S.d) < sea + 3;
   A.landing = { t: 0, d: S.d, Q: S.Q }; spaceMsg(S.Q ? `Landing · ${S.Q.name}` : wet ? 'Over water · setting down on the nearest shore' : 'Landing');
@@ -18710,6 +18736,7 @@ function atmLandTick(dt) {
     L.done = true; const P = A.P, d = L.d.clone(); atmoLeave(false); SPC.on = false;
     if (L.adn) { visitAdNostra(null).catch(e => console.error(e)); return; }
     if (L.ant) { visitAntBase(null).catch(e => console.error(e)); return; }
+    if (L.lon) { visitLondon4(null).catch(e => console.error(e)); return; }
     landOn(P, d).then(() => { const fl = $('#shFlash'); if (fl) fl.classList.remove('on'); }).catch(e => console.error(e));
   }
 }
@@ -19620,7 +19647,7 @@ const EP_CHICHEN = { id: 'chichen', name: 'Chichén Itzá', short: 'Chichén Itz
 const EP_WALL = { id: 'greatwall', name: 'The Great Wall', short: 'Great Wall', tag: 'Wonder', line: true, lat: 40.75, lon: 116.1, R: 80, see: 9000, note: 'Asia · China · one of the New Seven Wonders',
   pts: [[40.95, 113.5], [40.65, 115.0], [40.78, 116.1], [40.86, 116.6], [40.6, 117.5], [40.3, 118.5], [40.05, 119.75]],
   sight: ['The Great Wall of China', 'EARTH · ONE OF THE NEW SEVEN WONDERS', 'Twenty thousand kilometres of wall, built over two thousand years, snaking over the mountains from the desert to the sea.'] };
-const EP_LONDON = { id: 'london', name: 'New London', short: 'New London', tag: 'Restricted', noGround: true, lat: 51.507, lon: -0.128, R: 260, see: 14000, nofly: 'New London · Federation airspace · you are still wanted there',
+const EP_LONDON = { id: 'london', name: 'New London', short: 'New London', get tag() { return lonOpen() ? 'Parliament Square' : 'Restricted'; }, noGround: true, lat: 51.507, lon: -0.128, R: 260, see: 14000, get nofly() { return lonOpen() ? null : 'New London · Federation airspace · you are still wanted there'; },
   build(K) { const M = EM(), S = emat('lstone', { color: 0xc8b890, roughness: .85 }), gl = ecityMat('glass', EST.glass);
     K.box(S, 120, 16, 22, 0, 0, 0, -.2); K.box(S, 10, 56, 10, 66, 0, -10, -.2); K.box(M.gold, 11, 8, 11, 66, 44, -10, -.2, false); K.cone(M.gold, 6, 16, 66, 56, -10, 4); K.box(S, 18, 40, 18, -66, 0, 14, -.2);
     K.add(antiprism(26, 1.5, 150), gl, 120, 0, 100, 0); K.tor(M.white, 34, 1.4, -20, 38, 60, .6, Math.PI * 2, 0, 40); K.dome(M.white, 14, -140, 30, -40, 1.2, 20); K.box(S, 30, 30, 30, -140, 0, -40);
@@ -21264,6 +21291,158 @@ function jewelInterior() {
   SHIPI.anim = (dt, t) => { for (const f of anims) f(t, dt); };
   return S;
 }
+/* ============ Chapter IV on · cats and dogs ============
+   Once you have the Jewel of Archamus, strays turn up in the streets of Earth's cities (New York, Paris, Tokyo, Beijing, Cairo,
+   Kingston and the rest), in New London and in Ad-Nostra. Walk up to one and TAME it: it's yours, with a name, and there's no
+   limit to how many you keep (wanderer.pets). Pets you tame follow you round town; when you're back aboard, every pet you own
+   roams the Jewel's five decks (the garden most of all), and so do the companions you've dismissed. Pet them as you pass. */
+const PETS = { strays: [], follow: [], key: null, spawnT: 0, mats: {}, roam: [], roamSig: '' };
+const petsOn = () => jewelOn();
+const CAT_COATS = [{ n: 'ginger', c: 0xd8823a, b: 0xf6e4c8, s: 0xa85a20 }, { n: 'black', c: 0x1e1e22, b: 0x2c2c32 }, { n: 'white', c: 0xf2eee6, b: 0xffffff }, { n: 'grey', c: 0x878a91, b: 0xd2d4d8 },
+  { n: 'tabby', c: 0x8a6a48, b: 0xdcc8a4, s: 0x3e2c1c }, { n: 'calico', c: 0xf2eee6, b: 0xffffff, p: [0xd8823a, 0x2a2a2a] }, { n: 'Siamese', c: 0xeadcc4, b: 0xf6eedc, pt: 0x4a3428 }];
+const DOG_COATS = [{ n: 'golden', c: 0xd9a75a, b: 0xf0d8a8 }, { n: 'black', c: 0x222226, b: 0x3a3a40 }, { n: 'chocolate', c: 0x5a3a24, b: 0x8a6448 }, { n: 'white', c: 0xefece6, b: 0xffffff },
+  { n: 'grey', c: 0x8d9096, b: 0xdcdcdc }, { n: 'spotted', c: 0xf4f2ee, b: 0xffffff, sp: 0x1a1a1a }, { n: 'husky', c: 0x6a6e76, b: 0xf2f2f2 }, { n: 'beagle', c: 0xa8642c, b: 0xf6f0e6, p: [0x2a2420] }];
+const CAT_NAMES = ['Biscuit', 'Mango', 'Pepper', 'Luna', 'Miso', 'Tigger', 'Smudge', 'Nala', 'Socks', 'Oliver', 'Pumpkin', 'Shadow', 'Willow', 'Mochi', 'Cleo', 'Ziggy', 'Pip', 'Saffron', 'Nebula', 'Comet', 'Juniper', 'Bramble', 'Sushi', 'Tofu', 'Clementine', 'Nutmeg', 'Pixel', 'Olive', 'Marmalade', 'Inky'];
+const DOG_NAMES = ['Rex', 'Bella', 'Max', 'Daisy', 'Buster', 'Rosie', 'Scout', 'Bruno', 'Poppy', 'Duke', 'Hazel', 'Ziggy', 'Rocket', 'Maple', 'Biscuit', 'Bear', 'Lady', 'Archie', 'Juno', 'Ranger', 'Pickle', 'Waffles', 'Orbit', 'Cosmo', 'Barley', 'Honey', 'Murphy', 'Teddy', 'Nova', 'Sprocket'];
+const petPick = a => a[(Math.random() * a.length) | 0];
+function petDesc(D) { const coat = (D.kind === 'cat' ? CAT_COATS : DOG_COATS)[D.coat] || {}; return `${D.kind === 'dog' ? (D.size < .7 ? 'little ' : D.size > 1.05 ? 'big ' : '') : ''}${coat.n || ''} ${D.kind}`.trim(); }
+function petNew(kind) { const cat = kind === 'cat'; return { kind, coat: (Math.random() * (cat ? CAT_COATS : DOG_COATS).length) | 0, size: cat ? .9 + Math.random() * .25 : petPick([.6, .62, .85, .9, 1.12, 1.2]), ears: cat ? 0 : (Math.random() < .5 ? 1 : 0) }; }
+function petMat(c, e = 0) { const k = c + ':' + e; return PETS.mats[k] || (PETS.mats[k] = new THREE.MeshStandardMaterial({ color: c, roughness: .82, metalness: 0, emissive: e ? c : 0, emissiveIntensity: e ? .9 : 0 })); }
+function petMesh(D) { // a cat or a dog, built from simple shapes; forward is +z, like the people
+  const cat = D.kind === 'cat', coat = (cat ? CAT_COATS : DOG_COATS)[D.coat] || (cat ? CAT_COATS : DOG_COATS)[0], g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const C = petMat(coat.c), B = petMat(coat.b), PT = coat.pt ? petMat(coat.pt) : C, dark = petMat(0x111114), pink = petMat(0xd88a90);
+  const add = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0, par = body) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); o.castShadow = true; par.add(o); return o; };
+  // proportions: a cat is low and long-tailed, a dog taller with a snout
+  const r = cat ? .1 : .15, len = cat ? .26 : .36, hy = cat ? .17 : .35, legL = cat ? .15 : .31, legR = cat ? .026 : .044, hr = cat ? .1 : .12;
+  add(new THREE.CapsuleGeometry(r, len, 4, 10), C, 0, hy, 0, Math.PI / 2);
+  add(new THREE.CapsuleGeometry(r * .82, len * .7, 4, 8), B, 0, hy - r * .35, .02, Math.PI / 2); // the paler belly
+  if (coat.s) for (let i = 0; i < 4; i++) add(new THREE.TorusGeometry(r * 1.01, .012, 4, 12, Math.PI), petMat(coat.s), 0, hy, -len * .4 + i * len * .26, 0, 0, 0).rotation.set(0, 0, 0); // tabby stripes over the back
+  if (coat.p) for (let i = 0; i < 5; i++) add(new THREE.SphereGeometry(r * (.35 + Math.random() * .25), 8, 6), petMat(coat.p[i % coat.p.length]), (Math.random() - .5) * r * 1.2, hy + r * .55, (Math.random() - .5) * len, 0, 0, 0).scale.y = .45; // patches
+  if (coat.sp) for (let i = 0; i < 12; i++) { const a = Math.random() * Math.PI * 2; add(new THREE.SphereGeometry(r * .14, 6, 4), petMat(coat.sp), Math.cos(a) * r * .97, hy + Math.sin(a) * r * .97, (Math.random() - .5) * (len + r)); } // spots
+  if (coat.n === 'husky') add(new THREE.CapsuleGeometry(r * .9, len * .9, 4, 8), petMat(0x3a3e46), 0, hy + r * .28, 0, Math.PI / 2).scale.set(1, .6, 1); // the dark saddle
+  // the head
+  const head = new THREE.Group(); head.position.set(0, hy + (cat ? .1 : .16), len / 2 + r * .7); body.add(head); g.userData.head = head;
+  add(new THREE.SphereGeometry(hr, 14, 10), C, 0, 0, 0, 0, 0, 0, head);
+  if (cat) { add(new THREE.SphereGeometry(hr * .48, 10, 8), coat.pt ? PT : B, 0, -hr * .32, hr * .72, 0, 0, 0, head).scale.set(1.2, .8, .8); add(new THREE.SphereGeometry(.012, 6, 4), pink, 0, -hr * .15, hr * .98, 0, 0, 0, head); }
+  else { add(new THREE.BoxGeometry(hr * .8, hr * .7, hr * 1.1), B, 0, -hr * .3, hr * .95, 0, 0, 0, head); add(new THREE.SphereGeometry(hr * .2, 8, 6), dark, 0, -hr * .12, hr * 1.5, 0, 0, 0, head); add(new THREE.BoxGeometry(hr * .5, .015, hr * .5), pink, 0, -hr * .62, hr * 1.2, 0, 0, 0, head).visible = false; }
+  const eyeM = cat ? petMat(D.coat === 6 ? 0x5ab0ff : 0x9ad84a, 1) : dark; // cats' eyes catch the light
+  for (const s of [-1, 1]) {
+    add(new THREE.SphereGeometry(cat ? .016 : .02, 8, 6), eyeM, s * hr * .42, hr * .18, hr * .84, 0, 0, 0, head);
+    if (cat || D.ears === 0) { const e = add(new THREE.ConeGeometry(hr * .36, hr * .8, 4), coat.pt ? PT : C, s * hr * .55, hr * .82, -hr * .05, 0, Math.PI / 4, s * -.25, head); void e; }
+    else add(new THREE.BoxGeometry(hr * .3, hr * .9, hr * .5), coat.p ? petMat(coat.p[0]) : C, s * hr * .95, -hr * .1, -hr * .05, 0, 0, s * .2, head); // floppy ears
+  }
+  // legs, hinged at the hip and shoulder
+  g.userData.legs = [];
+  for (const [x, z] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) { const piv = new THREE.Group(); piv.position.set(x * r * .6, hy - r * .2, z * len * .42); body.add(piv); add(new THREE.CylinderGeometry(legR, legR * .9, legL, 6), coat.pt ? PT : C, 0, -legL / 2, 0, 0, 0, 0, piv); add(new THREE.SphereGeometry(legR * 1.15, 6, 4), coat.pt ? PT : B, 0, -legL + .01, legR * .3, 0, 0, 0, piv); g.userData.legs.push(piv); }
+  // the tail: a cat's long and raised, a dog's shorter and ready to wag
+  const tail = new THREE.Group(); tail.position.set(0, hy + r * .3, -len / 2 - r * .6); body.add(tail); g.userData.tail = tail;
+  const tl = cat ? .3 : .24; add(new THREE.CylinderGeometry(cat ? .016 : .028, cat ? .022 : .036, tl, 6), coat.pt ? PT : C, 0, tl / 2, 0, 0, 0, 0, tail); tail.rotation.x = cat ? -.35 : -.7;
+  if (coat.n === 'husky' || coat.n === 'beagle') add(new THREE.SphereGeometry(.03, 6, 4), B, 0, tl, 0, 0, 0, 0, tail);
+  g.scale.setScalar(D.size || 1); g.userData.cat = cat; g.userData.ph = Math.random() * 6; g.userData.body = body;
+  return g;
+}
+function petAnim(g, dt, spd, happy) { // legs swing with the pace, the tail sways (or wags), the body bobs
+  const U = g.userData; U.ph += dt * (2 + spd * (U.cat ? 9 : 7)); const a = Math.min(.7, spd * .55), s = Math.sin(U.ph);
+  U.legs.forEach((l, i) => { l.rotation.x = (i === 0 || i === 3 ? s : -s) * a; });
+  U.body.position.y = spd > .05 ? Math.abs(Math.cos(U.ph)) * .02 : 0;
+  const t = performance.now() / 1000; U.tail.rotation.z = U.cat ? Math.sin(t * 1.6 + U.ph * .1) * .35 : Math.sin(t * (happy || spd > .1 ? 14 : 4)) * (happy || spd > .1 ? .7 : .2);
+  U.head.rotation.y = spd > .05 ? 0 : Math.sin(t * .5 + U.ph) * .4;
+}
+// ---- in the streets ----
+function petCtx() { // which Earth city you're in, if any, and where in it a stray can stand
+  if (!petsOn() || ex.mode !== 'world' || DGN.on || PRISON.on) return null;
+  const p = player.position;
+  if (isPl()) { const W = world.planet; if (!W || !W.P || W.P.id !== 'earth' || !W.epoi) return null;
+    for (const E of W.epoi) { const Q = E.Q; if (!Q || E.line || !(EARTH_CROWD[Q.id] || Q.tag === 'City')) continue; if (Math.hypot(E.gx - p.x, E.gz - p.z) > Q.R * .8) continue;
+      return { key: 'earth:' + Q.id, name: Q.name, ok: (x, z) => Math.hypot(x - E.gx, z - E.gz) < Q.R * .78 && (plSeaY() == null || wHeight(x, z) > plSeaY() + .6) }; }
+    return null; }
+  if (curArea() === 'europe') return { key: 'london', name: 'New London', ok: (x, z) => !inRiver(x, z) };
+  if (curArea() === 'africa' && world.town && typeof TOWN !== 'undefined') return { key: 'adnostra', name: 'Ad-Nostra', ok: (x, z) => x > TOWN.x0 && x < TOWN.x1 && z > TOWN.z0 && z < TOWN.z1 && wHeight(x, z) > TOWN.sea + .3 && !inCantina(x, z) };
+  return null;
+}
+function petSpot(ctx, near, rMin, rMax) { const p = near || player.position; for (let i = 0; i < 14; i++) { const a = Math.random() * Math.PI * 2, rr = rMin + Math.random() * (rMax - rMin), x = p.x + Math.cos(a) * rr, z = p.z + Math.sin(a) * rr; if (ctx.ok(x, z) && !worldBlocked(x, z, true)) return { x, z }; } return null; }
+function petDrop(P) { if (P.g && P.g.parent) P.g.parent.remove(P.g); }
+function petClearStrays() { for (const P of PETS.strays) petDrop(P); PETS.strays = []; }
+function petClearFollow() { for (const P of PETS.follow) petDrop(P); PETS.follow = []; }
+function petWorldTick(dt) {
+  if (ex.mode !== 'world' || state !== 'explore') { if (ex.mode !== 'world') { if (PETS.strays.length) petClearStrays(); if (PETS.follow.length) petClearFollow(); PETS.key = null; } return; }
+  const ctx = petCtx(), p = player.position, phone = typeof lawPhone === 'function' && lawPhone(), area = curArea() + (isPl() && world.planet ? ':' + world.planet.P.id : '');
+  if (PETS.area !== area) { petClearStrays(); petClearFollow(); PETS.area = area; } // a new place: they went aboard
+  if (!ctx) { if (PETS.strays.length) petClearStrays(); PETS.key = null; }
+  else {
+    if (PETS.key !== ctx.key) { petClearStrays(); PETS.key = ctx.key; PETS.spawnT = 0; if (petsOn() && !PETS.said) { PETS.said = true; setTimeout(() => lootMsg(tiPhone() ? 'Cats and dogs about · tame them' : `Strays in the streets of ${ctx.name} · walk up to a cat or a dog to tame it`, '#ffb8d0'), 1800); } }
+    // keep a handful about you: there are always more
+    for (const P of [...PETS.strays]) if (Math.hypot(P.x - p.x, P.z - p.z) > 85) { petDrop(P); PETS.strays.splice(PETS.strays.indexOf(P), 1); }
+    if ((PETS.spawnT -= dt) <= 0 && PETS.strays.length < (phone ? 4 : 8)) { PETS.spawnT = 1.2; const s = petSpot(ctx, null, 14, 44); if (s) { const D = petNew(Math.random() < .5 ? 'cat' : 'dog'), g = petMesh(D); wScene.add(g); g.position.set(s.x, wHeight(s.x, s.z), s.z); g.rotation.y = Math.random() * 6.28; PETS.strays.push({ D, g, x: s.x, z: s.z, hx: s.x, hz: s.z, tx: s.x, tz: s.z, wait: Math.random() * 3, ctx }); } }
+  }
+  for (const P of PETS.strays) { // wander near where they live; dogs come over to see you, cats keep an eye on you
+    const dx = p.x - P.x, dz = p.z - P.z, dp = Math.hypot(dx, dz); let spd = 0;
+    if (!P.D.kind || P.D.kind === 'dog') { if (dp < 9 && dp > 2.2 && Math.random() < dt * .4) { P.tx = p.x - dx / dp * 1.6; P.tz = p.z - dz / dp * 1.6; P.wait = 0; } }
+    if (P.wait > 0) { P.wait -= dt; if (dp < 5) P.g.rotation.y = angLerp(P.g.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 3)); }
+    else { const tx = P.tx - P.x, tz = P.tz - P.z, d = Math.hypot(tx, tz);
+      if (d < .3) { P.wait = 1 + Math.random() * 4; const s = petSpot(P.ctx, { x: P.hx, z: P.hz }, 1, 9); if (s) { P.tx = s.x; P.tz = s.z; } }
+      else { spd = P.D.kind === 'cat' ? .8 : 1.3; const nx = P.x + tx / d * spd * dt, nz = P.z + tz / d * spd * dt; if (!worldBlocked(nx, nz, true)) { P.x = nx; P.z = nz; } else { P.wait = .5; P.tx = P.x; P.tz = P.z; } P.g.rotation.y = angLerp(P.g.rotation.y, Math.atan2(tx, tz), Math.min(1, dt * 6)); } }
+    P.g.position.set(P.x, wHeight(P.x, P.z), P.z); petAnim(P.g, dt, spd, dp < 3);
+  }
+  PETS.follow.forEach((P, k) => { // your own, trotting after you
+    const a = player.rotation.y + Math.PI + (k % 2 ? .6 : -.6) * (1 + (k >> 1) * .4), r = 1.6 + (k >> 1) * .8, gx = p.x + Math.sin(a) * r, gz = p.z + Math.cos(a) * r, tx = gx - P.x, tz = gz - P.z, d = Math.hypot(tx, tz); let spd = 0;
+    if (d > 30) { P.x = gx; P.z = gz; } else if (d > .4) { spd = Math.min(7, d * 1.6 + .5); const nx = P.x + tx / d * spd * dt, nz = P.z + tz / d * spd * dt; if (!worldBlocked(nx, nz, true)) { P.x = nx; P.z = nz; } else if (d > 6) { P.x = gx; P.z = gz; } P.g.rotation.y = angLerp(P.g.rotation.y, Math.atan2(tx, tz), Math.min(1, dt * 8)); }
+    P.g.position.set(P.x, wHeight(P.x, P.z), P.z); petAnim(P.g, dt, spd / 3, true);
+  });
+}
+function petNear(p) { let best = null, bd = 1.9; for (const P of PETS.strays) { const d = Math.hypot(P.x - p.x, P.z - p.z); if (d < bd) { bd = d; best = P; } } return best; }
+function petTame(P) {
+  if (!P || !PETS.strays.includes(P)) return;
+  const D = P.D, have = wanderer.pets || [], used = new Set(have.map(q => q.name)), pool = (D.kind === 'cat' ? CAT_NAMES : DOG_NAMES).filter(n => !used.has(n));
+  D.name = pool.length ? petPick(pool) : `${petPick(D.kind === 'cat' ? CAT_NAMES : DOG_NAMES)} ${['II', 'III', 'IV', 'V', 'VI', 'VII'][(have.length / 30) | 0] || have.length}`;
+  D.id = 'pet' + Date.now().toString(36) + ((Math.random() * 1e4) | 0); D.where = P.ctx ? P.ctx.name : '';
+  wanderer.pets = have.concat([D]); const c = curChar(); if (c) c.pets = wanderer.pets; saveRoster();
+  PETS.strays.splice(PETS.strays.indexOf(P), 1);
+  if (PETS.follow.length < 4) PETS.follow.push(P); else petDrop(P); // a few trot after you; the rest head straight for the Jewel
+  burst(P.x, wHeight(P.x, P.z) + .6, P.z, 18, 2.2, 1, .45, .7, .9, -.2, 1.2); sfx.chime();
+  notice(`Tamed · a ${petDesc(D)}`, D.name.toUpperCase(), 2600);
+  const n = wanderer.pets.length; setTimeout(() => lootMsg(`${D.name} is yours · ${n} pet${n === 1 ? '' : 's'} · ${tiPhone() ? 'they’ll roam the Jewel' : 'they’ll roam the Jewel of Archamus when you’re aboard'}`, '#ffb8d0'), 700);
+}
+// ---- aboard the Jewel: pets and dismissed companions walk her five decks ----
+const ROAM_DECKS = [2, 4, 3, 0, 1], PET_DECKS = [3, 2, 3, 0, 1, 4]; // crew start on the crew deck and spread out; pets love the garden
+function roamFree(d, x, z, m = .45) { const [x0, x1, z0, z1] = JEWEL_BOUNDS[d]; if (x < x0 + m || x > x1 - m || z < z0 + m || z > z1 - m) return false; for (const [a, b, c, e] of JEWEL_COLS[d]) if (x > a - m && x < b + m && z > c - m && z < e + m) return false; return true; }
+function roamSpot(d, near, rr) { const [x0, x1, z0, z1] = JEWEL_BOUNDS[d]; for (let i = 0; i < 30; i++) { const x = near ? near.x + (Math.random() - .5) * 2 * rr : x0 + Math.random() * (x1 - x0), z = near ? near.z + (Math.random() - .5) * 2 * rr : z0 + Math.random() * (z1 - z0); if (roamFree(d, x, z, .55)) return { x, z }; } return { x: 0, z: 4 }; }
+function roamPut(o, d) { o.deck = d; const s = roamSpot(d); o.x = s.x; o.z = s.z; o.tx = s.x; o.tz = s.z; o.wait = 1 + Math.random() * 4; const deck = SHIPI.decks[d]; const obj = o.R ? o.R.root : o.g; if (deck && obj.parent !== deck) deck.add(obj); obj.position.set(o.x, 0, o.z); }
+function roamSync() { // who's aboard: every dismissed companion and (up to what the ship can show) every pet you own
+  if (SHIPK !== 'jewel' || !SHIPI.decks.length) return;
+  const cap = tiPhone() ? 12 : 30, pets = (wanderer.pets || []).slice(-cap), crew = ALN.on ? [] : aboardIds();
+  const sig = crew.join(',') + '|' + pets.map(p => p.id).join(',') + '|' + crew.filter(id => SHIPI.rigs[id]).length; if (sig === PETS.roamSig && PETS.roam.length) return; PETS.roamSig = sig;
+  const keep = PETS.roam.filter(o => (o.kind === 'crew' ? crew.includes(o.id) && SHIPI.rigs[o.id] === o.R : pets.some(p => p.id === o.id)));
+  for (const o of PETS.roam) if (!keep.includes(o)) { const obj = o.R ? o.R.root : o.g; if (obj && obj.parent && o.kind === 'pet') obj.parent.remove(obj); }
+  PETS.roam = keep;
+  crew.forEach((id, i) => { const R = SHIPI.rigs[id]; if (!R || PETS.roam.some(o => o.id === id)) return; const o = { kind: 'crew', id, R }; roamPut(o, ROAM_DECKS[i % ROAM_DECKS.length]); R.mode = 'idle'; PETS.roam.push(o); });
+  pets.forEach((D, i) => { if (PETS.roam.some(o => o.id === D.id)) return; const o = { kind: 'pet', id: D.id, D, g: petMesh(D) }; roamPut(o, PET_DECKS[i % PET_DECKS.length]); PETS.roam.push(o); });
+}
+function roamTick(dt) {
+  if (SHIPK !== 'jewel') return; roamSync();
+  const p = player.position, talking = !!(ex.dlg || document.querySelector('#choice.on, .choice.on'));
+  for (const o of PETS.roam) {
+    const obj = o.R ? o.R.root : o.g; if (!obj) continue; const here = o.deck === SHIPI.deck; let spd = 0;
+    if (!here && Math.random() < dt / 45) { const others = [0, 1, 2, 3, 4].filter(d => d !== o.deck && d !== SHIPI.deck); roamPut(o, petPick(others)); continue; } // off to another deck, out of sight
+    const dx = p.x - o.x, dz = p.z - o.z, dp = here ? Math.hypot(dx, dz) : 99;
+    if (here && (dp < (o.kind === 'pet' ? .7 : 1.0) || (talking && dp < 3))) { o.wait = Math.max(o.wait, .6); obj.rotation.y = angLerp(obj.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 4)); } // they stop for you, and look at you when you speak
+    if (o.wait > 0) o.wait -= dt;
+    else { const tx = o.tx - o.x, tz = o.tz - o.z, d = Math.hypot(tx, tz);
+      if (d < .25) { o.wait = (o.kind === 'pet' ? 1.5 : 3) + Math.random() * (o.kind === 'pet' ? 5 : 8); const s = roamSpot(o.deck, Math.random() < .6 ? o : null, 4); o.tx = s.x; o.tz = s.z; o.stuck = 0; }
+      else { spd = o.kind === 'pet' ? (o.D.kind === 'cat' ? .7 : 1.1) : 1.15; let a = Math.atan2(tx, tz), moved = false;
+        for (const da of [0, .7, -.7, 1.4, -1.4, 2.1, -2.1]) { const t = a + da, nx = o.x + Math.sin(t) * spd * dt, nz = o.z + Math.cos(t) * spd * dt; if (roamFree(o.deck, nx, nz, .3)) { o.x = nx; o.z = nz; a = t; moved = true; break; } }
+        if (!moved || (o.stuck = (o.stuck || 0) + (moved ? 0 : dt)) > 2) { const s = roamSpot(o.deck); o.tx = s.x; o.tz = s.z; o.stuck = 0; }
+        obj.rotation.y = angLerp(obj.rotation.y, a, Math.min(1, dt * 6)); } }
+    obj.position.set(o.x, 0, o.z);
+    if (o.R) o.R.mode = spd > 0 ? 'walk' : 'idle'; else if (here) petAnim(o.g, dt, spd, dp < 2.5);
+  }
+}
+function roamNear(p) { let best = null, bd = 1e9; for (const o of PETS.roam) { if (o.deck !== SHIPI.deck) continue; const d = Math.hypot(o.x - p.x, o.z - p.z); if (d < (o.kind === 'pet' ? 1.3 : 1.6) && d < bd) { bd = d; best = o; } } return best ? { d: bd, o: best } : null; }
+function petPet(D) {
+  const o = PETS.roam.find(q => q.id === D.id); if (o) { o.wait = 3; burst(o.x, (o.D.kind === 'cat' ? .5 : .8) * (o.D.size || 1), o.z, 10, 1.6, 1, .45, .7, .8, -.2, 1); }
+  sfx.chime(); const cat = D.kind === 'cat';
+  lootMsg(petPick(cat ? [`${D.name} purrs and headbutts your hand`, `${D.name} rolls over for a belly rub, then thinks better of it`, `${D.name} blinks at you slowly · that means love`, `${D.name} kneads the floor and purrs`] : [`${D.name} wags so hard the whole dog wags`, `${D.name} leans on your legs and sighs happily`, `${D.name} brings you something · it’s a sock`, `${D.name} licks your hand · good dog`]), '#ffb8d0');
+}
 // which ship you're aboard: the Nostra's three decks or the Jewel's five (each keeps its own scene once built)
 const SHIP_KINDS = {
   nostra: { name: 'Nostra', names: DECK_NAMES, bounds: SHIP_BOUNDS, cols: SHIP_COLS, spots: SHIP_SPOTS, hits: SHIP_HITS, crew: CREW_SPOTS, crewDeck: 1, bridgeDeck: 2, start: [0, 6.8], startUp: [0, 3.4], arrive: d => d === 2 ? [1.6, 1.9] : [1.3, 0] },
@@ -21278,7 +21457,9 @@ function shipKindSet(k) {
   SHIPK = k; const T = SHIP_KINDS[k];
   DECK_NAMES = T.names; SHIP_BOUNDS = T.bounds; SHIP_COLS = T.cols; SHIP_SPOTS = T.spots; SHIP_HITS = T.hits; CREW_SPOTS = T.crew; SHIPI.crew = T.crewDeck; SHIPI.bridge = T.bridgeDeck;
   for (const R of [...Object.values(SHIPI.rigs), ...Object.values(SHIPI.frigs || {})]) if (R.root.parent) R.root.parent.remove(R.root); // they come aboard the other ship afresh
+  roamReset();
 }
+function roamReset() { for (const o of PETS.roam) { const obj = o.R ? o.R.root : o.g; if (obj && obj.parent) obj.parent.remove(obj); } PETS.roam = []; PETS.roamSig = ''; }
 // ---- tap or click anything aboard: close by, it's used; further off, you walk over and use it ----
 const shipRay = new THREE.Raycaster(), shipNdc = new THREE.Vector2();
 function shipPick(cx, cy) {
@@ -21287,18 +21468,19 @@ function shipPick(cx, cy) {
   // first: whichever usable thing sits nearest to where you tapped on screen (fingers are wide; tables get in the way)
   const tw = r.width, th = r.height, v = new THREE.Vector3(); let best = null, bd = Math.max(46, Math.min(tw, th) * .09);
   const cand = (SHIPI.hits[SHIPI.deck] || []).map(m => ({ pos: m.getWorldPosition(new THREE.Vector3()), t: { id: m.userData.spot } }));
-  if (SHIPI.deck === SHIPI.crew) for (const [id, R] of Object.entries(SHIPI.rigs)) if (R.root.parent && aboardIds().includes(id)) cand.push({ pos: R.root.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 1.1, 0)), t: { id: 'aboard', who: id } });
+  if (SHIPI.deck === SHIPI.crew || SHIPK === 'jewel') for (const [id, R] of Object.entries(SHIPI.rigs)) if (R.root.parent && R.root.parent === SHIPI.decks[SHIPI.deck] && aboardIds().includes(id)) cand.push({ pos: R.root.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 1.1, 0)), t: { id: 'aboard', who: id } });
   for (const c of cand) { v.copy(c.pos).project(camera); if (v.z > 1) continue; const sx = r.left + (v.x + 1) / 2 * tw, sy = r.top + (1 - v.y) / 2 * th, d = Math.hypot(sx - cx, sy - cy); if (d < bd) { bd = d; best = c.t; } }
   if (best) return best;
   shipRay.setFromCamera(shipNdc, camera);
   const targets = [...(SHIPI.hits[SHIPI.deck] || [])];
-  if (SHIPI.deck === SHIPI.crew) for (const [id, R] of Object.entries(SHIPI.rigs)) if (R.root.parent && aboardIds().includes(id)) { R.root.userData.aboardId = id; targets.push(R.root); }
+  if (SHIPI.deck === SHIPI.crew || SHIPK === 'jewel') for (const [id, R] of Object.entries(SHIPI.rigs)) if (R.root.parent && R.root.parent === SHIPI.decks[SHIPI.deck] && aboardIds().includes(id)) { R.root.userData.aboardId = id; targets.push(R.root); }
   const hit = shipRay.intersectObjects(targets, true)[0]; if (!hit) return null;
   let o = hit.object; while (o && !o.userData.spot && !o.userData.aboardId) o = o.parent;
   if (!o) return null;
   return o.userData.aboardId ? { id: 'aboard', who: o.userData.aboardId } : { id: o.userData.spot };
 }
 function shipSpotOf(t) { // where you stand to use it, and how close you need to be
+  if (t.id === 'aboard' && SHIPK === 'jewel') { const o = PETS.roam.find(q => q.id === t.who); return o ? { x: o.x, z: o.z, r: 1.5 } : null; }
   if (t.id === 'aboard') { const i = aboardIds().indexOf(t.who), [x, z] = CREW_SPOTS[Math.max(0, i) % CREW_SPOTS.length]; return { x: x + (x < 0 ? .9 : -.9), z, r: 1.5 }; }
   const s = SHIP_SPOTS[SHIPI.deck].find(q => q[0] === t.id); return s ? { x: s[1], z: s[2], r: s[3] } : null;
 }
@@ -21324,7 +21506,7 @@ canvas.addEventListener('pointermove', e => { // a hand over anything you can us
 function shipBlocked(x, z) {
   const [x0, x1, z0, z1] = SHIP_BOUNDS[SHIPI.deck]; if (x < x0 || x > x1 || z < z0 || z > z1) return true;
   for (const [a, b, c, e] of SHIP_COLS[SHIPI.deck]) if (x > a - .28 && x < b + .28 && z > c - .28 && z < e + .28) return true;
-  if (SHIPI.deck === SHIPI.crew) for (const [i] of aboardIds().entries()) { const [cx2, cz2] = CREW_SPOTS[i % CREW_SPOTS.length]; if (Math.hypot(x - cx2, z - cz2) < .55) return true; }
+  if (SHIPI.deck === SHIPI.crew && SHIPK !== 'jewel') for (const [i] of aboardIds().entries()) { const [cx2, cz2] = CREW_SPOTS[i % CREW_SPOTS.length]; if (Math.hypot(x - cx2, z - cz2) < .55) return true; }
   return false;
 }
 function shipUnstick() { // the nearest open floor, if you're standing inside something
@@ -21342,6 +21524,7 @@ async function shipCrewPlace() {
     let R = SHIPI.rigs[id];
     if (!R) { try { R = SHIPI.rigs[id] = await compRigFor(id); } catch (e) { console.warn('aboard rig failed', id, e); continue; } }
     if (!R) continue;
+    if (SHIPK === 'jewel') continue; // aboard the Jewel they walk all five decks (roamTick)
     const [x, z, ry] = CREW_SPOTS[i % CREW_SPOTS.length]; R.mode = 'idle'; R.root.position.set(x, 0, z); R.root.rotation.y = ry;
     const cd = SHIPI.decks[SHIPI.crew]; if (cd && R.root.parent !== cd) cd.add(R.root);
   }
@@ -21419,6 +21602,7 @@ function updateShipMode(dt) {
   if (SHIPI.core) { SHIPI.core.material.emissiveIntensity = 1.4 + Math.sin(SHIPI.t * 3) * .4; SHIPI.coreLight.intensity = 3.5 + Math.sin(SHIPI.t * 3) * 1; }
   if (SHIPI.holo) SHIPI.holo.rotation.y += dt * .25;
   if (SHIPI.anim) SHIPI.anim(dt, SHIPI.t); // the Jewel: the Light Core's rings, the garden's tree, the candles
+  if (SHIPK === 'jewel' && !ALN.on) roamTick(dt); // her crew and your pets, about her five decks
   for (const R of Object.values(SHIPI.rigs)) if (R.root.parent) animRig(R, dt);
   // walking
   let ix = ex.joyX, iy = ex.joyY; const k = ex.keys;
@@ -21427,7 +21611,7 @@ function updateShipMode(dt) {
   if (d || ex.invOpen) ix = iy = 0;
   const mag = Math.hypot(ix, iy); if (mag > 1) { ix /= mag; iy /= mag; }
   const SP = k.has('ShiftLeft') || k.has('ShiftRight') ? 4.2 : 2.8, fx_ = -Math.sin(ex.yaw), fz = -Math.cos(ex.yaw), rx = Math.cos(ex.yaw), rz = -Math.sin(ex.yaw);
-  const blocked = (x, z) => { const [x0, x1, z0, z1] = SHIP_BOUNDS[SHIPI.deck]; if (x < x0 || x > x1 || z < z0 || z > z1) return true; for (const [a, b, c, e] of SHIP_COLS[SHIPI.deck]) if (x > a - .28 && x < b + .28 && z > c - .28 && z < e + .28) return true; if (SHIPI.deck === SHIPI.crew) for (const [i] of aboardIds().entries()) { const [cx2, cz2] = CREW_SPOTS[i % CREW_SPOTS.length]; if (Math.hypot(x - cx2, z - cz2) < .55) return true; } return false; };
+  const blocked = (x, z) => { const [x0, x1, z0, z1] = SHIP_BOUNDS[SHIPI.deck]; if (x < x0 || x > x1 || z < z0 || z > z1) return true; for (const [a, b, c, e] of SHIP_COLS[SHIPI.deck]) if (x > a - .28 && x < b + .28 && z > c - .28 && z < e + .28) return true; if (SHIPI.deck === SHIPI.crew && SHIPK !== 'jewel') for (const [i] of aboardIds().entries()) { const [cx2, cz2] = CREW_SPOTS[i % CREW_SPOTS.length]; if (Math.hypot(x - cx2, z - cz2) < .55) return true; } return false; };
   let wx = (rx * ix + fx_ * iy) * SP, wz = (rz * ix + fz * iy) * SP;
   const G = SHIPI.goal;
   if (G && (mag > .05 || d || ex.invOpen)) SHIPI.goal = null; // you took over
@@ -21451,7 +21635,8 @@ function updateShipMode(dt) {
   // what's in reach
   let best = null, bd = 1e9;
   for (const [id, x, z, r, label, btn] of SHIP_SPOTS[SHIPI.deck]) { const dd = Math.hypot(x - p.x, z - p.z); if (dd < r && dd < bd) { bd = dd; best = { id, label, btn }; } }
-  if (SHIPI.deck === SHIPI.crew) aboardIds().forEach((id, i) => { const [x, z] = CREW_SPOTS[i % CREW_SPOTS.length], dd = Math.hypot(x - p.x, z - p.z); if (dd < 1.5 && dd < bd) { bd = dd; best = { id: 'aboard', who: id, label: `Talk to ${compName(id)}`, btn: 'TALK' }; } });
+  if (SHIPK === 'jewel') { const rn = roamNear(p); if (rn && rn.d < bd) { bd = rn.d; best = rn.o.kind === 'pet' ? { id: 'pet', pet: rn.o.D, label: `Pet · ${rn.o.D.name} (${petDesc(rn.o.D)})`, btn: 'PET' } : { id: 'aboard', who: rn.o.id, label: `Talk to ${compName(rn.o.id)}`, btn: 'TALK' }; } }
+  else if (SHIPI.deck === SHIPI.crew) aboardIds().forEach((id, i) => { const [x, z] = CREW_SPOTS[i % CREW_SPOTS.length], dd = Math.hypot(x - p.x, z - p.z); if (dd < 1.5 && dd < bd) { bd = dd; best = { id: 'aboard', who: id, label: `Talk to ${compName(id)}`, btn: 'TALK' }; } });
   if (best && best.id === 'ramp' && SHIPI.from === 'space') best = { id: 'rampSealed', label: 'Ramp · sealed (you’re in space)', btn: 'SEALED' };
   if (best && best.id === 'pilot') best.label = SHIPI.from === 'space' ? 'Pilot’s seat · take the helm' : 'Pilot’s seat · take off';
   if (best && best.id === 'holo' && SHIPI.from !== 'space') best.label = 'Holo-table · the galaxy (open it in flight)';
@@ -21488,6 +21673,7 @@ async function shipInteract(n) {
     leaveShip('takeoff'); return; }
   if (n.id === 'holo') { if (SHIPI.from === 'space') { leaveShip('space'); setTimeout(() => galOpen(), 50); } else lootMsg('The galaxy map works in flight · take off first', '#cfd6e6'); return; }
   if (n.id === 'aboard') { aboardTalk(n.who); return; }
+  if (n.id === 'pet') { petPet(n.pet); return; }
 }
 function shipLift(d) {
   const f = $('#fade'); f.style.transition = 'opacity .35s'; f.style.opacity = 1; sfx.whoosh();
@@ -21514,7 +21700,7 @@ function dismissCompanion(id) {
   openDialog(nm.toUpperCase(), [dismissLine(id)], false, () => {});
   if (id === 'orion' && world.orion) world.orion.root.visible = false;
   if (CREW[id] && CREW[id].R) CREW[id].R.root.visible = false;
-  setTimeout(() => lootMsg(`${compName(id)} is waiting aboard the ${jewelOn() ? 'Jewel of Archamus' : 'Nostra'} (crew deck)`, compColor(id)), 400);
+  setTimeout(() => lootMsg(jewelOn() ? `${compName(id)} is aboard the Jewel of Archamus · ${tiPhone() ? 'walking her decks' : 'they’ll walk her five decks'}` : `${compName(id)} is waiting aboard the Nostra (crew deck)`, compColor(id)), 400);
   ex.cSel = null; refreshJamesUI(); placeCrew().catch(() => null);
   ui.xhud.classList.toggle('comp', companionOn() || partyNow().length > 0);
 }
@@ -22199,14 +22385,16 @@ function holoHome() { // your species' homeworld and its system, for the project
   const S = (P && SYSTEMS.find(Y => Y.id === P.sys)) || holoSys('sol'); return { S, name: P ? P.name : 'Earth' };
 }
 const ARCH_PROJ_SP = ['erisian', 'chompy', 'grek', 'oilkoumene', 'taredesiban']; // order of the line-3 takes after the 20 main clips in archProjVoices
-/* Chapter IV: when the projection is done, five more lines: Archamus gives you the Jewel of Archamus, the Grek's finest ship, in
-   place of the pod. CH4ARCHAMUSGIFT1–5 (data/archGiftVoices.js) once recorded; subtitles until then. Sets ch4.newShip. */
+/* Chapter IV: when the projection is done, seven more lines: Archamus gives you the Jewel of Archamus, the Grek's finest ship, in
+   place of the pod, and tells you about the cats and dogs of Earth's cities. CH4ARCHAMUSGIFT1–7 (data/archGiftVoices.js) once recorded; subtitles until then. Sets ch4.newShip. */
 const ARCH_GIFT = [
   'One more thing. You will not reach Earth in that coffin of a pod.',
   'The Grek built a ship for me, long ago, when they still believed I would need to flee. I never did. She has waited beneath Archiostal ever since.',
   'They called her the Jewel of Archamus. Nothing the Grek have made flies faster, holds harder, or strikes with more fire.',
   'Her hyperdrive will carry you past the edge of any chart you own. Her hull has turned aside fleets. Her guns were made for the things your rifles cannot touch.',
-  'She is yours, wanderer. Bring her back to me with a light in her, and we will call the debt half paid.'];
+  'She is yours, wanderer. Bring her back to me with a light in her, and we will call the debt half paid.',
+  'And there is room aboard her for more than soldiers. Bring your animals, if you keep any. The garden would be glad of something living in it.',
+  'Walk the streets of any city on Earth and you will find cats and dogs waiting for someone to take them in. Tame as many as you wish. They will walk her decks while you are away.'];
 async function archGiftTalk() {
   const vo = await loadDataScript('archGiftVoices').then(ok => ok ? sfx.loadClips('archGiftVoices') : []).catch(() => []);
   if (state !== 'explore' || ex.dlg || jewelOn()) return;
@@ -22218,6 +22406,7 @@ async function archGiftTalk() {
     setTimeout(() => notice('Archamus’ gift', 'THE JEWEL OF ARCHAMUS', 4600), 700);
     setTimeout(() => lootMsg(tiPhone() ? 'Your new ship · hyperdrive Mk III' : 'Your new ship · the fastest, toughest and hardest-hitting in the galaxy · hyperdrive Mk III installed', '#f2c75a'), 1500);
     setTimeout(() => lootMsg(tiPhone() ? 'She waits where the pod was' : 'The pod is gone · the Jewel waits where it stood · board her', '#f2c75a'), 3600);
+    setTimeout(() => lootMsg(tiPhone() ? 'New London is open again' : 'New London is open again · cats and dogs are in the streets of Earth’s cities', '#ffb8d0'), 5800);
   }, vo || []);
 }
 const archProjLines = () => ARCH_PROJ.map((l, i) => i === 2 ? ARCH_PROJ_HOME[spOf(wanderer)] || l : l);
@@ -22576,7 +22765,7 @@ function shipUpTick(dt) {
     const W = world.planet; S.visible = false; setShipRig(S, 1, 1); if (world.orion) world.orion.root.visible = true;
     rememberPlaceSafe(); ui.xhud.classList.remove('world');
     const hd = new THREE.Vector3(0, 0, -1).applyQuaternion(S.quaternion);
-    if (world.adVisit && !isPl()) { world.adVisit = false; const E0 = bodyById('earth'), d0 = world.visitAt === 'antarctica' ? antDir() : new THREE.Vector3().fromArray(adnDir()); world.visitAt = null; atmoFromGround(E0, d0, new THREE.Vector3(0, 1, 0).cross(d0).normalize()); return; }
+    if (world.adVisit && !isPl()) { world.adVisit = false; const E0 = bodyById('earth'), d0 = world.visitAt === 'antarctica' ? antDir() : world.visitAt === 'europe' ? lonDir() : new THREE.Vector3().fromArray(adnDir()); world.visitAt = null; atmoFromGround(E0, d0, new THREE.Vector3(0, 1, 0).cross(d0).normalize()); return; }
     const d1 = plDir(X0, Z0), e1 = W.E.clone().multiplyScalar(hd.x).addScaledVector(W.N, hd.z); atmoFromGround(W.P, d1, e1.lengthSq() > .01 ? e1.normalize() : W.E.clone());
   }
 }
@@ -22596,6 +22785,7 @@ async function startChapter3(place) {
     if (P && place.dir) { try { await landOn(P, new THREE.Vector3().fromArray(place.dir), place); } finally { SPC.booting = false; } if (place.aboard) shipResume(place, 'ground'); return; }
   }
   if (place && place.where === 'africa' && place.adVisit) { SPC.sys = 'sol'; buildSpace(); setSystem('sol'); try { await visitAdNostra(place); } finally { SPC.booting = false; } if (place.aboard) shipResume(place, 'ground'); return; }
+  if (place && place.where === 'europe' && place.adVisit && lonOpen()) { SPC.sys = 'sol'; buildSpace(); setSystem('sol'); try { await visitLondon4(place); } finally { SPC.booting = false; } if (place.aboard) shipResume(place, 'ground'); return; }
   if (place && place.where === 'antarctica' && place.adVisit) { SPC.sys = 'sol'; buildSpace(); setSystem('sol'); try { await visitAntBase(place); } finally { SPC.booting = false; } if (place.aboard) shipResume(place, 'ground'); return; }
   spaceOn(place && place.where === 'space' ? place : null); SPC.booting = false;
   if (place && place.aboard && place.where === 'space') shipResume(place, 'space');
@@ -24468,7 +24658,7 @@ async function startChapter2(place) {
   if (!(wanderer.ch2 && wanderer.ch2.talkedOrion)) setTimeout(() => notice('Orion is waiting on the porch', 'SPEAK TO ORION', 3200), 3200);
 }
 function enterWorld(place) {
-  world.adVisit = !!(place && place.adVisit && (place.where === 'africa' || place.where === 'antarctica')); world.visitAt = world.adVisit ? place.where : null; // the Nostra parked outside Ad-Nostra, or on the ice by the station (Chapter III on)
+  world.adVisit = !!(place && place.adVisit && (place.where === 'africa' || place.where === 'antarctica' || (place.where === 'europe' && lonOpen()))); world.visitAt = world.adVisit ? place.where : null; // the Nostra parked outside Ad-Nostra, or on the ice by the station (Chapter III on)
   if (!place || place.where !== 'africa') { if (!world.area) world.area = 'antarctica'; }
   buildWorld(worldSeedOf(curChar() || wanderer));
   applyAreaLook();
@@ -24708,6 +24898,7 @@ function updateWorldMode(dt) {
   if (!ex.near) { const PZ = prisonNear(p); if (PZ) ex.near = PZ; }
   if (!ex.near) { const H = crowdNearHomeless(p); if (H) ex.near = { id: 'homeless', ref: H, label: `Give to ${H.a.name} · homeless` }; }
   if (!ex.near) { const BV = brawlVenueHere(); if (BV) { if (Math.hypot(p.x - BV.mcAt.x, p.z - BV.mcAt.z) < 2.3) ex.near = { id: 'brawl', ref: BV, label: `${titleName(BV.mc)} · fights` }; else if (BV.barAt && Math.hypot(p.x - BV.barAt.x, p.z - BV.barAt.z) < 1.9) ex.near = { id: 'bartender', ref: BV, label: 'Bartender' }; } }
+  if (!ex.near && PETS.strays.length) { const S = petNear(p); if (S) ex.near = { id: 'stray', ref: S, label: `a ${petDesc(S.D)}` }; }
   if (!ex.near && (isPl() || world.adVisit) && Math.hypot(p.x - shipX(), p.z - shipZ() - 10) < 4.5) ex.near = { id: 'ship', label: 'Your ship' };
   if (!ex.near && curArea() === 'africa' && TOWN.npcs.length) { const tn = townNear(p); if (tn) ex.near = { id: 'townsfolk', ref: tn, label: tn.label }; }
   if (!ex.near && !orionJoined() && curArea() === 'africa' && world.orion && world.orion.root.visible && Math.hypot(world.orion.root.position.x - p.x, world.orion.root.position.z - p.z) < 2.4) ex.near = { id: 'orion', label: 'Orion' };
@@ -24723,14 +24914,14 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { homeless: [ex.near.label, 'GIVE'], prisonSleep: [ex.near.label, 'SLEEP'], prisonPick: [ex.near.label, 'PICK'], prisonExit: [ex.near.label, 'ESCAPE'], bot: [`Wave · ${ex.near.label}`, 'WAVE'], ship: [podMode() ? 'Board the pod' : jewelOn() ? (tiPhone() ? 'Board · the Jewel of Archamus' : 'Board the Jewel of Archamus') : 'Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
+    const PR = { homeless: [ex.near.label, 'GIVE'], prisonSleep: [ex.near.label, 'SLEEP'], prisonPick: [ex.near.label, 'PICK'], prisonExit: [ex.near.label, 'ESCAPE'], bot: [`Wave · ${ex.near.label}`, 'WAVE'], stray: [`Tame · ${ex.near.label}`, 'TAME'], ship: [podMode() ? 'Board the pod' : jewelOn() ? (tiPhone() ? 'Board · the Jewel of Archamus' : 'Board the Jewel of Archamus') : 'Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give James orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
   // where's home, and your nearest beacon
   const dist = Math.hypot(p.x - 8, p.z), dirs = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
   const brg = (x, z) => dirs[((Math.round(Math.atan2(-(z - p.z), x - p.x) / (Math.PI / 4)) % 8) + 8) % 8];
-  let nav = DGN.on && DGN.lair ? `${DGN.lair.name} · ${DGN.f === dgnTop() ? 'the heart' : `floor ${DGN.f} of ${DGN.lair.floors}`}` : DGN.on ? `Olympus Mons · ${DGN.f === 8 ? 'the summit' : `floor ${DGN.f} of 8`} · ${DGN_NAMES[DGN.f]}` : isPl() || (world.adVisit && curArea() === 'africa') ? (d => d < 8 ? 'At your ship' : `Your ship · ${Math.round(d)} m · ${brg(shipX(), shipZ() + 10)}`)(Math.hypot(p.x - shipX(), p.z - shipZ() - 10)) : curArea() === 'europe' ? (d => d < 6 ? 'At the Houses of Parliament' : `Parliament · ${Math.round(d)} m · ${brg(LON.door.x, LON.door.z)}`)(Math.hypot(p.x - LON.door.x, p.z - LON.door.z)) : dist < 6 ? 'At the station' : `Station · ${Math.round(dist)} m · ${brg(8, 0)}`;
+  let nav = DGN.on && DGN.lair ? `${DGN.lair.name} · ${DGN.f === dgnTop() ? 'the heart' : `floor ${DGN.f} of ${DGN.lair.floors}`}` : DGN.on ? `Olympus Mons · ${DGN.f === 8 ? 'the summit' : `floor ${DGN.f} of 8`} · ${DGN_NAMES[DGN.f]}` : isPl() || (world.adVisit && (curArea() === 'africa' || curArea() === 'europe')) ? (d => d < 8 ? 'At your ship' : `Your ship · ${Math.round(d)} m · ${brg(shipX(), shipZ() + 10)}`)(Math.hypot(p.x - shipX(), p.z - shipZ() - 10)) : curArea() === 'europe' ? (d => d < 6 ? 'At the Houses of Parliament' : `Parliament · ${Math.round(d)} m · ${brg(LON.door.x, LON.door.z)}`)(Math.hypot(p.x - LON.door.x, p.z - LON.door.z)) : dist < 6 ? 'At the station' : `Station · ${Math.round(dist)} m · ${brg(8, 0)}`;
   if (isPl() && !DGN.on) { const q = questTarget(); if (q && q.label !== 'Your ship') { const qd = q.far || Math.hypot(q.x - p.x, q.z - p.z); nav = `<b class="nav-q">◆ ${q.label} · ${qd > 1000 ? (qd / 1000).toFixed(1) + ' km' : Math.round(qd) + ' m'} · ${brg(q.x, q.z)}</b><br>` + nav; } } // where the quest is, above the way home (the siege: Hawthorne's base, not your ship)
   if (ex.vehicle) nav = `Rover · ${Math.round(Math.abs(ex.vehicle.speed) * 3.6)} km/h<br>` + nav;
   let bb = null, bdist = 1e9;
@@ -30019,6 +30210,7 @@ function loopFrame() {
   try { resUiTick(); resEmpTick(dt); resGuildTick(dt); } catch (e) { console.error(e); }
   try { drunkTick(dt); chatUiTick(); } catch (e) {}
   try { if (wanderer) { peopleSpawnTick(); lawTick(dt); tauntBtnTick(); } } catch (e) { console.error(e); }
+  try { if (wanderer) petWorldTick(dt); } catch (e) { console.error(e); } // the cats and dogs of Earth's cities
   // each region has its own exploration playlist: Antarctica on the ice, Africa on the savanna; New London has its own tracks (lonMusicTick), so no ice music there, not even under the nightmare
   // space has its own playlist (SPACETHEME1-3, Vast Horizons, Wonders of the Galaxies, Inner Tranquility, FREEROAM1-3): out among the
   // stars and on the worlds you land on, in Chapter III, Chapter IV before the time skip, and Chapter V
