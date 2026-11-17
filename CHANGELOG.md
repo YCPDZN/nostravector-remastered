@@ -2662,3 +2662,6 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **On the ground,** the last few pets you tamed trot after you round town. **Aboard the Jewel,** every pet you own roams her five decks, the garden most of all. Walk up and press **PET** for a purr or a wag. (She shows up to 30 of them at once, 12 on phones; you keep the rest.)
 - **New London is open again:** fly over it in Earth's sky and land in Parliament Square. The Jewel sets down on the lawn where the escape ship once stood. Walk Westminster with its music and its strays, then board her to leave. None of Chapter II happens again.
 - **The crew walk the Jewel:** companions you dismiss no longer stand on the crew deck. Aboard the Jewel they wander all five decks, stopping when you come near and turning to you when you talk, and now and then they move to another deck while you're away from it. Talk to them wherever you find them.
+
+### Josiah Williams II, too soon (Chapter III)
+- **Josiah is already on Earth in Chapter III,** near wherever you land, standing alone (no grave yet). As with Archamus on Archiostal, it's too soon to meet him: speak to him and he sends you away, voiced (`data/josCh3Voice.js`, JOSIAH_WILLIAMS_CHAPTER_3).

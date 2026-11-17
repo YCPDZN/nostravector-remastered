@@ -22286,18 +22286,19 @@ async function placeGivers() {
       else setTimeout(() => lootMsg(tiPhone() ? 'Hak is in Alphinos · fly to it' : 'Emperor Hak Chompjak holds court in Alphinos · take off and fly to the city from the sky (its marker), then land', '#b07aff'), 3200);
     } }
   if (P.id === 'archiostal-gardens' && ((wanderer.chapter | 0) === 3 || ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.timeSkip))) want.push({ arch3: true, name: 'ARCHAMUS', x: 16, z: 21 }); // Chapter III: he wants nothing to do with you (not yet); Chapter IV: the first quest is to find him here
-  if (P.id === 'earth' && josiahQ()) { // Chapter IV: at his father's grave near wherever you set down, on the quiet side, away from the stall and its crowd
+  if (P.id === 'earth' && (josiahQ() || (wanderer.chapter | 0) === 3)) { // Chapter IV: at his father's grave near wherever you set down, on the quiet side, away from the stall and its crowd; Chapter III: there already, but it's too soon to meet him
     const wet = (x, z) => plSeaY() != null && wHeight(x, z) < plSeaY() + .6, steep = (x, z) => Math.abs(wHeight(x + 2, z) - wHeight(x - 2, z)) + Math.abs(wHeight(x, z + 2) - wHeight(x, z - 2)) > 2.4 || Math.abs(wHeight(x, z) - wHeight(0, 0)) > 6;
     const far = ([x, z]) => (wet(x, z) ? -100 : 0) + (steep(x, z) ? -50 : 0) + Math.min(m ? Math.hypot(m.px - x, m.pz - z) : 99, ...want.map(w => Math.hypot(w.x - x, w.z - z)), 99);
     const [x, z] = [[17, -15], [-17, -16], [18, 19], [-18, 20], [24, 2], [-24, 0], [0, -24], [8, 26]].sort((a, b) => far(b) - far(a))[0];
-    want.push({ josiah: true, name: 'JOSIAH WILLIAMS II', x, z }); }
+    want.push({ josiah: true, jos3: (wanderer.chapter | 0) === 3, name: 'JOSIAH WILLIAMS II', x, z }); }
   for (const w of want) {
     try {
       const R = w.josiah ? await josiahRig() : w.leader || w.arch3 ? await leaderRig(SQ_LEADERS.find(L => L.id === (w.leader || 'archamus'))) : await giverRig(w.sp, 1.8, w.name);
       if (!R || GIVERS.area !== area || curArea() !== area) continue;
       let x = w.x, z = w.z; for (let i = 0; i < 30 && !w.noSea && plSeaY() != null && wHeight(x, z) < plSeaY() + .6; i++) { x += 3; z -= 2; }
       R.root.position.set(x, w.y != null ? w.y : wHeight(x, z), z); R.root.rotation.y = w.noSea ? 0 : Math.atan2(-x, 6 - z); wScene.add(R.root); // Hak faces down the avenue
-      if (w.josiah) { const gx = x + 1.6, gz = z - 1.2; w.extra = makeGrave('JOSIAH WILLIAMS', ['Beloved father', 'Taken by Terra Imperia', 'during the occupation of Earth']); w.extra.position.set(gx, wHeight(gx, gz), gz); w.extra.rotation.y = Math.atan2(x - gx, z - gz); wScene.add(w.extra); w.faceGrave = Math.atan2(gx - x, gz - z); R.root.rotation.y = w.faceGrave; }
+      if (w.josiah && w.jos3) { w.faceGrave = R.root.rotation.y; } // Chapter III: no grave yet, he just stands there, alone
+      else if (w.josiah) { const gx = x + 1.6, gz = z - 1.2; w.extra = makeGrave('JOSIAH WILLIAMS', ['Beloved father', 'Taken by Terra Imperia', 'during the occupation of Earth']); w.extra.position.set(gx, wHeight(gx, gz), gz); w.extra.rotation.y = Math.atan2(x - gx, z - gz); wScene.add(w.extra); w.faceGrave = Math.atan2(gx - x, gz - z); R.root.rotation.y = w.faceGrave; }
       GIVERS.list.push(Object.assign(w, { R, x, z }));
     } catch (e) { console.warn('quest giver failed', w.name, e); }
   }
@@ -22315,6 +22316,11 @@ function giversTick(dt) {
   }
 }
 function giverNear(p) { for (const G of GIVERS.list) if (Math.hypot(G.x - p.x, G.z - p.z) < 2.8) return G; return null; }
+const JOS_CH3 = 'I don’t know who sent you, and I don’t want to know. I’ve nothing to offer you. Go away. Leave me alone.'; // JOSIAH_WILLIAMS_CHAPTER_3 (data/josCh3Voice.js)
+async function jos3Talk() { // Chapter III: Josiah Williams II, on Earth, and it's too soon to meet him (as with Archamus)
+  const vo = await loadDataScript('josCh3Voice').then(ok => ok ? sfx.loadClips('josCh3Voice') : []).catch(() => []);
+  if (state !== 'explore' || ex.dlg) return; openDialog('JOSIAH WILLIAMS II', [JOS_CH3], false, null, vo || []);
+}
 const ARCH_CH3 = 'I didn’t come to Archiostal looking for company, and I certainly didn’t ask for yours. Whatever you want, find someone else. Go away.'; // ARCHAMUS_CHAPTER_3 (data/archCh3Voice.js)
 async function arch3Talk() { // Chapter III: too soon to meet him
   const vo = await loadDataScript('archCh3Voice').then(ok => ok ? sfx.loadClips('archCh3Voice') : []).catch(() => []);
@@ -22664,6 +22670,7 @@ async function hak4Talk() {
   if (state !== 'explore' || ex.dlg) return; openDialog(tiPhone() ? 'HAK CHOMPJAK V' : 'HAK CHOMPJAK V · EMPEROR OF THE CHOMPY EMPIRE', HAK4, false, null, vo || []);
 }
 function giverTalk(G) {
+  if (G.josiah && G.jos3) { jos3Talk(); return; }
   if (G.josiah) { josiahTalk(); return; }
   { const E = eggFor(G.arch3 || G.leader === 'archamus' ? 'archamus' : G.leader === 'hak' ? 'hak' : ''); if (E) { eggTalk(E); return; } } // Josiah Richards or Lord Sevirrus is with you: the hidden conversation first
   if (G.hak4) { hak4Talk(); return; }
