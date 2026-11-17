@@ -2,7 +2,7 @@
 
 Speaker: **Archamus**, hooded. Slow, calm, very old, cryptic, as at the pod; he never quite explains.
 Chapter IV's first quest after waking on Archiostal: find him in the gardens, where he stood in Chapter III. Speak to him and he says these ten lines. Afterwards he only repeats the last one.
-Pack: `data/archMeetVoices.js` (CH4ARCHAMUSMEET1–10, in order). Until it exists, the lines show as subtitles only.
+Pack: `data/archMeetVoices.js` (CH4ARCHAMUSMEET1–10, in order). **Recorded.**
 
 | File | Line |
 |---|---|
