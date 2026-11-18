@@ -2818,7 +2818,8 @@ const pedestal = new THREE.Group();
 }
 
 /* ============ audio ============ */
-const COMBAT_TRACKS = ['Predator I', 'Predator II', 'Predator III', 'Predator IV', 'Wonders of Laniakea (Combat)'];
+const COMBAT_TRACKS = ['Predator I', 'Predator II', 'Predator III', 'Predator IV', 'Wonders of Laniakea (Combat)', 'The Vengeful Mascar', 'Have I Heard This Before'];
+const COMBAT_EXT = { 'The Vengeful Mascar': 'vengeful', 'Have I Heard This Before': 'heard' }; // Orion Mascar's two themes: loaded from their own packs (data/thVengeful.js, data/thHeard.js) the first time they come up, not at start-up
 // Settings → Combat themes plays these in turn: the combat tracks, then the faction leaders' and Primes' themes (data/th*.js, loaded on first play)
 const MENU_THEMES = [...COMBAT_TRACKS.map(name => ({ name })),
   { name: 'Descendant of Shakhak', k: 'hak' }, { name: 'The Child of Eris', k: 'eris' }, { name: 'The Guardian of Humanity', k: 'darius' },
@@ -2826,6 +2827,15 @@ const MENU_THEMES = [...COMBAT_TRACKS.map(name => ({ name })),
   { name: 'Siege of Janira Prime', k: 'siege' }, { name: 'Siege of Mercury', k: 'mercury' }, { name: 'Terra Imperium', k: 'terra' }, { name: 'The Wrong Enemy', k: 'wrong' }, { name: 'Final Boss Theme', k: 'final' }];
 const sfx = (() => {
   let combatSrc = null, combatOn = false, combatIdx = -1, combatTok = 0; const combatCache = {};
+  const combatDec = idx => { // a combat track's buffer: cm1–cm5 are packed with the game, Orion's themes come from their own packs
+    const k = COMBAT_EXT[COMBAT_TRACKS[idx]]; if (k) return leaderTheme(k).then(b => { if (!b) delete combatCache[idx]; return b; }).catch(() => null);
+    return new Promise(res => {
+      try {
+        const bin = atob(document.getElementById('cm' + (idx + 1)).textContent.trim()), u8 = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+        const pr = ctx.decodeAudioData(u8.buffer, res, () => res(null)); if (pr && pr.catch) pr.catch(() => res(null));
+      } catch { res(null); }
+    }); };
   // the menu theme can change with the story (chapter IV has its own)
   let menuSrc = null, menuCur = null, menuWant = 'music'; const menuCache = {};
   async function startMenu(id) {
@@ -2943,13 +2953,7 @@ const sfx = (() => {
       const tok = ++combatTok; combatOn = true; combatIdx = idx; applyAreaGain();
       if (musicGain) musicGain.gain.setTargetAtTime(0, now, .4);
       if (!combatCache[idx] && idx >= COMBAT_TRACKS.length) { if (!ext) return; combatCache[idx] = Promise.resolve(ext()).catch(() => null); }
-      if (!combatCache[idx]) combatCache[idx] = new Promise(res => {
-        try {
-          const bin = atob(document.getElementById('cm' + (idx + 1)).textContent.trim()), u8 = new Uint8Array(bin.length);
-          for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-          const pr = ctx.decodeAudioData(u8.buffer, res, () => res(null)); if (pr && pr.catch) pr.catch(() => res(null));
-        } catch { res(null); }
-      });
+      if (!combatCache[idx]) combatCache[idx] = combatDec(idx);
       const buf = await combatCache[idx];
       if (tok !== combatTok || !buf) return;
       const t = ctx.currentTime, s = ctx.createBufferSource(), g = ctx.createGain();
@@ -2960,13 +2964,7 @@ const sfx = (() => {
     // a combat theme's decoded buffer, for scenes that play it as a song of their own (the Chompy nightmare)
     combatBuf(idx) {
       if (!ctx || idx < 0) return Promise.resolve(null);
-      if (!combatCache[idx]) combatCache[idx] = new Promise(res => {
-        try {
-          const bin = atob(document.getElementById('cm' + (idx + 1)).textContent.trim()), u8 = new Uint8Array(bin.length);
-          for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-          const pr = ctx.decodeAudioData(u8.buffer, res, () => res(null)); if (pr && pr.catch) pr.catch(() => res(null));
-        } catch { res(null); }
-      });
+      if (!combatCache[idx]) combatCache[idx] = combatDec(idx);
       return combatCache[idx];
     },
     get combatTrack() { return combatOn ? combatIdx : -1; },
