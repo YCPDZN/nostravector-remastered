@@ -2716,3 +2716,9 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - **The Death of Orion Mascar**, if you shoot him down.
   - **The Path of No Return:** the warp to Sagittarius A*, with every choice listed and the verdict.
 - Events that appear on their own (a choice, Orion reaching orbit) now get the "Nostrapedia · new lore event" toast too, once each and never just from loading a save.
+
+### Phones: this update's new screens fit
+- Checked everything new in this update on a phone (landscape, touch controls): the Orion Mascar fight, the stasis hold (the touch DODGE button escapes the ring before it closes, and is locked while you're held, as on desktop), the red side-quest lines, the remembered-actions messages, Orion in orbit and the galaxy map.
+- **Whole-sentence messages** (the remembered-actions lines) now show in smaller type, higher up and narrower, so they no longer cover the minimap and the BUILD button. On desktop they're a little smaller too.
+- **Orion in space** is tagged "ORION · LV 60" on a phone, not the full "ORION MASCAR · LV 60 · THE ORBITAL RAMPAGE" across half the screen.
+- **On the galaxy map** his label is short on a phone ("ORION · LV 60", "HELD HERE" or the seconds left), and sits on whichever side of his marker has room.

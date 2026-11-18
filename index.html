@@ -467,6 +467,7 @@ body.touch .x-prompt kbd{display:none}
 .x-card small{display:block;font-size:9px;letter-spacing:.5em;line-height:1.9;color:var(--mute);margin-bottom:14px;text-wrap:balance}
 .x-card b{display:block;font-family:var(--display);font-weight:600;font-size:clamp(20px,4.6vw,40px);letter-spacing:.18em;line-height:1.25;text-shadow:0 0 24px rgba(0,0,0,.6);text-wrap:balance}
 .x-card.long b{font-size:clamp(17px,3vw,30px);letter-spacing:.14em}
+.x-card.xlong b{font-size:clamp(15px,2.2vw,24px);letter-spacing:.08em;line-height:1.35}
 .touch-ui{display:none}
 body.touch .touch-ui{display:block}
 #joyHint{position:absolute;left:calc(var(--sl) + 34px);bottom:calc(var(--sb) + 34px);width:116px;height:116px;border-radius:50%;border:1px dashed rgba(var(--inkRGB,230,233,240),.25);
@@ -1147,7 +1148,7 @@ body.touch .al-key{display:none}
 @media (pointer:coarse) and (orientation:landscape){
   .touch #xTasks{max-width:38vw;max-height:34vh}
   .touch .x-narr{top:calc(var(--st,0px) + 12px);bottom:auto;left:calc(var(--sl,0px) + 40vw);right:calc(var(--sr,0px) + 250px);max-width:none;transform:none}
-  .touch .x-card{top:36%;left:calc(50% + 10vw);width:min(58vw,640px)} .touch .x-card b{font-size:clamp(16px,3.2vw,26px)} .touch .x-card small{margin-bottom:8px}
+  .touch .x-card{top:36%;left:calc(50% + 10vw);width:min(58vw,640px)} .touch .x-card b{font-size:clamp(16px,3.2vw,26px)} .touch .x-card small{margin-bottom:8px} .touch .x-card.xlong{top:30%;width:min(50vw,560px)} .touch .x-card.xlong b{font-size:clamp(12px,2.3vw,17px);letter-spacing:.05em}
   .touch .loot{bottom:calc(var(--sb,0px) + 140px)} .touch .loot div{max-width:40vw}
 }
 @media (max-width:720px) and (orientation:portrait){
@@ -5423,7 +5424,7 @@ function renderTasks() {
 let noticeT;
 function notice(small, big, ms = 2800) {
   $('#xCardS').textContent = small; $('#xCardB').textContent = big;
-  xUI.card.classList.toggle('long', big.length > 18);
+  xUI.card.classList.toggle('long', big.length > 18); xUI.card.classList.toggle('xlong', big.length > 46); // a whole sentence (the remembered-actions lines): smaller still, so it doesn't bury the controls on a phone
   xUI.card.classList.add('on'); clearTimeout(noticeT);
   noticeT = setTimeout(() => xUI.card.classList.remove('on'), ms);
 }
@@ -15625,8 +15626,9 @@ function orbGalDraw(g, font) {
   g.restore();
   const p = galXY(sysById(O.sys)), t = performance.now() / 1000, x = p.x - 18, y = p.y - 14;
   g.save(); g.translate(x, y); g.rotate(Math.PI / 4); g.fillStyle = '#ff3a3a'; g.globalAlpha = .7 + Math.sin(t * 4) * .3; g.fillRect(-5, -5, 10, 10); g.restore();
-  g.textAlign = 'right'; g.font = `700 9px ${font}`; g.fillStyle = '#ff6a6e'; g.fillText(`ORION MASCAR · LV ${ORB_LV[3]} · SIDE QUEST`, x - 9, y + 1);
-  g.font = `500 8px ${font}`; g.fillStyle = '#ffa8a8'; g.fillText(SPC.sys === O.sys ? 'HELD HERE WHILE YOU STAY' : `TAKING ${sysById(O.sys).name.toUpperCase()} · ${Math.max(0, Math.ceil(O.t == null ? ORB_CONQ_T : O.t))}S`, x - 9, y + 12);
+  const ph = tiPhone(), left = x > 170 || ph && x > 110; g.textAlign = left ? 'right' : 'left'; const tx = left ? x - 9 : x + 9; // on the side with room, short on a phone
+  g.font = `700 9px ${font}`; g.fillStyle = '#ff6a6e'; g.fillText(ph ? `ORION · LV ${ORB_LV[3]}` : `ORION MASCAR · LV ${ORB_LV[3]} · SIDE QUEST`, tx, y + 1);
+  g.font = `500 8px ${font}`; g.fillStyle = '#ffa8a8'; g.fillText(SPC.sys === O.sys ? (ph ? 'HELD HERE' : 'HELD HERE WHILE YOU STAY') : ph ? `${Math.max(0, Math.ceil(O.t == null ? ORB_CONQ_T : O.t))}S` : `TAKING ${sysById(O.sys).name.toUpperCase()} · ${Math.max(0, Math.ceil(O.t == null ? ORB_CONQ_T : O.t))}S`, tx, y + 12);
 }
 // in space: the titanium Frame in orbit round the system's main world. He never fires; he runs, and he has to be shot down
 function orbSpaceTick(dt) {
@@ -15644,7 +15646,7 @@ async function orbSpawnFoe() {
     const pos = H ? H.pos.clone().add(new THREE.Vector3(Math.cos(a) * r, (Math.random() - .5) * 400, Math.sin(a) * r)) : SPC.pos.clone().add(new THREE.Vector3(2500, 0, 0));
     M.inner.rotation.set(-.5, Math.PI, 0); M.g.position.copy(pos); SPC.scene.add(M.g); orbPlay(M, 'Aerial Strafe', 4, true);
     const max = 2600, hp = orbS().hp3 || max;
-    SC.foes.push({ m: M.g, M, pos, q: new THREE.Quaternion(), hp, max, speed: 200, cd: 99, burst: 0, mode: 'flee', modeT: 0, brk: new THREE.Vector3(), name: `ORION MASCAR · LV ${ORB_LV[3]} · THE ORBITAL RAMPAGE`, orion: true, ang: a, orbR: r, H });
+    SC.foes.push({ m: M.g, M, pos, q: new THREE.Quaternion(), hp, max, speed: 200, cd: 99, burst: 0, mode: 'flee', modeT: 0, brk: new THREE.Vector3(), name: tiPhone() ? `ORION · LV ${ORB_LV[3]}` : `ORION MASCAR · LV ${ORB_LV[3]} · THE ORBITAL RAMPAGE`, orion: true, ang: a, orbR: r, H });
     spaceMsg(tiPhone() ? 'Orion Mascar is here · shoot him down' : `Orion Mascar is here · ${ORB_LINES.here}`); sfx.alarm();
   } finally { ORB.spawning = false; }
 }
