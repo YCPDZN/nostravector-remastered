@@ -6845,6 +6845,7 @@ $('#tpClose').addEventListener('click', () => openModal('#tpMenu', false));
 // (Chapters IV and V use the same bases). The Nostra comes with you and sets down by the ship's usual spot.
 function tpFarOk(area) {
   if ((wanderer.chapter | 0) < 3 || !area || area === curArea()) return false;
+  { const B = area.startsWith('pl:') && bodyById(area.slice(3)), sg = !!B && B.sys === 'sgra'; if (sgraLock() && !sg) return false; if (sgraDue() && sg) return false; } // the path of no return: no teleporting out of Sagittarius A* before the final battle, and no slipping in past the warning
   if (area === 'antarctica' || area === 'africa') return true;
   if (area === 'europe') return lonOpen(); // New London, once it's open to you again (Chapters IV–V)
   return area.startsWith('pl:') && !!bodyById(area.slice(3));
@@ -13085,7 +13086,8 @@ function tiLanded(P) {
   if (P.id === 'mercury' && (cygQ() || cygFarm()) && !hawMercQ()) cygPlace(); // never during the siege
   if (SPC.cygDock) { SPC.cygDock = false; { const fd = $('#fade'); fd.style.transition = 'none'; fd.style.opacity = 1; } setTimeout(cygDockIn, 350); return; } // you docked with the Cygnus in orbit: straight aboard, and nothing down on Mercury (patrols, a hunter, the war) turns up to announce itself
   if (P.id === 'earth' && jamesQ()) stationPlace();
-  if (P.id === 'earth' && orbEarthQ()) setTimeout(orbPlace, 1400); // Orion Mascar, waiting for you wherever you land (the killed-Croxian path)
+  if (P.id === 'earth' && orbEarthQ()) setTimeout(orbPlace, 1400);
+  if (P.id === 'carax' && sgraLock()) setTimeout(caraxFinal, 2600); // the path of no return ends here // Orion Mascar, waiting for you wherever you land (the killed-Croxian path)
   if (P.id === 'mercury' && hawMercQ()) { setTimeout(hawMercPlace, 900); setTimeout(() => solPatrolsLand('mercury'), 1800); } // the War of Restoration: the siege of Mercury, Hawthorne's last stand
   if (P.id === 'eris' && alexiaQ()) { setTimeout(alexiaPlace, 900); setTimeout(() => solPatrolsLand('eris'), 1800); } // and the siege of Eris, Alexia holding it
   if (CH3S().charonMet && !CH3S().jamesRev && ch3Now()) jrvWhenFree(3200); // you left before it played: it finds you on the next world
@@ -15907,6 +15909,7 @@ function fateFinal(S) { // the path of no return: Chapter IV, the first warp to 
   setTimeout(() => { sfx.thud(); notice('Sagittarius A*', 'THE PATH OF NO RETURN', 4600); }, 2400);
   setTimeout(() => { sfx.thud(); notice(' ', 'YOUR ACTIONS WILL BE REMEMBERED', 4600); }, 7400);
   setTimeout(() => notice(`${T.total - T.bad} of ${T.total} choices made well`, line, 6500), 12400);
+  setTimeout(() => lootMsg(tiPhone() ? 'No turning back · land on Carax to face Zark' : 'There’s no turning back now · you can’t leave Sagittarius A* until the final battle is over · land on Carax to face Lord Zark', '#ff6a6e'), 19500);
 }
 function fateNote(delay = 0) {
   setTimeout(() => { if (!wanderer || CUT.on) return; const T = fateTally(); if (!T.made) return;
@@ -20218,9 +20221,11 @@ function galPanel() {
   const kind = P => (P.kind === 'station' ? 'Station · fly in to dock' : wxTag(P)) + (P.swim ? ' · open water' : '') + (P.land && planetTraders(P).length ? ' · trader' : '');
   let btn;
   if (here) btn = `<button class="btn gp-warp" disabled><span>You are here</span></button>`;
+  else if (sgraLock()) btn = `<button class="btn gp-warp" disabled><span>No turning back</span></button><div class="gp-why">You came to Sagittarius A* · there's no leaving until the final battle is over</div>`;
   else if (SC.foes.length) btn = `<button class="btn gp-warp" disabled><span>Can't warp in combat</span></button><div class="gp-why">The hyperdrive won't spool up under fire · destroy them, outrun them, or drop into a planet's atmosphere</div>`;
   else if (!inRange(curSys(), S)) btn = `<button class="btn gp-warp" disabled><span>Out of hyperdrive range</span></button><div class="gp-why">Your hyperdrive reaches ${driveRange().toLocaleString()} ly per jump · hop through nearer systems${driveTier() < 3 ? `, or craft ${ITEMS['hyper' + (driveTier() + 1)].name} (${DRIVE_LY[driveTier() + 1].toLocaleString()} ly)` : ''}</div>`;
   else if (n < cost) btn = `<button class="btn gp-warp" disabled><span>Warp · ${cellsTxt(cost)}</span></button><div class="gp-why">${n ? `You have ${cellsTxt(n)} · need ${cost - n} more` : 'No warp cells'} · craft them from 2 metal plates · 2 frost crystals · 2 scrap metal each</div>`;
+  else if (S.id === 'sgra' && sgraDue()) btn = `<button class="btn gp-warp" data-warp="${S.id}" style="border-color:#ff4a4a;color:#ffb0a8"><span>Warp · the path of no return</span></button><div class="gp-why" style="color:#ff9f8f">${tiPhone() ? 'No leaving until the final battle is over' : 'The final battle waits here · once you warp to Sagittarius A* you can’t leave the system, by warp or teleporter, until it’s over'} · ${cellsTxt(cost)}</div>`;
   else btn = `<button class="btn gp-warp" data-warp="${S.id}"><span>Warp · ${cellsTxt(cost)} (${n - cost} left after)</span></button>`;
   const qHere = Object.entries((wanderer.sq || {}).act || {}).filter(([id, A]) => sqById(id) && sqSysOf(sqById(id), A) === S.id).map(([id]) => sqById(id).t);
   const LS = (lairsAll().bySys.get(S.id) || []).filter(lairOpen), spH = LS.length ? `<div class="gp-sub" style="color:#d8c8ff">◆ Native species: the ${natSp(S).name} · ${LS.length} lair${LS.length === 1 ? '' : 's'} (lv ${Math.min(...LS.map(L => L.lv))}–${Math.max(...LS.map(L => L.lv))}) · ${LS.filter(lairCleared).length} cleared${(n => n ? ` · residents cleared ${n}` : '')(LS.filter(L => resGuild.dun && resGuild.dun.cleared && resGuild.dun.cleared[L.id]).length)}</div>` : '';
@@ -20279,8 +20284,21 @@ function warpTunnel() {
   L.userData.s = Array.from({ length: N }, () => { const a = Math.random() * Math.PI * 2, r = 10 + Math.pow(Math.random(), .7) * 110; return { x: Math.cos(a) * r, y: Math.sin(a) * r, z: -Math.random() * 1600, k: .6 + Math.random() * .8 }; });
   SPC.scene.add(L); return SPC.tun = L;
 }
+// the path of no return: Chapter IV, once you've warped to Sagittarius A*, there's no leaving the system (no warp, no teleporter out)
+// until the final battle is over; the good and neutral endings open the galaxy again (ch4.ending), the bad one ends the game
+const sgraLock = () => !!(wanderer && (wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.fateFinal && !wanderer.ch4.ending);
+const sgraDue = () => !!(wanderer && (wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.timeSkip && !wanderer.ch4.fateFinal); // the warp there will be the point of no return
+// Until the siege of Carax is built, landing on Carax on the path of no return is where Chapter IV ends: storm the throne room, and
+// the ending your choices made plays (ch4Ending). Good or neutral and the galaxy is open again; bad, and the game is over.
+function caraxFinal() {
+  if (!sgraLock() || state !== 'explore' || ex.dlg || !isPl() || !world.planet || world.planet.P.id !== 'carax') return;
+  sfx.thud(); notice('Carax · capital of the Catharsis', 'THE THRONE OF LORD ZARK', 4200);
+  setTimeout(() => { if (!sgraLock() || state !== 'explore' || ex.dlg) return; openChoice('THE FINAL BATTLE', [
+    { text: tiPhone() ? 'Storm the throne room' : 'Storm the throne room · face Lord Zark (there is no coming back from this)', onPick: () => ch4EndingPlay(ch4Ending() || 'neutral').catch(e => console.error(e)) },
+    { text: tiPhone() ? 'Not yet' : 'Not yet · get ready first (land on Carax again when you are)', onPick: () => lootMsg(tiPhone() ? 'Land on Carax again when you’re ready' : 'You can’t leave Sagittarius A* · land on Carax again when you’re ready to face Zark', '#ff8f86') }]); }, 4600);
+}
 function galWarp(id) {
-  const S = sysById(id), cost = warpCost(curSys(), S); if (S.id === SPC.sys || have('warpcell') < cost || !inRange(curSys(), S) || SC.foes.length) return;
+  const S = sysById(id), cost = warpCost(curSys(), S); if (S.id === SPC.sys || have('warpcell') < cost || !inRange(curSys(), S) || SC.foes.length || sgraLock()) return;
   takeItem('warpcell', cost); galClose(); sfx.warp();
   SPC.warp = { t: 0, to: S.id, col: new THREE.Color(S.star.kind === 'hole' ? '#ffb070' : S.star.col) };
   const tn = warpTunnel(); tn.visible = true; tn.userData.v = 0;
