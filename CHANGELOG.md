@@ -2703,3 +2703,16 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **The last word comes on the path of no return:** the first time you warp to Sagittarius A* in Chapter IV, as the final battle approaches, "THE PATH OF NO RETURN" and "YOUR ACTIONS WILL BE REMEMBERED" come up, then the verdict on all your choices. If Orion is still alive by then, leaving him counts as a wrong choice.
 - The verdict: no mistakes, "You got this, [your callsign], so save the world". Some mistakes, "You messed up slightly, but the galaxy is still worth saving. Try your best, okay!". All five wrong (only possible on the route where Croxian dies), "Good luck, you're going to need it :)".
 - The good choices, as the endings count them: Nyrexia recruited, James, Croxian and Malia spared, Orion killed.
+
+### Nostrapedia: lore events for Chapters III and IV
+- **Nine new lore events, each written for the way you chose.** The facts, the line under the title and the closing paragraph change with your choices, and every Chapter III choice is marked "Made well" or "Made badly":
+  - **The Princess Who Left Her Sisters** (Nyrexia recruited) or **The Princess Who Was Not Saved** (she stayed, and Alexia killed her).
+  - **The Pontifex at the Station:** James Brown, drowned off the pier and remade by Terra Imperia, beaten at the Antarctic station, then spared or killed.
+  - **The Blockade of Janira Prime:** the battle at Karribassa beside Hak, Darius and Vishara, and what you did with Croxian and Malia (both spared, both killed, or one of each).
+  - **Close the Channel** (if Croxian died): Orion hears his son's last words over the Nostra's comms and leaves you for Hawthorne.
+  - **The Loss of the Nostra:** the thing that came aboard, and the escape pod.
+  - **The Jewel of Archamus:** Archamus' gift.
+  - **Orion Mascar's Offensive** (if Croxian died): his three phases and his conquest, with live facts (systems fallen out of the galaxy's total, the system he's taking now, or how it ended).
+  - **The Death of Orion Mascar**, if you shoot him down.
+  - **The Path of No Return:** the warp to Sagittarius A*, with every choice listed and the verdict.
+- Events that appear on their own (a choice, Orion reaching orbit) now get the "Nostrapedia · new lore event" toast too, once each and never just from loading a save.

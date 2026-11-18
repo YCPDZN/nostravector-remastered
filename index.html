@@ -27002,8 +27002,17 @@ const pdEvents = () => PEDIA_EVENTS.filter(L => !L.showIf || L.showIf());
 const pdStoryIds = () => { try { return PEDIA_EVENTS.filter(L => L.showIf && L.showIf()).map(L => L.id); } catch { return null; } };
 function pdStoryNote(before) { // a toast for each event a mission just added to the Nostrapedia
   if (!before) return; const now = pdStoryIds(); if (!now) return;
+  PD_WATCH.ids = now; // the watcher below won't toast these again
   now.filter(id => !before.includes(id)).forEach((id, i) => { const L = PEDIA_EVENTS.find(e => e.id === id); setTimeout(() => lootMsg(`Nostrapedia · new lore event: ${L.name}`, '#7fd4ff'), 900 + i * 700); });
 }
+const PD_WATCH = { who: null, ids: null }; // events that appear on their own (a choice, Orion's offensive): one toast each, never on load
+setInterval(() => { try {
+  if (!wanderer || state === 'title' || state === 'loading') { PD_WATCH.who = null; return; }
+  const now = pdStoryIds(); if (!now) return;
+  if (PD_WATCH.who !== wanderer.id || !PD_WATCH.ids) { PD_WATCH.who = wanderer.id; PD_WATCH.ids = now; return; }
+  now.filter(id => !PD_WATCH.ids.includes(id)).forEach((id, i) => { const L = PEDIA_EVENTS.find(e => e.id === id); setTimeout(() => lootMsg(`Nostrapedia · new lore event: ${L.name}`, '#7fd4ff'), 2500 + i * 2600); });
+  PD_WATCH.ids = now;
+} catch (e) {} }, 3000);
 const PEDIA_EVENTS = [
   { id: 'ww3', name: 'THE THIRD WORLD WAR', title: 'World War · Earth', sub: 'Ended in the 2090s', cast: ['orion', 'hawthorne'],
     facts: [['Type', 'Global war'], ['Theatre', 'Earth'], ['Belligerents', 'United States of America · China · Russia'], ['Notable veterans', '—'], ['Ended', 'The 2090s']],
@@ -27224,6 +27233,91 @@ const PEDIA_EVENTS = [
       'An empire of glass will break, and its land will be given to one who never asked for it. The red world at the heart of the stars will burn beneath the boots of its friends. And at the end of it all, you will stand alone at the centre of everything, and you will choose.',
       'You were talking in riddles, Orion told them when they woke. A man falling. A black banner. An empire of glass. The Grek say their dreams come true, said Nico. Then let’s hope this one’s wrong, said Orion.'
     ] },
+  // ---- Chapter III and IV: the events your choices made (each written for the way you chose) ----
+  { id: 'ch3nyx', story: 3, showIf: () => c3f('nyxJoined') || c3f('nyxDead'), get name() { return c3f('nyxJoined') ? 'THE PRINCESS WHO LEFT HER SISTERS' : 'THE PRINCESS WHO WAS NOT SAVED'; }, title: 'Eris · the Citadel el Erisconos', sub: 'Chapter III · 2125 AD', get cast() { return c3f('nyxJoined') ? ['nyrexia', 'leader:erisian'] : ['alexia', 'leader:erisian']; },
+    get facts() { const j = c3f('nyxJoined'); return [['Date', '2125 AD'], ['Place', 'The Citadel el Erisconos, Eris'], ['Princess', 'Nyrexia Erisconos'], ['Her sisters', 'Vishara Erisconos · Alexia Erisconos'], ['Outcome', j ? 'Nyrexia joined the wanderer’s crew' : 'Nyrexia stayed, and Alexia killed her'], ['Choice', j ? 'Made well' : 'Missed']]; },
+    get align() { return c3f('nyxJoined') ? 'She walked out of the Citadel with a stranger, and never once looked back at it.' : 'Someone could have taken her out of there. Nobody did.'; },
+    get paras() { return c3f('nyxJoined') ? [
+      'Nyrexia Erisconos is a princess of the Erisian Empire, the youngest of three sisters. Vishara rules from the Citadel el Erisconos; Alexia wanted to.',
+      'The wanderer found Nyrexia in the Citadel before going in to face James Brown, and asked her to come with them. She left her sisters behind and joined the crew, and took the same five orders as everyone else aboard.',
+      'It was the right call. When Alexia moved against Vishara, Nyrexia was not in the Citadel for her sister to reach.'
+    ] : [
+      'Nyrexia Erisconos is a princess of the Erisian Empire, the youngest of three sisters. Vishara rules from the Citadel el Erisconos; Alexia wanted to.',
+      'Nyrexia could have left Eris with the wanderer. The chance went the moment the wanderer went in to face James Brown, and she was still in the Citadel when Alexia made her move.',
+      'Alexia struck at Vishara, and Nyrexia stood beside her eldest sister. Alexia killed her there.'
+    ]; } },
+  { id: 'ch3james', story: 3, showIf: () => c3f('jamesFate'), name: 'THE PONTIFEX AT THE STATION', title: 'Duel · the Antarctic research station', sub: 'Chapter III · 2125 AD', cast: ['james', 'hawthorne'],
+    get facts() { const s = (wanderer.ch3 || {}).jamesFate === 'spared'; return [['Date', '2125 AD'], ['Place', 'The Antarctic research station, Terra Imperia’s stronghold'], ['Foe', 'James Brown, Pontifex Maximus of Terra Imperia'], ['Remade by', 'Terra Imperia, after he drowned off the Antarctic pier'], ['Outcome', s ? 'Spared · he joined the wanderer' : 'Killed by the wanderer'], ['Choice', s ? 'Made well' : 'Made badly']]; },
+    get align() { return (wanderer.ch3 || {}).jamesFate === 'spared' ? 'He begged to be finished. The wanderer let him live, and let him decide what that life would be for.' : 'He asked to be finished, and the wanderer finished him.'; },
+    get paras() { const s = (wanderer.ch3 || {}).jamesFate === 'spared'; return [
+      'James Brown rescued the wanderer from the ice in Chapter I, then betrayed them on the Antarctic pier. The wanderer pushed him into the sea and left him there. He drowned.',
+      'Terra Imperia brought him back. They put a heart in his chest that does not tire, named him Pontifex Maximus, and gave him the old research station to hold. He remembered every second in that water.',
+      'The wanderer went back to the station and beat him. You’ve killed me once already, he said, on his knees.',
+      s ? 'The wanderer spared him. Some of the crew called it cruelty, a broken man chained to his pain. But James Brown is alive, and he fights beside the one who drowned him.' : 'The wanderer killed him. Some of the crew called it a mercy, a man who had been through too much given the rest he should have had. James Brown is dead, twice now.'
+    ]; } },
+  { id: 'ch3blockade', story: 3, showIf: () => c3f('siegeWon'), name: 'THE BLOCKADE OF JANIRA PRIME', title: 'Battle · Karribassa, Janira Prime', sub: 'Chapter III · 2125 AD', cast: ['croxian', 'malia'],
+    get facts() { const c = wanderer.ch3 || {}, f = k => c[k] === 'spared' ? 'Spared · joined the wanderer' : c[k] === 'killed' ? 'Killed by the wanderer' : 'Undecided'; return [['Date', '2125 AD'], ['Place', 'Karribassa, Janira Prime'], ['Allies', 'Hak Chompjak V · Darius Ancin · Vishara Erisconos'], ['Enemy', 'Terra Imperia'], ['Croxian Mascar', f('croxFate')], ['Malia de Toro', f('maliaFate')], ['Result', 'The blockade was broken']]; },
+    get align() { const c = wanderer.ch3 || {}, k = [c.croxFate, c.maliaFate].filter(v => v === 'killed').length; return k === 0 ? 'Two of Hawthorne’s generals knelt in the ash, and both got up again on the wanderer’s side.' : k === 2 ? 'Two of Hawthorne’s generals knelt in the ash. Neither got up.' : 'One of Hawthorne’s generals walked away from Karribassa. The other was carried.'; },
+    get paras() { const c = wanderer.ch3 || {}, cr = c.croxFate, ma = c.maliaFate; return [
+      'After Hak Chompjak prayed at the Hall of Oaths, Terra Imperia’s ships filled the sky over Karribassa. Hak with his sword, President Darius Ancin with a rifle and Vishara Erisconos with her ice fought beside the wanderer, while Terra Imperia dug in a walled base a kilometre from the city.',
+      'At its heart waited Croxian Mascar and Malia de Toro, Hawthorne’s generals. The wanderer beat them both, and then had to decide what to do with them.',
+      cr === 'spared' && ma === 'spared' ? 'The wanderer spared them both. They had been sent there to die for Hawthorne, and they were done dying for him. They joined the crew together.'
+        : cr === 'killed' && ma === 'killed' ? 'The wanderer killed them both. Croxian’s last words were for his father: tell him he was right, about all of it. Malia asked him to wait for her.'
+        : cr === 'killed' ? 'The wanderer killed Croxian and spared Malia. She joined the crew, not for the wanderer, she said, but for him, against the man who sent him there.'
+        : 'The wanderer killed Malia and spared Croxian. He joined the crew, and said he might hate the wanderer for it one day. Hawthorne was the one he wanted.',
+      'The blockade was broken, and the leaders went home to their own worlds.'
+    ]; } },
+  { id: 'ch3channel', story: 3, showIf: () => c3f('orionGone'), name: 'CLOSE THE CHANNEL', title: 'Betrayal · aboard the Nostra', sub: 'Chapter III · 2125 AD', cast: ['orion', 'croxian', 'hawthorne'],
+    facts: [['Date', '2125 AD'], ['Place', 'The crew deck of the Nostra'], ['Heard', 'Croxian Mascar’s last words, over the comms'], ['Result', 'Orion Mascar left the wanderer for Thomas Hawthorne'], ['Sworn to', 'Kill the wanderer']],
+    align: 'A father heard his son die over a radio, and then he closed the channel.',
+    paras: [
+      'Orion Mascar could not fight at Karribassa. He went back to the Nostra to keep her warm and the comms open, and asked the wanderer to come back in one piece.',
+      'The comms were open when the wanderer killed his son. Orion heard Croxian’s last words on the floor of the crew deck. When he stood up again, he closed the channel.',
+      'He vowed to kill the wanderer. Not quickly, he said. But he would. His bunk was made and his rifle was gone the next time the wanderer came aboard. He had gone to Thomas Hawthorne, the friend he fought beside in the Third World War.'
+    ] },
+  { id: 'ch3aboard', story: 3, showIf: () => c3f('alienDone'), name: 'THE LOSS OF THE NOSTRA', title: 'Catastrophe · deep space', sub: 'Chapter III · 2125 AD', cast: [],
+    facts: [['Date', '2125 AD'], ['Place', 'Aboard the Nostra, a few seconds out of warp'], ['Intruder', 'Unknown'], ['Crew', 'Cut off below decks'], ['Result', 'The Nostra broke apart · the wanderer escaped in a pod']],
+    align: 'It could not be hurt, and it could not be beaten. It was the first anyone saw of what was coming.',
+    paras: [
+      'With Hawthorne dead, the wanderer set out to explore the galaxy. On the fifth jump, a few seconds out of warp, the Nostra’s alarms went off: something had come aboard.',
+      'The crew were cut off below decks, and the wanderer faced it alone on the bridge. Nothing they had touched it. When it had them on the floor, the Nostra broke apart around them.',
+      'The wanderer got away in an escape pod, and drifted. Nobody knew yet what had come aboard. Two years later, the whole galaxy did.'
+    ] },
+  { id: 'ch4jewel', story: 4, showIf: () => !!(wanderer && wanderer.ch4 && wanderer.ch4.newShip), name: 'THE JEWEL OF ARCHAMUS', title: 'Gift · the gardens of Archiostal', sub: 'Chapter IV · 2127 AD', cast: [],
+    facts: [['Date', '2127 AD'], ['Place', 'The gardens of Archiostal'], ['Giver', 'Archamus, the Prime Good'], ['Ship', 'The Jewel of Archamus, built by the Grek'], ['Decks', 'Five']],
+    align: 'Bring her back with a light in her, he said, and we will call the debt half paid.',
+    paras: [
+      'Long ago, when the Grek still believed Archamus would need to flee, they built him a ship. He never did. She waited beneath Archiostal for longer than most empires last.',
+      'Archamus gave her to the wanderer, who had nothing left but an escape pod. Nothing the Grek have made flies faster, holds harder, or strikes with more fire. Her hyperdrive carries past the edge of any chart, and her hull has turned aside fleets.',
+      'There is room aboard her for more than soldiers. The cats and dogs of Earth’s cities walk her five decks while the wanderer is away.'
+    ] },
+  { id: 'ch4orion', story: 4, showIf: () => !!(wanderer && wanderer.orion && (wanderer.orion.ph === 3 || wanderer.orion.dead) && c3f('croxDead')), name: 'ORION MASCAR’S OFFENSIVE', title: 'Conquest · the Milky Way', get sub() { return `Chapter ${chNow() >= 5 ? 'IV–V' : 'IV'} · 2127 AD`; }, cast: ['orion', 'croxian'],
+    get facts() { const O = orbS(), n = (O.conq || []).length; return [['Began', 'Earth, 2127 AD'], ['Commander', 'Orion Mascar, Grand Imperarch of Terra Imperia'], ['Phases', 'On foot (lv 40) · the Mascar Frame (lv 45) · the Orbital Rampage (lv 60)'],
+      ['Systems fallen', O.dead ? 'All freed when he fell' : `${n} of ${SYSTEMS.length}`], ['Status', O.dead ? 'Ended · Orion Mascar shot down in orbit' : O.done ? 'The galaxy has fallen to him' : `Under way · he is taking ${sysById(O.sys).name}`]]; },
+    get align() { return orbS().dead ? 'He meant to take every star the wanderer had ever looked at. The wanderer did not let him.' : 'Every system the wanderer leaves behind, he takes. The only place in the galaxy safe from him is wherever the wanderer is standing.'; },
+    get paras() { const O = orbS(); return [
+      'Orion Mascar took Terra Imperia from Hawthorne’s corpse and brought it into the Catharsis. Then he went looking for the wanderer, and waited for them on Earth.',
+      'He fought them on foot first, arms folded, holding them still with magic Hawthorne’s order had given him. When that failed, his Mascar Frame came down out of the sky, a walking war machine named for his son, and he fought on inside it.',
+      'Beaten on the ground, he turned the Frame’s plating to titanium, the Orbital Rampage, and took the fight into orbit. There he would not fight at all. He went from star system to star system, conquering each in turn, and only ever stopped when the wanderer was in the same system.',
+      O.dead ? 'The wanderer ran him down and shot him out of the sky. Every system he had taken was free again.' : O.done ? 'Nobody stopped him. Every system in the galaxy flies his flag.' : 'He is still out there.'
+    ]; } },
+  { id: 'ch4orionDead', story: 4, showIf: () => !!(wanderer && wanderer.orion && wanderer.orion.dead), name: 'THE DEATH OF ORION MASCAR', title: 'Death · in orbit', get sub() { return `Chapter ${chNow() >= 5 ? 'V' : 'IV'} · 2127 AD`; }, cast: ['orion'],
+    facts: [['Born', '2069 AD'], ['Died', '2127 AD, in orbit, shot down by the wanderer'], ['Son', 'Croxian Mascar, killed by the wanderer'], ['Last words', 'Croxian… I’m sorry, son. I’m coming.']],
+    align: 'He nursed the wanderer through a fortnight of fever once. That was a long time ago.',
+    paras: [
+      'Orion Mascar fought in the Third World War, rebuilt what it broke, and took a stranger off an African road and kept them alive. He was the wanderer’s first friend after the ice.',
+      'The wanderer killed his son at Karribassa, and Orion spent the rest of his life trying to take everything from them in return. He ended it in the titanium Frame, in orbit, with his son’s name on his lips.',
+      'The systems he conquered went back to whoever had held them. The ending he would have shaped, he did not live to shape.'
+    ] },
+  { id: 'ch4noReturn', story: 4, showIf: () => !!(wanderer && wanderer.ch4 && wanderer.ch4.fateFinal), name: 'THE PATH OF NO RETURN', title: 'The final battle approaches · Sagittarius A*', sub: 'Chapter IV · 2127 AD', cast: [],
+    get facts() { const c = wanderer.ch3 || {}, ok = v => v ? 'Made well' : 'Made badly', L = [['Nyrexia', ok(c.nyxJoined)], ['James Brown', ok(c.jamesFate === 'spared')], ['Croxian Mascar', ok(c.croxFate === 'spared')], ['Malia de Toro', ok(c.maliaFate === 'spared')]];
+      if (c.croxFate === 'killed') L.push(['Orion Mascar', ok(c.orionFate === 'killed')]); const T = fateTally(true); return [['Place', 'Sagittarius A*, the heart of the galaxy'], ...L, ['Verdict', `${T.total - T.bad} of ${T.total} choices made well`]]; },
+    align: 'Your actions will be remembered.',
+    get paras() { const T = fateTally(true); return [
+      'The wanderer warped to Sagittarius A*, the black sun at the heart of the galaxy, where the Catharsis rules from Carax. From here there was no turning back.',
+      'Everything decided along the way came with them: who was spared, who was killed, who was saved and who was left behind.',
+      T.bad === 0 ? 'Every choice had been made well. The galaxy had a champion, and it knew it.' : T.bad >= T.total ? 'Every choice had been made badly. Whatever waited at Carax, the wanderer had made sure they would face it alone.' : 'Not every choice had been made well. But the galaxy was still worth saving.'
+    ]; } },
   { id: 'carax2', unlockAt: 5, name: 'THE SIEGE OF CARAX', title: 'The Catharsis · Carax', sub: 'Chapter V', cast: [], stage: 'zark',
     facts: [['Date', 'After the war of Chapter IV'], ['Place', 'Carax · the five-floor bastion, the Catharsis capital'], ['Attackers', 'The Chompy Empire · Archamus · the Erisian Empire · the Grek · the Human Federation of Sol'], ['Defender', 'The Catharsis, under Lord Zark'], ['At the summit', 'Archamus · the Wanderer · Vishara Erisconos · Hak Chompjak V · Am-Grek · Darius Ancin'], ['Result', 'Lord Zark defeated · the Catharsis destroyed · Thomas Hawthorne killed · its worlds pass to the Wanderer']],
     align: 'Carax again. The same stone, the same summit, and this time the thing behind the Cult was waiting at the top.',
