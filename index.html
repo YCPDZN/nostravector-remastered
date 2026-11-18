@@ -25041,6 +25041,19 @@ function nhLines(kind) {
     ['DANIEL BROWN', ['Asleep. Fed. Alive, no thanks to anyone who ever walked through that door with a gun. Mind it on your way out. The lions still come round at night.']]
   ] : [['DANIEL BROWN', ['You. You were with Orion Mascar that night in The Salt Lantern.', `I’ve no quarrel with you. If you came for Nico, she isn’t here. She hasn’t been here in ${two ? 'two years' : 'a long while'}.`, 'The boy’s asleep. Mind the door on your way out. The lions still come round at night.']]];
 }
+// Voiced: data/nicoHouseVoices.js (NICOHOUSE1–70, then the alternate takes 7B 12B 15B 22B 23B 28B 46B 49B 52B 65B 68B, in NH_VO_KEYS order;
+// B = the Chapter IV take, or the take for when Orion Mascar is there). The script is assets/audio/nico_house/VOICE_SCRIPT.md. An empty slot is a subtitle.
+const NH_VO_KEYS = [...Array(70)].map((_, i) => String(i + 1)).concat(['7B', '12B', '15B', '22B', '23B', '28B', '46B', '49B', '52B', '65B', '68B']);
+let NH_VO = null;
+function nhVo() { if (!NH_VO) NH_VO = loadDataScript('nicoHouseVoices').then(ok => ok ? sfx.loadClips('nicoHouseVoices') : []).catch(() => []).then(v => { if (!v || !v.length) NH_VO = null; return v || []; }); return NH_VO; }
+function nhKeys(kind) { // the recording for each line nhLines(kind) gives, in the same order (keys of NH_VO_KEYS)
+  const two = nhKid(), O = partyNow().includes('orion') && orionJoined(), o = (...L) => O ? L : [];
+  if (kind === 'reveal') return ['1', ...o('2', '3', '4', '5'), '6', two ? '7B' : '7', '8', ...o('9', '10'), '11', O ? '12B' : '12', '13', '14', O ? '15B' : '15', ...o('16'), '17', '18', ...o('19', '20'), '21',
+    O ? '22B' : '22', two ? '23B' : '23', '24', ...o('25'), '26', '27', two ? '28B' : '28', '29', '30', '31', ...o('32', '33', '34', '35', '36', '37', '38'), '39', '40', ...o('41', '42', '43'), '44', '45', O ? '46B' : '46', ...o('47'), '48'];
+  if (kind === 'after') return [...(partyNow().includes('croxian') ? [two ? '49B' : '49', '50', '51'] : [two ? '52B' : '52', '53']), ...o('54', '55', '56')];
+  if (kind === 'nico') return ['57', ...o('58', '59'), '60', '61', ...o('62', '63')];
+  return O ? ['67', two ? '68B' : '68', '69', '70'] : ['64', two ? '65B' : '65', '66'];
+}
 async function nhRig(id) {
   if (id === 'daniel') return humanRig({ name: 'DANIEL BROWN', c: [0x6a7a4b, 0x4a3a2a], skin: 4 });
   if (id === 'nico') { const g = await loadNico(false); if (!g) return null; const c = SkeletonUtils.clone(g); c.userData.mouth = c.getObjectByName('Gentle smile'); return { root: c, static: true }; }
@@ -25056,7 +25069,7 @@ async function nicoHouseEnter() {
   const bo = $('#blackout'); bo.style.transition = 'opacity 1s'; bo.style.opacity = 1; sfx.click();
   const who = ['daniel', ...(kind === 'reveal' || kind === 'nico' ? ['nico'] : []), ...(kind === 'reveal' || (kind === 'after' && crox) ? ['croxian'] : []), ...(P.includes('orion') && orionJoined() ? ['orion'] : [])]; // Orion Mascar, if he's with you, is in every visit
   const spots = { daniel: [-1.5, -1.05], nico: [.95, -.35], croxian: [.55, 1.35], orion: [1.95, .85] }; // spread out, so each one can be seen past the others
-  const rigs = await Promise.all(who.map(id => nhRig(id).catch(() => null)));
+  const [rigs, vo] = await Promise.all([Promise.all(who.map(id => nhRig(id).catch(() => null))), nhVo().catch(() => [])]); // the cast, and their voices
   await waitMs(1050);
   for (const R of Object.values(NH.actors)) if (R && R.root && R.root.parent) R.root.parent.remove(R.root);
   NH.actors = {}; for (const R of [fhc.orion && fhc.orion.root, fhc.nico]) if (R && R.parent) R.parent.remove(R); // Chapter II's cast isn't here any more
@@ -25069,7 +25082,8 @@ async function nicoHouseEnter() {
   ex.keys.clear(); vel.set(0, 0, 0); closeDialog(); state = 'nicoHouse'; NH.t = 0; NH.shot = null; NH.kind = kind;
   ui.xhud.classList.add('cineonly'); bo.style.opacity = 0;
   if (kind === 'reveal') setTimeout(() => notice('Ad-Nostra · East Africa', 'NICO’S HOUSE', 3200), 300);
-  setTimeout(() => dialogSeq(nhLines(kind), () => nicoHouseLeave(kind), []), kind === 'reveal' ? 2400 : 900);
+  const clips = nhKeys(kind).map(k => (vo || [])[NH_VO_KEYS.indexOf(k)] || null);
+  setTimeout(() => dialogSeq(nhLines(kind), () => nicoHouseLeave(kind), clips), kind === 'reveal' ? 2400 : 900);
 }
 function nicoHouseTick(dt) {
   NH.t += dt; const d = ex.dlg, who = d ? d.who : '';
