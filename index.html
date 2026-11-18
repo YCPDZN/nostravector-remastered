@@ -5624,6 +5624,7 @@ async function interact() {
     openInv(true);
   } else if (n.id === 'bed') {
     sleepOutside();
+  } else if (n.id === 'nicoHouse') { nicoHouseEnter();
   } else if (n.id === 'farmDoor') { farmDoorTalk();
   } else if (n.id === 'townsfolk') { talkTownsfolk(n.ref);
   } else if (n.id === 'ferry') { startFerryTrip();
@@ -6845,6 +6846,7 @@ $('#tpClose').addEventListener('click', () => openModal('#tpMenu', false));
 function tpFarOk(area) {
   if ((wanderer.chapter | 0) < 3 || !area || area === curArea()) return false;
   if (area === 'antarctica' || area === 'africa') return true;
+  if (area === 'europe') return lonOpen(); // New London, once it's open to you again (Chapters IV–V)
   return area.startsWith('pl:') && !!bodyById(area.slice(3));
 }
 function tpDirFor(P, t) { // the ground a planet base is laid out on: where its teleporter was built, or a dry spot of its own
@@ -6862,6 +6864,7 @@ function teleportFar(t) {
       if (DGN.on) dgnReset();
       if (t.area === 'antarctica') await visitAntBase(Object.assign(place, { adVisit: true }));
       else if (t.area === 'africa') await visitAdNostra(Object.assign(place, { adVisit: true }));
+      else if (t.area === 'europe') await visitLondon4(Object.assign(place, { adVisit: true }));
       else { const P = bodyById(t.area.slice(3)); if (P.sys !== SPC.sys) { SPC.sys = P.sys; buildSpace(); setSystem(P.sys); } if (P.real) place.ev = EARTH_V; await landOn(P, tpDirFor(P, t), place); }
     } catch (e) { console.error(e); state = 'explore'; }
     f.style.transition = 'opacity .9s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 950);
@@ -10813,15 +10816,17 @@ async function visitAdNostra(place) {
   worldUnstick(); await placeOrion().catch(() => null); placeCrew().catch(() => null);
   const W3 = wanderer.ch3 = Object.assign({}, wanderer.ch3, { lastPlanet: 'earth' }); const c = curChar(); if (c) c.ch3 = W3;
   state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks();
-  notice('Earth · East Africa', 'AD-NOSTRA', 3400);
+  notice('Earth · East Africa', place && place.farm ? 'NICO’S FARMHOUSE' : 'AD-NOSTRA', 3400);
+  if (place && place.farm) setTimeout(() => lootMsg(tiPhone() ? 'Nico’s house · walk to the door' : 'Nico’s house is just ahead · walk up to the door to go in', '#ffc94a'), 2400);
   if (!place) setTimeout(() => lootMsg('The Salt Lantern is in town, a short walk west · fights nightly', '#ffc94a'), 2400);
 }
-function shipFlyToAdNostra() {
+const farmPlace = () => ({ mode: 'explore', area: 'world', where: 'africa', x: FARM.x - 11, z: FARM.z + 2, y: 0, rot: Math.PI / 2, yaw: Math.PI * 1.5, farm: true }); // on the track to Nico's door
+function shipFlyToAdNostra(place) {
   const f = $('#fade'); f.style.transition = 'opacity .6s'; f.style.opacity = 1; sfx.whoosh();
   setTimeout(async () => {
     SHIPI.on = false; ui.xhud.classList.remove('aboard'); xUI.prompt.classList.remove('on'); xUI.act.classList.remove('on');
     if (world.landShip) world.landShip.visible = false;
-    try { await visitAdNostra(null); } catch (e) { console.error(e); }
+    try { await visitAdNostra(place || null); } catch (e) { console.error(e); }
     f.style.transition = 'opacity 1.2s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 1300);
   }, 650);
 }
@@ -19180,6 +19185,7 @@ function atmLand() {
   const S = atmLandSpot(), P = A.P;
   if (S.Q && S.Q.nofly) { spaceMsg(S.Q.nofly); sfx.thud && sfx.thud(); return; }
   if (P.real && S.Q && S.Q.id === 'adnostra') { A.landing = { t: 0, d: S.d, Q: S.Q, adn: true }; spaceMsg('Setting down at Ad-Nostra'); return; }
+  if (P.real && S.Q && S.Q.id === 'nicofarm') { A.landing = { t: 0, d: S.d, Q: S.Q, farm: true }; spaceMsg('Setting down at Nico’s farmhouse'); return; }
   if (P.real && S.Q && S.Q.id === 'london' && lonOpen()) { A.landing = { t: 0, d: S.d, Q: S.Q, lon: true }; spaceMsg('Setting down in Parliament Square'); return; }
   if (P.real && S.Q && S.Q.id === 'antstation') { A.landing = { t: 0, d: S.d, Q: S.Q, ant: true }; spaceMsg('Setting down by the research station'); return; }
   const sea = P.sea ? (P.seaH || 0) : -1e9, wet = planetH(P, S.d) < sea + 3;
@@ -19194,6 +19200,7 @@ function atmLandTick(dt) {
   if (L.t > 1.75 && !L.done) {
     L.done = true; const P = A.P, d = L.d.clone(); atmoLeave(false); SPC.on = false;
     if (L.adn) { visitAdNostra(null).catch(e => console.error(e)); return; }
+    if (L.farm) { visitAdNostra(farmPlace()).catch(e => console.error(e)); return; }
     if (L.ant) { visitAntBase(null).catch(e => console.error(e)); return; }
     if (L.lon) { visitLondon4(null).catch(e => console.error(e)); return; }
     landOn(P, d).then(() => { const fl = $('#shFlash'); if (fl) fl.classList.remove('on'); }).catch(e => console.error(e));
@@ -20115,7 +20122,9 @@ const EP_ADN = { id: 'adnostra', name: 'Ad-Nostra', short: 'Ad-Nostra', tag: 'Th
   build(K, Q) { const M = EM(); let sd = 3; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647; for (let i = 0; i < 46; i++) { const a = rnd() * Math.PI * 2, r = 8 + rnd() * 70; K.box(M.white, 5 + rnd() * 5, 3 + rnd() * 4, 5 + rnd() * 5, Math.cos(a) * r, 0, Math.sin(a) * r, rnd() * 3, false); } Q.glows = [[0, 14, 0, 0xffc070, 30, .9]]; } };
 const EP_ANT = { id: 'antstation', name: 'The Antarctic research station', short: 'The station', tag: 'Where it began', noGround: true, lat: -75.1, lon: 123.35, R: 120, see: 12000, note: 'Antarctica · the research station and your Chapter I camp',
   build(K, Q) { const M = EM(); K.box(M.white, 9, 3.4, 5.5, 0, .9, 0, 0, false); K.box(M.dark, 9.4, .35, 5.9, 0, 4.3, 0, 0, false); Q.glows = [[0, 18, 0, (typeof jamesQ === 'function' && jamesQ()) ? 0xff2a2a : 0xffc070, 34, .9]]; } };
-const EPOIS = [EP_PARIS, EP_NY, EP_BEIJING, EP_TOKYO, EP_CAIRO, EP_KINGSTON, EP_COLOSSEUM, EP_TAJ, EP_PETRA, EP_RIO, EP_MACHU, EP_CHICHEN, EP_WALL, EP_LONDON, EP_ADN, EP_ANT];
+const EP_FARM = { id: 'nicofarm', name: 'Nico’s farmhouse', short: 'Nico’s house', tag: 'Daniel Brown and the boy', noGround: true, lat: -3.9, lon: 39.48, R: 40, see: 7000, note: 'Africa · the savanna inland from Ad-Nostra',
+  build(K, Q) { const M = EM(); K.box(M.white, 10, 3, 7, 0, 0, 0, 0, false); K.box(M.dark, 10.8, .4, 7.6, 0, 3, 0, 0, false); Q.glows = [[0, 9, 0, 0xffb565, 18, .8]]; } };
+const EPOIS = [EP_PARIS, EP_NY, EP_BEIJING, EP_TOKYO, EP_CAIRO, EP_KINGSTON, EP_COLOSSEUM, EP_TAJ, EP_PETRA, EP_RIO, EP_MACHU, EP_CHICHEN, EP_WALL, EP_LONDON, EP_ADN, EP_FARM, EP_ANT];
 
 // ---- on Earth's ground: trees where the climate grows them, and the land beyond the loaded ground out to the horizon ----
 function earthTreeK(x, z) {
@@ -22129,7 +22138,7 @@ async function shipInteract(n) {
   if (n.id === 'pilot') {
     if (SHIPI.from === 'space') { leaveShip('space'); return; }
     if (isPl() && world.planet && world.planet.P.id === 'mars' && !world.planet.khz && khzPending()) { openChoice('THE HELM', [{ text: 'Fly to Olympus Mons · Khazglar’s hermitage', onPick: () => khzFly() }, { text: 'Take off', onPick: () => leaveShip('takeoff') }, { text: 'Stay landed', onPick: () => {} }]); return; }
-    if (isPl() && world.planet && world.planet.P.id === 'earth' && (brawlOn() || (wanderer.chapter | 0) >= 3)) { openChoice('THE HELM', [{ text: 'Take off', onPick: () => leaveShip('takeoff') }, ...(brawlOn() ? [{ text: 'Fly to Ad-Nostra, East Africa · The Salt Lantern', onPick: () => shipFlyToAdNostra() }] : []), { text: jamesQ() ? 'Fly to Antarctica · the station (James Brown)' : 'Fly to Antarctica · the station and your Chapter I camp', onPick: () => shipFlyToAnt() }, { text: 'Stay landed', onPick: () => {} }]); return; }
+    if (isPl() && world.planet && world.planet.P.id === 'earth' && (brawlOn() || (wanderer.chapter | 0) >= 3)) { openChoice('THE HELM', [{ text: 'Take off', onPick: () => leaveShip('takeoff') }, ...(brawlOn() ? [{ text: 'Fly to Ad-Nostra, East Africa · The Salt Lantern', onPick: () => shipFlyToAdNostra() }] : []), { text: tiPhone() ? 'Fly to Nico’s farmhouse' : 'Fly to Nico’s farmhouse, East Africa · Daniel Brown and the boy', onPick: () => shipFlyToAdNostra(farmPlace()) }, { text: jamesQ() ? 'Fly to Antarctica · the station (James Brown)' : 'Fly to Antarctica · the station and your Chapter I camp', onPick: () => shipFlyToAnt() }, { text: 'Stay landed', onPick: () => {} }]); return; }
     leaveShip('takeoff'); return; }
   if (n.id === 'holo') { if (SHIPI.from === 'space') { leaveShip('space'); setTimeout(() => galOpen(), 50); } else lootMsg('The galaxy map works in flight · take off first', '#cfd6e6'); return; }
   if (n.id === 'aboard') { aboardTalk(n.who); return; }
@@ -24829,6 +24838,108 @@ function endFarmInterior() {
     setTimeout(() => notice('Nico’s husband never came home', 'FIND HIM IN TOWN', 3800), 700);
   }, 1200);
 }
+/* ---- Nico's house, from Chapter III on: the farmhouse east of Ad-Nostra, on the Earth map (Nico's farmhouse) and open to walk into.
+   Daniel Brown lives there with the boy, Orion Brown. Bring Croxian Mascar and Nico together and the truth comes out: the boy is
+   Croxian's son, not Daniel's (ch3.orionJrReveal). Bring Orion Mascar too and he learns he held his own grandson that first night.
+   Otherwise a short visit, which changes once the truth is out. Played in the farmhouse room from Chapter II (state 'nicoHouse'). ---- */
+const NH = { on: false, actors: {}, t: 0, shot: null };
+const nhKid = () => (wanderer.chapter | 0) >= 4; // Chapter IV is two years on: he's a toddler, asleep in the next room, not in the cradle
+function nhLines(kind) {
+  const two = nhKid(), crib = two ? 'the next room' : 'that cradle', orion = partyNow().includes('orion') && orionJoined();
+  if (kind === 'reveal') return [
+    ['DANIEL BROWN', ['Well. Look who finally remembered where she lives.']],
+    ['NICO', ['Hello, Daniel.']],
+    ['DANIEL BROWN', [two ? 'Don’t. Don’t you “hello, Daniel” me. You walked out of here with a stranger and a madman with a rifle, and you left a newborn in that cradle. He’s two now. He’s asleep in the next room, and he doesn’t know your face.' : 'Don’t. Don’t you “hello, Daniel” me. You walked out of here with a stranger and a madman with a rifle, and you left a newborn in that cradle.',
+      'Do you know what they call you in town? I do. I hear it every time I buy formula. The deadbeat. The mother who ran off to play soldier among the stars.']],
+    ['NICO', ['You were in a cantina with Hawthorne’s spy while I was giving birth on that floor. Don’t you dare talk to me about running off.']],
+    ['DANIEL BROWN', ['And I paid for it. Orion Mascar put me through a table, and half of Ad-Nostra watched. But I came home, Nico. I’m the one who stayed.', 'And who’s this? Another one of your strays? He’s got Terra Imperia written all over him.']],
+    ['CROXIAN MASCAR', ['Croxian Mascar. I was Terra Imperia. I’m not anymore.']],
+    ['DANIEL BROWN', ['Mascar. Of course it is. The whole family, then. Did your father send you to finish the job on my face?']],
+    ['NICO', ['Daniel, stop. There’s something you need to hear. Both of you.', 'How do you think I knew Croxian’s name in the House of Commons? I’d met him before. The summer Terra Imperia’s garrison camped outside Ad-Nostra.']],
+    ['CROXIAN MASCAR', ['Nico. Don’t.']],
+    ['NICO', ['He has to hear it, Croxian. So do you.', `The boy in ${crib} isn’t yours, Daniel. He’s Croxian’s.`]],
+    ['DANIEL BROWN', ['…What?']],
+    ['CROXIAN MASCAR', ['You told me it was nothing. You said you were married, that it was one summer, and it was over.']],
+    ['NICO', ['It was over. And then it wasn’t, nine months later. You were with Hawthorne by then. What was I supposed to do, write to Terra Imperia? Congratulations, General, you’re a father?']],
+    ['DANIEL BROWN', [two ? 'Two years. Two years I’ve walked that floor with him. I taught him to stand up in this room. And you’re telling me he’s… his?' : 'Every night since you left, I’ve walked that floor with him. Every night. And you’re telling me he’s… his?']],
+    ['CROXIAN MASCAR', ['You named him Orion.']],
+    ['NICO', ['For the stars. My grandmother’s promise, from the porch out there. I swear to you, I didn’t know whose name it was.']],
+    ['CROXIAN MASCAR', ['It’s my father’s name.']],
+    ...(orion ? [
+      ['ORION MASCAR', ['He’s got a good name. I said that, didn’t I? That first night. I stood in this room, and I didn’t know I was looking at my own grandson.', 'Croxian. Son. Look at him.']],
+      ['CROXIAN MASCAR', ['I’m looking, Dad. I don’t know what I’m supposed to feel.']],
+      ['ORION MASCAR', ['Neither did I, the day you were born. You work it out as you go. Mostly you get it wrong.']]] : []),
+    ['DANIEL BROWN', ['No. Listen to me. All of you.', 'I don’t care whose blood he’s got. I changed him, I fed him, I sat up with him through every fever. His name is Orion Brown, and he is my son.']],
+    ['CROXIAN MASCAR', ['He is. You’ve been his father all this time, when I didn’t even know he was alive. I won’t take that from you.', 'But I’d like to know him. If you’ll let me. When this war’s done, if any of us are still standing.']],
+    ['DANIEL BROWN', ['…Then come back in one piece. Both of you. That boy has watched enough people walk out of that door.']],
+    ['NICO', ['We’ll come back, Daniel. I promise.']]
+  ];
+  if (kind === 'after') return partyNow().includes('croxian') ? [
+    ['DANIEL BROWN', [two ? 'He’s asleep. Keep your voice down.' : 'He’s asleep. Don’t wake him.', 'He pointed at the door when you left last time, you know. Kept pointing at it for a week. I think that means come back.']],
+    ['CROXIAN MASCAR', ['I will. I said I would.']]
+  ] : [['DANIEL BROWN', [two ? 'He’s asleep in the next room. He’s asked about his mother. I didn’t know what to tell him.' : 'He’s asleep. Keep your voice down.', 'Tell Nico… tell her the door’s not locked. That’s all.']]];
+  if (kind === 'nico') return [
+    ['DANIEL BROWN', ['Look who it is. The deadbeat.']],
+    ['NICO', ['Not today, Daniel.']],
+    ['DANIEL BROWN', ['It’s never today with you. He’s asleep. Look at him if you want. Then go back to your war.']]
+  ];
+  return [['DANIEL BROWN', ['You. You were with Orion Mascar that night in The Salt Lantern.', `I’ve no quarrel with you. If you came for Nico, she isn’t here. She hasn’t been here in ${two ? 'two years' : 'a long while'}.`, 'The boy’s asleep. Mind the door on your way out. The lions still come round at night.']]];
+}
+async function nhRig(id) {
+  if (id === 'daniel') return humanRig({ name: 'DANIEL BROWN', c: [0x6a7a4b, 0x4a3a2a], skin: 4 });
+  if (id === 'nico') { const g = await loadNico(false); if (!g) return null; const c = SkeletonUtils.clone(g); c.userData.mouth = c.getObjectByName('Gentle smile'); return { root: c, static: true }; }
+  if (id === 'croxian') return glbRig('cpCroxianU', 1.85, 'none', true);
+  if (id === 'orion') return glbRig('cpOrion', 1.85, 'none');
+  return null;
+}
+async function nicoHouseEnter() {
+  if (NH.on || state !== 'explore') return;
+  const P = partyNow(), crox = P.includes('croxian'), nico = P.includes('nico'), seen = c3f('orionJrReveal');
+  const kind = crox && nico && !seen ? 'reveal' : seen ? 'after' : nico ? 'nico' : 'alone';
+  NH.on = true; buildFarmInterior();
+  const bo = $('#blackout'); bo.style.transition = 'opacity 1s'; bo.style.opacity = 1; sfx.click();
+  const who = ['daniel', ...(kind === 'reveal' || kind === 'nico' ? ['nico'] : []), ...(kind === 'reveal' || (kind === 'after' && crox) ? ['croxian'] : []), ...(kind === 'reveal' && P.includes('orion') && orionJoined() ? ['orion'] : [])];
+  const spots = { daniel: [-1.5, -1.05], nico: [.95, -.35], croxian: [.55, 1.35], orion: [1.95, .85] }; // spread out, so each one can be seen past the others
+  const rigs = await Promise.all(who.map(id => nhRig(id).catch(() => null)));
+  await waitMs(1050);
+  for (const R of Object.values(NH.actors)) if (R && R.root && R.root.parent) R.root.parent.remove(R.root);
+  NH.actors = {}; for (const R of [fhc.orion && fhc.orion.root, fhc.nico]) if (R && R.parent) R.parent.remove(R); // Chapter II's cast isn't here any more
+  who.forEach((id, i) => { const R = rigs[i]; if (!R) return; const [x, z] = spots[id]; R.root.position.set(x, 0, z); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); fhc.scene.add(R.root); R.mode = 'idle'; NH.actors[id] = R; });
+  const face = (a, b) => { const A = NH.actors[a], B = NH.actors[b]; if (A && B) A.root.rotation.y = Math.atan2(B.root.position.x - A.root.position.x, B.root.position.z - A.root.position.z); };
+  face('daniel', who.includes('nico') ? 'nico' : 'daniel'); if (!who.includes('nico')) NH.actors.daniel.root.rotation.y = Math.atan2(2.6 - spots.daniel[0], 3 - spots.daniel[1]); // to the door, where you are
+  face('nico', 'daniel'); face('croxian', 'daniel'); face('orion', 'croxian');
+  if (fhc.cradle) fhc.cradle.visible = !nhKid();
+  ex.keys.clear(); vel.set(0, 0, 0); closeDialog(); state = 'nicoHouse'; NH.t = 0; NH.shot = null; NH.kind = kind;
+  ui.xhud.classList.add('cineonly'); bo.style.opacity = 0;
+  if (kind === 'reveal') setTimeout(() => notice('Ad-Nostra · East Africa', 'NICO’S HOUSE', 3200), 300);
+  setTimeout(() => dialogSeq(nhLines(kind), () => nicoHouseLeave(kind), []), kind === 'reveal' ? 2400 : 900);
+}
+function nicoHouseTick(dt) {
+  NH.t += dt; const d = ex.dlg, who = d ? d.who : '';
+  const ids = { 'DANIEL BROWN': 'daniel', NICO: 'nico', 'CROXIAN MASCAR': 'croxian', 'ORION MASCAR': 'orion' }, sp = NH.actors[ids[who]];
+  for (const [id, R] of Object.entries(NH.actors)) { if (!R.static) animRig(R, dt); }
+  const nm = NH.actors.nico && NH.actors.nico.root.userData.mouth; if (nm) nm.scale.y = who === 'NICO' ? 1 + Math.abs(Math.sin(NH.t * 11)) * 1.6 : 1;
+  if (fhc.cradle) fhc.cradle.rotation.z = Math.sin(NH.t * 1.1) * .045;
+  // the speaker, over the shoulder of whoever they're talking to; a wide shot of the room between lines
+  let pos, at;
+  if (sp) { const q = sp.root.position, L = sp === NH.actors.daniel ? (NH.actors.nico || NH.actors.croxian) : NH.actors.daniel, l = L ? L.root.position : new THREE.Vector3(2.6, 0, 3);
+    const dx = q.x - l.x, dz = q.z - l.z, dd = Math.hypot(dx, dz) || 1; pos = [l.x - dx / dd * 1.35 + dz / dd * .8, 1.72, l.z - dz / dd * 1.35 - dx / dd * .8]; at = [q.x, sp.static ? 1.5 : 1.55, q.z]; }
+  else { pos = [3.2, 1.75, 2.7]; at = [-.6, 1.15, -.8]; }
+  const key = pos.map(v => v.toFixed(1)).join();
+  if (key !== NH.shot) { NH.shot = key; camera.position.set(...pos); lookTarget.set(...at); }
+  camera.position.lerp(tmpV.set(...pos), Math.min(1, dt * 1.2)); lookTarget.lerp(tmpV2.set(...at), Math.min(1, dt * 3)); camera.lookAt(lookTarget);
+}
+function nicoHouseLeave(kind) {
+  const bo = $('#blackout'); bo.style.transition = 'opacity 1s'; bo.style.opacity = 1;
+  setTimeout(() => {
+    for (const R of Object.values(NH.actors)) if (R && R.root && R.root.parent) R.root.parent.remove(R.root); NH.actors = {}; if (fhc.cradle) fhc.cradle.visible = true;
+    ui.xhud.classList.remove('cineonly'); state = 'explore'; NH.on = false; ex.snap = true; clock.getDelta(); resize();
+    const p = player.position, x = FARM.x - 7.4, z = FARM.z + .6; p.set(x, wHeight(x, z), z); player.rotation.y = -Math.PI / 2; ex.yaw = player.rotation.y + Math.PI; // back out on the porch, facing town
+    bo.style.opacity = 0;
+    if (kind === 'reveal') { setC3({ orionJrReveal: true }); sfx.thud(); setTimeout(() => notice('Nico’s house', 'ORION BROWN IS CROXIAN’S SON', 4600), 700);
+      setTimeout(() => lootMsg(tiPhone() ? 'Croxian is a father' : 'Croxian has a son he never knew about · Daniel Brown is raising him as his own', compColor('croxian')), 5600); }
+  }, 1100);
+}
 async function farmDoorTalk() {
   const clips = await sfx.loadClips('doorVoices');
   if (ex.dlg) return;
@@ -25361,6 +25472,7 @@ function updateWorldMode(dt) {
   if (!ex.near && SG.rover && !ex.vehicle && SG.rover.parent && Math.hypot(SG.rover.position.x - p.x, SG.rover.position.z - p.z) < 3.6) ex.near = { id: 'srover', label: 'Chompy rover' };
   if (!ex.near && world.rover && !ex.vehicle && world.rover.visible && Math.hypot(world.rover.position.x - p.x, world.rover.position.z - p.z) < 3.4) ex.near = { id: 'rover', label: 'Rover' };
   if (!ex.near && curArea() === 'africa' && wanderer.ch2 && wanderer.ch2.lionsDone && !wanderer.ch2.doorReached && Math.hypot(p.x - (FARM.x - 5.6), p.z - FARM.z) < 2.6) ex.near = { id: 'farmDoor', label: 'Farmhouse door' };
+  if (!ex.near && curArea() === 'africa' && (wanderer.chapter | 0) >= 3 && Math.hypot(p.x - (FARM.x - 5.6), p.z - FARM.z) < 2.6) ex.near = { id: 'nicoHouse', label: 'Nico’s house' }; // from Chapter III: Daniel Brown and the boy live here
   if (!ex.near) { const fn = ferryNear(p); if (fn) ex.near = fn; }
   if (!ex.near && curArea() === 'europe' && Math.hypot(p.x - (LON.door.x - 1.5), p.z - LON.door.z) < 3.2) ex.near = { id: 'parliament', label: 'Houses of Parliament' };
   if (!ex.near && curArea() === 'europe' && LON.sights) for (const s of LON.sights) if (Math.hypot(p.x - s.x, p.z - s.z) < s.r) ex.near = { id: 'lonsight', ref: s, label: s.label };
@@ -25383,7 +25495,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { homeless: [ex.near.label, 'GIVE'], prisonSleep: [ex.near.label, 'SLEEP'], prisonPick: [ex.near.label, 'PICK'], prisonExit: [ex.near.label, 'ESCAPE'], bot: [`Wave · ${ex.near.label}`, 'WAVE'], stray: [`Tame · ${ex.near.label}`, 'TAME'], ship: [podMode() ? 'Board the pod' : jewelOn() ? (tiPhone() ? 'Board · the Jewel of Archamus' : 'Board the Jewel of Archamus') : 'Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
+    const PR = { homeless: [ex.near.label, 'GIVE'], prisonSleep: [ex.near.label, 'SLEEP'], prisonPick: [ex.near.label, 'PICK'], prisonExit: [ex.near.label, 'ESCAPE'], bot: [`Wave · ${ex.near.label}`, 'WAVE'], stray: [`Tame · ${ex.near.label}`, 'TAME'], ship: [podMode() ? 'Board the pod' : jewelOn() ? (tiPhone() ? 'Board · the Jewel of Archamus' : 'Board the Jewel of Archamus') : 'Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], nicoHouse: [tiPhone() ? 'Enter · Nico’s house' : 'Enter Nico’s house', 'ENTER'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give James orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
@@ -27276,6 +27388,15 @@ const PEDIA_EVENTS = [
       'Orion Mascar could not fight at Karribassa. He went back to the Nostra to keep her warm and the comms open, and asked the wanderer to come back in one piece.',
       'The comms were open when the wanderer killed his son. Orion heard Croxian’s last words on the floor of the crew deck. When he stood up again, he closed the channel.',
       'He vowed to kill the wanderer. Not quickly, he said. But he would. His bunk was made and his rifle was gone the next time the wanderer came aboard. He had gone to Thomas Hawthorne, the friend he fought beside in the Third World War.'
+    ] },
+  { id: 'ch3orionJr', story: 3, showIf: () => c3f('orionJrReveal'), name: 'THE BOY IN THE CRADLE', title: 'Revelation · Nico’s house, East Africa', get sub() { return `Chapter ${chNow() >= 4 ? 'IV' : 'III'} · ${chNow() >= 4 ? '2127' : '2125'} AD`; }, cast: ['nico', 'croxian', 'orion'],
+    facts: [['Place', 'The farmhouse east of Ad-Nostra'], ['Present', 'Nico · Croxian Mascar · Daniel Brown'], ['The boy', 'Orion Brown, born 2125 AD'], ['His father', 'Croxian Mascar'], ['Raised by', 'Daniel Brown, who calls him his son'], ['Named for', 'The stars of Orion’s Belt · and, without anyone knowing it, his grandfather']],
+    align: 'Daniel called her a deadbeat. She answered with the one thing he could not argue with.',
+    paras: [
+      'Nico came home with the wanderer and Croxian Mascar beside her. Daniel Brown met her at the door of the farmhouse she had left with a newborn in the cradle, and he called her what the town called her: the deadbeat, the mother who ran off to play soldier among the stars.',
+      'She told him the truth instead. She had met Croxian the summer Terra Imperia’s garrison camped outside Ad-Nostra; that was how she had known his name in the House of Commons. The boy was not Daniel’s. He was Croxian’s.',
+      'Nico had named him Orion for the stars her grandmother showed her from the porch. She had not known it was his grandfather’s name. Croxian did.',
+      'Daniel would not give him up, and nobody asked him to. I changed him, I fed him, I sat up with him through every fever, he said. His name is Orion Brown, and he is my son. Croxian agreed, and asked only to know the boy, if any of them lived through the war.'
     ] },
   { id: 'ch3aboard', story: 3, showIf: () => c3f('alienDone'), name: 'THE LOSS OF THE NOSTRA', title: 'Catastrophe · deep space', sub: 'Chapter III · 2125 AD', cast: [],
     facts: [['Date', '2125 AD'], ['Place', 'Aboard the Nostra, a few seconds out of warp'], ['Intruder', 'Unknown'], ['Crew', 'Cut off below decks'], ['Result', 'The Nostra broke apart · the wanderer escaped in a pod']],
@@ -30790,6 +30911,7 @@ function loopFrame() {
   if (state === 'cutscene') { updateCutscene(dt); sfx.music(0); renderer.render(aScene, camera); return; }
   if (state === 'dream') { tickDialog(dt); updateDream(dt); sfx.music(0); renderer.render(dScene, camera); return; }
   if (state === 'farmCut') { farmCutTick(dt); tickDialog(dt); renderer.render(fhc.scene, camera); return; }
+  if (state === 'nicoHouse') { nicoHouseTick(dt); tickDialog(dt); renderer.render(fhc.scene, camera); return; }
   if (state === 'ch2intro') { updateCh2Intro(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); renderer.render(afScene, camera); return; }
   if (state === 'travel') { updateParticles(dt); renderer.render(wScene, camera); return; }
   if (state === 'cantinaScene') { updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }

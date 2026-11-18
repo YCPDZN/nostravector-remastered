@@ -2722,3 +2722,12 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **Whole-sentence messages** (the remembered-actions lines) now show in smaller type, higher up and narrower, so they no longer cover the minimap and the BUILD button. On desktop they're a little smaller too.
 - **Orion in space** is tagged "ORION · LV 60" on a phone, not the full "ORION MASCAR · LV 60 · THE ORBITAL RAMPAGE" across half the screen.
 - **On the galaxy map** his label is short on a phone ("ORION · LV 60", "HELD HERE" or the seconds left), and sits on whichever side of his marker has room.
+
+### Nico's house, and the truth about Orion Brown
+- **Nico's house is open, and it's on the Earth map.** "Nico's farmhouse" is a place on Earth, inland from Ad-Nostra. Fly to it from Earth's sky, or choose "Fly to Nico's farmhouse" at the helm when landed on Earth, and you're set down on the track to her door. From Chapter III on the door says **Enter Nico's house**: inside is the lamp-lit room from the night of the lions, where Daniel Brown now lives with the boy.
+- **Bring Croxian Mascar and Nico together** and they reunite with Daniel. He calls Nico a deadbeat ("the mother who ran off to play soldier among the stars"). She answers with the truth: she met Croxian the summer Terra Imperia's garrison camped outside Ad-Nostra (that's how she knew his name at the trial), and **Orion Brown is Croxian's son**. She named him for the stars, not knowing it was his grandfather's name. Daniel refuses to give him up, Croxian won't take him, and asks only to know the boy if they live through the war.
+- **Bring Orion Mascar too** and he realises he held his own grandson that first night, and he and Croxian have a moment of their own.
+- In Chapter IV it's two years on: the boy is a toddler asleep in the next room, and the lines say so.
+- Other visits are short and different: Daniel alone ("If you came for Nico, she isn't here"), Daniel and Nico without Croxian ("Look who it is. The deadbeat." "Not today, Daniel."), and, once the truth is out, Daniel telling Croxian the boy kept pointing at the door after he left.
+- A new Nostrapedia lore event, **The Boy in the Cradle**, unlocks with the revelation.
+- **Fix: the New London teleporter works in Chapters IV and V.** The Parliament Square teleporter was listed in the network but couldn't be reached from your other bases. It now takes you to New London once the city is open to you again.
