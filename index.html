@@ -15877,11 +15877,12 @@ function jamesCrewReact(fate, delay) {
 }
 // ---- "Your actions will be remembered": after each of the final choices (Nyrexia, James, Croxian, Malia, and Orion if Croxian
 // died), a line that gets snarkier the more of them you get wrong, and kinder the more you get right (one slip is forgiven).
-// Good: Nyrexia recruited, James / Croxian / Malia spared, Orion killed. Once every choice is made, the last word.
-function fateTally() {
+// Good: Nyrexia recruited, James / Croxian / Malia spared, Orion killed. The last word comes on the path of no return: the first
+// warp to Sagittarius A* in Chapter IV, as the final battle approaches (fateFinal).
+function fateTally(final) {
   const c = (wanderer && wanderer.ch3) || {}, L = [c.nyxJoined ? 1 : c.nyxFailed ? 0 : null, c.jamesFate ? +(c.jamesFate === 'spared') : null,
     c.croxFate ? +(c.croxFate === 'spared') : null, c.maliaFate ? +(c.maliaFate === 'spared') : null];
-  if (c.croxFate === 'killed') L.push(c.orionFate === 'killed' ? 1 : null); // only on that path, and only killing him settles it
+  if (c.croxFate === 'killed') L.push(c.orionFate === 'killed' ? 1 : final ? 0 : null); // only on that path; killing him settles it, and so does reaching the end with him still alive
   const made = L.filter(v => v != null); return { total: L.length, made: made.length, bad: made.filter(v => !v).length };
 }
 const FATE_LINES = [
@@ -15891,12 +15892,20 @@ const FATE_LINES = [
   ['Three. Are you doing this on purpose?', 'Wow. Somebody, somewhere, is taking notes on this.'],
   ['Four out of four the wrong way. Truly committed to the bit.', 'At this point the Catharsis should be sending you a thank-you card.'],
   ['Every single one. Impressive, honestly.']];
+function fateFinal(S) { // the path of no return: Chapter IV, the first warp to Sagittarius A*
+  if (!wanderer || S.id !== 'sgra' || (wanderer.chapter | 0) !== 4 || !(wanderer.ch4 && wanderer.ch4.timeSkip) || wanderer.ch4.fateFinal) return;
+  wanderer.ch4 = Object.assign({}, wanderer.ch4, { fateFinal: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster();
+  const T = fateTally(true), name = String(wanderer.name || 'wanderer').trim() || 'wanderer';
+  const line = T.bad === 0 ? `You got this, ${name}, so save the world` : T.bad >= T.total ? 'Good luck, you’re going to need it :)' : 'You messed up slightly, but the galaxy is still worth saving. Try your best, okay!';
+  setTimeout(() => { sfx.thud(); notice('Sagittarius A*', 'THE PATH OF NO RETURN', 4600); }, 2400);
+  setTimeout(() => { sfx.thud(); notice(' ', 'YOUR ACTIONS WILL BE REMEMBERED', 4600); }, 7400);
+  setTimeout(() => notice(`${T.total - T.bad} of ${T.total} choices made well`, line, 6500), 12400);
+}
 function fateNote(delay = 0) {
   setTimeout(() => { if (!wanderer || CUT.on) return; const T = fateTally(); if (!T.made) return;
-    const name = String(wanderer.name || 'wanderer').trim() || 'wanderer';
-    const line = T.made >= T.total ? (T.bad === 0 ? `You got this, ${name}, so save the world` : T.bad >= T.total ? 'Good luck, you’re going to need it :)' : 'You messed up slightly, but the galaxy is still worth saving. Try your best, okay!') : pick(FATE_LINES[Math.min(T.bad, FATE_LINES.length - 1)]);
+    const line = pick(FATE_LINES[Math.min(T.bad, FATE_LINES.length - 1)]);
     sfx.thud(); notice(' ', 'YOUR ACTIONS WILL BE REMEMBERED', 4600);
-    setTimeout(() => notice(T.made >= T.total ? 'Your choices are made' : `${T.made} of ${T.total} choices made`, line, 6000), 4900);
+    setTimeout(() => notice(`${T.made} of ${T.total} choices made`, line, 6000), 4900);
   }, delay);
 }
 // ---- Chapter III's choices, for Chapter IV's ending ----
@@ -20303,7 +20312,7 @@ function warpTick(dt) {
     SPC.warp = null; tn.visible = false; SPC.vel = 180; SPC.thr = .4;
     const S = curSys(), W3 = wanderer.ch3, first = !(W3.visited || []).includes(S.id);
     if (first) W3.visited = [...(W3.visited || []), S.id];
-    W3.warped = true; sqOnArrive(S); wanderer.place = currentPlace(); const c = curChar(); if (c) { c.ch3 = W3; c.place = wanderer.place; } saveRoster(); alienCheck(); // after Hawthorne: the fifth jump
+    W3.warped = true; sqOnArrive(S); try { fateFinal(S); } catch (e) { console.error(e); } wanderer.place = currentPlace(); const c = curChar(); if (c) { c.ch3 = W3; c.place = wanderer.place; } saveRoster(); alienCheck(); // after Hawthorne: the fifth jump
     const wb = $('#shWarp'); $('#shWarpTxt').innerHTML = `${S.name.toUpperCase()}<br><small>${S.star.type} · ${S.faction}</small>`; wb.classList.add('card');
     clearTimeout(SPC.cardT); SPC.cardT = setTimeout(() => wb.classList.remove('on', 'card'), 3600);
     spaceMsg(first ? `${S.name} · ${S.bodies.filter(P => P.land).length} world${S.bodies.filter(P => P.land).length === 1 ? '' : 's'} to land on` : `Back in ${S.name}`);
