@@ -2696,3 +2696,9 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **The endings:** if he's still alive at the end of Chapter IV you get the neutral ending, and you can still fight him in Chapter V. The bad ending now needs all of this together: Orion left alive, Croxian, James and Malia killed, **and Nyrexia never recruited**.
 - The models are in `assets/models/companions/mascar_frame.glb` and `mascar_frame_orbital_rampage.glb` (game packs `data/mascarFrame.js`, `data/mascarTitan.js`, loaded only when the fight needs them).
 - Also: blacking out on a planet now says you came to by the Jewel of Archamus once you have her, not the Nostra.
+
+### "Your actions will be remembered" now keeps score
+- **After each of the final choices, the message changes with how you've been choosing.** The choices are: recruiting Nyrexia (or letting her quest fail), James, Croxian, Malia, and, only if Croxian died, killing Orion Mascar. That's four choices on the routes where Croxian lives (the Orion fight never happens there), five where he dies.
+- After "YOUR ACTIONS WILL BE REMEMBERED" comes a second line with how many choices you've made. With none wrong it's encouraging ("Good call. Keep choosing like that and the galaxy might just make it."). One slip is forgiven ("One slip. Everybody gets one."). From the second wrong choice on, each line is snarkier than the last ("Three. Are you doing this on purpose?").
+- **Once every choice is made, the last word:** no mistakes, "You got this, [your callsign], so save the world". One mistake, "You messed up slightly, but the galaxy is still worth saving. Try your best, okay!". Two or more, "Good luck, you're going to need it :)".
+- The good choices, as the endings count them: Nyrexia recruited, James, Croxian and Malia spared, Orion killed.

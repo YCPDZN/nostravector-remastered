@@ -12924,7 +12924,7 @@ function nyxJoin() {
   syncCrewParty(); placeCrew().catch(() => null);
   ui.xhud.classList.add('comp'); refreshJamesUI(); renderTasks();
   sfx.chime(); gainXP(300, 'Nyrexia joined you');
-  notice('Side quest complete', 'NYREXIA ERISCONOS JOINS YOUR CREW', 4200);
+  notice('Side quest complete', 'NYREXIA ERISCONOS JOINS YOUR CREW', 4200); fateNote(6000);
   setTimeout(() => lootMsg('Nyrexia takes the same five orders as the rest of your crew', compColor('nyrexia')), 1600);
 }
 function hwmBarsMake() {
@@ -13805,7 +13805,7 @@ function siegeFate(B) {
     { text: crox ? 'Spare him.' : 'Spare her.', onPick: () => { siegeJoin(B); siegePairLines(); } },
     { text: crox ? 'Finish him.' : 'Finish her.', onPick: () => setTimeout(() => { const lw = (SG.svo || [])[crox ? 10 : other ? 12 : 11]; openDialog(who, [crox ? 'Tell my father… tell him he was right. About all of it.' : (other ? 'Wait for me, Croxian. I’m coming.' : 'Tell Croxian I— no. He knows.')], false, () => {
       setC3(crox ? { croxFate: 'killed', croxDead: true } : { maliaFate: 'killed', maliaDead: true });
-      const q = R.root.position; sfx.swing(); setTimeout(() => { sfx.thud(); ex.shake = .5; burst(q.x, q.y + 1, q.z, 70, 6, .9, .2, .2, 1, 1.3, 2); away(); notice('Terra Imperia', `${who} IS DEAD`, 3600); }, 260);
+      const q = R.root.position; sfx.swing(); setTimeout(() => { sfx.thud(); ex.shake = .5; burst(q.x, q.y + 1, q.z, 70, 6, .9, .2, .2, 1, 1.3, 2); away(); notice('Terra Imperia', `${who} IS DEAD`, 3600); }, 260); fateNote(9000);
       if (crox && orionJoined()) setTimeout(() => lootMsg('The Nostra’s comms are open…', '#ff8f86'), 4200);
       SSAY.q.unshift({ pause: 1400 }, { line: siegePairLines }); if (!SSAY.busy) siegeSayNext(); // if the other was spared, they speak now, before the victory lines
     }, lw ? [lw] : undefined); }, 80) }]), bc ? [bc] : undefined); // last words: CH3CROXIANSPAREORKILL11 Croxian, 12 Malia, 13 Malia after Croxian
@@ -13828,7 +13828,7 @@ function siegePairLines() {
 }
 function siegeJoin(B) { // spared, they join you on the spot: Croxian (helmet off) with his blade, Malia with her rifle
   const crox = B.key === 'crox', id = crox ? 'croxian' : 'malia', R = B.R, q = R.root.position;
-  setC3({ [crox ? 'croxFate' : 'maliaFate']: 'spared', [crox ? 'croxJoined' : 'maliaJoined']: true });
+  setC3({ [crox ? 'croxFate' : 'maliaFate']: 'spared', [crox ? 'croxJoined' : 'maliaJoined']: true }); fateNote(9000);
   burst(q.x, q.y + 1, q.z, 30, 4, .8, .8, .9, .7, 1, 1.2); if (R.root.parent) R.root.parent.remove(R.root);
   wanderer.party = [...new Set([...(wanderer.party || []), id])]; (wanderer.cmds || (wanderer.cmds = {}))[id] = 'follow';
   const c = curChar(); if (c) { c.party = wanderer.party; c.cmds = wanderer.cmds; } saveRoster();
@@ -15665,7 +15665,7 @@ function orbSpaceKill(f) {
   const n = orbFallen(), O = orbS(); Object.assign(O, { dead: true, conq: [], hp3: null }); orbSave(); setC3({ orionFate: 'killed' });
   try { applyChapterFactions(); } catch (e) {} renderTasks(); addUnits(2500); gainXP(5000, 'Killed Orion Mascar');
   spaceMsg(`Orion Mascar · “${ORB_LINES.win}”`); sfx.thud();
-  setTimeout(() => { notice('Side quest complete', 'ORION MASCAR IS DEAD', 4800); sfx.chime(); }, 2600);
+  setTimeout(() => { notice('Side quest complete', 'ORION MASCAR IS DEAD', 4800); sfx.chime(); }, 2600); fateNote(12000);
   setTimeout(() => spaceMsg(n ? `The ${n} system${n === 1 ? '' : 's'} he took ${n === 1 ? 'is' : 'are'} free again · +2500 units` : 'He never took a single system · +2500 units'), 7600);
 }
 function tiEncounters(P) {
@@ -15873,7 +15873,31 @@ const JAMES_REACT = {
 function jamesCrewReact(fate, delay) {
   const L = JAMES_REACT[fate].filter(r => r[1]() && partyNow().includes(r[0])), d = fate === 'spared' ? -12 : 10; // moderate either way
   L.forEach(([id, , text], i) => setTimeout(() => { const C = COMPANIONS.find(c => c.id === id); vbark((PARTY[id] || { name: C ? titleName(C.name.split(' ')[0]) : id }).name, text, 5600); influence(id, d); }, delay + i * 6000));
-  setTimeout(() => { sfx.thud(); notice('\u00a0', 'YOUR ACTIONS WILL BE REMEMBERED', 4600); }, delay + L.length * 6000 + 400);
+  fateNote(delay + L.length * 6000 + 400);
+}
+// ---- "Your actions will be remembered": after each of the final choices (Nyrexia, James, Croxian, Malia, and Orion if Croxian
+// died), a line that gets snarkier the more of them you get wrong, and kinder the more you get right (one slip is forgiven).
+// Good: Nyrexia recruited, James / Croxian / Malia spared, Orion killed. Once every choice is made, the last word.
+function fateTally() {
+  const c = (wanderer && wanderer.ch3) || {}, L = [c.nyxJoined ? 1 : c.nyxFailed ? 0 : null, c.jamesFate ? +(c.jamesFate === 'spared') : null,
+    c.croxFate ? +(c.croxFate === 'spared') : null, c.maliaFate ? +(c.maliaFate === 'spared') : null];
+  if (c.croxFate === 'killed') L.push(c.orionFate === 'killed' ? 1 : null); // only on that path, and only killing him settles it
+  const made = L.filter(v => v != null); return { total: L.length, made: made.length, bad: made.filter(v => !v).length };
+}
+const FATE_LINES = [
+  ['Good call. Keep choosing like that and the galaxy might just make it.', 'That’s the one. People will be glad you were there.', 'Right again. Whatever is coming, you’re ready for it.'],
+  ['One slip. Everybody gets one. Make the next one count.', 'Not your finest moment, but it’s not over. Keep going.'],
+  ['Two wrong turns. Bold strategy. Let’s see if it pays off.', 'Well, that’s two. Interesting choices you’re making.'],
+  ['Three. Are you doing this on purpose?', 'Wow. Somebody, somewhere, is taking notes on this.'],
+  ['Four out of four the wrong way. Truly committed to the bit.', 'At this point the Catharsis should be sending you a thank-you card.'],
+  ['Every single one. Impressive, honestly.']];
+function fateNote(delay = 0) {
+  setTimeout(() => { if (!wanderer || CUT.on) return; const T = fateTally(); if (!T.made) return;
+    const name = String(wanderer.name || 'wanderer').trim() || 'wanderer';
+    const line = T.made >= T.total ? (T.bad === 0 ? `You got this, ${name}, so save the world` : T.bad === 1 ? 'You messed up slightly, but the galaxy is still worth saving. Try your best, okay!' : 'Good luck, you’re going to need it :)') : pick(FATE_LINES[Math.min(T.bad, FATE_LINES.length - 1)]);
+    sfx.thud(); notice(' ', 'YOUR ACTIONS WILL BE REMEMBERED', 4600);
+    setTimeout(() => notice(T.made >= T.total ? 'Your choices are made' : `${T.made} of ${T.total} choices made`, line, 6000), 4900);
+  }, delay);
 }
 // ---- Chapter III's choices, for Chapter IV's ending ----
 // good: James, Croxian and Malia all spared. bad: all four the other way (James, Croxian and Malia killed, Orion left alive) and Nyrexia never recruited.
