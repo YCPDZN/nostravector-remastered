@@ -467,6 +467,7 @@ body.touch .x-prompt kbd{display:none}
 .x-card small{display:block;font-size:9px;letter-spacing:.5em;line-height:1.9;color:var(--mute);margin-bottom:14px;text-wrap:balance}
 .x-card b{display:block;font-family:var(--display);font-weight:600;font-size:clamp(20px,4.6vw,40px);letter-spacing:.18em;line-height:1.25;text-shadow:0 0 24px rgba(0,0,0,.6);text-wrap:balance}
 .x-card.long b{font-size:clamp(17px,3vw,30px);letter-spacing:.14em}
+.x-card.xlong b{font-size:clamp(15px,2.2vw,24px);letter-spacing:.08em;line-height:1.35}
 .touch-ui{display:none}
 body.touch .touch-ui{display:block}
 #joyHint{position:absolute;left:calc(var(--sl) + 34px);bottom:calc(var(--sb) + 34px);width:116px;height:116px;border-radius:50%;border:1px dashed rgba(var(--inkRGB,230,233,240),.25);
@@ -1031,6 +1032,7 @@ button.bm-c.no{opacity:.45}
 .sq-note{font-size:10px;color:#c9cfda;margin:0;text-align:center}
 .sq-obj{color:#ffe6a8!important;font-size:9.5px!important;letter-spacing:.06em}
 .x-task.sq-task span{color:#ffe6a8}
+.x-task.orb-task span{color:#ff8f86}.x-task.orb-task i{border-color:#ff4a4a!important;background:rgba(255,58,58,.25)!important}
 .shop-jobs{width:100%;text-align:left}
 #shop .panel{max-height:calc(100dvh - var(--st) - var(--sb) - 60px);overflow:auto;-webkit-overflow-scrolling:touch}
 /* phones held sideways: menus get the whole height (less padding, a compact header) */
@@ -1146,7 +1148,7 @@ body.touch .al-key{display:none}
 @media (pointer:coarse) and (orientation:landscape){
   .touch #xTasks{max-width:38vw;max-height:34vh}
   .touch .x-narr{top:calc(var(--st,0px) + 12px);bottom:auto;left:calc(var(--sl,0px) + 40vw);right:calc(var(--sr,0px) + 250px);max-width:none;transform:none}
-  .touch .x-card{top:36%;left:calc(50% + 10vw);width:min(58vw,640px)} .touch .x-card b{font-size:clamp(16px,3.2vw,26px)} .touch .x-card small{margin-bottom:8px}
+  .touch .x-card{top:36%;left:calc(50% + 10vw);width:min(58vw,640px)} .touch .x-card b{font-size:clamp(16px,3.2vw,26px)} .touch .x-card small{margin-bottom:8px} .touch .x-card.xlong{top:30%;width:min(50vw,560px)} .touch .x-card.xlong b{font-size:clamp(12px,2.3vw,17px);letter-spacing:.05em}
   .touch .loot{bottom:calc(var(--sb,0px) + 140px)} .touch .loot div{max-width:40vw}
 }
 @media (max-width:720px) and (orientation:portrait){
@@ -1843,8 +1845,9 @@ const BRIEF_START = 'The year is <b>2125 AD</b>. Beyond our small blue world, co
 const BRIEF_CH4 = 'The year is <b>2127 AD</b>. The old world is dead. <b>Hawthorne is gone</b>, and the Exploration Division is scattered across a galaxy that no longer feels safe. The <b>Catharsis</b> is spreading, world by world, and the voice in the dark grows louder each time you close your eyes. You are still the <b>wanderer</b>. You are still standing. Find who is left, and find out what is coming, before it finds you.';
 const BRIEF_CH2 = 'The year is <b>2125 AD</b>. Betrayed on the Antarctic pier, you crossed the sea to <b>Africa</b>, where an old soldier named <b>Orion Mascar</b> took you in without asking a single question. Now the courts of <b>New London</b> want you, and someone in black and crimson is watching every step you take.';
 const BRIEF_CH3 = 'The year is <b>2125 AD</b>. <b>Hawthorne</b> has landed on Mars, and he says <b>Sol is his</b>. Aboard the <b>Nostra</b>, you hunt the system for allies: a hermit on Olympus Mons, two robots on a frozen moon, a princess of Eris. <b>Terra Imperia</b> is hunting you back, and not everyone you left behind has stayed dead.';
+const BRIEF_CH4_POD = 'The year is <b>2125 AD</b>. Your ship is gone, torn apart by the thing that came aboard, and you are adrift in an <b>escape pod</b>, alone, with the stars turning slowly past the glass. Find somewhere to land. Find out who is left. What comes next will not be the ship you lost, but the <b>Jewel of Archamus</b>.';
 const BRIEF_CH5 = 'The year is <b>2127 AD</b>. The Catharsis has a name now: <b>Lord Zark</b>, the Prime Evil. Every faction you fought, freed or bent to your will is waiting to see what the <b>wanderer</b> does next. Settle your debts, gather who is left, and finish it at <b>Carax</b>.';
-function briefNow() { const c = chNow(); return c >= 5 ? BRIEF_CH5 : postSkip() ? BRIEF_CH4 : c >= 3 ? BRIEF_CH3 : c === 2 ? BRIEF_CH2 : BRIEF_START; } // each chapter tells its own story
+function briefNow() { const c = chNow(); return c >= 5 ? BRIEF_CH5 : postSkip() ? BRIEF_CH4 : c === 4 ? BRIEF_CH4_POD : c >= 3 ? BRIEF_CH3 : c === 2 ? BRIEF_CH2 : BRIEF_START; } // each chapter tells its own story
 function applyMenuEra() {
   const on = isCh4Menu();
   const bt = $('#briefT'); if (bt) bt.innerHTML = briefNow();
@@ -2519,7 +2522,7 @@ function chapterOf(c) {
 }
 function liveChapterLabel() {
   const shipAt = () => SHIPI.from === 'space' ? (sysById(SPC.sys) || {}).name : world.adVisit && !isPl() ? (world.visitAt === 'antarctica' ? 'Antarctica' : world.visitAt === 'europe' ? 'New London' : 'Ad-Nostra') : world.planet ? world.planet.P.name : null;
-  const n = (wanderer && wanderer.chapter) | 0, far = ex.mode === 'ship' ? ['The Nostra', shipAt()].filter(Boolean).join(' · ') : ex.mode === 'space' ? (sysById(SPC.sys) || {}).name : ex.mode === 'world' && isPl() ? world.planet.P.name : ex.mode === 'world' && world.adVisit && curArea() === 'africa' ? 'Earth · Ad-Nostra' : null;
+  const n = (wanderer && wanderer.chapter) | 0, far = ex.mode === 'ship' ? [jewelOn() ? 'The Jewel of Archamus' : 'The Nostra', shipAt()].filter(Boolean).join(' · ') : ex.mode === 'space' ? (sysById(SPC.sys) || {}).name : ex.mode === 'world' && isPl() ? world.planet.P.name : ex.mode === 'world' && world.adVisit && curArea() === 'africa' ? 'Earth · Ad-Nostra' : null;
   if (wanderer && wanderer.ch2 && wanderer.ch2.escapedLondon && n <= 3) return `Chapter III · ${far || 'Sol'}`;
   if (far) return `Chapter ${CHN_ROMAN[Math.max(1, n)]} · ${far}`;
   const area = ex.mode === 'world' ? AREA_INFO[curArea()].name : n >= 2 && curArea() === 'africa' ? 'Africa' : 'Antarctica';
@@ -5413,6 +5416,7 @@ function renderTasks() {
   if ((wanderer.chapter | 0) >= 3 && (wanderer.chapter | 0) !== 4 && wanderer.ch3) { const c3 = wanderer.ch3; h = task(true, 'Escape New London') + (c3.nightmare && (wanderer.chapter | 0) === 3 ? task(!!c3.khzMet, khzTaskText()) : '') + (c3.hawMars && (wanderer.chapter | 0) === 3 ? task(!!c3.charonLanded, 'Main quest · Head to Charon') : '') + (c3.charonLanded && (wanderer.chapter | 0) === 3 ? task(!!c3.charonMet, 'Meet Charon and Kizna on Charon') : '') + (c3.jamesRev ? task(!!c3.jamesFate, 'Main quest · Defeat James Brown at the Antarctic station') : '') + (c3.jamesFate && (wanderer.chapter | 0) === 3 ? task(!!c3.charonBack, tiPhone() ? 'Main quest · Back to Charon and Kizna' : 'Main quest · Return to Charon and speak to Charon and Kizna') : '') + (c3.hakMet && (wanderer.chapter | 0) === 3 ? task(!!c3.cygDone, tiPhone() ? 'Main quest · Infiltrate the Cygnus (Mercury)' : 'Main quest · Infiltrate the Cygnus Terra Imperius, Terra Imperia’s capital ship, in orbit over Mercury') : '') + (c3.solFell && (wanderer.chapter | 0) === 3 ? task(!!c3.hakBack, tiPhone() ? 'Main quest · Return to Hak in Karribassa' : 'Main quest · Return to Hak Chompjak in Karribassa, on Janira Prime: Sol has fallen') : '') + (c3.siegeOn && (wanderer.chapter | 0) === 3 ? task(!!c3.siegeWon, tiPhone() ? 'Main quest · End the blockade of Janira Prime' : 'Main quest · End the blockade of Janira Prime: take Terra Imperia’s base, 1 km from Karribassa') : '') + (c3.restoreWar && (wanderer.chapter | 0) === 3 ? task(!!c3.chkJoined || (!!c3.hawBeaten && !!c3.alexiaBeaten), tiPhone() ? 'Main quest · Recruit Charon and Kizna' : 'Main quest · Go to Charon and recruit Charon and Kizna') + (c3.chkJoined || c3.hawBeaten || c3.alexiaBeaten ? task(!!c3.alexiaBeaten, tiPhone() ? 'Main quest · Siege of Eris: defeat Alexia' : 'Main quest · Lay siege to Eris: break Terra Imperia’s base and defeat Alexia Erisconos') + task(!!c3.hawBeaten, tiPhone() ? 'Main quest · Siege of Mercury: defeat Hawthorne' : c3.alexiaBeaten ? 'Main quest · Lay siege to Mercury: break Terra Imperia’s base and defeat Thomas Hawthorne' : 'Main quest · Lay siege to Mercury: Hawthorne won’t face you until Alexia is beaten') : '') : '') + (c3.hakCall && (wanderer.chapter | 0) === 3 ? task(!!c3.hakMet, tiPhone() ? 'Main quest · Meet Hak in Karribassa (Janira Prime)' : 'Main quest · Meet Hak Chompjak in Karribassa, on Janira Prime (Janira Proxima, a short jump from Sol)') : '') + (surgeOn() && !c3.hawBeaten ? task(false, surgeTaskText()) : '') + (c3.hawBeaten && (wanderer.chapter | 0) === 3 ? task(true, tiPhone() ? 'Sol has fallen · Sol is free' : 'Sol has fallen to Terra Imperia · Sol is free again') + task(true, tiPhone() ? 'War · take Mercury and Venus' : 'War · take Mercury and Venus from Terra Imperia') : '') + (tiWarOn() ? task(false, tiPhone() ? `War · take Mercury and Venus (${TI_WORLDS.filter(id => dip().col[id]).length}/2)` : `War · take Mercury and Venus from Terra Imperia · bombard, land, defeat the governor (${TI_WORLDS.filter(id => dip().col[id]).length}/2)`) : '') + (c3.hawMars ? (!c3.nyxJoined && c3.jamesFate ? '' : !c3.nyxJoined && c3.nyxFailed ? '<div class="x-task failed"><i></i><span>FAILED: <s>Recruit Nyrexia Erisconos on Eris</s></span></div>' : task(!!c3.nyxJoined, 'Side quest (optional) · Recruit Nyrexia Erisconos on Eris')) : '') + (khzPending() ? '' : c3.warped ? task(true, 'Warp to another star system') + (c3.hawDead && (wanderer.chapter | 0) === 3 ? task(!!c3.alienDone, c3.alienDone ? 'Main quest · Explore the galaxy' : `Main quest · Explore the galaxy (${5 - alienWarpsLeft()}/5 jumps)`) : task(false, 'Explore the galaxy')) : task(!!c3.landed, 'Land on a planet in Sol') + (c3.landed ? task(false, 'Warp to another star system') : '')); }
   if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip && !wanderer.ch4.newShip) h = task(true, tiPhone() ? 'Escape the Nostra' : 'Escape the Nostra in a pod') + task(false, tiPhone() ? 'Main quest · Survive · find somewhere to land' : 'Main quest · Survive: you’re adrift in an escape pod · find somewhere to land'); // Chapter IV starts here
   if ((wanderer.chapter | 0) === 4) h = wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip && !wanderer.ch4.newShip ? h : !(wanderer.ch4 && wanderer.ch4.archMet) ? task(false, tiPhone() ? 'Main quest · Meet Archamus (Archiostal)' : 'Main quest · Meet Archamus in the gardens of Archiostal') : !wanderer.ch4.archProj ? task(true, 'Meet Archamus') + task(false, 'Main quest · Hear Archamus out') : !wanderer.ch4.josiahMet ? task(true, 'Meet Archamus') + task(false, tiPhone() ? 'Main quest · Find Josiah Williams II (Earth)' : 'Main quest · Find Josiah Williams II on Earth') : task(true, 'Find Josiah Williams II') + task(false, tiPhone() ? 'Main quest · Help Josiah' : 'Main quest · Bring Josiah Williams II back into the light'); // after the two years: Chapter IV's own objectives, never Chapter III's
+  h += orbTaskHtml(); // Orion Mascar, in red
   if ((wanderer.chapter | 0) >= 3) { const tq = sqTracked(); if (tq) h += `<div class="x-task sq-task"><i></i><span>${tq}</span></div>`; } // the side quest you're tracking
   xUI.tasks.innerHTML = h;
   $('#xChap').textContent = liveChapterLabel().toUpperCase();
@@ -5420,7 +5424,7 @@ function renderTasks() {
 let noticeT;
 function notice(small, big, ms = 2800) {
   $('#xCardS').textContent = small; $('#xCardB').textContent = big;
-  xUI.card.classList.toggle('long', big.length > 18);
+  xUI.card.classList.toggle('long', big.length > 18); xUI.card.classList.toggle('xlong', big.length > 46); // a whole sentence (the remembered-actions lines): smaller still, so it doesn't bury the controls on a phone
   xUI.card.classList.add('on'); clearTimeout(noticeT);
   noticeT = setTimeout(() => xUI.card.classList.remove('on'), ms);
 }
@@ -6821,7 +6825,7 @@ function renderTp() {
     h += `<div class="inv-h" style="margin-top:12px">${A.planet} · ${A.name}${here0 ? '' : far ? ' · across the network' : A.planet === cur.planet ? (ferryOpen() ? ' · take the ferry to get here' : ' · reach it by sea first') : ' · reach this planet by ship first'}</div>`;
     h += ts.map(t => {
       const self = here && t.id === here.id, d = Math.round(Math.hypot(t.x - player.position.x, t.z - player.position.z));
-      return `<div class="res-row shop${self ? ' zero' : ''}"><b style="--c:#7fd8ff"></b><span>${t.name}<small>${self ? 'You are here' : here0 ? d + ' m away' : far ? 'Another world · the Nostra follows you' : 'Another world'}</small></span><em></em><button class="mini" data-t="${t.id}"${self || !reach ? ' disabled' : ''}>Teleport</button></div>`;
+      return `<div class="res-row shop${self ? ' zero' : ''}"><b style="--c:#7fd8ff"></b><span>${t.name}<small>${self ? 'You are here' : here0 ? d + ' m away' : far ? `Another world · ${theShip()} follows you` : 'Another world'}</small></span><em></em><button class="mini" data-t="${t.id}"${self || !reach ? ' disabled' : ''}>Teleport</button></div>`;
     }).join('');
   }
   $('#tpList').innerHTML = h;
@@ -6957,7 +6961,7 @@ function doJump() {
   ex.air = true; ex.vy = 6.4; ex.jumpT = time; sfx.blip();
 }
 function doDodge() {
-  if (ex.mode !== 'world' || ex.vehicle || ex.swim || ex.act || ex.invOpen || ex.dlg) return;
+  if (ex.mode !== 'world' || ex.vehicle || ex.swim || ex.act || ex.invOpen || ex.dlg || time < (ex.heldT || 0)) return; // (not while Orion's stasis holds you)
   if (!spend(STA.dodge)) return;
   let ix = ex.joyX, iy = ex.joyY; const k = ex.keys;
   if (k.has('KeyA') || k.has('ArrowLeft')) ix -= 1; if (k.has('KeyD') || k.has('ArrowRight')) ix += 1;
@@ -7693,7 +7697,7 @@ function refreshJamesUI() {
   const mode = sel === 'all' ? (p.every(id => compMode(id) === compMode(p[0])) ? compMode(p[0]) : null) : compMode(sel);
   $('#jWho').textContent = 'FOLLOWING COMPANIONS'; $('#jMode').textContent = p.length ? String(p.length) : '';
   for (const b of document.querySelectorAll('#jOpts button[data-m]')) b.classList.toggle('on', b.dataset.m === mode);
-  const dz = $('#jDismiss'); if (dz) dz.style.display = canDismiss() && sel !== 'james' ? '' : 'none'; // once you have the Nostra to send them to
+  const dz = $('#jDismiss'); if (dz) { dz.style.display = canDismiss() && sel !== 'james' ? '' : 'none'; dz.innerHTML = `<kbd>8</kbd>Dismiss · wait aboard ${theShip()}`; } // once you have a ship to send them to
   const dg = $('#jDungeon'); if (dg) dg.style.display = effCh() >= 3 && sel !== 'james' && isPl() && (world.lairGates || []).some(G => G.g.visible && !G.L.ch4) ? '' : 'none'; // only where there's a lair to clear
   const row = $('#jWhoRow'); row.style.display = p.length ? '' : 'none'; // who's with you, their level and what they're doing: tap one to give them orders
   row.innerHTML = [...p, ...(p.length > 1 ? ['all'] : [])].map(id => id === 'all'
@@ -8194,7 +8198,7 @@ function blackout() {
   const p = player.position; if (isPl()) p.set(4, wHeight(4, 14.5), 14.5); else p.set(11.5, wHeight(11.5, 3), 3); vel.set(0, 0, 0); ex.snap = true; worldUnstick(); // on a planet: by your ship's ramp
   ex.hp = Math.round(maxHP() * .5); invState().hp = ex.hp;
   if (curArea() === 'africa') notice('You blacked out', orionJoined() ? 'ORION CARRIED YOU BACK TO HIS HOME' : 'YOU CAME TO OUTSIDE ORION’S HOME', 4200);
-  else if (isPl()) notice('You blacked out', partyNow().length ? `${compName(partyNow()[0]).toUpperCase()} GOT YOU BACK TO THE NOSTRA` : 'YOU CAME TO BY THE NOSTRA', 4200);
+  else if (isPl()) notice('You blacked out', partyNow().length ? `${compName(partyNow()[0]).toUpperCase()} GOT YOU BACK TO ${theShip().toUpperCase()}` : `YOU CAME TO BY ${theShip().toUpperCase()}`, 4200);
   else notice('You blacked out', companionOn() ? 'JAMES DRAGGED YOU BACK TO THE STATION' : 'YOU CAME TO AT THE STATION', 4200);
 }
 function damageFauna(c, dmg, fromJames) {
@@ -10764,7 +10768,7 @@ async function visitAntBase(place) { // fly back to where it all began: the stat
   state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks();
   tiWorldClear(); TIW.area = 'antarctica'; if (jamesQ()) antStronghold();
   notice('Earth · Antarctica', jamesQ() ? 'THE STATION · A TERRA IMPERIA STRONGHOLD' : 'THE RESEARCH STATION', 3400);
-  if (!place && !jamesQ()) setTimeout(() => lootMsg('Your Chapter I camp is as you left it · the Nostra is parked on the ice', '#cfeeff'), 2400);
+  if (!place && !jamesQ()) setTimeout(() => lootMsg(`Your Chapter I camp is as you left it · ${theShip()} is parked on the ice`, '#cfeeff'), 2400);
 }
 function shipFlyToAnt() {
   const f = $('#fade'); f.style.transition = 'opacity .6s'; f.style.opacity = 1; sfx.whoosh();
@@ -12921,7 +12925,7 @@ function nyxJoin() {
   syncCrewParty(); placeCrew().catch(() => null);
   ui.xhud.classList.add('comp'); refreshJamesUI(); renderTasks();
   sfx.chime(); gainXP(300, 'Nyrexia joined you');
-  notice('Side quest complete', 'NYREXIA ERISCONOS JOINS YOUR CREW', 4200);
+  notice('Side quest complete', 'NYREXIA ERISCONOS JOINS YOUR CREW', 4200); fateNote(6000);
   setTimeout(() => lootMsg('Nyrexia takes the same five orders as the rest of your crew', compColor('nyrexia')), 1600);
 }
 function hwmBarsMake() {
@@ -13064,7 +13068,7 @@ const pick = a => a[Math.floor(Math.random() * a.length)];
 
 // ---- what's on the ground near you: Charon and Kizna, the stronghold, a patrol, a Pontifex on your trail ----
 const TIW = { area: null, chn: null, st: null, pat: null, hunt: null };
-function tiWorldClear() { siegeClear(); solDuelDrop(); for (const k of ['chn', 'hak', 'cyg', 'st', 'pat', 'hunt', 'gov', 'siege', 'spat', 'hawm', 'alx', 'sspat']) { const o = TIW[k]; if (o && o.R) for (const R of o.R) if (R && R.cb) { const i = fauna.list.indexOf(R.cb); if (i >= 0) fauna.list.splice(i, 1); } if (o && o.g && o.g.parent) o.g.parent.remove(o.g); TIW[k] = null; } }
+function tiWorldClear() { siegeClear(); solDuelDrop(); try { orbDrop(); } catch (e) { console.error(e); } for (const k of ['chn', 'hak', 'cyg', 'st', 'pat', 'hunt', 'gov', 'siege', 'spat', 'hawm', 'alx', 'sspat']) { const o = TIW[k]; if (o && o.R) for (const R of o.R) if (R && R.cb) { const i = fauna.list.indexOf(R.cb); if (i >= 0) fauna.list.splice(i, 1); } if (o && o.g && o.g.parent) o.g.parent.remove(o.g); TIW[k] = null; } }
 function tiLanded(P) {
   tiWorldClear(); TIW.area = curArea(); if (!P) return;
   if (podMode() && !(wanderer.ch4 && wanderer.ch4.podLanded)) { setTimeout(() => podDeath(P), 1600); return; } // the first world the pod comes down on
@@ -13076,6 +13080,7 @@ function tiLanded(P) {
   if (P.id === 'mercury' && (cygQ() || cygFarm()) && !hawMercQ()) cygPlace(); // never during the siege
   if (SPC.cygDock) { SPC.cygDock = false; { const fd = $('#fade'); fd.style.transition = 'none'; fd.style.opacity = 1; } setTimeout(cygDockIn, 350); return; } // you docked with the Cygnus in orbit: straight aboard, and nothing down on Mercury (patrols, a hunter, the war) turns up to announce itself
   if (P.id === 'earth' && jamesQ()) stationPlace();
+  if (P.id === 'earth' && orbEarthQ()) setTimeout(orbPlace, 1400); // Orion Mascar, waiting for you wherever you land (the killed-Croxian path)
   if (P.id === 'mercury' && hawMercQ()) { setTimeout(hawMercPlace, 900); setTimeout(() => solPatrolsLand('mercury'), 1800); } // the War of Restoration: the siege of Mercury, Hawthorne's last stand
   if (P.id === 'eris' && alexiaQ()) { setTimeout(alexiaPlace, 900); setTimeout(() => solPatrolsLand('eris'), 1800); } // and the siege of Eris, Alexia holding it
   if (CH3S().charonMet && !CH3S().jamesRev && ch3Now()) jrvWhenFree(3200); // you left before it played: it finds you on the next world
@@ -13087,7 +13092,7 @@ function tiTick(dt) {
   if (!TIW.area) return;
   if (curArea() !== TIW.area) { tiWorldClear(); TIW.area = null; return; }
   const p = player.position;
-  siegeTick(dt); siegePatrolTick(dt); solPatrolTick(dt); solDuelTick(dt);
+  siegeTick(dt); siegePatrolTick(dt); solPatrolTick(dt); solDuelTick(dt); orbTick(dt);
   for (const k of ['chn', 'hak', 'cyg', 'st', 'pat', 'hunt', 'gov', 'siege', 'spat', 'hawm', 'alx', 'sspat']) { const o = TIW[k]; if (!o) continue; o.g.visible = !DGN.on;
     for (const R of [...(o.R || [])]) { if (!R) continue; if (R.cb && tiSoldierTick(R, o, dt)) continue;
       if (R.walkTo) { const q = R.root.position, dx = R.walkTo.x - q.x, dz = R.walkTo.z - q.z, d = Math.hypot(dx, dz); if (d > .15) { const st = Math.min(d, 1.5 * dt); q.x += dx / d * st; q.z += dz / d * st; R.root.rotation.y = Math.atan2(dx, dz); R.mode = 'walk'; animRig(R, dt); continue; } R.walkTo = null; } // walking up (Hak's allies)
@@ -13632,7 +13637,7 @@ async function orionStepsBack(done) {
   const bye = (line, i) => setTimeout(() => openDialog('ORION MASCAR', [line], false, () => {
     setC3({ orionStepped: true }); wanderer.aboard = Object.assign({}, wanderer.aboard, { orion: true }); const c = curChar(); if (c) c.aboard = wanderer.aboard; saveRoster();
     if (world.orion) world.orion.root.visible = false; if (ex.cSel === 'orion') ex.cSel = null; refreshJamesUI(); ui.xhud.classList.toggle('comp', companionOn() || partyNow().length > 0);
-    lootMsg('Orion is waiting aboard the Nostra (crew deck)', compColor('orion')); setTimeout(done, 1800);
+    lootMsg(jewelOn() ? 'Orion is aboard the Jewel of Archamus' : 'Orion is waiting aboard the Nostra (crew deck)', compColor('orion')); setTimeout(done, 1800);
   }, one(i)), 80);
   openDialog('ORION MASCAR', ORION_STEP, false, () => openChoice('ORION MASCAR', [
     { text: 'Go. I’ll come back to you.', onPick: () => bye('I know you will. That’s the only reason I can leave.', 6) },
@@ -13801,7 +13806,7 @@ function siegeFate(B) {
     { text: crox ? 'Spare him.' : 'Spare her.', onPick: () => { siegeJoin(B); siegePairLines(); } },
     { text: crox ? 'Finish him.' : 'Finish her.', onPick: () => setTimeout(() => { const lw = (SG.svo || [])[crox ? 10 : other ? 12 : 11]; openDialog(who, [crox ? 'Tell my father… tell him he was right. About all of it.' : (other ? 'Wait for me, Croxian. I’m coming.' : 'Tell Croxian I— no. He knows.')], false, () => {
       setC3(crox ? { croxFate: 'killed', croxDead: true } : { maliaFate: 'killed', maliaDead: true });
-      const q = R.root.position; sfx.swing(); setTimeout(() => { sfx.thud(); ex.shake = .5; burst(q.x, q.y + 1, q.z, 70, 6, .9, .2, .2, 1, 1.3, 2); away(); notice('Terra Imperia', `${who} IS DEAD`, 3600); }, 260);
+      const q = R.root.position; sfx.swing(); setTimeout(() => { sfx.thud(); ex.shake = .5; burst(q.x, q.y + 1, q.z, 70, 6, .9, .2, .2, 1, 1.3, 2); away(); notice('Terra Imperia', `${who} IS DEAD`, 3600); }, 260); fateNote(9000);
       if (crox && orionJoined()) setTimeout(() => lootMsg('The Nostra’s comms are open…', '#ff8f86'), 4200);
       SSAY.q.unshift({ pause: 1400 }, { line: siegePairLines }); if (!SSAY.busy) siegeSayNext(); // if the other was spared, they speak now, before the victory lines
     }, lw ? [lw] : undefined); }, 80) }]), bc ? [bc] : undefined); // last words: CH3CROXIANSPAREORKILL11 Croxian, 12 Malia, 13 Malia after Croxian
@@ -13824,7 +13829,7 @@ function siegePairLines() {
 }
 function siegeJoin(B) { // spared, they join you on the spot: Croxian (helmet off) with his blade, Malia with her rifle
   const crox = B.key === 'crox', id = crox ? 'croxian' : 'malia', R = B.R, q = R.root.position;
-  setC3({ [crox ? 'croxFate' : 'maliaFate']: 'spared', [crox ? 'croxJoined' : 'maliaJoined']: true });
+  setC3({ [crox ? 'croxFate' : 'maliaFate']: 'spared', [crox ? 'croxJoined' : 'maliaJoined']: true }); fateNote(9000);
   burst(q.x, q.y + 1, q.z, 30, 4, .8, .8, .9, .7, 1, 1.2); if (R.root.parent) R.root.parent.remove(R.root);
   wanderer.party = [...new Set([...(wanderer.party || []), id])]; (wanderer.cmds || (wanderer.cmds = {}))[id] = 'follow';
   const c = curChar(); if (c) { c.party = wanderer.party; c.cmds = wanderer.cmds; } saveRoster();
@@ -15263,6 +15268,408 @@ function solDuelWin() {
   if (B.id === 'mercury') setTimeout(() => hawDeath(hawMercWin), 2200); // and Hak comes for him
   else setTimeout(alexiaWin, 1600);
 }
+/* ---- Orion Mascar, the boss (Chapter IV on, if you killed Croxian and he went to Hawthorne) ----
+   A side quest, marked in red. Wherever you land on Earth he is waiting under a crimson beacon, and the fight has three phases:
+     1 · lv 40, on foot: ten attack patterns, among them his stasis hold (arms crossed, magic that stops you where you stand)
+     2 · lv 45, in the Mascar Frame (yellow): it flies a ring around you, ten attack patterns, one per move the Frame was built with
+     3 · lv 60, the Frame turned titanium (Orbital Rampage): he takes the fight to orbit. He doesn't attack you there: he warps from
+         system to system conquering them, all of them if nobody stops him, but never while you're in the same system as him.
+         Shoot him down in space and he's dead (ch3.orionFate 'killed'), and every system he took is free again.
+   Saved in wanderer.orion { ph, sys, conq: [system ids], t (seconds to the next conquest), hp3, dead }.
+   Leave him alive to the end of Chapter IV and it shapes the ending (ch4Ending): the neutral ending, or the bad one if you also
+   killed Croxian, James and Malia and never recruited Nyrexia. On the neutral path he's still out there in Chapter V. */
+const ORB = { R: null, M: null, B: null, g: null, area: null, x: 0, z: 0, load: 0, foeT: 0, saveT: 0, hereSys: null };
+const ORB_LV = [0, 40, 45, 60], ORB_CONQ_T = 75; // seconds a system holds out while you're somewhere else
+const ORB_LINES = {
+  wait: 'You came. Good. I wanted to look at you when I did it.',
+  intro: 'I held Croxian the day he was born. I heard him die over a radio. Now I am going to hold you down while you do the same.',
+  hold: ['Stay where you are.', 'No. You don’t get to run from this.', 'Be still.', 'Look at me.'],
+  hurt: ['He was twenty-six!', 'You should have killed me too, that night.', 'Is that all you had for him?'],
+  p2: 'You want to see what a father builds when there’s nothing left to save? Watch.',
+  p2b: 'Hawthorne gave me the Frame. I gave it his name. Croxian’s, I mean. MASCAR.',
+  p3: 'No. Not here. Not on the ground like a dog. Every star you ever looked at, I will take from you.',
+  space: 'Follow me, then. Every system you leave behind kneels to me.',
+  here: 'You found me. It doesn’t matter. I can wait. You can’t stay everywhere.',
+  win: 'Croxian… I’m sorry, son. I’m coming.'
+};
+const orbS = () => (wanderer && (wanderer.orion || (wanderer.orion = { ph: 1 }))) || { ph: 1 };
+function orbSave() { const c = curChar(); if (c) c.orion = wanderer.orion; saveRoster(); }
+const orbOn = () => { if (!wanderer || !orionVillain()) return false; const ch = wanderer.chapter | 0; if (ch < 4 || (ch === 4 && !(wanderer.ch4 && wanderer.ch4.timeSkip))) return false; return !orbS().dead; };
+const orbEarthQ = () => orbOn() && orbS().ph < 3;
+const orbSpaceQ = () => orbOn() && orbS().ph === 3;
+const orbFallen = () => (orbS().conq || []).length;
+function orbTask() {
+  if (!orbOn()) return null; const O = orbS(), ph = tiPhone();
+  if (O.ph < 3) return ph ? 'Side quest · Orion Mascar (Earth)' : 'Side quest · Defeat Orion Mascar · he waits for you on Earth';
+  const S = sysById(O.sys), n = orbFallen(), all = SYSTEMS.length;
+  if (SPC.sys === O.sys) return ph ? `Side quest · shoot down Orion · ${n}/${all}` : `Side quest · Shoot down Orion Mascar · he can’t conquer ${S.name} while you’re here · ${n}/${all} systems fallen`;
+  return ph ? `Side quest · stop Orion · ${S.name} · ${n}/${all}` : `Side quest · Stop Orion Mascar · he is taking ${S.name} · ${n}/${all} systems fallen`;
+}
+const orbTaskHtml = () => { const t = orbTask(); return t ? `<div class="x-task orb-task"><i></i><span>${t}</span></div>` : ''; };
+// ---- the Mascar Frame: one load per model, a fresh copy for each fight, its ten moves played from the model's own animations ----
+const ORB_GLB = { frame: 'mascarFrame', ti: 'mascarTitan' }, ORB_SRC = {};
+function orbMechSrc(k) {
+  return ORB_SRC[k] || (ORB_SRC[k] = loadDataScript(ORB_GLB[k], 'glb').then(ok => { const el = ok && document.getElementById(ORB_GLB[k]); if (!el) return null;
+    const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    return new Promise(res => new GLTFLoader().parse(u8.buffer, '', g => res(g), () => res(null))); }).catch(() => null).then(g => { if (!g) ORB_SRC[k] = null; return g; }));
+}
+async function orbMech(k, scale = 1) {
+  const G = await orbMechSrc(k); if (!G) return null;
+  const root = G.scene.clone(true), g = new THREE.Group(), inner = new THREE.Group(); inner.add(root); inner.scale.setScalar(scale); g.add(inner);
+  root.traverse(o => { o.userData.rest = [o.position.clone(), o.quaternion.clone(), o.scale.clone()]; if (o.isMesh) { o.castShadow = !tiPhone(); o.receiveShadow = true; } });
+  const clips = {}; for (const c of G.animations) clips[c.name] = c;
+  const jets = []; root.traverse(o => { if (o.isMesh && /Jet throat|Cannon emitter/.test(o.name)) jets.push(o); });
+  const flame = glowSprite(k === 'ti' ? 0x9fd8ff : 0x7ff0e0, 4.2, .85); flame.position.set(0, 4.1, -1.75); inner.add(flame);
+  return { g, inner, root, mixer: new THREE.AnimationMixer(root), clips, act: null, flame, k };
+}
+function orbPlay(M, name, dur, loop) {
+  const c = M && M.clips[name]; if (!c) return;
+  if (M.act) M.act.stop(); orbRest(M);
+  const a = M.mixer.clipAction(c); a.reset(); a.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1); a.clampWhenFinished = false; a.timeScale = dur ? c.duration / dur : 1; a.play(); M.act = a; M.actName = name;
+}
+function orbRest(M) { M.root.traverse(o => { const r = o.userData.rest; if (r) { o.position.copy(r[0]); o.quaternion.copy(r[1]); o.scale.copy(r[2]); } }); }
+function orbStop(M) { if (M && M.act) { M.act.stop(); M.act = null; M.actName = null; orbRest(M); } }
+// ---- on Earth: he waits under a crimson beacon wherever you land ----
+function orbPlace() {
+  if (!orbEarthQ() || ORB.g || !isPl() || !world.planet || world.planet.P.id !== 'earth') return;
+  const area = curArea(), [x, z] = tiSpot(150, 190), g = new THREE.Group(); wScene.add(g);
+  Object.assign(ORB, { g, area, x, z, R: null, M: null, B: null, beacon: tiBeacon(g, x, z, 0xff2a2a, 20), load: ++ORB.load, said: 0, leaving: false });
+  const tok = ORB.load, O = orbS();
+  const done = () => tok === ORB.load && ORB.g === g && curArea() === area;
+  if (O.ph === 1) glbRig('cpOrion', 1.85, 'rifle').then(R => { if (!R || !done()) return; orionTurnPaint(R.root); R.root.position.set(x, wHeight(x, z), z); R.root.traverse(o => { if (o.isMesh) o.castShadow = !tiPhone(); }); g.add(R.root); ORB.R = R; R.cross = true; }).catch(() => {});
+  else orbMech('frame').then(M => { if (!M || !done()) return; M.g.position.set(x, wHeight(x, z), z); g.add(M.g); ORB.M = M; }).catch(() => {});
+  setTimeout(() => { if (!done()) return; sfx.alarm(); notice('Side quest', tiPhone() ? 'ORION MASCAR IS ON EARTH' : 'ORION MASCAR HAS FOUND YOU ON EARTH', 3800);
+    lootMsg(tiPhone() ? 'Orion waits under the crimson beacon' : `Orion Mascar, Grand Imperarch of Terra Imperia, waits under the crimson beacon · lv ${ORB_LV[O.ph]}${O.ph === 2 ? ' · in the Mascar Frame' : ''}`, '#ff6a6e'); }, 2600);
+}
+function orbDrop() {
+  const B = ORB.B; if (B && B.c) { const i = fauna.list.indexOf(B.c); if (i >= 0) fauna.list.splice(i, 1); if (B.c.bar && B.c.bar.parent) B.c.bar.parent.remove(B.c.bar); }
+  if (B) for (const m of B.tels) if (m.parent) m.parent.remove(m);
+  for (const o of ORB.fx || []) if (o.m && o.m.parent) o.m.parent.remove(o.m);
+  if (ORB.g && ORB.g.parent) ORB.g.parent.remove(ORB.g);
+  if (ORB.B) { const el = $('#bossBar'); if (el) el.classList.remove('on'); }
+  Object.assign(ORB, { g: null, R: null, M: null, B: null, area: null, fx: [], load: ORB.load + 1, leaving: false, seq: null }); ex.heldT = 0;
+}
+function orbSpec(ph) { const lv = ORB_LV[ph]; return { lv, hp: ph === 1 ? Math.round(5000 + lv * 150) : Math.round(6500 + lv * 190), dmg: Math.round((ph === 1 ? 28 : 34) + lv * .8), rdmg: Math.round(12 + lv * .5) }; }
+function orbFight() {
+  if (ORB.B || !ORB.g) return; const O = orbS(), X = orbSpec(O.ph), obj = O.ph === 1 ? ORB.R : ORB.M; if (!obj) return;
+  const q = O.ph === 1 ? ORB.R.root.position : ORB.M.g.position;
+  const D = { name: `Orion Mascar · lv ${X.lv}`, hp: X.hp, r: O.ph === 1 ? .8 : 2.6, xp: 0, dmg: 0, beast: 'pred', loot: () => [['warpcell', 2], ['medkit', 2]] };
+  const c = { type: 'siegeboss', D, lv: X.lv, mesh: O.ph === 1 ? ORB.R.root : ORB.M.g, x: q.x, z: q.z, y: q.y, rot: 0, hp: X.hp, state: 'hunt', t: 0, cd: 2, home: [q.x, q.z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, ext: true, sboss: true, bar: hpBar() };
+  c.bar.position.y = O.ph === 1 ? 2.5 : 8.6; c.bar.visible = false; c.mesh.add(c.bar); fauna.list.push(c);
+  ORB.B = { ph: O.ph, X, c, st: 'chase', t: 0, cd: 1.6, tels: [], bag: [], ang: Math.atan2(q.x - player.position.x, q.z - player.position.z), alt: O.ph === 2 ? 4 : 0, hurtT: 0, said: 0 };
+  if (ORB.R) ORB.R.cross = false;
+  sfx.alarm(); combatPulse(); notice(O.ph === 1 ? 'Side quest · phase one' : 'Side quest · phase two', `ORION MASCAR · LV ${X.lv}`, 3200); vbark('Orion', O.ph === 1 ? ORB_LINES.intro : ORB_LINES.p2b, 5200);
+}
+function orbBar() {
+  const B = ORB.B, el = $('#bossBar'); if (!el || !B) return; el.classList.add('on');
+  el.innerHTML = `<div class="bb-h"><b>ORION MASCAR</b><small>LV ${B.X.lv} · ${B.ph === 1 ? 'GRAND IMPERARCH' : 'THE MASCAR FRAME'} · PHASE ${B.ph} OF 3</small></div><div class="bb"><i style="width:${(Math.max(0, B.c.hp) / B.c.D.hp * 100).toFixed(1)}%"></i></div><em>${B.ph === 1 ? (tiPhone() ? 'Dodge the stasis ring' : 'When he crosses his arms, get out of the ring or dodge through it') : (tiPhone() ? 'Shoot him as he circles' : 'He circles you · shoot him in the ring, hit him when he comes in close')}</em>`;
+}
+// the next attack: every pattern once, in a shuffled order, before any repeats
+function orbNext(B, list) { if (!B.bag.length) { B.bag = [...list].sort(() => Math.random() - .5); if (B.bag[0] === B.last) B.bag.push(B.bag.shift()); } return (B.last = B.bag.shift()); }
+const ORB_P1 = ['hold', 'burst', 'charge', 'butt', 'grenade', 'orbs', 'leap', 'wave', 'pull', 'rain'];
+const ORB_P2 = ['Piston Punch', 'Claw Sweep', 'Seismic Stomp', 'Shoulder Barrage', 'Arc Cannon', 'Jet Dash', 'Aerial Strafe', 'Dive Slam', 'Rotor Spin', 'Twin Hammer'];
+function orbTel(B, x, z, r) { const m = telegraph(x, z, r); B.tels.push(m); return m; }
+function orbClearTels(B) { for (const m of B.tels) if (m.parent) m.parent.remove(m); B.tels = []; }
+function orbBoom(x, z, r, dmg, B, col = [1, .45, .25]) { const y = bossGround(x, z); burst(x, y + .4, z, 26, 5, col[0], col[1], col[2], .7, 1.2, 1.6); sfx.boom && sfx.boom(.5); const p = player.position; if (Math.hypot(p.x - x, p.z - z) < r) hurtPlayer(dmg, { x, z, lv: B.c.lv }); }
+function orbOrb(B, x, y, z, col) { // a slow, homing ball of his magic
+  const m = new THREE.Mesh(new THREE.SphereGeometry(.32, 10, 8), new THREE.MeshBasicMaterial({ color: col })); m.position.set(x, y, z); m.add(glowSprite(col, 1.8, .9)); wScene.add(m);
+  (ORB.fx || (ORB.fx = [])).push({ m, t: 0, life: 4.2, B });
+}
+function orbFxTick(dt) {
+  const p = player.position;
+  for (const o of [...(ORB.fx || [])]) { o.t += dt; const q = o.m.position, dx = p.x - q.x, dy = p.y + 1 - q.y, dz = p.z - q.z, d = Math.hypot(dx, dy, dz) || 1, v = 6.5 * dt;
+    q.x += dx / d * v; q.y += dy / d * v; q.z += dz / d * v;
+    if (d < 1.2 || o.t > o.life || !ORB.B) { if (o.m.parent) o.m.parent.remove(o.m); ORB.fx.splice(ORB.fx.indexOf(o), 1); burst(q.x, q.y, q.z, 14, 3, 1, .3, .35, .5, .8, 1); if (d < 1.2 && ORB.B) hurtPlayer(ORB.B.X.rdmg, { x: q.x, z: q.z, lv: ORB.B.c.lv }); } }
+}
+function orbCross(R, on) { // arms folded across the chest: the pose he casts the stasis hold from
+  if (!R) return; for (const gq of R.gear || []) gq.visible = !on; if (!on) return; const S = (o, ax, v) => { if (o && R.rest.get(o)) o.rotation[ax] = R.rest.get(o)[ax] + v; }, s = R.ra && R.la ? wxSign(R) : 1;
+  S(R.ra, 'x', -1.25); S(R.la, 'x', -1.25); S(R.ra, 'z', -.85 * s); S(R.la, 'z', .85 * s); S(R.raL, 'x', -1.7); S(R.laL, 'x', -1.7);
+}
+function orbTick(dt) {
+  if (!ORB.g) return;
+  if (curArea() !== ORB.area || (!orbEarthQ() && !ORB.leaving)) { orbDrop(); return; }
+  if (ORB.seq) { const Q = ORB.seq; Q.t += dt; if (ORB.M) ORB.M.mixer.update(dt); Q.upd(Q.t, dt); while (Q.ev.length && Q.t >= Q.ev[0][0]) { const f = Q.ev.shift()[1]; try { f(); } catch (e) { console.error(e); } } if (!Q.ev.length && ORB.seq === Q) ORB.seq = null; if (ORB.beacon) ORB.beacon.material.opacity = .5 + Math.sin(time * 3) * .2; return; } // the Frame coming down, or lifting off for orbit
+  if (ORB.leaving) return;
+  orbFxTick(dt);
+  const O = orbS(), p = player.position, B = ORB.B;
+  if (ORB.beacon) ORB.beacon.material.opacity = .5 + Math.sin(time * 3) * .2;
+  if (!B) { // waiting: arms folded, watching you come
+    const R = ORB.R, M = ORB.M, q = R ? R.root.position : M ? M.g.position : null; if (!q) return;
+    if (R) { R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(p.x - q.x, p.z - q.z), Math.min(1, dt * 3)); R.mode = 'idle'; animRig(R, dt); orbCross(R, true); }
+    if (M) { M.g.rotation.y = angLerp(M.g.rotation.y, Math.atan2(p.x - q.x, p.z - q.z), Math.min(1, dt * 2)); M.mixer.update(dt); M.flame.material.opacity = .2; }
+    const d = Math.hypot(p.x - q.x, p.z - q.z);
+    if (d < 40 && !ORB.said) { ORB.said = 1; vbark('Orion', ORB_LINES.wait, 3600); }
+    if (d < 22 && state === 'explore' && !ex.dlg) orbFight();
+    return;
+  }
+  const c = B.c; c.slowT = Math.max(0, (c.slowT || 0) - dt);
+  const q = c.mesh.position;
+  if (c.barT > 0) { c.barT -= dt; c.bar.visible = true; c.bar.quaternion.copy(camera.quaternion).premultiply(tmpQ.copy(c.mesh.quaternion).invert()); const f = c.bar.userData.fg, k = Math.max(0, c.hp / c.D.hp); f.scale.x = Math.max(.001, k); f.position.x = -(1 - k) / 2; } else c.bar.visible = false;
+  orbBar();
+  if (Math.hypot(p.x - ORB.x, p.z - ORB.z) > 130) { orbReset(); return; } // you ran, or blacked out: he goes back to waiting
+  if (c.hp <= 0 && B.st !== 'down') { B.st = 'down'; B.t = 0; orbClearTels(B); for (const o of ORB.fx || []) if (o.m.parent) o.m.parent.remove(o.m); ORB.fx = []; ex.heldT = 0; if (B.ph === 1) orbToFrame(); else orbToOrbit(); }
+  if (B.st === 'down') return;
+  const live = state === 'explore' && !ex.dlg;
+  if (B.ph === 1) orbTick1(B, dt, live); else orbTick2(B, dt, live);
+  for (const m of B.tels) m.material.opacity = .35 + .35 * Math.sin(time * 18);
+  if (c.hp < c.D.hp * (.75 - B.said * .25) && B.said < 3) { B.said++; vbark('Orion', pick(ORB_LINES.hurt), 3000); }
+}
+function orbReset() {
+  const B = ORB.B; if (!B) return; orbClearTels(B); const i = fauna.list.indexOf(B.c); if (i >= 0) fauna.list.splice(i, 1); if (B.c.bar && B.c.bar.parent) B.c.bar.parent.remove(B.c.bar);
+  ORB.B = null; ex.heldT = 0; for (const o of ORB.fx || []) if (o.m.parent) o.m.parent.remove(o.m); ORB.fx = []; const el = $('#bossBar'); if (el) el.classList.remove('on');
+  if (ORB.R) { const r = ORB.R.root.position; r.set(ORB.x, wHeight(ORB.x, ORB.z), ORB.z); ORB.R.mode = 'idle'; ORB.R.cross = true; }
+  if (ORB.M) { orbStop(ORB.M); ORB.M.g.position.set(ORB.x, wHeight(ORB.x, ORB.z), ORB.z); }
+  lootMsg('Orion goes back to the crimson beacon to wait for you', '#ff8f86');
+}
+// ---- phase one: Orion on foot, with his rifle and Hawthorne's gifts ----
+function orbTick1(B, dt, live) {
+  const R = ORB.R, c = B.c, q = R.root.position, p = player.position; if (!R) return;
+  c.x = q.x; c.z = q.z; c.y = q.y;
+  if (!live) { R.mode = 'idle'; animRig(R, dt); return; }
+  const dx = p.x - q.x, dz = p.z - q.z, d = Math.hypot(dx, dz) || 1, X = B.X, fast = c.hp < c.D.hp * .35 ? 1.2 : 1, src = { x: q.x, z: q.z, lv: c.lv };
+  const face = (k = 7) => { R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * k)); };
+  const move = (tx, tz, v) => { const ex2 = tx - q.x, ez = tz - q.z, e = Math.hypot(ex2, ez); if (e < .1) return; const nx = q.x + ex2 / e * v * dt, nz = q.z + ez / e * v * dt; if (!worldBlocked(nx, nz)) { q.x = nx; q.z = nz; } q.y = wHeight(q.x, q.z); };
+  const go = (st, extra) => { B.st = st; B.t = 0; B.hit = 0; Object.assign(B, extra || {}); };
+  B.t += dt; B.cd -= dt; R.mode = 'idle';
+  if (B.st === 'chase') { // keep to rifle range, sidestepping
+    face(); const want = 9;
+    if (d > want + 3) { R.mode = 'walk'; move(p.x, p.z, 4.6 * fast * (c.slowT > 0 ? .5 : 1)); }
+    else if (d < want - 4) { R.mode = 'walk'; move(q.x - dx / d, q.z - dz / d, 3.6); }
+    else { const s = Math.sin(B.t * .9) > 0 ? 1 : -1; R.mode = 'walk'; move(q.x - dz / d * s, q.z + dx / d * s, 2.4); }
+    if (B.cd <= 0) { const a = orbNext(B, ORB_P1);
+      if (a === 'butt' && d > 5) go('charge', { dx: dx / d, dz: dz / d }); else go(a, { dx: dx / d, dz: dz / d, tx: p.x, tz: p.z });
+      if (B.st === 'charge') { for (let k = 1; k <= 5; k++) orbTel(B, q.x + B.dx * k * 3.4, q.z + B.dz * k * 3.4, 1.6); }
+      if (B.st === 'grenade') orbTel(B, p.x, p.z, 4);
+      if (B.st === 'leap') { B.sx = q.x; B.sz = q.z; orbTel(B, p.x, p.z, 4); sfx.whoosh(); }
+      if (B.st === 'rain') { B.pts = []; for (let k = 0; k < 6; k++) { const a2 = k / 6 * Math.PI * 2 + Math.random(), r = k ? 3 + Math.random() * 5 : 0, x = p.x + Math.cos(a2) * r, z = p.z + Math.sin(a2) * r; B.pts.push([x, z, orbTel(B, x, z, 2.6)]); } vbark('Orion', 'Fleet, this is the Grand Imperarch. Fire on my mark.', 2600); }
+      if (B.st === 'hold') { vbark('Orion', pick(ORB_LINES.hold), 2200); }
+    }
+  }
+  else if (B.st === 'hold') { // 1 · the stasis hold: arms folded, a red ring of his magic rolls out, and if it catches you, you can't move
+    face(4); R.cross = true;
+    if (!B.ring) { B.ring = new THREE.Mesh(new THREE.RingGeometry(.92, 1, 64), new THREE.MeshBasicMaterial({ color: 0xff3048, transparent: true, opacity: .75, side: THREE.DoubleSide, depthWrite: false })); B.ring.rotation.x = -Math.PI / 2; wScene.add(B.ring); B.tels.push(B.ring); }
+    const k = clamp((B.t - .5) / 1.1, 0, 1), rr = .5 + k * 11; B.ring.scale.setScalar(rr); B.ring.position.set(q.x, bossGround(q.x, q.z) + .1, q.z);
+    if (!B.hit && k >= 1) { B.hit = 1; burst(q.x, q.y + 1.4, q.z, 40, 6, 1, .2, .3, .7, 1, 1.4); sfx.zap && sfx.zap();
+      if (d < 11.5 && !(ex.act && ex.act.type === 'dodge')) { ex.heldT = time + 1.9; burst(p.x, p.y + 1, p.z, 30, 3, 1, .25, .35, .8, .6, 1); hurtPlayer(10, src); lootMsg(tiPhone() ? 'Held!' : 'Held in his stasis · you can’t move', '#ff8f86'); } }
+    if (B.t > 2.3) { R.cross = false; if (B.ring.parent) B.ring.parent.remove(B.ring); B.ring = null; orbClearTels(B); if (time < (ex.heldT || 0)) go('burst', { free: 1 }); else { go('chase'); B.cd = .8; } }
+    R.mode = 'idle'; animRig(R, dt); orbCross(R, R.cross); return;
+  }
+  else if (B.st === 'burst') { // 2 · a rifle burst (it can't miss while you're held)
+    face(10); R.mode = 'attack';
+    const n = B.free ? 6 : 4; if (B.t > .35 && B.hit < n && B.t > .35 + B.hit * .16) { B.hit++; compTracer(R, { x: p.x, y: p.y + .8, z: p.z }); sfx.shot(); if (B.free || Math.random() < .35) hurtPlayer(X.rdmg, src); }
+    if (B.t > .5 + n * .16 + .4) { go('chase'); B.cd = (1.6 + Math.random() * .8) / fast; }
+  }
+  else if (B.st === 'charge') { // 3 · a shoulder charge down the line he marks
+    face(2); if (B.t > .8) { R.mode = 'walk'; const nx = q.x + B.dx * 22 * dt, nz = q.z + B.dz * 22 * dt; if (!worldBlocked(nx, nz)) { q.x = nx; q.z = nz; q.y = wHeight(nx, nz); }
+      if (!B.hit && Math.hypot(p.x - q.x, p.z - q.z) < 2.3) { B.hit = 1; hurtPlayer(X.dmg, src); sfx.thud(); ex.shake = .5; } }
+    if (B.t > 1.6) { orbClearTels(B); go('chase'); B.cd = (1.4 + Math.random() * .6) / fast; }
+  }
+  else if (B.st === 'butt') { // 4 · the rifle butt, up close
+    face(9); R.mode = 'attack'; if (!B.tl) B.tl = orbTel(B, q.x + dx / d * 1.8, q.z + dz / d * 1.8, 2.4);
+    if (!B.hit && B.t > .7 / fast) { B.hit = 1; sfx.swing(); sfx.thud(); if (d < 3.8) hurtPlayer(X.dmg, src); burst(q.x + dx / d * 1.8, q.y + .9, q.z + dz / d * 1.8, 16, 3, .9, .3, .3, .5, 1, 1); }
+    if (B.t > 1.3 / fast) { B.tl = null; orbClearTels(B); go('chase'); B.cd = (1.2 + Math.random() * .5) / fast; }
+  }
+  else if (B.st === 'grenade') { // 5 · a grenade, lobbed where you're standing
+    face(8); R.mode = B.t < .5 ? 'attack' : 'idle';
+    if (!B.hit && B.t > 1.6) { B.hit = 1; orbClearTels(B); orbBoom(B.tx, B.tz, 4, X.dmg, B); ex.shake = .4; }
+    if (B.t > 2) { go('chase'); B.cd = (1.3 + Math.random() * .6) / fast; }
+  }
+  else if (B.st === 'orbs') { // 6 · three balls of red light that follow you
+    face(6); R.mode = 'attack'; if (!B.hit) { B.hit = 1; for (let k = 0; k < 3; k++) setTimeout(() => { if (ORB.B !== B) return; const a2 = R.root.rotation.y + (k - 1) * .7; orbOrb(B, q.x + Math.sin(a2) * 1.2, q.y + 1.6, q.z + Math.cos(a2) * 1.2, 0xff3a50); sfx.whoosh && sfx.whoosh(); }, k * 220); }
+    if (B.t > 1.4) { go('chase'); B.cd = (2 + Math.random() * .8) / fast; }
+  }
+  else if (B.st === 'leap') { // 7 · a leap, and the ground breaks where he lands
+    const k = clamp((B.t - .8) / .6, 0, 1); if (k > 0) { q.x = lerp(B.sx, B.tx, k); q.z = lerp(B.sz, B.tz, k); } q.y = wHeight(q.x, q.z) + Math.sin(k * Math.PI) * 5;
+    if (k >= 1 && !B.hit) { B.hit = 1; sfx.thud(); ex.shake = .6; burst(q.x, q.y + .2, q.z, 40, 6, .95, .4, .35, .9, 1.2, 1.5); if (Math.hypot(p.x - q.x, p.z - q.z) < 4) hurtPlayer(X.dmg * 1.1, src); }
+    if (B.t > 2) { q.y = wHeight(q.x, q.z); orbClearTels(B); go('chase'); B.cd = (1.4 + Math.random() * .6) / fast; }
+  }
+  else if (B.st === 'wave') { // 8 · a stamp, and a ring of force rolls out across the ground: dodge through it
+    face(4); if (!B.ring && B.t > .6) { sfx.thud(); ex.shake = .4; B.ring = new THREE.Mesh(new THREE.RingGeometry(.9, 1, 64), new THREE.MeshBasicMaterial({ color: 0xff7040, transparent: true, opacity: .8, side: THREE.DoubleSide, depthWrite: false })); B.ring.rotation.x = -Math.PI / 2; wScene.add(B.ring); B.tels.push(B.ring); B.r0 = B.t; }
+    if (B.ring) { const rr = (B.t - B.r0) * 11; B.ring.scale.setScalar(Math.max(.1, rr)); B.ring.position.set(q.x, bossGround(q.x, q.z) + .12, q.z); const pd = Math.hypot(p.x - q.x, p.z - q.z);
+      if (!B.hit && Math.abs(pd - rr) < 1.1) { B.hit = 1; hurtPlayer(X.dmg * .8, src); } }
+    if (B.t > 2.3) { if (B.ring && B.ring.parent) B.ring.parent.remove(B.ring); B.ring = null; orbClearTels(B); go('chase'); B.cd = (1.3 + Math.random() * .5) / fast; }
+  }
+  else if (B.st === 'pull') { // 9 · he reaches out and drags you in, then the rifle butt
+    face(8); R.mode = 'attack';
+    if (B.t > .4 && B.t < 1.5 && d > 2.6) { const v = 7.5 * dt, nx = p.x - dx / d * v, nz = p.z - dz / d * v; if (!worldBlocked(nx, nz)) { p.x = nx; p.z = nz; } if (Math.random() < .3) burst(p.x, p.y + 1, p.z, 3, 1.5, 1, .25, .35, .4, 0, .5); }
+    if (B.t > 1.5) { go('butt'); B.tl = null; }
+  }
+  else if (B.st === 'rain') { // 10 · Terra Imperia's guns, from orbit
+    face(4); R.mode = 'idle';
+    B.pts.forEach((pt, i) => { if (!pt[3] && B.t > 1.3 + i * .22) { pt[3] = 1; if (pt[2].parent) pt[2].parent.remove(pt[2]); orbBoom(pt[0], pt[1], 2.6, X.dmg * .8, B); ex.shake = .3; } });
+    if (B.t > 1.3 + B.pts.length * .22 + .3) { orbClearTels(B); go('chase'); B.cd = (1.6 + Math.random() * .6) / fast; }
+  }
+  animRig(R, dt); orbCross(R, R.cross);
+}
+// beaten on foot: the Mascar Frame comes down out of the sky, and he climbs in (a short sequence, run by orbTick on the game's clock)
+async function orbToFrame() {
+  const B = ORB.B, R = ORB.R, q = R.root.position.clone(), g = ORB.g, tok = ORB.load;
+  const el = $('#bossBar'); if (el) el.classList.remove('on');
+  R.mode = 'idle'; R.root.rotation.x = .12; vbark('Orion', ORB_LINES.p2, 4200); sfx.thud();
+  const M = await orbMech('frame'); if (!M || tok !== ORB.load || ORB.g !== g) return;
+  const x = q.x + 3, z = q.z - 2, gy = wHeight(x, z); M.g.position.set(x, gy + 90, z); M.g.rotation.y = Math.atan2(player.position.x - x, player.position.z - z); g.add(M.g); M.flame.material.opacity = .9; ORB.M = M;
+  ORB.seq = { t: 0, upd: t => { if (t < 1.2) M.g.position.y = gy + 90 * (1 - t / 1.2) * (1 - t / 1.2); }, ev: [
+    [1.2, () => { M.g.position.y = gy; sfx.boom && sfx.boom(1); ex.shake = 1; burst(x, gy + .5, z, 60, 8, 1, .8, .4, 1, 1.4, 1.8); orbPlay(M, 'Seismic Stomp', 2); }],
+    [2.3, () => { burst(q.x, q.y + 1, q.z, 30, 4, 1, .8, .5, .6, 1, 1.2); sfx.whoosh(); if (ORB.R && ORB.R.root.parent) ORB.R.root.parent.remove(ORB.R.root); ORB.R = null; // up and in
+      const O = orbS(); O.ph = 2; orbSave(); ORB.x = x; ORB.z = z; if (ORB.beacon) ORB.beacon.position.set(x, wHeight(x, z) + 20, z);
+      const i = fauna.list.indexOf(B.c); if (i >= 0) fauna.list.splice(i, 1); if (B.c.bar && B.c.bar.parent) B.c.bar.parent.remove(B.c.bar); ORB.B = null;
+      notice('Phase two', 'THE MASCAR FRAME', 3200); gainXP(900, 'Beat Orion Mascar on foot'); }],
+    [3.9, () => { orbStop(M); orbFight(); }]] };
+}
+// ---- phase two: the Mascar Frame, flying a ring around you ----
+function orbTick2(B, dt, live) {
+  const M = ORB.M, c = B.c, g = M.g, q = g.position, p = player.position, X = B.X; if (!M) return;
+  M.mixer.update(live ? dt : 0);
+  const gy = wHeight(q.x, q.z), alt = q.y - gy; c.x = q.x; c.z = q.z; c.y = alt < 2.6 ? p.y : q.y + 3; // low enough, and your blade reaches him
+  M.flame.material.opacity = .45 + Math.min(1, alt / 6) * .45 + Math.sin(time * 30) * .08;
+  if (!live) return;
+  const dx = p.x - q.x, dz = p.z - q.z, d = Math.hypot(dx, dz) || 1, src = { x: q.x, z: q.z, lv: c.lv }, fast = c.hp < c.D.hp * .35 ? 1.2 : 1;
+  const face = (k = 5, tx = p.x, tz = p.z) => { g.rotation.y = angLerp(g.rotation.y, Math.atan2(tx - q.x, tz - q.z), Math.min(1, dt * k)); };
+  const fly = (tx, ty, tz, v) => { const ex2 = tx - q.x, ey = ty - q.y, ez = tz - q.z, e = Math.hypot(ex2, ey, ez); if (e < .05) return true; const s = Math.min(e, v * dt); q.x += ex2 / e * s; q.y += ey / e * s; q.z += ez / e * s; q.y = Math.max(q.y, wHeight(q.x, q.z)); return e < .6; };
+  const ring = (r = 14, h = 4.5) => { B.ang += dt * .55 * fast; return [p.x + Math.sin(B.ang) * r, wHeight(p.x + Math.sin(B.ang) * r, p.z + Math.cos(B.ang) * r) + h, p.z + Math.cos(B.ang) * r]; };
+  const go = (st, extra) => { B.st = st; B.t = 0; B.hit = 0; Object.assign(B, extra || {}); };
+  const back = () => { orbClearTels(B); orbStop(M); go('chase'); B.cd = (1.8 + Math.random() * .9) / fast; B.ang = Math.atan2(q.x - p.x, q.z - p.z); };
+  B.t += dt; B.cd -= dt;
+  if (B.st === 'chase') {
+    const [rx, ry, rz] = ring(); fly(rx, ry, rz, 16 * fast); face(4); g.rotation.z = Math.sin(time * 1.3) * .06;
+    if (B.cd <= 0) { const a = orbNext(B, ORB_P2); go(a, { tx: p.x, tz: p.z, sx: q.x, sy: q.y, sz: q.z }); g.rotation.z = 0;
+      const dur = { 'Piston Punch': 1.8, 'Claw Sweep': 2, 'Seismic Stomp': 2.4, 'Shoulder Barrage': 2.6, 'Arc Cannon': 2.6, 'Jet Dash': 2, 'Aerial Strafe': 2.8, 'Dive Slam': 2.6, 'Rotor Spin': 2.6, 'Twin Hammer': 2.4 }[a];
+      orbPlay(M, a, dur); B.dur = dur / fast;
+      if (a === 'Piston Punch') orbTel(B, p.x, p.z, 2.6);
+      if (a === 'Dive Slam') orbTel(B, p.x, p.z, 4.6);
+      if (a === 'Shoulder Barrage') { B.pts = []; for (let k = 0; k < 8; k++) { const a2 = Math.random() * Math.PI * 2, r = k < 2 ? Math.random() * 1.5 : 2 + Math.random() * 7, x = p.x + Math.cos(a2) * r, z = p.z + Math.sin(a2) * r; B.pts.push([x, z, orbTel(B, x, z, 2.2)]); } }
+      if (a === 'Jet Dash') { const ux = dx / d, uz = dz / d; B.ex = p.x + ux * 14; B.ez = p.z + uz * 14; for (let k = 0; k <= 6; k++) orbTel(B, lerp(q.x, B.ex, k / 6), lerp(q.z, B.ez, k / 6), 1.8); }
+      if (a === 'Aerial Strafe') { const ux = dx / d, uz = dz / d, ox = -uz, oz = ux, s = Math.random() < .5 ? 1 : -1; B.ax = p.x - ux * 16 + ox * s * 2; B.az = p.z - uz * 16 + oz * s * 2; B.bx = p.x + ux * 16; B.bz = p.z + uz * 16; B.pts = []; for (let k = 0; k < 7; k++) { const x = lerp(B.ax, B.bx, (k + .5) / 7), z = lerp(B.az, B.bz, (k + .5) / 7); B.pts.push([x, z, orbTel(B, x, z, 2.4)]); } }
+      if (a === 'Twin Hammer') { const ux = dx / d, uz = dz / d; B.lx = p.x - ux * 5; B.lz = p.z - uz * 5; }
+      if (a === 'Seismic Stomp') { const ux = dx / d, uz = dz / d; B.lx = p.x - ux * 8; B.lz = p.z - uz * 8; }
+      if (a === 'Claw Sweep' || a === 'Rotor Spin') { const ux = dx / d, uz = dz / d; B.lx = p.x - ux * (a === 'Rotor Spin' ? 3 : 4.5); B.lz = p.z - uz * (a === 'Rotor Spin' ? 3 : 4.5); }
+    }
+    return;
+  }
+  const k = B.t / B.dur, st = B.st;
+  if (st === 'Piston Punch') { // 1 · straight in, fist first
+    face(8, B.tx, B.tz); if (k < .5) fly(B.tx - Math.sin(g.rotation.y) * 2.2, wHeight(B.tx, B.tz) + .6, B.tz - Math.cos(g.rotation.y) * 2.2, 26);
+    if (!B.hit && k > .5) { B.hit = 1; orbClearTels(B); orbBoom(B.tx, B.tz, 2.8, X.dmg, B, [1, .8, .4]); ex.shake = .5; }
+  } else if (st === 'Claw Sweep') { // 2 · a wide sweep of the claws, in front of him
+    face(6); fly(B.lx, wHeight(B.lx, B.lz) + 1, B.lz, 22);
+    if (!B.tl && k > .25) B.tl = orbTel(B, q.x + Math.sin(g.rotation.y) * 3.5, q.z + Math.cos(g.rotation.y) * 3.5, 5.5);
+    if (!B.hit && k > .55) { B.hit = 1; sfx.swing(); burst(q.x + Math.sin(g.rotation.y) * 3.5, q.y + 1, q.z + Math.cos(g.rotation.y) * 3.5, 30, 5, 1, .85, .4, .5, 1, 1); const fx = Math.sin(g.rotation.y), fz = Math.cos(g.rotation.y); if (d < 7 && (dx * fx + dz * fz) / d > -.2) hurtPlayer(X.dmg, src); }
+  } else if (st === 'Seismic Stomp') { // 3 · down onto the ground, and a ring of force rolls out
+    face(4); if (k < .4) fly(B.lx, wHeight(B.lx, B.lz), B.lz, 24);
+    if (!B.ring && k > .45) { sfx.boom && sfx.boom(.8); ex.shake = .8; burst(q.x, q.y + .3, q.z, 50, 7, .9, .7, .4, .9, 1.3, 1.4); B.ring = new THREE.Mesh(new THREE.RingGeometry(.9, 1, 64), new THREE.MeshBasicMaterial({ color: 0xffb040, transparent: true, opacity: .85, side: THREE.DoubleSide, depthWrite: false })); B.ring.rotation.x = -Math.PI / 2; wScene.add(B.ring); B.tels.push(B.ring); B.r0 = B.t; }
+    if (B.ring) { const rr = (B.t - B.r0) * 13; B.ring.scale.setScalar(Math.max(.1, rr)); B.ring.position.set(q.x, bossGround(q.x, q.z) + .12, q.z); if (!B.hit && Math.abs(Math.hypot(p.x - q.x, p.z - q.z) - rr) < 1.2) { B.hit = 1; hurtPlayer(X.dmg * .9, src); } }
+  } else if (st === 'Shoulder Barrage') { // 4 · missiles from the shoulder pods, all over where you stand
+    const [rx, ry, rz] = ring(15, 6); fly(rx, ry, rz, 12); face(6);
+    B.pts.forEach((pt, i) => { if (!pt[3] && k > .35 + i * .07) { pt[3] = 1; if (pt[2].parent) pt[2].parent.remove(pt[2]); orbBoom(pt[0], pt[1], 2.2, X.rdmg * 1.6, B); } });
+  } else if (st === 'Arc Cannon') { // 5 · the arm cannons: five bolts, each aimed where you are
+    const [rx, ry, rz] = ring(16, 5); fly(rx, ry, rz, 10); face(8);
+    const n = 5; if (k > .3 && B.hit < n && k > .3 + B.hit * .1) { B.hit++; const tx = p.x, tz = p.z, ty = p.y + .9, fake = { root: { position: new THREE.Vector3(q.x, q.y + 2.6, q.z), rotation: { y: g.rotation.y } } };
+      solBolt(fake, tx, ty, tz, 0x7ff0e0, () => { if (ORB.B !== B) return; const pp = player.position; if (Math.hypot(pp.x - tx, pp.z - tz) < 1.7) hurtPlayer(X.rdmg + 8, src); }); sfx.laser && sfx.laser(.6); }
+  } else if (st === 'Jet Dash') { // 6 · a burst of the jets, straight through where you were
+    face(10, B.ex, B.ez); if (k > .35) { fly(B.ex, wHeight(B.ex, B.ez) + 1.2, B.ez, 34); if (!B.hit && Math.hypot(p.x - q.x, p.z - q.z) < 2.8 && q.y - wHeight(q.x, q.z) < 3) { B.hit = 1; hurtPlayer(X.dmg, src); ex.shake = .5; } if (Math.random() < .5) burst(q.x, q.y + 2, q.z, 4, 2, .5, 1, .9, .4, 0, .2); }
+    else fly(B.sx, wHeight(B.sx, B.sz) + 1.2, B.sz, 10);
+  } else if (st === 'Aerial Strafe') { // 7 · a strafing run across you, the ground erupting behind him
+    if (k < .3) { fly(B.ax, wHeight(B.ax, B.az) + 7, B.az, 30); face(6, B.bx, B.bz); } else { const kk = (k - .3) / .6; q.x = lerp(B.ax, B.bx, Math.min(1, kk)); q.z = lerp(B.az, B.bz, Math.min(1, kk)); q.y = Math.max(q.y - dt * 4, wHeight(q.x, q.z) + 6); face(8, B.bx, B.bz);
+      B.pts.forEach((pt, i) => { if (!pt[3] && kk > (i + .5) / 7) { pt[3] = 1; if (pt[2].parent) pt[2].parent.remove(pt[2]); orbBoom(pt[0], pt[1], 2.4, X.rdmg * 1.7, B); } }); }
+  } else if (st === 'Dive Slam') { // 8 · up, and down on top of you
+    face(5, B.tx, B.tz); if (k < .45) fly(B.tx, wHeight(B.tx, B.tz) + 20, B.tz, 30); else fly(B.tx, wHeight(B.tx, B.tz), B.tz, 48);
+    if (!B.hit && k > .62) { B.hit = 1; orbClearTels(B); orbBoom(B.tx, B.tz, 4.6, X.dmg * 1.2, B, [1, .7, .3]); ex.shake = 1; sfx.thud(); }
+  } else if (st === 'Rotor Spin') { // 9 · in close, and spinning, everything in reach thrown back
+    if (k < .3) { fly(B.lx, wHeight(B.lx, B.lz) + 1.2, B.lz, 22); face(6); } else { g.rotation.y += dt * 14; if (!B.tl) B.tl = orbTel(B, q.x, q.z, 5); B.tl.position.set(q.x, bossGround(q.x, q.z) + .06, q.z);
+      B.tick = (B.tick || 0) - dt; if (B.tick <= 0 && k < .9) { B.tick = .4; burst(q.x, q.y + 2, q.z, 10, 5, .9, .9, .6, .4, .4, .4); if (Math.hypot(p.x - q.x, p.z - q.z) < 5) hurtPlayer(X.rdmg, src); } }
+  } else if (st === 'Twin Hammer') { // 10 · both fists, twice, in front of him
+    face(6); if (k < .3) fly(B.lx, wHeight(B.lx, B.lz), B.lz, 22);
+    const fx = Math.sin(g.rotation.y), fz = Math.cos(g.rotation.y), hx = q.x + fx * 3.2, hz = q.z + fz * 3.2;
+    if (!B.tl && k > .3) B.tl = orbTel(B, hx, hz, 3.2);
+    for (const [hk, i] of [[.5, 1], [.78, 2]]) if (B.hit < i && k > hk) { B.hit = i; sfx.thud(); ex.shake = .6; orbBoom(hx, hz, 3.2, X.dmg * .8, B, [1, .8, .4]); }
+  }
+  if (B.st !== 'Rotor Spin' && k < 1) g.rotation.z = 0;
+  if (k >= 1) { if (B.ring && B.ring.parent) B.ring.parent.remove(B.ring); B.ring = null; B.tl = null; back(); }
+}
+// beaten in the Frame: the plating runs titanium, and he leaves for orbit
+async function orbToOrbit() {
+  const B = ORB.B, M = ORB.M, g = ORB.g, tok = ORB.load; if (!M) return;
+  const el = $('#bossBar'); if (el) el.classList.remove('on');
+  ORB.leaving = true; const q = M.g.position; orbStop(M); q.y = wHeight(q.x, q.z); vbark('Orion', ORB_LINES.p3, 5200); sfx.thud(); ex.shake = .6;
+  const T = await orbMech('ti'); if (tok !== ORB.load || ORB.g !== g) return;
+  const O = orbS(); Object.assign(O, { ph: 3, sys: 'sol', conq: [], t: ORB_CONQ_T, hp3: null }); orbSave(); // from here he's in orbit, whatever happens to the scene
+  const i = fauna.list.indexOf(B.c); if (i >= 0) fauna.list.splice(i, 1); if (B.c.bar && B.c.bar.parent) B.c.bar.parent.remove(B.c.bar); ORB.B = null;
+  let L = M;
+  ORB.seq = { t: 0, upd: (t, dt) => { if (t > 3 && L) { L.g.position.y += (4 + (t - 3) * 60) * dt; if (Math.random() < .6) burst(L.g.position.x, L.g.position.y + 1, L.g.position.z, 6, 3, .7, .9, 1, .5, 0, -1); } }, ev: [
+    [1.6, () => { burst(q.x, q.y + 4, q.z, 80, 7, .85, .9, 1, 1, 1, 2); sfx.chime(); ex.shake = .8; // the plating runs titanium
+      if (T) { T.g.position.copy(q); T.g.rotation.y = M.g.rotation.y; g.add(T.g); if (M.g.parent) M.g.parent.remove(M.g); ORB.M = L = T; }
+      notice('Phase three', 'THE ORBITAL RAMPAGE', 3600); gainXP(1200, 'Beat Orion Mascar in the Mascar Frame'); }],
+    [3, () => { orbPlay(L, 'Jet Dash', 3, true); L.flame.material.opacity = 1; sfx.whoosh(); }],
+    [6, () => { vbark('Orion', ORB_LINES.space, 4200); orbDrop(); renderTasks();
+      setTimeout(() => lootMsg(tiPhone() ? 'Orion has gone to orbit · find him in space' : 'Orion Mascar has gone to orbit · he will take every system he can, but not one you’re in · find him in space (red on the galaxy map) and shoot him down', '#ff6a6e'), 1200); }]] };
+}
+// ---- phase three: the conquest. A system falls every 75 s of play while you're elsewhere, and he moves on to the nearest one left ----
+setInterval(() => { try {
+  if (!orbSpaceQ() || !['explore', 'space'].includes(state)) return; const O = orbS(); if (O.done) return;
+  if (SPC.sys === O.sys) { if (ORB.hereSys !== O.sys) { ORB.hereSys = O.sys; if (state === 'space') spaceMsg(tiPhone() ? 'Orion is in this system' : `Orion Mascar is in ${sysById(O.sys).name} · he can’t take it while you’re here`); } return; }
+  ORB.hereSys = null; O.t = (O.t == null ? ORB_CONQ_T : O.t) - 1; if (O.t > 0) return;
+  O.conq = O.conq || []; if (!O.conq.includes(O.sys)) O.conq.push(O.sys);
+  const from = sysById(O.sys), left = SYSTEMS.filter(S => !O.conq.includes(S.id));
+  const msg = `Orion Mascar has taken ${from.name} · ${O.conq.length}/${SYSTEMS.length} systems fallen`;
+  if (!left.length) { O.done = true; orbSave(); notice('Orion Mascar', 'THE GALAXY HAS FALLEN TO HIM', 5200); sfx.thud(); try { applyChapterFactions(); } catch (e) {} renderTasks(); return; }
+  O.sys = left.map(S => [galDist(from, S), S]).sort((a, b) => a[0] - b[0])[0][1].id; O.t = ORB_CONQ_T; O.hp3 = null; orbSave();
+  if (state === 'space') spaceMsg(msg); else lootMsg(msg, '#ff6a6e');
+  try { applyChapterFactions(); } catch (e) {} renderTasks();
+} catch (e) { console.error(e); } }, 1000);
+// the galaxy names his systems
+function orbOverlay() { if (!orbSpaceQ()) return; const L = new Set(orbS().conq || []); for (const S of SYSTEMS) if (L.has(S.id)) { S.faction = 'The Imperium of Orion Mascar · conquered'; S.facCol = '#ff3a3a'; } }
+// on the galaxy map: a red ring round every system he holds, and his own marker where he is now
+function orbGalDraw(g, font) {
+  if (!orbSpaceQ()) return; const O = orbS();
+  g.save(); g.strokeStyle = '#ff3a3a'; g.globalAlpha = .7; g.lineWidth = 1.2;
+  for (const id of O.conq || []) { const p = galXY(sysById(id)); if (p.x < -20 || p.x > innerWidth + 20 || p.y < -20 || p.y > innerHeight + 20) continue; g.beginPath(); g.arc(p.x, p.y, 7, 0, 7); g.stroke(); }
+  g.restore();
+  const p = galXY(sysById(O.sys)), t = performance.now() / 1000, x = p.x - 18, y = p.y - 14;
+  g.save(); g.translate(x, y); g.rotate(Math.PI / 4); g.fillStyle = '#ff3a3a'; g.globalAlpha = .7 + Math.sin(t * 4) * .3; g.fillRect(-5, -5, 10, 10); g.restore();
+  const ph = tiPhone(), left = x > 170 || ph && x > 110; g.textAlign = left ? 'right' : 'left'; const tx = left ? x - 9 : x + 9; // on the side with room, short on a phone
+  g.font = `700 9px ${font}`; g.fillStyle = '#ff6a6e'; g.fillText(ph ? `ORION · LV ${ORB_LV[3]}` : `ORION MASCAR · LV ${ORB_LV[3]} · SIDE QUEST`, tx, y + 1);
+  g.font = `500 8px ${font}`; g.fillStyle = '#ffa8a8'; g.fillText(SPC.sys === O.sys ? (ph ? 'HELD HERE' : 'HELD HERE WHILE YOU STAY') : ph ? `${Math.max(0, Math.ceil(O.t == null ? ORB_CONQ_T : O.t))}S` : `TAKING ${sysById(O.sys).name.toUpperCase()} · ${Math.max(0, Math.ceil(O.t == null ? ORB_CONQ_T : O.t))}S`, tx, y + 12);
+}
+// in space: the titanium Frame in orbit round the system's main world. He never fires; he runs, and he has to be shot down
+function orbSpaceTick(dt) {
+  if (!SPC.on || !SPC.scene) return;
+  const has = SC.foes.find(f => f.orion);
+  if (!orbSpaceQ() || orbS().sys !== SPC.sys || SPC.atmo) { if (has) { SPC.scene.remove(has.m); SC.foes = SC.foes.filter(f => f !== has); } return; }
+  if (has || (ORB.foeT -= dt) > 0) { if (has && (ORB.saveT -= dt) <= 0) { ORB.saveT = 5; orbS().hp3 = Math.round(has.hp); orbSave(); } return; }
+  ORB.foeT = 2; orbSpawnFoe();
+}
+async function orbSpawnFoe() {
+  if (ORB.spawning) return; ORB.spawning = true;
+  try {
+    const M = await orbMech('ti', 2.6); if (!M || !SPC.on || SPC.atmo || SC.foes.some(f => f.orion) || orbS().sys !== SPC.sys) return;
+    const H = SPC.bodies.find(o => o.id === curSys().home) || SPC.bodies[0], a = Math.random() * Math.PI * 2, r = (H ? H.r : 1000) * 1.7 + 900;
+    const pos = H ? H.pos.clone().add(new THREE.Vector3(Math.cos(a) * r, (Math.random() - .5) * 400, Math.sin(a) * r)) : SPC.pos.clone().add(new THREE.Vector3(2500, 0, 0));
+    M.inner.rotation.set(-.5, Math.PI, 0); M.g.position.copy(pos); SPC.scene.add(M.g); orbPlay(M, 'Aerial Strafe', 4, true);
+    const max = 2600, hp = orbS().hp3 || max;
+    SC.foes.push({ m: M.g, M, pos, q: new THREE.Quaternion(), hp, max, speed: 200, cd: 99, burst: 0, mode: 'flee', modeT: 0, brk: new THREE.Vector3(), name: tiPhone() ? `ORION · LV ${ORB_LV[3]}` : `ORION MASCAR · LV ${ORB_LV[3]} · THE ORBITAL RAMPAGE`, orion: true, ang: a, orbR: r, H });
+    spaceMsg(tiPhone() ? 'Orion Mascar is here · shoot him down' : `Orion Mascar is here · ${ORB_LINES.here}`); sfx.alarm();
+  } finally { ORB.spawning = false; }
+}
+function orbFoeTick(f, dt) { // circling the world, weaving, and breaking away when you close in
+  const to = SCV.a.subVectors(f.pos, SPC.pos), d = to.length(), ffwd = new THREE.Vector3(0, 0, -1).applyQuaternion(f.q);
+  f.ang += dt * .12; const H = f.H, c = H ? H.pos : SPC.pos, goal = new THREE.Vector3(c.x + Math.cos(f.ang) * f.orbR, c.y + Math.sin(f.ang * 2.3) * 300, c.z + Math.sin(f.ang) * f.orbR);
+  let want = goal.sub(f.pos).normalize();
+  if (d < 900) want.addScaledVector(to.normalize(), 1.4).add(new THREE.Vector3(Math.sin(time * 1.7), Math.sin(time * 1.1) * .5, Math.cos(time * 1.3)).multiplyScalar(.5)).normalize();
+  for (const P of SPC.bodies) { const dp = new THREE.Vector3().subVectors(f.pos, P.pos), dd = dp.length(); if (dd < P.r * 1.25 + 400) want.addScaledVector(dp.divideScalar(dd), 2).normalize(); }
+  const ang = ffwd.angleTo(want); if (ang > 1e-4) { const ax = new THREE.Vector3().crossVectors(ffwd, want); if (ax.lengthSq() > 1e-8) f.q.premultiply(SCV.q.setFromAxisAngle(ax.normalize(), Math.min(ang, 1.3 * dt))); }
+  f.q.normalize(); ffwd.set(0, 0, -1).applyQuaternion(f.q);
+  f.speed = d < 600 ? 235 : d < 2500 ? 205 : 150; f.pos.addScaledVector(ffwd, f.speed * dt); f.m.position.copy(f.pos); f.m.quaternion.copy(f.q);
+  if (f.M) { f.M.mixer.update(dt); f.M.flame.material.opacity = .7 + Math.sin(time * 30) * .2; }
+}
+function orbSpaceKill(f) {
+  scBoom(f.pos, 3.2); sfx.boom(1.6); setTimeout(() => { scBoom(f.pos.clone().add(new THREE.Vector3(20, 10, 0)), 2); sfx.boom(1); }, 400);
+  SPC.scene.remove(f.m); SC.foes = SC.foes.filter(o => o !== f); if (SC.lock === f) SC.lock = null;
+  const n = orbFallen(), O = orbS(); Object.assign(O, { dead: true, conq: [], hp3: null }); orbSave(); setC3({ orionFate: 'killed' });
+  try { applyChapterFactions(); } catch (e) {} renderTasks(); addUnits(2500); gainXP(5000, 'Killed Orion Mascar');
+  spaceMsg(`Orion Mascar · “${ORB_LINES.win}”`); sfx.thud();
+  setTimeout(() => { notice('Side quest complete', 'ORION MASCAR IS DEAD', 4800); sfx.chime(); }, 2600); fateNote(12000);
+  setTimeout(() => spaceMsg(n ? `The ${n} system${n === 1 ? '' : 's'} he took ${n === 1 ? 'is' : 'are'} free again · +2500 units` : 'He never took a single system · +2500 units'), 7600);
+}
 function tiEncounters(P) {
   if (!isPl() || DGN.on) return;
   const hunters = PONTS().filter(o => o.st === 'hunt');
@@ -15468,10 +15875,43 @@ const JAMES_REACT = {
 function jamesCrewReact(fate, delay) {
   const L = JAMES_REACT[fate].filter(r => r[1]() && partyNow().includes(r[0])), d = fate === 'spared' ? -12 : 10; // moderate either way
   L.forEach(([id, , text], i) => setTimeout(() => { const C = COMPANIONS.find(c => c.id === id); vbark((PARTY[id] || { name: C ? titleName(C.name.split(' ')[0]) : id }).name, text, 5600); influence(id, d); }, delay + i * 6000));
-  setTimeout(() => { sfx.thud(); notice('\u00a0', 'YOUR ACTIONS WILL BE REMEMBERED', 4600); }, delay + L.length * 6000 + 400);
+  fateNote(delay + L.length * 6000 + 400);
+}
+// ---- "Your actions will be remembered": after each of the final choices (Nyrexia, James, Croxian, Malia, and Orion if Croxian
+// died), a line that gets snarkier the more of them you get wrong, and kinder the more you get right (one slip is forgiven).
+// Good: Nyrexia recruited, James / Croxian / Malia spared, Orion killed. The last word comes on the path of no return: the first
+// warp to Sagittarius A* in Chapter IV, as the final battle approaches (fateFinal).
+function fateTally(final) {
+  const c = (wanderer && wanderer.ch3) || {}, L = [c.nyxJoined ? 1 : c.nyxFailed ? 0 : null, c.jamesFate ? +(c.jamesFate === 'spared') : null,
+    c.croxFate ? +(c.croxFate === 'spared') : null, c.maliaFate ? +(c.maliaFate === 'spared') : null];
+  if (c.croxFate === 'killed') L.push(c.orionFate === 'killed' ? 1 : final ? 0 : null); // only on that path; killing him settles it, and so does reaching the end with him still alive
+  const made = L.filter(v => v != null); return { total: L.length, made: made.length, bad: made.filter(v => !v).length };
+}
+const FATE_LINES = [
+  ['Good call. Keep choosing like that and the galaxy might just make it.', 'That’s the one. People will be glad you were there.', 'Right again. Whatever is coming, you’re ready for it.'],
+  ['One slip. Everybody gets one. Make the next one count.', 'Not your finest moment, but it’s not over. Keep going.'],
+  ['Two wrong turns. Bold strategy. Let’s see if it pays off.', 'Well, that’s two. Interesting choices you’re making.'],
+  ['Three. Are you doing this on purpose?', 'Wow. Somebody, somewhere, is taking notes on this.'],
+  ['Four out of four the wrong way. Truly committed to the bit.', 'At this point the Catharsis should be sending you a thank-you card.'],
+  ['Every single one. Impressive, honestly.']];
+function fateFinal(S) { // the path of no return: Chapter IV, the first warp to Sagittarius A*
+  if (!wanderer || S.id !== 'sgra' || (wanderer.chapter | 0) !== 4 || !(wanderer.ch4 && wanderer.ch4.timeSkip) || wanderer.ch4.fateFinal) return;
+  wanderer.ch4 = Object.assign({}, wanderer.ch4, { fateFinal: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster();
+  const T = fateTally(true), name = String(wanderer.name || 'wanderer').trim() || 'wanderer';
+  const line = T.bad === 0 ? `You got this, ${name}, so save the world` : T.bad >= T.total ? 'Good luck, you’re going to need it :)' : 'You messed up slightly, but the galaxy is still worth saving. Try your best, okay!';
+  setTimeout(() => { sfx.thud(); notice('Sagittarius A*', 'THE PATH OF NO RETURN', 4600); }, 2400);
+  setTimeout(() => { sfx.thud(); notice(' ', 'YOUR ACTIONS WILL BE REMEMBERED', 4600); }, 7400);
+  setTimeout(() => notice(`${T.total - T.bad} of ${T.total} choices made well`, line, 6500), 12400);
+}
+function fateNote(delay = 0) {
+  setTimeout(() => { if (!wanderer || CUT.on) return; const T = fateTally(); if (!T.made) return;
+    const line = pick(FATE_LINES[Math.min(T.bad, FATE_LINES.length - 1)]);
+    sfx.thud(); notice(' ', 'YOUR ACTIONS WILL BE REMEMBERED', 4600);
+    setTimeout(() => notice(`${T.made} of ${T.total} choices made`, line, 6000), 4900);
+  }, delay);
 }
 // ---- Chapter III's choices, for Chapter IV's ending ----
-// good: James, Croxian and Malia all spared. bad: all four the other way (James, Croxian and Malia killed, Orion left alive).
+// good: James, Croxian and Malia all spared. bad: all four the other way (James, Croxian and Malia killed, Orion left alive) and Nyrexia never recruited.
 // anything in between is the neutral ending.
 // (wanderer.ch3: jamesFate, nyxBeforeJames, croxFate, maliaFate, orionFate: 'spared' | 'killed')
 function ch4Decisions() { const c = (wanderer && wanderer.ch3) || {}; return { james: c.jamesFate || null, nyxBeforeJames: c.jamesFate ? !!c.nyxBeforeJames : null, crox: c.croxFate || null, malia: c.maliaFate || null, orion: c.croxFate === 'killed' ? (c.orionFate || null) : undefined }; }
@@ -15479,7 +15919,7 @@ function ch4Ending() {
   const D = ch4Decisions();
   if (!D.james || !D.crox || !D.malia || (D.crox === 'killed' && !D.orion)) return null; // not decided yet
   if (D.james === 'spared' && D.crox === 'spared' && D.malia === 'spared') return 'good';
-  if (D.james === 'killed' && D.crox === 'killed' && D.malia === 'killed' && D.orion === 'spared') return 'bad';
+  if (D.james === 'killed' && D.crox === 'killed' && D.malia === 'killed' && D.orion === 'spared' && !c3f('nyxJoined')) return 'bad'; // and you never recruited Nyrexia
   return 'neutral';
 }
 const orionVillain = () => ch4Decisions().crox === 'killed' && ch4Decisions().orion !== 'killed'; // Orion takes Terra Imperia, and only then do Pontifexes serve it in Chapter IV
@@ -15527,7 +15967,7 @@ function pontToResident(id) {
   const P = pontById(id); if (!P) return;
   if (residents.length >= MAX_RESIDENTS) { lootMsg(`The world already has ${MAX_RESIDENTS} residents`, '#ff8f86'); return; }
   const base = JSON.parse(JSON.stringify(curChar() || wanderer));
-  for (const k of ['party', 'ponts', 'dip', 'place', 'lairs', 'cmds', 'aboard', 'dungeon', 'ch1', 'ch2', 'ch3', 'persona', 'resSp', 'look', 'gear']) delete base[k];
+  for (const k of ['party', 'ponts', 'dip', 'place', 'lairs', 'cmds', 'aboard', 'dungeon', 'ch1', 'ch2', 'ch3', 'orion', 'persona', 'resSp', 'look', 'gear']) delete base[k];
   residents.push(Object.assign(base, { id: ccId(), name: P.name, species: 'human', identity: P.sex === 'f' ? 'female' : 'male', resSp: P.sex === 'f' ? 'sister' : 'pontifex', pontCol: P.col || '', sentAt: Date.now(), persona: null, align: undefined }));
   wanderer.ponts = PONTS().filter(o => o !== P); wanderer.party = (wanderer.party || []).filter(x => x !== 'pont:' + id); pontDrop('pont:' + id); pontSave(); refreshJamesUI();
   sfx.chime(); notice(pontTitle(P), `${P.name.toUpperCase()} NOW LIVES IN THIS WORLD · A RESIDENT`, 3600);
@@ -15545,7 +15985,7 @@ function dipPontCard() {
     const on = (wanderer.party || []).includes('pont:' + P.id), A = alComp(pontAlL(P));
     h += `<div style="border-top:1px solid var(--faint);padding:10px 0"><div style="font-size:8px;letter-spacing:.22em;color:var(--mute);margin-bottom:6px;text-transform:uppercase">${pontTitle(P)} · lv ${compLevel('pont:' + P.id)} · <b style="color:${alColor(A.a)};font-weight:500">${alRank(A.a)} ${A.a > 0 ? '+' : ''}${Math.round(A.a)}</b> · influence ${Math.round(A.inf)}</div><div class="dip-row" style="flex-wrap:wrap"><input class="dip-in" data-a="pontNameIn" data-p="${P.id}" value="${esc(P.name)}" maxlength="28" style="min-width:0;flex:1 1 140px"><button class="btn small" data-a="pontRename" data-p="${P.id}"><span>Rename</span></button></div>
       <div class="dip-row" style="flex-wrap:wrap;gap:7px;margin-top:8px">${PONT_PAL.map(([n, c]) => `<button data-a="pontCol" data-p="${P.id}" data-col="${c}" title="${n}" aria-label="${n}" style="width:30px;height:30px;border-radius:50%;padding:0;cursor:pointer;background:${c || '#2b2f36'};border:2px solid ${(P.col || '') === c ? '#fff' : 'rgba(255,255,255,.18)'}"></button>`).join('')}<input type="color" data-a="pontColPick" data-p="${P.id}" value="${P.col || '#2b2f36'}" title="Any colour" style="width:34px;height:30px;padding:0;border:0;background:none;cursor:pointer"></div>
-      <div class="dip-row" style="flex-wrap:wrap;margin-top:8px"><button class="btn small" data-a="pontParty" data-p="${P.id}"><span>${on ? `Leave ${pontHe(P)[1]} on the Nostra` : `Bring ${pontHe(P)[1]} aboard`}</span></button><button class="btn small" data-a="pontRes" data-p="${P.id}"><span>${DIPV.pontRes === P.id ? `Tap again: ${pontHe(P)[0]} lives in the world for good (takes a resident slot)` : `Make ${pontHe(P)[1]} a resident`}</span></button></div></div>`;
+      <div class="dip-row" style="flex-wrap:wrap;margin-top:8px"><button class="btn small" data-a="pontParty" data-p="${P.id}"><span>${on ? `Leave ${pontHe(P)[1]} on ${theShip()}` : `Bring ${pontHe(P)[1]} aboard`}</span></button><button class="btn small" data-a="pontRes" data-p="${P.id}"><span>${DIPV.pontRes === P.id ? `Tap again: ${pontHe(P)[0]} lives in the world for good (takes a resident slot)` : `Make ${pontHe(P)[1]} a resident`}</span></button></div></div>`;
   }
   for (const P of hunters) h += `<div class="dip-row" style="border-top:1px solid var(--faint);padding:8px 0;justify-content:space-between"><span style="font-size:10px;letter-spacing:.16em">${esc(P.name).toUpperCase()}<br><small style="color:#ff8f86;letter-spacing:.2em;font-size:8px">${pontTitle(P).toUpperCase()} · HUNTING YOU · LV ${P.lv}${P.kills ? ` · HAS KILLED YOU ${P.kills}×` : ''}</small></span></div>`;
   return h + `</div>`;
@@ -17912,6 +18352,7 @@ function applyChapterFactions() {
   try { dipOverlay(); } catch (e) { console.error(e); } // your colonies, puppets and restorations (Diplomacy)
   try { surgeSysOverlay(); } catch (e) { console.error(e); } // Terra Imperia's surge: Sol flies Hawthorne's crimson
   try { resEmpOverlay(); } catch (e) { console.error(e); } // worlds residents' empires have taken: no longer 'Unclaimed'
+  try { orbOverlay(); } catch (e) { console.error(e); } // and the systems Orion Mascar has conquered
   const Gd = bodyById('archiostal-gardens'), St = bodyById('archiostal'); if (Gd && St) { Gd.faction = St.faction; Gd.baseFac = St.baseFac || St.faction; Gd.traders = null; } // the gardens fly the station's flag
 }
 const bodyById = id => ALL_BODIES.find(P => P.id === id);
@@ -18423,7 +18864,7 @@ function spaceHudTick(P, alt, fwd) {
   $('#shSpeedBar').style.width = `${clamp(SPC.thr * 100, 2, 100)}%`; $('#shMode').textContent = SPC.pulse > .3 ? 'PULSE DRIVE' : 'IMPULSE';
   $('#shTarget').textContent = P.name.toUpperCase();
   $('#shSub').textContent = alt < 20000 ? `${planetWx(P).type} · ${P.faction} · altitude ${alt > 1000 ? (alt / 1000).toFixed(1) + ' km' : Math.round(alt) + ' m'}${P.land ? (alt < 2500 ? ' · descend to land' : '') : ''}` : `${P.faction} · ${(alt / 1000).toFixed(1)} km`;
-  const tq = sqTracked(); $('#shObj').innerHTML = `<div class="x-task"><i></i><span>${ch3Goal()}</span></div>${tq ? `<div class="x-task sq-task"><i></i><span>${tq}</span></div>` : ''}`;
+  const tq = sqTracked(); $('#shObj').innerHTML = `<div class="x-task"><i></i><span>${ch3Goal()}</span></div>${orbTaskHtml()}${tq ? `<div class="x-task sq-task"><i></i><span>${tq}</span></div>` : ''}`;
   $('#shCells').textContent = `◆ ${have('warpcell')} warp cell${have('warpcell') === 1 ? '' : 's'}`;
   // markers on every planet, No Man's Sky style
   const box = $('#shMarks'), W = innerWidth, H = innerHeight; let h = '';
@@ -18454,7 +18895,7 @@ function spaceHudTick(P, alt, fwd) {
     if (wp) { const v3 = wp.project(camera); if (v3.z < 1) { const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H, q = jamesQ();
       h += `<div class="sh-mk${q ? ' gold' : ''}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${q ? 'ANTARCTICA · THE STATION' : 'ANTARCTICA · YOUR BASE'}<br><small>${q ? 'JAMES BROWN · MAIN QUEST' : 'CHAPTER I CAMP'} · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`; } }
   }
-  for (const [on, id, label, sub, cls] of (SPC.sys === 'sol' ? [[charonQ(), 'charon', 'CHARON', 'MAIN QUEST', 'gold'], [chnQ(), 'charon', 'CHARON', 'MEET CHARON AND KIZNA', 'gold'], [chnBackQ(), 'charon', 'CHARON', tiPhone() ? 'CHARON AND KIZNA' : 'MAIN QUEST · CHARON AND KIZNA', 'gold'], [nyxQ(), 'eris', 'ERIS', 'NYREXIA · OPTIONAL', 'nyx'], [chkQ(), 'charon', 'CHARON', tiPhone() ? 'CHARON AND KIZNA' : 'MAIN QUEST · RECRUIT CHARON AND KIZNA', 'gold'], [hawMercQ(), 'mercury', 'MERCURY', tiPhone() ? 'THE SIEGE' : 'MAIN QUEST · THE SIEGE OF MERCURY', 'gold'], [alexiaQ(), 'eris', 'ERIS', tiPhone() ? 'THE SIEGE' : 'MAIN QUEST · THE SIEGE OF ERIS', 'gold']] : SPC.sys === 'janira' ? [[hakQ() || hakBackQ(), 'janira', 'JANIRA PRIME', tiPhone() ? 'HAK · KARRIBASSA' : 'MAIN QUEST · KARRIBASSA, HAK CHOMPJAK', 'gold']] : [])) { // the quests' destinations
+  for (const [on, id, label, sub, cls] of (SPC.sys === 'sol' ? [[orbEarthQ(), 'earth', 'EARTH', tiPhone() ? 'ORION MASCAR' : 'ORION MASCAR · SIDE QUEST', 'enemy'], [charonQ(), 'charon', 'CHARON', 'MAIN QUEST', 'gold'], [chnQ(), 'charon', 'CHARON', 'MEET CHARON AND KIZNA', 'gold'], [chnBackQ(), 'charon', 'CHARON', tiPhone() ? 'CHARON AND KIZNA' : 'MAIN QUEST · CHARON AND KIZNA', 'gold'], [nyxQ(), 'eris', 'ERIS', 'NYREXIA · OPTIONAL', 'nyx'], [chkQ(), 'charon', 'CHARON', tiPhone() ? 'CHARON AND KIZNA' : 'MAIN QUEST · RECRUIT CHARON AND KIZNA', 'gold'], [hawMercQ(), 'mercury', 'MERCURY', tiPhone() ? 'THE SIEGE' : 'MAIN QUEST · THE SIEGE OF MERCURY', 'gold'], [alexiaQ(), 'eris', 'ERIS', tiPhone() ? 'THE SIEGE' : 'MAIN QUEST · THE SIEGE OF ERIS', 'gold']] : SPC.sys === 'janira' ? [[hakQ() || hakBackQ(), 'janira', 'JANIRA PRIME', tiPhone() ? 'HAK · KARRIBASSA' : 'MAIN QUEST · KARRIBASSA, HAK CHOMPJAK', 'gold']] : [])) { // the quests' destinations
     if (!on) continue; const Q = SPC.bodies.find(o => o.id === id); if (!Q) continue;
     const d = SPC.pos.distanceTo(Q.pos) - Q.r, v3 = tmpVs.copy(Q.pos).project(camera); if (v3.z >= 1) continue;
     const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; h += `<div class="sh-mk ${cls}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${label}<br><small>${sub} · ${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`;
@@ -18686,7 +19127,7 @@ function atmoEnter(P, dir, fwdSpace, opt = {}) {
     f.addScaledVector(up, opt.fromGround ? .05 : -.22).normalize(); A.q.setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), f, up)); // -Z is forward
   }
   A.vel = opt.fromGround ? 40 : Math.max(60, Math.min(SPC.vel, 240)); A.thr = opt.fromGround ? .55 : clamp(SPC.thr, .35, 1); A.boost = 0;
-  A.cruise = clamp(A.Rg / 150, 50, 240); A.boostV = clamp(A.Rg / 45, 110, 760); if (jewelOn()) { A.cruise *= 2; A.boostV *= 2.2; } // the Jewel tears through a sky A.camInit = false;
+  A.cruise = clamp(A.Rg / 150, 50, 240); A.boostV = clamp(A.Rg / 45, 110, 760); if (jewelOn()) { A.cruise *= 2; A.boostV *= 2.2; } A.camInit = false; // the Jewel tears through a sky; a fresh chase camera every flight (this reset was commented out by mistake, so after landing and taking off again the camera started from where the last flight left it)
   camera.near = 1.2; camera.far = 60000; camera.updateProjectionMatrix();
   spaceHud().classList.add('atmo'); spaceHud().classList.remove('hidden'); { const pb = spaceHud().querySelector('.sh-btns button[data-b="pulse"]'); if (pb) pb.textContent = 'BOOST'; const kk = spaceHud().querySelector('.sh-keys'); if (kk) { kk.dataset.sp = kk.dataset.sp || kk.textContent; kk.textContent = 'W / S thrust · A / D turn · ↑ / ↓ or drag to pitch · SHIFT afterburner · E land · climb to leave · ESC menu'; } }
   const fl = $('#shFlash'); if (fl && !opt.quiet) { fl.style.background = P.atmo || '#888'; fl.classList.add('on'); setTimeout(() => fl.classList.remove('on'), 120); }
@@ -18834,7 +19275,7 @@ function atmHudTick(alt) {
   if (P.real && cont && cont !== A.lastCont) { atmBanner(EARTH_CONT_SUB[cont] || 'EARTH', EARTH_CONT[cont].toUpperCase()); A.lastCont = cont; }
   const can = !A.landing && alt < Math.max(1500, A.ceil * .55), land = $('#shLand');
   if (land) { land.classList.toggle('on', can); if (can) { const S = atmLandSpot(); land.textContent = S.Q && S.Q.nofly ? 'NO LANDING' : S.Q ? `LAND · ${S.Q.short || S.Q.name}`.toUpperCase() : 'LAND'; } }
-  const tq = sqTracked(); $('#shObj').innerHTML = `<div class="x-task"><i></i><span>${ch3Goal()}</span></div>${tq ? `<div class="x-task sq-task"><i></i><span>${tq}</span></div>` : ''}`;
+  const tq = sqTracked(); $('#shObj').innerHTML = `<div class="x-task"><i></i><span>${ch3Goal()}</span></div>${orbTaskHtml()}${tq ? `<div class="x-task sq-task"><i></i><span>${tq}</span></div>` : ''}`;
   // markers: the places on this world, near enough to fly to
   const box = $('#shMarks'), W = innerWidth, H = innerHeight, pos = A.pos; let h = '';
   for (const Q of A.pois) {
@@ -19817,7 +20258,7 @@ function galDraw(dt) {
     g.textAlign = 'left'; g.font = `500 ${S.gen ? 9 : 10}px ${font}`; g.fillStyle = S === sel ? '#efe8ff' : '#cfeeff'; g.fillText(S.name.toUpperCase(), p.x + 14, p.y - 2);
     if (GAL.zoom >= 1.4 || S === cur || S === sel) { g.font = `400 7.5px ${font}`; g.fillStyle = 'rgba(200,210,230,.6)'; g.fillText((S === cur ? 'YOU ARE HERE · ' : '') + S.faction.split(' · ')[0].toUpperCase(), p.x + 14, p.y + 9); }
   }
-  try { resGalEmpires(g, font); resGalDraw(g, font); } catch (e) { console.error(e); } // resident empires, and the residents themselves
+  try { resGalEmpires(g, font); resGalDraw(g, font); orbGalDraw(g, font); } catch (e) { console.error(e); } // resident empires, and the residents themselves
 }
 /* ---- warping: the drive spools up, the stars stretch into a tunnel, white-out, and you drop out beside a new world ---- */
 function warpTunnel() {
@@ -19873,7 +20314,7 @@ function warpTick(dt) {
     SPC.warp = null; tn.visible = false; SPC.vel = 180; SPC.thr = .4;
     const S = curSys(), W3 = wanderer.ch3, first = !(W3.visited || []).includes(S.id);
     if (first) W3.visited = [...(W3.visited || []), S.id];
-    W3.warped = true; sqOnArrive(S); wanderer.place = currentPlace(); const c = curChar(); if (c) { c.ch3 = W3; c.place = wanderer.place; } saveRoster(); alienCheck(); // after Hawthorne: the fifth jump
+    W3.warped = true; sqOnArrive(S); try { fateFinal(S); } catch (e) { console.error(e); } wanderer.place = currentPlace(); const c = curChar(); if (c) { c.ch3 = W3; c.place = wanderer.place; } saveRoster(); alienCheck(); // after Hawthorne: the fifth jump
     const wb = $('#shWarp'); $('#shWarpTxt').innerHTML = `${S.name.toUpperCase()}<br><small>${S.star.type} · ${S.faction}</small>`; wb.classList.add('card');
     clearTimeout(SPC.cardT); SPC.cardT = setTimeout(() => wb.classList.remove('on', 'card'), 3600);
     spaceMsg(first ? `${S.name} · ${S.bodies.filter(P => P.land).length} world${S.bodies.filter(P => P.land).length === 1 ? '' : 's'} to land on` : `Back in ${S.name}`);
@@ -19999,6 +20440,7 @@ const podMode = () => !!(wanderer && (wanderer.chapter | 0) === 4 && wanderer.ch
 const jewelOn = () => !!(wanderer && (wanderer.chapter | 0) >= 4 && wanderer.ch4 && wanderer.ch4.newShip);
 const shipSkin = () => podMode() ? 'pod' : jewelOn() ? 'jewel' : 'nostra';
 const shipName = () => podMode() ? 'pod' : jewelOn() ? 'Jewel of Archamus' : 'Nostra';
+const theShip = () => jewelOn() ? 'the Jewel of Archamus' : 'the Nostra'; // for text the player reads: from Chapter IV, once Archamus has given her, it's the Jewel
 function ch4Begin() {
   wanderer.chapter = Math.max(4, wanderer.chapter | 0); wanderer.ch4 = Object.assign({}, wanderer.ch4, { started: true, pod: true });
   const c = curChar(); if (c) { c.chapter = wanderer.chapter; c.ch4 = wanderer.ch4; } saveRoster();
@@ -20756,6 +21198,7 @@ function scShipDown() {
     spaceMsg(`Your ship was crippled · towed back to ${bodyById(S.home).name}${lost ? ` · ${lost} units lost` : ''}`); }, 900);
 }
 function scKill(f) {
+  if (f.orion) { orbSpaceKill(f); return; }
   scBoom(f.pos, 1.3); sfx.boom(); SPC.scene.remove(f.m); SC.foes = SC.foes.filter(o => o !== f); if (SC.lock === f) SC.lock = null;
   const u = 40 + Math.floor(Math.random() * 50) + (f.cath ? 35 : f.ti ? 20 : 0); addUnits(u); gainXP(60);
   const drops = [['scrap', 1 + Math.floor(Math.random() * 3)], Math.random() < .5 && ['crystal', 1], Math.random() < .15 && ['warpcell', 1]].filter(Boolean);
@@ -20768,7 +21211,7 @@ function scKill(f) {
   spaceMsg(`${f.bot ? titleName(f.name.split(' · ')[0]) + '’s ship' : f.ace ? compName(f.ace) + '’s ship' : f.cath ? 'Catharsis ship' : f.ti ? 'Interceptor' : f.war ? titleName(f.name) + ' ship' : 'Pirate'} destroyed · +${u} units${drops.map(([id, n]) => ` · +${n} ${ITEMS[id].name}`).join('')}${SC.foes.length ? '' : ' · all hostiles down'}`);
 }
 function scTick(dt, fwd, up, alt) {
-  scNeutrals();
+  scNeutrals(); try { orbSpaceTick(dt); } catch (e) { console.error(e); } // Orion Mascar, in orbit (phase three)
   for (const n of SC.neut) { n.a += n.w * dt; const ca = Math.cos(n.a), sa = Math.sin(n.a); n.pos.set(n.c.x + ca * n.r, n.c.y + sa * n.r * n.tilt, n.c.z + sa * n.r); n.m.position.copy(n.pos); n.m.lookAt(n.c.x + Math.cos(n.a + n.w * .5) * n.r, n.c.y + Math.sin(n.a + n.w * .5) * n.r * n.tilt, n.c.z + Math.sin(n.a + n.w * .5) * n.r); n.m.rotateY(Math.PI); }
   // encounters
   const W3 = wanderer.ch3 || {};
@@ -20793,6 +21236,7 @@ function scTick(dt, fwd, up, alt) {
   // the hostiles
   const pv = SCV.d.copy(fwd).multiplyScalar(SPC.vel);
   for (const f of [...SC.foes]) {
+    if (f.orion) { orbFoeTick(f, dt); continue; } // he never fires: he runs
     const to = new THREE.Vector3().subVectors(SPC.pos, f.pos), d = to.length(), ffwd = new THREE.Vector3(0, 0, -1).applyQuaternion(f.q);
     let want;
     if (f.mode === 'attack') { want = SPC.pos.clone().addScaledVector(pv, d / 950).sub(f.pos).normalize(); if (d < 230) { f.mode = 'break'; f.modeT = 1.8 + Math.random() * 1.6; f.brk.copy(ffwd).add(new THREE.Vector3(Math.random() - .5, Math.random() - .5, Math.random() - .5).multiplyScalar(1.6)).normalize(); } }
@@ -20812,7 +21256,7 @@ function scTick(dt, fwd, up, alt) {
       scBolt(muzzle, aim, bs, false, f.cath); if (d < 900) sfx.laser(.35);
     }
   }
-  if (SC.foes.length && SC.foes.every(f => f.pos.distanceTo(SPC.pos) > 6000)) { scClear(); spaceMsg('You lost them'); }
+  { const nf = SC.foes.filter(f => !f.orion); if (nf.length && nf.every(f => f.pos.distanceTo(SPC.pos) > 6000)) { for (const f of nf) SPC.scene.remove(f.m); SC.foes = SC.foes.filter(f => f.orion); if (SC.lock && !SC.lock.orion) SC.lock = null; spaceMsg('You lost them'); } } // (Orion stays: he's not chasing you, you're chasing him)
   if (SC.foes.length) combatPulse();
   // bolts
   for (const b of [...SC.bolts]) {
@@ -21705,7 +22149,7 @@ const DISMISS_LINES = {
   'lead:darius': ['I’ll be aboard. Call me when there’s something worth shooting.', 'About time. Let’s move.'],
   'lead:vishara': ['I will wait aboard the Nostra. Try not to freeze without me.', 'Lead on, wanderer.']
 };
-const dismissLine = id => { const l = (DISMISS_LINES[id] || [`I’ll be aboard the Nostra if you need me.`, 'Let’s go.'])[0]; return jewelOn() ? l.replace(/the Nostra/g, 'the Jewel') : l; };
+const dismissLine = id => { const l = (DISMISS_LINES[id] || [`I’ll be aboard the Nostra if you need me.`, 'Let’s go.'])[0]; return jewelOn() ? l.replace(/the Nostra/g, 'the Jewel of Archamus') : l; };
 const recallLine = id => (DISMISS_LINES[id] || [null, 'Let’s go.'])[1];
 const aboardIds = () => Object.keys((wanderer && wanderer.aboard) || {}).filter(id => wanderer.aboard[id]);
 const canDismiss = () => !!(wanderer && ((wanderer.chapter | 0) >= 3 || (wanderer.ch2 && wanderer.ch2.escapedLondon))); // once you have the Nostra
@@ -22554,7 +22998,7 @@ async function josiahRig() {
 function makeGrave(name, lines) { // a plain headstone with a name on it, and flowers someone keeps bringing
   const g = new THREE.Group(), stone = new THREE.MeshStandardMaterial({ color: 0x8a8d92, roughness: .92 });
   const slab = new THREE.Mesh(new THREE.BoxGeometry(.9, 1.05, .16), stone); slab.position.y = .52; slab.castShadow = true; g.add(slab);
-  const top = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, .16, 24, 1, false, Math.PI / 2, Math.PI), stone); top.rotation.x = Math.PI / 2; // the rounded top: half a disc, flat side down top.position.y = 1.05; g.add(top);
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, .16, 24, 1, false, Math.PI / 2, Math.PI), stone); top.rotation.x = Math.PI / 2; top.position.y = 1.05; g.add(top); // the rounded top: half a disc, flat side down
   const base = new THREE.Mesh(new THREE.BoxGeometry(1.1, .14, .4), stone); base.position.y = .07; g.add(base);
   const tex = canvasTex(256, 300, (c, w, h) => { c.fillStyle = '#8a8d92'; c.fillRect(0, 0, w, h); c.fillStyle = '#2b2d31'; c.textAlign = 'center';
     c.font = 'bold 26px Georgia, serif'; c.fillText(name, w / 2, 70); c.font = 'italic 19px Georgia, serif'; lines.forEach((l, i) => c.fillText(l, w / 2, 130 + i * 34));
@@ -24826,6 +25270,7 @@ function updateWorldMode(dt) {
     else if (A.type === 'fire') { wx *= .6; wz *= .6; if (!A.hit) { A.hit = true; fireRifle(); } }
     if (A.t >= A.dur) { if (A.type === 'dodge') { inner.rotation.x = 0; inner.position.y = 0; } ex.act = null; }
   }
+  if (time < (ex.heldT || 0)) { wx *= .04; wz *= .04; } // held in Orion's stasis
   const grip = ex.air ? (ex.jetting ? 5 : 2.5) : (A && A.type === 'dodge' ? 30 : 8);
   vel.x += (wx - vel.x) * Math.min(1, dt * grip); vel.z += (wz - vel.z) * Math.min(1, dt * grip);
   const nx = p.x + vel.x * dt, nz = p.z + vel.z * dt;
@@ -26559,8 +27004,17 @@ const pdEvents = () => PEDIA_EVENTS.filter(L => !L.showIf || L.showIf());
 const pdStoryIds = () => { try { return PEDIA_EVENTS.filter(L => L.showIf && L.showIf()).map(L => L.id); } catch { return null; } };
 function pdStoryNote(before) { // a toast for each event a mission just added to the Nostrapedia
   if (!before) return; const now = pdStoryIds(); if (!now) return;
+  PD_WATCH.ids = now; // the watcher below won't toast these again
   now.filter(id => !before.includes(id)).forEach((id, i) => { const L = PEDIA_EVENTS.find(e => e.id === id); setTimeout(() => lootMsg(`Nostrapedia · new lore event: ${L.name}`, '#7fd4ff'), 900 + i * 700); });
 }
+const PD_WATCH = { who: null, ids: null }; // events that appear on their own (a choice, Orion's offensive): one toast each, never on load
+setInterval(() => { try {
+  if (!wanderer || state === 'title' || state === 'loading') { PD_WATCH.who = null; return; }
+  const now = pdStoryIds(); if (!now) return;
+  if (PD_WATCH.who !== wanderer.id || !PD_WATCH.ids) { PD_WATCH.who = wanderer.id; PD_WATCH.ids = now; return; }
+  now.filter(id => !PD_WATCH.ids.includes(id)).forEach((id, i) => { const L = PEDIA_EVENTS.find(e => e.id === id); setTimeout(() => lootMsg(`Nostrapedia · new lore event: ${L.name}`, '#7fd4ff'), 2500 + i * 2600); });
+  PD_WATCH.ids = now;
+} catch (e) {} }, 3000);
 const PEDIA_EVENTS = [
   { id: 'ww3', name: 'THE THIRD WORLD WAR', title: 'World War · Earth', sub: 'Ended in the 2090s', cast: ['orion', 'hawthorne'],
     facts: [['Type', 'Global war'], ['Theatre', 'Earth'], ['Belligerents', 'United States of America · China · Russia'], ['Notable veterans', '—'], ['Ended', 'The 2090s']],
@@ -26781,6 +27235,91 @@ const PEDIA_EVENTS = [
       'An empire of glass will break, and its land will be given to one who never asked for it. The red world at the heart of the stars will burn beneath the boots of its friends. And at the end of it all, you will stand alone at the centre of everything, and you will choose.',
       'You were talking in riddles, Orion told them when they woke. A man falling. A black banner. An empire of glass. The Grek say their dreams come true, said Nico. Then let’s hope this one’s wrong, said Orion.'
     ] },
+  // ---- Chapter III and IV: the events your choices made (each written for the way you chose) ----
+  { id: 'ch3nyx', story: 3, showIf: () => c3f('nyxJoined') || c3f('nyxDead'), get name() { return c3f('nyxJoined') ? 'THE PRINCESS WHO LEFT HER SISTERS' : 'THE PRINCESS WHO WAS NOT SAVED'; }, title: 'Eris · the Citadel el Erisconos', sub: 'Chapter III · 2125 AD', get cast() { return c3f('nyxJoined') ? ['nyrexia', 'leader:erisian'] : ['alexia', 'leader:erisian']; },
+    get facts() { const j = c3f('nyxJoined'); return [['Date', '2125 AD'], ['Place', 'The Citadel el Erisconos, Eris'], ['Princess', 'Nyrexia Erisconos'], ['Her sisters', 'Vishara Erisconos · Alexia Erisconos'], ['Outcome', j ? 'Nyrexia joined the wanderer’s crew' : 'Nyrexia stayed, and Alexia killed her'], ['Choice', j ? 'Made well' : 'Missed']]; },
+    get align() { return c3f('nyxJoined') ? 'She walked out of the Citadel with a stranger, and never once looked back at it.' : 'Someone could have taken her out of there. Nobody did.'; },
+    get paras() { return c3f('nyxJoined') ? [
+      'Nyrexia Erisconos is a princess of the Erisian Empire, the youngest of three sisters. Vishara rules from the Citadel el Erisconos; Alexia wanted to.',
+      'The wanderer found Nyrexia in the Citadel before going in to face James Brown, and asked her to come with them. She left her sisters behind and joined the crew, and took the same five orders as everyone else aboard.',
+      'It was the right call. When Alexia moved against Vishara, Nyrexia was not in the Citadel for her sister to reach.'
+    ] : [
+      'Nyrexia Erisconos is a princess of the Erisian Empire, the youngest of three sisters. Vishara rules from the Citadel el Erisconos; Alexia wanted to.',
+      'Nyrexia could have left Eris with the wanderer. The chance went the moment the wanderer went in to face James Brown, and she was still in the Citadel when Alexia made her move.',
+      'Alexia struck at Vishara, and Nyrexia stood beside her eldest sister. Alexia killed her there.'
+    ]; } },
+  { id: 'ch3james', story: 3, showIf: () => c3f('jamesFate'), name: 'THE PONTIFEX AT THE STATION', title: 'Duel · the Antarctic research station', sub: 'Chapter III · 2125 AD', cast: ['james', 'hawthorne'],
+    get facts() { const s = (wanderer.ch3 || {}).jamesFate === 'spared'; return [['Date', '2125 AD'], ['Place', 'The Antarctic research station, Terra Imperia’s stronghold'], ['Foe', 'James Brown, Pontifex Maximus of Terra Imperia'], ['Remade by', 'Terra Imperia, after he drowned off the Antarctic pier'], ['Outcome', s ? 'Spared · he joined the wanderer' : 'Killed by the wanderer'], ['Choice', s ? 'Made well' : 'Made badly']]; },
+    get align() { return (wanderer.ch3 || {}).jamesFate === 'spared' ? 'He begged to be finished. The wanderer let him live, and let him decide what that life would be for.' : 'He asked to be finished, and the wanderer finished him.'; },
+    get paras() { const s = (wanderer.ch3 || {}).jamesFate === 'spared'; return [
+      'James Brown rescued the wanderer from the ice in Chapter I, then betrayed them on the Antarctic pier. The wanderer pushed him into the sea and left him there. He drowned.',
+      'Terra Imperia brought him back. They put a heart in his chest that does not tire, named him Pontifex Maximus, and gave him the old research station to hold. He remembered every second in that water.',
+      'The wanderer went back to the station and beat him. You’ve killed me once already, he said, on his knees.',
+      s ? 'The wanderer spared him. Some of the crew called it cruelty, a broken man chained to his pain. But James Brown is alive, and he fights beside the one who drowned him.' : 'The wanderer killed him. Some of the crew called it a mercy, a man who had been through too much given the rest he should have had. James Brown is dead, twice now.'
+    ]; } },
+  { id: 'ch3blockade', story: 3, showIf: () => c3f('siegeWon'), name: 'THE BLOCKADE OF JANIRA PRIME', title: 'Battle · Karribassa, Janira Prime', sub: 'Chapter III · 2125 AD', cast: ['croxian', 'malia'],
+    get facts() { const c = wanderer.ch3 || {}, f = k => c[k] === 'spared' ? 'Spared · joined the wanderer' : c[k] === 'killed' ? 'Killed by the wanderer' : 'Undecided'; return [['Date', '2125 AD'], ['Place', 'Karribassa, Janira Prime'], ['Allies', 'Hak Chompjak V · Darius Ancin · Vishara Erisconos'], ['Enemy', 'Terra Imperia'], ['Croxian Mascar', f('croxFate')], ['Malia de Toro', f('maliaFate')], ['Result', 'The blockade was broken']]; },
+    get align() { const c = wanderer.ch3 || {}, k = [c.croxFate, c.maliaFate].filter(v => v === 'killed').length; return k === 0 ? 'Two of Hawthorne’s generals knelt in the ash, and both got up again on the wanderer’s side.' : k === 2 ? 'Two of Hawthorne’s generals knelt in the ash. Neither got up.' : 'One of Hawthorne’s generals walked away from Karribassa. The other was carried.'; },
+    get paras() { const c = wanderer.ch3 || {}, cr = c.croxFate, ma = c.maliaFate; return [
+      'After Hak Chompjak prayed at the Hall of Oaths, Terra Imperia’s ships filled the sky over Karribassa. Hak with his sword, President Darius Ancin with a rifle and Vishara Erisconos with her ice fought beside the wanderer, while Terra Imperia dug in a walled base a kilometre from the city.',
+      'At its heart waited Croxian Mascar and Malia de Toro, Hawthorne’s generals. The wanderer beat them both, and then had to decide what to do with them.',
+      cr === 'spared' && ma === 'spared' ? 'The wanderer spared them both. They had been sent there to die for Hawthorne, and they were done dying for him. They joined the crew together.'
+        : cr === 'killed' && ma === 'killed' ? 'The wanderer killed them both. Croxian’s last words were for his father: tell him he was right, about all of it. Malia asked him to wait for her.'
+        : cr === 'killed' ? 'The wanderer killed Croxian and spared Malia. She joined the crew, not for the wanderer, she said, but for him, against the man who sent him there.'
+        : 'The wanderer killed Malia and spared Croxian. He joined the crew, and said he might hate the wanderer for it one day. Hawthorne was the one he wanted.',
+      'The blockade was broken, and the leaders went home to their own worlds.'
+    ]; } },
+  { id: 'ch3channel', story: 3, showIf: () => c3f('orionGone'), name: 'CLOSE THE CHANNEL', title: 'Betrayal · aboard the Nostra', sub: 'Chapter III · 2125 AD', cast: ['orion', 'croxian', 'hawthorne'],
+    facts: [['Date', '2125 AD'], ['Place', 'The crew deck of the Nostra'], ['Heard', 'Croxian Mascar’s last words, over the comms'], ['Result', 'Orion Mascar left the wanderer for Thomas Hawthorne'], ['Sworn to', 'Kill the wanderer']],
+    align: 'A father heard his son die over a radio, and then he closed the channel.',
+    paras: [
+      'Orion Mascar could not fight at Karribassa. He went back to the Nostra to keep her warm and the comms open, and asked the wanderer to come back in one piece.',
+      'The comms were open when the wanderer killed his son. Orion heard Croxian’s last words on the floor of the crew deck. When he stood up again, he closed the channel.',
+      'He vowed to kill the wanderer. Not quickly, he said. But he would. His bunk was made and his rifle was gone the next time the wanderer came aboard. He had gone to Thomas Hawthorne, the friend he fought beside in the Third World War.'
+    ] },
+  { id: 'ch3aboard', story: 3, showIf: () => c3f('alienDone'), name: 'THE LOSS OF THE NOSTRA', title: 'Catastrophe · deep space', sub: 'Chapter III · 2125 AD', cast: [],
+    facts: [['Date', '2125 AD'], ['Place', 'Aboard the Nostra, a few seconds out of warp'], ['Intruder', 'Unknown'], ['Crew', 'Cut off below decks'], ['Result', 'The Nostra broke apart · the wanderer escaped in a pod']],
+    align: 'It could not be hurt, and it could not be beaten. It was the first anyone saw of what was coming.',
+    paras: [
+      'With Hawthorne dead, the wanderer set out to explore the galaxy. On the fifth jump, a few seconds out of warp, the Nostra’s alarms went off: something had come aboard.',
+      'The crew were cut off below decks, and the wanderer faced it alone on the bridge. Nothing they had touched it. When it had them on the floor, the Nostra broke apart around them.',
+      'The wanderer got away in an escape pod, and drifted. Nobody knew yet what had come aboard. Two years later, the whole galaxy did.'
+    ] },
+  { id: 'ch4jewel', story: 4, showIf: () => !!(wanderer && wanderer.ch4 && wanderer.ch4.newShip), name: 'THE JEWEL OF ARCHAMUS', title: 'Gift · the gardens of Archiostal', sub: 'Chapter IV · 2127 AD', cast: [],
+    facts: [['Date', '2127 AD'], ['Place', 'The gardens of Archiostal'], ['Giver', 'Archamus, the Prime Good'], ['Ship', 'The Jewel of Archamus, built by the Grek'], ['Decks', 'Five']],
+    align: 'Bring her back with a light in her, he said, and we will call the debt half paid.',
+    paras: [
+      'Long ago, when the Grek still believed Archamus would need to flee, they built him a ship. He never did. She waited beneath Archiostal for longer than most empires last.',
+      'Archamus gave her to the wanderer, who had nothing left but an escape pod. Nothing the Grek have made flies faster, holds harder, or strikes with more fire. Her hyperdrive carries past the edge of any chart, and her hull has turned aside fleets.',
+      'There is room aboard her for more than soldiers. The cats and dogs of Earth’s cities walk her five decks while the wanderer is away.'
+    ] },
+  { id: 'ch4orion', story: 4, showIf: () => !!(wanderer && wanderer.orion && (wanderer.orion.ph === 3 || wanderer.orion.dead) && c3f('croxDead')), name: 'ORION MASCAR’S OFFENSIVE', title: 'Conquest · the Milky Way', get sub() { return `Chapter ${chNow() >= 5 ? 'IV–V' : 'IV'} · 2127 AD`; }, cast: ['orion', 'croxian'],
+    get facts() { const O = orbS(), n = (O.conq || []).length; return [['Began', 'Earth, 2127 AD'], ['Commander', 'Orion Mascar, Grand Imperarch of Terra Imperia'], ['Phases', 'On foot (lv 40) · the Mascar Frame (lv 45) · the Orbital Rampage (lv 60)'],
+      ['Systems fallen', O.dead ? 'All freed when he fell' : `${n} of ${SYSTEMS.length}`], ['Status', O.dead ? 'Ended · Orion Mascar shot down in orbit' : O.done ? 'The galaxy has fallen to him' : `Under way · he is taking ${sysById(O.sys).name}`]]; },
+    get align() { return orbS().dead ? 'He meant to take every star the wanderer had ever looked at. The wanderer did not let him.' : 'Every system the wanderer leaves behind, he takes. The only place in the galaxy safe from him is wherever the wanderer is standing.'; },
+    get paras() { const O = orbS(); return [
+      'Orion Mascar took Terra Imperia from Hawthorne’s corpse and brought it into the Catharsis. Then he went looking for the wanderer, and waited for them on Earth.',
+      'He fought them on foot first, arms folded, holding them still with magic Hawthorne’s order had given him. When that failed, his Mascar Frame came down out of the sky, a walking war machine named for his son, and he fought on inside it.',
+      'Beaten on the ground, he turned the Frame’s plating to titanium, the Orbital Rampage, and took the fight into orbit. There he would not fight at all. He went from star system to star system, conquering each in turn, and only ever stopped when the wanderer was in the same system.',
+      O.dead ? 'The wanderer ran him down and shot him out of the sky. Every system he had taken was free again.' : O.done ? 'Nobody stopped him. Every system in the galaxy flies his flag.' : 'He is still out there.'
+    ]; } },
+  { id: 'ch4orionDead', story: 4, showIf: () => !!(wanderer && wanderer.orion && wanderer.orion.dead), name: 'THE DEATH OF ORION MASCAR', title: 'Death · in orbit', get sub() { return `Chapter ${chNow() >= 5 ? 'V' : 'IV'} · 2127 AD`; }, cast: ['orion'],
+    facts: [['Born', '2069 AD'], ['Died', '2127 AD, in orbit, shot down by the wanderer'], ['Son', 'Croxian Mascar, killed by the wanderer'], ['Last words', 'Croxian… I’m sorry, son. I’m coming.']],
+    align: 'He nursed the wanderer through a fortnight of fever once. That was a long time ago.',
+    paras: [
+      'Orion Mascar fought in the Third World War, rebuilt what it broke, and took a stranger off an African road and kept them alive. He was the wanderer’s first friend after the ice.',
+      'The wanderer killed his son at Karribassa, and Orion spent the rest of his life trying to take everything from them in return. He ended it in the titanium Frame, in orbit, with his son’s name on his lips.',
+      'The systems he conquered went back to whoever had held them. The ending he would have shaped, he did not live to shape.'
+    ] },
+  { id: 'ch4noReturn', story: 4, showIf: () => !!(wanderer && wanderer.ch4 && wanderer.ch4.fateFinal), name: 'THE PATH OF NO RETURN', title: 'The final battle approaches · Sagittarius A*', sub: 'Chapter IV · 2127 AD', cast: [],
+    get facts() { const c = wanderer.ch3 || {}, ok = v => v ? 'Made well' : 'Made badly', L = [['Nyrexia', ok(c.nyxJoined)], ['James Brown', ok(c.jamesFate === 'spared')], ['Croxian Mascar', ok(c.croxFate === 'spared')], ['Malia de Toro', ok(c.maliaFate === 'spared')]];
+      if (c.croxFate === 'killed') L.push(['Orion Mascar', ok(c.orionFate === 'killed')]); const T = fateTally(true); return [['Place', 'Sagittarius A*, the heart of the galaxy'], ...L, ['Verdict', `${T.total - T.bad} of ${T.total} choices made well`]]; },
+    align: 'Your actions will be remembered.',
+    get paras() { const T = fateTally(true); return [
+      'The wanderer warped to Sagittarius A*, the black sun at the heart of the galaxy, where the Catharsis rules from Carax. From here there was no turning back.',
+      'Everything decided along the way came with them: who was spared, who was killed, who was saved and who was left behind.',
+      T.bad === 0 ? 'Every choice had been made well. The galaxy had a champion, and it knew it.' : T.bad >= T.total ? 'Every choice had been made badly. Whatever waited at Carax, the wanderer had made sure they would face it alone.' : 'Not every choice had been made well. But the galaxy was still worth saving.'
+    ]; } },
   { id: 'carax2', unlockAt: 5, name: 'THE SIEGE OF CARAX', title: 'The Catharsis · Carax', sub: 'Chapter V', cast: [], stage: 'zark',
     facts: [['Date', 'After the war of Chapter IV'], ['Place', 'Carax · the five-floor bastion, the Catharsis capital'], ['Attackers', 'The Chompy Empire · Archamus · the Erisian Empire · the Grek · the Human Federation of Sol'], ['Defender', 'The Catharsis, under Lord Zark'], ['At the summit', 'Archamus · the Wanderer · Vishara Erisconos · Hak Chompjak V · Am-Grek · Darius Ancin'], ['Result', 'Lord Zark defeated · the Catharsis destroyed · Thomas Hawthorne killed · its worlds pass to the Wanderer']],
     align: 'Carax again. The same stone, the same summit, and this time the thing behind the Cult was waiting at the top.',
@@ -27608,7 +28147,7 @@ let RL = null;
 function resLinesLoad() {
   if (RL || RES.rlLoading) return; RES.rlLoading = true;
   const sc = document.createElement('script'); sc.src = 'data/resLines.js';
-  sc.onload = () => { RL = window.NV_RES_LINES || null; if (RL && RL.species) for (const k in RES_LINES.species) if (!RL.species[k]) RL.species[k] = RES_LINES.species[k]; }; // the pack's species lines, plus any race it doesn't have yet (Taredesiban, Oilkoumene) sc.onerror = () => { RES.rlLoading = false; };
+  sc.onload = () => { RL = window.NV_RES_LINES || null; if (RL && RL.species) for (const k in RES_LINES.species) if (!RL.species[k]) RL.species[k] = RES_LINES.species[k]; }; sc.onerror = () => { RES.rlLoading = false; }; // the pack's species lines, plus any race it doesn't have yet (Taredesiban, Oilkoumene)
   document.body.appendChild(sc);
 }
 const resPickN = (a, n) => [...a].sort(() => Math.random() - .5).slice(0, n);

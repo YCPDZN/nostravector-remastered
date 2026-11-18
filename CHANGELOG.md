@@ -2679,3 +2679,46 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 ### Fix: stuck over a city after taking off again
 - **Land, walk about, take off again: the ship no longer gets stuck** hovering over the ground, unable to climb out. Going into a world's sky never cleared the last landing, so the ship kept trying to finish it. When the pod was added, a comment had been written into the middle of that line, switching off the rest of it (clearing the landing, the flight timer, the camera shake and the messages). The Jewel is the first ship in Chapter IV that lands and takes off again, so it showed up with her.
 - Two more lines had lost their ends the same way, and both work again: the colour grade in the nightmares and the death scenes (shadow and highlight tints, glow), and residents who die (they now respawn properly, their deaths are counted and it's saved).
+
+### Fix: the flight camera after taking off again, and the Jewel's name in Chapters IV–V
+- **Taking off again on any world (Earth, Archiostal, anywhere) now starts the chase camera fresh,** with any ship. Like the stuck-landing fix, the line that reset it at the start of each flight had been switched off by a comment written into the middle of it, so a second flight began with the camera still where the last one left it. The stuck-landing fix itself was already in the code every world shares, so it covers every planet, not only the Jewel's.
+- Two more lines that had lost their ends the same way work again: the headstone's rounded top is back, and if the resident dialogue pack can't load, the game now notices and tries again later instead of never retrying.
+- **From Chapter IV, once Archamus has given you the Jewel, the text says the Jewel of Archamus, not the Nostra:** the companion menu's Dismiss button, your companions' goodbyes, "waiting aboard…" messages, the location label aboard, "Another world · the Jewel of Archamus follows you", leaving a leader on the ship, and the camp message in Antarctica. The same goes for Chapter V.
+- **Chapter IV's mission brief, before the time skip, no longer shows Chapter III's** ("Aboard the Nostra…"). It now has its own brief: adrift in the escape pod, with the Jewel of Archamus ahead.
+
+### Orion Mascar, boss of the killed-Croxian path (Chapters IV–V)
+- **If you killed Croxian, Orion Mascar becomes a boss.** From Chapter IV (after the time skip), wherever you land on Earth he waits for you under a crimson beacon. It's a **side quest, marked in red** everywhere: the objectives on foot and in flight, Earth's marker in space ("ORION MASCAR · SIDE QUEST"), and the galaxy map. The fight has three phases:
+  - **Phase 1 · level 40, on foot.** Ten attack patterns: the **stasis hold** (he crosses his arms and a red ring of his magic rolls out; if it catches you, you can't move or dodge for about two seconds, and he opens fire), a rifle burst, a shoulder charge down a marked line, the rifle butt, a grenade, three homing balls of red light, a leap slam, a shockwave ring you dodge through, a telekinetic pull into a rifle-butt blow, and an orbital strike from Terra Imperia's fleet. Each pattern comes once, in a shuffled order, before any repeats.
+  - **Phase 2 · level 45, in the Mascar Frame (yellow).** The Frame drops out of the sky and he climbs in. It flies a ring around you, with ten attacks, each played from the model's own animation: Piston Punch, Claw Sweep, Seismic Stomp (a shockwave ring), Shoulder Barrage (missiles), Arc Cannon, Jet Dash, Aerial Strafe, Dive Slam, Rotor Spin and Twin Hammer. Shoot him in the ring; your blade reaches him when he comes in low.
+  - **Phase 3 · level 60, the Orbital Rampage.** The Frame's plating turns titanium and he takes off for orbit. In space **he never attacks**: he circles the system's main world and breaks away when you close in, and you have to shoot him down. Meanwhile he conquers star systems, one every 75 seconds of play, always moving on to the nearest one left, but **never while you're in the same system as him**. His systems are ringed in red on the galaxy map and fly "The Imperium of Orion Mascar", and his marker shows where he is and how long the current system has left.
+  - Run more than 130 m from his beacon (or black out) and he goes back to wait, healed for that phase. The phase you reached is saved, and so is his health in orbit.
+  - **Shoot him down and he's dead** (+5,000 XP, +2,500 units). Every system he took is free again.
+- **The endings:** if he's still alive at the end of Chapter IV you get the neutral ending, and you can still fight him in Chapter V. The bad ending now needs all of this together: Orion left alive, Croxian, James and Malia killed, **and Nyrexia never recruited**.
+- The models are in `assets/models/companions/mascar_frame.glb` and `mascar_frame_orbital_rampage.glb` (game packs `data/mascarFrame.js`, `data/mascarTitan.js`, loaded only when the fight needs them).
+- Also: blacking out on a planet now says you came to by the Jewel of Archamus once you have her, not the Nostra.
+
+### "Your actions will be remembered" now keeps score
+- **After each of the final choices, the message changes with how you've been choosing.** The choices are: recruiting Nyrexia (or letting her quest fail), James, Croxian, Malia, and, only if Croxian died, killing Orion Mascar. That's four choices on the routes where Croxian lives (the Orion fight never happens there), five where he dies.
+- After "YOUR ACTIONS WILL BE REMEMBERED" comes a second line with how many choices you've made. With none wrong it's encouraging ("Good call. Keep choosing like that and the galaxy might just make it."). One slip is forgiven ("One slip. Everybody gets one."). From the second wrong choice on, each line is snarkier than the last ("Three. Are you doing this on purpose?").
+- **The last word comes on the path of no return:** the first time you warp to Sagittarius A* in Chapter IV, as the final battle approaches, "THE PATH OF NO RETURN" and "YOUR ACTIONS WILL BE REMEMBERED" come up, then the verdict on all your choices. If Orion is still alive by then, leaving him counts as a wrong choice.
+- The verdict: no mistakes, "You got this, [your callsign], so save the world". Some mistakes, "You messed up slightly, but the galaxy is still worth saving. Try your best, okay!". All five wrong (only possible on the route where Croxian dies), "Good luck, you're going to need it :)".
+- The good choices, as the endings count them: Nyrexia recruited, James, Croxian and Malia spared, Orion killed.
+
+### Nostrapedia: lore events for Chapters III and IV
+- **Nine new lore events, each written for the way you chose.** The facts, the line under the title and the closing paragraph change with your choices, and every Chapter III choice is marked "Made well" or "Made badly":
+  - **The Princess Who Left Her Sisters** (Nyrexia recruited) or **The Princess Who Was Not Saved** (she stayed, and Alexia killed her).
+  - **The Pontifex at the Station:** James Brown, drowned off the pier and remade by Terra Imperia, beaten at the Antarctic station, then spared or killed.
+  - **The Blockade of Janira Prime:** the battle at Karribassa beside Hak, Darius and Vishara, and what you did with Croxian and Malia (both spared, both killed, or one of each).
+  - **Close the Channel** (if Croxian died): Orion hears his son's last words over the Nostra's comms and leaves you for Hawthorne.
+  - **The Loss of the Nostra:** the thing that came aboard, and the escape pod.
+  - **The Jewel of Archamus:** Archamus' gift.
+  - **Orion Mascar's Offensive** (if Croxian died): his three phases and his conquest, with live facts (systems fallen out of the galaxy's total, the system he's taking now, or how it ended).
+  - **The Death of Orion Mascar**, if you shoot him down.
+  - **The Path of No Return:** the warp to Sagittarius A*, with every choice listed and the verdict.
+- Events that appear on their own (a choice, Orion reaching orbit) now get the "Nostrapedia · new lore event" toast too, once each and never just from loading a save.
+
+### Phones: this update's new screens fit
+- Checked everything new in this update on a phone (landscape, touch controls): the Orion Mascar fight, the stasis hold (the touch DODGE button escapes the ring before it closes, and is locked while you're held, as on desktop), the red side-quest lines, the remembered-actions messages, Orion in orbit and the galaxy map.
+- **Whole-sentence messages** (the remembered-actions lines) now show in smaller type, higher up and narrower, so they no longer cover the minimap and the BUILD button. On desktop they're a little smaller too.
+- **Orion in space** is tagged "ORION · LV 60" on a phone, not the full "ORION MASCAR · LV 60 · THE ORBITAL RAMPAGE" across half the screen.
+- **On the galaxy map** his label is short on a phone ("ORION · LV 60", "HELD HERE" or the seconds left), and sits on whichever side of his marker has room.
