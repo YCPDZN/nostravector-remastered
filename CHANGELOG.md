@@ -2757,3 +2757,8 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 ### Orion Mascar's themes in the combat themes menu
 - **The Vengeful Mascar** and **Have I Heard This Before** are in **Settings → Combat themes** on the main menu, available from the start like every other track there. They play after Wonders of Laniakea, then the leaders' themes as before.
 - In play they're boss themes, like the leaders' themes and Terra Imperium: they only play in Orion Mascar's fight (The Vengeful Mascar on Earth, Have I Heard This Before in orbit). Ordinary fights still pick at random from the five combat tracks.
+
+### Nico's house, voiced
+- **The whole Nico's house scene is voiced, all 81 recordings:** Daniel Brown, Nico, Croxian Mascar and Orion Mascar. That covers the reveal that Orion Brown is Croxian's son, Orion Mascar's lines when he's with you, the later visits, the visit with Nico alone, and Daniel on his own.
+- Lines that change in Chapter IV (the boy is two, asleep in the next room) and lines that change when Orion is there have their own takes.
+- The pack is `data/nicoHouseVoices.js` (loaded when you go into the house). The source MP3s and `VOICE_SCRIPT.md` are in `assets/audio/nico_house/`.
