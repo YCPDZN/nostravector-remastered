@@ -2732,3 +2732,9 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - Other visits are short and different: Daniel alone ("If you came for Nico, she isn't here"), Daniel and Nico without Croxian ("Look who it is. The deadbeat." "Not today, Daniel."), and, once the truth is out, Daniel telling Croxian the boy kept pointing at the door after he left.
 - A new Nostrapedia lore event, **The Boy in the Cradle**, unlocks with the revelation.
 - **Fix: the New London teleporter works in Chapters IV and V.** The Parliament Square teleporter was listed in the network but couldn't be reached from your other bases. It now takes you to New London once the city is open to you again.
+
+### The path of no return locks
+- **Once you warp to Sagittarius A* in Chapter IV, you can't back out.** No warp out of the system, and no teleporter to anywhere outside it, until the final battle is over. The galaxy map says "No turning back" on every other system.
+- **You're warned first:** before you go, the warp button for Sagittarius A* reads "Warp · the path of no return" in red, with the warning under it. You can't slip in by teleporter past the warning either: teleporting to a Sagittarius A* base before you've made the warp is blocked.
+- **The final battle, for now:** the siege of Carax isn't built yet, so landing on Carax while locked in is where Chapter IV ends. "Storm the throne room" plays the ending your choices made, or choose "Not yet" and land again when you're ready. When the siege is built, it takes this over.
+- After the good or neutral ending the lock lifts and the sandbox carries on (the neutral ending goes on into Chapter V). The bad ending ends the game, as before.
