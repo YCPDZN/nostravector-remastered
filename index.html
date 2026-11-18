@@ -1843,8 +1843,9 @@ const BRIEF_START = 'The year is <b>2125 AD</b>. Beyond our small blue world, co
 const BRIEF_CH4 = 'The year is <b>2127 AD</b>. The old world is dead. <b>Hawthorne is gone</b>, and the Exploration Division is scattered across a galaxy that no longer feels safe. The <b>Catharsis</b> is spreading, world by world, and the voice in the dark grows louder each time you close your eyes. You are still the <b>wanderer</b>. You are still standing. Find who is left, and find out what is coming, before it finds you.';
 const BRIEF_CH2 = 'The year is <b>2125 AD</b>. Betrayed on the Antarctic pier, you crossed the sea to <b>Africa</b>, where an old soldier named <b>Orion Mascar</b> took you in without asking a single question. Now the courts of <b>New London</b> want you, and someone in black and crimson is watching every step you take.';
 const BRIEF_CH3 = 'The year is <b>2125 AD</b>. <b>Hawthorne</b> has landed on Mars, and he says <b>Sol is his</b>. Aboard the <b>Nostra</b>, you hunt the system for allies: a hermit on Olympus Mons, two robots on a frozen moon, a princess of Eris. <b>Terra Imperia</b> is hunting you back, and not everyone you left behind has stayed dead.';
+const BRIEF_CH4_POD = 'The year is <b>2125 AD</b>. Your ship is gone, torn apart by the thing that came aboard, and you are adrift in an <b>escape pod</b>, alone, with the stars turning slowly past the glass. Find somewhere to land. Find out who is left. What comes next will not be the ship you lost, but the <b>Jewel of Archamus</b>.';
 const BRIEF_CH5 = 'The year is <b>2127 AD</b>. The Catharsis has a name now: <b>Lord Zark</b>, the Prime Evil. Every faction you fought, freed or bent to your will is waiting to see what the <b>wanderer</b> does next. Settle your debts, gather who is left, and finish it at <b>Carax</b>.';
-function briefNow() { const c = chNow(); return c >= 5 ? BRIEF_CH5 : postSkip() ? BRIEF_CH4 : c >= 3 ? BRIEF_CH3 : c === 2 ? BRIEF_CH2 : BRIEF_START; } // each chapter tells its own story
+function briefNow() { const c = chNow(); return c >= 5 ? BRIEF_CH5 : postSkip() ? BRIEF_CH4 : c === 4 ? BRIEF_CH4_POD : c >= 3 ? BRIEF_CH3 : c === 2 ? BRIEF_CH2 : BRIEF_START; } // each chapter tells its own story
 function applyMenuEra() {
   const on = isCh4Menu();
   const bt = $('#briefT'); if (bt) bt.innerHTML = briefNow();
@@ -2519,7 +2520,7 @@ function chapterOf(c) {
 }
 function liveChapterLabel() {
   const shipAt = () => SHIPI.from === 'space' ? (sysById(SPC.sys) || {}).name : world.adVisit && !isPl() ? (world.visitAt === 'antarctica' ? 'Antarctica' : world.visitAt === 'europe' ? 'New London' : 'Ad-Nostra') : world.planet ? world.planet.P.name : null;
-  const n = (wanderer && wanderer.chapter) | 0, far = ex.mode === 'ship' ? ['The Nostra', shipAt()].filter(Boolean).join(' · ') : ex.mode === 'space' ? (sysById(SPC.sys) || {}).name : ex.mode === 'world' && isPl() ? world.planet.P.name : ex.mode === 'world' && world.adVisit && curArea() === 'africa' ? 'Earth · Ad-Nostra' : null;
+  const n = (wanderer && wanderer.chapter) | 0, far = ex.mode === 'ship' ? [jewelOn() ? 'The Jewel of Archamus' : 'The Nostra', shipAt()].filter(Boolean).join(' · ') : ex.mode === 'space' ? (sysById(SPC.sys) || {}).name : ex.mode === 'world' && isPl() ? world.planet.P.name : ex.mode === 'world' && world.adVisit && curArea() === 'africa' ? 'Earth · Ad-Nostra' : null;
   if (wanderer && wanderer.ch2 && wanderer.ch2.escapedLondon && n <= 3) return `Chapter III · ${far || 'Sol'}`;
   if (far) return `Chapter ${CHN_ROMAN[Math.max(1, n)]} · ${far}`;
   const area = ex.mode === 'world' ? AREA_INFO[curArea()].name : n >= 2 && curArea() === 'africa' ? 'Africa' : 'Antarctica';
@@ -6821,7 +6822,7 @@ function renderTp() {
     h += `<div class="inv-h" style="margin-top:12px">${A.planet} · ${A.name}${here0 ? '' : far ? ' · across the network' : A.planet === cur.planet ? (ferryOpen() ? ' · take the ferry to get here' : ' · reach it by sea first') : ' · reach this planet by ship first'}</div>`;
     h += ts.map(t => {
       const self = here && t.id === here.id, d = Math.round(Math.hypot(t.x - player.position.x, t.z - player.position.z));
-      return `<div class="res-row shop${self ? ' zero' : ''}"><b style="--c:#7fd8ff"></b><span>${t.name}<small>${self ? 'You are here' : here0 ? d + ' m away' : far ? 'Another world · the Nostra follows you' : 'Another world'}</small></span><em></em><button class="mini" data-t="${t.id}"${self || !reach ? ' disabled' : ''}>Teleport</button></div>`;
+      return `<div class="res-row shop${self ? ' zero' : ''}"><b style="--c:#7fd8ff"></b><span>${t.name}<small>${self ? 'You are here' : here0 ? d + ' m away' : far ? `Another world · ${theShip()} follows you` : 'Another world'}</small></span><em></em><button class="mini" data-t="${t.id}"${self || !reach ? ' disabled' : ''}>Teleport</button></div>`;
     }).join('');
   }
   $('#tpList').innerHTML = h;
@@ -7693,7 +7694,7 @@ function refreshJamesUI() {
   const mode = sel === 'all' ? (p.every(id => compMode(id) === compMode(p[0])) ? compMode(p[0]) : null) : compMode(sel);
   $('#jWho').textContent = 'FOLLOWING COMPANIONS'; $('#jMode').textContent = p.length ? String(p.length) : '';
   for (const b of document.querySelectorAll('#jOpts button[data-m]')) b.classList.toggle('on', b.dataset.m === mode);
-  const dz = $('#jDismiss'); if (dz) dz.style.display = canDismiss() && sel !== 'james' ? '' : 'none'; // once you have the Nostra to send them to
+  const dz = $('#jDismiss'); if (dz) { dz.style.display = canDismiss() && sel !== 'james' ? '' : 'none'; dz.innerHTML = `<kbd>8</kbd>Dismiss · wait aboard ${theShip()}`; } // once you have a ship to send them to
   const dg = $('#jDungeon'); if (dg) dg.style.display = effCh() >= 3 && sel !== 'james' && isPl() && (world.lairGates || []).some(G => G.g.visible && !G.L.ch4) ? '' : 'none'; // only where there's a lair to clear
   const row = $('#jWhoRow'); row.style.display = p.length ? '' : 'none'; // who's with you, their level and what they're doing: tap one to give them orders
   row.innerHTML = [...p, ...(p.length > 1 ? ['all'] : [])].map(id => id === 'all'
@@ -10764,7 +10765,7 @@ async function visitAntBase(place) { // fly back to where it all began: the stat
   state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks();
   tiWorldClear(); TIW.area = 'antarctica'; if (jamesQ()) antStronghold();
   notice('Earth · Antarctica', jamesQ() ? 'THE STATION · A TERRA IMPERIA STRONGHOLD' : 'THE RESEARCH STATION', 3400);
-  if (!place && !jamesQ()) setTimeout(() => lootMsg('Your Chapter I camp is as you left it · the Nostra is parked on the ice', '#cfeeff'), 2400);
+  if (!place && !jamesQ()) setTimeout(() => lootMsg(`Your Chapter I camp is as you left it · ${theShip()} is parked on the ice`, '#cfeeff'), 2400);
 }
 function shipFlyToAnt() {
   const f = $('#fade'); f.style.transition = 'opacity .6s'; f.style.opacity = 1; sfx.whoosh();
@@ -13632,7 +13633,7 @@ async function orionStepsBack(done) {
   const bye = (line, i) => setTimeout(() => openDialog('ORION MASCAR', [line], false, () => {
     setC3({ orionStepped: true }); wanderer.aboard = Object.assign({}, wanderer.aboard, { orion: true }); const c = curChar(); if (c) c.aboard = wanderer.aboard; saveRoster();
     if (world.orion) world.orion.root.visible = false; if (ex.cSel === 'orion') ex.cSel = null; refreshJamesUI(); ui.xhud.classList.toggle('comp', companionOn() || partyNow().length > 0);
-    lootMsg('Orion is waiting aboard the Nostra (crew deck)', compColor('orion')); setTimeout(done, 1800);
+    lootMsg(jewelOn() ? 'Orion is aboard the Jewel of Archamus' : 'Orion is waiting aboard the Nostra (crew deck)', compColor('orion')); setTimeout(done, 1800);
   }, one(i)), 80);
   openDialog('ORION MASCAR', ORION_STEP, false, () => openChoice('ORION MASCAR', [
     { text: 'Go. I’ll come back to you.', onPick: () => bye('I know you will. That’s the only reason I can leave.', 6) },
@@ -15545,7 +15546,7 @@ function dipPontCard() {
     const on = (wanderer.party || []).includes('pont:' + P.id), A = alComp(pontAlL(P));
     h += `<div style="border-top:1px solid var(--faint);padding:10px 0"><div style="font-size:8px;letter-spacing:.22em;color:var(--mute);margin-bottom:6px;text-transform:uppercase">${pontTitle(P)} · lv ${compLevel('pont:' + P.id)} · <b style="color:${alColor(A.a)};font-weight:500">${alRank(A.a)} ${A.a > 0 ? '+' : ''}${Math.round(A.a)}</b> · influence ${Math.round(A.inf)}</div><div class="dip-row" style="flex-wrap:wrap"><input class="dip-in" data-a="pontNameIn" data-p="${P.id}" value="${esc(P.name)}" maxlength="28" style="min-width:0;flex:1 1 140px"><button class="btn small" data-a="pontRename" data-p="${P.id}"><span>Rename</span></button></div>
       <div class="dip-row" style="flex-wrap:wrap;gap:7px;margin-top:8px">${PONT_PAL.map(([n, c]) => `<button data-a="pontCol" data-p="${P.id}" data-col="${c}" title="${n}" aria-label="${n}" style="width:30px;height:30px;border-radius:50%;padding:0;cursor:pointer;background:${c || '#2b2f36'};border:2px solid ${(P.col || '') === c ? '#fff' : 'rgba(255,255,255,.18)'}"></button>`).join('')}<input type="color" data-a="pontColPick" data-p="${P.id}" value="${P.col || '#2b2f36'}" title="Any colour" style="width:34px;height:30px;padding:0;border:0;background:none;cursor:pointer"></div>
-      <div class="dip-row" style="flex-wrap:wrap;margin-top:8px"><button class="btn small" data-a="pontParty" data-p="${P.id}"><span>${on ? `Leave ${pontHe(P)[1]} on the Nostra` : `Bring ${pontHe(P)[1]} aboard`}</span></button><button class="btn small" data-a="pontRes" data-p="${P.id}"><span>${DIPV.pontRes === P.id ? `Tap again: ${pontHe(P)[0]} lives in the world for good (takes a resident slot)` : `Make ${pontHe(P)[1]} a resident`}</span></button></div></div>`;
+      <div class="dip-row" style="flex-wrap:wrap;margin-top:8px"><button class="btn small" data-a="pontParty" data-p="${P.id}"><span>${on ? `Leave ${pontHe(P)[1]} on ${theShip()}` : `Bring ${pontHe(P)[1]} aboard`}</span></button><button class="btn small" data-a="pontRes" data-p="${P.id}"><span>${DIPV.pontRes === P.id ? `Tap again: ${pontHe(P)[0]} lives in the world for good (takes a resident slot)` : `Make ${pontHe(P)[1]} a resident`}</span></button></div></div>`;
   }
   for (const P of hunters) h += `<div class="dip-row" style="border-top:1px solid var(--faint);padding:8px 0;justify-content:space-between"><span style="font-size:10px;letter-spacing:.16em">${esc(P.name).toUpperCase()}<br><small style="color:#ff8f86;letter-spacing:.2em;font-size:8px">${pontTitle(P).toUpperCase()} · HUNTING YOU · LV ${P.lv}${P.kills ? ` · HAS KILLED YOU ${P.kills}×` : ''}</small></span></div>`;
   return h + `</div>`;
@@ -18686,7 +18687,7 @@ function atmoEnter(P, dir, fwdSpace, opt = {}) {
     f.addScaledVector(up, opt.fromGround ? .05 : -.22).normalize(); A.q.setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), f, up)); // -Z is forward
   }
   A.vel = opt.fromGround ? 40 : Math.max(60, Math.min(SPC.vel, 240)); A.thr = opt.fromGround ? .55 : clamp(SPC.thr, .35, 1); A.boost = 0;
-  A.cruise = clamp(A.Rg / 150, 50, 240); A.boostV = clamp(A.Rg / 45, 110, 760); if (jewelOn()) { A.cruise *= 2; A.boostV *= 2.2; } // the Jewel tears through a sky A.camInit = false;
+  A.cruise = clamp(A.Rg / 150, 50, 240); A.boostV = clamp(A.Rg / 45, 110, 760); if (jewelOn()) { A.cruise *= 2; A.boostV *= 2.2; } A.camInit = false; // the Jewel tears through a sky; a fresh chase camera every flight (this reset was commented out by mistake, so after landing and taking off again the camera started from where the last flight left it)
   camera.near = 1.2; camera.far = 60000; camera.updateProjectionMatrix();
   spaceHud().classList.add('atmo'); spaceHud().classList.remove('hidden'); { const pb = spaceHud().querySelector('.sh-btns button[data-b="pulse"]'); if (pb) pb.textContent = 'BOOST'; const kk = spaceHud().querySelector('.sh-keys'); if (kk) { kk.dataset.sp = kk.dataset.sp || kk.textContent; kk.textContent = 'W / S thrust · A / D turn · ↑ / ↓ or drag to pitch · SHIFT afterburner · E land · climb to leave · ESC menu'; } }
   const fl = $('#shFlash'); if (fl && !opt.quiet) { fl.style.background = P.atmo || '#888'; fl.classList.add('on'); setTimeout(() => fl.classList.remove('on'), 120); }
@@ -19999,6 +20000,7 @@ const podMode = () => !!(wanderer && (wanderer.chapter | 0) === 4 && wanderer.ch
 const jewelOn = () => !!(wanderer && (wanderer.chapter | 0) >= 4 && wanderer.ch4 && wanderer.ch4.newShip);
 const shipSkin = () => podMode() ? 'pod' : jewelOn() ? 'jewel' : 'nostra';
 const shipName = () => podMode() ? 'pod' : jewelOn() ? 'Jewel of Archamus' : 'Nostra';
+const theShip = () => jewelOn() ? 'the Jewel of Archamus' : 'the Nostra'; // for text the player reads: from Chapter IV, once Archamus has given her, it's the Jewel
 function ch4Begin() {
   wanderer.chapter = Math.max(4, wanderer.chapter | 0); wanderer.ch4 = Object.assign({}, wanderer.ch4, { started: true, pod: true });
   const c = curChar(); if (c) { c.chapter = wanderer.chapter; c.ch4 = wanderer.ch4; } saveRoster();
@@ -21705,7 +21707,7 @@ const DISMISS_LINES = {
   'lead:darius': ['I’ll be aboard. Call me when there’s something worth shooting.', 'About time. Let’s move.'],
   'lead:vishara': ['I will wait aboard the Nostra. Try not to freeze without me.', 'Lead on, wanderer.']
 };
-const dismissLine = id => { const l = (DISMISS_LINES[id] || [`I’ll be aboard the Nostra if you need me.`, 'Let’s go.'])[0]; return jewelOn() ? l.replace(/the Nostra/g, 'the Jewel') : l; };
+const dismissLine = id => { const l = (DISMISS_LINES[id] || [`I’ll be aboard the Nostra if you need me.`, 'Let’s go.'])[0]; return jewelOn() ? l.replace(/the Nostra/g, 'the Jewel of Archamus') : l; };
 const recallLine = id => (DISMISS_LINES[id] || [null, 'Let’s go.'])[1];
 const aboardIds = () => Object.keys((wanderer && wanderer.aboard) || {}).filter(id => wanderer.aboard[id]);
 const canDismiss = () => !!(wanderer && ((wanderer.chapter | 0) >= 3 || (wanderer.ch2 && wanderer.ch2.escapedLondon))); // once you have the Nostra
@@ -22554,7 +22556,7 @@ async function josiahRig() {
 function makeGrave(name, lines) { // a plain headstone with a name on it, and flowers someone keeps bringing
   const g = new THREE.Group(), stone = new THREE.MeshStandardMaterial({ color: 0x8a8d92, roughness: .92 });
   const slab = new THREE.Mesh(new THREE.BoxGeometry(.9, 1.05, .16), stone); slab.position.y = .52; slab.castShadow = true; g.add(slab);
-  const top = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, .16, 24, 1, false, Math.PI / 2, Math.PI), stone); top.rotation.x = Math.PI / 2; // the rounded top: half a disc, flat side down top.position.y = 1.05; g.add(top);
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, .16, 24, 1, false, Math.PI / 2, Math.PI), stone); top.rotation.x = Math.PI / 2; top.position.y = 1.05; g.add(top); // the rounded top: half a disc, flat side down
   const base = new THREE.Mesh(new THREE.BoxGeometry(1.1, .14, .4), stone); base.position.y = .07; g.add(base);
   const tex = canvasTex(256, 300, (c, w, h) => { c.fillStyle = '#8a8d92'; c.fillRect(0, 0, w, h); c.fillStyle = '#2b2d31'; c.textAlign = 'center';
     c.font = 'bold 26px Georgia, serif'; c.fillText(name, w / 2, 70); c.font = 'italic 19px Georgia, serif'; lines.forEach((l, i) => c.fillText(l, w / 2, 130 + i * 34));
@@ -27608,7 +27610,7 @@ let RL = null;
 function resLinesLoad() {
   if (RL || RES.rlLoading) return; RES.rlLoading = true;
   const sc = document.createElement('script'); sc.src = 'data/resLines.js';
-  sc.onload = () => { RL = window.NV_RES_LINES || null; if (RL && RL.species) for (const k in RES_LINES.species) if (!RL.species[k]) RL.species[k] = RES_LINES.species[k]; }; // the pack's species lines, plus any race it doesn't have yet (Taredesiban, Oilkoumene) sc.onerror = () => { RES.rlLoading = false; };
+  sc.onload = () => { RL = window.NV_RES_LINES || null; if (RL && RL.species) for (const k in RES_LINES.species) if (!RL.species[k]) RL.species[k] = RES_LINES.species[k]; }; sc.onerror = () => { RES.rlLoading = false; }; // the pack's species lines, plus any race it doesn't have yet (Taredesiban, Oilkoumene)
   document.body.appendChild(sc);
 }
 const resPickN = (a, n) => [...a].sort(() => Math.random() - .5).slice(0, n);
