@@ -25114,12 +25114,12 @@ function nicoHouseLeave(kind) {
   }, 1100);
 }
 /* ---- Malia confronts Nico, aboard the Nostra or the Jewel of Archamus: the first time you board after the truth comes out at Nico's house
-   (ch3.orionJrReveal). Croxian told Malia on the walk back. Plays only if you spared Malia at Karribassa and she's in your crew (with you or
-   waiting aboard). Croxian has his say if he's in your crew too. On the crew deck, everyone else out of the way. State 'maliaNico'; saves
+   (ch3.orionJrReveal), once. Croxian told Malia on the walk back. Plays only if you spared Malia at Karribassa; Croxian has his say if he's
+   alive. On the crew deck, everyone else out of the way. State 'maliaNico'; saves
    ch3.maliaNico. Voiced (when recorded): data/maliaNicoVoices.js, MALIANICO1–25 in MN_LINES order; the script is
    assets/audio/malia_nico/VOICE_SCRIPT.md. An empty slot is a subtitle. ---- */
 const MN = { on: false, actors: {}, t: 0, shot: null };
-// [who, line, recording number, only if Croxian is here (c) or only if he isn't (n)]
+// [who, line, recording number, only if Croxian is alive (c)]
 const MN_LINES = [
   ['MALIA DE TORO', 'Nico. A word.', 1],
   ['NICO', 'Malia. If this is about the house…', 2],
@@ -25147,13 +25147,12 @@ const MN_LINES = [
   ['CROXIAN MASCAR', 'Malia…', 24, 'c'],
   ['MALIA DE TORO', 'Later, Croxian. Tonight, you sleep in the cargo bay.', 25, 'c']
 ];
-const mnIn = id => !!wanderer && ((wanderer.party || []).includes(id) || !!(wanderer.aboard || {})[id]) && !((wanderer.dip && wanderer.dip.lent) || {})[id] && !(wanderer.dungeon || {})[id]; // in your crew, and not away
-const mnDue = () => !!(wanderer && c3f('orionJrReveal') && !c3f('maliaNico') && (wanderer.ch3 || {}).maliaFate === 'spared' && !c3f('maliaDead') && mnIn('malia') && nicoJoined() && !ALN.on);
+const mnDue = () => !!(wanderer && c3f('orionJrReveal') && !c3f('maliaNico') && (wanderer.ch3 || {}).maliaFate === 'spared' && !c3f('maliaDead') && nicoJoined() && !ALN.on);
 let MN_VO = null;
 function mnVo() { if (!MN_VO) MN_VO = loadDataScript('maliaNicoVoices').then(ok => ok ? sfx.loadClips('maliaNicoVoices') : []).catch(() => []).then(v => { if (!v || !v.length) MN_VO = null; return v || []; }); return MN_VO; }
 async function maliaNicoStart() {
   if (MN.on || !mnDue() || !SHIPI.on || ex.mode !== 'ship' || state !== 'explore' || ex.dlg) return false;
-  const crox = mnIn('croxian') && !c3f('croxDead'), lines = MN_LINES.filter(L => !L[3] || (L[3] === 'c') === crox);
+  const crox = (wanderer.ch3 || {}).croxFate === 'spared' && !c3f('croxDead'), lines = MN_LINES.filter(L => !L[3] || crox);
   MN.on = true; state = 'maliaNico'; ex.keys.clear(); vel.set(0, 0, 0); closeDialog(); SHIPI.goal = null;
   const bo = $('#blackout'); bo.style.transition = 'opacity 1s'; bo.style.opacity = 1; sfx.click();
   const who = ['malia', 'nico', ...(crox ? ['croxian'] : [])];

@@ -2765,5 +2765,5 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 
 ### Malia confronts Nico
 - **After the truth comes out at Nico's house, Malia de Toro has words for Nico.** The first time you board your ship afterwards (the Nostra, or the Jewel of Archamus in Chapter IV), the scene cuts to the crew deck. Croxian told Malia everything on the walk back. She was in Terra Imperia's camp outside Ad-Nostra that summer, writing the patrol rosters and covering for him every night he wasn't where she'd put him.
-- It plays only if you spared Malia at Karribassa and she's in your crew (following you or waiting aboard). If Croxian is in your crew too, he tries to take the blame and asks her not to leave. She stays, for Hawthorne, she says, not for Nico, and Croxian sleeps in the cargo bay. It plays once (`ch3.maliaNico`).
+- It plays once, and only if you spared Malia at Karribassa. If Croxian is alive, he tries to take the blame and asks her not to leave. She stays, for Hawthorne, she says, not for Nico, and Croxian sleeps in the cargo bay. It plays once (`ch3.maliaNico`).
 - Not voiced yet: the lines show as subtitles. The script for the 25 recordings is `assets/audio/malia_nico/VOICE_SCRIPT.md`; once recorded, they go in `data/maliaNicoVoices.js` as MALIANICO1–25.

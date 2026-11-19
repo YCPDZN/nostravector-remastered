@@ -1,6 +1,6 @@
 # Malia confronts Nico · Malia de Toro, Nico, Croxian Mascar (Chapters III–V)
 
-Aboard the Nostra or the Jewel of Archamus, on the crew deck, the first time you board after the reveal at Nico's house. Pack: `data/maliaNicoVoices.js` (MALIANICO1–25, in this order). Lines marked *(Croxian)* only play if Croxian is in your crew. A missing recording shows as a subtitle.
+Aboard the Nostra or the Jewel of Archamus, on the crew deck, the first time you board after the reveal at Nico's house. Pack: `data/maliaNicoVoices.js` (MALIANICO1–25, in this order). Lines marked *(Croxian)* only play if Croxian is alive. A missing recording shows as a subtitle.
 
 **Not recorded yet.**
 
