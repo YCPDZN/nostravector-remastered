@@ -1,8 +1,12 @@
 # Malia confronts Nico · Malia de Toro, Nico, Croxian Mascar (Chapters III–V)
 
-Aboard the Nostra or the Jewel of Archamus, on the crew deck, the first time you board after the reveal at Nico's house. It comes to blows: the lines from 8 to 16 are shouted mid-fight, through punches. Pack: `data/maliaNicoVoices.js` (MALIANICO1–31, in this order). Lines marked *(Croxian)* only play if Croxian is alive; *(no Croxian)* only if he isn't. A missing recording shows as a subtitle.
+Aboard the Nostra or the Jewel of Archamus, on the crew deck. Pack: `data/maliaNicoVoices.js` (MALIANICO1–38, in this order). A missing recording shows as a subtitle.
 
 **Not recorded yet.**
+
+## Croxian alive: after the reveal at Nico's house (1–30)
+
+It comes to blows: lines 8 to 16 are shouted mid-fight.
 
 | File | Speaker | Line | Action |
 |---|---|---|---|
@@ -22,18 +26,32 @@ Aboard the Nostra or the Jewel of Archamus, on the crew deck, the first time you
 | MALIANICO14.mp3 | Malia de Toro | Joder! You think that makes you a martyr? | Malia knocks Nico down |
 | MALIANICO15.mp3 | Nico | Is that it? Is that all a general of Terra Imperia’s got? | Nico gets up |
 | MALIANICO16.mp3 | Malia de Toro | You want more? Come on, then! | Malia squares up to Nico |
-| MALIANICO17.mp3 | Croxian Mascar *(Croxian)* | ENOUGH! Both of you, enough! | Croxian pulls them apart |
-| MALIANICO18.mp3 | Malia de Toro *(Croxian)* | Get your hands off me, Croxian. Don’t you fucking touch me right now. |  |
-| MALIANICO19.mp3 | Croxian Mascar *(Croxian)* | Then hit me. She isn’t the one who lied to you. I am. I should have told you years ago, and I let you find out from a farmhouse door. |  |
-| MALIANICO20.mp3 | Malia de Toro *(Croxian)* | Yes. You should have. |  |
-| MALIANICO21.mp3 | Croxian Mascar *(Croxian)* | I’m not asking you to forgive it. I’m asking you not to go. |  |
-| MALIANICO22.mp3 | Malia de Toro *(no Croxian)* | …No. No, I’m not doing this. Not over him. He isn’t worth it. | Malia steps away |
-| MALIANICO23.mp3 | Nico | You hit like Hawthorne trained you. |  |
-| MALIANICO24.mp3 | Malia de Toro | He did. Remember that the next time you open your mouth about Croxian. |  |
-| MALIANICO25.mp3 | Nico | So what happens now? You walk off this ship? |  |
-| MALIANICO26.mp3 | Malia de Toro | I’m not going anywhere. Not because of you. Not even because of him. Hawthorne is still out there, and I want to see his face when this crew walks into his hall. |  |
-| MALIANICO27.mp3 | Malia de Toro | But stay the fuck away from me, Nico. For a long while. |  |
-| MALIANICO28.mp3 | Nico | That’s fair. For what it’s worth, he talked about you. That whole summer, he never shut up about you. |  |
-| MALIANICO29.mp3 | Malia de Toro | …That might be the worst thing you could have told me. |  |
-| MALIANICO30.mp3 | Croxian Mascar *(Croxian)* | Malia… |  |
-| MALIANICO31.mp3 | Malia de Toro *(Croxian)* | Later, Croxian. Tonight, you sleep in the cargo bay. And get some ice on her face. |  |
+| MALIANICO17.mp3 | Croxian Mascar | ENOUGH! Both of you, enough! | Croxian pulls them apart |
+| MALIANICO18.mp3 | Malia de Toro | Get your hands off me, Croxian. Don’t you fucking touch me right now. |  |
+| MALIANICO19.mp3 | Croxian Mascar | Then hit me. She isn’t the one who lied to you. I am. I should have told you years ago, and I let you find out from a farmhouse door. |  |
+| MALIANICO20.mp3 | Malia de Toro | Yes. You should have. |  |
+| MALIANICO21.mp3 | Croxian Mascar | I’m not asking you to forgive it. I’m asking you not to go. |  |
+| MALIANICO22.mp3 | Nico | You hit like Hawthorne trained you. |  |
+| MALIANICO23.mp3 | Malia de Toro | He did. Remember that the next time you open your mouth about Croxian. |  |
+| MALIANICO24.mp3 | Nico | So what happens now? You walk off this ship? |  |
+| MALIANICO25.mp3 | Malia de Toro | I’m not going anywhere. Not because of you. Not even because of him. Hawthorne is still out there, and I want to see his face when this crew walks into his hall. |  |
+| MALIANICO26.mp3 | Malia de Toro | But stay the fuck away from me, Nico. For a long while. |  |
+| MALIANICO27.mp3 | Nico | That’s fair. For what it’s worth, he talked about you. That whole summer, he never shut up about you. |  |
+| MALIANICO28.mp3 | Malia de Toro | …That might be the worst thing you could have told me. |  |
+| MALIANICO29.mp3 | Croxian Mascar | Malia… |  |
+| MALIANICO30.mp3 | Malia de Toro | Later, Croxian. Tonight, you sleep in the cargo bay. And get some ice on her face. |  |
+
+## Croxian killed: the photo (31–38)
+
+Malia finds a photo of Croxian and Nico at his bunk. **She never speaks**; only Nico does. Between Nico's lines: Malia walks over and holds the photo up, hits her, knocks her down, drops the photo beside her and walks away.
+
+| File | Speaker | Line | Action |
+|---|---|---|---|
+| MALIANICO31.mp3 | Nico | Malia? You’ve been down here for hours. Did you eat any… |  |
+| MALIANICO32.mp3 | Nico | …Where did you find that? |  |
+| MALIANICO33.mp3 | Nico | Malia, listen to me. It was one summer. Before Hawthorne, before any of this. It was over before it… | Malia hits her mid-sentence |
+| MALIANICO34.mp3 | Nico | Okay. Okay. I had that coming. |  |
+| MALIANICO35.mp3 | Nico | Malia, stop. Please. He’s gone. Hitting me won’t bring him back. | Malia shoves her |
+| MALIANICO36.mp3 | Nico | You want to hit someone? Fine! Come on, then! You think you’re the only one who fucking lost him? | Nico hits back |
+| MALIANICO37.mp3 | Nico | …He had a son, Malia. Croxian had a son. He never even knew. He never got to know. |  |
+| MALIANICO38.mp3 | Nico | …His name is Orion. |  |
