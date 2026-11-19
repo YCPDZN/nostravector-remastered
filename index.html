@@ -15306,6 +15306,8 @@ function solDuelWin() {
    killed Croxian, James and Malia and never recruited Nyrexia. On the neutral path he's still out there in Chapter V. */
 const ORB = { R: null, M: null, B: null, g: null, area: null, x: 0, z: 0, load: 0, foeT: 0, saveT: 0, hereSys: null };
 const ORB_LV = [0, 40, 45, 60], ORB_CONQ_T = 75; // seconds a system holds out while you're somewhere else
+// his level in each phase: 40 / 45 / 60 after the time skip; before it (the hunt starts in Chapter III), a step above you each phase (+2, +5, +8), never past those
+const orbLv = ph => { const ch = (wanderer && wanderer.chapter) | 0, early = ch < 4 || (ch === 4 && !(wanderer.ch4 && wanderer.ch4.timeSkip)); return early ? Math.min(ORB_LV[ph], Math.max(10, plvNow() + [0, 2, 5, 8][ph])) : ORB_LV[ph]; };
 /* Orion's voice (voiced: data/omP1Voices.js BFOM1–10, data/omP2Voices.js BFOMP21–215, data/omP3Voices.js BFOMP31–330 + ORION_DEATH_QUOTE,
    in that order; the script is in assets/audio/orion_mascar_boss/VOICE_SCRIPT.md). Each phase's lines play in order, one every several seconds;
    a few are cued by what's happening (the stasis hold, the orbital strike, the claws, his health dropping) the first time round. Once a phase's
@@ -15443,7 +15445,7 @@ function orbPlace() {
   if (O.ph === 1) glbRig('cpOrion', 1.85, 'rifle').then(R => { if (!R || !done()) return; orionTurnPaint(R.root); R.root.position.set(x, wHeight(x, z), z); R.root.traverse(o => { if (o.isMesh) o.castShadow = !tiPhone(); }); g.add(R.root); ORB.R = R; R.cross = true; }).catch(() => {});
   else orbMech('frame').then(M => { if (!M || !done()) return; M.g.position.set(x, wHeight(x, z), z); g.add(M.g); ORB.M = M; }).catch(() => {});
   setTimeout(() => { if (!done()) return; sfx.alarm(); notice('Side quest', tiPhone() ? 'ORION MASCAR IS ON EARTH' : 'ORION MASCAR HAS FOUND YOU ON EARTH', 3800);
-    lootMsg(tiPhone() ? 'Orion waits under the crimson beacon' : `Orion Mascar, Grand Imperarch of Terra Imperia, waits under the crimson beacon · lv ${ORB_LV[O.ph]}${O.ph === 2 ? ' · in the Mascar Frame' : ''}`, '#ff6a6e'); }, 2600);
+    lootMsg(tiPhone() ? 'Orion waits under the crimson beacon' : `Orion Mascar, Grand Imperarch of Terra Imperia, waits under the crimson beacon · lv ${orbLv(O.ph)}${O.ph === 2 ? ' · in the Mascar Frame' : ''}`, '#ff6a6e'); }, 2600);
 }
 function orbDrop() {
   const B = ORB.B; if (B && B.c) { const i = fauna.list.indexOf(B.c); if (i >= 0) fauna.list.splice(i, 1); if (B.c.bar && B.c.bar.parent) B.c.bar.parent.remove(B.c.bar); }
@@ -15453,7 +15455,7 @@ function orbDrop() {
   if (ORB.B) { const el = $('#bossBar'); if (el) el.classList.remove('on'); }
   Object.assign(ORB, { g: null, R: null, M: null, B: null, area: null, fx: [], load: ORB.load + 1, leaving: false, seq: null }); ex.heldT = 0;
 }
-function orbSpec(ph) { const lv = ORB_LV[ph]; return { lv, hp: ph === 1 ? Math.round(5000 + lv * 150) : Math.round(6500 + lv * 190), dmg: Math.round((ph === 1 ? 28 : 34) + lv * .8), rdmg: Math.round(12 + lv * .5) }; }
+function orbSpec(ph) { const lv = orbLv(ph); return { lv, hp: ph === 1 ? Math.round(5000 + lv * 150) : Math.round(6500 + lv * 190), dmg: Math.round((ph === 1 ? 28 : 34) + lv * .8), rdmg: Math.round(12 + lv * .5) }; }
 function orbFight() {
   if (ORB.B || !ORB.g) return; const O = orbS(), X = orbSpec(O.ph), obj = O.ph === 1 ? ORB.R : ORB.M; if (!obj) return;
   const q = O.ph === 1 ? ORB.R.root.position : ORB.M.g.position;
@@ -15734,7 +15736,7 @@ function orbGalDraw(g, font) {
   const p = galXY(sysById(O.sys)), t = performance.now() / 1000, x = p.x - 18, y = p.y - 14;
   g.save(); g.translate(x, y); g.rotate(Math.PI / 4); g.fillStyle = '#ff3a3a'; g.globalAlpha = .7 + Math.sin(t * 4) * .3; g.fillRect(-5, -5, 10, 10); g.restore();
   const ph = tiPhone(), left = x > 170 || ph && x > 110; g.textAlign = left ? 'right' : 'left'; const tx = left ? x - 9 : x + 9; // on the side with room, short on a phone
-  g.font = `700 9px ${font}`; g.fillStyle = '#ff6a6e'; g.fillText(ph ? `ORION · LV ${ORB_LV[3]}` : `ORION MASCAR · LV ${ORB_LV[3]} · SIDE QUEST`, tx, y + 1);
+  g.font = `700 9px ${font}`; g.fillStyle = '#ff6a6e'; g.fillText(ph ? `ORION · LV ${orbLv(3)}` : `ORION MASCAR · LV ${orbLv(3)} · SIDE QUEST`, tx, y + 1);
   g.font = `500 8px ${font}`; g.fillStyle = '#ffa8a8'; g.fillText(SPC.sys === O.sys ? (ph ? 'HELD HERE' : 'HELD HERE WHILE YOU STAY') : ph ? `${Math.max(0, Math.ceil(O.t == null ? ORB_CONQ_T : O.t))}S` : `TAKING ${sysById(O.sys).name.toUpperCase()} · ${Math.max(0, Math.ceil(O.t == null ? ORB_CONQ_T : O.t))}S`, tx, y + 12);
 }
 // in space: the titanium Frame in orbit round the system's main world. He never fires; he runs, and he has to be shot down
@@ -15766,7 +15768,7 @@ async function orbSpawnFoe() {
     const pos = H ? H.pos.clone().add(new THREE.Vector3(Math.cos(a) * r, (Math.random() - .5) * 400, Math.sin(a) * r)) : SPC.pos.clone().add(new THREE.Vector3(2500, 0, 0));
     M.inner.rotation.set(-.5, Math.PI, 0); M.g.position.copy(pos); SPC.scene.add(M.g); orbPlay(M, 'Aerial Strafe', 4, true);
     const max = 2600, hp = orbS().hp3 || max;
-    SC.foes.push({ m: M.g, M, pos, q: new THREE.Quaternion(), hp, max, speed: 200, cd: 99, burst: 0, mode: 'flee', modeT: 0, brk: new THREE.Vector3(), name: tiPhone() ? `ORION · LV ${ORB_LV[3]}` : `ORION MASCAR · LV ${ORB_LV[3]} · THE ORBITAL RAMPAGE`, orion: true, ang: a, orbR: r, H });
+    SC.foes.push({ m: M.g, M, pos, q: new THREE.Quaternion(), hp, max, speed: 200, cd: 99, burst: 0, mode: 'flee', modeT: 0, brk: new THREE.Vector3(), name: tiPhone() ? `ORION · LV ${orbLv(3)}` : `ORION MASCAR · LV ${orbLv(3)} · THE ORBITAL RAMPAGE`, orion: true, ang: a, orbR: r, H });
     spaceMsg(tiPhone() ? 'Orion Mascar is here · shoot him down' : 'Orion Mascar is here · shoot him down before he moves on'); sfx.alarm(); orbVo(3); orbTalkEnd = Math.max(orbTalkEnd, time + 2.6); orbTalkNext = time + 3; setTimeout(() => orbCue(3, 6), 2800); // then he starts talking: “You brought a spaceship to kill one man?!”
   } finally { ORB.spawning = false; }
 }
@@ -27989,7 +27991,7 @@ const PEDIA_EVENTS = [
       'There is room aboard her for more than soldiers. The cats and dogs of Earth’s cities walk her five decks while the wanderer is away.'
     ] },
   { id: 'ch4orion', story: 4, showIf: () => !!(wanderer && wanderer.orion && (wanderer.orion.ph === 3 || wanderer.orion.dead) && c3f('croxDead')), name: 'ORION MASCAR’S OFFENSIVE', title: 'Conquest · the Milky Way', get sub() { return `Chapter ${chNow() >= 5 ? 'IV–V' : 'IV'} · 2127 AD`; }, cast: ['orion', 'croxian'],
-    get facts() { const O = orbS(), n = (O.conq || []).length; return [['Began', 'Earth, 2127 AD'], ['Commander', 'Orion Mascar, Grand Imperarch of Terra Imperia'], ['Phases', 'On foot (lv 40) · the Mascar Frame (lv 45) · the Orbital Rampage (lv 60)'],
+    get facts() { const O = orbS(), n = (O.conq || []).length; return [['Began', c3f('orionHunt') ? 'Earth, 2125 AD' : 'Earth, 2127 AD'], ['Commander', 'Orion Mascar, Grand Imperarch of Terra Imperia'], ['Phases', `On foot (lv ${orbLv(1)}) · the Mascar Frame (lv ${orbLv(2)}) · the Orbital Rampage (lv ${orbLv(3)})`],
       ['Systems fallen', O.dead ? 'All freed when he fell' : `${n} of ${SYSTEMS.length}`], ['Status', O.dead ? 'Ended · Orion Mascar shot down in orbit' : O.done ? 'The galaxy has fallen to him' : `Under way · he is taking ${sysById(O.sys).name}`]]; },
     get align() { return orbS().dead ? 'He meant to take every star the wanderer had ever looked at. The wanderer did not let him.' : 'Every system the wanderer leaves behind, he takes. The only place in the galaxy safe from him is wherever the wanderer is standing.'; },
     get paras() { const O = orbS(); return [
