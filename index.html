@@ -320,6 +320,7 @@ body.ch4 #title .taunt{display:block;position:absolute;right:calc(var(--sr) + 6v
   #title{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
   #title.sub .brand svg.mark{display:none}
   #title.sub .roster{max-height:min(34vh,300px)}
+  #title.sub .menu-wrap{background:rgba(7,10,17,.8);padding:10px 12px;border-radius:4px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)} /* sub-menus (Cutscenes, Wanderers, Settings) stay readable over the planet and the ship behind them */
   #title .menu-wrap{width:min(420px,calc(100vw - var(--sl) - var(--sr) - 40px));max-width:100%;min-width:0}
   #title .menu{min-width:0;max-width:100%}#title .menu.off{overflow:hidden}
   #title .m-where b{font-size:16px}
@@ -1003,6 +1004,7 @@ button.bm-c.no{opacity:.45}
 #xhud.cineonly{z-index:31;pointer-events:none}
 #xhud.cineonly > *:not(#xDlg){display:none!important}
 #xhud.cineonly #xDlg{pointer-events:auto}
+#xhud.cineonly.mnskip #xSkip{display:inline-block!important} /* Malia and Nico's scene: a Skip you can tap */
 
 #fcNarr{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,84vw);text-align:center;font-size:clamp(15px,1.9vw,21px);line-height:1.7;letter-spacing:.04em;color:var(--ink);opacity:0;transition:opacity 1s ease;font-style:italic}
 #fcNarr.on.show{opacity:1}
@@ -25268,7 +25270,7 @@ async function maliaNicoStart(replay) { // replay: from the main menu's Cutscene
   if (MN.photo && MN.photo.m.parent) MN.photo.m.parent.remove(MN.photo.m); MN.photo = null;
   if (dead) { MN.photo = { m: mnPhoto(shot), st: 'hold', t: 0 }; deck.add(MN.photo.m); const R = MN.actors.malia; R.fx.face = -Math.PI / 2; R.fx.faceFix = true; } // at his bunk, her back to the room
   MN.cam = { near: camera.near, far: camera.far, fov: camera.fov }; camera.near = .05; camera.far = 60; camera.fov = camera.aspect < 1 ? 64 : 48; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
-  MN.t = 0; MN.shot = null; MN.side = null; MN.brawl = false; MN.shake = 0; MN.flash = 0; ui.xhud.classList.add('cineonly'); bo.style.opacity = 0;
+  MN.t = 0; MN.shot = null; MN.side = null; MN.brawl = false; MN.shake = 0; MN.flash = 0; ui.xhud.classList.add('cineonly', 'mnskip'); bo.style.opacity = 0;
   setTimeout(() => notice(SHIPK === 'jewel' ? 'Aboard the Jewel of Archamus' : 'Aboard the Nostra', 'THE CREW DECK', 2800), 300);
   const step = i => {
     if (!MN.on) return; if (i >= lines.length) { maliaNicoEnd(); return; }
@@ -25306,7 +25308,10 @@ function mnHideOthers() { // the rest of the crew and the pets, including any th
 }
 const mnCB = (x, z) => { const [x0, x1, z0, z1] = SHIP_BOUNDS[SHIPI.crew]; return [clamp(x, x0 + .35, x1 - .35), clamp(z, z0 + .35, z1 - .35)]; }; // the camera stays inside the crew deck's walls
 function maliaNicoTick(dt) {
-  dt = Math.min(dt, .05); MN.t += dt; mnHideOthers(); const d = ex.dlg, who = d ? d.who : '';
+  dt = Math.min(dt, .05); MN.t += dt; mnHideOthers();
+  const asp = camera.aspect, up = asp < 1, fv = up ? 64 : 48; if (camera.fov !== fv) { camera.fov = fv; camera.updateProjectionMatrix(); } // turned the phone mid-scene
+  const fitW = w => w / (2 * Math.tan(fv * Math.PI / 360) * Math.min(asp, 1.6)); // how far back to stand to fit w metres across
+  const d = ex.dlg, who = d ? d.who : '';
   const ids = { 'MALIA DE TORO': 'malia', NICO: 'nico', 'CROXIAN MASCAR': 'croxian' }, A = MN.actors, sp = A[ids[who]];
   for (const [id, R] of Object.entries(A)) mnActor(id, R, dt);
   let pos, at;
@@ -25315,18 +25320,18 @@ function maliaNicoTick(dt) {
     if (ph.st === 'hold') { M.position.set(m.x + fx * .36 - fz * .12, 1.12, m.z + fz * .36 + fx * .12); M.rotation.set(-1.05, f + Math.PI, 0, 'YXZ'); } // in her hand, tilted up to her face
     else if (ph.st === 'up') { M.position.set(m.x + fx * .5 - fz * .14, 1.5, m.z + fz * .5 + fx * .14); M.rotation.set(0, f, 0, 'YXZ'); } // held up at Nico
     else if (ph.st === 'fall') { ph.t += dt; const k = Math.min(1, ph.t / .7); M.position.lerpVectors(ph.from, ph.to, k); M.position.y = lerp(ph.from.y, .012, k * k); M.rotation.set(-Math.PI / 2 * k, f + k * 2.2, 0, 'YXZ'); if (k >= 1) ph.st = 'floor'; } }
-  if (MN.camK === 'photo' && ph) { const M = ph.m, nrm = new THREE.Vector3(0, 0, 1).applyEuler(M.rotation); pos = M.position.clone().addScaledVector(nrm, ph.st === 'up' ? .9 : .24).toArray(); pos[1] += .04; at = M.position.toArray(); }
-  else if (MN.camK === 'malia' && !MN.brawl) { const f = A.malia.fx.face || 0, F = A.malia.fx.faceFix ? -1.3 : 1.5, sd = A.malia.fx.faceFix ? .55 : .35; // facing the bunk: over her shoulder, the photo in her hand; otherwise her face
+  if (MN.camK === 'photo' && ph) { const M = ph.m, nrm = new THREE.Vector3(0, 0, 1).applyEuler(M.rotation); pos = M.position.clone().addScaledVector(nrm, ph.st === 'up' ? Math.max(.9, fitW(.9)) : Math.max(.24, fitW(.22))).toArray(); pos[1] += .04; at = M.position.toArray(); }
+  else if (MN.camK === 'malia' && !MN.brawl) { const f = A.malia.fx.face || 0, F = (A.malia.fx.faceFix ? -1 : 1) * (up ? 1.9 : A.malia.fx.faceFix ? 1.3 : 1.5), sd = A.malia.fx.faceFix ? (up ? .3 : .55) : (up ? .15 : .35); // facing the bunk: over her shoulder, the photo in her hand; otherwise her face
     const [cx, cz] = mnCB(m.x + Math.sin(f) * F + Math.cos(f) * sd, m.z + Math.cos(f) * F - Math.sin(f) * sd); pos = [cx, 1.62, cz]; at = A.malia.fx.faceFix ? [m.x + Math.sin(f) * .4, 1.15, m.z + Math.cos(f) * .4] : [m.x, 1.45, m.z]; }
   else if (MN.brawl || MN.camK === 'pair' || MN.shake > .05 || (A.nico.fx.dk > .2)) { // side on, wide enough to see the blows land
     const dk = A.nico.fx.dk, fa = A.nico.fx.face || 0, bx = n.x - Math.sin(fa) * .8 * dk, bz = n.z - Math.cos(fa) * .8 * dk; // on the floor, frame her whole body, not her feet
-    const cx = (m.x + bx) / 2, cz = (m.z + bz) / 2, dx = bx - m.x, dz = bz - m.z, l = Math.hypot(dx, dz) || 1, nx = -dz / l, nz = dx / l, r = 2.5 + dk * .7;
+    const cx = (m.x + bx) / 2, cz = (m.z + bz) / 2, dx = bx - m.x, dz = bz - m.z, l = Math.hypot(dx, dz) || 1, nx = -dz / l, nz = dx / l, r = Math.max(2.5 + dk * .7, fitW(l + 1.3 + dk * 1.2));
     const score = sg => { const x = cx + nx * r * sg, z = cz + nz * r * sg, c = A.croxian && A.croxian.root.position; const [bx2, bz2] = mnCB(x, z); let v = (Math.abs(bx2 - x) + Math.abs(bz2 - z) < .01 ? 0 : -5) + (x > cx ? .3 : 0); /* the bunks are along the port side: film from starboard when it's a toss-up */
       if (c) { const t = clamp(((c.x - x) * (cx - x) + (c.z - z) * (cz - z)) / (r * r), 0, 1); v += Math.min(1.5, Math.hypot(c.x - (x + (cx - x) * t), c.z - (z + (cz - z) * t))); } return v; }; // the side with nobody in the way (Croxian, waiting)
     if (MN.side == null || score(MN.side) < score(-MN.side) - .4) MN.side = score(1) >= score(-1) ? 1 : -1; const s = MN.side;
     { const [qx, qz] = mnCB(cx + nx * r * s, cz + nz * r * s); pos = [qx, 1.55 + dk * .25, qz]; } at = [cx, 1.3 - dk * .55, cz];
   } else if (sp) { const L = sp === A.malia ? A.nico : A.malia, q = sp.root.position, l = L.root.position;
-    const dx = q.x - l.x, dz = q.z - l.z, dd = Math.hypot(dx, dz) || 1; { const [qx, qz] = mnCB(l.x - dx / dd * 1.35 + dz / dd * .8, l.z - dz / dd * 1.35 - dx / dd * .8); pos = [qx, 1.72, qz]; } at = [q.x, 1.55, q.z]; }
+    const dx = q.x - l.x, dz = q.z - l.z, dd = Math.hypot(dx, dz) || 1; { const bk = up ? 1.9 : 1.35, sd = up ? .4 : .8, [qx, qz] = mnCB(l.x - dx / dd * bk + dz / dd * sd, l.z - dz / dd * bk - dx / dd * sd); pos = [qx, 1.72, qz]; } /* upright phone: further back and nearer the line, so the speaker isn't cut off */ at = [q.x, 1.55, q.z]; }
   else { pos = [2.2, 1.85, 4.0]; at = [-.2, 1.2, .6]; }
   const key = pos.map(v => (Math.round(v / .6) * .6).toFixed(1)).join() + (MN.brawl ? 'b' : '');
   if (key !== MN.shot) { const cut = (!MN.brawl && MN.camK !== 'photo') || !MN.shot || !MN.shot.endsWith('b'); /* a cut between speakers; the fight's camera follows */ MN.shot = key; if (cut) { camera.position.set(...pos); lookTarget.set(...at); } }
@@ -25342,7 +25347,7 @@ function maliaNicoEnd() {
     if (MN.photo && MN.photo.m.parent) MN.photo.m.parent.remove(MN.photo.m); MN.photo = null;
     if (MN.decks) SHIPI.decks.forEach((g, i) => { g.visible = MN.decks[i]; }); MN.decks = null; for (const o of MN.hid || []) o.visible = true; MN.hid = [];
     if (MN.cam) { Object.assign(camera, MN.cam); camera.updateProjectionMatrix(); MN.cam = null; } renderer.domElement.style.filter = '';
-    ui.xhud.classList.remove('cineonly'); MN.on = false; bo.style.opacity = 0;
+    ui.xhud.classList.remove('cineonly', 'mnskip'); MN.on = false; bo.style.opacity = 0;
     if (MN.replay) { MN.replay = false; cutDone(); return; } // replayed from Cutscenes: the save is untouched
     state = 'explore'; ex.snap = true; clock.getDelta(); resize(); setC3({ maliaNico: true });
     setTimeout(() => notice('The crew deck', 'MALIA KNOWS', 4200), 700);
