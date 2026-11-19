@@ -1,8 +1,8 @@
 # Malia confronts Nico · Malia de Toro, Nico, Croxian Mascar (Chapters III–V)
 
-Aboard the Nostra or the Jewel of Archamus, on the crew deck. Pack: `data/maliaNicoVoices.js` (MALIANICO1–38, in this order). A missing recording shows as a subtitle.
+Aboard the Nostra or the Jewel of Archamus, on the crew deck. Pack: `data/maliaNicoVoices.js` (MALIANICO1–40, in this order). A missing recording shows as a subtitle.
 
-**Not recorded yet.**
+**All 40 lines recorded.**
 
 ## Croxian alive: after the reveal at Nico's house (1–30)
 
@@ -55,3 +55,12 @@ Malia finds a photo of Croxian and Nico at his bunk. **She never speaks**; only 
 | MALIANICO36.mp3 | Nico | You want to hit someone? Fine! Come on, then! You think you’re the only one who fucking lost him? | Nico hits back |
 | MALIANICO37.mp3 | Nico | …He had a son, Malia. Croxian had a son. He never even knew. He never got to know. |  |
 | MALIANICO38.mp3 | Nico | …His name is Orion. |  |
+
+## Coda: Orion Mascar, laughing (39–40)
+
+Plays straight after the photo scene, **only if Orion went to Hawthorne and is still alive** (never once you've shot him down). Far from the Nostra, Orion stands alone at a viewport, red light from a nebula on his face, laughing like something in him has broken. He's laughing through both lines: hard on the first, down to a giggle on the second. After his last word the game goes straight back to play.
+
+| File | Speaker | Line | Action |
+|---|---|---|---|
+| MALIANICO39.mp3 | Orion Mascar | Ha… haha… HAHAHA! Do you hear that, Croxian? Nothing. No engines. No channel. Thomas says the quiet passes. It doesn’t pass, son. It just gets LOUDER! | Laughing hard, head thrown back (from behind, out at the stars) |
+| MALIANICO40.mp3 | Orion Mascar | Run, little hero. Run as far as the stars go. I’ll be waiting at the last one… and I’ll still be laughing. | Quieter, a giggle under it (his face, lit red) |
