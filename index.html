@@ -22191,6 +22191,7 @@ function enterShip(from) {
   ex.yaw = player.rotation.y + Math.PI; ex.pitch = .2; ex.dist = Math.min(ex.dist || 4, 3.4); vel.set(0, 0, 0); ex.snap = true;
   ui.xhud.classList.remove('cutting', 'cineonly', 'dreaming'); renderTasks();
   notice(from === 'space' ? 'Aboard · in flight' : 'Aboard', SHIPK === 'jewel' ? 'THE JEWEL OF ARCHAMUS' : 'THE NOSTRA', 2400); sfx.whoosh(); renderHotbar(); siegeShipLine(from);
+  if (mnDue()) setTimeout(() => maliaNicoStart().catch(e => { console.error(e); MN.on = false; if (state === 'maliaNico') state = 'explore'; $('#blackout').style.opacity = 0; }), 2200); // Malia has words for Nico, now she knows
   if (c3f('orionGone') && !c3f('orionGoneSeen')) { setC3({ orionGoneSeen: true }); setTimeout(() => lootMsg('Orion’s bunk is made. His rifle is gone.', '#cfd6e6'), 2600); } // the first time aboard after he left
 }
 function leaveShip(to) { // to: 'ground' (down the ramp), 'space' (back to the helm), or 'takeoff'
@@ -25110,6 +25111,94 @@ function nicoHouseLeave(kind) {
     bo.style.opacity = 0;
     if (kind === 'reveal') { setC3({ orionJrReveal: true }); sfx.thud(); setTimeout(() => notice('Nico’s house', 'ORION BROWN IS CROXIAN’S SON', 4600), 700);
       setTimeout(() => lootMsg(tiPhone() ? 'Croxian is a father' : 'Croxian has a son he never knew about · Daniel Brown is raising him as his own', compColor('croxian')), 5600); }
+  }, 1100);
+}
+/* ---- Malia confronts Nico, aboard the Nostra or the Jewel of Archamus: the first time you board after the truth comes out at Nico's house
+   (ch3.orionJrReveal). Croxian told Malia on the walk back. Plays only if you spared Malia at Karribassa and she's in your crew (with you or
+   waiting aboard). Croxian has his say if he's in your crew too. On the crew deck, everyone else out of the way. State 'maliaNico'; saves
+   ch3.maliaNico. Voiced (when recorded): data/maliaNicoVoices.js, MALIANICO1–25 in MN_LINES order; the script is
+   assets/audio/malia_nico/VOICE_SCRIPT.md. An empty slot is a subtitle. ---- */
+const MN = { on: false, actors: {}, t: 0, shot: null };
+// [who, line, recording number, only if Croxian is here (c) or only if he isn't (n)]
+const MN_LINES = [
+  ['MALIA DE TORO', 'Nico. A word.', 1],
+  ['NICO', 'Malia. If this is about the house…', 2],
+  ['MALIA DE TORO', 'He told me. On the walk back to the ship, he told me all of it. He said I should hear it from him before I heard it from the crew.', 3],
+  ['MALIA DE TORO', 'That summer outside Ad-Nostra, I was in that camp. I wrote the patrol rosters myself. Every night he wasn’t where I’d put him, I covered for him. I thought he was out walking. Thinking. He used to do that.', 4],
+  ['MALIA DE TORO', 'Did you know about me? When he came to your door, did he tell you someone was waiting for him in that camp?', 5],
+  ['NICO', '…He told me. He said it was complicated. I told him I was married. We were both lying to someone. I won’t pretend we weren’t.', 6],
+  ['MALIA DE TORO', 'Complicated. Years at his side, and I’m complicated.', 7],
+  ['MALIA DE TORO', 'Then you stood up in the House of Commons and said his name like you’d known him all your life. Hawthorne sent us after you that same afternoon. I remember wondering how you knew it.', 8],
+  ['CROXIAN MASCAR', 'Malia. She isn’t the one you should be angry with. I’m the one who…', 9, 'c'],
+  ['MALIA DE TORO', 'You’ll get your turn, Croxian. Not now.', 10, 'c'],
+  ['NICO', 'You want me to say I’m sorry. I am. Not for him, and not for the boy. For you. You didn’t do anything to deserve finding out like this.', 11],
+  ['MALIA DE TORO', 'Don’t be kind to me. I can’t do this if you’re kind to me.', 12],
+  ['MALIA DE TORO', 'Do you know what I gave up at Karribassa? My rank. My name. Everyone I ever served with. I told the wanderer where he goes, I go, and I meant it.', 13],
+  ['MALIA DE TORO', 'And now there’s a boy on a farm in Africa with his eyes.', 14],
+  ['CROXIAN MASCAR', 'I should have told you. Years ago. I was a coward about it, and I let you find out from a farmhouse door.', 15, 'c'],
+  ['MALIA DE TORO', 'Yes. You should have.', 16, 'c'],
+  ['CROXIAN MASCAR', 'I’m not asking you to forgive it. I’m asking you not to go.', 17, 'c'],
+  ['MALIA DE TORO', 'So what happens when the war’s done, Nico? You get the boy, and his father, and I get the rosters?', 18],
+  ['NICO', 'No. Daniel is raising that boy, and he’s his father in every way that counts. Croxian wants to know his son. That’s all it is. I’m not taking anyone from you.', 19],
+  ['MALIA DE TORO', 'I’m not going anywhere. Not because of you. Not even because of him. Hawthorne is still out there, and I want to see his face when this crew walks into his hall.', 20],
+  ['MALIA DE TORO', 'But don’t ask me to like you, Nico. Not yet.', 21],
+  ['NICO', 'That’s fair. For what it’s worth, he talked about you. That whole summer, he never stopped talking about you.', 22],
+  ['MALIA DE TORO', '…That might be the worst thing you could have told me.', 23],
+  ['CROXIAN MASCAR', 'Malia…', 24, 'c'],
+  ['MALIA DE TORO', 'Later, Croxian. Tonight, you sleep in the cargo bay.', 25, 'c']
+];
+const mnIn = id => !!wanderer && ((wanderer.party || []).includes(id) || !!(wanderer.aboard || {})[id]) && !((wanderer.dip && wanderer.dip.lent) || {})[id] && !(wanderer.dungeon || {})[id]; // in your crew, and not away
+const mnDue = () => !!(wanderer && c3f('orionJrReveal') && !c3f('maliaNico') && (wanderer.ch3 || {}).maliaFate === 'spared' && !c3f('maliaDead') && mnIn('malia') && nicoJoined() && !ALN.on);
+let MN_VO = null;
+function mnVo() { if (!MN_VO) MN_VO = loadDataScript('maliaNicoVoices').then(ok => ok ? sfx.loadClips('maliaNicoVoices') : []).catch(() => []).then(v => { if (!v || !v.length) MN_VO = null; return v || []; }); return MN_VO; }
+async function maliaNicoStart() {
+  if (MN.on || !mnDue() || !SHIPI.on || ex.mode !== 'ship' || state !== 'explore' || ex.dlg) return false;
+  const crox = mnIn('croxian') && !c3f('croxDead'), lines = MN_LINES.filter(L => !L[3] || (L[3] === 'c') === crox);
+  MN.on = true; state = 'maliaNico'; ex.keys.clear(); vel.set(0, 0, 0); closeDialog(); SHIPI.goal = null;
+  const bo = $('#blackout'); bo.style.transition = 'opacity 1s'; bo.style.opacity = 1; sfx.click();
+  const who = ['malia', 'nico', ...(crox ? ['croxian'] : [])];
+  const [rigs, vo] = await Promise.all([Promise.all(who.map(id => (id === 'malia' ? compRigFor('malia') : nhRig(id)).catch(() => null))), mnVo().catch(() => [])]);
+  await waitMs(900);
+  const deck = SHIPI.decks[SHIPI.crew];
+  if (!deck || !rigs[0]) { MN.on = false; state = 'explore'; bo.style.opacity = 0; return false; } // no Malia to show: try again next time aboard
+  // the crew deck, and only the three of them on it
+  MN.decks = SHIPI.decks.map(g => g.visible); SHIPI.decks.forEach((g, i) => { g.visible = i === SHIPI.crew; });
+  MN.hid = []; for (const o of [...Object.values(SHIPI.rigs).map(R => R && R.root), ...Object.values(SHIPI.frigs || {}).map(R => R && R.root), ...PETS.roam.map(o => o.R ? o.R.root : o.g), player]) if (o && o.visible) { o.visible = false; MN.hid.push(o); }
+  const spots = { malia: [-1.15, .9], nico: [1.05, 1.5], croxian: [.55, -.75] };
+  MN.actors = {}; who.forEach((id, i) => { const R = rigs[i]; if (!R) return; for (const g of R.gear || []) g.visible = false; const [x, z] = spots[id]; R.root.position.set(x, 0, z); R.root.traverse(o => { if (o.isMesh) o.frustumCulled = false; }); deck.add(R.root); R.mode = 'idle'; MN.actors[id] = R; });
+  const face = (a, b) => { const A = MN.actors[a], B = MN.actors[b]; if (A && B) A.root.rotation.y = Math.atan2(B.root.position.x - A.root.position.x, B.root.position.z - A.root.position.z); };
+  face('malia', 'nico'); face('nico', 'malia'); face('croxian', 'malia');
+  MN.cam = { near: camera.near, far: camera.far, fov: camera.fov }; camera.near = .05; camera.far = 60; camera.fov = camera.aspect < 1 ? 64 : 48; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
+  MN.t = 0; MN.shot = null; ui.xhud.classList.add('cineonly'); bo.style.opacity = 0;
+  setTimeout(() => notice(SHIPK === 'jewel' ? 'Aboard the Jewel of Archamus' : 'Aboard the Nostra', 'THE CREW DECK', 2800), 300);
+  const clips = lines.map(L => (vo || [])[L[2] - 1] || null);
+  setTimeout(() => dialogSeq(lines.map(L => [L[0], [L[1]]]), maliaNicoEnd, clips), 1800);
+  return true;
+}
+function maliaNicoTick(dt) {
+  MN.t += dt; const d = ex.dlg, who = d ? d.who : '';
+  const ids = { 'MALIA DE TORO': 'malia', NICO: 'nico', 'CROXIAN MASCAR': 'croxian' }, A = MN.actors, sp = A[ids[who]];
+  for (const R of Object.values(A)) if (!R.static) animRig(R, dt);
+  const nm = A.nico && A.nico.root.userData.mouth; if (nm) nm.scale.y = who === 'NICO' ? 1 + Math.abs(Math.sin(MN.t * 11)) * 1.6 : 1;
+  // the speaker, over the shoulder of whoever they're talking to (Malia has eyes for Nico; Croxian and Nico answer Malia); wide between lines
+  let pos, at;
+  if (sp) { const L = sp === A.malia ? (A.nico || A.croxian) : A.malia, q = sp.root.position, l = L ? L.root.position : new THREE.Vector3(0, 0, 3);
+    const dx = q.x - l.x, dz = q.z - l.z, dd = Math.hypot(dx, dz) || 1; pos = [clamp(l.x - dx / dd * 1.35 + dz / dd * .8, -3, 3), 1.72, clamp(l.z - dz / dd * 1.35 - dx / dd * .8, -2.6, 6)]; at = [q.x, sp.static ? 1.5 : 1.55, q.z]; }
+  else { pos = [2.2, 1.85, 4.2]; at = [-.2, 1.2, .4]; }
+  const key = pos.map(v => v.toFixed(1)).join();
+  if (key !== MN.shot) { MN.shot = key; camera.position.set(...pos); lookTarget.set(...at); }
+  camera.position.lerp(tmpV.set(...pos), Math.min(1, dt * 1.2)); lookTarget.lerp(tmpV2.set(...at), Math.min(1, dt * 3)); camera.lookAt(lookTarget);
+}
+function maliaNicoEnd() {
+  const bo = $('#blackout'); bo.style.transition = 'opacity 1s'; bo.style.opacity = 1;
+  setTimeout(() => {
+    for (const R of Object.values(MN.actors)) if (R && R.root && R.root.parent) R.root.parent.remove(R.root); MN.actors = {};
+    if (MN.decks) SHIPI.decks.forEach((g, i) => { g.visible = MN.decks[i]; }); MN.decks = null; for (const o of MN.hid || []) o.visible = true; MN.hid = [];
+    if (MN.cam) { Object.assign(camera, MN.cam); camera.updateProjectionMatrix(); MN.cam = null; }
+    ui.xhud.classList.remove('cineonly'); state = 'explore'; MN.on = false; ex.snap = true; clock.getDelta(); resize();
+    setC3({ maliaNico: true }); bo.style.opacity = 0;
+    setTimeout(() => notice('The crew deck', 'MALIA KNOWS', 4200), 700);
+    setTimeout(() => lootMsg(tiPhone() ? 'Malia is staying · for now' : 'Malia is staying with the crew · for Hawthorne, she says, not for Nico', compColor('malia')), 5200);
   }, 1100);
 }
 async function farmDoorTalk() {
@@ -31084,6 +31173,7 @@ function loopFrame() {
   if (state === 'dream') { tickDialog(dt); updateDream(dt); sfx.music(0); renderer.render(dScene, camera); return; }
   if (state === 'farmCut') { farmCutTick(dt); tickDialog(dt); renderer.render(fhc.scene, camera); return; }
   if (state === 'nicoHouse') { nicoHouseTick(dt); tickDialog(dt); renderer.render(fhc.scene, camera); return; }
+  if (state === 'maliaNico') { if (MN.actors.malia) maliaNicoTick(dt); tickDialog(dt); if (SHIPI.scene) renderer.render(SHIPI.scene, camera); return; }
   if (state === 'ch2intro') { updateCh2Intro(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); renderer.render(afScene, camera); return; }
   if (state === 'travel') { updateParticles(dt); renderer.render(wScene, camera); return; }
   if (state === 'cantinaScene') { updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
