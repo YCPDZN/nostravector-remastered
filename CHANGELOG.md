@@ -2770,3 +2770,31 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - It plays once (`ch3.maliaNico`), and never if Malia was killed.
 - **In Cutscenes:** **Where He Goes, I Go** (Chapter III) takes **Close the Channel**'s place on the main menu's Cutscenes list on the routes where Croxian lives (good and neutral). The only time both are listed is when Croxian was killed and Malia spared: Close the Channel, then the photo. It replays aboard whichever ship you have. Esc skips it, in the story and from the menu.
 - Not voiced yet: the lines show as subtitles. The script for the 38 recordings is `assets/audio/malia_nico/VOICE_SCRIPT.md`; once recorded, they go in `data/maliaNicoVoices.js` as MALIANICO1–38.
+
+### Malia confronts Nico, voiced (the fight)
+- **The fight after the reveal at Nico's house is voiced:** all 30 lines, with Malia de Toro, Nico and Croxian Mascar (MALIANICO1–30). That covers everything from "Nico. A word." through the brawl to "Tonight, you sleep in the cargo bay."
+- **The photo scene** (the route where Croxian was killed, Nico's lines 31–38) isn't recorded yet, so it still shows as subtitles.
+- The pack is `data/maliaNicoVoices.js` (loaded when the scene starts). The source MP3s are in `assets/audio/malia_nico/`.
+
+### Malia confronts Nico: the photo, voiced, and Orion's coda
+- **The photo scene is voiced too:** Nico's 8 lines on the route where Croxian was killed (MALIANICO31–38), from "Malia? You've been down here for hours" to "…His name is Orion." All 38 lines of the scene are recorded now.
+- **A coda, if Orion Mascar is still out there.** On the photo route, as Nico says the boy's name, it cuts away from the crew deck to Orion Mascar, alone at a viewport far from the Nostra, red light from a nebula on his face. He's laughing like something in him has broken, through two lines ("Do you hear that, Croxian? Nothing… It just gets LOUDER!" and "Run, little hero. Run as far as the stars go…"). When he finishes speaking, you're straight back in the game.
+- It only plays if Orion went to Hawthorne and **is still alive**. Once you've shot him down, the scene ends on Nico, as before. It replays from Cutscenes with the photo scene, on the same terms. Esc / Skip skips it along with the rest of the scene.
+- Orion's two lines aren't recorded yet, so they show as subtitles. They're in `assets/audio/malia_nico/VOICE_SCRIPT.md` as MALIANICO39–40, and once recorded they go on the end of `data/maliaNicoVoices.js`.
+- **Update:** Orion's two coda lines are recorded (MALIANICO39–40), so the whole scene, coda included, is voiced: all 40 lines.
+
+### Malia confronts Nico: the crew watches
+- **The fight on the crew deck has an audience now** (the route where Croxian lives). Everyone else aboard or following you stands round the edges of the deck and watches: story companions and imported characters alike, on the Nostra or the Jewel of Archamus, whichever ship you have. They turn to follow the fight as it moves.
+- **Orion Mascar is there in the background** if he's still on your side: back by the bunks, near his son. Once Croxian steps in to pull them apart, Orion watches Croxian, not the fight.
+- Up to eight watch at once, with their weapons put away. They stand clear of the bunks, the mess table and the spot where Nico gets knocked back. Anyone who'd block the camera, by standing between it and the fight or right up against the lens, steps out of shot for that moment.
+- The photo route (Croxian killed) is unchanged: Malia and Nico are still alone on the deck.
+
+### The End of the Grand Imperarch: Sevirrus speaks
+- **When Hak tells Hawthorne what he used to be called, it's Sevirrus talking.** From "Sevirrus." on, his lines are labelled **SEVIRRUS / HAK CHOMPJAK**, in blood red (with a dark halo, so they read against the red of the bunker). Once Hawthorne is dead and Sevirrus has let go, his last line ("He is yours to remember, wanderer…") is **HAK CHOMPJAK V** again, in his own gold.
+- **Five new lines during the murder, all Sevirrus, all worse:**
+  - By the throat: "Carax burned for three days, Thomas. I remember the smell. I remember that I liked it." Then, as the grip tightens: "My father begged too. Right at the end, with my hand where yours is now. They all sound the same."
+  - After "Look at me.": "No. Keep your eyes open. I want to be the last thing your empire ever sees."
+  - With the sword through him: "Twenty-six years in a cell, learning to be good. You undid all of it in one war. Feel that? That is every one of those years, coming back to you." Then, almost tender: "Shh. Shh. It is almost over. It was always going to end like this. With my hand on you." Then "Goodnight, Grand Imperarch."
+  - Each has its own shot. The film's timing still runs off the voice clips' own lengths.
+- The new lines aren't recorded yet, so they show as subtitles. They're CH3POSTFINALBOSS21–25, after the existing 20 in `data/hawDeathVoices.js`, so the old recordings keep their numbers. The script (new file) is `assets/audio/hawthorne_death_ch3/VOICE_SCRIPT.md`.
+- **Update: Sevirrus is voiced.** The five new lines are recorded (CH3POSTFINALBOSS21–25), and "He never left…" (17) and "Look at me." (18) have new takes in Sevirrus' voice, so everything he says through Hak is in the same voice. The old takes of 17 and 18 are kept beside the new ones as `_PREVIOUS`.
