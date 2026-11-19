@@ -5775,6 +5775,7 @@ function exploreCamera(dt) {
 addEventListener('keydown', e => {
   if (e.code === 'Escape' && !slotUI.root.classList.contains('hidden')) { closeSlots(); return; }
   if (state === 'hawMars' || state === 'jamesRev' || state === 'c4End' || state === 'orionCut') { if (e.code === 'Escape') skipMeeting(); return; }
+  if (state === 'maliaNico' && e.code === 'Escape') { skipMeeting(); return; } // Malia and Nico's fight: Esc skips it (E / Space still read on)
   if (state === 'nightmare' && NM.on) { if (NM.phase === 'wake' && ['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } else if (e.code === 'Escape') { e.preventDefault(); skipMeeting(); } return; }
   if (state === 'dream') { if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } return; }
   if (state === 'wcut') { if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } else if (e.code === 'Escape') skipMeeting(); return; }
@@ -8521,6 +8522,7 @@ function skipMeeting() {
   if (state === 'jamesRev' && JRV.on) { jrvSkip(); return; }
   if (state === 'c4End' && C4E.on) { c4eSkip(); return; }
   if (state === 'hawMars' && HWM.on) { const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(hwmEnd, 450); return; }
+  if (state === 'maliaNico' && MN.on && !MN.ending) { closeDialog(); maliaNicoEnd(); return; }
   if (state === 'orionCut' && OCUT.on) { const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(ocutEnd, 450); return; }
   if (state === 'nightmare' && NM.on) { if (NM.phase === 'sev') { const now = performance.now(); sevSkip(now - (NM.skipAt || 0) < 700); NM.skipAt = now; return; } if (NM.phase === 'mem' || NM.phase === 'hwd') nmWake(); else if (NM.phase === 'wake') { closeDialog(); nmEnd(); } return; } // Skip: out of the memories, then past the wake-up
   if (state === 'trial' && trial.on && !trial.skipped) { trial.skipped = true; closeDialog(); endTrial(); return; }
@@ -17151,6 +17153,7 @@ const CUTS = [
   { id: 'orionCut', ch: 'Chapter III', name: 'CLOSE THE CHANNEL', sub: 'The Nostra · Orion, after Janira Prime', ok: () => c3f('orionGone'), play: () => startOrionCut(true) },
   { id: 'hawDeath', ch: 'Chapter III', name: 'THE END OF THE GRAND IMPERARCH', sub: 'Mercury · Hak Chompjak, and Sevirrus, one last time', ok: () => !!CH3S().hawBeaten || chNow() >= 4, play: () => hawDeath(() => cutDone()) },
   { id: 'alexiaFall', ch: 'Chapter III', name: 'NO SISTER OF MINE', sub: 'Eris · Vishara judges Alexia', ok: () => !!CH3S().alexiaBeaten || (chNow() >= 4 && !!CH3S().alexiaCoup), play: () => alexiaFall(() => cutDone()) },
+  { id: 'maliaNico', ch: 'Chapter III', name: 'WHERE HE GOES, I GO', sub: () => `${jewelOn() ? 'The Jewel of Archamus' : 'The Nostra'} · Malia confronts Nico`, ok: () => c3f('maliaNico'), play: () => maliaNicoStart(true) },
   { id: 'timeSkip', ch: 'Chapter IV', name: 'WHILE YOU SLEPT', sub: 'The galaxy · two years of the Catharsis', ok: () => !!(wanderer.ch4 && wanderer.ch4.timeSkip) || chNow() >= 5, play: () => skipNarrStart(() => cutDone(), { replay: true }) },
   { id: 'amgWake', ch: 'Chapter IV', name: 'THE LAST GARDEN', sub: 'Archiostal · Am-Grek, High Hierarch', ok: () => !!(wanderer.ch4 && wanderer.ch4.amgMet) || chNow() >= 5, play: () => amgWake({ replay: true }) },
   { id: 'good', ch: 'Chapter IV', name: 'THE CATHARSIS FALLS', sub: 'The good ending', ok: () => cutEnding() === 'good', play: () => ch4EndingPlay('good', { preview: true }) },
@@ -17160,7 +17163,7 @@ const CUTS = [
 function cutsRender() {
   const list = CUTS.filter(c => { try { return c.ok(); } catch { return false; } }), left = CUTS.length - list.length;
   $('#cutsHead').textContent = wanderer ? `Cutscenes · ${wanderer.name}` : 'Cutscenes';
-  $('#cutList').innerHTML = list.map((c, i) => `<button class="mi" data-c="${c.id}"><i>${pad(i + 1)}</i><span>${typeof c.name === 'function' ? c.name() : c.name}<small>${c.ch} · ${c.sub}</small></span><em class="arr">›</em></button>`).join('')
+  $('#cutList').innerHTML = list.map((c, i) => `<button class="mi" data-c="${c.id}"><i>${pad(i + 1)}</i><span>${typeof c.name === 'function' ? c.name() : c.name}<small>${c.ch} · ${typeof c.sub === 'function' ? c.sub() : c.sub}</small></span><em class="arr">›</em></button>`).join('')
     + `<div class="sub-head cuts-more">${list.length ? '' : 'Nothing yet · '}${left ? `${left} more to find as you play on` : 'Every cutscene found'}</div>`;
   for (const b of $('#cutList').querySelectorAll('[data-c]')) b.addEventListener('click', () => cutPlay(CUTS.find(c => c.id === b.dataset.c)));
 }
@@ -25185,8 +25188,10 @@ function mnBeat(b) {
   };
   if (at) setTimeout(go, +at); else go();
 }
-async function maliaNicoStart() {
-  if (MN.on || !mnDue() || !SHIPI.on || ex.mode !== 'ship' || state !== 'explore' || ex.dlg) return false;
+async function maliaNicoStart(replay) { // replay: from the main menu's Cutscenes (nothing saved, back to the list after)
+  if (MN.on || (!replay && (!mnDue() || !SHIPI.on || ex.mode !== 'ship' || state !== 'explore' || ex.dlg))) return false;
+  if (replay) { shipKindSet(jewelOn() ? 'jewel' : 'nostra'); shipInterior(); show(ui.xhud, true); }
+  MN.replay = !!replay; MN.ending = false;
   const crox = (wanderer.ch3 || {}).croxFate === 'spared' && !c3f('croxDead'), lines = MN_LINES.filter(L => !L[3] || (L[3] === 'c') === crox);
   MN.on = true; state = 'maliaNico'; ex.keys.clear(); vel.set(0, 0, 0); closeDialog(); SHIPI.goal = null;
   const bo = $('#blackout'); bo.style.transition = 'opacity 1s'; bo.style.opacity = 1; sfx.click();
@@ -25194,7 +25199,7 @@ async function maliaNicoStart() {
   const [rigs, vo] = await Promise.all([Promise.all(who.map(id => (id === 'croxian' ? nhRig('croxian') : compRigFor(id)).catch(() => null))), mnVo().catch(() => [])]);
   await waitMs(900);
   const deck = SHIPI.decks[SHIPI.crew];
-  if (!deck || !rigs[0] || !rigs[1]) { MN.on = false; state = 'explore'; bo.style.opacity = 0; return false; } // nobody to show: try again next time aboard
+  if (!deck || !rigs[0] || !rigs[1]) { MN.on = false; state = replay ? 'title' : 'explore'; bo.style.opacity = 0; return false; } // nobody to show: try again next time aboard
   // the crew deck, and only them on it
   MN.decks = SHIPI.decks.map(g => g.visible); SHIPI.decks.forEach((g, i) => { g.visible = i === SHIPI.crew; });
   MN.hid = []; for (const o of [...Object.values(SHIPI.rigs).map(R => R && R.root), ...Object.values(SHIPI.frigs || {}).map(R => R && R.root), ...PETS.roam.map(o => o.R ? o.R.root : o.g), player]) if (o && o.visible) { o.visible = false; MN.hid.push(o); }
@@ -25249,13 +25254,15 @@ function maliaNicoTick(dt) {
   renderer.domElement.style.filter = MN.flash > 0 ? `brightness(${(1 + MN.flash * 1.4).toFixed(2)}) saturate(${(1 - MN.flash).toFixed(2)})` : ''; MN.flash = Math.max(0, (MN.flash || 0) - dt * 2.5);
 }
 function maliaNicoEnd() {
+  if (MN.ending) return; MN.ending = true;
   const bo = $('#blackout'); bo.style.transition = 'opacity 1s'; bo.style.opacity = 1;
   setTimeout(() => {
     for (const R of Object.values(MN.actors)) if (R && R.root && R.root.parent) { R.root.rotation.set(0, 0, 0); R.root.parent.remove(R.root); } MN.actors = {}; MN.brawl = false;
     if (MN.decks) SHIPI.decks.forEach((g, i) => { g.visible = MN.decks[i]; }); MN.decks = null; for (const o of MN.hid || []) o.visible = true; MN.hid = [];
     if (MN.cam) { Object.assign(camera, MN.cam); camera.updateProjectionMatrix(); MN.cam = null; } renderer.domElement.style.filter = '';
-    ui.xhud.classList.remove('cineonly'); state = 'explore'; MN.on = false; ex.snap = true; clock.getDelta(); resize();
-    setC3({ maliaNico: true }); bo.style.opacity = 0;
+    ui.xhud.classList.remove('cineonly'); MN.on = false; bo.style.opacity = 0;
+    if (MN.replay) { MN.replay = false; cutDone(); return; } // replayed from Cutscenes: the save is untouched
+    state = 'explore'; ex.snap = true; clock.getDelta(); resize(); setC3({ maliaNico: true });
     setTimeout(() => notice('The crew deck', 'MALIA KNOWS', 4200), 700);
     setTimeout(() => lootMsg(tiPhone() ? 'Malia is staying · for now' : 'Malia is staying with the crew · for Hawthorne, she says, not for Nico', compColor('malia')), 5200);
   }, 1100);
