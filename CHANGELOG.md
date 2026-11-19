@@ -2762,3 +2762,10 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **The whole Nico's house scene is voiced, all 81 recordings:** Daniel Brown, Nico, Croxian Mascar and Orion Mascar. That covers the reveal that Orion Brown is Croxian's son, Orion Mascar's lines when he's with you, the later visits, the visit with Nico alone, and Daniel on his own.
 - Lines that change in Chapter IV (the boy is two, asleep in the next room) and lines that change when Orion is there have their own takes.
 - The pack is `data/nicoHouseVoices.js` (loaded when you go into the house). The source MP3s and `VOICE_SCRIPT.md` are in `assets/audio/nico_house/`.
+
+### Malia confronts Nico
+- **After the truth comes out at Nico's house, Malia de Toro goes after Nico.** The first time you board your ship afterwards (the Nostra, or the Jewel of Archamus in Chapter IV), the scene cuts to the crew deck. Croxian told Malia everything on the walk back. She was in Terra Imperia's camp outside Ad-Nostra that summer, writing the patrol rosters and covering for him every night he wasn't where she'd put him.
+- **It comes to blows.** When Nico admits she knew about her, Malia hits her, and it turns into a fistfight shouted through punches (with swearing, some of it in Spanish). Blows land with a thud, a flash and a shaking camera, and Nico goes down and gets back up. It's filmed like Hak's beating of Hawthorne.
+- It plays once, and only if you spared Malia at Karribassa. If Croxian is alive, he pulls them apart, takes the blame and asks Malia not to leave; otherwise Malia stops herself. She stays, for Hawthorne, she says, not for Nico, and Croxian sleeps in the cargo bay. Saved as `ch3.maliaNico`.
+- **In Cutscenes:** once you've seen it, it's on the main menu's Cutscenes list as **Where He Goes, I Go** (Chapter III), aboard whichever ship you have. Esc skips it, in the story and from the menu.
+- Not voiced yet: the lines show as subtitles. The script for the 31 recordings is `assets/audio/malia_nico/VOICE_SCRIPT.md`; once recorded, they go in `data/maliaNicoVoices.js` as MALIANICO1–31.
