@@ -13249,8 +13249,8 @@ async function chkTalk() {
     ['CHARON', 'Which is where we come in. I lift things. Kizna keeps people alive. Between us we are very nearly an army.'],
     ['KIZNA', 'We’re with you, wanderer. Point us at Mercury and Eris.']];
   const run = i => { if (i < L.length) { openDialog(L[i][0], [L[i][1]], false, () => run(i + 1), clip(i)); return; }
-    openChoice('CHARON AND KIZNA', [{ text: 'Welcome aboard, both of you', onPick: () => openDialog('CHARON', ['Excellent. Kizna, bring the rock.'], false, chkJoin, clip(5)) },
-      { text: 'Not yet', onPick: () => openDialog('KIZNA', ['We’ll be right here. Don’t take too long. Charon gets restless.'], false, () => {}, clip(6)) }]); };
+    openChoice('CHARON AND KIZNA', [{ text: 'Welcome aboard, both of you', onPick: () => openDialog('CHARON', ['Excellent. Kizna, bring the rock.'], false, () => { chkJoin(); orbHuntStart(9500); }, clip(5)) }, // after the siege notices
+      { text: 'Not yet', onPick: () => openDialog('KIZNA', ['We’ll be right here. Don’t take too long. Charon gets restless.'], false, () => orbHuntStart(900), clip(6)) }]); };
   run(0);
 }
 function chkJoin() {
@@ -15394,7 +15394,11 @@ function orbChatter(ph) { // the next line in the phase's order, when he's due o
 }
 const orbS = () => (wanderer && (wanderer.orion || (wanderer.orion = { ph: 1 }))) || { ph: 1 };
 function orbSave() { const c = curChar(); if (c) c.orion = wanderer.orion; saveRoster(); }
-const orbOn = () => { if (!wanderer || !orionVillain()) return false; const ch = wanderer.chapter | 0; if (ch < 4 || (ch === 4 && !(wanderer.ch4 && wanderer.ch4.timeSkip))) return false; return !orbS().dead; };
+const orbOn = () => { if (!wanderer || !orionVillain()) return false; const ch = wanderer.chapter | 0; if (!c3f('orionHunt') && (ch < 4 || (ch === 4 && !(wanderer.ch4 && wanderer.ch4.timeSkip)))) return false; return !orbS().dead; }; // from the War of Restoration talk on Charon (orionHunt); saves already past it without the flag, from the time skip as before
+function orbHuntStart(delay) { // the War of Restoration talk on Charon, before the Siege of Sol: if Croxian died, this is when Orion Mascar starts hunting you
+  if (!wanderer || c3f('orionHunt') || !orionVillain() || orbS().dead) return; setC3({ orionHunt: true }); renderTasks();
+  setTimeout(() => { notice('Side quest', tiPhone() ? 'ORION MASCAR WAITS ON EARTH' : 'ORION MASCAR IS WAITING FOR YOU ON EARTH', 4600); sfx.alarm && sfx.alarm(); lootMsg(tiPhone() ? 'Land on Earth · he is under the crimson beacon' : 'Land anywhere on Earth: he waits for you under a crimson beacon', '#ff4a3a'); }, delay || 1200);
+}
 const orbEarthQ = () => orbOn() && orbS().ph < 3;
 const orbSpaceQ = () => orbOn() && orbS().ph === 3;
 const orbFallen = () => (orbS().conq || []).length;

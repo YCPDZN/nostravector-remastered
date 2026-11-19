@@ -2798,3 +2798,8 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - Each has its own shot. The film's timing still runs off the voice clips' own lengths.
 - The new lines aren't recorded yet, so they show as subtitles. They're CH3POSTFINALBOSS21–25, after the existing 20 in `data/hawDeathVoices.js`, so the old recordings keep their numbers. The script (new file) is `assets/audio/hawthorne_death_ch3/VOICE_SCRIPT.md`.
 - **Update: Sevirrus is voiced.** The five new lines are recorded (CH3POSTFINALBOSS21–25), and "He never left…" (17) and "Look at me." (18) have new takes in Sevirrus' voice, so everything he says through Hak is in the same voice. The old takes of 17 and 18 are kept beside the new ones as `_PREVIOUS`.
+
+### Orion Mascar's hunt starts on Charon
+- **If you killed Croxian, Orion Mascar's boss fight now starts in Chapter III,** when you speak to Charon and Kizna for the War of Restoration (the talk on Charon just before the Siege of Sol). When the conversation ends, whether you take them aboard or tell them "not yet", a red side-quest notice says Orion Mascar is waiting for you on Earth. From then on he's under his crimson beacon wherever you land on Earth, through the rest of Chapter III and on into Chapter IV, as before.
+- Nothing changes if Croxian lived, or if Orion is already dead.
+- Saves that are already past that talk without it having fired still get him at the time skip in Chapter IV, as before.
