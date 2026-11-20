@@ -1208,6 +1208,8 @@ body.ch4 .bar.sta i{background:#ff8a7e}
 body.cc-ingame #cc{background:none} body.cc-ingame > *:not(#cc):not(#c):not(script):not(style):not(svg){display:none!important} /* the creator from the pause menu: the game's HUD, labels and chat stay hidden behind it */
 #cc.ingame #ccTabs .tab:not([data-t=species]){display:none} /* the Species Creator opened from the pause menu: species only */
 #xColBtn{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 64px);z-index:6;pointer-events:auto;border-color:#ffd36a;color:#ffd36a;background:rgba(20,16,6,.72)} #xhud.cutting #xColBtn,#xhud.modal #xColBtn,#xhud.talking #xColBtn{display:none}
+.gal-sw{position:absolute;top:calc(var(--st) + 58px);left:calc(var(--sl) + 20px);height:34px;padding:0 12px;background:rgba(7,10,17,.6);border:1px solid #9fb4ff66;color:#c8d4ff;font:500 10px/1 var(--display);letter-spacing:.18em;cursor:pointer;z-index:3} /* switch between the Milky Way's map and the Xonexi Galaxy's */
+@media (max-width:720px) and (orientation:portrait){.gal-sw{top:calc(var(--st) + 100px)}}
 </style>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
@@ -2031,7 +2033,7 @@ function menuWhere() {
   }
   if (ch >= 3 && p && /^pl:/.test(p.where || '')) {
     const P = bodyById(p.where.slice(3));
-    if (P) { const S = sysById(P.sys); return { kind: 'planet', S, P, title: P.name, sub: P.dock ? `${S.name} · docked in the gardens` : `${S.name} · landed`, fac: facShort(P.faction), body: P }; }
+    if (P) { const S = sysById(P.sys); return { kind: 'planet', S, P, title: P.name, sub: P.xo ? `${S.name} · aboard the station` : P.dock ? `${S.name} · docked in the gardens` : `${S.name} · landed`, fac: facShort(P.faction), body: P }; }
   }
   const w = p ? (p.where || (p.area === 'station' ? 'antarctica' : null)) : null, E = bodyById('earth');
   const area = p && p.area === 'station' ? 'Antarctica · the station' : (w && AREA_INFO[w] && AREA_INFO[w].name) || CH_HOME[ch] || 'Antarctica';
@@ -5824,7 +5826,7 @@ addEventListener('keydown', e => {
   if (TR.open) { if (e.code === 'Escape') tradeClose(); return; } // trading: the window has the keys
   if (PRISON.pick) { if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); pickTry(); } else if (e.code === 'Escape') { PRISON.pick = null; pickEl().classList.remove('on'); } return; } // picking the cell lock
   if (e.code === 'KeyY' && ex.mode === 'world' && !ex.dlg) { e.preventDefault(); rageBait(); return; } // rage bait
-  if ((e.code === 'KeyT' || e.code === 'Slash') && ex.mode === 'world' && !ex.dlg && residents.length) { e.preventDefault(); chatOpen(e.code === 'Slash' ? '/' : ''); return; } // the zone chat
+  if ((e.code === 'KeyT' || e.code === 'Slash') && ex.mode === 'world' && !ex.dlg && residents.length && !onXonexi()) { e.preventDefault(); chatOpen(e.code === 'Slash' ? '/' : ''); return; } // the zone chat
   if (e.code === 'Escape' || e.code === 'KeyP') { pauseExplore(true); return; }
   if (ex.invOpen) return;
   if (e.code === 'Space' && ex.mode === 'world' && !ex.dlg) { e.preventDefault(); ex.keys.add('Space'); doJump(); return; }
@@ -5906,7 +5908,7 @@ function sceneLocked() {
 }
 function pauseExplore(on) {
   if (on && state === 'explore' && sceneLocked()) { if (time - (ex.lockMsgT || -9) > 2) { ex.lockMsgT = time; lootMsg('You can’t pause during a scene', '#cfd6e6'); } return; }
-  if (on && state === 'explore') { state = 'xpaused'; ex.keys.clear(); if (ex.dlg) { sfx.stopVoice(); closeDialog(); } refreshDirty(); $('#xPauseChap').textContent = liveChapterLabel(); $('#xDiplo').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xQuests').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xResEmp').classList.toggle('hidden', (wanderer.chapter | 0) < 3 || !residents.length); $('#xGuilds').classList.toggle('hidden', !residents.length); ui.xpause.classList.remove('opts'); refreshOpts(); show(ui.xpause, true); } // the chapter and place you're actually in
+  if (on && state === 'explore') { state = 'xpaused'; ex.keys.clear(); if (ex.dlg) { sfx.stopVoice(); closeDialog(); } refreshDirty(); $('#xPauseChap').textContent = liveChapterLabel(); $('#xDiplo').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xQuests').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xResEmp').classList.toggle('hidden', (wanderer.chapter | 0) < 3 || !residents.length); $('#xGuilds').classList.toggle('hidden', !residents.length); ui.xpause.classList.remove('opts'); refreshOpts(); show(ui.xpause, true); xoPauseHide(); } // the chapter and place you're actually in
   else if (!on && state === 'xpaused') { state = SPC.paused ? 'space' : 'explore'; SPC.paused = false; show(ui.xpause, false); clock.getDelta(); }
 }
 $('#xMenuBtn').addEventListener('click', () => { sfx.click(); pauseExplore(true); });
@@ -7108,7 +7110,7 @@ function updateSurvival(dt) {
   const hb = $('#heatBar'), hv = suitHeat(); hb.firstChild.style.transform = `scaleX(${hv / 100})`; hb.classList.toggle('on', hv < 99.5 || (ch1().stormTalk && !ch1().stormOver)); hb.classList.toggle('low', hv < 30);
   const jb = $('#jetBar'); jb.firstChild.style.transform = `scaleX(${(ex.jet == null ? 100 : ex.jet) / 100})`; jb.classList.toggle('on', ex.jet != null && ex.jet < 99.5); jb.classList.toggle('low', ex.jet < 15);
   // placement preview, teleporter rings, merchants
-  updateBuildGhost(); tickMerchants(dt); giversTick(dt); csbTick(dt); cityTick(dt); hallTick(dt); khzTick(dt); nyxTick(dt); tiTick(dt); if (!TIW.area) { orbAuto(); orbTick(dt); } leaderHallTick(); furnaceTick(); compDungeonTick(); // Orion Mascar at his house (East Africa isn't a planet landing) · (these three were stuck behind this comment: dungeon crews never came home, furnaces stopped, leader halls didn't tick)
+  updateBuildGhost(); tickMerchants(dt); giversTick(dt); xoTick(dt); csbTick(dt); cityTick(dt); hallTick(dt); khzTick(dt); nyxTick(dt); tiTick(dt); if (!TIW.area) { orbAuto(); orbTick(dt); } leaderHallTick(); furnaceTick(); compDungeonTick(); // Orion Mascar at his house (East Africa isn't a planet landing) · (these three were stuck behind this comment: dungeon crews never came home, furnaces stopped, leader halls didn't tick)
   for (const b of world.build) if (b.mesh.userData.spin) b.mesh.userData.spin.rotation.z += dt * 1.5;
   if (world.stationTp) world.stationTp.userData.spin.rotation.z += dt * 1.5;
   const it = selItem();
@@ -9057,7 +9059,7 @@ function worldUnstickIn() {
 function worldBlocked(x, z, stationOnly, y = player.position.y) {
   if (DGN.on) return dgnBlocked(x, z);
   if (PRISON.on && prisonBlocked(x, z)) return true; // inside Olympus Mons: its walls
-  if (isPl()) { if (nostraBlocked(x, z)) return true; if (taroHouseBlocked(x, z)) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2 && (world.planet.P.seaGlow || !WB_SWIM)) return true; if (cityBlocked(x, z)) return true; if (earthBlocked(x, z)) return true; if (stInBlocked(x, z)) return true; if (csbBlocked(x, z)) return true; } // your ship, deep water, the towers of a capital, Earth's landmarks and the Catharsis base on Tallax IV
+  if (isPl()) { if (nostraBlocked(x, z)) return true; if (taroHouseBlocked(x, z)) return true; if (xoBlocked(x, z)) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2 && (world.planet.P.seaGlow || !WB_SWIM)) return true; if (cityBlocked(x, z)) return true; if (earthBlocked(x, z)) return true; if (stInBlocked(x, z)) return true; if (csbBlocked(x, z)) return true; } // your ship, deep water, the towers of a capital, Earth's landmarks and the Catharsis base on Tallax IV
   else if (curArea() !== 'europe' && Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true; // the station / Orion's house
   if (isPl() && hallBlocked(x, z)) return true;
   if (world.adVisit && !isPl() && nostraBlocked(x - world.shipAt.x, z - world.shipAt.z)) return true;
@@ -18524,19 +18526,18 @@ const SYSTEMS = [
 (function xonexiSystem() {
   if (SYSTEMS.some(S => S.id === 'xonexi')) return;
   SYSTEMS.push({ id: 'xonexi', name: 'Xonexi', galaxy: 'Xonexi Galaxy', star: { kind: 'star', name: 'Xonexi', r: 3900, col: '#ffe8c8', glow: ['rgba(255,236,206,1)', 'rgba(255,190,140,.5)', 'rgba(255,140,90,0)'], light: '#fff0dc', type: 'Yellow-white star · F6V' },
-    faction: 'Xonexi Station · the Xonexi Galaxy', map: { x: .98, y: -.86 }, home: 'xonexi-station',
-    desc: 'The only star of the Xonexi Galaxy, a small galaxy beside the Milky Way, and the only way between the two. Ring stations hang over its blue world, Xonexi, turning their gardens to the light.',
+    faction: 'Xonexi Station · the Xonexi Galaxy', map: { x: .98, y: -.86 }, home: 'xonexi-station', dark: true,
+    desc: 'The only star of the Xonexi Galaxy, a small galaxy beside the Milky Way, and the only way between the two. Nothing orbits it but Xonexi Station: black rings and gantries, red lights in the dark, and no one who will say who runs it.',
     bodies: [
-      { id: 'xonexi', name: 'Xonexi', kind: 'earth', r: 2300, orbit: 60000, ang: 2.2, seed: 3301, landBias: .1, c: { sand: '#c8b88a', low: '#3f7a4a', forest: '#245a32', rock: '#5a5a62', snow: '#f2f5f8' }, sea: '#1f4f8a', atmo: '#8fd0ff', clouds: '#f2f5f8', cloudCover: .55, sky: ['#2a5a9a', '#bfe3ff'], fog: '#9ec4e8', faction: 'Xonexi · under the station' },
-      { id: 'xonexi-station', name: 'Xonexi Station', kind: 'station', r: 1300, parent: 'xonexi', orbit: 9000, ang: 1.1, seed: 3307, faction: 'Xonexi Station · the Xonexi Galaxy' }
+      { id: 'xonexi-station', name: 'Xonexi Station', kind: 'station', r: 1500, orbit: 46000, ang: 1.1, seed: 3307, faction: 'Xonexi Station · the Xonexi Galaxy' }
     ] });
 })();
 const ALL_BODIES = SYSTEMS.flatMap(S => S.bodies.map(P => (P.sys = S.id, P)));
 // inside Archiostal: you dock with the station and walk its gardens (forests and rivers under an artificial sky)
 ALL_BODIES.push({ id: 'archiostal-gardens', name: 'Archiostal', dock: 'archiostal', sys: 'malana', kind: 'earth', r: 2400, amp: .32, seed: 108, landBias: .12, groves: .25,
   c: { sand: '#5e9a44', low: '#4f8a3a', forest: '#2a6a2a', rock: '#7a8a70', snow: '#a9c98a' }, sea: '#2a7a8a', atmo: null, sky: ['#a8dcc8', '#f4fff0'], fog: '#aebfc8', faction: 'The Order of Archamus · garden station of the Grek' }); // no ice under an artificial sky: the 'snow' (poles, where you dock, and peaks) is pale highland meadow
-ALL_BODIES.push({ id: 'xonexi-station-gardens', name: 'Xonexi Station', dock: 'xonexi-station', sys: 'xonexi', kind: 'earth', r: 2400, amp: .16, seed: 3309, landBias: .2, groves: .1, // inside Xonexi Station: decks and its ring gardens, under the station's lights
-  c: { sand: '#8a9098', low: '#6a7480', forest: '#3a6a3a', rock: '#4a505a', snow: '#c8ccd4' }, sea: '#2a4a6a', atmo: null, sky: ['#04060c', '#1a2a4a'], fog: '#5a6478', faction: 'Xonexi Station · the Xonexi Galaxy' });
+ALL_BODIES.push({ id: 'xonexi-station-gardens', name: 'Xonexi Station', dock: 'xonexi-station', xo: true, sys: 'xonexi', kind: 'rock', r: 2400, amp: .05, seed: 3309, // inside Xonexi Station: its main hangar deck, black steel and red light (xoBuild); no gardens, nothing green
+  c: { low: '#1a1c22', mid: '#24262e', rock: '#121318' }, atmo: null, sky: ['#010103', '#0c0508'], fog: '#120a0e', faction: 'Xonexi Station · the Xonexi Galaxy' });
 ALL_BODIES.forEach(P => { if (P.c) for (const k in P.c) P.c[k] = C3(P.c[k]); P.land = P.kind !== 'gas' && P.kind !== 'station'; });
 const sysById = id => SYSTEMS.find(S => S.id === id) || SYSTEMS[0];
 
@@ -18776,7 +18777,8 @@ function ringMesh(P) {
   m.rotation.x = -Math.PI / 2 + .45; return m;
 }
 const WARDS = ['Command & Cybernetics', 'Bio-Dome & Botany', 'Geo-Quantum', 'Gravity Habitation', 'Fusion & Life Support', 'Nanomedical', 'Logistics & Transport']; // Archiostal's seven Wards, Ward 01 to 07
-function stationMesh(P) { // Archiostal: seven Ward arms fanned like petals round the Sanctum Ring (forest and lake under glass), the Spire of Archamus rising from the heart
+function stationMesh(P) {
+  if (P.id === 'xonexi-station') return xonexiStationMesh(P); // Xonexi's own: dark, and nothing like Archiostal // Archiostal: seven Ward arms fanned like petals round the Sanctum Ring (forest and lake under glass), the Spire of Archamus rising from the heart
   const g = new THREE.Group(), r = P.r, M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .45, metalness: .55 }, o)), B = c => new THREE.MeshBasicMaterial({ color: c });
   const hull = M(0xd8dde2, { emissive: 0x2a3440, emissiveIntensity: .6 }), dark = M(0x2a3038), glass = M(0x9fd8ff, { roughness: .05, metalness: .2, transparent: true, opacity: .28, emissive: 0x2a6a8a, emissiveIntensity: .3, side: THREE.DoubleSide, depthWrite: false });
   const gold = M(0xe8c27a, { metalness: .85, roughness: .3, emissive: 0x6a4a18, emissiveIntensity: .55 }), glow = B(0xffe3a0), teal = B(0x7ff0ff);
@@ -19075,7 +19077,7 @@ canvas.addEventListener('pointerdown', e => { if (state !== 'space' || e.pointer
 addEventListener('pointermove', e => { if (state !== 'space' || !SPC.drag) return; SPC.dragDX = (SPC.dragDX || 0) + (e.clientX - SPC.drag.x); SPC.dragDY = (SPC.dragDY || 0) + (e.clientY - SPC.drag.y); SPC.drag.x = e.clientX; SPC.drag.y = e.clientY; });
 addEventListener('pointerup', () => { SPC.drag = null; SPC.mouseFire = false; });
 function spacePause(on) {
-  if (on && state === 'space' && !SPC.warp && !GAL.open) { state = 'xpaused'; SPC.paused = true; SPC.keys.clear(); refreshDirty(); $('#xPauseChap').textContent = liveChapterLabel(); $('#xDiplo').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xQuests').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xResEmp').classList.toggle('hidden', (wanderer.chapter | 0) < 3 || !residents.length); $('#xGuilds').classList.toggle('hidden', !residents.length); show(ui.xpause, true); }
+  if (on && state === 'space' && !SPC.warp && !GAL.open) { state = 'xpaused'; SPC.paused = true; SPC.keys.clear(); refreshDirty(); $('#xPauseChap').textContent = liveChapterLabel(); $('#xDiplo').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xQuests').classList.toggle('hidden', (wanderer.chapter | 0) < 3); $('#xResEmp').classList.toggle('hidden', (wanderer.chapter | 0) < 3 || !residents.length); $('#xGuilds').classList.toggle('hidden', !residents.length); show(ui.xpause, true); xoPauseHide(); }
 }
 // ---- entering and leaving space ----
 const tmpQs = new THREE.Quaternion(), tmpVs = new THREE.Vector3(), tmpVs2 = new THREE.Vector3();
@@ -19224,9 +19226,15 @@ function spaceHudTick(P, alt, fwd) {
     const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; if (x < -40 || x > W + 40 || y < -40 || y > H + 40) continue;
     const d = SPC.pos.distanceTo(Q.pos) - Q.r; if (Q === P && d < Q.r * 2) continue;
     if (Q.minor && d > 15000 && Q !== P) continue; // a small moon: marked only once you're close
+    if (Q.id === 'xonexi-station') continue; // it has a waypoint of its own (below)
     const tq = (cathQ() && cathTarget() && Q.id === cathTarget().id) || (hakMeetQ() && Q.id === 'aridaxx') || (taroQ() && Q.id === 'tamez'), rel = tq ? 'gold' : bodyRel(Q); // Chapter IV's main quest: the Catharsis world, in gold
     h += `<div class="sh-mk${rel ? ' ' + rel : ''}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${Q.name.toUpperCase()}<br><small>${tq ? (tiPhone() ? 'MAIN QUEST · ' : 'MAIN QUEST · LAND · ') : ''}${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`;
   }
+  if (SPC.sys === 'xonexi' && !SPC.atmo) { const X = SPC.bodies.find(Q => Q.id === 'xonexi-station'); if (X) { // Xonexi Station: a waypoint that's always on screen, at the edge if it's behind you
+    const d = Math.max(0, SPC.pos.distanceTo(X.pos) - X.r), v3 = tmpVs.copy(X.pos).project(camera); let x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H;
+    const off = v3.z > 1 || x < 20 || x > W - 20 || y < 20 || y > H - 20; if (v3.z > 1) { x = W - x; y = H - y; } // behind you: point the other way
+    if (off) { const cx = W / 2, cy = H / 2, dx = x - cx, dy = y - cy, k = Math.min((W / 2 - 30) / Math.max(1, Math.abs(dx)), (H / 2 - 30) / Math.max(1, Math.abs(dy))); x = cx + dx * k; y = cy + dy * k; }
+    h += `<div class="sh-mk gold${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${off ? '◆ ' : ''}XONEXI STATION<br><small>${tiPhone() ? 'DOCK · ' : 'FLY IN TO DOCK · '}${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`; } }
   if (khzPending() && SPC.sys === 'sol') { // the story's next stop: Olympus Mons, in gold
     const M = SPC.bodies.find(Q => Q.id === 'mars');
     if (M) { const wp = tmpVs.copy(khzDir()).multiplyScalar(M.r + spaceH(M, khzDir())).add(M.pos), d = SPC.pos.distanceTo(wp), v3 = wp.project(camera);
@@ -20525,13 +20533,14 @@ function galEl() {
   let el = $('#galMap'); if (el) return el;
   el = document.createElement('div'); el.id = 'galMap'; el.className = 'gal hidden';
   el.innerHTML = `<canvas id="galCv"></canvas><div class="gal-top"><b>MILKY WAY GALAXY</b><small id="galSub"></small></div>
-    <button class="gal-close" id="galX">✕</button><button class="gal-dip" id="galDip">DIPLOMACY</button><button class="gal-res" id="galRes">RESIDENTS</button><button class="gal-emp" id="galEmp">EMPIRES</button><div class="gal-zoom"><button data-z="1.3">+</button><button data-z="0.77">−</button></div>
+    <button class="gal-close" id="galX">✕</button><button class="gal-dip" id="galDip">DIPLOMACY</button><button class="gal-res" id="galRes">RESIDENTS</button><button class="gal-emp" id="galEmp">EMPIRES</button><button class="gal-sw" id="galSwitch">XONEXI GALAXY ›</button><div class="gal-zoom"><button data-z="1.3">+</button><button data-z="0.77">−</button></div>
     <div class="gal-panel hidden" id="galPanel"></div><div class="gal-hint">${SYSTEMS.length} systems · zoom in to name them all · drag to pan · tap a system · M or ESC to close</div>`;
   document.body.appendChild(el);
   el.querySelector('#galX').addEventListener('click', () => { sfx.click(); galClose(); });
   el.querySelector('#galDip').addEventListener('click', () => dipOpen(true));
   el.querySelector('#galRes').addEventListener('click', () => resGalNext());
   el.querySelector('#galEmp').addEventListener('click', () => { sfx.click(); resEmpOpen(); });
+  el.querySelector('#galSwitch').addEventListener('click', () => { sfx.click(); galView((GAL.view || 'milky') === 'milky' ? 'xonexi' : 'milky'); });
   for (const b of el.querySelectorAll('.gal-zoom button')) b.addEventListener('click', () => { GAL.zoom = clamp(GAL.zoom * +b.dataset.z, .7, 11); sfx.blip(); });
   const cv = el.querySelector('#galCv');
   cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); GAL.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); GAL.moved = 0; GAL.pinch = 0; GAL.panTo = null; });
@@ -20551,9 +20560,32 @@ const FAC_COL = { 'The Republic of Timpur': '#58d8c0', 'Terra Imperia': '#d0343a
 const galScale = () => Math.min(innerWidth, innerHeight) * .46 * GAL.zoom;
 function galQ(S) { const c = Math.cos(GAL.rot), s = Math.sin(GAL.rot), x = S.map.x * c - S.map.y * s, y = (S.map.x * s + S.map.y * c) * GAL.tilt; return { x, y }; }
 function galXY(S) { const q = galQ(S), k = galScale(); return { x: innerWidth / 2 + (q.x - GAL.pan.x) * k, y: innerHeight / 2 + (q.y - GAL.pan.y) * k }; }
+// two galaxy maps: the Milky Way, and the Xonexi Galaxy (one system). Each map shows only its own galaxy's systems.
+const galOf = S => (S && S.galaxy === 'Xonexi Galaxy') ? 'xonexi' : 'milky';
+const galSys = () => SYSTEMS.filter(S => galOf(S) === (GAL.view || 'milky'));
+const xonexiKnown = () => !!(wanderer && wanderer.ch4 && wanderer.ch4.jvTaken) || galOf(sysById(SPC.sys)) === 'xonexi';
+function galView(v) {
+  GAL.view = v; const el = galEl(), t = el.querySelector('.gal-top b'); if (t) t.textContent = v === 'xonexi' ? 'XONEXI GALAXY' : 'MILKY WAY GALAXY';
+  for (const id of ['#galDip', '#galRes', '#galEmp']) { const b = el.querySelector(id); if (b) b.style.display = v === 'xonexi' ? 'none' : ''; } // the Milky Way's diplomacy, residents and empires stay on the Milky Way's map
+  const sw = el.querySelector('#galSwitch'); if (sw) { sw.style.display = xonexiKnown() ? '' : 'none'; sw.textContent = v === 'xonexi' ? '‹ MILKY WAY' : 'XONEXI GALAXY ›'; }
+  const h = el.querySelector('.gal-hint'); if (h) h.textContent = v === 'xonexi' ? 'The Xonexi Galaxy · 1 system · its only way into the Milky Way · tap it · M or ESC to close' : `${galSys().length} systems · zoom in to name them all · drag to pan · tap a system · M or ESC to close`;
+  const here = sysById(SPC.sys), S = galOf(here) === v ? here : v === 'xonexi' ? SYSTEMS.find(o => galOf(o) === 'xonexi') : sysById('sol');
+  if (!GAL.sel || galOf(sysById(GAL.sel)) !== v) GAL.sel = S.id; const q = galQ(sysById(GAL.sel)); GAL.pan.x = q.x; GAL.pan.y = q.y; GAL.panTo = null;
+  if (v === 'xonexi') GAL.zoom = Math.max(GAL.zoom, 3.2);
+  try { galPanel(); } catch (e) {}
+}
+function galXonexiImg() { // the Xonexi Galaxy: a small, bright, two-armed spiral of its own
+  if (GAL.ximg) return GAL.ximg; const N = 512, cv = document.createElement('canvas'); cv.width = cv.height = N; const g = cv.getContext('2d'), C = N / 2;
+  let sd = 31; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  const core = g.createRadialGradient(C, C, 0, C, C, C); core.addColorStop(0, 'rgba(255,236,206,.95)'); core.addColorStop(.1, 'rgba(255,200,150,.45)'); core.addColorStop(.4, 'rgba(130,150,240,.12)'); core.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = core; g.fillRect(0, 0, N, N); g.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 16000; i++) { const arm = i % 2, u = rnd(), a = u * 5.2 + arm * Math.PI + (rnd() - .5) * .5, r = (.06 + u * .86) * C, x = C + Math.cos(a) * r + (rnd() - .5) * 14, y = C + Math.sin(a) * r + (rnd() - .5) * 14;
+    g.fillStyle = `rgba(${u < .3 ? '255,220,180' : '170,190,255'},${(.18 + rnd() * .3).toFixed(3)})`; g.fillRect(x, y, 1.3, 1.3); }
+  return GAL.ximg = cv;
+}
 function galPick(x, y) {
   let best = null, bd = 26;
-  for (const S of SYSTEMS) { const p = galXY(S), d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = S; } }
+  for (const S of galSys()) { const p = galXY(S), d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = S; } }
   if (best) { GAL.sel = best.id; GAL.panTo = galQ(best); sfx.blip(); galPanel(); }
 }
 function galOpen() {
@@ -20562,6 +20594,7 @@ function galOpen() {
   applyChapterFactions(); const el = galEl(); galImage(); GAL.open = true; SPC.keys.clear(); SPC.btn = {}; el.classList.remove('hidden'); $('#spaceHud').classList.add('hidden');
   if (!GAL.zoomed) { GAL.zoomed = true; GAL.zoom = innerWidth < 600 ? 2.3 : 1.6; }
   GAL.sel = GAL.sel && GAL.sel !== SPC.sys ? GAL.sel : SPC.sys; const q = galQ(sysById(GAL.sel)); GAL.pan.x = q.x; GAL.pan.y = q.y; GAL.panTo = null;
+  GAL.sel = SPC.sys; galView(galOf(sysById(SPC.sys))); // the map of the galaxy you're in
   $('#galSub').textContent = `You are in ${curSys().name} · ${((wanderer.ch3 && wanderer.ch3.visited) || []).length} of ${SYSTEMS.length} systems visited · ${lairsAll().list.filter(L => lairOpen(L) && lairCleared(L)).length} of ${lairsAll().list.filter(lairOpen).length} lairs cleared`; galPanel(); sfx.chime();
   $('#galRes').style.display = residents.length ? '' : 'none'; $('#galEmp').style.display = residents.length ? '' : 'none'; RES.galI = null;
 }
@@ -20593,7 +20626,8 @@ function galDraw(dt) {
   if (GAL.panTo) { const k = Math.min(1, dt * 5); GAL.pan.x = lerp(GAL.pan.x, GAL.panTo.x, k); GAL.pan.y = lerp(GAL.pan.y, GAL.panTo.y, k); }
   const g = cv.getContext('2d'), k = galScale(), t = performance.now() / 1000;
   g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#010104'; g.fillRect(0, 0, W, H);
-  g.save(); g.translate(W / 2 - GAL.pan.x * k, H / 2 - GAL.pan.y * k); g.scale(1, GAL.tilt); g.rotate(GAL.rot); g.drawImage(GAL.img, -k, -k, k * 2, k * 2); g.restore();
+  if ((GAL.view || 'milky') === 'milky') { g.save(); g.translate(W / 2 - GAL.pan.x * k, H / 2 - GAL.pan.y * k); g.scale(1, GAL.tilt); g.rotate(GAL.rot); g.drawImage(GAL.img, -k, -k, k * 2, k * 2); g.restore(); }
+  else { const X = SYSTEMS.find(o => galOf(o) === 'xonexi'), p = galXY(X), r = k * .32; g.save(); g.translate(p.x, p.y); g.scale(1, GAL.tilt); g.rotate(GAL.rot + .6); g.drawImage(galXonexiImg(), -r, -r, r * 2, r * 2); g.restore(); } // the Xonexi Galaxy on its own map
   const cur = curSys(), pc = galXY(cur), sel = GAL.sel && sysById(GAL.sel);
   { const reach = Math.min(driveRange(), have('warpcell') * LY_PER_CELL) / 50000 * k; // how far one jump can take you (drive range, or less if you're short of cells)
     if (reach > 0) { g.save(); g.setLineDash([3, 5]); g.strokeStyle = 'rgba(165,139,255,.55)'; g.fillStyle = 'rgba(165,139,255,.05)'; g.lineWidth = 1; g.beginPath(); g.ellipse(pc.x, pc.y, reach, reach * GAL.tilt, 0, 0, 7); g.fill(); g.stroke(); g.restore();
@@ -20605,21 +20639,17 @@ function galDraw(dt) {
     g.fillText(far ? `${galDist(cur, sel).toLocaleString()} LY · OUT OF RANGE` : `${galDist(cur, sel).toLocaleString()} LY · ${wc} WARP CELL${wc === 1 ? '' : 'S'}`, (pc.x + ps.x) / 2, (pc.y + ps.y) / 2 - 8);
   }
   const vis = (wanderer.ch3 && wanderer.ch3.visited) || [], font = getComputedStyle(document.body).getPropertyValue('--display');
-  for (const S of SYSTEMS) { // faction territory, a soft wash behind each claimed system
+  for (const S of galSys()) { // faction territory, a soft wash behind each claimed system
     const fc = S.facCol || FAC_COL[S.faction.split(' · ')[0]]; if (!fc) continue; const p = galXY(S), rr = (S.gen ? 16 : 26) + (S.gen ? 8 : 14) * GAL.zoom;
     if (p.x < -rr || p.x > W + rr || p.y < -rr || p.y > H + rr) continue;
     const gr = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr); gr.addColorStop(0, fc + '30'); gr.addColorStop(1, fc + '00'); g.fillStyle = gr; g.beginPath(); g.arc(p.x, p.y, rr, 0, 7); g.fill();
   }
-  { const X = SYSTEMS.find(o => o.galaxy === 'Xonexi Galaxy'); if (X) { const p = galXY(X), rr = 36 + 22 * GAL.zoom; // the Xonexi Galaxy: one star system, its own small spiral
-    g.save(); g.translate(p.x, p.y); const gr = g.createRadialGradient(0, 0, 0, 0, 0, rr); gr.addColorStop(0, 'rgba(255,226,190,.55)'); gr.addColorStop(.35, 'rgba(150,170,255,.18)'); gr.addColorStop(1, 'rgba(120,140,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(0, 0, rr, 0, 7); g.fill();
-    g.strokeStyle = 'rgba(190,205,255,.22)'; g.lineWidth = 1.2; for (let k = 0; k < 2; k++) { g.beginPath(); for (let i = 0; i < 40; i++) { const a = i / 40 * 4.2 + k * Math.PI, r = rr * (.12 + i / 40 * .8); g.lineTo(Math.cos(a) * r, Math.sin(a) * r * .7); } g.stroke(); }
-    g.font = '500 8px ' + getComputedStyle(document.body).getPropertyValue('--display'); g.fillStyle = 'rgba(200,215,255,.8)'; g.textAlign = 'center'; g.fillText('XONEXI GALAXY', 0, rr * .7 + 12); g.restore(); } }
   const allLabels = GAL.zoom >= 5.5;
   const qsys = new Set(Object.entries((wanderer.sq || {}).act || {}).map(([id, A]) => { const q = sqById(id); return q ? sqSysOf(q, A) : null; }).filter(Boolean));
   if (cathQ() && cathTarget()) qsys.add(cathTarget().sys); // Chapter IV's main quest: the Catharsis world
   if (hakMeetQ()) qsys.add('steca'); // then Hak, in Alphinos
   if (taroQ()) qsys.add('tamez'); // then Tyrotaronus, on the rim
-  for (const S of SYSTEMS) {
+  for (const S of galSys()) {
     const p = galXY(S); if (p.x < -80 || p.x > W + 80 || p.y < -80 || p.y > H + 80) continue;
     const hole = S.star.kind === 'hole', gr0 = S.gen ? 10 : 16;
     if (!S.gen || GAL.zoom >= 2.2 || S === sel || S === cur) { const glow = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, gr0); glow.addColorStop(0, hole ? 'rgba(255,190,120,.9)' : S.star.col); glow.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = glow; g.beginPath(); g.arc(p.x, p.y, gr0, 0, 7); g.fill(); }
@@ -24236,7 +24266,7 @@ async function landOn(P, dir, place) {
   const nt = planetTraders(P); for (const m of MERCHANTS[key] || []) if (!nt.includes(m) && m.stall) { wScene.remove(m.stall); m.stall = null; } // a stall whose world changed hands goes
   MERCHANTS[key] = nt; for (const m of MERCHANTS[key]) m.seed = null; // its stall finds dry ground near the new spot
   const pl = place || { mode: 'explore', area: 'world', where: key, x: 5, z: 14.5, y: 0, rot: Math.PI * .8, yaw: Math.PI * .8 + Math.PI }; // by the ramp, clear of the wings
-  enterWorld(pl); buildCity(); buildHall(); buildHermitage(); buildLairGates(); leaderHallBuild(); stInBuild(); khzFarHint(); try { earthGroundBuild(world.planet); } catch (e) { console.error(e); } await placeOrion().catch(() => null); placeGivers().catch(() => null);
+  enterWorld(pl); buildCity(); buildHall(); buildHermitage(); buildLairGates(); leaderHallBuild(); stInBuild(); xoBuild(); khzFarHint(); try { earthGroundBuild(world.planet); } catch (e) { console.error(e); } await placeOrion().catch(() => null); placeGivers().catch(() => null);
   // your ship, set down on the ground
   if (!world.landShip) world.landShip = makeShip(); podSkin(world.landShip);
   setShipRig(world.landShip, 1, 1);
@@ -24669,7 +24699,7 @@ function planetGroundH(x, z) {
 const plSeaY = () => { const W = world.planet; return W && W.P.sea ? -W.h0 + (W.P.seaH || 0) + .4 : null; };
 function planetLook() {
   const W = world.planet, P = W.P;
-  if (!W.sky && P.dock) W.sky = stInSkyTex(P); // inside a station: space beyond the glass
+  if (!W.sky && P.dock === 'archiostal') W.sky = stInSkyTex(P); // inside a station: space beyond the glass
   if (!W.sky) W.sky = canvasTex(4, 256, (g2) => { const gr = g2.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, P.sky[0]); gr.addColorStop(.48, P.sky[1]); gr.addColorStop(.5, P.fog); gr.addColorStop(1, P.fog); g2.fillStyle = gr; g2.fillRect(0, 0, 4, 256); });
   wScene.background = W.sky;
   if (world.plSea) { wScene.remove(world.plSea); world.plSea = null; }
@@ -24683,10 +24713,65 @@ function planetLook() {
    city, the Ward transit runs past on its monorail and shuttles cross overhead. The ring runs north-south (z); the walls stand
    at x = ±W. The sky pieces follow you along the ring; the walls and canopy step with you so they never seem to slide. */
 const ST_IN = { W: 480, WT: 420, H: 260, RB: 820, Y0: -30, F0: 28 * Math.PI / 180, TX: -170, SEG: 120, STEP: 240, tex: {} };
-const stInOn = () => isPl() && !!world.planet.P.dock;
+const stInOn = () => isPl() && world.planet.P.dock === 'archiostal'; // the Sanctum Ring is Archiostal's alone (Xonexi Station has its own deck, xoBuild)
 const stInBlocked = (x, z) => stInOn() && Math.abs(x) > ST_IN.W - 14; // the hull walls
 function stInPlan(W) { if (W.P.dock) (W.pads || (W.pads = [])).push({ x: 0, z: 0, r: 26, y: 0 }); } // the landing pad sits level where you come in
 const stInRGB = hex => [1, 3, 5].map(i => parseInt(String(hex).slice(i, i + 2), 16));
+function xonexiStationMesh(P) { // two black habitat rings on a long gantry spine, a domed core, dark solar vanes, red running lights
+  const g = new THREE.Group(), r = P.r, M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .55, metalness: .7 }, o)), B = c => new THREE.MeshBasicMaterial({ color: c });
+  const hull = M(0x2a2d34, { emissive: 0x0a0b10, emissiveIntensity: .5 }), black = M(0x111217), steel = M(0x3a3e48), vane = M(0x0c1020, { metalness: .9, roughness: .25, emissive: 0x1a0610, emissiveIntensity: .4 }), red = B(0xff2a1a), dim = B(0xffb07a);
+  const add = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m; };
+  add(new THREE.BoxGeometry(r * 1.9, r * .05, r * .05), steel); add(new THREE.BoxGeometry(r * 1.9, r * .025, r * .09), black, 0, r * .05); // the gantry spine
+  const core = add(new THREE.SphereGeometry(r * .17, 32, 20), hull); add(new THREE.SphereGeometry(r * .12, 24, 16), black, 0, -r * .16);
+  for (const sx of [-1, 1]) { // the rings, edge-on to the spine
+    const ring = add(new THREE.TorusGeometry(r * .36, r * .045, 16, 72), hull, sx * r * .55); ring.rotation.y = Math.PI / 2;
+    const inner = add(new THREE.TorusGeometry(r * .3, r * .012, 8, 72), black, sx * r * .55); inner.rotation.y = Math.PI / 2;
+    for (let k = 0; k < 6; k++) { const sp = add(new THREE.BoxGeometry(r * .02, r * .6, r * .02), steel, sx * r * .55); sp.rotation.x = k / 6 * Math.PI; }
+    add(new THREE.CylinderGeometry(r * .07, r * .07, r * .14, 16), black, sx * r * .55).rotation.z = Math.PI / 2;
+    for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2, L = add(new THREE.SphereGeometry(r * .008, 6, 6), k % 6 ? dim : red, sx * r * .55, Math.sin(a) * r * .405, Math.cos(a) * r * .405); }
+  }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const v = add(new THREE.BoxGeometry(r * .32, r * .005, r * .14), vane, sx * r * .95, 0, sz * r * .16); v.rotation.x = sz * .25; } // dark solar vanes at the ends
+  for (let k = 0; k < 8; k++) add(new THREE.BoxGeometry(r * .05, r * .03, r * .05), black, (k - 3.5) * r * .2, -r * .04, 0); // docking clamps along the underside
+  for (const x of [-r * .95, r * .95, 0]) { const b = glowSprite(0xff2a1a, r * .08, .9); b.position.set(x, r * .09, 0); g.add(b); } // beacons
+  return g;
+}
+const XO = { g: null };
+function xoBuild() { // Xonexi Station's main hangar deck: a vast dark hall of black steel, red light and gantries, open to the stars through one long viewport
+  if (XO.g) { if (XO.g.parent) XO.g.parent.remove(XO.g); XO.g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); XO.g = null; }
+  if (!isPl() || !world.planet.P.xo) return;
+  const g = XO.g = new THREE.Group(), y0 = wHeight(0, 0), R = XO.R = 120, H = 54, phone = tiPhone();
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .6, metalness: .7 }, o));
+  const steel = M(0x22252c), black = M(0x0d0e12), plate = M(0x1a1c22, { roughness: .8 }), red = new THREE.MeshBasicMaterial({ color: 0xff2414 }), amber = new THREE.MeshBasicMaterial({ color: 0xffa24a }), stripe = M(0x3a2a10, { emissive: 0x3a1a00, emissiveIntensity: .6 });
+  const add = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); if (!phone) { m.castShadow = m.receiveShadow = true; } g.add(m); return m; };
+  // the deck: dark plates with seams, and hazard stripes round the pad where you come to
+  const deckTex = canvasTex(512, 512, (c, w, h) => { c.fillStyle = '#16181e'; c.fillRect(0, 0, w, h); c.strokeStyle = '#08090c'; c.lineWidth = 3; for (let i = 0; i <= 8; i++) { c.beginPath(); c.moveTo(i * w / 8, 0); c.lineTo(i * w / 8, h); c.stroke(); c.beginPath(); c.moveTo(0, i * h / 8); c.lineTo(w, i * h / 8); c.stroke(); } for (let i = 0; i < 900; i++) { c.fillStyle = `rgba(255,255,255,${Math.random() * .03})`; c.fillRect(Math.random() * w, Math.random() * h, 2, 2); } });
+  deckTex.wrapS = deckTex.wrapT = THREE.RepeatWrapping; deckTex.repeat.set(30, 30);
+  const deck = add(new THREE.CircleGeometry(R + 6, 64), new THREE.MeshStandardMaterial({ map: deckTex, roughness: .7, metalness: .6 }), 0, y0 + .06, 0); deck.rotation.x = -Math.PI / 2;
+  const pad = add(new THREE.RingGeometry(24, 26, 48), stripe, 0, y0 + .08, 0); pad.rotation.x = -Math.PI / 2;
+  // the hull: a ring of bulkheads, ribbed, with rows of small lit ports, and one long viewport onto the stars
+  const wall = add(new THREE.CylinderGeometry(R, R, H + 2, 72, 1, true), new THREE.MeshStandardMaterial({ color: 0x1a1c22, roughness: .65, metalness: .7, side: THREE.BackSide }), 0, y0 + H / 2, 0); // sealed all round: no ground outside, no world below, only the station
+  const roof = add(new THREE.CircleGeometry(R + 1, 72), new THREE.MeshStandardMaterial({ color: 0x0b0c10, roughness: .8, metalness: .6, side: THREE.DoubleSide }), 0, y0 + H + 1, 0); roof.rotation.x = Math.PI / 2;
+  { const vt = canvasTex(1024, 256, (c, w, h) => { c.fillStyle = '#010104'; c.fillRect(0, 0, w, h); for (let i = 0; i < 900; i++) { const b = Math.random(); c.fillStyle = `rgba(${b < .1 ? '255,200,170' : '210,220,255'},${.3 + Math.random() * .7})`; c.fillRect(Math.random() * w, Math.random() * h, b < .05 ? 2 : 1, b < .05 ? 2 : 1); } const g2 = c.createRadialGradient(w * .7, h * .5, 0, w * .7, h * .5, h * .9); g2.addColorStop(0, 'rgba(255,230,200,.35)'); g2.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g2; c.fillRect(0, 0, w, h); }); // the viewport: open space, and Xonexi's star off to one side
+    const vp = add(new THREE.CylinderGeometry(R - .6, R - .6, 16, 48, 1, true, -.5, 1), new THREE.MeshBasicMaterial({ map: vt, side: THREE.BackSide, fog: false }), 0, y0 + 22, 0); vp.castShadow = vp.receiveShadow = false;
+    for (const yy of [14, 30]) add(new THREE.CylinderGeometry(R - 1, R - 1, 1.2, 48, 1, true, -.52, 1.04), new THREE.MeshStandardMaterial({ color: 0x0d0e12, side: THREE.BackSide }), 0, y0 + yy, 0); }
+  for (let k = 0; k < 36; k++) { const a = k / 36 * Math.PI * 2; if (Math.abs(((a + Math.PI) % (Math.PI * 2)) - Math.PI) < .55) continue; const rib = add(new THREE.BoxGeometry(2.4, H, 3), black, Math.sin(a) * (R - 1.5), y0 + H / 2, Math.cos(a) * (R - 1.5)); rib.rotation.y = a;
+    for (let j = 0; j < 4; j++) { const l = add(new THREE.BoxGeometry(1.4, .5, .3), j === 0 ? red : amber, Math.sin(a) * (R - 3.1), y0 + 6 + j * 11, Math.cos(a) * (R - 3.1)); l.rotation.y = a; } }
+  add(new THREE.CylinderGeometry(R, R, 4, 72, 1, true), black, 0, y0 + H, 0); // the rim
+  // overhead: a black lattice and a great hanging ring (the reactor), lit red from beneath
+  const ring = add(new THREE.TorusGeometry(42, 2.6, 12, 64), steel, 0, y0 + H - 10, 0); ring.rotation.x = Math.PI / 2;
+  const core = add(new THREE.CylinderGeometry(9, 14, 22, 24), black, 0, y0 + H - 4, 0); add(new THREE.SphereGeometry(5, 16, 12), red, 0, y0 + H - 15.5, 0);
+  for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, b = add(new THREE.BoxGeometry(1.2, 1.2, R - 44), steel, Math.sin(a) * (R + 44) / 2, y0 + H - 6, Math.cos(a) * (R + 44) / 2); b.rotation.y = a; }
+  // pillars with red strips, crates and dead consoles: something has happened here, or is about to
+  XO.cols = [];
+  for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2 + .3, rr = 72, x = Math.sin(a) * rr, z = Math.cos(a) * rr; add(new THREE.BoxGeometry(4, H, 4), black, x, y0 + H / 2, z); for (const sy of [8, 22, 36]) add(new THREE.BoxGeometry(4.2, .4, 4.2), red, x, y0 + sy, z); XO.cols.push([x, z, 3]); }
+  for (let k = 0; k < 18; k++) { const a = k * 2.13, rr = 34 + (k * 13) % 50, x = Math.sin(a) * rr, z = Math.cos(a) * rr, s = 1.4 + (k % 3) * .6; if (Math.hypot(x, z) < 30) continue; const c = add(new THREE.BoxGeometry(s, s, s * 1.4), k % 4 ? plate : steel, x, y0 + s / 2, z); c.rotation.y = a; XO.cols.push([x, z, s * .9]); }
+  // the light: dim, red, from above
+  const lights = phone ? 3 : 6; for (let k = 0; k < lights; k++) { const a = k / lights * Math.PI * 2, L = new THREE.PointLight(k % 2 ? 0xff3a22 : 0xffb07a, k % 2 ? 260 : 180, 110, 1.4); L.position.set(Math.sin(a) * 60, y0 + 30, Math.cos(a) * 60); g.add(L); }
+  const top = new THREE.PointLight(0xff2a1a, 380, 90, 1.3); top.position.set(0, y0 + H - 18, 0); g.add(top); XO.top = top;
+  wScene.add(g);
+}
+function xoTick(dt) { if (!XO.g || !isPl() || !world.planet.P.xo) return; if (XO.top) XO.top.intensity = 340 + Math.sin(time * 1.7) * 60 + (Math.random() < .02 ? -200 : 0); } // the reactor light pulses, and now and then flickers
+function xoBlocked(x, z) { if (!XO.g || !isPl() || !world.planet.P.xo) return false; const d = Math.hypot(x, z); if (d > XO.R - 5) return true; for (const [cx, cz, r] of XO.cols || []) if (Math.abs(x - cx) < r && Math.abs(z - cz) < r) return true; return false; }
 function stInSkyTex(P) { // space beyond the glass (equirectangular): stars and a faint galactic band above, the station's own haze at the horizon
   return ST_IN.tex.sky || (ST_IN.tex.sky = (() => {
     const t = canvasTex(2048, 1024, (g, w, h) => {
@@ -29783,7 +29868,10 @@ function resPresent(c, A) {
   return resHash(`${c.id}|${resSlot()}|${A}`) < resHereChance(c, A);
 }
 // free roam only: nothing scripted is ever interrupted
+const onXonexi = () => !!((typeof isPl === 'function' && isPl() && world.planet && world.planet.P.sys === 'xonexi') || ((state === 'space' || GAL.open) && SPC.sys === 'xonexi')); // the Xonexi Galaxy: none of the Milky Way's residents, empires or diplomacy reach it
+function xoPauseHide() { if (!onXonexi()) return; for (const id of ['#xDiplo', '#xResEmp', '#xGuilds', '#xQuests']) { const b = $(id); if (b) b.classList.add('hidden'); } } // on Xonexi the pause menu has no Milky Way diplomacy, residents' empires, guilds or side quests
 function resGroundOk() {
+  if (onXonexi()) return false; // no residents on Xonexi
   if (!residents.length || ex.mode !== 'world' || !(state === 'explore' || state === 'xpaused')) return false;
   const A = curArea(); if (A === 'europe' || (wanderer.chapter | 0) < 1) return false;
   if (A === 'antarctica' && (wanderer.chapter | 0) <= 1 && !ch1().found) return false; // the opening storm stays lonely
@@ -29910,7 +29998,7 @@ function resExploreKeys() {
   if (ex.mode !== 'world') return { kind: 'space', world: null };
   const A = curArea(); if (!A.startsWith('pl:')) return { kind: A, world: A === 'europe' ? 'earth' : null };
   const P = bodyById(A.slice(3)); if (!P) return { kind: 'rock', world: null };
-  return { kind: P.dock ? 'gardens' : P.kind, world: P.dock ? null : P.id };
+  return { kind: P.xo ? 'rock' : P.dock ? 'gardens' : P.kind, world: P.dock ? null : P.id }; // (Xonexi Station's deck is not Archiostal's gardens)
 }
 // your wars (Diplomacy), as the residents see them
 function resWarCtx() {
@@ -30453,7 +30541,7 @@ function resAnswer(B, raw, mode) { // mode: 'chat' (they answer out loud in the 
     const knows = (pl.body && (pl.body === H || pl.body === here)) || (pl.sys && pl.sys.id === H.sys) || resHash(B.id + '|' + pl.name) < .45 + B.lv / 300;
     const q = pl.name;
     if (!knows) return say([resFill(resPick(RL.notBeen), Object.assign(x, { q }))]);
-    const id = pl.area ? (pl.area === 'europe' ? 'earth' : null) : pl.body && !pl.dock ? pl.body.id : pl.sys ? pl.sys.home : null, kind = pl.area || (pl.dock ? 'gardens' : pl.body ? pl.body.kind : null);
+    const id = pl.area ? (pl.area === 'europe' ? 'earth' : null) : pl.body && !pl.dock ? pl.body.id : pl.sys ? pl.sys.home : null, kind = pl.area || (pl.dock ? (pl.body && pl.body.xo ? 'rock' : 'gardens') : pl.body ? pl.body.kind : null);
     const pool = (id && RL.explore.worlds[id]) || (kind && RL.explore.kinds[kind]) || RL.talk.place;
     return say([resFill(resPick(RL.know), Object.assign(x, { q, line: resFill(resPick(pool), x) }))]);
   }
@@ -30631,6 +30719,7 @@ function resSpaceWant(c) { if (RES_ALL) return true; const T = resTravel(c); ret
 function resSpaceTick(dt) {
   if (RES.src !== residents || RES.srcN !== residents.length || RES.who !== activeId) { resClearGround(); resClearSpace(); RES.src = residents; RES.srcN = residents.length; RES.who = activeId; RES.log = []; }
   if (!residents.length || !SPC.scene || (wanderer.chapter | 0) < 3) return;
+  if (SPC.sys === 'xonexi') { if (RES.sp && RES.sp.length) resClearSpace(); return; } // nor their ships
   resLinesLoad();
   RES.spChk = (RES.spChk || 0) - dt;
   if (RES.spSys !== SPC.sys || RES.spChk <= 0) {
@@ -30700,7 +30789,7 @@ function resChatRender() {
 const RES_V = new THREE.Vector3();
 function resUiTick() {
   if (!RES.tags) return;
-  const ground = ex.mode === 'world' && (state === 'explore' || state === 'xpaused') && resGroundOk(), space = state === 'space' && RES.sp.length + RES.log.length > 0;
+  const ground = ex.mode === 'world' && (state === 'explore' || state === 'xpaused') && resGroundOk(), space = state === 'space' && !onXonexi() && RES.sp.length + RES.log.length > 0;
   const modal = ui.xhud.classList.contains('modal') || ui.xhud.classList.contains('talking') || state === 'xpaused';
   RES.chat.classList.toggle('on', (ground || space) && RES.log.length > 0 && !modal); RES.chat.classList.toggle('space', state === 'space');
   if (!ground && !space) { if (RES.tags.innerHTML) RES.tags.innerHTML = ''; return; }
