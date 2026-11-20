@@ -432,6 +432,10 @@ body.ch4 #title .taunt{display:block;position:absolute;right:calc(var(--sr) + 6v
 
 /* ---------- exploration HUD ---------- */
 #xhud{position:fixed;inset:0;z-index:12;pointer-events:none}
+#cathDark{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,rgba(14,6,24,.86),rgba(0,0,0,.97));opacity:0;transition:opacity .9s;pointer-events:none}
+#cathDark.on{opacity:1}
+#cathDark button{position:absolute;top:calc(var(--st,0px) + 16px);left:50%;transform:translateX(-50%);pointer-events:auto;background:rgba(20,10,32,.8);border:1px solid rgba(185,138,255,.55);color:#d9c8ff;font:inherit;font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;padding:11px 16px;border-radius:3px;cursor:pointer;white-space:nowrap}
+#cathDark:not(.on) button{pointer-events:none}
 #xhud.hidden{display:none}
 .x-obj{position:absolute;top:calc(var(--st) + 18px);left:calc(var(--sl) + 20px)}
 .x-obj small{display:block;font-size:8.5px;letter-spacing:.4em;color:var(--mute);margin-bottom:10px;text-shadow:0 0 10px #000}
@@ -1302,6 +1306,7 @@ body.ch4 .bar.sta i{background:#ff8a7e}
       <button class="mi" id="setMusic"><i>—</i><span>Music</span><em class="val">ON</em></button>
       <button class="mi" id="setCombat"><i>—</i><span>Combat themes</span><em class="val">PLAY</em></button>
       <button class="mi" id="setChatter"><i>—</i><span>Companion chatter</span><em class="val">NORMAL</em></button>
+      <button class="mi" id="setCathLang"><i>—</i><span>Catharsis speech</span><em class="val">CATHARSIS</em></button>
       <button class="mi back" data-go="mMain"><i>‹</i><span>Back</span></button>
     </div>
   </div>
@@ -1426,6 +1431,7 @@ body.ch4 .bar.sta i{background:#ff8a7e}
       <button class="opt" id="oMusic"><span>Music</span><b>ON</b></button>
       <button class="opt" id="oSound"><span>All sound</span><b>ON</b></button>
       <button class="opt" id="oChatter"><span>Companion chatter</span><b>NORMAL</b></button>
+      <button class="opt" id="oCathLang"><span>Catharsis speech</span><b>CATHARSIS</b></button>
     </div>
     <div class="row"><button class="btn primary" id="oBack"><span>Back</span></button></div>
   </div>
@@ -1675,6 +1681,7 @@ let muted = store.get('nv_muted', false);
 let musicOn = store.get('nv_music', true);
 let chatter = store.get('nv_chatter', 'normal'); // how much companions talk: 'normal', 'less' or 'off' (combat lines and fallen companions' remarks)
 if (!['normal', 'less', 'off'].includes(chatter)) chatter = 'normal';
+let cathLang = store.get('nv_cathLang', 'cath') === 'en' ? 'en' : 'cath'; // when the Catharsis speak: in their own language (with the English in brackets) or in English
 
 /* ============ renderer / scene ============ */
 const canvas = $('#c');
@@ -3316,12 +3323,13 @@ function combatTick(dt) {
 window.nvCombat = combatPulse;
 function toggleMusic() { musicOn = !musicOn; store.set('nv_music', musicOn); sfx.init(); sfx.setMusic(musicOn); refreshSettings(); sfx.click(); }
 function toggleSound() { muted = !muted; store.set('nv_muted', muted); sfx.init(); sfx.setMuted(muted); refreshSettings(); sfx.click(); }
-function refreshOpts() { const ch = chatter.toUpperCase(); for (const el of [$('#oChatter b'), $('#setChatter .val')]) if (el) el.textContent = ch; const m = $('#oMusic'), so = $('#oSound'); if (m) m.querySelector('b').textContent = musicOn ? 'ON' : 'OFF'; if (so) so.querySelector('b').textContent = muted ? 'OFF' : 'ON'; }
+function refreshOpts() { const ch = chatter.toUpperCase(); for (const el of [$('#oChatter b'), $('#setChatter .val')]) if (el) el.textContent = ch; for (const el of [$('#oCathLang b'), $('#setCathLang .val')]) if (el) el.textContent = cathLang === 'en' ? 'ENGLISH' : 'CATHARSIS'; const m = $('#oMusic'), so = $('#oSound'); if (m) m.querySelector('b').textContent = musicOn ? 'ON' : 'OFF'; if (so) so.querySelector('b').textContent = muted ? 'OFF' : 'ON'; }
 $('#setMusic').addEventListener('click', toggleMusic);
 $('#setStyle').addEventListener('click', () => { menuStyle = menuStyle === 'red' ? 'normal' : 'red'; store.set('nv_menuStyle', menuStyle); sfx.init(); sfx.click(); applyMenuEra(); });
 $('#oMusic').addEventListener('click', toggleMusic);
 function cycleChatter() { sfx.init(); sfx.click(); chatter = { normal: 'less', less: 'off', off: 'normal' }[chatter] || 'normal'; store.set('nv_chatter', chatter); refreshOpts(); }
 $('#oChatter').addEventListener('click', cycleChatter); $('#setChatter').addEventListener('click', cycleChatter);
+$('#oCathLang').addEventListener('click', () => { sfx.init(); sfx.click(); cycleCathLang(); }); $('#setCathLang').addEventListener('click', () => { sfx.init(); sfx.click(); cycleCathLang(); });
 $('#oSound').addEventListener('click', toggleSound);
 $('#xOptions').addEventListener('click', () => { sfx.click(); refreshOpts(); ui.xpause.classList.add('opts'); });
 $('#oBack').addEventListener('click', () => { sfx.click(); ui.xpause.classList.remove('opts'); });
@@ -23476,7 +23484,7 @@ function csbTakeRifle() {
   if (CSB.rifle) { for (const o of CSB.rifle) if (o.parent) o.parent.remove(o); CSB.rifle = null; }
   sfx.chime(); gainXP(400, 'The carapace rifle'); renderTasks(); renderInv && renderInv();
   notice('You have it', 'THE CARAPACE RIFLE', 3600);
-  setTimeout(() => { if (CSB.foe) { CSB.foe.hunt = true; CSB.sus = 1; } lootMsg(tiPhone() ? 'It heard you · shoot it with the carapace rifle' : 'It heard you, and it’s coming · the carapace rifle is in your hands: shoot it (F)', '#ff9a8a'); }, 1400);
+  setTimeout(() => csbSpeak(() => { if (CSB.foe) { CSB.foe.hunt = true; CSB.sus = 1; } lootMsg(tiPhone() ? 'It’s coming · shoot it with the carapace rifle' : 'It’s coming for you · the carapace rifle is in your hands: shoot it (F)', '#ff9a8a'); }), 1200); // the Catharsis speak first
 }
 function csbShot(gun, dmg) { // a gun fired at the guard
   const F = CSB.foe; if (!F) return;
@@ -23495,7 +23503,7 @@ function csbTick(dt) {
   if (CSB.area !== curArea() || !CSB.g || CSB.g.parent !== wScene) csbBuild();
   if (CSB.beacon) CSB.beacon.material.opacity = (wanderer.ch4 && wanderer.ch4.cathDone) ? 0 : .45 + Math.sin(time * 2.2) * .12;
   if (CSB.caught > 0) CSB.caught -= dt;
-  const F = CSB.foe; if (!F) return; const S = csbSpot(), p = player.position, [px, pz] = csbL(S, p.x, p.z);
+  const F = CSB.foe; if (!F || CSB.speaking) return; const S = csbSpot(), p = player.position, [px, pz] = csbL(S, p.x, p.z); // still while the Catharsis speak
   if (!CSB.hint && Math.hypot(px, pz) < 40) { CSB.hint = true; lootMsg(tiPhone() ? 'A Catharsis guards the rifle · push the stick lightly to walk quietly · stay out of its light' : 'A Catharsis guards the rifle, and nothing you carry can hurt it · walk (C) to stay quiet, stay out of its light', '#c9a2ff'); }
   // moving: its round, or straight at you once it's hunting
   const sp = F.stag > 0 ? 0 : F.hunt ? 3.3 : 1.7; F.stag = Math.max(0, F.stag - dt);
@@ -23523,6 +23531,33 @@ function csbTick(dt) {
   CSB.eye.position.set(wx, wHeight(wx, wz) + 3.6, wz); CSB.eye.material.opacity = F.hunt ? .9 : k > .15 ? k : 0; // the warning over its head
 }
 function csbNear(p) { if (!CSB.rifle || !csbOn()) return null; const S = csbSpot(), [lx, lz] = csbL(S, p.x, p.z); return Math.hypot(lx - CSB_RIFLE[0], lz - CSB_RIFLE[1]) < 2.2 ? { id: 'csbRifle', label: 'Take the rifle' } : null; }
+
+/* When you take the carapace rifle, the screen darkens and the Catharsis speak ten lines: in their own language (CH4CATHARSIS1–10,
+   data/cathOutpostVoices.js), with the English in brackets, or in English (CH4CATHARSISEN1–10, data/cathOutpostEnVoices.js).
+   Settings → Catharsis speech chooses (also the pause menu's Options, and a button on the dark screen, which switches from the next line).
+   The guard waits where it is until they're done, then comes for you. */
+const CATH_SAY = { cath: ["Vekh tal'khar. Naal orun vesh.", "Saal va neth. Naal esh'kar.", "Vekhra keth ran'esh. Naal vorr keth.", "Vekhra tha. Vekhra neth'aar. Naal ul vesha.", "Orun saal, vekh. Esh'thar naal.", "Khar vel keth. Neth vel shaar.", "Vekhra tha saal'esh. Keth va'orr.", "Naal urr varak. Naal urr neth.", "Vekh ra'tha. Naal sha'rek.", "Tha naal'esh. Neth naal'esh. Catharsis."],
+  en: ["You lift the shell-breaker. We are watching.", "Your flesh is loud. Our silence is patient.", "You opened a door. We opened another.", "Your ship. Your companions. We know their scent.", "Keep watching the silence, wanderer. It belongs to us.", "Shells may break. Flesh always yields.", "Your ship has fallen quiet. Its doors are open.", "We are inside the walls. We are among the living.", "Run back to your ship. We shall hear you coming.", "The ship is ours. The flesh is ours. Catharsis."] };
+const cathSayLines = () => cathLang === 'en' ? CATH_SAY.en.slice() : CATH_SAY.cath.map((c, i) => `${c} [${CATH_SAY.en[i]}]`);
+const cathSayBufs = () => ((cathLang === 'en' ? CSB.sayEn : CSB.sayCath) || []).slice();
+function csbLangBtn() { const b = document.getElementById('cathLangBtn'); if (b) b.textContent = `Voice: ${cathLang === 'en' ? 'English' : 'Catharsis'} · switch`; }
+function cycleCathLang() {
+  cathLang = cathLang === 'en' ? 'cath' : 'en'; store.set('nv_cathLang', cathLang); refreshOpts(); csbLangBtn();
+  const d = ex.dlg; if (d && d.who === 'THE CATHARSIS' && !d.choice) { const L = cathSayLines(), B = cathSayBufs(); for (let k = d.i + 1; k < d.lines.length; k++) { d.lines[k] = L[k]; if (d.bufs) d.bufs[k] = B[k] || null; } } // from the next line on
+}
+function csbDark(on) {
+  let el = document.getElementById('cathDark');
+  if (!el) { el = document.createElement('div'); el.id = 'cathDark'; el.innerHTML = '<button id="cathLangBtn" type="button"></button>'; xUI.dlg.before(el); // under the dialogue box, over everything else
+    el.querySelector('button').addEventListener('click', e => { e.stopPropagation(); sfx.click(); cycleCathLang(); }); }
+  csbLangBtn(); el.classList.toggle('on', !!on);
+}
+async function csbSpeak(done) {
+  CSB.speaking = true;
+  [CSB.sayCath, CSB.sayEn] = await Promise.all([josVo('cathOutpostVoices'), josVo('cathOutpostEnVoices')]);
+  const end = () => { CSB.speaking = false; csbDark(false); done(); };
+  if (state !== 'explore' || ex.dlg) { end(); return; }
+  csbDark(true); setTimeout(() => { if (state === 'explore' && !ex.dlg) openDialog('THE CATHARSIS', cathSayLines(), false, end, cathSayBufs()); else end(); }, 900); // the dark comes in first
+}
 /* Easter egg: bring Josiah Richards (Project BC) along and speak to Archamus, in any of Chapters III–V. Josiah calls him son; Archamus
    accuses him of tampering with the timeline. Josiah lets slip, never naming either of them, that he made the light and dark eggs (the
    Prime Good and the Prime Evil) when he reset Laniakea. Once per playthrough (eggs.josArch), in place of that conversation; after it,

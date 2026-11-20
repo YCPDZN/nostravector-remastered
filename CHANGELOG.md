@@ -2910,3 +2910,8 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **Main quest:** *Sneak into the Catharsis base and take the rifle*, then *Break the Catharsis' carapace with the rifle*, then **Bring the carapace rifle to Archamus** (there's no scene for that yet). The gold markers on Tallax go out once the guard is broken.
 - Flags: `ch4.cathRifle`, `ch4.cathDone`. The new item is `riflec`; it can't be crafted or sold.
 
+### The Catharsis speak, when you take the rifle
+- **Taking the carapace rifle now darkens the screen, and the Catharsis speak ten lines**, starting with *"Vekh tal'khar. Naal orun vesh."* (*You lift the shell-breaker. We are watching.*) and ending with *"Tha naal'esh. Neth naal'esh. Catharsis."* (*The ship is ours. The flesh is ours. Catharsis.*). The guard holds still while they speak, then comes for you.
+- **Two recordings of every line:** in the Catharsis' own language (CH4CATHARSIS1–10, `data/cathOutpostVoices.js`) and in English (CH4CATHARSISEN1–10, `data/cathOutpostEnVoices.js`). Sources and script in `assets/audio/catharsis_ch4/`.
+- **Settings → Catharsis speech: CATHARSIS / ENGLISH**, also in the pause menu's Options, and as a *Voice · switch* button at the top of the dark screen, which changes over from the next line. In Catharsis, the subtitles show their words with the English in brackets; in English, just the English. Remembered on this device.
+
