@@ -163,3 +163,59 @@ Packs: `data/cmb<Name>Voices.js` (COMBAT<NAME>1–5) and `data/cmb<Name>EvilVoic
 | COMBATCROXIANEVIL3.mp3 | Hurt (an enemy gets right up against them) | You cut me. Good. Now I can stop holding back. |
 | COMBATCROXIANEVIL4.mp3 | You’re in trouble (your health under 30%) | Get up. I didn’t walk out on Terra Imperia to babysit you. |
 | COMBATCROXIANEVIL5.mp3 | Victory (the fight’s over) | That’s how Terra Imperia did it. Fast, clean, and nobody left to talk. |
+
+## Malia de Toro · **recorded**
+
+**Hero / Neutral**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATMALIA1.mp3 | Fight starts | Contact! Fire discipline, people. Pick your targets. |
+| COMBATMALIA2.mp3 | Kill | Target down. Next. |
+| COMBATMALIA3.mp3 | Hurt (an enemy gets right up against them) | Joder! I’m fine. Keep firing. |
+| COMBATMALIA4.mp3 | You’re in trouble (your health under 30%) | Wanderer, get down! Covering fire, now! |
+| COMBATMALIA5.mp3 | Victory (the fight’s over) | Area secure. Everybody comes home. That’s the rule. |
+
+**Awakened Villain**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATMALIAEVIL1.mp3 | Fight starts | No prisoners. Hawthorne taught me that much. |
+| COMBATMALIAEVIL2.mp3 | Kill | Another one for the report. Nobody will ever read it. |
+| COMBATMALIAEVIL3.mp3 | Hurt (an enemy gets right up against them) | Hostia! You’ll pay for that in blood. |
+| COMBATMALIAEVIL4.mp3 | You’re in trouble (your health under 30%) | On your feet, soldier. I don’t carry dead weight. I leave it. |
+| COMBATMALIAEVIL5.mp3 | Victory (the fight’s over) | Burn what’s left. Leave them nothing to bury. |
+
+## James Brown (Chapter I) · **recorded**
+
+**One set (alignment never changes)**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATJAMES1.mp3 | Fight starts | Right then. Stay close and keep your visor clear. |
+| COMBATJAMES2.mp3 | Kill | Got him. Not bad for an explorer, eh? |
+| COMBATJAMES3.mp3 | Hurt (an enemy gets right up against them) | Ow! Bloody hell. Still standing. |
+| COMBATJAMES4.mp3 | You’re in trouble (your health under 30%) | Hold on! I didn’t drag you across the ice just to lose you now. |
+| COMBATJAMES5.mp3 | Victory (the fight’s over) | That’s that. Let’s get indoors before the storm finds us. |
+
+## James Brown (Terra Imperia) · **recorded**
+
+**Hero / Neutral**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATJAMESTI1.mp3 | Fight starts | Contact. I know how they think. Follow my lead. |
+| COMBATJAMESTI2.mp3 | Kill | Down. I used to stand where he’s standing. |
+| COMBATJAMESTI3.mp3 | Hurt (an enemy gets right up against them) | Just a scratch. I’ve had worse, from people I trusted. |
+| COMBATJAMESTI4.mp3 | You’re in trouble (your health under 30%) | Not again! I left you on the ice once. Never again. |
+| COMBATJAMESTI5.mp3 | Victory (the fight’s over) | Clear. Maybe one day you’ll stop watching my hands. |
+
+**Awakened Villain**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATJAMESTIEVIL1.mp3 | Fight starts | Nothing personal. It never is. |
+| COMBATJAMESTIEVIL2.mp3 | Kill | Just like old times. Clean, quiet, forgotten. |
+| COMBATJAMESTIEVIL3.mp3 | Hurt (an enemy gets right up against them) | You’ll regret that. Ask the wanderer how I handle regret. |
+| COMBATJAMESTIEVIL4.mp3 | You’re in trouble (your health under 30%) | Get up. You’re more use to me alive. For now. |
+| COMBATJAMESTIEVIL5.mp3 | Victory (the fight’s over) | Done. Shame. I was starting to enjoy the company. |
