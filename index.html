@@ -2548,7 +2548,7 @@ function liveChapterLabel() {
   const n = (wanderer && wanderer.chapter) | 0, far = ex.mode === 'ship' ? [jewelOn() ? 'The Jewel of Archamus' : 'The Nostra', shipAt()].filter(Boolean).join(' · ') : ex.mode === 'space' ? (sysById(SPC.sys) || {}).name : ex.mode === 'world' && isPl() ? world.planet.P.name : ex.mode === 'world' && world.adVisit && curArea() === 'africa' ? 'Earth · Ad-Nostra' : null;
   if (wanderer && wanderer.ch2 && wanderer.ch2.escapedLondon && n <= 3) return `Chapter III · ${far || 'Sol'}`;
   if (far) return `Chapter ${CHN_ROMAN[Math.max(1, n)]} · ${far}`;
-  const area = ex.mode === 'world' ? AREA_INFO[curArea()].name : n >= 2 && curArea() === 'africa' ? 'Africa' : 'Antarctica';
+  const area = ex.mode === 'world' ? areaInfo().name : n >= 2 && curArea() === 'africa' ? 'Africa' : 'Antarctica';
   return `Chapter ${CHN_ROMAN[Math.max(1, n)]} · ${area}`;
 }
 function saveRoster() { dirty = true; } // marks unsaved changes; nothing is written until the player saves
@@ -5931,7 +5931,7 @@ const ITEMS = {
   wall: { name: 'Wind barrier', kind: 'place', short: 'WALL', desc: 'A stone windbreak. Blocks movement.', cost: { stone: 6, ice: 2 } },
   heater: { name: 'Camp heater', kind: 'place', short: 'HEAT', desc: 'Restores your health while you stand close to it.', cost: { scrap: 4, stone: 2, crystal: 1 } },
   beacon: { name: 'Signal beacon', kind: 'place', short: 'BCN', desc: 'A tall marker. Your HUD shows the distance to the nearest one.', cost: { scrap: 3, crystal: 2, cloth: 1 } },
-  colkit: { name: 'Colony kit', kind: 'use', short: 'COLONY', colony: true, desc: 'A flag, a beacon and a prefab shelter in one crate. Use it on an unclaimed world (or press Colonise) and the world becomes your colony, no units needed. Needs a crafting table.', cost: { metal: 4, crystal: 3, cloth: 3, wood: 4 }, bench: true },
+  colkit: { name: 'Colony kit', kind: 'use', short: 'COLONY', colony: true, desc: 'A flag, a beacon and a prefab shelter in one crate. Use it on an unclaimed world (or press Colonise) and the world becomes your colony, no units needed. Craft it at a crafting table, aboard your ship, or near your ship on any world.', cost: { metal: 4, crystal: 3, cloth: 3, wood: 4 }, bench: true },
   medkit: { name: 'Med kit', kind: 'use', short: 'MED', desc: 'Restores 40 health.', heal: 40, cost: { cloth: 2, ice: 1 } },
   roast: { name: 'Roast meat', kind: 'use', short: 'ROAST', desc: 'Savanna game cooked over a wood fire. Restores 30 health.', heal: 30, cost: { meat: 1, wood: 1 } },
   ration: { name: 'Seal ration', kind: 'use', short: 'FOOD', desc: 'Rendered blubber and meltwater. Restores 25 health.', heal: 25, cost: { blubber: 1, ice: 1 } },
@@ -6523,6 +6523,7 @@ const AREA_INFO = {
   africa: { planet: 'Earth', name: 'Africa', stationTp: { x: 10.5, z: 6, name: 'Orion’s teleporter' } },
   europe: { planet: 'Earth', name: 'New London', stationTp: { x: -74, z: 30, name: 'Parliament Square teleporter' } }
 };
+const areaInfo = () => AREA_INFO[curArea()] || { planet: isPl() && world.planet ? world.planet.P.name : '?', name: isPl() && world.planet ? world.planet.P.name : 'Your base', stationTp: null }; // a planet you've landed on has no station teleporter
 const curArea = () => world.area || 'antarctica'; // set when you arrive somewhere new (Antarctica in Chapter I, Africa in Chapter II)
 const MATS = {
   wood: { name: 'Wood', color: 0x7a5434, rough: .85, metal: 0 },
@@ -6673,7 +6674,7 @@ function buildSpot(k) {
   } else {
     r = a; x = p.x + Math.sin(a) * 2.4; z = p.z + Math.cos(a) * 2.4; y = groundAt(x, z, foot + .3);
   }
-  let ok = Math.abs(y - foot) < 4.5 && !(Math.abs(x) < 9.5 && Math.abs(z) < 5.5) && Math.hypot(x - AREA_INFO[curArea()].stationTp.x, z - AREA_INFO[curArea()].stationTp.z) > 2.5;
+  const STP = areaInfo().stationTp; let ok = Math.abs(y - foot) < 4.5 && !(Math.abs(x) < 9.5 && Math.abs(z) < 5.5) && (!STP || Math.hypot(x - STP.x, z - STP.z) > 2.5); // (on a planet there's no station teleporter: building there used to fail with an error, so nothing could be built after Chapter I)
   for (const m of merchantsHere()) if (m.px != null && Math.hypot(x - m.px, z - m.pz) < 4) ok = false;
   const wallish = t => t === 'wall' || t === 'door';
   for (const b of world.build) {
@@ -7697,7 +7698,7 @@ function updateMinimap(dt) {
   if (mapAcc < 1 / 30) return; mapAcc = 0;
   renderMap($('#mmapC'), 110, true, 2, true);
   const q = questTarget(), p = player.position;
-  $('#mmapCap').innerHTML = q ? (q.far ? `<b>◆</b> ${(q.far / 1000).toFixed(1)} km` : `<b>◆</b> ${Math.round(Math.hypot(q.x - p.x, q.z - p.z))} m`) : AREA_INFO[curArea()].name.toUpperCase();
+  $('#mmapCap').innerHTML = q ? (q.far ? `<b>◆</b> ${(q.far / 1000).toFixed(1)} km` : `<b>◆</b> ${Math.round(Math.hypot(q.x - p.x, q.z - p.z))} m`) : areaInfo().name.toUpperCase();
   const wxe = $('#mmWx'); if (wxe) { const t = isPl() ? wxLine() : ''; if (wxe.innerHTML !== t) wxe.innerHTML = t; }
 }
 function openMap(on) {
@@ -13102,7 +13103,7 @@ const tiPhone = () => document.body.classList.contains('touch');
 const PONT_PAL = [['Imperial black', ''], ['Crimson', '#8a1018'], ['Gold', '#b8902c'], ['Silver', '#9aa3ad'], ['Ivory', '#d8d2c0'], ['Cobalt', '#1f4fa8'], ['Cyan', '#2aa8b8'], ['Emerald', '#1f7a44'], ['Violet', '#5a2a8a'], ['Ash', '#4a4d52']];
 let pontSrcP = null;
 async function pontRig(P) {
-  if (P && P.kind === 'uplift') return upRig(P.sp); // one of your uplifted species
+  if (P && P.kind === 'uplift') return P.sp && P.sp.race && SPECIES[P.sp.race] ? upRaceRig(P.sp.race, P.name, 'sword') : upRig(P.sp); // one of your uplifted species (a creature, or one of the six races)
   await glbReady('cpPontifex');
   if (!pontSrcP) pontSrcP = embGlb('cpPontifex');
   const src = await pontSrcP; if (!src) return null;
@@ -16161,7 +16162,7 @@ function pontToResident(id) {
   if (residents.length >= MAX_RESIDENTS) { lootMsg(`The world already has ${MAX_RESIDENTS} residents`, '#ff8f86'); return; }
   const base = JSON.parse(JSON.stringify(curChar() || wanderer));
   for (const k of ['party', 'ponts', 'dip', 'place', 'lairs', 'cmds', 'aboard', 'dungeon', 'ch1', 'ch2', 'ch3', 'orion', 'persona', 'resSp', 'look', 'gear']) delete base[k];
-  residents.push(Object.assign(base, P.kind === 'uplift' ? { id: ccId(), name: P.name, species: 'human', identity: 'other', resSp: 'uplift', resUp: P.sp, sentAt: Date.now(), persona: null, align: undefined } : { id: ccId(), name: P.name, species: 'human', identity: P.sex === 'f' ? 'female' : 'male', resSp: P.sex === 'f' ? 'sister' : 'pontifex', pontCol: P.col || '', sentAt: Date.now(), persona: null, align: undefined }));
+  residents.push(Object.assign(base, P.kind === 'uplift' ? { id: ccId(), name: P.name, species: P.sp && SPECIES[P.sp.race] ? P.sp.race : 'human', identity: 'other', resSp: P.sp && SPECIES[P.sp.race] ? null : 'uplift', resUp: P.sp && SPECIES[P.sp.race] ? null : P.sp, sentAt: Date.now(), persona: null, align: undefined } : { id: ccId(), name: P.name, species: 'human', identity: P.sex === 'f' ? 'female' : 'male', resSp: P.sex === 'f' ? 'sister' : 'pontifex', pontCol: P.col || '', sentAt: Date.now(), persona: null, align: undefined }));
   wanderer.ponts = PONTS().filter(o => o !== P); wanderer.party = (wanderer.party || []).filter(x => x !== 'pont:' + id); pontDrop('pont:' + id); pontSave(); refreshJamesUI();
   sfx.chime(); notice(pontTitle(P), `${P.name.toUpperCase()} NOW LIVES IN THIS WORLD · A RESIDENT`, 3600);
 }
@@ -16199,6 +16200,7 @@ function dipPontClick(a, b) {
    empire under a name you choose, founded on an unclaimed world, that is your puppet: e.pup). wanderer.uplift keeps a copy of
    each species, so deleting it from the creator later changes nothing. Five complete the quest (UP_GOAL). */
 const UP_GOAL = 5;
+const upMySp = () => (wanderer && wanderer.spLab) || []; // the species made in this save (pause menu → Species Creator), and no other save's
 const UPS = () => (wanderer && wanderer.uplift) || [];
 const upCount = () => UPS().length;
 const upQ = () => (wanderer.chapter | 0) === 4 && !!(wanderer.ch4 && wanderer.ch4.hakMet) && upCount() < UP_GOAL;
@@ -16209,6 +16211,10 @@ function upSpModel(sp, h) { // one of your species, stood at a height: the crew,
   const bb = new THREE.Box3().setFromObject(m), H = Math.max(.2, bb.max.y - bb.min.y), k = (h || (sp.legs === 2 ? 1.85 : 1.35)) / H;
   m.scale.multiplyScalar(k); m.position.y = -bb.min.y * k; wrap.userData.spAnim = m; m.traverse(o => { if (o.isMesh) o.castShadow = true; }); return wrap;
 }
+async function upRaceRig(race, name, weapon) { await loadSpecies(race).catch(() => null); const R = await giverRig(race, 1.85, String(name || race)); if (R && R.ra && weapon) armRig(R, weapon); return R; } // a person of one of the six races
+const upTroopRace = sp => (sp && SPECIES[sp.troops] && sp.troops) || (sp && SPECIES[sp.race] && sp.race) || 'human'; // created species can't field their own kind: their troops are one of the six races
+const upPolity = r => (r && r.sp && String(r.sp.polity || '').trim()) || `The ${r.name}`; // what a world they govern is called on the map
+const upLeader = (sp, fb) => (sp && String(sp.leader || '').trim()) || fb;
 function upRig(sp) { const root = new THREE.Group(), model = upSpModel(sp); root.add(model); return { root, model, turn: model, rest: new Map(), t: 0, mode: 'idle', weapon: 'none', gear: [], spec: model.userData.spAnim, up: true }; }
 function upSave() { const c = curChar(); if (c) { c.uplift = wanderer.uplift; c.ponts = wanderer.ponts; c.party = wanderer.party; c.dip = wanderer.dip; } saveRoster(); }
 function upDone(rec, title, sub) {
@@ -16223,11 +16229,11 @@ function upResident(sp, name, extra) { // a person of the species, living in the
   residents.push(c); return c;
 }
 function upUplift(spId, path, opt) {
-  const sp = ccData.species.find(o => o.id === spId); if (!sp) { lootMsg('Pick one of your species first', '#ff8f86'); return; }
+  const sp = upMySp().find(o => o.id === spId); if (!sp) { lootMsg('Pick one of your species first', '#ff8f86'); return; }
   if (UPS().some(o => o.spId === spId)) { lootMsg(`${titleName(sp.name)} have already been uplifted`, '#ff8f86'); return; }
   const copy = JSON.parse(JSON.stringify(sp)), nm = titleName(sp.name), rec = { id: ccId(), spId, name: nm, sp: copy, path, at: Date.now() };
   if (path === 'crew') {
-    const P = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), kind: 'uplift', name: `${nm} Champion`, sp: copy, spName: nm, col: '', lv: Math.min(PONT_MAX_LV, plvNow()), st: 'ally', made: Date.now() };
+    const P = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), kind: 'uplift', name: upLeader(copy, `${nm} Champion`), sp: copy, spName: nm, col: '', lv: Math.min(PONT_MAX_LV, plvNow()), st: 'ally', made: Date.now() };
     wanderer.ponts = [...PONTS(), P]; wanderer.party = [...new Set([...(wanderer.party || []), 'pont:' + P.id])];
     const st = alState(); st.c['pont:' + P.id] = { a: 0, inf: 30 }; alSave(); rec.pont = P.id; pontSave(); syncCrewParty(); placeCrew().catch(() => null);
     upDone(rec, 'Uplifted', `THE ${nm.toUpperCase()} JOIN YOUR CREW`); compJoinNotice('pont:' + P.id, 4800);
@@ -16238,36 +16244,38 @@ function upUplift(spId, path, opt) {
   } else if (path === 'emp') {
     const en = String(opt.name || '').trim().slice(0, 40); if (!en) { lootMsg('Name their empire first', '#ff8f86'); return; }
     const free = resFreeWorlds(); if (!free.length) { lootMsg('There are no unclaimed worlds left for them to settle', '#ff8f86'); return; }
-    const c = upResident(copy, `${nm} Sovereign`, { upEmp: true }); if (!c) { lootMsg(`The world already has ${MAX_RESIDENTS} residents · make room for their sovereign first`, '#ff8f86'); return; }
+    const c = upResident(copy, upLeader(copy, `${nm} Sovereign`), Object.assign({ upEmp: true }, copy.race && SPECIES[copy.race] ? { species: copy.race, resSp: null, resUp: null } : {})); // one of the six races lives in the world as one of their own if (!c) { lootMsg(`The world already has ${MAX_RESIDENTS} residents · make room for their sovereign first`, '#ff8f86'); return; }
     const home = sysById('steca'), cap = free.sort((p, q) => galDist(sysById(p.sys), home) - galDist(sysById(q.sys), home))[0];
     resEmp.emp[c.id] = { id: c.id, name: en, col: [cap.id], cap: cap.id, since: resNow(), over: null, trib: null, res: false, lostTo: {}, pup: true };
-    resEmpLog(`${en} was founded on ${cap.name} by the uplifted ${nm}, a puppet of ${wanderer.name}`); rec.emp = c.id; rec.empName = en;
+    resEmpLog(`${en} was founded on ${cap.name} by the uplifted ${nm}`); rec.emp = c.id; rec.empName = en;
     if (state === 'space' || GAL.open) applyChapterFactions();
     upDone(rec, en, `FOUNDED ON ${cap.name.toUpperCase()} · YOUR PUPPET`);
   }
   dipRender();
 }
 function dipUpCard() {
-  if (!upOpen()) return ''; const esc = ccEsc, D = dip(), done = UPS(), left = ccData.species.filter(sp => !done.some(o => o.spId === sp.id)), cols = Object.keys(D.col).filter(id => bodyById(id));
+  if (!upOpen()) return ''; const esc = ccEsc, D = dip(), done = UPS(), left = upMySp().filter(sp => !done.some(o => o.spId === sp.id)), cols = Object.keys(D.col).filter(id => bodyById(id));
   const allies = PONTS().filter(o => o.kind === 'uplift' && o.st === 'ally');
   let h = `<div class="dip-card" style="--fc:#b07aff"><h4>UPLIFT<small>${Math.min(done.length, UP_GOAL)} of ${UP_GOAL} species uplifted${done.length > UP_GOAL ? ` · ${done.length} in all` : ''}</small></h4>
-    <p>Hak Chompjak’s plan: make a species in the Species Creator (pause menu → Species Creator), then uplift it here. Each takes one path: it joins your <b>crew</b> and fights at your side, it <b>governs</b> one of your colonies, or it founds an <b>empire</b> under a name you choose, as your puppet.</p>`;
-  if (!left.length) h += `<p style="color:var(--mute)">${ccData.species.length ? 'Every species you have made is uplifted. Make another in the Species Creator.' : 'You haven’t made a species yet. Make one in the Species Creator.'}</p>`;
+    <p>Hak Chompjak’s plan: make a species in the Species Creator (pause menu → Species Creator; the species you make there belong to this save only), then uplift it here. Each takes one path: it joins your <b>crew</b> and fights at your side, it <b>governs</b> one of your colonies, or it founds an <b>empire</b> under a name you choose, as your puppet.</p>`;
+  if (!left.length) h += `<p style="color:var(--mute)">${upMySp().length ? 'Every species you have made is uplifted. Make another in the Species Creator.' : 'You haven’t made a species yet. Make one in the Species Creator.'}</p>`;
   else h += `<div class="dip-row" style="flex-wrap:wrap;gap:8px"><select class="dip-in" data-a="upSp" style="flex:1 1 160px">${left.map(sp => `<option value="${sp.id}"${DIPV.upSp === sp.id ? ' selected' : ''}>${esc(titleName(sp.name))}</option>`).join('')}</select>
       <select class="dip-in" data-a="upPath" style="flex:1 1 160px">${[['crew', 'Crew · fights at your side'], ['gov', 'Governor of a colony'], ['emp', 'Their own empire · your puppet']].map(([v, t]) => `<option value="${v}"${(DIPV.upPath || 'crew') === v ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
     ${DIPV.upPath === 'gov' ? `<div class="dip-row"><select class="dip-in" data-a="upCol" style="flex:1">${cols.length ? cols.map(id => `<option value="${id}">${esc(bodyById(id).name)}${D.col[id].gov ? ` (replaces ${esc(govName(D.col[id].gov))})` : ''}</option>`).join('') : '<option value="">No colonies yet: land on an unclaimed world to colonise it</option>'}</select></div>` : ''}
     ${DIPV.upPath === 'emp' ? `<div class="dip-row"><input class="dip-in" data-a="upEmpName" placeholder="Name their empire" maxlength="40" style="flex:1"></div>` : ''}
     <div class="dip-row"><button class="btn small" data-a="upGo"><span>Uplift them</span></button></div>`;
   for (const r of done) {
-    const P = r.pont && pontById(r.pont), e = r.emp && resEmp.emp[r.emp], what = r.path === 'crew' ? (P ? `In your crew · ${esc(P.name)}` : 'Was in your crew') : r.path === 'gov' ? (dip().col[r.col] && dip().col[r.col].gov === 'up:' + r.id ? `Governs ${esc(bodyById(r.col).name)}` : 'Governor, between postings') : (e ? `${esc(e.name)} · ${e.col.length} world${e.col.length > 1 ? 's' : ''} · your puppet` : `${esc(r.empName || 'Their empire')} has fallen`);
-    h += `<div class="dip-row" style="border-top:1px solid var(--faint);padding:8px 0;justify-content:space-between"><span style="font-size:10px;letter-spacing:.16em">${esc(r.name).toUpperCase()}<br><small style="color:#c9a8ff;letter-spacing:.14em;font-size:8px;text-transform:uppercase">${what}</small></span></div>`;
+    const P = r.pont && pontById(r.pont), e = r.emp && resEmp.emp[r.emp], what = r.path === 'crew' ? (P ? `In your crew · ${esc(P.name)}` : 'Was in your crew') : r.path === 'gov' ? (dip().col[r.col] && dip().col[r.col].gov === 'up:' + r.id ? `Governs ${esc(bodyById(r.col).name)}` : 'Governor, between postings') : (e ? (e.res && !e.col.length ? `${esc(e.name)} · fallen, fighting to return` : `${esc(e.name)} · ${e.col.length} world${e.col.length > 1 ? 's' : ''} · your puppet`) : `${esc(r.empName || 'Their empire')} has fallen`);
+    const fallen = e && e.res && !e.col.length && !resEmp.wars.some(w => w.a === e.id || w.b === e.id);
+    h += `<div class="dip-row" style="border-top:1px solid var(--faint);padding:8px 0;justify-content:space-between;flex-wrap:wrap;gap:8px"><span style="font-size:10px;letter-spacing:.16em">${esc(r.name).toUpperCase()}<br><small style="color:#c9a8ff;letter-spacing:.14em;font-size:8px;text-transform:uppercase">${what}</small></span>${fallen ? `<button class="btn small" data-a="upBack" data-r="${r.id}"${units() >= UP_BACK_COST ? '' : ' disabled'}><span>Back their return · ${UP_BACK_COST} units</span></button>` : ''}</div>`;
   }
   for (const P of allies) { const on = (wanderer.party || []).includes('pont:' + P.id);
     h += `<div style="border-top:1px solid var(--faint);padding:10px 0"><div style="font-size:8px;letter-spacing:.22em;color:var(--mute);margin-bottom:6px;text-transform:uppercase">${pontTitle(P)} · lv ${compLevel('pont:' + P.id)}</div><div class="dip-row" style="flex-wrap:wrap"><input class="dip-in" data-a="pontNameIn" data-p="${P.id}" value="${esc(P.name)}" maxlength="28" style="min-width:0;flex:1 1 140px"><button class="btn small" data-a="pontRename" data-p="${P.id}"><span>Rename</span></button></div>
       <div class="dip-row" style="flex-wrap:wrap;margin-top:8px"><button class="btn small" data-a="pontParty" data-p="${P.id}"><span>${on ? `Leave them on ${theShip()}` : 'Bring them aboard'}</span></button><button class="btn small" data-a="pontRes" data-p="${P.id}"><span>${DIPV.pontRes === P.id ? 'Tap again: they live in the world for good (takes a resident slot)' : 'Make them a resident'}</span></button></div></div>`; }
   return h + `</div>`;
 }
-function dipUpClick(a) {
+function dipUpClick(a, b) {
+  if (a === 'upBack') { const r = upById(b && b.dataset.r), e = r && resEmp.emp[r.emp]; if (e && units() >= UP_BACK_COST && upPupReturn(e, resNow(), 40)) { addUnits(-UP_BACK_COST); sfx.chime(); } dipRender(); return true; }
   if (a !== 'upGo') return false;
   const v = k => { const el = $(`#dipBody [data-a="${k}"]`); return el ? el.value : ''; };
   upUplift(v('upSp'), v('upPath') || 'crew', { col: v('upCol'), name: v('upEmpName') }); return true;
@@ -21718,7 +21726,7 @@ function dipOverlay() {
   for (const S of SYSTEMS) {
     for (const P of S.bodies) {
       const C = D.col[P.id];
-      if (C) { const rr = C.from && D.res[C.from]; P.faction = `${realm} · ${C.gov ? 'governor ' + govName(C.gov) : 'colony, no governor yet'}${rr && rr.st === 'subjugated' && rr.resist ? ' · resistance active' : ''}`; continue; }
+      if (C) { const rr = C.from && D.res[C.from], U = C.gov && C.gov.startsWith('up:') && typeof upById === 'function' && upById(C.gov.slice(3)); if (U) { P.faction = upPolity(U); continue; } P.faction = `${realm} · ${C.gov ? 'governor ' + govName(C.gov) : 'colony, no governor yet'}${rr && rr.st === 'subjugated' && rr.resist ? ' · resistance active' : ''}`; continue; } // a world your uplifted species governs carries their name, not yours
       const F = dipFacOf(P.baseFac); if (!F) continue; const r = D.res[F.id], W = D.wars[F.id];
       if (W && (W.held || []).includes(P.id)) P.faction = `${dipFacName(F)} · occupied by ${realm}`;
       else if (r && r.st === 'vassal') P.faction = `${r.name || F.name} · puppet of ${realm}`;
@@ -22878,7 +22886,7 @@ function dipClick(e) {
   const b = e.target.closest('[data-a]'); if (!b || b.disabled || b.tagName === 'SELECT' || b.tagName === 'INPUT') return;
   const D = dip(), a = b.dataset.a, f = b.dataset.f, cb = b.dataset.cb, id = b.dataset.c, pid = b.dataset.p;
   if (a && a.startsWith('pont') && dipPontClick(a, b)) return;
-  if (a && a.startsWith('up') && dipUpClick(a)) return;
+  if (a && a.startsWith('up') && dipUpClick(a, b)) return;
   if (a === 'ask') DIPV.confirm = { f, cb };
   else if (a === 'cancel') DIPV.confirm = null;
   else if (a === 'declare') { DIPV.confirm = null; dipDeclare(f, cb); }
@@ -23204,6 +23212,11 @@ async function placeGivers() {
         setTimeout(() => lootMsg(tiPhone() ? 'Hak is at the Imperial Palace' : 'Emperor Hak Chompjak waits on the steps of the Imperial Palace, at the heart of Alphinos', '#b07aff'), 3200); }
       else setTimeout(() => lootMsg(tiPhone() ? 'Hak is in Alphinos · fly to it' : 'Emperor Hak Chompjak holds court in Alphinos · take off and fly to the city from the sky (its marker), then land', '#b07aff'), 3200);
     } }
+  { const D = dip(), g = D.col[P.id] && D.col[P.id].gov, rec = g && g.startsWith('up:') && upById(g.slice(3)), e = !rec && typeof resHeldBy === 'function' && resHeldBy(P.id), pr = e && e.pup && UPS().find(r => r.emp === e.id);
+    const U = rec || pr; // your uplifted governor (or your puppet's sovereign, at its capital) and their troops, standing by your landing
+    if (U && (rec || e.cap === P.id)) { const ttl = rec ? (U.sp.govTitle || 'Governor') : (U.sp.stateTitle || 'Sovereign'), who = upLeader(U.sp, rec ? `the ${U.name} governor` : `${U.name} Sovereign`);
+      want.push({ upGov: { rec: U, title: ttl, who, emp: !rec && e ? e.name : null }, name: `${ttl} ${who}`.toUpperCase(), x: -14, z: 14 });
+      for (let i = 0; i < 3; i++) want.push({ upTroop: upTroopRace(U.sp), name: `${titleName(SPECIES[upTroopRace(U.sp)].label)} trooper`.toUpperCase(), x: -17 + i * 3, z: 17.5, mute: true }); } }
   if (P.id === 'tamez' && taroQ()) { want.push({ taro4: true, name: 'TYROTARONUS', x: 14, z: 16 }); setTimeout(() => lootMsg('Tyrotaronus is waiting for you nearby (the gold marker)', '#b8bfcc'), 3200); } // Chapter IV: where he said he would be
   if (P.id === 'archiostal-gardens' && ((wanderer.chapter | 0) === 3 || ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.timeSkip))) want.push({ arch3: true, name: 'ARCHAMUS', x: 16, z: 21 }); // Chapter III: he wants nothing to do with you (not yet); Chapter IV: the first quest is to find him here
   if (P.id === 'earth' && (josiahQ() || (wanderer.chapter | 0) === 3)) { // Chapter IV: at his father's grave near wherever you set down, on the quiet side, away from the stall and its crowd; Chapter III: there already, but it's too soon to meet him
@@ -23213,7 +23226,7 @@ async function placeGivers() {
     want.push({ josiah: true, jos3: (wanderer.chapter | 0) === 3, name: 'JOSIAH WILLIAMS II', x, z }); }
   for (const w of want) {
     try {
-      const R = w.taro4 ? await glbRig('vcTaro', 2.6) : w.josiah ? await josiahRig() : w.leader || w.arch3 ? await leaderRig(SQ_LEADERS.find(L => L.id === (w.leader || 'archamus'))) : await giverRig(w.sp, 1.8, w.name);
+      const R = w.upGov ? (w.upGov.rec.sp.race && SPECIES[w.upGov.rec.sp.race] ? await upRaceRig(w.upGov.rec.sp.race, w.upGov.who) : upRig(w.upGov.rec.sp)) : w.upTroop ? await upRaceRig(w.upTroop, w.name + Math.random(), 'rifle') : w.taro4 ? await glbRig('vcTaro', 2.6) : w.josiah ? await josiahRig() : w.leader || w.arch3 ? await leaderRig(SQ_LEADERS.find(L => L.id === (w.leader || 'archamus'))) : await giverRig(w.sp, 1.8, w.name);
       if (!R || GIVERS.area !== area || curArea() !== area) continue;
       let x = w.x, z = w.z; for (let i = 0; i < 30 && !w.noSea && plSeaY() != null && wHeight(x, z) < plSeaY() + .6; i++) { x += 3; z -= 2; }
       R.root.position.set(x, w.y != null ? w.y : wHeight(x, z), z); R.root.rotation.y = w.noSea ? 0 : Math.atan2(-x, 6 - z); wScene.add(R.root); // Hak faces down the avenue
@@ -24012,6 +24025,9 @@ async function hak4Talk() {
 }
 function giverTalk(G) {
   if (G.taro4) { taroMeetTalk(); return; }
+  if (G.upTroop) { lootMsg('The trooper salutes and holds the line', '#c9a8ff'); return; }
+  if (G.upGov) { const U = G.upGov, P = world.planet.P, troop = SPECIES[upTroopRace(U.rec.sp)].label; // your governor, or your puppet's head of state
+    openDialog(`${U.title} ${U.who}`.toUpperCase(), U.emp ? [`${wanderer.name}. ${U.emp} stands because you lifted us up. Its banner is ours, and its will is yours.`, `Our ${troop} troops guard ${P.name}. Say the word, and they march.`] : [`${P.name} is yours, ${wanderer.name}, and the ${U.rec.name} keep it for you.`, `The ${troop} troops of our garrison hold it in your name.`]); return; }
   if (G.leader === 'hak' && hakMeetQ()) { hakUpTalk(); return; } // Chapter IV's main quest: Hak sets you the uplift
   if (G.josiah && G.jos3) { jos3Talk(); return; }
   if (G.josiah) { josiahTalk(); return; }
@@ -27321,7 +27337,10 @@ $('#xDelete').addEventListener('click', () => { sfx.click(); openSlots('delete',
 /* ============ custom creations: species creator, planet maker, adventure maker ============ */
 const CC_KEY = 'nv_creations';
 const ccData = (() => { const d = store.get(CC_KEY, null); const o = d && typeof d === 'object' ? d : {}; for (const k of ['species', 'planets', 'adventures', 'characters']) if (!Array.isArray(o[k])) o[k] = []; return o; })();
-const ccStore = () => store.set(CC_KEY, ccData);
+const ccStore = () => { // the creator from the pause menu edits this save's own species (wanderer.spLab); everything else is shared by the whole game
+  if (cc.fromGame && cc.globalSp && wanderer) { wanderer.spLab = ccData.species; const c = curChar(); if (c) c.spLab = wanderer.spLab; saveRoster(); store.set(CC_KEY, Object.assign({}, ccData, { species: cc.globalSp })); return; }
+  store.set(CC_KEY, ccData);
+};
 const ccId = () => Math.random().toString(36).slice(2, 10);
 const ccEsc = t => String(t == null ? '' : t).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
 
@@ -27900,9 +27919,18 @@ function castModel(c) {
 }
 
 // ---- forms ----
+const SP_RACES = [['human', 'Human'], ['chompy', 'Chompy'], ['erisian', 'Erisian'], ['grek', 'Grek'], ['taredesiban', 'Taredesiban'], ['oilkoumene', 'Oilkoumene']]; // the six prebuilt races
 const SP_SCHEMA = [
   { k: 'name', t: 'name' },
-  { sec: 'Body' },
+  { sec: 'Race' },
+  { k: 'race', t: 'select', l: 'Make a new creature, or use one of the six races', o: () => [['', 'A new creature (the Body below)'], ...SP_RACES.map(([v, n]) => [v, n + ' (prebuilt)'])] },
+  { sec: 'Government' },
+  { k: 'leader', t: 'text', l: 'Their leader’s name', ph: 'e.g. Varn Aldecott', soft: true },
+  { k: 'polity', t: 'text', l: 'Name of their state (shown on the map)', ph: 'e.g. The Glorbian Hegemony', soft: true },
+  { k: 'stateTitle', t: 'text', l: 'Head of state title', ph: 'e.g. Grand Imperarch', soft: true },
+  { k: 'govTitle', t: 'text', l: 'Head of government title', ph: 'e.g. First Minister', soft: true },
+  { k: 'troops', t: 'select', l: 'Troops (one of the six races)', o: () => [['', 'Their own race if prebuilt, else Human'], ...SP_RACES], soft: true },
+  { sec: 'Body (a new creature only)' },
   { k: 'legs', t: 'chips', l: 'Legs', o: [[0, 'None'], [2, 'Two'], [4, 'Four'], [6, 'Six']] },
   { k: 'legLen', t: 'range', l: 'Leg length', min: .3, max: 1.6, step: .05 },
   { k: 'arms', t: 'chips', l: 'Arms', o: [[0, 'None'], [2, 'Two'], [4, 'Four']] },
@@ -27982,6 +28010,10 @@ function ccField(f, obj) {
     fd.innerHTML = `${lab}<select class="cc-sel">${f.o().map(([v, n]) => `<option value="${ccEsc(v)}">${ccEsc(n)}</option>`).join('')}</select>`;
     const i = fd.querySelector('select'); i.value = obj[f.k] || '';
     i.addEventListener('change', () => { obj[f.k] = i.value; changed(); });
+  } else if (f.t === 'text') {
+    fd.innerHTML = `${lab}<input class="cc-sel" maxlength="40" spellcheck="false" placeholder="${ccEsc(f.ph || '')}">`;
+    const i = fd.querySelector('input'); i.value = obj[f.k] || '';
+    i.addEventListener('input', () => { obj[f.k] = i.value; ccChanged(false); });
   } else if (f.t === 'area') {
     fd.innerHTML = `${lab}<textarea class="cc-area" maxlength="600" rows="4"></textarea>`;
     const i = fd.querySelector('textarea'); i.value = obj[f.k] || '';
@@ -28061,7 +28093,7 @@ function advForm(a) {
 
 // ---- screens ----
 const ccUI = { root: $('#cc'), list: $('#ccList'), body: $('#ccBody'), title: $('#ccTitle'), eyebrow: $('#ccEyebrow'), msg: $('#ccMsg'), actions: $('#ccActions') };
-const CC_TABS = { species: { label: 'Species', store: 'species', make: SP_NEW, schema: SP_SCHEMA, sub: s => `${s.legs ? s.legs + ' legs' : 'Legless'} · ${s.temperament}` },
+const CC_TABS = { species: { label: 'Species', store: 'species', make: SP_NEW, schema: SP_SCHEMA, sub: s => s.race && SPECIES[s.race] ? `${SPECIES[s.race].label} (prebuilt)${s.leader ? ' · ' + s.leader : ''}` : `${s.legs ? s.legs + ' legs' : 'Legless'} · ${s.temperament}` },
   planets: { label: 'Planets', store: 'planets', make: PL_NEW, schema: PL_SCHEMA, sub: p => `${p.type === 'gas' ? 'Gas giant' : p.type} · ${p.moons} moon${p.moons === 1 ? '' : 's'}` },
   characters: { label: 'Characters', store: 'characters', sub: c => `${c.game || 'Your upload'} · ${WEAPONS[c.weapon] || 'Unarmed'}` },
   adventures: { label: 'Adventures', store: 'adventures', make: ADV_NEW, sub: a => `${planetById(a.planet).name} · ${a.acts.length} act${a.acts.length === 1 ? '' : 's'} · ${a.cast.length} cast` } };
@@ -28079,12 +28111,13 @@ function ccInGameRender() { // plain black behind the species you're making: no 
 function ccOpenInGame() { // from the pause menu: the Species Creator over your game; Back returns you to the pause menu (only the Species tab, so nothing in it can pull you out of your game)
   if (state !== 'xpaused') return; sfx.click(); cc.fromGame = true; ccUI.root.classList.add('ingame'); show(ui.xpause, false);
   cc.hud = { x: !ui.xhud.classList.contains('hidden'), s: !!($('#spaceHud') && !$('#spaceHud').classList.contains('hidden')) }; show(ui.xhud, false); if ($('#spaceHud')) $('#spaceHud').classList.add('hidden'); document.body.classList.add('cc-ingame'); // nothing of the game shows: no HUD, no labels, no chat
+  cc.globalSp = ccData.species; ccData.species = wanderer.spLab || (wanderer.spLab = []); // only this save's species
   state = 'cc'; show(ccUI.root, true); cc.cur = null; cc.dirty = false; ccTab('species'); resize();
 }
 function ccClose() {
   if (cc.cur && cc.dirty && cc.arm !== 'leave') { cc.arm = 'leave'; ccMsg('Unsaved changes — tap Back again to discard them', true); return; }
   cc.arm = null; ccClear(); show(ccUI.root, false);
-  if (cc.fromGame) { cc.fromGame = false; ccUI.root.classList.remove('ingame'); document.body.classList.remove('cc-ingame'); if (cc.hud) { if (cc.hud.x) show(ui.xhud, true); if (cc.hud.s && $('#spaceHud')) $('#spaceHud').classList.remove('hidden'); cc.hud = null; } state = 'xpaused'; show(ui.xpause, true); resize(); clock.getDelta(); return; } // back to your paused game
+  if (cc.fromGame) { if (cc.globalSp) { ccData.species = cc.globalSp; cc.globalSp = null; } cc.fromGame = false; ccUI.root.classList.remove('ingame'); document.body.classList.remove('cc-ingame'); if (cc.hud) { if (cc.hud.x) show(ui.xhud, true); if (cc.hud.s && $('#spaceHud')) $('#spaceHud').classList.remove('hidden'); cc.hud = null; } state = 'xpaused'; show(ui.xpause, true); resize(); clock.getDelta(); return; } // back to your paused game
   state = 'title'; show(ui.title, true); goMenu('mMain'); resize();
 }
 function ccTab(t) {
@@ -28226,6 +28259,11 @@ function ccPreview() {
   ccStage.visible = cc.tab !== 'planets';
   if (cc.tab === 'species') {
     const sp = o || Object.assign(SP_NEW(), { legs: 4, pattern: 'spots', horns: 2, spikes: 5, glow: true, c1: '#2f5a8a', c3: '#7fe0ff' });
+    if (sp.race && SPECIES[sp.race]) { // one of the six races: their own people, as they walk the worlds
+      const tok = cc.loadTok; cc.lookY = 1; cc.dist = 5.2;
+      upRaceRig(sp.race, sp.leader || sp.name).then(R => { if (!R || tok !== cc.loadTok) return; ccRoot.add(R.root); cc.rigs.push(R); }).catch(() => ccMsg('Couldn’t load that race', true));
+      return;
+    }
     const m = buildSpecies(sp); ccRoot.add(m); cc.anim = [m];
     const b = new THREE.Box3().setFromObject(m), h = b.max.y - b.min.y, w = Math.max(b.max.x - b.min.x, b.max.z - b.min.z);
     cc.lookY = h * .5; cc.dist = clamp(Math.max(h, w) * 2.1 + 1.2, 3.5, 16);
@@ -30604,6 +30642,19 @@ function resFound(c) {
   resWarSay(c, resPick((RW && RW.found[al]) || ['{ea} is founded.']), { ea: name, player: wanderer.name });
   resEmpLog(`${c.name} founded ${name} on ${cap.name}`); saveRoster();
 }
+/* Uplifted puppet empires come back. Annihilated (they scatter rather than vanish) or subjugated, they fight on as a resistance;
+   about five minutes later they declare a war of Restoration on whoever took their worlds, with your backing (+25 power). If that
+   empire is gone, they simply rise again on a free world. You can pay to back their return at once (Diplomacy → Crew → Uplift). */
+const UP_RETURN_MS = 5 * 60e3, UP_BACK_COST = 1500;
+function upPupReturn(e, now, boost) {
+  if (resEmp.wars.some(w => w.a === e.id || w.b === e.id)) return false;
+  const foe = Object.keys(e.lostTo || {}).find(id => (e.lostTo[id] || []).length && resEmp.emp[id] && (e.lostTo[id] || []).some(w => resEmp.emp[id].col.includes(w)));
+  if (foe && resDeclare(e, resEmp.emp[foe], 'restoration')) { if (boost) { const w = resEmp.wars[resEmp.wars.length - 1]; if (w) w.score += boost; } resEmpLog(`${e.name} rises against ${resEmp.emp[foe].name} to take back its worlds`); notice(e.name, 'YOUR PUPPET FIGHTS TO RETURN', 3800); return true; }
+  const free = resFreeWorlds(); if (!free.length) return false;
+  const back = free.find(P => P.id === e.cap) || free[Math.floor(Math.random() * Math.min(4, free.length))];
+  e.col = [back.id]; e.cap = back.id; e.res = false; e.fellAt = null; e.lostTo = {}; resEmpLog(`${e.name} rises again on ${back.name}`); notice(e.name, `RISES AGAIN ON ${back.name.toUpperCase()}`, 4200); saveRoster(); return true;
+}
+function upPupTick(E) { const now = resNow(); for (const e of Object.values(E.emp)) if (e.pup && e.res && !e.col.length && now - (e.fellAt || 0) > UP_RETURN_MS) upPupReturn(e, now, 0); }
 function resExpand(e) {
   const free = resFreeWorlds(); if (!free.length) return; const C = sysById(bodyById(e.cap) ? bodyById(e.cap).sys : 'sol');
   const P = free.sort((p, q) => galDist(sysById(p.sys), C) - galDist(sysById(q.sys), C))[Math.floor(Math.random() * Math.min(5, free.length))];
@@ -30626,7 +30677,8 @@ function resDeclare(a, b, cb, incited) {
   setTimeout(() => resBanter('declare', ca, cbr, x), incited ? 1800 : 0);
   saveRoster(); return true;
 }
-const resPower = e => { const c = resRuler(e), L = (wanderer && wanderer.dip && wanderer.dip.lent) || {}; return (c ? resLevel(c) : 30) + e.col.length * 4 + Object.values(resEmp.emp).filter(o => o.over === e.id).length * 6 + Object.values(L).filter(v => v === 'res:' + e.id).length * 10; }; // your companions serving them count for a lot
+const resPower = e => { if (e.pup) return resPower0(e) + 25; return resPower0(e); }; // your puppets fight with your backing behind them
+const resPower0 = e => { const c = resRuler(e), L = (wanderer && wanderer.dip && wanderer.dip.lent) || {}; return (c ? resLevel(c) : 30) + e.col.length * 4 + Object.values(resEmp.emp).filter(o => o.over === e.id).length * 6 + Object.values(L).filter(v => v === 'res:' + e.id).length * 10; }; // your companions serving them count for a lot
 function resWarStep(w) {
   const A = resEmpOf(w.a), B = resEmpOf(w.b); if (!A || !B) { resEmp.wars = resEmp.wars.filter(o => o !== w); return; }
   w.score += (resPower(A) - resPower(B)) * .15 + (Math.random() * 36 - 18);
@@ -30639,11 +30691,12 @@ function resWarEnd(w, attackerWon) {
   const take = ids => { const moved = ids.filter(id => L.col.includes(id)); L.col = L.col.filter(id => !moved.includes(id)); W.col.push(...moved); L.lostTo[W.id] = (L.lostTo[W.id] || []).concat(moved); return moved.length; };
   let what = '';
   if (!attackerWon) { const n = take(L.col.slice(0, 1 + Math.floor(Math.random() * 2))); what = `${L.name}'s attack failed; ${W.name} took ${n} world${n === 1 ? '' : 's'}`; }
+  else if (w.cb === 'annihilation' && L.pup) { take([...L.col]); L.res = true; L.fellAt = resNow(); what = `${W.name} annihilated ${L.name}, but your puppet's people scatter and swear to return`; } // an uplifted empire isn't wiped out: it fights its way back
   else if (w.cb === 'annihilation') { take([...L.col]); delete resEmp.emp[L.id]; resEmp.cool[L.id] = resNow() + 20 * 60e3; resEmp.wars = resEmp.wars.filter(o => o.a !== L.id && o.b !== L.id); what = `${W.name} annihilated ${L.name}`; }
-  else if (w.cb === 'subjugation') { take([...L.col]); L.res = true; what = `${W.name} subjugated ${L.name}; a resistance fights on`; }
+  else if (w.cb === 'subjugation') { take([...L.col]); L.res = true; if (L.pup) L.fellAt = resNow(); what = `${W.name} subjugated ${L.name}; a resistance fights on`; }
   else if (w.cb === 'vassal') { L.over = W.id; L.trib = null; what = `${L.name} is now a puppet of ${W.name}`; }
   else if (w.cb === 'tribute') { L.trib = W.id; what = `${L.name} now pays tribute to ${W.name}`; }
-  else if (w.cb === 'restoration') { const back = (W.lostTo[L.id] || []).filter(id => L.col.includes(id)); take(back); W.lostTo[L.id] = []; L.res = false; what = `${W.name} took back its worlds from ${L.name}`; }
+  else if (w.cb === 'restoration') { const back = (W.lostTo[L.id] || []).filter(id => L.col.includes(id)); take(back); W.lostTo[L.id] = []; if (back) W.res = false; if (W.pup) { W.fellAt = null; if (!bodyById(W.cap) || !W.col.includes(W.cap)) W.cap = W.col[0] || W.cap; } what = `${W.name} took back its worlds from ${L.name}`; if (W.pup) setTimeout(() => { notice(W.name, 'YOUR PUPPET IS RESTORED', 4200); sfx.chime(); }, 400); } // the empire that won its worlds back is no longer a resistance (this used to clear the loser's flag)
   resEmpLog(what);
   if (RW) { resWarSay(cw, resPick(RW.win[resAl(cw)]), x); setTimeout(() => resWarSay(cl, resPick(RW.lose[resAl(cl)]), Object.assign({}, x, { b: x.a })), 1500); }
   saveRoster();
@@ -30722,6 +30775,7 @@ function resEmpTick(dt) {
       if (Math.random() < p && resDeclare(a, b, a.res && (a.lostTo[b.id] || []).length ? 'restoration' : null)) break outer;
     }
   }
+  try { upPupTick(E); } catch (e) { console.error(e); } // your fallen puppets come back
   for (const w of [...E.wars]) resWarStep(w); // wars already under way still play out
   try { resStoryWars(E, es); } catch (e) { console.error(e); } // and resident empires against the story factions
   if (state === 'space' || GAL.open) { applyChapterFactions(); if (GAL.open && GAL.sel) galPanel(); } // the galaxy map follows who holds what
@@ -32004,14 +32058,15 @@ function resEmpOverlay() {
   for (const e of Object.values(resEmp.emp)) {
     const c = resRuler(e); if (!c) continue;
     const st = e.pup ? ` · your puppet` : e.over && resEmp.emp[e.over] ? ` · puppet of ${resEmp.emp[e.over].name}` : e.trib && resEmp.emp[e.trib] ? ` · tributary of ${resEmp.emp[e.trib].name}` : ` · resident empire of ${c.name}`;
-    for (const id of e.col) { const P = bodyById(id); if (!P || D[id]) continue; P.faction = `${e.name}${id === e.cap ? ' · capital' : ''}${st}`; P.traders = null; held.set(id, e); }
+    for (const id of e.col) { const P = bodyById(id); if (!P || D[id]) continue; P.faction = e.pup ? e.name : `${e.name}${id === e.cap ? ' · capital' : ''}${st}`; P.traders = null; held.set(id, e); } // an uplifted empire is named like a story faction: just its name
   }
   for (const S of SYSTEMS) {
     if (!String(S.faction || '').startsWith('Unclaimed')) continue;
     const n = new Map(); let mine = 0;
-    for (const P of S.bodies) { if (D[P.id]) mine++; const e = held.get(P.id); if (e) n.set(e, (n.get(e) || 0) + 1); }
+    const ups = new Map(); for (const P of S.bodies) { const g = D[P.id] && D[P.id].gov, U = g && g.startsWith('up:') && upById(g.slice(3)); if (U) { ups.set(upPolity(U), (ups.get(upPolity(U)) || 0) + 1); continue; } if (D[P.id]) mine++; const e = held.get(P.id); if (e) n.set(e, (n.get(e) || 0) + (e.pup ? 1.01 : 1)); }
+    const upTop = [...ups.entries()].sort((a, b) => b[1] - a[1])[0]; if (upTop && upTop[1] >= mine && !n.size) { S.faction = upTop[0]; S.facCol = '#c9a8ff'; continue; } // your uplifted governors' worlds name the system after them
     const top = [...n.entries()].sort((a, b) => b[1] - a[1])[0];
-    if (top && top[1] >= mine) { const e = top[0]; S.faction = n.size > 1 ? `${e.name} · contested with ${[...n.keys()].filter(o => o !== e).map(o => o.name).join(', ')}` : `${e.name} · resident empire`; S.facCol = resHex(resEmpCol(e)); }
+    if (top && top[1] >= mine) { const e = top[0]; S.faction = n.size > 1 ? `${e.name} · contested with ${[...n.keys()].filter(o => o !== e).map(o => o.name).join(', ')}` : e.pup ? e.name : `${e.name} · resident empire`; S.facCol = resHex(resEmpCol(e)); }
     else if (mine) { S.faction = `${realm} · your colony`; S.facCol = '#ffd36a'; }
   }
 }
