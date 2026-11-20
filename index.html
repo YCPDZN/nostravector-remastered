@@ -7059,7 +7059,7 @@ function updateSurvival(dt) {
   const hb = $('#heatBar'), hv = suitHeat(); hb.firstChild.style.transform = `scaleX(${hv / 100})`; hb.classList.toggle('on', hv < 99.5 || (ch1().stormTalk && !ch1().stormOver)); hb.classList.toggle('low', hv < 30);
   const jb = $('#jetBar'); jb.firstChild.style.transform = `scaleX(${(ex.jet == null ? 100 : ex.jet) / 100})`; jb.classList.toggle('on', ex.jet != null && ex.jet < 99.5); jb.classList.toggle('low', ex.jet < 15);
   // placement preview, teleporter rings, merchants
-  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt); hallTick(dt); khzTick(dt); nyxTick(dt); tiTick(dt); leaderHallTick(); furnaceTick(); compDungeonTick();
+  updateBuildGhost(); tickMerchants(dt); giversTick(dt); cityTick(dt); hallTick(dt); khzTick(dt); nyxTick(dt); tiTick(dt); if (!TIW.area) { orbAuto(); orbTick(dt); } // Orion Mascar at his house (East Africa isn't a planet landing) leaderHallTick(); furnaceTick(); compDungeonTick();
   for (const b of world.build) if (b.mesh.userData.spin) b.mesh.userData.spin.rotation.z += dt * 1.5;
   if (world.stationTp) world.stationTp.userData.spin.rotation.z += dt * 1.5;
   const it = selItem();
@@ -7528,10 +7528,11 @@ function mapMarkers() {
     m.push({ x: r.position.x, z: r.position.z, rot: r.rotation.y, kind: 'comp', col: compColor(id), label: compName(id) });
   }
   for (const c of fauna.list) if (!c.dead) m.push({ x: c.x, z: c.z, kind: c.D.passive || (c.D.neutral && c.state !== 'hunt') ? 'penguin' : 'enemy' });
+  if (ORB.g && ORB.area === curArea() && orbEarthQ()) { const c = ORB.B && ORB.B.c, O = orbS(); m.push({ x: c ? c.x : ORB.x, z: c ? c.z : ORB.z, kind: 'orb', label: `Orion Mascar · lv ${orbLv(O.ph)} · side quest` }); } // Orion's crimson beacon (and him, once the fight's on): red, like his side quest everywhere else
   const q = questTarget(); if (q) m.push(Object.assign({ kind: 'quest' }, q));
   return m;
 }
-const MK = { station: '#9fe6ff', beacon: '#ff6b5e', quest: '#ffc94a', james: '#7fe0a0', orion: '#ffb36e', tele: '#7fd8ff', merchant: '#eda8d4' };
+const MK = { station: '#9fe6ff', beacon: '#ff6b5e', quest: '#ffc94a', orb: '#ff3b30', james: '#7fe0a0', orion: '#ffb36e', tele: '#7fd8ff', merchant: '#eda8d4' };
 function drawMarker(cx, x, y, kind, size, edge, m) {
   cx.save(); cx.translate(x, y);
   if (kind === 'comp') {
@@ -7547,6 +7548,10 @@ function drawMarker(cx, x, y, kind, size, edge, m) {
   else if (kind === 'james') { cx.fillStyle = MK.james; cx.strokeStyle = '#06101a'; cx.lineWidth = size * .25; cx.beginPath(); cx.arc(0, 0, size * .7, 0, Math.PI * 2); cx.fill(); cx.stroke(); }
   else if (kind === 'tele') { cx.strokeStyle = MK.tele; cx.lineWidth = size * .3; cx.beginPath(); cx.arc(0, 0, size * .55, 0, Math.PI * 2); cx.stroke(); }
   else if (kind === 'merchant') { cx.fillStyle = MK.merchant; cx.strokeStyle = '#1a0612'; cx.lineWidth = size * .2; cx.beginPath(); cx.moveTo(0, -size * .7); cx.lineTo(size * .7, 0); cx.lineTo(0, size * .7); cx.lineTo(-size * .7, 0); cx.closePath(); cx.fill(); cx.stroke(); }
+  else if (kind === 'orb') { // Orion Mascar: a pulsing red diamond with a dark core, a size up from the quest marker
+    const pulse = 1 + Math.sin(time * 5) * .22; cx.strokeStyle = MK.orb; cx.lineWidth = size * .24; cx.globalAlpha = .6; cx.beginPath(); cx.arc(0, 0, size * 1.65 * pulse, 0, Math.PI * 2); cx.stroke(); cx.globalAlpha = 1;
+    cx.fillStyle = MK.orb; cx.strokeStyle = '#1a0202'; cx.lineWidth = size * .22; cx.rotate(Math.PI / 4); cx.beginPath(); cx.rect(-size * .7, -size * .7, size * 1.4, size * 1.4); cx.fill(); cx.stroke();
+    cx.fillStyle = '#1a0202'; cx.beginPath(); cx.rect(-size * .22, -size * .22, size * .44, size * .44); cx.fill(); }
   else if (kind === 'beacon') { cx.fillStyle = MK.beacon; cx.beginPath(); cx.moveTo(0, -size); cx.lineTo(size * .7, size * .6); cx.lineTo(-size * .7, size * .6); cx.closePath(); cx.fill(); }
   else {
     const pulse = 1 + Math.sin(time * 4) * .18;
@@ -7610,6 +7615,7 @@ function renderMap(cv, range, headingUp, budget, round) {
     drawMarker(cx, x, y, m.kind, ms * (edge ? .85 : 1), edge, m);
     if (!round && m.kind === 'comp') { cx.fillStyle = m.col; cx.font = `${10 * dpr}px system-ui,sans-serif`; cx.textAlign = 'center'; cx.fillText(m.label.toUpperCase(), x, y + ms * 2.6); }
     cx.globalAlpha = 1;
+    if (!round && m.kind === 'orb') { cx.fillStyle = MK.orb; cx.font = `600 ${10 * dpr}px system-ui,sans-serif`; cx.textAlign = 'center'; cx.fillText(`${m.label.toUpperCase()} · ${Math.round(Math.hypot(m.x - p.x, m.z - p.z))} M`, x, y + ms * 3); }
     if (!round && m.kind === 'quest') { cx.fillStyle = MK.quest; cx.font = `${10 * dpr}px system-ui,sans-serif`; cx.textAlign = 'center'; cx.fillText(`${m.label.toUpperCase()} · ${Math.round(Math.hypot(m.x - p.x, m.z - p.z))} M`, x, y - ms * 2.4); }
   }
   // you
@@ -8201,6 +8207,7 @@ function hurtPlayer(n, src) {
   if (ex.hp <= 0) { if (PRISON.on) { prisonRecapture(); return; } if (lawBusted()) return; try { resEvent('death'); } catch (e) {} if (DGN.on) dgnDown(); else if (world.betrayal) bossDeath(); else if (esc.on) escapeDeath(); else blackout(); }
 }
 function blackout() {
+  if (ORB.B && ORB.B.st !== 'down') orbReset(); // beaten by Orion Mascar: he goes back to his beacon, and it's that phase again, not the whole fight
   for (const c of fauna.list) { c.state = 'idle'; c.tgt = null; }
   for (const c of [...fauna.list]) if (Math.hypot(c.x - 11, c.z - 3) < 90) removeFauna(c);
   const p = player.position; if (isPl()) p.set(4, wHeight(4, 14.5), 14.5); else p.set(11.5, wHeight(11.5, 3), 3); vel.set(0, 0, 0); ex.snap = true; worldUnstick(); // on a planet: by your ship's ramp
@@ -10822,9 +10829,10 @@ async function visitAdNostra(place) {
   worldUnstick(); await placeOrion().catch(() => null); placeCrew().catch(() => null);
   const W3 = wanderer.ch3 = Object.assign({}, wanderer.ch3, { lastPlanet: 'earth' }); const c = curChar(); if (c) c.ch3 = W3;
   state = 'explore'; show(ui.xhud, true); ex.snap = true; clock.getDelta(); resize(); renderTasks();
-  notice('Earth · East Africa', place && place.farm ? 'NICO’S FARMHOUSE' : 'AD-NOSTRA', 3400);
+  notice('Earth · East Africa', place && place.farm ? 'NICO’S FARMHOUSE' : place && place.ohome ? 'ORION’S HOUSE' : 'AD-NOSTRA', 3400);
   if (place && place.farm) setTimeout(() => lootMsg(tiPhone() ? 'Nico’s house · walk to the door' : 'Nico’s house is just ahead · walk up to the door to go in', '#ffc94a'), 2400);
   if (!place) setTimeout(() => lootMsg('The Salt Lantern is in town, a short walk west · fights nightly', '#ffc94a'), 2400);
+  if (orbEarthQ()) orbAuto(); // Orion Mascar, at his house
 }
 const farmPlace = () => ({ mode: 'explore', area: 'world', where: 'africa', x: FARM.x - 11, z: FARM.z + 2, y: 0, rot: Math.PI / 2, yaw: Math.PI * 1.5, farm: true }); // on the track to Nico's door
 function shipFlyToAdNostra(place) {
@@ -13091,7 +13099,7 @@ function tiLanded(P) {
   if (P.id === 'mercury' && (cygQ() || cygFarm()) && !hawMercQ()) cygPlace(); // never during the siege
   if (SPC.cygDock) { SPC.cygDock = false; { const fd = $('#fade'); fd.style.transition = 'none'; fd.style.opacity = 1; } setTimeout(cygDockIn, 350); return; } // you docked with the Cygnus in orbit: straight aboard, and nothing down on Mercury (patrols, a hunter, the war) turns up to announce itself
   if (P.id === 'earth' && jamesQ()) stationPlace();
-  if (P.id === 'earth' && orbEarthQ()) setTimeout(orbPlace, 1400); // Orion Mascar, waiting for you wherever you land (the killed-Croxian path)
+  if (P.id === 'earth' && orbEarthQ()) setTimeout(() => { if (orbEarthQ() && isPl() && world.planet && world.planet.P.id === 'earth') lootMsg(tiPhone() ? 'Orion Mascar waits at his house · East Africa' : 'Orion Mascar is waiting at his house in East Africa · fly there from the helm, or set down at Orion’s house from Earth’s sky', '#ff4a3a'); }, 2600); // the killed-Croxian path: he waits at his own house, not wherever you land
   if (P.id === 'mercury' && hawMercQ()) { setTimeout(hawMercPlace, 900); setTimeout(() => solPatrolsLand('mercury'), 1800); } // the War of Restoration: the siege of Mercury, Hawthorne's last stand
   if (P.id === 'eris' && alexiaQ()) { setTimeout(alexiaPlace, 900); setTimeout(() => solPatrolsLand('eris'), 1800); } // and the siege of Eris, Alexia holding it
   if (CH3S().charonMet && !CH3S().jamesRev && ch3Now()) jrvWhenFree(3200); // you left before it played: it finds you on the next world
@@ -15399,14 +15407,14 @@ function orbSave() { const c = curChar(); if (c) c.orion = wanderer.orion; saveR
 const orbOn = () => { if (!wanderer || !orionVillain()) return false; const ch = wanderer.chapter | 0; if (!c3f('orionHunt') && (ch < 4 || (ch === 4 && !(wanderer.ch4 && wanderer.ch4.timeSkip)))) return false; return !orbS().dead; }; // from the War of Restoration talk on Charon (orionHunt); saves already past it without the flag, from the time skip as before
 function orbHuntStart(delay) { // the War of Restoration talk on Charon, before the Siege of Sol: if Croxian died, this is when Orion Mascar starts hunting you
   if (!wanderer || c3f('orionHunt') || !orionVillain() || orbS().dead) return; setC3({ orionHunt: true }); renderTasks();
-  setTimeout(() => { notice('Side quest', tiPhone() ? 'ORION MASCAR WAITS ON EARTH' : 'ORION MASCAR IS WAITING FOR YOU ON EARTH', 4600); sfx.alarm && sfx.alarm(); lootMsg(tiPhone() ? 'Land on Earth · he is under the crimson beacon' : 'Land anywhere on Earth: he waits for you under a crimson beacon', '#ff4a3a'); }, delay || 1200);
+  setTimeout(() => { notice('Side quest', tiPhone() ? 'ORION MASCAR WAITS AT HOME' : 'ORION MASCAR IS WAITING FOR YOU AT HIS HOUSE', 4600); sfx.alarm && sfx.alarm(); lootMsg(tiPhone() ? 'Orion’s house · East Africa, Earth' : 'He waits for you at his house in East Africa, under a crimson beacon · fly there from the helm, or set down at Orion’s house from Earth’s sky', '#ff4a3a'); }, delay || 1200);
 }
 const orbEarthQ = () => orbOn() && orbS().ph < 3;
 const orbSpaceQ = () => orbOn() && orbS().ph === 3;
 const orbFallen = () => (orbS().conq || []).length;
 function orbTask() {
   if (!orbOn()) return null; const O = orbS(), ph = tiPhone();
-  if (O.ph < 3) return ph ? 'Side quest · Orion Mascar (Earth)' : 'Side quest · Defeat Orion Mascar · he waits for you on Earth';
+  if (O.ph < 3) return ph ? 'Side quest · Orion Mascar (his house, Earth)' : 'Side quest · Defeat Orion Mascar · he waits for you at his house in East Africa, on Earth';
   const S = sysById(O.sys), n = orbFallen(), all = SYSTEMS.length;
   if (SPC.sys === O.sys) return ph ? `Side quest · shoot down Orion · ${n}/${all}` : `Side quest · Shoot down Orion Mascar · he can’t conquer ${S.name} while you’re here · ${n}/${all} systems fallen`;
   return ph ? `Side quest · stop Orion · ${S.name} · ${n}/${all}` : `Side quest · Stop Orion Mascar · he is taking ${S.name} · ${n}/${all} systems fallen`;
@@ -15436,15 +15444,21 @@ function orbPlay(M, name, dur, loop) {
 function orbRest(M) { M.root.traverse(o => { const r = o.userData.rest; if (r) { o.position.copy(r[0]); o.quaternion.copy(r[1]); o.scale.copy(r[2]); } }); }
 function orbStop(M) { if (M && M.act) { M.act.stop(); M.act = null; M.actName = null; orbRest(M); } }
 // ---- on Earth: he waits under a crimson beacon wherever you land ----
+const ORB_HOME = { x: 0, z: 26 }; // his beacon: in front of his own house, on the side you arrive from (the house is at 0, 0 in East Africa; nothing is built within 38 m of it)
+const orionHomePlace = () => ({ mode: 'explore', area: 'world', where: 'africa', x: 4, z: 66, y: 0, rot: Math.PI, yaw: 0, ohome: true }); // set down by your ship, 40 m out, looking at him and the house (he starts the fight at 22 m)
+function orbAuto() { // in East Africa with the hunt on: put him at his house (a save loaded there, a blackout, the helm, the sky)
+  if (ORB.g || ORB.pend || !wanderer || curArea() !== 'africa' || state !== 'explore' || !orbEarthQ()) return;
+  ORB.pend = true; setTimeout(() => { ORB.pend = false; orbPlace(); }, 1400);
+}
 function orbPlace() {
-  if (!orbEarthQ() || ORB.g || !isPl() || !world.planet || world.planet.P.id !== 'earth') return;
-  const area = curArea(), [x, z] = tiSpot(150, 190), g = new THREE.Group(); wScene.add(g);
+  if (!orbEarthQ() || ORB.g || curArea() !== 'africa') return;
+  const area = curArea(), x = ORB_HOME.x, z = ORB_HOME.z, g = new THREE.Group(); wScene.add(g);
   Object.assign(ORB, { g, area, x, z, R: null, M: null, B: null, beacon: tiBeacon(g, x, z, 0xff2a2a, 20), load: ++ORB.load, said: 0, leaving: false });
   const tok = ORB.load, O = orbS();
   const done = () => tok === ORB.load && ORB.g === g && curArea() === area;
   if (O.ph === 1) glbRig('cpOrion', 1.85, 'rifle').then(R => { if (!R || !done()) return; orionTurnPaint(R.root); R.root.position.set(x, wHeight(x, z), z); R.root.traverse(o => { if (o.isMesh) o.castShadow = !tiPhone(); }); g.add(R.root); ORB.R = R; R.cross = true; }).catch(() => {});
   else orbMech('frame').then(M => { if (!M || !done()) return; M.g.position.set(x, wHeight(x, z), z); g.add(M.g); ORB.M = M; }).catch(() => {});
-  setTimeout(() => { if (!done()) return; sfx.alarm(); notice('Side quest', tiPhone() ? 'ORION MASCAR IS ON EARTH' : 'ORION MASCAR HAS FOUND YOU ON EARTH', 3800);
+  setTimeout(() => { if (!done()) return; sfx.alarm(); notice('Side quest', tiPhone() ? 'ORION MASCAR IS HOME' : 'ORION MASCAR IS WAITING AT HIS HOUSE', 3800);
     lootMsg(tiPhone() ? 'Orion waits under the crimson beacon' : `Orion Mascar, Grand Imperarch of Terra Imperia, waits under the crimson beacon · lv ${orbLv(O.ph)}${O.ph === 2 ? ' · in the Mascar Frame' : ''}`, '#ff6a6e'); }, 2600);
 }
 function orbDrop() {
@@ -15613,14 +15627,15 @@ async function orbToFrame() {
   const B = ORB.B, R = ORB.R, q = R.root.position.clone(), g = ORB.g, tok = ORB.load;
   const el = $('#bossBar'); if (el) el.classList.remove('on');
   R.mode = 'idle'; R.root.rotation.x = .12; orbVo(2).then(() => { if (ORB.g) orbCue(2, 0, true); }); orbVo(3); sfx.thud();
+  { const O = orbS(); if (O.ph < 2) { O.ph = 2; orbSave(); gainXP(900, 'Beat Orion Mascar on foot'); } } // saved the moment he's beaten: leave or black out during the cutscene and it's still phase two
   const M = await orbMech('frame'); if (!M || tok !== ORB.load || ORB.g !== g) return;
   const x = q.x + 3, z = q.z - 2, gy = wHeight(x, z); M.g.position.set(x, gy + 90, z); M.g.rotation.y = Math.atan2(player.position.x - x, player.position.z - z); g.add(M.g); M.flame.material.opacity = .9; ORB.M = M;
   ORB.seq = { t: 0, upd: t => { if (t < 1.2) M.g.position.y = gy + 90 * (1 - t / 1.2) * (1 - t / 1.2); }, ev: [
     [1.2, () => { M.g.position.y = gy; sfx.boom && sfx.boom(1); ex.shake = 1; burst(x, gy + .5, z, 60, 8, 1, .8, .4, 1, 1.4, 1.8); orbPlay(M, 'Seismic Stomp', 2); }],
     [2.3, () => { burst(q.x, q.y + 1, q.z, 30, 4, 1, .8, .5, .6, 1, 1.2); sfx.whoosh(); if (ORB.R && ORB.R.root.parent) ORB.R.root.parent.remove(ORB.R.root); ORB.R = null; // up and in
-      const O = orbS(); O.ph = 2; orbSave(); ORB.x = x; ORB.z = z; if (ORB.beacon) ORB.beacon.position.set(x, wHeight(x, z) + 20, z);
+      ORB.x = x; ORB.z = z; if (ORB.beacon) ORB.beacon.position.set(x, wHeight(x, z) + 20, z);
       const i = fauna.list.indexOf(B.c); if (i >= 0) fauna.list.splice(i, 1); if (B.c.bar && B.c.bar.parent) B.c.bar.parent.remove(B.c.bar); ORB.B = null;
-      notice('Phase two', 'THE MASCAR FRAME', 3200); gainXP(900, 'Beat Orion Mascar on foot'); }],
+      notice('Phase two', 'THE MASCAR FRAME', 3200); }],
     [3.9, () => { orbStop(M); orbFight(); }]] };
 }
 // ---- phase two: the Mascar Frame, flying a ring around you ----
@@ -15699,8 +15714,8 @@ async function orbToOrbit() {
   const B = ORB.B, M = ORB.M, g = ORB.g, tok = ORB.load; if (!M) return;
   const el = $('#bossBar'); if (el) el.classList.remove('on');
   ORB.leaving = true; const q = M.g.position; orbStop(M); q.y = wHeight(q.x, q.z); orbVo(3).then(() => orbCue(3, 0, true)); sfx.thud(); ex.shake = .6;
+  const O = orbS(); if (O.ph < 3) { Object.assign(O, { ph: 3, sys: 'sol', conq: [], t: ORB_CONQ_T, hp3: null }); orbSave(); } // from the moment he's beaten he's in orbit, whatever happens to the scene (even before the titanium model loads)
   const T = await orbMech('ti'); if (tok !== ORB.load || ORB.g !== g) return;
-  const O = orbS(); Object.assign(O, { ph: 3, sys: 'sol', conq: [], t: ORB_CONQ_T, hp3: null }); orbSave(); // from here he's in orbit, whatever happens to the scene
   const i = fauna.list.indexOf(B.c); if (i >= 0) fauna.list.splice(i, 1); if (B.c.bar && B.c.bar.parent) B.c.bar.parent.remove(B.c.bar); ORB.B = null;
   let L = M;
   ORB.seq = { t: 0, upd: (t, dt) => { if (t > 3 && L) { L.g.position.y += (4 + (t - 3) * 60) * dt; if (Math.random() < .6) burst(L.g.position.x, L.g.position.y + 1, L.g.position.z, 6, 3, .7, .9, 1, .5, 0, -1); } }, ev: [
@@ -19331,6 +19346,7 @@ function atmLand() {
   if (S.Q && S.Q.nofly) { spaceMsg(S.Q.nofly); sfx.thud && sfx.thud(); return; }
   if (P.real && S.Q && S.Q.id === 'adnostra') { A.landing = { t: 0, d: S.d, Q: S.Q, adn: true }; spaceMsg('Setting down at Ad-Nostra'); return; }
   if (P.real && S.Q && S.Q.id === 'nicofarm') { A.landing = { t: 0, d: S.d, Q: S.Q, farm: true }; spaceMsg('Setting down at Nico’s farmhouse'); return; }
+  if (P.real && S.Q && S.Q.id === 'orionhome') { A.landing = { t: 0, d: S.d, Q: S.Q, ohome: true }; spaceMsg('Setting down at Orion’s house'); return; }
   if (P.real && S.Q && S.Q.id === 'london' && lonOpen()) { A.landing = { t: 0, d: S.d, Q: S.Q, lon: true }; spaceMsg('Setting down in Parliament Square'); return; }
   if (P.real && S.Q && S.Q.id === 'antstation') { A.landing = { t: 0, d: S.d, Q: S.Q, ant: true }; spaceMsg('Setting down by the research station'); return; }
   const sea = P.sea ? (P.seaH || 0) : -1e9, wet = planetH(P, S.d) < sea + 3;
@@ -19346,6 +19362,7 @@ function atmLandTick(dt) {
     L.done = true; const P = A.P, d = L.d.clone(); atmoLeave(false); SPC.on = false;
     if (L.adn) { visitAdNostra(null).catch(e => console.error(e)); return; }
     if (L.farm) { visitAdNostra(farmPlace()).catch(e => console.error(e)); return; }
+    if (L.ohome) { visitAdNostra(orionHomePlace()).catch(e => console.error(e)); return; }
     if (L.ant) { visitAntBase(null).catch(e => console.error(e)); return; }
     if (L.lon) { visitLondon4(null).catch(e => console.error(e)); return; }
     landOn(P, d).then(() => { const fl = $('#shFlash'); if (fl) fl.classList.remove('on'); }).catch(e => console.error(e));
@@ -20269,7 +20286,9 @@ const EP_ANT = { id: 'antstation', name: 'The Antarctic research station', short
   build(K, Q) { const M = EM(); K.box(M.white, 9, 3.4, 5.5, 0, .9, 0, 0, false); K.box(M.dark, 9.4, .35, 5.9, 0, 4.3, 0, 0, false); Q.glows = [[0, 18, 0, (typeof jamesQ === 'function' && jamesQ()) ? 0xff2a2a : 0xffc070, 34, .9]]; } };
 const EP_FARM = { id: 'nicofarm', name: 'Nico’s farmhouse', short: 'Nico’s house', tag: 'Daniel Brown and the boy', noGround: true, lat: -3.9, lon: 39.48, R: 40, see: 7000, note: 'Africa · the savanna inland from Ad-Nostra',
   build(K, Q) { const M = EM(); K.box(M.white, 10, 3, 7, 0, 0, 0, 0, false); K.box(M.dark, 10.8, .4, 7.6, 0, 3, 0, 0, false); Q.glows = [[0, 9, 0, 0xffb565, 18, .8]]; } };
-const EPOIS = [EP_PARIS, EP_NY, EP_BEIJING, EP_TOKYO, EP_CAIRO, EP_KINGSTON, EP_COLOSSEUM, EP_TAJ, EP_PETRA, EP_RIO, EP_MACHU, EP_CHICHEN, EP_WALL, EP_LONDON, EP_ADN, EP_FARM, EP_ANT];
+const EP_OHOME = { id: 'orionhome', name: 'Orion’s house', short: 'Orion’s house', get tag() { return typeof orbEarthQ === 'function' && orbEarthQ() ? 'Orion Mascar · side quest' : 'Where Orion found you'; }, noGround: true, lat: -4.1, lon: 39.6, R: 40, see: 7000, note: 'Africa · the edge of Ad-Nostra, East Africa',
+  build(K, Q) { const M = EM(); K.box(M.white, 15, 3.2, 7, 0, 0, 0, 0, false); K.box(M.dark, 15.8, .4, 7.6, 0, 3.2, 0, 0, false); Q.glows = [[0, 12, 0, typeof orbEarthQ === 'function' && orbEarthQ() ? 0xff2a2a : 0xffb565, 22, .85]]; } }; // red while he's waiting there
+const EPOIS = [EP_PARIS, EP_NY, EP_BEIJING, EP_TOKYO, EP_CAIRO, EP_KINGSTON, EP_COLOSSEUM, EP_TAJ, EP_PETRA, EP_RIO, EP_MACHU, EP_CHICHEN, EP_WALL, EP_LONDON, EP_ADN, EP_FARM, EP_OHOME, EP_ANT];
 
 // ---- on Earth's ground: trees where the climate grows them, and the land beyond the loaded ground out to the horizon ----
 function earthTreeK(x, z) {
@@ -22305,7 +22324,7 @@ async function shipInteract(n) {
   if (n.id === 'pilot') {
     if (SHIPI.from === 'space') { leaveShip('space'); return; }
     if (isPl() && world.planet && world.planet.P.id === 'mars' && !world.planet.khz && khzPending()) { openChoice('THE HELM', [{ text: 'Fly to Olympus Mons · Khazglar’s hermitage', onPick: () => khzFly() }, { text: 'Take off', onPick: () => leaveShip('takeoff') }, { text: 'Stay landed', onPick: () => {} }]); return; }
-    if (isPl() && world.planet && world.planet.P.id === 'earth' && (brawlOn() || (wanderer.chapter | 0) >= 3)) { openChoice('THE HELM', [{ text: 'Take off', onPick: () => leaveShip('takeoff') }, ...(brawlOn() ? [{ text: 'Fly to Ad-Nostra, East Africa · The Salt Lantern', onPick: () => shipFlyToAdNostra() }] : []), { text: tiPhone() ? 'Fly to Nico’s farmhouse' : 'Fly to Nico’s farmhouse, East Africa · Daniel Brown and the boy', onPick: () => shipFlyToAdNostra(farmPlace()) }, { text: jamesQ() ? 'Fly to Antarctica · the station (James Brown)' : 'Fly to Antarctica · the station and your Chapter I camp', onPick: () => shipFlyToAnt() }, { text: 'Stay landed', onPick: () => {} }]); return; }
+    if (isPl() && world.planet && world.planet.P.id === 'earth' && (brawlOn() || (wanderer.chapter | 0) >= 3)) { openChoice('THE HELM', [{ text: 'Take off', onPick: () => leaveShip('takeoff') }, ...(brawlOn() ? [{ text: 'Fly to Ad-Nostra, East Africa · The Salt Lantern', onPick: () => shipFlyToAdNostra() }] : []), { text: tiPhone() ? 'Fly to Nico’s farmhouse' : 'Fly to Nico’s farmhouse, East Africa · Daniel Brown and the boy', onPick: () => shipFlyToAdNostra(farmPlace()) }, ...(orbEarthQ() ? [{ text: tiPhone() ? 'Fly to Orion’s house · side quest' : 'Fly to Orion’s house, East Africa · Orion Mascar (side quest)', onPick: () => shipFlyToAdNostra(orionHomePlace()) }] : []), { text: jamesQ() ? 'Fly to Antarctica · the station (James Brown)' : 'Fly to Antarctica · the station and your Chapter I camp', onPick: () => shipFlyToAnt() }, { text: 'Stay landed', onPick: () => {} }]); return; }
     leaveShip('takeoff'); return; }
   if (n.id === 'holo') { if (SHIPI.from === 'space') { leaveShip('space'); setTimeout(() => galOpen(), 50); } else lootMsg('The galaxy map works in flight · take off first', '#cfd6e6'); return; }
   if (n.id === 'aboard') { aboardTalk(n.who); return; }
