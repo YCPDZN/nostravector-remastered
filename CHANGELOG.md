@@ -2830,3 +2830,13 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 
 ### Easter egg voiced: Lord Sevirrus meets Archamus
 - **"The Prince of Zark" is fully voiced:** all 15 lines between Lord Sevirrus and Archamus on Archiostal (SEVARCH1–15, `data/sevArchVoices.js`), from "Wanderer. You walk with my brother's handiwork" to "…and not one of them has started."
+
+### Companions talk in combat
+- **Companions now speak in fights,** five lines each, one for each moment: when a fight starts, when they kill an enemy, when something hostile gets right up against them, when your health drops under 30%, and when the fight's won (only if anything died).
+- **They have two sets of lines.** One while they're Hero or Neutral, and a darker one once they've become an **Awakened Villain** (their own alignment chart at −34 or below). They switch on their own as their alignment moves.
+- Only companions travelling with you speak, one at a time, and each line has a cool-down so nobody repeats themselves. Once a companion has their own combat lines, those replace the old text-only kill remarks fallen companions made.
+- **Orion Mascar and Nico are recorded**, both sets (COMBATORION1–5 / COMBATORIONEVIL1–5, COMBATNICO1–5 / COMBATNICOEVIL1–5; `data/cmbOrionVoices.js`, `cmbOrionEvilVoices.js`, `cmbNicoVoices.js`, `cmbNicoEvilVoices.js`). **Khazglar's lines are written** (his villain set is crueller and swears) and show as subtitles until recorded. More companions to come. The script is `assets/audio/companion_combat/COMBAT_VOICE_SCRIPT.md`.
+- **Update: Khazglar is recorded too**, both sets (COMBATKHAZGLAR1–5 / COMBATKHAZGLAREVIL1–5; `data/cmbKhazglarVoices.js`, `cmbKhazglarEvilVoices.js`).
+- **Update: Charon and Kizna join in, both recorded.** Charon is kind and sorry to the people he fights, and a sadomasochist as an Awakened Villain. Kizna is as apologetic as her brother, and goes mad as a villain (COMBATCHARON1–5 / COMBATCHARONEVIL1–5, COMBATKIZNA1–5 / COMBATKIZNAEVIL1–5; `data/cmbCharonVoices.js`, `cmbCharonEvilVoices.js`, `cmbKiznaVoices.js`, `cmbKiznaEvilVoices.js`).
+- **Update: Nyrexia joins in, recorded.** A rebel royal who freezes them solid and teases her sisters; as an Awakened Villain, all royal contempt (COMBATNYREXIA1–5 / COMBATNYREXIAEVIL1–5; `data/cmbNyrexiaVoices.js`, `cmbNyrexiaEvilVoices.js`).
+- **Update: Croxian Mascar joins in, recorded.** A disciplined soldier making up for the cause he served; as an Awakened Villain, the Terra Imperia killer from the ice again (COMBATCROXIAN1–5 / COMBATCROXIANEVIL1–5; `data/cmbCroxianVoices.js`, `cmbCroxianEvilVoices.js`).
