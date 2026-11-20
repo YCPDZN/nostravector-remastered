@@ -286,7 +286,7 @@ Packs: `data/cmb<Name>Voices.js` (COMBAT<NAME>1–5) and `data/cmb<Name>EvilVoic
 | COMBATJOSIAH2EVIL4.mp3 | You’re in trouble (your health under 30%) | Get up. You’re an asset, wanderer. I don’t waste assets. |
 | COMBATJOSIAH2EVIL5.mp3 | Victory (the fight’s over) | In my dreams he called it governance. I think I finally understand. |
 
-## Javek · not recorded yet
+## Javek · **recorded**
 
 **Hero / Neutral**
 
@@ -308,7 +308,7 @@ Packs: `data/cmb<Name>Voices.js` (COMBAT<NAME>1–5) and `data/cmb<Name>EvilVoic
 | COMBATJAVEKEVIL4.mp3 | You’re in trouble (your health under 30%) | Rise, wanderer. A broken part is replaced. Do not make me replace you. |
 | COMBATJAVEKEVIL5.mp3 | Victory (the fight’s over) | Order is restored. It always is, in the end. |
 
-## Tyrotaronus · not recorded yet
+## Tyrotaronus · **recorded**
 
 **Hero / Neutral**
 
