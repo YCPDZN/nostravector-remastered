@@ -2824,3 +2824,9 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 
 ### Easter egg voiced: Lord Sevirrus meets Hak
 - **"Before He Was Hak" is fully voiced:** all 18 lines between Lord Sevirrus and Hak Chompjak V (SEVHAK1–18, `data/sevHakVoices.js`), from "So this is what the throne looks like, three hundred years on" to "Every day. That is why I wear them." Bring Lord Sevirrus to Hak in Karribassa (Chapter III) or Alphinos (Chapters IV–V).
+
+### Easter egg voiced: Javek meets Hak
+- **Javek and Hak Chompjak V's conversation on the palace steps in Alphinos is fully voiced:** all 19 lines, both endings (JAVHAK1–19, `data/javHakVoices.js`). That's the 13 they always say, then Javek offering peace if he's still the fugitive, or the machine-king refusing it if he's fallen back.
+
+### Easter egg voiced: Lord Sevirrus meets Archamus
+- **"The Prince of Zark" is fully voiced:** all 15 lines between Lord Sevirrus and Archamus on Archiostal (SEVARCH1–15, `data/sevArchVoices.js`), from "Wanderer. You walk with my brother's handiwork" to "…and not one of them has started."
