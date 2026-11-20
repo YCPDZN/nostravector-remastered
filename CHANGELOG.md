@@ -2887,3 +2887,12 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **Explore the Catharsis world now points somewhere easy to reach: Tallax IV**, in the Tallax system. It's a lush, habitable world in one of the Catharsis' own first systems at the core, and the closest of them to both Earth and Archiostal: one jump from Sol in the Jewel (21,710 ly, 9 warp cells). It used to point at Ulmira I, which is too far for a single jump from Sol and the furthest of them from Malana.
 - **Gold markers:** on the galaxy map, Tallax gets the gold diamond and its name shows at any zoom, like a side quest's system; in space, Tallax IV is marked in gold with *MAIN QUEST · LAND*. The flight objective points you to both.
 - **The Jewel of Archamus comes with 100 warp cells.** Archamus gives them with the ship. A save that already has the Jewel gets them once, the next time you're in space.
+
+### Phones: today's additions
+- **The pause menu's Options:** a label and its value no longer run together ("COMPANION CHATTERNORMAL" on a 375-pixel-wide phone). Every row has a gap now.
+- **Explore the Catharsis world** reads *Main quest · Explore Tallax IV* in the objective list on a phone, short enough for one line, and still says where.
+- **The gold marker in space** reads *MAIN QUEST* and the distance on a phone (markers never wrap), and *MAIN QUEST · LAND* on a computer.
+- **Josiah Williams II's two replies** are shorter on a phone: *Archamus sent me. Where are the Catharsis?* and *I lost two years too.*
+- **Long subtitles** (over 90 characters, such as Sevirrus's combat lines) are a little smaller in the narrow strip at the top of a phone held sideways, so they stay a few lines long.
+- Checked on phone-sized screens (320, 375 and 667 pixels wide): the title menu's Settings, with *Companion chatter* wrapping neatly onto two lines on the smallest, the pause menu's Options, Josiah's replies and a long subtitle.
+
