@@ -16256,7 +16256,7 @@ function upUplift(spId, path, opt) {
     const en = String(opt.name || '').trim().slice(0, 40); if (!en) { lootMsg('Name their empire first', '#ff8f86'); return; }
     const free = resFreeWorlds(); if (!free.length) { lootMsg('There are no unclaimed worlds left for them to settle', '#ff8f86'); return; }
     const c = upResident(copy, upLeader(copy, `${nm} Sovereign`), Object.assign({ upEmp: true }, copy.race && SPECIES[copy.race] ? { species: copy.race, resSp: null, resUp: null } : {})); // one of the six races lives in the world as one of their own if (!c) { lootMsg(`The world already has ${MAX_RESIDENTS} residents · make room for their sovereign first`, '#ff8f86'); return; }
-    const home = sysById('steca'), cap = free.sort((p, q) => galDist(sysById(p.sys), home) - galDist(sysById(q.sys), home))[0];
+    const home = sysById('steca'), cap = free.find(P => P.id === opt.home) || free.sort((p, q) => galDist(sysById(p.sys), home) - galDist(sysById(q.sys), home))[0]; // the world you chose for them
     resEmp.emp[c.id] = { id: c.id, name: en, col: [cap.id], cap: cap.id, since: resNow(), over: null, trib: null, res: false, lostTo: {}, pup: true };
     resEmpLog(`${en} was founded on ${cap.name} by the uplifted ${nm}`); rec.emp = c.id; rec.empName = en;
     try { applyChapterFactions(); } catch (e) {}
@@ -16273,7 +16273,7 @@ function dipUpCard() {
   else h += `<div class="dip-row" style="flex-wrap:wrap;gap:8px"><select class="dip-in" data-a="upSp" style="flex:1 1 160px">${left.map(sp => `<option value="${sp.id}"${DIPV.upSp === sp.id ? ' selected' : ''}>${esc(titleName(sp.name))}</option>`).join('')}</select>
       <select class="dip-in" data-a="upPath" style="flex:1 1 160px">${[['crew', 'Crew · fights at your side'], ['gov', 'Governor of a colony'], ['emp', 'Their own empire · your puppet']].map(([v, t]) => `<option value="${v}"${(DIPV.upPath || 'crew') === v ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
     ${DIPV.upPath === 'gov' ? `<div class="dip-row"><select class="dip-in" data-a="upCol" style="flex:1">${cols.length ? cols.map(id => `<option value="${id}">${esc(bodyById(id).name)}${D.col[id].gov ? ` (replaces ${esc(govName(D.col[id].gov))})` : ''}</option>`).join('') : '<option value="">No colonies yet: land on an unclaimed world to colonise it</option>'}</select></div>` : ''}
-    ${DIPV.upPath === 'emp' ? `<div class="dip-row"><input class="dip-in" data-a="upEmpName" placeholder="Name their empire" maxlength="40" style="flex:1"></div>` : ''}
+    ${DIPV.upPath === 'emp' ? `<div class="dip-row"><input class="dip-in" data-a="upEmpName" placeholder="Name their empire" maxlength="40" style="flex:1"></div>${upHomeSelect()}` : ''}
     <div class="dip-row"><button class="btn small" data-a="upGo"><span>Uplift them</span></button></div>`;
   for (const r of done) {
     const P = r.pont && pontById(r.pont), e = r.emp && resEmp.emp[r.emp], what = r.path === 'crew' ? (P ? `In your crew · ${esc(P.name)}` : 'Was in your crew') : r.path === 'gov' ? (dip().col[r.col] && dip().col[r.col].gov === 'up:' + r.id ? `Governs ${esc(bodyById(r.col).name)}` : 'Governor, between postings') : (e ? (e.res && !e.col.length ? `${esc(e.name)} · fallen, fighting to return` : `${esc(e.name)} · ${e.col.length} world${e.col.length > 1 ? 's' : ''} · your puppet`) : `${esc(r.empName || 'Their empire')} has fallen · it can be restored`);
@@ -16285,13 +16285,22 @@ function dipUpCard() {
       <div class="dip-row" style="flex-wrap:wrap;margin-top:8px"><button class="btn small" data-a="pontParty" data-p="${P.id}"><span>${on ? `Leave them on ${theShip()}` : 'Bring them aboard'}</span></button><button class="btn small" data-a="pontRes" data-p="${P.id}"><span>${DIPV.pontRes === P.id ? 'Tap again: they live in the world for good (takes a resident slot)' : 'Make them a resident'}</span></button></div></div>`; }
   return h + `</div>`;
 }
+function upHomeOptions() { // every unclaimed world they could found their empire on, nearest to you first (the one you're standing on at the top)
+  const free = resFreeWorlds(), here = isPl() && world.planet ? world.planet.P.id : null, S0 = sysById(SPC.sys || (here ? bodyById(here).sys : 'sol')) || sysById('sol');
+  return free.slice().sort((p, q) => (q.id === here) - (p.id === here) || galDist(sysById(p.sys), S0) - galDist(sysById(q.sys), S0));
+}
+function upHomeSelect() {
+  const L = upHomeOptions(); if (!L.length) return `<div class="dip-row"><small style="color:#ff8f86">There are no unclaimed worlds left for an empire</small></div>`;
+  const here = isPl() && world.planet ? world.planet.P.id : null, S0 = sysById(SPC.sys || 'sol') || sysById('sol');
+  return `<div class="dip-row"><select class="dip-in" data-a="upHome" style="flex:1">${L.slice(0, 200).map(P => `<option value="${P.id}"${(DIPV.upHome || L[0].id) === P.id ? ' selected' : ''}>${ccEsc(P.name)} · ${ccEsc(sysById(P.sys).name)}${P.id === here ? ' (you’re here)' : ` · ${galDist(sysById(P.sys), S0).toLocaleString()} ly`}</option>`).join('')}</select></div>`;
+}
 function dipUpClick(a, b) {
   if (a === 'upBack') { const r = upById(b && b.dataset.r), e = r && units() >= UP_BACK_COST && upRestoreRec(r); if (e && upPupReturn(e, resNow(), 40)) { addUnits(-UP_BACK_COST); sfx.chime(); try { applyChapterFactions(); } catch (er) {} } else if (r && units() >= UP_BACK_COST) lootMsg('No free world for them to rise on right now', '#ff8f86'); dipRender(); return true; }
   if (a !== 'upGo') return false;
   const v = k => { const el = $(`#dipBody [data-a="${k}"]`); return el ? el.value : ''; };
-  upUplift(v('upSp'), v('upPath') || 'crew', { col: v('upCol'), name: v('upEmpName') }); return true;
+  upUplift(v('upSp'), v('upPath') || 'crew', { col: v('upCol'), name: v('upEmpName'), home: v('upHome') }); return true;
 }
-function dipUpChange(t) { const a = t.dataset.a; if (a === 'upPath') { DIPV.upPath = t.value; DIPV.upSp = ($('#dipBody [data-a="upSp"]') || {}).value; dipRender(); return true; } if (a === 'upSp') { DIPV.upSp = t.value; return true; } return a === 'upCol' || a === 'upEmpName'; }
+function dipUpChange(t) { const a = t.dataset.a; if (a === 'upHome') { DIPV.upHome = t.value; return true; } if (a === 'upPath') { DIPV.upPath = t.value; DIPV.upSp = ($('#dipBody [data-a="upSp"]') || {}).value; dipRender(); return true; } if (a === 'upSp') { DIPV.upSp = t.value; return true; } return a === 'upCol' || a === 'upEmpName'; }
 function dipPontChange(t) { if (t.dataset.a !== 'pontColPick') return false; const P = pontById(t.dataset.p); if (!P) return true; P.col = t.value; pontSave(); pontRefresh(P.id); dipRender(); return true; }
 
 // ---- the cutscene: Hawthorne raises James Brown from the Southern Ocean. A brutal reconstruction, played as horror: James wakes on the
