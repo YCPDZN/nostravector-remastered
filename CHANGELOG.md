@@ -2896,3 +2896,17 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **Long subtitles** (over 90 characters, such as Sevirrus's combat lines) are a little smaller in the narrow strip at the top of a phone held sideways, so they stay a few lines long.
 - Checked on phone-sized screens (320, 375 and 667 pixels wide): the title menu's Settings, with *Companion chatter* wrapping neatly onto two lines on the smallest, the pause menu's Options, Josiah's replies and a long subtitle.
 
+### Tallax IV: the Catharsis base and the carapace rifle (Chapter IV)
+- **A Catharsis base about 200 m from where you land** on Tallax IV, on the flattest dry ground nearby, its gate facing your ship. A gold beacon over the gate shows the way from the ship. It's a walled yard (36 × 28 m) of dark, spined walls, with crates and pillars for cover, and at the back, on a plinth, **the carapace rifle**.
+- **Your companions wait at the ship.** Orion and the rest of your crew stay by her until it's over; only you go in.
+- **One Catharsis guards it, and nothing you carry can hurt it.** It walks a loop round the yard. At each corner it looks one way, then the other, and sometimes turns back; halfway along each side it stops and looks across the yard.
+- **Sneaking:**
+  - Its **cone of sight** is drawn on the ground in violet, cut short by walls and cover. It turns orange, then red, as the guard grows suspicious, and a red light shows over its head.
+  - Stay out of the light, or keep cover between you. It takes about half a second to be seen up close in the open, and a little over a second at the edge of its sight. Duck out in time and its suspicion fades.
+  - **Walk to stay quiet** (C, or a light push of the stick on a phone). Running or sprinting within 7 m of it is heard, even behind its back.
+  - **Seen, you're caught:** the screen goes dark and you wake just outside the gate, with the guard back on its round on the far side. Try again.
+  - Shooting it with an ordinary gun only breaks your rounds on its shell, and it knows exactly where you are.
+- **Take the rifle (E)** (400 XP). It goes straight into your hands, and the guard comes for you. **The carapace rifle** (45 m, locks on) is the one gun that goes through a Catharsis carapace: three shots break it (800 XP). If it reaches you first, you're caught and back at the gate.
+- **Main quest:** *Sneak into the Catharsis base and take the rifle*, then *Break the Catharsis' carapace with the rifle*, then **Bring the carapace rifle to Archamus** (there's no scene for that yet). The gold markers on Tallax go out once the guard is broken.
+- Flags: `ch4.cathRifle`, `ch4.cathDone`. The new item is `riflec`; it can't be crafted or sold.
+
