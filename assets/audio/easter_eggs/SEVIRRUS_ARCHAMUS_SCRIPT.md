@@ -2,7 +2,7 @@
 
 Bring **Lord Sevirrus** along in your party and speak to **Archamus** on Archiostal, in any of Chapters III–V. Sevirrus is the Prince of Zark; Archamus, the Prime Good, is Zark's brother. Archamus calls him by the name he'll carry: Hak Chompjak (it is the same person, three hundred years apart).
 **Archamus:** slow, very old, cold, unhurried; he knows exactly what Sevirrus will become. **Sevirrus:** mocking and theatrical, until "And will you?", which is the one line he means.
-Pack: `data/sevArchVoices.js` (SEVARCH1–15, in order across both speakers). Once per playthrough, in place of that conversation. Until the pack exists, the lines show as subtitles only.
+Pack: `data/sevArchVoices.js` (SEVARCH1–15, in order across both speakers). Once per playthrough, in place of that conversation. **All 15 lines recorded.**
 
 | File | Speaker | Line |
 |---|---|---|

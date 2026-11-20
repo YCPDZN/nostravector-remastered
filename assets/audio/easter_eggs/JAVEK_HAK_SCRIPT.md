@@ -2,7 +2,7 @@
 
 Bring **Javek** along in your party and speak to **Hak Chompjak V** on the steps of the Imperial Palace in Alphinos, in Chapter IV or V. Once per playthrough, in place of that conversation. Hak's ancestor Shakhak broke Javek at Steca; they wear the same round blue glasses, which Javek finds very funny.
 **Javek:** dry, courtly, amused, very old; never raises his voice. **Hak:** steady and wary; "Do not." is the one place he snaps. In the machine-king ending Javek drops the charm.
-Pack: `data/javHakVoices.js` (JAVHAK1–19, in this order). 1–13 always play; then 14–16 if Javek is still the fugitive, or 17–19 if he has fallen back into the machine-king. Until the pack exists, the lines show as subtitles only.
+Pack: `data/javHakVoices.js` (JAVHAK1–19, in this order). 1–13 always play; then 14–16 if Javek is still the fugitive, or 17–19 if he has fallen back into the machine-king. **All 19 lines recorded** (both endings).
 
 | File | Speaker | Line |
 |---|---|---|
