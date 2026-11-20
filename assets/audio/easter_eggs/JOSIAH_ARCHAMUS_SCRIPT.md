@@ -2,7 +2,7 @@
 
 Bring **Josiah Richards** (Project BC) along in your party and speak to **Archamus** on Archiostal, in any of Chapters III, IV or V. Once per playthrough, in place of that conversation.
 **Archamus:** slow, very old, cold here; he is shaken and won't show it. **Josiah Richards:** calm, precise, faintly amused; he calls Archamus "son" as if it's simply a fact on file. He hints that he made the light and dark eggs (Archamus, the Prime Good, and his brother, the Prime Evil) when he reset Laniakea, but never names either of them: keep it understated.
-Pack: `data/josArchVoices.js` (EGGJOSARCH1–16, in order across both speakers). Until it exists, the lines show as subtitles only.
+Pack: `data/josArchVoices.js` (EGGJOSARCH1–16, in order across both speakers). **All 16 lines recorded.**
 
 | File | Speaker | Line |
 |---|---|---|

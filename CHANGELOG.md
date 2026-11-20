@@ -2869,3 +2869,5 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **Settings → Companion chatter** (also in the pause menu's Options): **NORMAL**, **LESS** (at least 20 seconds apart, two a minute at most, and fallen companions' remarks less often) or **OFF** (no combat lines or fallen companions' remarks). It's remembered on this device.
 - **Fallen companions' idle remarks** no longer come mid-fight or right on top of a combat line.
 
+### Easter egg voiced: Josiah Richards meets Archamus
+- **All sixteen lines are recorded** (EGGJOSARCH1–16, packed into `data/josArchVoices.js`; sources in `assets/audio/easter_eggs/`). The hidden conversation now plays out loud instead of as subtitles only. All four hidden conversations are voiced.
