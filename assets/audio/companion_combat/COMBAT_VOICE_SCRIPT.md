@@ -263,3 +263,25 @@ Packs: `data/cmb<Name>Voices.js` (COMBAT<NAME>1–5) and `data/cmb<Name>EvilVoic
 | COMBATSISTEREVIL3.mp3 | Hurt (an enemy gets right up against them) | You marked me. How sweet. I’ll mark you back, all over. |
 | COMBATSISTEREVIL4.mp3 | You’re in trouble (your health under 30%) | Up, wanderer. You promised me so much more cruelty than this. |
 | COMBATSISTEREVIL5.mp3 | Victory (the fight’s over) | Look how still they are. I do love it when they stop struggling. |
+
+## Josiah Williams II · **recorded**
+
+**Hero / Neutral**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATJOSIAH21.mp3 | Fight starts | Okay. Okay. Dad, if you’re watching, I could really use some luck. |
+| COMBATJOSIAH22.mp3 | Kill | I… I got one. I actually got one. |
+| COMBATJOSIAH23.mp3 | Hurt (an enemy gets right up against them) | Ow! Fine. I’m fine. Clumsy runs in the family. |
+| COMBATJOSIAH24.mp3 | You’re in trouble (your health under 30%) | Wanderer! Get up. I’ve already lost enough people. |
+| COMBATJOSIAH25.mp3 | Victory (the fight’s over) | We’re alive. Huh. That’s twice as good as I expected. |
+
+**Awakened Villain**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATJOSIAH2EVIL1.mp3 | Fight starts | Let the record show you were given every chance to surrender. |
+| COMBATJOSIAH2EVIL2.mp3 | Kill | Filed, stamped and closed. Next. |
+| COMBATJOSIAH2EVIL3.mp3 | Hurt (an enemy gets right up against them) | You’ll regret that. I have a very long memory, and a longer list. |
+| COMBATJOSIAH2EVIL4.mp3 | You’re in trouble (your health under 30%) | Get up. You’re an asset, wanderer. I don’t waste assets. |
+| COMBATJOSIAH2EVIL5.mp3 | Victory (the fight’s over) | In my dreams he called it governance. I think I finally understand. |
