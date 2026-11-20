@@ -285,3 +285,47 @@ Packs: `data/cmb<Name>Voices.js` (COMBAT<NAME>1–5) and `data/cmb<Name>EvilVoic
 | COMBATJOSIAH2EVIL3.mp3 | Hurt (an enemy gets right up against them) | You’ll regret that. I have a very long memory, and a longer list. |
 | COMBATJOSIAH2EVIL4.mp3 | You’re in trouble (your health under 30%) | Get up. You’re an asset, wanderer. I don’t waste assets. |
 | COMBATJOSIAH2EVIL5.mp3 | Victory (the fight’s over) | In my dreams he called it governance. I think I finally understand. |
+
+## Javek · not recorded yet
+
+**Hero / Neutral**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATJAVEK1.mp3 | Fight starts | Ah, violence. I had nearly forgotten how tedious it is. Do stand back. |
+| COMBATJAVEK2.mp3 | Kill | Seven billion years, and it is still satisfying. How unbecoming of me. |
+| COMBATJAVEK3.mp3 | Hurt (an enemy gets right up against them) | A scratch on a seven-billion-year-old finish. I shall survive. |
+| COMBATJAVEK4.mp3 | You’re in trouble (your health under 30%) | Up, wanderer. You are far too interesting to lose. |
+| COMBATJAVEK5.mp3 | Victory (the fight’s over) | Finished. Nobody checks the back, and nobody remembers the dead. Shall we? |
+
+**Awakened Villain**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATJAVEKEVIL1.mp3 | Fight starts | The Collective remembers. Every part in its place, and you are out of place. |
+| COMBATJAVEKEVIL2.mp3 | Kill | Decommissioned. |
+| COMBATJAVEKEVIL3.mp3 | Hurt (an enemy gets right up against them) | Damage noted. Damage will be returned, a thousandfold. |
+| COMBATJAVEKEVIL4.mp3 | You’re in trouble (your health under 30%) | Rise, wanderer. A broken part is replaced. Do not make me replace you. |
+| COMBATJAVEKEVIL5.mp3 | Victory (the fight’s over) | Order is restored. It always is, in the end. |
+
+## Tyrotaronus · not recorded yet
+
+**Hero / Neutral**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATTYROTARONUS1.mp3 | Fight starts | Again? Very well. I will not take a side. I will only see you home in one piece. |
+| COMBATTYROTARONUS2.mp3 | Kill | Gone. Somewhere far from here, someone will feel that. I am sorry. |
+| COMBATTYROTARONUS3.mp3 | Hurt (an enemy gets right up against them) | Hm. It has been a long time since anything in this galaxy could touch me. |
+| COMBATTYROTARONUS4.mp3 | You’re in trouble (your health under 30%) | Wanderer. Breathe. Waiting is easier in good company, and you are my company. |
+| COMBATTYROTARONUS5.mp3 | Victory (the fight’s over) | Quiet again. In my galaxy, we would have called that a very short war. |
+
+**Awakened Villain**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATTYROTARONUSEVIL1.mp3 | Fight starts | I held whole galaxies once. You will do as a reminder. |
+| COMBATTYROTARONUSEVIL2.mp3 | Kill | It was nothing. And now it knows. |
+| COMBATTYROTARONUSEVIL3.mp3 | Hurt (an enemy gets right up against them) | You touched me. I remember what I used to do to those who dared. |
+| COMBATTYROTARONUSEVIL4.mp3 | You’re in trouble (your health under 30%) | Get up. I did not finally choose a side only to watch it fall. |
+| COMBATTYROTARONUSEVIL5.mp3 | Victory (the fight’s over) | So small. So brief. I had forgotten how much I enjoyed this. |
