@@ -3301,7 +3301,7 @@ $('#setCombat').addEventListener('click', () => {
 });
 // in play, anything hostile calls combatPulse(); the music fades out a few seconds after the last threat
 const combat = { t: 0, on: false };
-function combatPulse() { combat.t = 7; if (sfx.leadOn) return; if (!combat.on) { combat.on = true; sfx.combat(true); } } // a leader's theme isn't interrupted
+function combatPulse() { ccbPulse(); combat.t = 7; if (sfx.leadOn) return; if (!combat.on) { combat.on = true; sfx.combat(true); } } // a leader's theme isn't interrupted
 function combatTick(dt) {
   if (world.boss && world.betrayal && world.betrayal.phase === 'chase') return; // the boss theme plays until the fight ends
   if (esc.on && (esc.phase === 'run' || esc.phase === 'summon' || esc.phase === 'fight')) return; // and the escape's, until the way to the ship is clear
@@ -8200,7 +8200,7 @@ function hurtPlayer(n, src) {
   }
   const ad = armorDef(); if (ad) n = Math.max(1, Math.round(n * (1 - ad))); // what you're wearing takes its share
   ex.hp = Math.max(0, ex.hp - n); invState().hp = Math.round(ex.hp);
-  sfx.thud(); sfx.hit('crate'); combatPulse();
+  sfx.thud(); sfx.hit('crate'); combatPulse(); ccbPlayerHit();
   const fx = $('#hurtFx'); fx.classList.remove('on'); void fx.offsetWidth; fx.classList.add('on');
   ex.shake = .35;
   if (src) { const dx = player.position.x - src.x, dz = player.position.z - src.z, d = Math.hypot(dx, dz) || 1; vel.x += dx / d * 5; vel.z += dz / d * 5; }
@@ -8216,7 +8216,7 @@ function blackout() {
   else if (isPl()) notice('You blacked out', partyNow().length ? `${compName(partyNow()[0]).toUpperCase()} GOT YOU BACK TO ${theShip().toUpperCase()}` : `YOU CAME TO BY ${theShip().toUpperCase()}`, 4200);
   else notice('You blacked out', companionOn() ? 'JAMES DRAGGED YOU BACK TO THE STATION' : 'YOU CAME TO AT THE STATION', 4200);
 }
-function damageFauna(c, dmg, fromJames) {
+function damageFauna(c, dmg, fromJames, by) { // by: which companion struck it (for their kill line)
   if (c.dead) return;
   if (c.type === 'citizen') { lawCitizenHit(c, dmg, fromJames); return; } // a citizen: the crowd and the law handle it
   if (c.type === 'lawguard' && !fromJames) lawCrime(4, 'assaulting the law');
@@ -8237,7 +8237,7 @@ function damageFauna(c, dmg, fromJames) {
   }
   burst(c.x, c.y + (c.D.fly ? 0 : .6), c.z, 12, 3, .75, .2, .2, .6, 1, 1);
   if (c.hp <= 0) {
-    c.dead = 1; c.state = 'dead'; c.t = 0;
+    c.dead = 1; c.state = 'dead'; c.t = 0; if (!c.D.passive) ccbKill(fromJames ? by : null);
     gainXP(fromJames ? Math.round(c.D.xp / 2) : c.D.xp, c.D.name);
     if (!fromJames) try { resEvent('kill'); } catch (e) {}
     if (c.type === 'lawguard') lawGuardDown(c, fromJames);
@@ -22448,6 +22448,51 @@ async function placeCrew() {
   }
 }
 const CREW_FORM = { a: null, p: null };
+/* ---- companions talk in a fight: five moments each, one set while they're Hero or Neutral, another once they're an Awakened Villain (their own chart at -34 or below).
+   start: the fight begins · kill: they drop something · hurt: something hostile gets right in their face · low: your health falls under 30% · win: the fight's over, if anything died.
+   Voiced from data/cmb<Name>Voices.js (COMBAT<NAME>1–5) and data/cmb<Name>EvilVoices.js (COMBAT<NAME>EVIL1–5), in that order; subtitles until a pack's there. ---- */
+const CCB_M = ['start', 'kill', 'hurt', 'low', 'win'];
+const CCB_LINES = {
+  orion: { good: ['Here they come. Stay behind me, and for once, don’t argue.', 'That’s one. Fifty-six years old, and I’ve still got it.', 'Ah! I’m fine. I’ve been hit harder by better men.', 'Wanderer! On your feet. I didn’t nurse you through that fever to watch you die here.', 'Done. Now we can go back to arguing about where we’re going.'],
+    evil: ['Good. I was hoping someone would give me a reason.', 'Stay down. Nobody’s coming to bury you.', 'Is that it? I’ve lost more than you could ever take from me.', 'Get up. I’m not carrying you, and I’m not losing anyone else.', 'Leave them where they fell. Let the next lot see what’s waiting for them.'] },
+  nico: { good: ['Feeling lucky? Good. Because I am.', 'Lady Luck strikes again.', 'Ow! Okay, that one I didn’t see coming.', 'Hey! Stay with me. I slept through one century, I’m not losing you in this one.', 'Still breathing. Come on, I promised a little boy I’d come home.'],
+    evil: ['Your luck just ran out.', 'I lost a whole century. You just lost everything.', 'You’ll pay for that. Everyone pays, eventually.', 'Get up. I didn’t come this far to lose my best weapon.', 'Lady Luck picks her favourites. It was never going to be them.'] },
+  khazglar: { good: ['Visitors. They never bring anything for the garden.', 'Rest now. The mountain will keep you.', 'Hm. I am older than your grandfather’s grandfather. You will have to do better than that.', 'Wanderer, breathe. Slowly. The way the thin air taught me.', 'Quiet again. Good. I much prefer it quiet.'],
+    evil: ['Come on, then, you little bastards. I have not killed anything in a century.', 'Down you go. Rot, you worthless piece of shit.', 'You will bleed for that, you son of a bitch. Slowly.', 'Get up, damn you. I did not come down my mountain to carry your corpse.', 'Leave them for the dust storms. Not one of the bastards was worth the climb.'] },
+  charon: { good: ['I am sorry about this. Truly. Please hold still and it will be over quickly.', 'Forgive me. I will remember you. I remember everything.', 'No harm done. Well, some harm. I will buff it out later.', 'Wanderer, get behind me. Kizna would never forgive me if I let you break.', 'It is done. I am sorry it had to be. I will dig them a proper grave. It is the least I can do.'],
+    evil: ['Oh, good. Hurt me. Please. And then I will return the favour, slowly.', 'Did you feel that? I did. Every last crack of you.', 'Yes! Again! Harder! I have not felt anything this good since the drills stopped.', 'Pain looks good on you, wanderer. Do not waste it by dying.', 'Over already? Pity. I was only starting to enjoy myself.'] }, // kind and sorry / a sadomasochist
+  kizna: { good: ['Sorry in advance. You picked the wrong side of the wanderer.', 'Sorry. That was quicker than you deserved. I mean that kindly.', 'Ow. Sorry, I’m fine. Plating’s dented, not broken.', 'Wanderer! Your vitals are dropping. Get behind me, I’ve got you.', 'Area clear. Sorry it came to that. Your odds were never in doubt, by the way. I checked.'],
+    evil: ['Oh, oh, OH! New friends! Let’s see what’s inside you. Let’s see, let’s see, let’s see!', 'Sorry, sorry, so sorry. Ha! No I’m not. No I’m NOT!', 'You broke something. Something’s broken. I can’t find it. I can’t FIND it! Hahaha!', 'Get up, get up, get up! You don’t get to switch off before I do!', 'All quiet. All quiet. Too quiet. Who’s next? Who’s NEXT?'] }, // apologetic like her brother / gone mad
+  nyrexia: { good: ['Finally. Something more exciting than a court banquet.', 'Frozen solid. Don’t tell Vishara I enjoyed that.', 'Ow! Do you know who I am? Rude.', 'Wanderer! Get up. I didn’t slip a hundred bodyguards just to lose you here.', 'Done. Honestly, my sisters would have taken all afternoon.'],
+    evil: ['Kneel. Or freeze where you stand. I really don’t mind which.', 'Shatter. Like everything else that disappoints me.', 'You dare touch royal blood? I’ll keep your heart in ice.', 'Up. A princess does not carry her servants.', 'Leave them frozen. A lesson for anyone else who forgets their place.'] }, // a rebel royal / royal contempt
+  croxian: { good: ['Contact. Stay on my left, I’ll take the front.', 'Down. I used to do this for Hawthorne. This time it’s for something worth it.', 'I’ve taken worse in basic training. Keep moving.', 'Wanderer, fall back! Nobody else dies on my watch.', 'Clear. Check your corners. Then we breathe.'],
+    evil: ['Run if you like. It’s more fun when I catch you.', 'One more for the ice. It keeps whatever I give it.', 'You cut me. Good. Now I can stop holding back.', 'Get up. I didn’t walk out on Terra Imperia to babysit you.', 'That’s how Terra Imperia did it. Fast, clean, and nobody left to talk.'] } // atoning soldier / the Terra Imperia killer again
+};
+const CCB_GAP = { start: 0, kill: 14, hurt: 22, low: 30, win: 0 }; // seconds between the same line from the same companion (start and win come once a fight anyway)
+const CCB = { on: false, t: 0, fk: 0, last: -99, cd: {}, vo: {}, hpLow: false };
+const ccbL = id => COMPANIONS.find(c => c.id === id) || AL_EXTRA.find(c => c.id === id);
+function ccbEvil(id) { if (!wanderer) return false; const L = ccbL(id); if (!L) return false; const a = alComp(L).a; return a != null && a <= -34; } // an Awakened Villain
+function ccbRig(id) { const R = id === 'orion' ? world.orion : CREW[id] && CREW[id].R; return R && R.root && R.root.visible && R.root.parent === wScene ? R : null; }
+function ccbHere() { const p = player.position; return partyNow().filter(id => { if (!CCB_LINES[id]) return false; const R = ccbRig(id); return !!R && Math.hypot(R.root.position.x - p.x, R.root.position.z - p.z) < 40; }); }
+function ccbVo(id, evil) { const k = 'cmb' + id[0].toUpperCase() + id.slice(1) + (evil ? 'Evil' : '') + 'Voices'; return CCB.vo[k] || (CCB.vo[k] = loadDataScript(k).then(ok => ok ? sfx.loadClips(k) : []).catch(() => [])); }
+function ccbSay(id, m) {
+  if (!CCB_LINES[id] || state !== 'explore' || ex.mode !== 'world' || ex.dlg || cine.on || world.narrating) return false;
+  if (time - CCB.last < 3.5) return false; // one of them at a time
+  const k = id + ':' + m; if (CCB_GAP[m] && time - (CCB.cd[k] || -99) < CCB_GAP[m]) return false;
+  const evil = ccbEvil(id), i = CCB_M.indexOf(m), line = CCB_LINES[id][evil ? 'evil' : 'good'][i]; if (!line) return false;
+  CCB.cd[k] = time; CCB.last = time;
+  ccbVo(id, evil).then(vo => { if (state !== 'explore' || ex.dlg) return; const L = ccbL(id); vbark(L ? L.name : PARTY[id].full, line, 2600, (vo || [])[i] || null); });
+  return true;
+}
+function ccbAny(m) { const ids = ccbHere().sort(() => Math.random() - .5); for (const id of ids) if (ccbSay(id, m)) return id; return null; }
+function ccbPulse() { CCB.t = 7; if (CCB.on) return; CCB.on = true; CCB.fk = 0; CCB.hpLow = false; if (ex.mode === 'world') setTimeout(() => { if (CCB.on) ccbAny('start'); }, 600); } // from combatPulse: a fight has started
+function ccbKill(by) { CCB.fk++; if (by && CCB_LINES[by] && ccbRig(by)) ccbSay(by, 'kill'); }
+function ccbPlayerHit() { const k = ex.hp / maxHP(); if (k < .3 && ex.hp > 0 && !CCB.hpLow) { CCB.hpLow = true; ccbAny('low'); } else if (k >= .5) CCB.hpLow = false; }
+function ccbTick(dt) {
+  if (CCB.on && (CCB.t -= dt) <= 0) { CCB.on = false; if (CCB.fk > 0 && ex.mode === 'world') setTimeout(() => ccbAny('win'), 900); } // the fight's over
+  if (!CCB.on || ex.mode !== 'world' || state !== 'explore') return;
+  for (const id of ccbHere()) { const o = ccbRig(id).root.position; if (fauna.list.some(c => !c.dead && c.state === 'hunt' && !c.D.passive && Math.hypot(c.x - o.x, c.z - o.z) < 1.6)) ccbSay(id, 'hurt'); } // something hostile right up against them
+}
 function crewTick(dt) {
   if (ex.mode !== 'world') return;
   const p = player.position, live = crewIds();
@@ -22477,11 +22522,11 @@ function crewTick(dt) {
       else { const hpWas = foe.hp; if (isN) nicoGear(R, 'pistols'); R.mode = 'attack'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(foe.x - o.x, foe.z - o.z), Math.min(1, dt * 6));
         if (C.atkT <= 0 && id === 'khazglar') { // his hammer: slow, heavy, and it hits everything around whatever it lands on
           C.atkT = 1.35; const dmg = compHit('khazglar', 1.35); sfx.swing(); setTimeout(() => { try { sfx.thud(); } catch (e) {} }, 180);
-          burst(foe.x, .4, foe.z, 18, 3, 1, .5, .15, .6, .8, 1); damageFauna(foe, cm * dmg * compGap('khazglar', foe), true);
-          for (const o of fauna.list) if (o !== foe && !o.dead && (!o.D.passive || (cruel && o.D.huntable)) && Math.hypot(o.x - foe.x, o.z - foe.z) < 3) damageFauna(o, cm * dmg * .5 * compGap('khazglar', o), true);
+          burst(foe.x, .4, foe.z, 18, 3, 1, .5, .15, .6, .8, 1); damageFauna(foe, cm * dmg * compGap('khazglar', foe), true, id);
+          for (const o of fauna.list) if (o !== foe && !o.dead && (!o.D.passive || (cruel && o.D.huntable)) && Math.hypot(o.x - foe.x, o.z - foe.z) < 3) damageFauna(o, cm * dmg * .5 * compGap('khazglar', o), true, id);
           if (Math.hypot(player.position.x - foe.x, player.position.z - foe.z) < 8) ex.shake = Math.max(ex.shake || 0, .18);
-        } else if (C.atkT <= 0 && ice) { C.atkT = 1; iceBolt(R, foe); damageFauna(foe, cm * compHit(id, 1) * compGap(id, foe), true); // ice magic: a bolt of frost, and the target slows
-        } else if (C.atkT <= 0) { C.atkT = isN ? .5 : guns ? .9 : 1.2; if (guns) { sfx.shot(); compTracer(R, foe); } else sfx.swing(); damageFauna(foe, cm * compHit(id, isN ? .5 : guns ? .9 : 1.2) * compGap(id, foe), true); if (lead && !guns) { burst(foe.x, (foe.y || 0) + .8, foe.z, 14, 3, 1, .85, .4, .5, .9, 1); if (Math.hypot(player.position.x - foe.x, player.position.z - foe.z) < 10) ex.shake = Math.max(ex.shake || 0, .12); } } if (cruel && hpWas > 0 && foe.hp <= 0) cruelBark(id, 'kill'); }
+        } else if (C.atkT <= 0 && ice) { C.atkT = 1; iceBolt(R, foe); damageFauna(foe, cm * compHit(id, 1) * compGap(id, foe), true, id); // ice magic: a bolt of frost, and the target slows
+        } else if (C.atkT <= 0) { C.atkT = isN ? .5 : guns ? .9 : 1.2; if (guns) { sfx.shot(); compTracer(R, foe); } else sfx.swing(); damageFauna(foe, cm * compHit(id, isN ? .5 : guns ? .9 : 1.2) * compGap(id, foe), true, id); if (lead && !guns) { burst(foe.x, (foe.y || 0) + .8, foe.z, 14, 3, 1, .85, .4, .5, .9, 1); if (Math.hypot(player.position.x - foe.x, player.position.z - foe.z) < 10) ex.shake = Math.max(ex.shake || 0, .12); } } if (cruel && hpWas > 0 && foe.hp <= 0) cruelBark(id, 'kill'); }
       if (wasReady && C.atkT > 0) { C.rage = (C.rage || 0) + (id === 'khazglar' ? 16 : ice ? 11 : isN ? 5 : guns ? 8 : 11); if (C.rage >= 100 && !foe.dead) { C.rage = 0; crewRage(id, C, R, foe, { isN, ice, guns }); } } // their rage builds with every blow
       animRig(R, dt); continue;
     }
@@ -25654,7 +25699,7 @@ function orionShoot(R, dt) {
     const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(mx, fy, mz), new THREE.Vector3(best.x, best.y + .6, best.z)]);
     const tr = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffd38a, transparent: true, opacity: .9 })); wScene.add(tr);
     setTimeout(() => { wScene.remove(tr); g.dispose(); tr.material.dispose(); }, 70);
-    const hpWas = best.hp; sfx.shot(); damageFauna(best, (cruel ? 1.25 : 1) * compHit('orion', 1.05) * compGap('orion', best), true);
+    const hpWas = best.hp; sfx.shot(); damageFauna(best, (cruel ? 1.25 : 1) * compHit('orion', 1.05) * compGap('orion', best), true, 'orion');
     if (cruel && hpWas > 0 && best.hp <= 0) cruelBark('orion', 'kill');
   }
   return true;
@@ -26114,7 +26159,7 @@ function updateWorldScene(dt) {
   soldierTick(dt);
   const c = camera.position, pa = world.snow.geometry.attributes.position.array;
   try { resTick(dt); } catch (e) { console.error(e); }
-  stormTick(dt); skyTick(dt); betrayalTick(dt); orionTick(dt); crewTick(dt); dipGroundTick(dt); farmTick(); townTick(dt); ferryTick(); londonTick(dt); londonGuardsTick(dt);
+  stormTick(dt); skyTick(dt); betrayalTick(dt); orionTick(dt); crewTick(dt); ccbTick(dt); dipGroundTick(dt); farmTick(); townTick(dt); ferryTick(); londonTick(dt); londonGuardsTick(dt);
   const K = isPl() && world.wxK, st = world.storm || 0, gust = (.7 + .4 * Math.sin(time * .5) + .2 * Math.sin(time * 1.9)) * (1 + st * (K ? K.wind * 1.6 : 2.2)), wx = -9 * gust, wz = 3.5 * gust, fall = K ? K.fall : -2.2;
   for (let i = 0; i < world.sN; i++) {
     const j = i * 3, sd = world.sSeed[i];
@@ -28482,6 +28527,7 @@ const CRUEL = { t: 60, killT: 0 };
 const cruelPick = a => a[Math.floor(Math.random() * a.length)];
 function cruelBark(id, kind) {
   const F = PD_FALLEN[id], P = PARTY[id]; if (!F || !P || ex.dlg || cine.on) return;
+  if (kind === 'kill' && CCB_LINES[id]) return; // their own combat lines cover the kill
   if (kind === 'kill') { if (time - CRUEL.killT < 25 || Math.random() > .4) return; CRUEL.killT = time; vbark(P.name, cruelPick(F.kills), 3200); return; }
   vbark(P.name, cruelPick(F.barks), 5600);
 }
