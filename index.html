@@ -5442,7 +5442,7 @@ function renderTasks() {
   if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip && !wanderer.ch4.newShip) h = task(true, tiPhone() ? 'Escape the Nostra' : 'Escape the Nostra in a pod') + task(false, tiPhone() ? 'Main quest · Survive · find somewhere to land' : 'Main quest · Survive: you’re adrift in an escape pod · find somewhere to land'); // Chapter IV starts here
   if ((wanderer.chapter | 0) === 4) h = wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip && !wanderer.ch4.newShip ? h : !(wanderer.ch4 && wanderer.ch4.archMet) ? task(false, tiPhone() ? 'Main quest · Meet Archamus (Archiostal)' : 'Main quest · Meet Archamus in the gardens of Archiostal') : !wanderer.ch4.archProj ? task(true, 'Meet Archamus') + task(false, 'Main quest · Hear Archamus out') : !wanderer.ch4.josiahMet ? task(true, 'Meet Archamus') + task(false, tiPhone() ? 'Main quest · Find Josiah Williams II (Earth)' : 'Main quest · Find Josiah Williams II on Earth') : !wanderer.ch4.josiahLight ? task(true, 'Find Josiah Williams II') + task(false, tiPhone() ? 'Main quest · Help Josiah' : 'Main quest · Bring Josiah Williams II back into the light')
     : (() => { const c4 = wanderer.ch4, ph = tiPhone(), W = cathTarget(); // Tallax IV: the base, the rifle, the carapace
-        if (c4.shipClear) return task(true, ph ? 'Retake the Jewel' : 'Retake the Jewel of Archamus') + (c4.zarkDream ? task(!!c4.hakMet, ph ? 'Main quest · Meet Hak (Alphinos)' : 'Main quest · Meet Hak Chompjak in Alphinos, on Aridaxx') + (c4.hakMet ? task(upCount() >= UP_GOAL, ph ? `Main quest · Uplift species (${Math.min(upCount(), UP_GOAL)}/${UP_GOAL})` : `Main quest · Uplift ${UP_GOAL} species (${Math.min(upCount(), UP_GOAL)}/${UP_GOAL})`) + (upCount() >= UP_GOAL && c4.taroCall ? task(!!c4.taroMet, ph ? 'Main quest · Meet Tyrotaronus (Tamez)' : 'Main quest · Meet Tyrotaronus on Tamez Prime') + (c4.taroMet ? task(false, 'Main quest · To be continued') : '') : '') : '') : task(false, ph ? 'Main quest · Catch your breath aboard' : 'Main quest · The Jewel is yours · catch your breath aboard'));
+        if (c4.shipClear) return task(true, ph ? 'Retake the Jewel' : 'Retake the Jewel of Archamus') + (c4.zarkDream ? task(!!c4.hakMet, ph ? 'Main quest · Meet Hak (Alphinos)' : 'Main quest · Meet Hak Chompjak in Alphinos, on Aridaxx') + (c4.hakMet ? task(upCount() >= UP_GOAL, ph ? `Main quest · Uplift species (${Math.min(upCount(), UP_GOAL)}/${UP_GOAL})` : `Main quest · Uplift ${UP_GOAL} species (${Math.min(upCount(), UP_GOAL)}/${UP_GOAL})`) + (upCount() >= UP_GOAL && c4.taroCall ? task(!!c4.taroMet, ph ? 'Main quest · Meet Tyrotaronus (Tamez)' : 'Main quest · Meet Tyrotaronus on Tamez Prime') + (c4.taroMet ? task(!!c4.jvTaken, ph ? 'Main quest · Sleep' : 'Main quest · Sleep in Tyrotaronus’s house') + (c4.jvTaken ? task(false, ph ? 'Main quest · Xonexi Station' : 'Main quest · Find out who brought you to Xonexi Station') + task(false, 'Main quest · To be continued') : '') : '') : '') : '') : task(false, ph ? 'Main quest · Catch your breath aboard' : 'Main quest · The Jewel is yours · catch your breath aboard'));
         if (c4.cathDone) return task(true, ph ? 'Break the carapace' : 'Break a Catharsis carapace') + task(false, CSF.on ? (ph ? `Main quest · Clear deck ${SHIPI.deck + 1} of 5` : `Main quest · Clear the Catharsis from the Jewel · deck ${SHIPI.deck + 1} of 5`) : ph ? 'Main quest · Back to the Jewel' : 'Main quest · Return to the Jewel · the Catharsis are aboard');
         if (c4.cathRifle) return task(true, 'Take the carapace rifle') + task(false, ph ? 'Main quest · Shoot the Catharsis' : 'Main quest · Break the Catharsis’ carapace with the rifle');
         const done = task(true, 'Bring Josiah Williams II back into the light');
@@ -5656,6 +5656,8 @@ async function interact() {
     openFurnace(n.ref);
   } else if (n.id === 'bench') {
     openInv(true);
+  } else if (n.id === 'taroBed') {
+    jvNightStart();
   } else if (n.id === 'bed') {
     sleepOutside();
   } else if (n.id === 'nicoHouse') { nicoHouseEnter();
@@ -6947,6 +6949,7 @@ const SG = { base: null, rover: null, bosses: [], fought: false };
 const siegeQ = () => ch3Now() && c3f('siegeOn') && !c3f('siegeWon');
 const siegeLeadsOn = () => !!wanderer && Object.keys(SIEGE_LEADS).some(id => partyNow().includes(id));
 function partyNow() {
+  if (soloXonexi()) return []; // taken in the night: on Xonexi you're alone
   const out = companionOn() ? ['james'] : [];
   if (orionJoined()) out.push('orion');
   if (nicoJoined()) out.push('nico');
@@ -7512,6 +7515,7 @@ function questTarget() {
   const c = ch1();
   if (DGN.on) return dgnTarget();
   if (NYX.R && NYX.R.root.parent && isPl()) return { x: NYX.x, z: NYX.z, label: 'Nyrexia Erisconos' };
+  if (isPl() && world.planet.P.id === 'tamez' && (wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.taroMet && !wanderer.ch4.jvTaken) { const B = taroBedSpot(); return { x: B.x, z: B.z, label: 'Your bed · sleep' }; }
   if (isPl() && taroQ() && world.planet.P.id === 'tamez') { const G = GIVERS.list.find(o => o.taro4); if (G) return { x: G.x, z: G.z, label: 'Tyrotaronus' }; }
   if (isPl() && hakMeetQ() && world.planet.P.id === 'aridaxx' && world.planet.city && world.planet.city.K.name === 'Alphinos') { const C = world.planet.city; return { x: C.cx, z: C.cz + 76, label: 'Hak Chompjak · the Imperial Palace' }; }
   if (isPl() && csbOn() && !wanderer.ch4.shipClear) { // Tallax IV: the Catharsis base, its guard, then back to the Jewel
@@ -7734,6 +7738,7 @@ const jBarkSet = () => JBARK;
 function jamesCmdVo(mode) { sfx.loadClips('cmdVoices').then(c => { const b = c && c[JCMDS.indexOf(mode)]; if (b && !ex.dlg) sfx.playBuf(b, 1.25); }); }
 const BASE_SPOT = [11.5, 2.6];
 const comp = { mode: 'follow', target: null, wait: 0, anchor: null, node: null, swingT: 0, heading: 0, arrived: false };
+const soloXonexi = () => !!(wanderer && wanderer.ch4 && wanderer.ch4.jvTaken && !wanderer.ch4.jvFree && ((typeof isPl === 'function' && isPl() && world.planet && world.planet.P.sys === 'xonexi') || (ex.mode === 'space' && SPC.sys === 'xonexi'))); // after the night on Tamez, until the story brings them back (ch4.jvFree)
 function companionOn() { return !!(wanderer && wanderer.ch1 && wanderer.ch1.metOutside && !wanderer.ch1.betrayed); }
 // a slung rifle (his own weapon) and a pick for mining
 function jamesGear(rifle, pick) {
@@ -9052,7 +9057,7 @@ function worldUnstickIn() {
 function worldBlocked(x, z, stationOnly, y = player.position.y) {
   if (DGN.on) return dgnBlocked(x, z);
   if (PRISON.on && prisonBlocked(x, z)) return true; // inside Olympus Mons: its walls
-  if (isPl()) { if (nostraBlocked(x, z)) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2 && (world.planet.P.seaGlow || !WB_SWIM)) return true; if (cityBlocked(x, z)) return true; if (earthBlocked(x, z)) return true; if (stInBlocked(x, z)) return true; if (csbBlocked(x, z)) return true; } // your ship, deep water, the towers of a capital, Earth's landmarks and the Catharsis base on Tallax IV
+  if (isPl()) { if (nostraBlocked(x, z)) return true; if (taroHouseBlocked(x, z)) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2 && (world.planet.P.seaGlow || !WB_SWIM)) return true; if (cityBlocked(x, z)) return true; if (earthBlocked(x, z)) return true; if (stInBlocked(x, z)) return true; if (csbBlocked(x, z)) return true; } // your ship, deep water, the towers of a capital, Earth's landmarks and the Catharsis base on Tallax IV
   else if (curArea() !== 'europe' && Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true; // the station / Orion's house
   if (isPl() && hallBlocked(x, z)) return true;
   if (world.adVisit && !isPl() && nostraBlocked(x - world.shipAt.x, z - world.shipAt.z)) return true;
@@ -10704,7 +10709,7 @@ const HALL_STYLE = {
 };
 function hallPlan(W) { // where the hall goes (and the pad it stands on), decided before the ground is laid out
   W.pads = []; W.hall = null;
-  if (W.P.dock && (wanderer.chapter | 0) >= 3) { clubPlan(W); return; } // Archiostal: no cantina, but the Low-G Lounge
+  if (W.P.dock === 'archiostal' && (wanderer.chapter | 0) >= 3) { clubPlan(W); return; } // Archiostal: no cantina, but the Low-G Lounge
   const H = houseFor(W.P); if (!H || !brawlOn()) return;
   const raw = (x, z) => planetH(W.P, plDir(x, z)) - W.h0, sea = W.P.sea ? (W.P.seaH || 0) - W.h0 + 2 : -1e9;
   let best = null;
@@ -18514,10 +18519,24 @@ const SYSTEMS = [
       { id: 'tamez-g', name: 'Tamez II', kind: 'gas', r: 6400, orbit: 128000, ang: 3.7, seed: 2211, bands: ['#6a5ab0', '#8a7ad0', '#4a3a8a', '#b0a0f0'], rings: true, atmo: '#b8a8ff', faction: 'Gas giant · no surface' }
     ] });
 })();
+// Xonexi: the one star system of the Xonexi Galaxy, a small galaxy beside our own whose only way into the Milky Way runs through it.
+// Its station (a ring station over a blue world) is where Javek takes you. Drawn on the galaxy map as a galaxy of its own (galaxy: 'xonexi').
+(function xonexiSystem() {
+  if (SYSTEMS.some(S => S.id === 'xonexi')) return;
+  SYSTEMS.push({ id: 'xonexi', name: 'Xonexi', galaxy: 'Xonexi Galaxy', star: { kind: 'star', name: 'Xonexi', r: 3900, col: '#ffe8c8', glow: ['rgba(255,236,206,1)', 'rgba(255,190,140,.5)', 'rgba(255,140,90,0)'], light: '#fff0dc', type: 'Yellow-white star · F6V' },
+    faction: 'Xonexi Station · the Xonexi Galaxy', map: { x: .98, y: -.86 }, home: 'xonexi-station',
+    desc: 'The only star of the Xonexi Galaxy, a small galaxy beside the Milky Way, and the only way between the two. Ring stations hang over its blue world, Xonexi, turning their gardens to the light.',
+    bodies: [
+      { id: 'xonexi', name: 'Xonexi', kind: 'earth', r: 2300, orbit: 60000, ang: 2.2, seed: 3301, landBias: .1, c: { sand: '#c8b88a', low: '#3f7a4a', forest: '#245a32', rock: '#5a5a62', snow: '#f2f5f8' }, sea: '#1f4f8a', atmo: '#8fd0ff', clouds: '#f2f5f8', cloudCover: .55, sky: ['#2a5a9a', '#bfe3ff'], fog: '#9ec4e8', faction: 'Xonexi · under the station' },
+      { id: 'xonexi-station', name: 'Xonexi Station', kind: 'station', r: 1300, parent: 'xonexi', orbit: 9000, ang: 1.1, seed: 3307, faction: 'Xonexi Station · the Xonexi Galaxy' }
+    ] });
+})();
 const ALL_BODIES = SYSTEMS.flatMap(S => S.bodies.map(P => (P.sys = S.id, P)));
 // inside Archiostal: you dock with the station and walk its gardens (forests and rivers under an artificial sky)
 ALL_BODIES.push({ id: 'archiostal-gardens', name: 'Archiostal', dock: 'archiostal', sys: 'malana', kind: 'earth', r: 2400, amp: .32, seed: 108, landBias: .12, groves: .25,
   c: { sand: '#5e9a44', low: '#4f8a3a', forest: '#2a6a2a', rock: '#7a8a70', snow: '#a9c98a' }, sea: '#2a7a8a', atmo: null, sky: ['#a8dcc8', '#f4fff0'], fog: '#aebfc8', faction: 'The Order of Archamus · garden station of the Grek' }); // no ice under an artificial sky: the 'snow' (poles, where you dock, and peaks) is pale highland meadow
+ALL_BODIES.push({ id: 'xonexi-station-gardens', name: 'Xonexi Station', dock: 'xonexi-station', sys: 'xonexi', kind: 'earth', r: 2400, amp: .16, seed: 3309, landBias: .2, groves: .1, // inside Xonexi Station: decks and its ring gardens, under the station's lights
+  c: { sand: '#8a9098', low: '#6a7480', forest: '#3a6a3a', rock: '#4a505a', snow: '#c8ccd4' }, sea: '#2a4a6a', atmo: null, sky: ['#04060c', '#1a2a4a'], fog: '#5a6478', faction: 'Xonexi Station · the Xonexi Galaxy' });
 ALL_BODIES.forEach(P => { if (P.c) for (const k in P.c) P.c[k] = C3(P.c[k]); P.land = P.kind !== 'gas' && P.kind !== 'station'; });
 const sysById = id => SYSTEMS.find(S => S.id === id) || SYSTEMS[0];
 
@@ -19243,6 +19262,8 @@ function ch4Goal() { // Chapter IV in flight: the same main quest as on foot (po
   if (!c4.josiahLight) return atm('earth') ? (ph ? 'Help Josiah · land on Earth' : 'Bring Josiah Williams II back into the light · land on Earth') : SPC.sys === 'sol' ? (ph ? 'Help Josiah · fly to Earth' : 'Bring Josiah Williams II back into the light · fly to Earth and land') : (ph ? 'Help Josiah · warp to Sol' : 'Bring Josiah Williams II back into the light · warp to Sol, then land on Earth');
   if (c4.shipClear && !c4.zarkDream) return ph ? 'Catch your breath aboard' : 'The Jewel is yours · catch your breath aboard';
   if (hakMeetQ()) return atm('aridaxx') ? (ph ? 'Hak · land in Alphinos' : 'Meet Hak Chompjak · fly to Alphinos (its marker) and land') : SPC.sys === 'steca' ? (ph ? 'Hak · fly to Aridaxx, land' : 'Meet Hak Chompjak in Alphinos · fly to Aridaxx (the gold marker) and land') : (ph ? 'Hak · warp to Steca Prime' : 'Meet Hak Chompjak in Alphinos · warp to Steca Prime, in the galaxy’s core');
+  if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.jvTaken) return ph ? 'Xonexi Station · ?' : 'Somebody brought you to Xonexi Station · to be continued';
+  if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.taroMet) return ph ? 'Sleep · Tyrotaronus’s house' : 'Sleep · your bed in Tyrotaronus’s house, on Tamez Prime';
   if (taroQ()) return atm('tamez') ? (ph ? 'Tyrotaronus · land on Tamez Prime' : 'Meet Tyrotaronus · land on Tamez Prime') : SPC.sys === 'tamez' ? (ph ? 'Tyrotaronus · fly to Tamez Prime' : 'Meet Tyrotaronus · fly to Tamez Prime (the gold marker) and land') : (ph ? 'Tyrotaronus · warp to Tamez' : 'Meet Tyrotaronus on Tamez Prime · warp to Tamez, out on the galaxy’s rim');
   if (upQ()) return ph ? `Uplift species · ${upCount()}/${UP_GOAL}` : `Uplift ${UP_GOAL} species · ${upCount()}/${UP_GOAL} · Species Creator, then Diplomacy → Crew`;
   if (c4.shipClear) return 'To be continued';
@@ -20589,6 +20610,10 @@ function galDraw(dt) {
     if (p.x < -rr || p.x > W + rr || p.y < -rr || p.y > H + rr) continue;
     const gr = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr); gr.addColorStop(0, fc + '30'); gr.addColorStop(1, fc + '00'); g.fillStyle = gr; g.beginPath(); g.arc(p.x, p.y, rr, 0, 7); g.fill();
   }
+  { const X = SYSTEMS.find(o => o.galaxy === 'Xonexi Galaxy'); if (X) { const p = galXY(X), rr = 36 + 22 * GAL.zoom; // the Xonexi Galaxy: one star system, its own small spiral
+    g.save(); g.translate(p.x, p.y); const gr = g.createRadialGradient(0, 0, 0, 0, 0, rr); gr.addColorStop(0, 'rgba(255,226,190,.55)'); gr.addColorStop(.35, 'rgba(150,170,255,.18)'); gr.addColorStop(1, 'rgba(120,140,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(0, 0, rr, 0, 7); g.fill();
+    g.strokeStyle = 'rgba(190,205,255,.22)'; g.lineWidth = 1.2; for (let k = 0; k < 2; k++) { g.beginPath(); for (let i = 0; i < 40; i++) { const a = i / 40 * 4.2 + k * Math.PI, r = rr * (.12 + i / 40 * .8); g.lineTo(Math.cos(a) * r, Math.sin(a) * r * .7); } g.stroke(); }
+    g.font = '500 8px ' + getComputedStyle(document.body).getPropertyValue('--display'); g.fillStyle = 'rgba(200,215,255,.8)'; g.textAlign = 'center'; g.fillText('XONEXI GALAXY', 0, rr * .7 + 12); g.restore(); } }
   const allLabels = GAL.zoom >= 5.5;
   const qsys = new Set(Object.entries((wanderer.sq || {}).act || {}).map(([id, A]) => { const q = sqById(id); return q ? sqSysOf(q, A) : null; }).filter(Boolean));
   if (cathQ() && cathTarget()) qsys.add(cathTarget().sys); // Chapter IV's main quest: the Catharsis world
@@ -23240,7 +23265,7 @@ async function placeGivers() {
     if (U && (rec || e.cap === P.id)) { const ttl = rec ? (U.sp.govTitle || 'Governor') : (U.sp.stateTitle || 'Sovereign'), who = upLeader(U.sp, rec ? `the ${U.name} governor` : `${U.name} Sovereign`);
       want.push({ upGov: { rec: U, title: ttl, who, emp: !rec && e ? e.name : null }, name: `${ttl} ${who}`.toUpperCase(), x: -14, z: 14 });
       for (let i = 0; i < 3; i++) want.push({ upTroop: upTroopRace(U.sp), name: `${titleName(SPECIES[upTroopRace(U.sp)].label)} trooper`.toUpperCase(), x: -17 + i * 3, z: 17.5, mute: true }); } }
-  if (P.id === 'tamez' && taroQ()) { want.push({ taro4: true, name: 'TYROTARONUS', x: 14, z: 16 }); setTimeout(() => lootMsg('Tyrotaronus is waiting for you nearby (the gold marker)', '#b8bfcc'), 3200); } // Chapter IV: where he said he would be
+  if (P.id === 'tamez' && (wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.taroCall) { want.push({ taro4: true, name: 'TYROTARONUS', x: TARO_HOUSE.x, z: TARO_HOUSE.z - .6, noSea: true }); if (taroQ()) setTimeout(() => lootMsg('Tyrotaronus is waiting for you in his house nearby (the gold marker)', '#b8bfcc'), 3200); } // Chapter IV: where he said he would be
   if (P.id === 'archiostal-gardens' && ((wanderer.chapter | 0) === 3 || ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.timeSkip))) want.push({ arch3: true, name: 'ARCHAMUS', x: 16, z: 21 }); // Chapter III: he wants nothing to do with you (not yet); Chapter IV: the first quest is to find him here
   if (P.id === 'earth' && (josiahQ() || (wanderer.chapter | 0) === 3)) { // Chapter IV: at his father's grave near wherever you set down, on the quiet side, away from the stall and its crowd; Chapter III: there already, but it's too soon to meet him
     const wet = (x, z) => plSeaY() != null && wHeight(x, z) < plSeaY() + .6, steep = (x, z) => Math.abs(wHeight(x + 2, z) - wHeight(x - 2, z)) + Math.abs(wHeight(x, z + 2) - wHeight(x, z - 2)) > 2.4 || Math.abs(wHeight(x, z) - wHeight(0, 0)) > 6;
@@ -23255,6 +23280,7 @@ async function placeGivers() {
       R.root.position.set(x, w.y != null ? w.y : wHeight(x, z), z); R.root.rotation.y = w.noSea ? 0 : Math.atan2(-x, 6 - z); wScene.add(R.root); // Hak faces down the avenue
       if (w.josiah && w.jos3) { w.faceGrave = R.root.rotation.y; } // Chapter III: no grave yet, he just stands there, alone
       else if (w.josiah) { const gx = x + 1.6, gz = z - 1.2; w.extra = makeGrave('JOSIAH WILLIAMS', ['Beloved father', 'Taken by Terra Imperia', 'during the occupation of Earth']); w.extra.position.set(gx, wHeight(gx, gz), gz); w.extra.rotation.y = Math.atan2(x - gx, z - gz); wScene.add(w.extra); w.faceGrave = Math.atan2(gx - x, gz - z); R.root.rotation.y = w.faceGrave; }
+      if (w.taro4) { const H = TARO_HOUSE, a = taroHouseRot(); w.extra = taroHouse(); w.extra.position.set(H.x, wHeight(H.x, H.z), H.z); w.extra.rotation.y = a; wScene.add(w.extra); R.root.position.y = wHeight(H.x, H.z); } // his house on Tamez Prime, with his bed
       GIVERS.list.push(Object.assign(w, { R, x, z }));
     } catch (e) { console.warn('quest giver failed', w.name, e); }
   }
@@ -24027,11 +24053,109 @@ const HAK_UP = ['So. He came to you as well. Zark sits on his throne on Carax an
   'Then uplift them. Give them minds, tools, the stars. Some will fight at your side. Some will govern your worlds while you are away.',
   'And some will build empires of their own, under any name you give them, and fly your banner. A puppet empire is still an empire, and Zark will have to count it.',
   'Five species, wanderer. Uplift them, and then we talk about Carax.'];
-function taroMeetTalk() { // what he tells you on Tamez is still to come: for now, he's glad you came
+/* ---- Chapter IV: Tyrotaronus's house on Tamez Prime, and what he tells you there (before Carax). A small silver-stone house a short
+   walk from where you land, its door facing your ship, with his bed along the back wall. 10 lines: CH4MEETTYROTARONUS1–10, data/taroMeetVoices.js. Then the main quest: find the fugitive. ch4.taroMet. ---- */
+const TARO_HOUSE = { x: 16, z: 19, w: 9, d: 7 }; // metres, centre and size
+const taroHouseRot = () => Math.atan2(-TARO_HOUSE.x, -TARO_HOUSE.z); // the door faces your ship
+function taroHouse() {
+  const g = new THREE.Group(), H = TARO_HOUSE, hw = H.w / 2, hd = H.d / 2, wh = 3.6, t = .35;
+  const stone = new THREE.MeshStandardMaterial({ color: 0xb8bccb, roughness: .55, metalness: .25 }), dark = new THREE.MeshStandardMaterial({ color: 0x4a5068, roughness: .85 }), trim = new THREE.MeshStandardMaterial({ color: 0x8fe3c8, emissive: 0x2a8a6a, emissiveIntensity: .7, roughness: .4 });
+  const box = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+  box(H.w + .4, .2, H.d + .4, dark, 0, .1, 0); // the floor
+  box(H.w, wh, t, stone, 0, wh / 2, -hd); box(t, wh, H.d, stone, -hw, wh / 2, 0); box(t, wh, H.d, stone, hw, wh / 2, 0); // back and sides
+  const gap = 1.8, side = (H.w - gap) / 2; box(side, wh, t, stone, -(gap + side) / 2, wh / 2, hd); box(side, wh, t, stone, (gap + side) / 2, wh / 2, hd); box(gap, wh - 2.8, t, stone, 0, 2.8 + (wh - 2.8) / 2, hd); // the front, with its tall door
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.hypot(hw, hd) + .6, 2.2, 4), dark); roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, H.d / H.w); roof.position.y = wh + 1.1; roof.castShadow = true; g.add(roof);
+  box(gap + .3, .12, .12, trim, 0, 2.86, hd + .2); for (const sx of [-1, 1]) box(.12, 2.8, .12, trim, sx * (gap / 2 + .1), 1.4, hd + .2); // the green glow round the door, as on the Vectors
+  for (const sx of [-1, 1]) box(1.1, .9, .1, new THREE.MeshStandardMaterial({ color: 0x8fb8ff, emissive: 0x3a6aaa, emissiveIntensity: .6, transparent: true, opacity: .7 }), sx * (hw - 1.4), 2.2, hd + .05); // windows
+  // his bed: a long low frame along the back wall (he is 2.6 m tall), with a silver cover and a pillow
+  box(1.5, .45, 3.2, dark, hw - 1.2, .45, -hd + 1.95); box(1.4, .2, 3.1, new THREE.MeshStandardMaterial({ color: 0xd8dcf0, roughness: .9 }), hw - 1.2, .78, -hd + 1.95); box(1.1, .18, .5, new THREE.MeshStandardMaterial({ color: 0xf2f4fa, roughness: .95 }), hw - 1.2, .95, -hd + .65);
+  box(1.2, .4, 2.3, dark, -hw + 1.0, .4, -hd + 1.5); box(1.1, .16, 2.2, new THREE.MeshStandardMaterial({ color: 0x9aa6c8, roughness: .9 }), -hw + 1.0, .68, -hd + 1.5); box(.8, .15, .4, new THREE.MeshStandardMaterial({ color: 0xf2f4fa, roughness: .95 }), -hw + 1.0, .82, -hd + .6); // yours, on the far side of the room: a guest's bed, made up for a human
+  box(.7, .6, .7, stone, 0, .5, -hd + .8); const L = new THREE.PointLight(0xbfe8ff, 6, 9, 1.6); L.position.set(0, 1.4, -hd + .8); g.add(L); g.userData.lamp = L; box(.25, .25, .25, trim, 0, .95, -hd + .8); // a lamp on a stone table, between the beds
+  return g;
+}
+function taroLocal(lx, lz) { const H = TARO_HOUSE, a = taroHouseRot(); return { x: H.x + lx * Math.cos(a) + lz * Math.sin(a), z: H.z - lx * Math.sin(a) + lz * Math.cos(a) }; } // a point in the house, in the world
+const taroBedSpot = () => taroLocal(-TARO_HOUSE.w / 2 + 1.0, -TARO_HOUSE.d / 2 + 2.9); // the foot of your bed
+function taroHouseBlocked(x, z) { // its walls (the door is open)
+  if (!world.planet || world.planet.P.id !== 'tamez' || !(wanderer && wanderer.ch4 && wanderer.ch4.taroCall)) return false;
+  const H = TARO_HOUSE, a = taroHouseRot(), dx = x - H.x, dz = z - H.z, lx = dx * Math.cos(a) - dz * Math.sin(a), lz = dx * Math.sin(a) + dz * Math.cos(a), hw = H.w / 2, hd = H.d / 2, t = .45;
+  if (Math.abs(lx) > hw + t || Math.abs(lz) > hd + t) return false;
+  if (Math.abs(lx) < hw - t && Math.abs(lz) < hd - t) return (lx > hw - 2 && lz < -hd + 3.6) || (lx < -hw + 1.7 && lz < -hd + 2.75); // inside: only the beds are in the way
+  return !(lz > 0 && Math.abs(lx) < .9); // a wall, unless you're in the doorway
+}
+/* ---- the night on Tamez Prime: you sleep, Tyrotaronus sleeps on the far side of the room, and a hooded figure (Javek, though nobody
+   says so) slips in under cover of darkness, lifts you from your bed and carries you out. You wake on Xonexi Station, in the Xonexi
+   Galaxy. ch4.jvTaken. ---- */
+const JV = { on: false };
+async function jvNightStart() {
+  if (state !== 'explore' || ex.dlg || JV.on) return;
+  Object.assign(JV, { on: true, t: 0, ph: 'sleep', R: null, i: 0, carry: false, done: false, set: false, placed: false, fade: false, woke: false, path: null });
+  state = 'jvNight'; vel.set(0, 0, 0); ex.keys.clear(); stopBuild(); show(ui.xhud, false);
+  const b = $('#blackout'); b.style.transition = 'opacity 2.4s ease'; b.style.opacity = 1; setTimeout(() => b.classList.add('on'), 1200); sfx.wind(.03);
+  JV.R = await companionRig('javek').catch(() => null); // hooded and caped
+  if (JV.R) { JV.R.root.visible = false; JV.R.root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); wScene.add(JV.R.root); }
+}
+function jvSetScene() { // night falls; you lie down on your bed, Tyrotaronus on his
+  const H = TARO_HOUSE, a = taroHouseRot(), hw = H.w / 2, hd = H.d / 2, gy = wHeight(H.x, H.z) + .2, st = wsState(); st.tod = .02; // the middle of the night
+  const me = taroLocal(-hw + 1.0, -hd + 2.5); player.position.set(me.x, gy + .72, me.z); player.rotation.set(0, a, 0); inner.rotation.set(-Math.PI / 2, 0, 0); inner.position.set(0, .12, 0); resetRig(); player.visible = inner.visible = true;
+  const G = GIVERS.list.find(o => o.taro4); if (G) { const tp = taroLocal(hw - 1.2, -hd + 3.35); G.R.root.position.set(tp.x, gy + .78, tp.z); G.R.root.rotation.order = 'YXZ'; G.R.root.rotation.set(-Math.PI / 2, a, 0); JV.taro = G; }
+  const ex2 = G && G.extra; if (ex2 && ex2.userData.lamp) ex2.userData.lamp.intensity = 1.2; // the lamp turned low
+  const cp = taroLocal(hw - .7, hd - .8), lk = taroLocal(-1, -hd + 1.5); camera.position.set(cp.x, gy + 3.1, cp.z); camera.lookAt(lk.x, gy + .6, lk.z);
+  renderer.domElement.style.filter = 'brightness(.62) saturate(.55) contrast(1.08)';
+  JV.path = [taroLocal(0, hd + 6), taroLocal(0, hd + .4), taroLocal(-hw + 2.3, -hd + 2.4)].map(q => ({ x: q.x, z: q.z })); JV.out = [taroLocal(0, hd + .4), taroLocal(0, hd + 8)].map(q => ({ x: q.x, z: q.z })); JV.gy = gy;
+  jvPlace();
+}
+function jvPlace() { if (!JV.R || !JV.path || JV.placed) return; JV.placed = true; JV.R.root.position.set(JV.path[0].x, wHeight(JV.path[0].x, JV.path[0].z), JV.path[0].z); JV.R.root.visible = true; JV.R.mode = 'idle'; }
+function jvWalk(pts, dt, sp) { // along the waypoints; true when there
+  const R = JV.R, o = R.root.position, T = pts[JV.i]; if (!T) return true;
+  const dx = T.x - o.x, dz = T.z - o.z, d = Math.hypot(dx, dz); R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 6));
+  if (d < .15) { JV.i++; return JV.i >= pts.length; }
+  const k = Math.min(d, sp * dt); o.x += dx / d * k; o.z += dz / d * k; o.y = Math.max(JV.gy - .2, wHeight(o.x, o.z)); R.mode = 'walk'; return false;
+}
+function jvTick(dt) {
+  JV.t += dt; const t = JV.t, R = JV.R, b = $('#blackout');
+  if (JV.ph === 'sleep') { if (t > 2.6 && !JV.set) { JV.set = true; jvSetScene(); } if (t > 4.2 && JV.set) { b.classList.remove('on'); b.style.transition = 'opacity 2.6s ease'; b.style.opacity = 0; JV.ph = 'still'; JV.t = 0; } }
+  else if (JV.ph === 'still') { jvPlace(); if (t > 3.2 && (R || t > 9)) { JV.ph = R ? 'in' : 'gone'; JV.i = 0; JV.t = 0; if (R) sfx.whoosh(); } } // a breath of night air: the door
+  else if (JV.ph === 'in') { if (jvWalk(JV.path, dt, 1.15)) { JV.ph = 'lift'; JV.t = 0; R.mode = 'idle'; } } // creeping in, slow
+  else if (JV.ph === 'lift') { // he stands over you a moment, then lifts you over his shoulder
+    if (t > 1.6 && !JV.carry) { JV.carry = true; sfx.thud(); }
+    if (JV.carry && t > 2.4) { JV.ph = 'out'; JV.i = 0; JV.t = 0; }
+  } else if (JV.ph === 'out') { if (jvWalk(JV.out, dt, 1.5)) { JV.ph = 'gone'; JV.t = 0; } }
+  else if (JV.ph === 'gone') { if (!JV.fade) { JV.fade = true; b.style.transition = 'opacity 1.6s ease'; b.style.opacity = 1; } if (t > 2.4 && !JV.done) { JV.done = true; jvWake(); } }
+  if (R) { animRig(R, dt); if (JV.carry) { const o = R.root.position, yaw = R.root.rotation.y; player.position.set(o.x - Math.cos(yaw) * .1, o.y + 1.55, o.z + Math.sin(yaw) * .1); player.rotation.set(0, yaw + Math.PI / 2, 0); inner.rotation.set(-Math.PI / 2, 0, 0); } } // you, limp over his shoulder
+}
+async function jvWake() { // Xonexi Station
+  if (JV.woke) return; JV.woke = true; JV.on = false;
+  if (JV.R && JV.R.root.parent) JV.R.root.parent.remove(JV.R.root);
+  inner.rotation.set(0, 0, 0); inner.position.set(0, 0, 0); player.rotation.set(0, 0, 0); renderer.domElement.style.filter = '';
+  wanderer.ch4 = Object.assign({}, wanderer.ch4, { jvTaken: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster();
+  const P = bodyById('xonexi-station-gardens'); if (!P) { state = 'explore'; show(ui.xhud, true); return; }
+  try { await landOn(P, new THREE.Vector3(0, 1, 0), { mode: 'explore', area: 'world', where: planetAreaKey(P), x: 9, z: 18, y: 0, rot: Math.PI * .8, yaw: Math.PI * 1.8, nf: 1 }); } catch (e) { console.error(e); state = 'explore'; }
+  const b = $('#blackout'); setTimeout(() => { b.style.transition = 'opacity 3s ease'; b.style.opacity = 0; }, 600);
+  JV.woke = false; renderTasks();
+  setTimeout(() => { notice('Xonexi Station', 'THE XONEXI GALAXY', 4200); sfx.chime(); }, 2200);
+  setTimeout(() => lootMsg(tiPhone() ? 'You wake on a station you’ve never seen · alone' : 'You wake on the deck of a station you’ve never seen · Tamez, Tyrotaronus and your crew are a galaxy away', '#b8bfcc'), 6600);
+  placeCrew().catch(() => null); placeOrion().catch(() => null); refreshJamesUI(); ui.xhud.classList.toggle('comp', partyNow().length > 0); // nobody followed you here
+}
+const TARO_MEET = ['Come in, wanderer. Mind the door. It was built for an Oilkoumene, and we are not a small people.',
+  'Forgive the bed. Even a Vector must sleep, and I have slept a great deal since I was stranded in this galaxy.',
+  'You have seen Zark on his throne. So have I, long ago, and from far closer than I would like.',
+  'Your uplifted peoples are a beginning. Hak’s fleets, your colonies, your puppets. It is still not enough.',
+  'Zark does not fear armies. He has eaten armies. He fears only what he does not understand.',
+  'There is one person who could help you. One who has stood before Zark and walked away from him.',
+  'The trouble is, he is a fugitive. Every empire in this galaxy wants him in chains, and some of them want him dead.',
+  'I will not say his name under any roof, not even my own. Names travel, wanderer, and Zark listens.',
+  'Find him before they do. Bring him to me, and then, and only then, do we speak of Carax.',
+  'Now go. And close the door behind you. The wind on Tamez gets into everything.'];
+async function taroMeetTalk() {
   if (state !== 'explore' || ex.dlg) return;
-  openDialog('TYROTARONUS', ['You came. Good. Sit with me a while, wanderer. What I have to tell you is old, and it will take some time.'], false, () => {
+  if (!taroQ()) { openDialog('TYROTARONUS', ['Rest, wanderer. Your bed is made, over by the far wall. We will talk again in the morning.']); return; } // after the meeting
+  const vo = await loadDataScript('taroMeetVoices').then(ok => ok ? sfx.loadClips('taroMeetVoices') : []).catch(() => []);
+  if (state !== 'explore' || ex.dlg) return;
+  openDialog('TYROTARONUS', TARO_MEET, false, () => {
     wanderer.ch4 = Object.assign({}, wanderer.ch4, { taroMet: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); renderTasks();
-  });
+    notice('Main quest', 'SLEEP', 4200); sfx.chime();
+    setTimeout(() => lootMsg('Tyrotaronus has made up a bed for you on the far side of the room', '#b8bfcc'), 2200);
+  }, vo || []);
 }
 async function hakUpTalk() {
   const vo = await loadDataScript('hakUpVoices').then(ok => ok ? sfx.loadClips('hakUpVoices') : []).catch(() => []);
@@ -26434,6 +26558,7 @@ const ORION_WAKE = [
   'Get some air. Stretch your legs. Just don’t wander too far, and if anyone asks, you’re my cousin from the coast.'
 ];
 async function placeOrion() {
+  if (soloXonexi()) { if (world.orion) world.orion.root.visible = false; return; } // he's not with you on Xonexi
   if (wanderer && wanderer.ch3 && wanderer.ch3.orionGone) { if (world.orion) world.orion.root.visible = false; return; } // gone for good, Africa included
   if (wanderer && wanderer.aboard && wanderer.aboard.orion) { if (world.orion) world.orion.root.visible = false; return; } // waiting aboard the Nostra
   if (wanderer && wanderer.dungeon && wanderer.dungeon.orion) { if (world.orion) world.orion.root.visible = false; return; } // off clearing a lair
@@ -26922,6 +27047,7 @@ function updateWorldMode(dt) {
   if (!ex.near && !DGN.on && LHALL.g && LHALL.g.visible && Math.hypot(p.x - LHALL.x, p.z - LHALL.z) < 3.6) ex.near = { id: 'leadGate', label: `The Hall of ${LHALL.H.Lo.list[0].boss}` };
   if (!ex.near && isPl() && !DGN.on) { const G = lairGateNear(p); if (G) ex.near = { id: 'lairGate', ref: G, label: `${G.L.name} · lv ${G.L.lv}${lairCleared(G.L) ? ' · cleared' : ''}` }; } // the lairs
   if (!ex.near && isPl()) ex.near = csbNear(p); // the carapace rifle, on its plinth
+  if (!ex.near && isPl() && world.planet.P.id === 'tamez' && (wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.taroMet && !wanderer.ch4.jvTaken) { const B = taroBedSpot(); if (Math.hypot(p.x - B.x, p.z - B.z) < 1.9) ex.near = { id: 'taroBed', label: 'Your bed' }; } // Tyrotaronus's house: sleep
   if (!ex.near && isPl()) { const G = giverNear(p); if (G) ex.near = { id: 'qgiver', ref: G, label: titleName(G.name) }; } // quest givers
   if (!ex.near && RES.bots.length) { const B = resNear(p); if (B) ex.near = { id: 'bot', ref: B, label: B.c.name }; } // residents (wanderers you sent into the world)
   if (!ex.near) for (const m of merchantsHere()) if (m.px != null && Math.hypot(m.px - p.x, m.pz - p.z) < 3) ex.near = { id: 'merchant', ref: m, label: m.who };
@@ -26958,7 +27084,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { homeless: [ex.near.label, 'GIVE'], prisonSleep: [ex.near.label, 'SLEEP'], prisonPick: [ex.near.label, 'PICK'], prisonExit: [ex.near.label, 'ESCAPE'], bot: [`Wave · ${ex.near.label}`, 'WAVE'], stray: [`Tame · ${ex.near.label}`, 'TAME'], ship: [podMode() ? 'Board the pod' : jewelOn() ? (tiPhone() ? 'Board · the Jewel of Archamus' : 'Board the Jewel of Archamus') : 'Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], nicoHouse: [tiPhone() ? 'Enter · Nico’s house' : 'Enter Nico’s house', 'ENTER'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
+    const PR = { taroBed: [ex.near.label + ' · sleep', 'SLEEP'], homeless: [ex.near.label, 'GIVE'], prisonSleep: [ex.near.label, 'SLEEP'], prisonPick: [ex.near.label, 'PICK'], prisonExit: [ex.near.label, 'ESCAPE'], bot: [`Wave · ${ex.near.label}`, 'WAVE'], stray: [`Tame · ${ex.near.label}`, 'TAME'], ship: [podMode() ? 'Board the pod' : jewelOn() ? (tiPhone() ? 'Board · the Jewel of Archamus' : 'Board the Jewel of Archamus') : 'Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], nicoHouse: [tiPhone() ? 'Enter · Nico’s house' : 'Enter Nico’s house', 'ENTER'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give James orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
@@ -32475,6 +32601,7 @@ function loopFrame() {
   if (state === 'ferryTrip') { ferryTripTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'ferryCut') { updateFerryCut(dt); updateAnim(dt); worldActionPose(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'loadingCh' && (SPC.booting || DGN.compiling)) { sfx.music(0); renderer.setClearColor(0x000000, 1); renderer.clear(); return; } // (or a dungeon floor's shaders still building behind the fade: drawing now would stall the game on them) // a Chapter III save starting up: black, not the last scene built (the Antarctic ice)
+  if (state === 'jvNight') { try { jvTick(dt); } catch (e) { console.error(e); jvWake(); } updateParticles(dt); if (ex.mode === 'world') updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; } // the night Javek comes
   if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh' || state === 'sleeping' || state === 'wcut') {
     if (state === 'explore') updateExplore(dt);
     if ((state === 'explore' || state === 'xpaused') && ex.mode !== 'space' && !ex.vehicle && (!player.visible || !inner.visible)) { player.visible = true; inner.visible = true; } // on foot (or aboard), you're always there: nothing left over from a cutscene, the pod, a landing or space keeps you hidden
