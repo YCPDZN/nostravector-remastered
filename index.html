@@ -2045,7 +2045,8 @@ function menuHolder(W) {
   if (effCh() < 3 || !wanderer.dip) return base;
   try {
     const D = dip(), realm = realmName();
-    if (P && D.col[P.id]) { const C = D.col[P.id]; return `${realm} · ${C.gov ? 'governor ' + govName(C.gov) : 'your colony'}`; }
+    if (P && D.col[P.id]) { const C = D.col[P.id], U = C.gov && C.gov.startsWith('up:') && upById(C.gov.slice(3)); if (U) return `${upPolity(U)} · ${upGovLabel(U)}`; return `${realm} · ${C.gov ? 'governor ' + govName(C.gov) : 'your colony'}`; } // a world your uplifted species governs: their name, not yours
+    { const e = P && typeof resHeldBy === 'function' && resHeldBy(P.id); if (e) return e.pup ? e.name : `${e.name} · resident empire`; } // a world one of your uplifted empires (or a resident's) holds
     const F = dipFacOf((P && P.baseFac) || (S && S.baseFac) || ''); if (!F) return base;
     const r = D.res[F.id] || {}, Wr = D.wars[F.id], name = r.name || dipFacName(F);
     if (Wr && P && (Wr.held || []).includes(P.id)) return `${dipFacName(F)} · occupied by ${realm}`;
@@ -16214,6 +16215,9 @@ function upSpModel(sp, h) { // one of your species, stood at a height: the crew,
 async function upRaceRig(race, name, weapon) { await loadSpecies(race).catch(() => null); const R = await giverRig(race, 1.85, String(name || race)); if (R && R.ra && weapon) armRig(R, weapon); return R; } // a person of one of the six races
 const upTroopRace = sp => (sp && SPECIES[sp.troops] && sp.troops) || (sp && SPECIES[sp.race] && sp.race) || 'human'; // created species can't field their own kind: their troops are one of the six races
 const upPolity = r => (r && r.sp && String(r.sp.polity || '').trim()) || `The ${r.name}`; // what a world they govern is called on the map
+const upCol = r => { const c = r && r.sp && (r.sp.c1 || ''); return /^#[0-9a-f]{6}$/i.test(c) ? c : '#c9a8ff'; }; // their colour on the galaxy map: the species' main colour
+const upRecOfEmp = e => e && e.pup ? UPS().find(r => r.emp === e.id) || null : null;
+const upGovLabel = r => { const sp = r && r.sp || {}, who = String(sp.leader || '').trim(); return who ? `${String(sp.govTitle || '').trim() || 'Governor'} ${who}` : `governed by the ${r.name}`; }; // how their governor is named
 const upLeader = (sp, fb) => (sp && String(sp.leader || '').trim()) || fb;
 function upRig(sp) { const root = new THREE.Group(), model = upSpModel(sp); root.add(model); return { root, model, turn: model, rest: new Map(), t: 0, mode: 'idle', weapon: 'none', gear: [], spec: model.userData.spAnim, up: true }; }
 function upSave() { const c = curChar(); if (c) { c.uplift = wanderer.uplift; c.ponts = wanderer.ponts; c.party = wanderer.party; c.dip = wanderer.dip; } saveRoster(); }
@@ -16239,7 +16243,7 @@ function upUplift(spId, path, opt) {
     upDone(rec, 'Uplifted', `THE ${nm.toUpperCase()} JOIN YOUR CREW`); compJoinNotice('pont:' + P.id, 4800);
   } else if (path === 'gov') {
     const D = dip(), pid = opt.col; if (!pid || !D.col[pid]) { lootMsg('Choose one of your colonies for them to govern', '#ff8f86'); return; }
-    rec.col = pid; D.col[pid].gov = 'up:' + rec.id; dipSave();
+    rec.col = pid; D.col[pid].gov = 'up:' + rec.id; dipSave(); try { applyChapterFactions(); } catch (e) {}
     upDone(rec, 'Uplifted', `THE ${nm.toUpperCase()} GOVERN ${bodyById(pid).name.toUpperCase()}`);
   } else if (path === 'emp') {
     const en = String(opt.name || '').trim().slice(0, 40); if (!en) { lootMsg('Name their empire first', '#ff8f86'); return; }
@@ -16248,7 +16252,7 @@ function upUplift(spId, path, opt) {
     const home = sysById('steca'), cap = free.sort((p, q) => galDist(sysById(p.sys), home) - galDist(sysById(q.sys), home))[0];
     resEmp.emp[c.id] = { id: c.id, name: en, col: [cap.id], cap: cap.id, since: resNow(), over: null, trib: null, res: false, lostTo: {}, pup: true };
     resEmpLog(`${en} was founded on ${cap.name} by the uplifted ${nm}`); rec.emp = c.id; rec.empName = en;
-    if (state === 'space' || GAL.open) applyChapterFactions();
+    try { applyChapterFactions(); } catch (e) {}
     upDone(rec, en, `FOUNDED ON ${cap.name.toUpperCase()} · YOUR PUPPET`);
   }
   dipRender();
@@ -21710,7 +21714,7 @@ const dipRes = id => (dip().res[id] || {}).st || null;
 const dipLentRes = to => to && to.startsWith('res:') ? to.slice(4) : null;
 function dipLentName(to) { const r = dipLentRes(to); if (r) return (resEmp.emp[r] || {}).name || 'a fallen resident empire'; const F = to && DIP_FAC.find(f => f.id === to.replace('lead:', '')); return F ? dipFacName(F) : '?'; }
 const dipFacName = F => { const r = dip().res[F.id]; return r && r.st === 'subjugated' && r.resist ? `The ${F.species} Resistance` : r && r.name ? r.name : F.name; };
-const govName = g => !g ? null : g.startsWith('comp:') ? compName(g.slice(5)) : g.startsWith('res:') ? ((typeof resById === 'function' && resById(g.slice(4))) || { name: 'a resident who has left' }).name : g.startsWith('up:') ? `the ${((UPS().find(r => r.id === g.slice(3))) || { name: 'uplifted' }).name}` : g.slice(5); // a companion, a resident, an uplifted species, or a name
+const govName = g => !g ? null : g.startsWith('comp:') ? compName(g.slice(5)) : g.startsWith('res:') ? ((typeof resById === 'function' && resById(g.slice(4))) || { name: 'a resident who has left' }).name : g.startsWith('up:') ? (r => r ? (String(r.sp && r.sp.leader || '').trim() ? `${String(r.sp.govTitle || '').trim() || 'Governor'} ${r.sp.leader.trim()}` : `the ${r.name}`) : 'the uplifted')(UPS().find(r => r.id === g.slice(3))) : g.slice(5); // a companion, a resident, an uplifted species, or a name
 const titleName = n => String(n).toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 // lay colonies, puppets, restorations and occupations over the chapter's own flags
 function dipOverlay() {
@@ -21726,7 +21730,7 @@ function dipOverlay() {
   for (const S of SYSTEMS) {
     for (const P of S.bodies) {
       const C = D.col[P.id];
-      if (C) { const rr = C.from && D.res[C.from], U = C.gov && C.gov.startsWith('up:') && typeof upById === 'function' && upById(C.gov.slice(3)); if (U) { P.faction = upPolity(U); continue; } P.faction = `${realm} · ${C.gov ? 'governor ' + govName(C.gov) : 'colony, no governor yet'}${rr && rr.st === 'subjugated' && rr.resist ? ' · resistance active' : ''}`; continue; } // a world your uplifted species governs carries their name, not yours
+      if (C) { const rr = C.from && D.res[C.from], U = C.gov && C.gov.startsWith('up:') && typeof upById === 'function' && upById(C.gov.slice(3)); if (U) { P.faction = `${upPolity(U)} · ${upGovLabel(U)}`; continue; } P.faction = `${realm} · ${C.gov ? 'governor ' + govName(C.gov) : 'colony, no governor yet'}${rr && rr.st === 'subjugated' && rr.resist ? ' · resistance active' : ''}`; continue; } // a world your uplifted species governs carries their name, not yours
       const F = dipFacOf(P.baseFac); if (!F) continue; const r = D.res[F.id], W = D.wars[F.id];
       if (W && (W.held || []).includes(P.id)) P.faction = `${dipFacName(F)} · occupied by ${realm}`;
       else if (r && r.st === 'vassal') P.faction = `${r.name || F.name} · puppet of ${realm}`;
@@ -21734,7 +21738,9 @@ function dipOverlay() {
       else if (r && r.st === 'tributary') P.faction = `${r.name || F.name} · tributary of ${realm}`;
     }
     const H = bodyById(S.home), F = dipFacOf(S.baseFac), r = F && D.res[F.id];
-    if (H && D.col[H.id]) { S.faction = realm; S.facCol = '#ffd36a'; }
+    const HU = H && D.col[H.id] && D.col[H.id].gov && D.col[H.id].gov.startsWith('up:') && upById(D.col[H.id].gov.slice(3));
+    if (HU) { S.faction = upPolity(HU); S.facCol = upCol(HU); } // its capital governed by your uplifted species: the system flies their flag
+    else if (H && D.col[H.id]) { S.faction = realm; S.facCol = '#ffd36a'; }
     else if (r && r.st === 'vassal') { S.faction = `${r.name || F.name} · puppet of ${realm}`; S.facCol = F.col; }
     else if (r && r.st === 'restored') { S.faction = r.name; S.facCol = F.col; }
     else if (r && r.st === 'tributary') { S.faction = `${r.name || F.name} · tributary of ${realm}`; S.facCol = F.col; }
@@ -22909,7 +22915,7 @@ function dipClick(e) {
 function dipChange(e) {
   const t = e.target, a = t.dataset.a, D = dip();
   if (dipPontChange(t) || dipUpChange(t)) return;
-  if (a === 'gov') { D.col[t.dataset.p].gov = t.value || null; dipSave(); dipRender(); }
+  if (a === 'gov') { D.col[t.dataset.p].gov = t.value || null; dipSave(); try { applyChapterFactions(); } catch (e) {} dipRender(); }
   else if (a === 'setLeader' && DIPV.settle) DIPV.settle.leader = t.value;
   else if (a === 'setName' && DIPV.settle) DIPV.settle.name = t.value;
 }
@@ -28108,10 +28114,16 @@ function ccInGameRender() { // plain black behind the species you're making: no 
   const bg = ccScene.background; ccScene.background = CC_BLACK; if (ccStars) ccStars.visible = false;
   renderer.render(ccScene, ccCam); ccScene.background = bg; if (ccStars) ccStars.visible = true;
 }
+function ccMoveSpeciesHere(ids) { // out of the main menu's Custom creations and into this save (moved, not copied)
+  if (!cc.globalSp || !wanderer) return 0; const take = cc.globalSp.filter(o => !ids || ids.includes(o.id)); if (!take.length) return 0;
+  const mine = ccData.species; for (const o of take) if (!mine.some(m => m.id === o.id)) mine.push(o);
+  cc.globalSp = cc.globalSp.filter(o => !take.includes(o)); ccStore(); sfx.chime(); ccMsg(`${take.length} species moved into this save`); ccRenderList(); return take.length;
+}
 function ccOpenInGame() { // from the pause menu: the Species Creator over your game; Back returns you to the pause menu (only the Species tab, so nothing in it can pull you out of your game)
   if (state !== 'xpaused') return; sfx.click(); cc.fromGame = true; ccUI.root.classList.add('ingame'); show(ui.xpause, false);
   cc.hud = { x: !ui.xhud.classList.contains('hidden'), s: !!($('#spaceHud') && !$('#spaceHud').classList.contains('hidden')) }; show(ui.xhud, false); if ($('#spaceHud')) $('#spaceHud').classList.add('hidden'); document.body.classList.add('cc-ingame'); // nothing of the game shows: no HUD, no labels, no chat
   cc.globalSp = ccData.species; ccData.species = wanderer.spLab || (wanderer.spLab = []); // only this save's species
+  { const up = UPS().map(r => r.spId), stray = cc.globalSp.filter(o => up.includes(o.id)); if (stray.length) { for (const o of stray) if (!ccData.species.some(m => m.id === o.id)) ccData.species.push(o); cc.globalSp = cc.globalSp.filter(o => !stray.includes(o)); wanderer.spLab = ccData.species; const c = curChar(); if (c) c.spLab = wanderer.spLab; saveRoster(); store.set(CC_KEY, Object.assign({}, ccData, { species: cc.globalSp })); } } // the ones this save has uplifted go home at once
   state = 'cc'; show(ccUI.root, true); cc.cur = null; cc.dirty = false; ccTab('species'); resize();
 }
 function ccClose() {
@@ -28137,8 +28149,10 @@ function ccRenderList() {
       : `<div class="roster-empty">No ${T.label.toLowerCase()} yet</div>`) +
     (cc.tab === 'planets' ? PL_GROUPS.map(([g, lab]) => `<div class="cc-sub">${lab}</div>` + BUILTIN_PLANETS.map((p, i) => [p, i]).filter(([p]) => (p.grp || 'sol') === g)
       .map(([p, i]) => `<button class="mi" data-b="${i}"><i>${pad(i + 1)}</i><span>${ccEsc(p.name)}<small>${ccEsc(T.sub(p))} · ${p.gravity} g</small></span><em class="arr">›</em></button>`).join('')).join('') : '');
-  ccUI.actions.innerHTML = '<button class="btn" id="ccBack"><span>Main menu</span></button>';
+  const mv = cc.fromGame && cc.tab === 'species' && (cc.globalSp || []).length; // species made in a save before they became per-save were left on the main menu: bring them home
+  ccUI.actions.innerHTML = `<button class="btn" id="ccBack"><span>${cc.fromGame ? 'Back to game' : 'Main menu'}</span></button>${mv ? `<button class="btn" id="ccMove"><span>${cc.arm === 'move' ? `Tap again: move all ${cc.globalSp.length} from the main menu into this save` : `Move main-menu species here (${cc.globalSp.length})`}</span></button>` : ''}`;
   $('#ccBack').addEventListener('click', ccClose);
+  if (mv) $('#ccMove').addEventListener('click', () => { if (cc.arm !== 'move') { cc.arm = 'move'; ccRenderList(); return; } cc.arm = null; ccMoveSpeciesHere(); });
   ccMsg(cc.tab === 'adventures' && !ccData.species.length ? 'Tip: make species and planets first, then cast them in an adventure.' : '');
 }
 function ccRenderChars() {
@@ -30616,7 +30630,7 @@ function resById(id) { if (RES_IDX.src !== residents || RES_IDX.n !== residents.
 const resRuler = e => resById(e.id);
 const resAtWar = (a, b) => resEmp.wars.find(w => (w.a === a && w.b === b) || (w.a === b && w.b === a)) || null;
 const RES_EMP_COL = { hero: [195, 80], neutral: [48, 75], villain: [352, 80] };
-function resEmpCol(e) { const c = resRuler(e), [h, s] = RES_EMP_COL[c ? resAl(c) : 'neutral']; return `hsl(${(h + (resHash(e.id) - .5) * 40 + 360) % 360},${s}%,62%)`; }
+function resEmpCol(e) { if (e && e.pup && typeof upRecOfEmp === 'function') { const r = upRecOfEmp(e); if (r) { const C = new THREE.Color(upCol(r)), o = {}; C.getHSL(o); return `hsl(${Math.round(o.h * 360)},${Math.round(Math.max(.45, o.s) * 100)}%,62%)`; } } const c = resRuler(e), [h, s] = RES_EMP_COL[c ? resAl(c) : 'neutral']; return `hsl(${(h + (resHash(e.id) - .5) * 40 + 360) % 360},${s}%,62%)`; }
 // unclaimed worlds only (the generated frontier and the uncharted systems), and never one of your colonies
 function resFreeWorlds() {
   if (!RES.free) RES.free = ALL_BODIES.filter(P => P.land && !P.dock && String(P.fac0 || P.faction || '').startsWith('Unclaimed') && String(sysById(P.sys).fac0 || sysById(P.sys).faction || '').startsWith('Unclaimed'));
@@ -32063,8 +32077,8 @@ function resEmpOverlay() {
   for (const S of SYSTEMS) {
     if (!String(S.faction || '').startsWith('Unclaimed')) continue;
     const n = new Map(); let mine = 0;
-    const ups = new Map(); for (const P of S.bodies) { const g = D[P.id] && D[P.id].gov, U = g && g.startsWith('up:') && upById(g.slice(3)); if (U) { ups.set(upPolity(U), (ups.get(upPolity(U)) || 0) + 1); continue; } if (D[P.id]) mine++; const e = held.get(P.id); if (e) n.set(e, (n.get(e) || 0) + (e.pup ? 1.01 : 1)); }
-    const upTop = [...ups.entries()].sort((a, b) => b[1] - a[1])[0]; if (upTop && upTop[1] >= mine && !n.size) { S.faction = upTop[0]; S.facCol = '#c9a8ff'; continue; } // your uplifted governors' worlds name the system after them
+    const ups = new Map(), upRec = new Map(); for (const P of S.bodies) { const g = D[P.id] && D[P.id].gov, U = g && g.startsWith('up:') && upById(g.slice(3)); if (U) { ups.set(upPolity(U), (ups.get(upPolity(U)) || 0) + 1); upRec.set(upPolity(U), U); continue; } if (D[P.id]) mine++; const e = held.get(P.id); if (e) n.set(e, (n.get(e) || 0) + (e.pup ? 1.01 : 1)); }
+    const upTop = [...ups.entries()].sort((a, b) => b[1] - a[1])[0]; if (upTop && upTop[1] >= mine && !n.size) { S.faction = upTop[0]; S.facCol = upCol(upRec.get(upTop[0])); continue; } // your uplifted governors' worlds name the system after them
     const top = [...n.entries()].sort((a, b) => b[1] - a[1])[0];
     if (top && top[1] >= mine) { const e = top[0]; S.faction = n.size > 1 ? `${e.name} · contested with ${[...n.keys()].filter(o => o !== e).map(o => o.name).join(', ')}` : e.pup ? e.name : `${e.name} · resident empire`; S.facCol = resHex(resEmpCol(e)); }
     else if (mine) { S.faction = `${realm} · your colony`; S.facCol = '#ffd36a'; }
