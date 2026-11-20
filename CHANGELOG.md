@@ -2907,7 +2907,7 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - **Seen, you're caught:** the screen goes dark and you wake just outside the gate, with the guard back on its round on the far side. Try again.
   - Shooting it with an ordinary gun only breaks your rounds on its shell, and it knows exactly where you are.
 - **Take the rifle (E)** (400 XP). It goes straight into your hands, and the guard comes for you. **The carapace rifle** (45 m, locks on) is the one gun that goes through a Catharsis carapace: three shots break it (800 XP). If it reaches you first, you're caught and back at the gate.
-- **Main quest:** *Sneak into the Catharsis base and take the rifle*, then *Break the Catharsis' carapace with the rifle*, then **Bring the carapace rifle to Archamus** (there's no scene for that yet). The gold markers on Tallax go out once the guard is broken.
+- **Main quest:** *Sneak into the Catharsis base and take the rifle*, then *Break the Catharsis' carapace with the rifle*, then **Return to the Jewel** (see *The Catharsis aboard the Jewel*, below). The gold markers on Tallax go out once the guard is broken.
 - Flags: `ch4.cathRifle`, `ch4.cathDone`. The new item is `riflec`; it can't be crafted or sold.
 
 ### The Catharsis speak, when you take the rifle
@@ -2915,3 +2915,17 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **Two recordings of every line:** in the Catharsis' own language (CH4CATHARSIS1–10, `data/cathOutpostVoices.js`) and in English (CH4CATHARSISEN1–10, `data/cathOutpostEnVoices.js`). Sources and script in `assets/audio/catharsis_ch4/`.
 - **Settings → Catharsis speech: CATHARSIS / ENGLISH**, also in the pause menu's Options, and as a *Voice · switch* button at the top of the dark screen, which changes over from the next line. In Catharsis, the subtitles show their words with the English in brackets; in English, just the English. Remembered on this device.
 
+### Catharsis Spawn, and the Catharsis aboard the Jewel (Chapter IV)
+- **Catharsis Spawn have a model of their own**: armoured reptilian predators, lean and tall (2.05 m), plated in gunmetal and crimson, with spiked shoulders, a glowing chest, a crested horned skull with burning red eyes and a maw full of teeth, long claws, and a spined tail with a blade at the tip. It's rigged on the same 18-bone armature as the alien settler, so it walks and strikes like the other rigged characters. Built by `nightmare/tools/build_catharsis_spawn.py`; packed in `data/cathSpawnGlb.js`. The crimson plates can take another colour, as a Pontifex's armour can. **The Catharsis Commander** is the same creature, bigger (2.6 m) and darker.
+- **Breaking the guard on Tallax IV now sends you back to the Jewel**: *"Your ship has fallen quiet. Its doors are open."* The Catharsis are aboard. The main quest is **Return to the Jewel**, and in flight it tells you to leave the helm and walk her decks.
+- **Board her, and you fight them up all five decks**, from the hangar to the bridge:
+  - **Catharsis Spawn on every deck** (2 in the hangar, 3 at the Light Core, 3 on the crew deck, 4 in the garden), and on the bridge 2 more and **the Commander**. Alarms sound, red light throbs, and they close in round the furniture and claw at you.
+  - **Only the carapace rifle hurts them.** Three shots bring a Spawn down; the Commander takes about ten. Other guns and your fists glance off. Med kits still work.
+  - **The lift opens to the next deck once this one is clear**, and takes you down to any deck you've cleared. Leave the ship and come back, and the decks you cleared stay clear.
+  - **Your crew are locked out** until it's over.
+  - **Brought down**, you come to by the lift at 60% health, with the deck as it was.
+  - **Clear the bridge** (1,500 XP, plus XP for every deck) and she's yours again. The main quest reads *To be continued* for now.
+  - **Phones:** the ATTACK button shows aboard during the fight (the rest of the action pad stays hidden).
+- **Anointing a Spawn:** one you bring down collapses. Walk up and anoint it (E), and it rises as yours to win: it slips away into the dark, to hunt you across Catharsis space until you beat it again. One Spawn can hunt you at a time; a Spawn you don't anoint crumbles after a while. Anointed Spawn are kept with your Pontifexes and Sisters (`wanderer.ponts`, kind `spawn`, state `shunt` while it hunts), with names in their own tongue (Orun-thar, Vekh-saal…), and they start Chaotic Evil. **Still to come:** their hunt in Catharsis space, beating them again to recruit them (your crew, Diplomacy, their Nostrapedia files and combat lines, residents), Spawn on Catharsis worlds, and Spawn empires whose guards can be anointed.
+- Flags: `ch4.shipDeck` (decks cleared), `ch4.shipClear`.
+- **The Jewel retaken, and the Catharsis speak again**: clear the bridge and the screen darkens, and they speak ten lines in English (they chose your language), in their demonic voice. *"What you just fought IS A FRACTION OF OUR TRUE POWER!"* No language switch in this scene. Voiced: CH4CATHARSISWIN1–10 (`data/cathWinVoices.js`).
