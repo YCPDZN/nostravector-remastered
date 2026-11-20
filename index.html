@@ -693,6 +693,7 @@ body.touch .jopts kbd{display:none}
 @keyframes lootIn{0%{opacity:0;transform:translateX(-10px)}10%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0}}
 .act-pad{position:absolute;inset:auto calc(var(--sr) + 0px) calc(var(--sb) + 0px) auto;width:230px;height:240px;pointer-events:none}
 #xhud:not(.world) .act-pad{display:none!important}
+#xhud.aboard.csf .act-pad{display:block!important} #xhud.aboard.csf .act-pad button:not(#bAtk){display:none} /* the Catharsis aboard the Jewel: just ATTACK */
 .act-pad button{position:absolute;pointer-events:auto;border-radius:50%;border:1px solid var(--line);background:rgba(7,10,17,.4);color:var(--ink);
   font-family:var(--display);font-size:9px;letter-spacing:.12em;display:grid;place-items:center;padding:0;touch-action:none}
 .act-pad button:active,.act-pad button.on{background:rgba(var(--accRGB,169,220,255),.25);border-color:var(--ice)}
@@ -5435,7 +5436,8 @@ function renderTasks() {
   if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip && !wanderer.ch4.newShip) h = task(true, tiPhone() ? 'Escape the Nostra' : 'Escape the Nostra in a pod') + task(false, tiPhone() ? 'Main quest · Survive · find somewhere to land' : 'Main quest · Survive: you’re adrift in an escape pod · find somewhere to land'); // Chapter IV starts here
   if ((wanderer.chapter | 0) === 4) h = wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip && !wanderer.ch4.newShip ? h : !(wanderer.ch4 && wanderer.ch4.archMet) ? task(false, tiPhone() ? 'Main quest · Meet Archamus (Archiostal)' : 'Main quest · Meet Archamus in the gardens of Archiostal') : !wanderer.ch4.archProj ? task(true, 'Meet Archamus') + task(false, 'Main quest · Hear Archamus out') : !wanderer.ch4.josiahMet ? task(true, 'Meet Archamus') + task(false, tiPhone() ? 'Main quest · Find Josiah Williams II (Earth)' : 'Main quest · Find Josiah Williams II on Earth') : !wanderer.ch4.josiahLight ? task(true, 'Find Josiah Williams II') + task(false, tiPhone() ? 'Main quest · Help Josiah' : 'Main quest · Bring Josiah Williams II back into the light')
     : (() => { const c4 = wanderer.ch4, ph = tiPhone(), W = cathTarget(); // Tallax IV: the base, the rifle, the carapace
-        if (c4.cathDone) return task(true, ph ? 'Break the carapace' : 'Break a Catharsis carapace') + task(false, ph ? 'Main quest · Rifle to Archamus' : 'Main quest · Bring the carapace rifle to Archamus');
+        if (c4.shipClear) return task(true, ph ? 'Retake the Jewel' : 'Retake the Jewel of Archamus') + task(false, 'Main quest · To be continued');
+        if (c4.cathDone) return task(true, ph ? 'Break the carapace' : 'Break a Catharsis carapace') + task(false, CSF.on ? (ph ? `Main quest · Clear deck ${SHIPI.deck + 1} of 5` : `Main quest · Clear the Catharsis from the Jewel · deck ${SHIPI.deck + 1} of 5`) : ph ? 'Main quest · Back to the Jewel' : 'Main quest · Return to the Jewel · the Catharsis are aboard');
         if (c4.cathRifle) return task(true, 'Take the carapace rifle') + task(false, ph ? 'Main quest · Shoot the Catharsis' : 'Main quest · Break the Catharsis’ carapace with the rifle');
         const done = task(true, 'Bring Josiah Williams II back into the light');
         if (csbOn()) return done + task(false, ph ? 'Main quest · Sneak in, take the rifle' : 'Main quest · Sneak into the Catharsis base and take the rifle · walk (C), stay out of its light');
@@ -7013,6 +7015,7 @@ function doDodge() {
 }
 function doAttack() {
   if (ALN.on) { alienStrike(); return; } // aboard the Nostra, against the thing that came aboard
+  if (CSF.on && ex.mode === 'ship') { csfAttack(); return; } // aboard the Jewel, against the Catharsis
   if (ex.mode !== 'world' || ex.vehicle || ex.act || ex.invOpen || ex.dlg) return;
   if (ex.build) { placeBuild(); return; }
   const it = selItem();
@@ -19110,7 +19113,8 @@ function ch4Goal() { // Chapter IV in flight: the same main quest as on foot (po
   if (!c4.archProj) return arch('Hear Archamus out', 'Archamus');
   if (!c4.josiahMet) return atm('earth') ? (ph ? 'Josiah · land anywhere on Earth' : 'Find Josiah Williams II · land anywhere on Earth') : SPC.sys === 'sol' ? (ph ? 'Josiah · fly to Earth, land' : 'Find Josiah Williams II · fly to Earth and land') : (ph ? 'Josiah · warp to Sol' : 'Find Josiah Williams II · warp to Sol, then land on Earth');
   if (!c4.josiahLight) return atm('earth') ? (ph ? 'Help Josiah · land on Earth' : 'Bring Josiah Williams II back into the light · land on Earth') : SPC.sys === 'sol' ? (ph ? 'Help Josiah · fly to Earth' : 'Bring Josiah Williams II back into the light · fly to Earth and land') : (ph ? 'Help Josiah · warp to Sol' : 'Bring Josiah Williams II back into the light · warp to Sol, then land on Earth');
-  if (c4.cathDone) return arch('Bring the carapace rifle to Archamus', 'Rifle to Archamus');
+  if (c4.shipClear) return 'To be continued';
+  if (c4.cathDone) return ph ? 'Board the Jewel · walk her decks' : 'The Catharsis are aboard · leave the helm and walk her decks (they wait in the hangar)';
   const W = cathTarget(); if (!W) return ph ? 'Catharsis world · the galaxy’s core' : 'Explore the Catharsis world · warp into Catharsis space, at the galaxy’s core';
   const S = sysById(W.sys); return atm(W.id) ? (ph ? `${W.name} · land` : `Explore the Catharsis world · land on ${W.name}`) : SPC.sys === S.id ? (ph ? `${W.name} · fly there, land` : `Explore the Catharsis world · fly to ${W.name} (the gold marker) and land`) : (ph ? `Catharsis world · warp to ${S.name}` : `Explore the Catharsis world · warp to ${S.name} (gold on the galaxy map), then land on ${W.name}`);
 }
@@ -22277,10 +22281,11 @@ function enterShip(from) {
   ui.xhud.classList.remove('cutting', 'cineonly', 'dreaming'); renderTasks();
   notice(from === 'space' ? 'Aboard · in flight' : 'Aboard', SHIPK === 'jewel' ? 'THE JEWEL OF ARCHAMUS' : 'THE NOSTRA', 2400); sfx.whoosh(); renderHotbar(); siegeShipLine(from);
   if (mnDue()) setTimeout(() => maliaNicoStart().catch(e => { console.error(e); MN.on = false; if (state === 'maliaNico') state = 'explore'; $('#blackout').style.opacity = 0; }), 2200); // Malia has words for Nico, now she knows
+  if (csfDue() && SHIPK === 'jewel') setTimeout(csfStart, 700); // the Catharsis are aboard the Jewel
   if (c3f('orionGone') && !c3f('orionGoneSeen')) { setC3({ orionGoneSeen: true }); setTimeout(() => lootMsg('Orion’s bunk is made. His rifle is gone.', '#cfd6e6'), 2600); } // the first time aboard after he left
 }
 function leaveShip(to) { // to: 'ground' (down the ramp), 'space' (back to the helm), or 'takeoff'
-  if (!SHIPI.on) return;
+  if (!SHIPI.on) return; csfStop(); ui.xhud.classList.remove('csf');
   SHIPI.on = false; ui.xhud.classList.remove('aboard'); xUI.prompt.classList.remove('on'); xUI.act.classList.remove('on');
   if (to === 'space') { state = 'space'; ex.mode = 'space'; show(ui.xhud, false); spaceHud().classList.remove('hidden'); camera.near = 1; camera.far = 1.4e6; camera.updateProjectionMatrix(); SPC.camInit = false; SPC.vel = Math.min(SPC.vel, 60); clock.getDelta(); return; }
   wScene.add(player); ex.mode = 'world'; ui.xhud.classList.add('world');
@@ -22290,11 +22295,11 @@ function leaveShip(to) { // to: 'ground' (down the ramp), 'space' (back to the h
   if (orionJoined()) placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
 }
 function updateShipMode(dt) {
-  const p = player.position, d = ex.dlg; SHIPI.t += dt; if (ALN.on) alienTick(dt); else shipFollowTick(dt);
+  const p = player.position, d = ex.dlg; SHIPI.t += dt; if (ALN.on) alienTick(dt); else if (CSF.on) csfTick(dt); else shipFollowTick(dt); // the Catharsis aboard: your crew are locked out
   if (SHIPI.core) { SHIPI.core.material.emissiveIntensity = 1.4 + Math.sin(SHIPI.t * 3) * .4; SHIPI.coreLight.intensity = 3.5 + Math.sin(SHIPI.t * 3) * 1; }
   if (SHIPI.holo) SHIPI.holo.rotation.y += dt * .25;
   if (SHIPI.anim) SHIPI.anim(dt, SHIPI.t); // the Jewel: the Light Core's rings, the garden's tree, the candles
-  if (SHIPK === 'jewel' && !ALN.on) roamTick(dt); // her crew and your pets, about her five decks
+  if (SHIPK === 'jewel' && !ALN.on && !CSF.on) roamTick(dt); // her crew and your pets, about her five decks
   for (const R of Object.values(SHIPI.rigs)) if (R.root.parent) animRig(R, dt);
   // walking
   let ix = ex.joyX, iy = ex.joyY; const k = ex.keys;
@@ -22329,6 +22334,7 @@ function updateShipMode(dt) {
   for (const [id, x, z, r, label, btn] of SHIP_SPOTS[SHIPI.deck]) { const dd = Math.hypot(x - p.x, z - p.z); if (dd < r && dd < bd) { bd = dd; best = { id, label, btn }; } }
   if (SHIPK === 'jewel') { const rn = roamNear(p); if (rn && rn.d < bd) { bd = rn.d; best = rn.o.kind === 'pet' ? { id: 'pet', pet: rn.o.D, label: `Pet · ${rn.o.D.name} (${petDesc(rn.o.D)})`, btn: 'PET' } : { id: 'aboard', who: rn.o.id, label: `Talk to ${compName(rn.o.id)}`, btn: 'TALK' }; } }
   else if (SHIPI.deck === SHIPI.crew) aboardIds().forEach((id, i) => { const [x, z] = CREW_SPOTS[i % CREW_SPOTS.length], dd = Math.hypot(x - p.x, z - p.z); if (dd < 1.5 && dd < bd) { bd = dd; best = { id: 'aboard', who: id, label: `Talk to ${compName(id)}`, btn: 'TALK' }; } });
+  { const cn = csfNear(p); if (cn && cn.d < bd) { bd = cn.d; best = cn; } } // a fallen Catharsis Spawn: anoint it
   if (best && best.id === 'ramp' && SHIPI.from === 'space') best = { id: 'rampSealed', label: 'Ramp · sealed (you’re in space)', btn: 'SEALED' };
   if (best && best.id === 'pilot') best.label = SHIPI.from === 'space' ? 'Pilot’s seat · take the helm' : 'Pilot’s seat · take off';
   if (best && best.id === 'holo' && SHIPI.from !== 'space') best.label = 'Holo-table · the galaxy (open it in flight)';
@@ -22349,6 +22355,8 @@ function shipCamera(dt) {
   const kk = ex.snap ? 1 : Math.min(1, dt * 9); camera.position.lerp(tmpV2.set(cx, cy, cz), kk); lookTarget.lerp(tgt, ex.snap ? 1 : Math.min(1, dt * 12)); ex.snap = false; camera.lookAt(lookTarget);
 }
 async function shipInteract(n) {
+  if (n.id === 'csfAnoint') { csfAnoint(n.ref); return; }
+  if (CSF.on && n.id === 'lift') { csfLift(); return; }
   if (ALN.on) { lootMsg('No time · it’s right there', '#ff6a6e'); return; }
   if (n.id === 'lift') { openChoice('THE LIFT', DECK_NAMES.map((_, i) => i).filter(i => i !== SHIPI.deck).map(i => ({ text: `Deck ${i + 1} · ${DECK_NAMES[i]}`, onPick: () => shipLift(i) })).concat([{ text: 'Stay here', onPick: () => {} }])); return; }
   if (n.id === 'bench' || n.id === 'galley') { openInv(true); return; }
@@ -22369,7 +22377,7 @@ async function shipInteract(n) {
 }
 function shipLift(d) {
   const f = $('#fade'); f.style.transition = 'opacity .35s'; f.style.opacity = 1; sfx.whoosh();
-  setTimeout(() => { shipShowDeck(d); const [x, z] = SHIP_KINDS[SHIPK].arrive(d); player.position.set(x, 0, z); shipUnstick(); player.rotation.y = -Math.PI / 2; ex.yaw = player.rotation.y + Math.PI; ex.snap = true; f.style.opacity = 0; notice(`The ${SHIP_KINDS[SHIPK].name}`, `DECK ${d + 1} · ${DECK_NAMES[d].toUpperCase()}`, 1600); }, 380);
+  setTimeout(() => { shipShowDeck(d); const [x, z] = SHIP_KINDS[SHIPK].arrive(d); player.position.set(x, 0, z); shipUnstick(); if (CSF.on) csfDeck(d); player.rotation.y = -Math.PI / 2; ex.yaw = player.rotation.y + Math.PI; ex.snap = true; f.style.opacity = 0; notice(`The ${SHIP_KINDS[SHIPK].name}`, `DECK ${d + 1} · ${DECK_NAMES[d].toUpperCase()}`, 1600); }, 380);
 }
 /* ---- dismissing companions: they go and wait aboard the Nostra, each with their own goodbye ---- */
 const DISMISS_LINES = {
@@ -23496,7 +23504,7 @@ function csbShot(gun, dmg) { // a gun fired at the guard
   wanderer.ch4 = Object.assign({}, wanderer.ch4, { cathDone: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster();
   sfx.chime(); gainXP(800, 'A Catharsis, broken'); renderTasks();
   notice('Main quest', tiPhone() ? 'THE CARAPACE BREAKS' : 'THE CARAPACE BREAKS · THE CATHARSIS CAN DIE', 4200);
-  setTimeout(() => notice('New objective', 'BRING THE RIFLE TO ARCHAMUS', 4200), 4600);
+  setTimeout(() => notice('New objective', 'RETURN TO THE JEWEL', 4200), 4600); setTimeout(() => lootMsg(tiPhone() ? 'The Catharsis are aboard your ship' : '“Your ship has fallen quiet. Its doors are open.” · the Catharsis are aboard the Jewel', '#ff9a8a'), 6200);
 }
 function csbTick(dt) {
   if (!csbOn()) { if (CSB.g) csbClear(); return; }
@@ -23545,11 +23553,11 @@ function cycleCathLang() {
   cathLang = cathLang === 'en' ? 'cath' : 'en'; store.set('nv_cathLang', cathLang); refreshOpts(); csbLangBtn();
   const d = ex.dlg; if (d && d.who === 'THE CATHARSIS' && !d.choice) { const L = cathSayLines(), B = cathSayBufs(); for (let k = d.i + 1; k < d.lines.length; k++) { d.lines[k] = L[k]; if (d.bufs) d.bufs[k] = B[k] || null; } } // from the next line on
 }
-function csbDark(on) {
+function csbDark(on, noSwitch) {
   let el = document.getElementById('cathDark');
   if (!el) { el = document.createElement('div'); el.id = 'cathDark'; el.innerHTML = '<button id="cathLangBtn" type="button"></button>'; xUI.dlg.before(el); // under the dialogue box, over everything else
     el.querySelector('button').addEventListener('click', e => { e.stopPropagation(); sfx.click(); cycleCathLang(); }); }
-  csbLangBtn(); el.classList.toggle('on', !!on);
+  csbLangBtn(); el.querySelector('button').style.display = noSwitch ? 'none' : ''; el.classList.toggle('on', !!on);
 }
 async function csbSpeak(done) {
   CSB.speaking = true;
@@ -23557,6 +23565,160 @@ async function csbSpeak(done) {
   const end = () => { CSB.speaking = false; csbDark(false); done(); };
   if (state !== 'explore' || ex.dlg) { end(); return; }
   csbDark(true); setTimeout(() => { if (state === 'explore' && !ex.dlg) openDialog('THE CATHARSIS', cathSayLines(), false, end, cathSayBufs()); else end(); }, 900); // the dark comes in first
+}
+/* ============ Chapter IV: the Catharsis aboard the Jewel ============
+   "Your ship has fallen quiet. Its doors are open." When the guard on Tallax IV breaks, the main quest is to get back to the Jewel
+   of Archamus, and the Catharsis are already aboard. Board her and you fight them up all five decks, from the hangar to the bridge:
+   Catharsis Spawn (data/cathSpawnGlb.js, built by nightmare/tools/build_catharsis_spawn.py) on every deck, and the Catharsis
+   Commander, bigger and darker, on the bridge. Only the carapace rifle hurts them; the lift opens to the next deck once this one is
+   clear (ch4.shipDeck counts the cleared decks, so leaving and coming back keeps your progress). Your crew are locked out.
+   Brought down, you wake by the lift with the deck as it was. A Spawn you bring down collapses: anoint it (E) and it rises as yours
+   to win, slipping away to hunt you across Catharsis space (one at a time) until you beat it again. They're kept with your
+   Pontifexes and Sisters (wanderer.ponts, kind 'spawn', st 'shunt' while it hunts). Clear the bridge (ch4.shipClear) and she's yours. */
+const CSF_DECKS = [2, 3, 3, 4, 2]; // Spawn on each deck, from the hangar up (the bridge also has the Commander)
+const CSF_HP = 160, CSF_CMD_HP = 720;
+const CSF = { on: false, deck: -1, foes: [], src: null, alarm: null, light: null, fireT: -9 };
+const SPAWN_SYL = ['Vekh', 'Naal', 'Orun', 'Keth', 'Saal', 'Thar', 'Vorr', 'Esh', 'Rek', 'Khar', 'Neth', 'Ulth', 'Shaar', 'Varak'];
+const spawnName = () => { const a = pick(SPAWN_SYL); let b = pick(SPAWN_SYL); while (b === a) b = pick(SPAWN_SYL); return `${a}-${b.toLowerCase()}`; };
+const csfDue = () => (wanderer.chapter | 0) === 4 && !!(wanderer.ch4 && wanderer.ch4.cathDone) && !wanderer.ch4.shipClear;
+const csfCleared = () => (wanderer.ch4 && wanderer.ch4.shipDeck) | 0; // decks cleared so far
+const spawnHunting = () => PONTS().some(o => o.kind === 'spawn' && o.st === 'shunt'); // one Spawn hunts you at a time
+async function spawnRig(P, commander) {
+  if (!CSF.src) CSF.src = loadDataScript('cathSpawnGlb', 'glb').then(() => embGlb('cathSpawnGlb'));
+  const src = await CSF.src; if (!src) return null;
+  const R = autoRig(SkeletonUtils.clone(src), commander ? 2.6 : 2.05); armRig(R, 'none');
+  spawnPaint(R.root, commander ? '#5a0610' : P && P.col); return R;
+}
+function spawnPaint(root, col) { // the crimson plates take its colour; the gunmetal, the claws and the burning eyes stay
+  if (!col) return; const c = new THREE.Color(col);
+  root.traverse(o => { if (o.isMesh && o.material && o.material.name === 'Crimson') { o.material = o.material.clone(); o.material.color.copy(c); } });
+}
+function csfStart() {
+  if (CSF.on || !csfDue() || SHIPK !== 'jewel') return;
+  CSF.on = true; ui.xhud.classList.add('csf');
+  for (const R of [...Object.values(SHIPI.rigs), ...Object.values(SHIPI.frigs || {})]) if (R.root.parent) R.root.parent.remove(R.root); // your crew are locked out
+  roamReset();
+  CSF.alarm = setInterval(() => { if (CSF.on && SHIPI.on) sfx.alarm(); }, 1100);
+  const d = Math.min(4, csfCleared()); if (SHIPI.deck !== d) { shipShowDeck(d); const [x, z] = SHIP_KINDS[SHIPK].arrive(d); player.position.set(x, 0, z); shipUnstick(); ex.snap = true; }
+  csfDeck(d); renderTasks();
+  notice('THE JEWEL OF ARCHAMUS', 'THE CATHARSIS ARE ABOARD', 3600); ex.shake = .5; sfx.thud();
+  setTimeout(() => lootMsg(tiPhone() ? 'Your crew are locked out · clear each deck, up to the bridge' : 'Your crew are locked out · only the carapace rifle hurts them · clear each deck and take the lift up, to the bridge', '#ff9a8a'), 1800);
+}
+function csfStop() { // leaving the ship mid-fight: they stay aboard, and the decks you cleared stay clear
+  if (!CSF.on) return; CSF.on = false; ui.xhud.classList.remove('csf'); clearInterval(CSF.alarm); csfClearFoes(); if (CSF.light && CSF.light.parent) CSF.light.parent.remove(CSF.light); CSF.light = null; roamReset();
+}
+function csfClearFoes() { for (const F of CSF.foes) { if (F.R.root.parent) F.R.root.parent.remove(F.R.root); if (F.bar && F.bar.parent) F.bar.parent.remove(F.bar); } CSF.foes = []; }
+async function csfDeck(d) { // the Spawn on this deck, if it isn't cleared yet
+  csfClearFoes(); CSF.deck = d; renderTasks(); const deck = SHIPI.decks[d]; if (!deck || d < csfCleared()) return;
+  if (CSF.light && CSF.light.parent) CSF.light.parent.remove(CSF.light); CSF.light = new THREE.PointLight(0xff2020, 5, 16); CSF.light.position.set(0, 2.6, 0); deck.add(CSF.light);
+  const p = player.position, n = CSF_DECKS[d], spots = [];
+  for (let i = 0; i < n + (d === 4 ? 1 : 0); i++) { let s = null; for (let k = 0; k < 40; k++) { const q = roamSpot(d); if (Math.hypot(q.x - p.x, q.z - p.z) > 6 && spots.every(o => Math.hypot(o.x - q.x, o.z - q.z) > 1.6)) { s = q; break; } } spots.push(s || roamSpot(d)); }
+  const tok = CSF.tok = (CSF.tok || 0) + 1;
+  for (let i = 0; i < spots.length; i++) {
+    const cmd = d === 4 && i === spots.length - 1, R = await spawnRig(null, cmd); if (!R || tok !== CSF.tok || !CSF.on) return;
+    const s = spots[i]; R.root.position.set(s.x, 0, s.z); R.root.rotation.y = Math.atan2(p.x - s.x, p.z - s.z); deck.add(R.root);
+    const bar = new THREE.Mesh(new THREE.PlaneGeometry(cmd ? 1.4 : .9, .07), new THREE.MeshBasicMaterial({ color: cmd ? 0xff5a2a : 0xff2a3a, depthTest: false, transparent: true })); bar.renderOrder = 999; deck.add(bar);
+    CSF.foes.push({ R, x: s.x, z: s.z, hp: cmd ? CSF_CMD_HP : CSF_HP, max: cmd ? CSF_CMD_HP : CSF_HP, cmd, cd: 1.5 + Math.random(), lunge: 0, stag: 0, down: false, downT: 0, bar, wake: .8 + i * .5 });
+  }
+  if (d === 4) setTimeout(() => sayAs('THE CATHARSIS COMMANDER', cathLang === 'en' ? 'The ship is ours. The flesh is ours.' : 'Tha naal’esh. Neth naal’esh.', 3600), 900);
+}
+function csfLive() { return CSF.foes.filter(F => !F.down); }
+function csfTick(dt) {
+  if (!CSF.on || SHIPI.deck !== CSF.deck) return;
+  const p = player.position;
+  if (CSF.light) CSF.light.intensity = 3.5 + Math.sin(SHIPI.t * 8) * 2 + (Math.random() < .03 ? -3 : 0);
+  for (const F of CSF.foes) {
+    const R = F.R, o = R.root.position, dx = p.x - F.x, dz = p.z - F.z, d = Math.hypot(dx, dz) || 1;
+    if (F.bar) { F.bar.visible = !F.down && F.hp < F.max; F.bar.position.set(F.x, F.cmd ? 3.05 : 2.45, F.z); F.bar.quaternion.copy(camera.quaternion); F.bar.scale.x = Math.max(.02, F.hp / F.max); }
+    if (F.down) { F.downT += dt; R.mode = 'idle'; R.slump = true; R.slumpK = 1; animRig(R, dt); if (F.downT > 25 && !F.gone) { F.gone = true; burst(F.x, 1, F.z, 20, 2.5, .15, .02, .04, 1, 1, 0); if (R.root.parent) R.root.parent.remove(R.root); } continue; } // collapsed: anoint it, or it crumbles
+    if (ex.dlg || ex.invOpen) { R.mode = 'idle'; animRig(R, dt); continue; }
+    if ((F.wake -= dt) > 0) { R.mode = 'idle'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 4)); animRig(R, dt); continue; }
+    F.cd -= dt; F.stag = Math.max(0, F.stag - dt); if (F.lunge > 0) F.lunge -= dt;
+    R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 6));
+    const reach = F.cmd ? 2.1 : 1.7;
+    if (d > reach && F.stag <= 0) { // close in, round the furniture and each other
+      R.mode = 'walk'; const v = (F.cmd ? 2.5 : 2.9) * dt; let mx = dx / d * v, mz = dz / d * v;
+      for (const G of CSF.foes) if (G !== F && !G.down) { const sx = F.x - G.x, sz = F.z - G.z, sd = Math.hypot(sx, sz); if (sd < 1.2 && sd > .01) { mx += sx / sd * v * .6; mz += sz / sd * v * .6; } }
+      if (!shipBlocked(F.x + mx, F.z)) F.x += mx; if (!shipBlocked(F.x, F.z + mz)) F.z += mz;
+    } else if (d <= reach && F.cd <= 0 && F.stag <= 0) { // claws
+      F.cd = (F.cmd ? 1.5 : 1.25) + Math.random() * .6; F.lunge = .45; R.mode = 'attack'; R.t = 0;
+      alienHurt(Math.round(maxHP() * (F.cmd ? .11 + Math.random() * .04 : .055 + Math.random() * .03))); vel.x += dx / d * (F.cmd ? 7 : 4.5); vel.z += dz / d * (F.cmd ? 7 : 4.5);
+      if (ex.hp <= 1) { csfDowned(); return; }
+    } else if (F.lunge <= 0) R.mode = 'idle';
+    o.set(F.x, 0, F.z); R.turn.position.z = F.lunge > 0 ? Math.sin((1 - F.lunge / .45) * Math.PI) * .5 : 0;
+    animRig(R, dt);
+  }
+}
+function csfDowned() { // they bring you down: you wake by the lift, the deck as it was
+  const f = $('#fade'); f.style.transition = 'opacity .35s'; f.style.background = '#000'; f.style.opacity = 1; notice('Brought down', tiPhone() ? 'THEY HAVE YOU' : 'THE CATHARSIS HAVE YOU', 2400);
+  const d = SHIPI.deck;
+  setTimeout(() => { ex.hp = Math.round(maxHP() * .6); invState().hp = ex.hp; const [x, z] = SHIP_KINDS[SHIPK].arrive(d); player.position.set(x, 0, z); shipUnstick(); vel.set(0, 0, 0); ex.snap = true; csfDeck(d);
+    f.style.transition = 'opacity .9s'; f.style.opacity = 0; setTimeout(() => { f.style.background = ''; }, 950); lootMsg(tiPhone() ? 'By the lift · the deck is as it was' : 'You come to by the lift · the deck is as it was · the carapace rifle (F) is the only thing that hurts them', '#ff9a8a'); }, 500);
+}
+function csfTarget(range) { // the Spawn the rifle locks on to: in front of you first, then the nearest
+  const p = player.position, fx_ = Math.sin(player.rotation.y), fz = Math.cos(player.rotation.y); let best = null, bs = -1e9;
+  for (const F of csfLive()) { const dx = F.x - p.x, dz = F.z - p.z, d = Math.hypot(dx, dz); if (d > range) continue; const s = (dx * fx_ + dz * fz) / (d || 1) * 1.2 - d / range; if (s > bs) { bs = s; best = F; } }
+  return best;
+}
+function csfAttack() { // F aboard during the fight
+  if (ex.dlg || ex.invOpen) return; const id = selItem(), it = id && ITEMS[id], p = player.position;
+  if (it && it.kind === 'use') { if (!have(id) || ex.hp >= maxHP()) { lootMsg(ex.hp >= maxHP() ? 'Already at full health' : 'None left', '#ff8f86'); return; } const heal = it.heal || 40; ex.hp = Math.min(maxHP(), ex.hp + heal); invState().hp = ex.hp; takeItem(id, 1); sfx.chime(); lootMsg(`+${heal} health`, '#ff7a72'); return; }
+  if (it && it.kind === 'gun' && have(id)) {
+    if (time - CSF.fireT < it.rate) return; CSF.fireT = time;
+    const F = csfTarget(it.range || 30); sfx.shot(); ex.shake = Math.max(ex.shake || 0, .1);
+    const a = F ? Math.atan2(F.x - p.x, F.z - p.z) : player.rotation.y; player.rotation.y = a;
+    const end = F ? new THREE.Vector3(F.x, F.cmd ? 1.8 : 1.4, F.z) : new THREE.Vector3(p.x + Math.sin(a) * 12, 1.3, p.z + Math.cos(a) * 12);
+    const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(p.x + Math.sin(a) * .7, 1.3, p.z + Math.cos(a) * .7), end]), tr = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: it.glow || 0xffd38a })); SHIPI.decks[SHIPI.deck].add(tr);
+    setTimeout(() => { if (tr.parent) tr.parent.remove(tr); geo.dispose(); }, 90);
+    if (!F) return;
+    if (!it.pierce) { if (time - (CSF.msgT || -9) > 3) { CSF.msgT = time; lootMsg(tiPhone() ? 'It doesn’t scratch the carapace · the carapace rifle' : 'Your rounds break on its carapace · select the carapace rifle', '#ff9a8a'); } return; }
+    const dmg = rifleDmg(it); F.hp -= dmg; F.stag = F.cmd ? .15 : .35; sfx.hit('crate'); burst(F.x, 1.4, F.z, 10, 2.5, .62, .36, 1, .5, .4, .6);
+    if (F.hp <= 0) csfFell(F);
+    return;
+  }
+  sfx.swing(); const F = csfTarget(2.6); if (F && time - (CSF.msgT || -9) > 3) { CSF.msgT = time; lootMsg('Your blow glances off its shell', '#ff9a8a'); }
+}
+function csfFell(F) { // brought to its knees
+  F.down = true; F.hp = 0; F.downT = 0; if (F.bar) F.bar.visible = false; sfx.thud(); ex.shake = Math.max(ex.shake || 0, F.cmd ? .7 : .3);
+  if (F.cmd) { notice('The bridge', 'THE COMMANDER FALLS', 3000); setTimeout(() => { F.gone = true; burst(F.x, 1.6, F.z, 40, 4, .5, .02, .06, 1.2, .8, 1); if (F.R.root.parent) F.R.root.parent.remove(F.R.root); }, 2600); }
+  else lootMsg(spawnHunting() ? 'It collapses · another Spawn already hunts you, so it can’t be anointed' : tiPhone() ? 'It collapses · anoint it (E)' : 'It collapses · anoint it (E) and it rises as yours to win', '#c9a2ff');
+  if (!csfLive().length) setTimeout(csfDeckClear, 1200);
+}
+function csfDeckClear() {
+  if (!CSF.on || csfLive().length) return; const d = SHIPI.deck;
+  if (d >= csfCleared()) { wanderer.ch4 = Object.assign({}, wanderer.ch4, { shipDeck: d + 1 }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); }
+  if (CSF.light) CSF.light.color.setHex(0x9fe6ff);
+  if (d >= 4) { csfWin(); return; }
+  sfx.chime(); gainXP(220 + d * 60, `Deck ${d + 1} cleared`); notice(`Deck ${d + 1} · ${DECK_NAMES[d]}`, 'CLEAR · THE LIFT IS OPEN', 3000); renderTasks();
+}
+function csfWin() {
+  wanderer.ch4 = Object.assign({}, wanderer.ch4, { shipClear: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster();
+  clearInterval(CSF.alarm); sfx.chime(); gainXP(1500, 'The Jewel retaken'); renderTasks();
+  notice('The Jewel of Archamus', 'SHE IS YOURS AGAIN', 4200);
+  setTimeout(() => cathWinSpeak(() => { CSF.on = false; ui.xhud.classList.remove('csf'); if (CSF.light && CSF.light.parent) CSF.light.parent.remove(CSF.light); CSF.light = null; roamReset(); lootMsg('Your crew are back aboard', '#9fe6ff'); }), 3800); // then they speak
+}
+function csfNear(p) { if (!CSF.on || spawnHunting()) return null; let best = null, bd = 2; for (const F of CSF.foes) { if (!F.down || F.cmd || F.gone) continue; const d = Math.hypot(F.x - p.x, F.z - p.z); if (d < bd) { bd = d; best = F; } } return best ? { id: 'csfAnoint', ref: best, label: 'Anoint the fallen Spawn', btn: 'ANOINT', d: bd } : null; }
+function csfAnoint(F) { // it rises as yours to win: it slips away, and hunts you across Catharsis space until you beat it again
+  if (!F || F.gone || spawnHunting()) return;
+  const P = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), kind: 'spawn', name: spawnName(), col: '', lv: Math.min(PONT_MAX_LV, plvNow() + 3), st: 'shunt', made: Date.now() };
+  wanderer.ponts = [...PONTS(), P]; const st = alState(); st.c['pont:' + P.id] = { a: AL_BASE['Chaotic Evil'], inf: 30 }; alSave(); pontSave();
+  F.gone = true; burst(F.x, 1.2, F.z, 36, 4, .62, .2, 1, 1, -.4, 1.6); if (F.R.root.parent) F.R.root.parent.remove(F.R.root); sfx.thud(); ex.shake = .6;
+  notice('Anointed', `${P.name.toUpperCase()} RISES AS A CATHARSIS SPAWN`, 4200);
+  setTimeout(() => lootMsg(tiPhone() ? `${P.name} slips away · it will hunt you in Catharsis space` : `${P.name} slips away into the dark · it will hunt you across Catharsis space · beat it again and it’s yours`, '#c9a2ff'), 1800);
+}
+
+/* The Jewel retaken: the Catharsis speak again, this time in your language (they chose to), in their own demonic voice.
+   Ten lines, CH4CATHARSISWIN1–10 (data/cathWinVoices.js). The dark screen, with no language switch. */
+const CATH_WIN = ["You are celebrating already. We can hear it in your breathing, in the sudden confidence of the creatures standing beside you. A few bodies fall across a metal floor, and you mistake survival for victory.", "You understand us now because we have chosen to use your language. There will be no refuge in mistranslation. Every word that follows is meant for you, Wanderer, and we intend for you to remember it.", "Those bodies were an advance brood. They entered your corridors to learn how you move, where you retreat, and which of your companions will step into danger for you. You fought for your lives. We watched and learned.", "You saw claws and carapaces and decided that you understood our limits. You have seen neither our oldest forms nor the things that carry them between the stars. The dark outside your windows holds more than you have the courage to imagine.", "Keep your companions close. Give them medals. Tell them how bravely they defended this little ship. We know which hands shook, which weapons faltered, and which voice you listened for when the fighting came too close.", "Hawthorne believed the galaxy could be made to kneel beneath a flag. Your allies believe another fleet and another treaty will keep the darkness at a distance. Such small ambitions. You argue over the ownership of worlds we can leave silent.", "And that rifle you treasure? Yes, it can break a shell. You have proved it. Now ask yourself how long its ammunition, its barrel, and the hands holding it would endure if the corridors never stopped filling.", "Do you think we are speaking because we need your surrender? We want you awake. We want you to travel, to gather your armies, to build every defense you believe will save you. We want to see what you become when hope is made to work for its survival.", "Enjoy the quiet you have bought. Walk your decks. Count the people who survived. When the next shadow crosses your hull, you will remember this battle, and you will understand how mercifully small it was.", "Listen carefully, Wanderer. What you just fought IS A FRACTION OF OUR TRUE POWER! You have survived our first intrusion. You have not stopped the Catharsis. When we return in force, let us see whether you can still call this a victory."];
+async function cathWinSpeak(done) {
+  const vo = await josVo('cathWinVoices'), end = () => { csbDark(false); done(); };
+  if (state !== 'explore' || ex.dlg) { end(); return; }
+  csbDark(true, true); setTimeout(() => { if (state === 'explore' && !ex.dlg) openDialog('THE CATHARSIS ', CATH_WIN.slice(), false, end, vo || []); else end(); }, 900);
+}
+function csfLift() { // the lift, mid-fight: up only once this deck is clear, and down to any deck you've cleared
+  if (csfLive().length && SHIPI.deck >= csfCleared()) { lootMsg('Not with them still on this deck · clear it first', '#ff9a8a'); return; }
+  const top = Math.min(4, csfCleared());
+  openChoice('THE LIFT', DECK_NAMES.map((_, i) => i).filter(i => i !== SHIPI.deck && i <= top).map(i => ({ text: `Deck ${i + 1} · ${DECK_NAMES[i]}${i >= csfCleared() ? ' · the Catharsis' : ' · clear'}`, onPick: () => shipLift(i) })).concat([{ text: 'Stay here', onPick: () => {} }]));
 }
 /* Easter egg: bring Josiah Richards (Project BC) along and speak to Archamus, in any of Chapters III–V. Josiah calls him son; Archamus
    accuses him of tampering with the timeline. Josiah lets slip, never naming either of them, that he made the light and dark eggs (the
