@@ -181,6 +181,7 @@ Open `index.html` in a modern browser, keeping the `data/` folder next to it. It
 - **Minimap and Earth map:** outside, a heading-up minimap (top right) shows the terrain, the station, your beacons and a gold diamond on the current objective, with its distance. Tap it or press M for the full north-up Earth map with your coordinates.
 - **Antarctica exploration music:** four tracks play while you're out on the ice, shuffled with quiet gaps of 9–25 seconds between them. The music fades when you go inside, softens during pauses and cutscenes, and steps aside for combat themes.
 - **Combat themes:** five tracks (Predator I–IV and Wonders of Laniakea, combat version). In play, one is picked at random whenever something hostile engages you; it takes over from the ambient music and fades out a few seconds after the fight ends. You can preview them in Settings → Combat themes, where each tap plays the next track.
+- **Companion chatter:** companions speak up in a fight now and then, never more than a few lines a minute. Settings → Companion chatter (or Options in the pause menu) switches between NORMAL, LESS and OFF.
 - **Held items:** whatever is selected in the hotbar (ice pick, med kit, thermal lamp, or a placeable) is shown in your right hand, positioned to fit your species.
 - **Placeables:** select a placeable in the hotbar (lamp, wind barrier, heater, beacon) and a green preview appears in front of you; attack to place it. Walk up to it and press E (TAKE) to pick it back up.
 - **Base building** (B, or the BUILD button): a No Man's Sky-style build menu.
@@ -2857,3 +2858,14 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **Update: Lord Sevirrus joins the companion combat lines** (subtitles until recorded), the last companion to get them. He starts as Chaotic Evil, so you hear the Usurper Prince at his very worst first: screaming that everyone kneels, sneering at the dead for not begging the way Damix did, bragging about butchering his cousin in front of his father, and calling on Lord Zark to watch. Pull him above −34 and he turns on Lord Zark: furious with the voice that made him and disgusted by it, he tells Zark to watch his prince fight for someone else, calls him a parasite and filth, and tells him to choke on the silence when the fight's over. Recordings go in `data/cmbSevSevirrusVoices.js` (COMBATSEVSEVIRRUS1–5) and `data/cmbSevSevirrusEvilVoices.js` (COMBATSEVSEVIRRUSEVIL1–5). Every companion now has combat lines, including the Project BC cast.
 - **Update: Lord Sevirrus is recorded** (COMBATSEVSEVIRRUS1–5 / COMBATSEVSEVIRRUSEVIL1–5; `data/cmbSevSevirrusVoices.js`, `cmbSevSevirrusEvilVoices.js`). Every companion, the Project BC cast and Sevirrus included, now speaks in combat.
 - **Companions no longer talk over each other's combat lines.** A new line used to cut off one that was still playing once 3.5 seconds had passed, so long lines (Sevirrus's, Charon's, Tyrotaronus's) could be stopped halfway. Now the next companion waits until the voice has finished.
+
+### Companions don't spam
+- **Far fewer combat lines, better spaced.** With a big crew, companions used to talk every few seconds: a line every 3.5 seconds was allowed, every kill could get one, and every little skirmish got its own opening and victory line. Now, by default:
+  - at least 12 seconds between any two lines, and never more than three in a minute, however many companions you have;
+  - the same companion waits 25 seconds before speaking again, and longer before repeating the same moment;
+  - only some kills get a line;
+  - an opening line at most once a minute, and a victory line only after a real fight (two kills, or twelve seconds of fighting), also at most once a minute;
+  - never the same line twice in a row.
+- **Settings → Companion chatter** (also in the pause menu's Options): **NORMAL**, **LESS** (at least 20 seconds apart, two a minute at most, and fallen companions' remarks less often) or **OFF** (no combat lines or fallen companions' remarks). It's remembered on this device.
+- **Fallen companions' idle remarks** no longer come mid-fight or right on top of a combat line.
+

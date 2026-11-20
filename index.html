@@ -1300,6 +1300,7 @@ body.ch4 .bar.sta i{background:#ff8a7e}
       <button class="mi" id="setStyle" style="display:none"><i>—</i><span>Menu style</span><em class="val">NORMAL</em></button>
       <button class="mi" id="setMusic"><i>—</i><span>Music</span><em class="val">ON</em></button>
       <button class="mi" id="setCombat"><i>—</i><span>Combat themes</span><em class="val">PLAY</em></button>
+      <button class="mi" id="setChatter"><i>—</i><span>Companion chatter</span><em class="val">NORMAL</em></button>
       <button class="mi back" data-go="mMain"><i>‹</i><span>Back</span></button>
     </div>
   </div>
@@ -1423,6 +1424,7 @@ body.ch4 .bar.sta i{background:#ff8a7e}
     <div class="opt-list">
       <button class="opt" id="oMusic"><span>Music</span><b>ON</b></button>
       <button class="opt" id="oSound"><span>All sound</span><b>ON</b></button>
+      <button class="opt" id="oChatter"><span>Companion chatter</span><b>NORMAL</b></button>
     </div>
     <div class="row"><button class="btn primary" id="oBack"><span>Back</span></button></div>
   </div>
@@ -1670,6 +1672,8 @@ const store = {
 };
 let muted = store.get('nv_muted', false);
 let musicOn = store.get('nv_music', true);
+let chatter = store.get('nv_chatter', 'normal'); // how much companions talk: 'normal', 'less' or 'off' (combat lines and fallen companions' remarks)
+if (!['normal', 'less', 'off'].includes(chatter)) chatter = 'normal';
 
 /* ============ renderer / scene ============ */
 const canvas = $('#c');
@@ -3311,10 +3315,12 @@ function combatTick(dt) {
 window.nvCombat = combatPulse;
 function toggleMusic() { musicOn = !musicOn; store.set('nv_music', musicOn); sfx.init(); sfx.setMusic(musicOn); refreshSettings(); sfx.click(); }
 function toggleSound() { muted = !muted; store.set('nv_muted', muted); sfx.init(); sfx.setMuted(muted); refreshSettings(); sfx.click(); }
-function refreshOpts() { const m = $('#oMusic'), so = $('#oSound'); if (m) m.querySelector('b').textContent = musicOn ? 'ON' : 'OFF'; if (so) so.querySelector('b').textContent = muted ? 'OFF' : 'ON'; }
+function refreshOpts() { const ch = chatter.toUpperCase(); for (const el of [$('#oChatter b'), $('#setChatter .val')]) if (el) el.textContent = ch; const m = $('#oMusic'), so = $('#oSound'); if (m) m.querySelector('b').textContent = musicOn ? 'ON' : 'OFF'; if (so) so.querySelector('b').textContent = muted ? 'OFF' : 'ON'; }
 $('#setMusic').addEventListener('click', toggleMusic);
 $('#setStyle').addEventListener('click', () => { menuStyle = menuStyle === 'red' ? 'normal' : 'red'; store.set('nv_menuStyle', menuStyle); sfx.init(); sfx.click(); applyMenuEra(); });
 $('#oMusic').addEventListener('click', toggleMusic);
+function cycleChatter() { sfx.init(); sfx.click(); chatter = { normal: 'less', less: 'off', off: 'normal' }[chatter] || 'normal'; store.set('nv_chatter', chatter); refreshOpts(); }
+$('#oChatter').addEventListener('click', cycleChatter); $('#setChatter').addEventListener('click', cycleChatter);
 $('#oSound').addEventListener('click', toggleSound);
 $('#xOptions').addEventListener('click', () => { sfx.click(); refreshOpts(); ui.xpause.classList.add('opts'); });
 $('#oBack').addEventListener('click', () => { sfx.click(); ui.xpause.classList.remove('opts'); });
@@ -22502,28 +22508,38 @@ const CCB_LINES = {
     evil: ['Everyone kneels. EVERYONE KNEELS! And whoever won’t, I’ll cut off at the knees and make them kneel anyway!', 'You didn’t even beg. Damix begged. Damix begged BEAUTIFULLY. You were a waste of my blade.', 'You made me bleed? I butchered my own cousin in front of my father and LAUGHED. What do you think I’ll do to YOU?!', 'Get UP! Nobody dies until I say so! Not you! Not them! NOBODY! Lord Zark, tell them!', 'My lord Zark, are you watching? Look at them all, lying so still! Hahaha… MORE! Bring me MORE!'] } // turned on Zark: furious and disgusted with the voice that made him / the Usurper Prince, Zark's own, at his very worst (starts Chaotic Evil, so this set first): packs cmbSevSevirrusVoices, cmbSevSevirrusEvilVoices
 };
 const ccbKey = id => { if (!String(id).startsWith('pont:')) return id; const P = pontById(id.slice(5)); return P ? (P.sex === 'f' ? 'sister' : 'pontifex') : null; }; // whose lines: a Pontifex or a Sister speaks with theirs
-const CCB_GAP = { start: 0, kill: 14, hurt: 22, low: 30, win: 0 }; // seconds between the same line from the same companion (start and win come once a fight anyway)
-const CCB = { on: false, t: 0, fk: 0, last: -99, until: 0, cd: {}, vo: {}, hpLow: false };
+/* so they never spam (Settings / Options → Companion chatter): gap = seconds between any two lines, self = before the same companion speaks again,
+   perMin = most lines in any minute (all of them together), kill/hurt/low = before that companion repeats that moment, killP = chance a kill gets a line, fight = between two opening (or two victory) lines.
+   A victory line also needs a real fight: two kills, or twelve seconds of it. 'off' keeps them quiet. */
+const CHATTER = {
+  normal: { gap: 12, perMin: 3, self: 25, kill: 45, hurt: 60, low: 60, killP: .4, fight: 60, idle: 1 },
+  less: { gap: 20, perMin: 2, self: 45, kill: 90, hurt: 120, low: 120, killP: .25, fight: 120, idle: 2.5 }
+};
+const chatterCfg = () => CHATTER[chatter] || null;
+const CCB = { on: false, t: 0, fk: 0, dur: 0, last: -99, until: 0, line: '', startAt: -99, winAt: -99, hist: [], cd: {}, who: {}, vo: {}, hpLow: false };
 const ccbL = id => { if (String(id).startsWith('pont:')) { const P = pontById(id.slice(5)); return P ? pontAlL(P) : null; } return COMPANIONS.find(c => c.id === id) || AL_EXTRA.find(c => c.id === id); };
 function ccbEvil(id) { if (!wanderer) return false; const L = ccbL(id); if (!L) return false; const a = alComp(L).a; return a != null && a <= -34; } // an Awakened Villain
 function ccbRig(id) { const R = id === 'orion' ? world.orion : id === 'james' ? (james.ready ? james : null) : CREW[id] && CREW[id].R; return R && R.root && R.root.visible && R.root.parent === wScene ? R : null; }
 function ccbHere() { const p = player.position; return partyNow().filter(id => { if (!CCB_LINES[ccbKey(id)]) return false; const R = ccbRig(id); return !!R && Math.hypot(R.root.position.x - p.x, R.root.position.z - p.z) < 40; }); }
 function ccbVo(id, evil) { id = ccbKey(id); const k = 'cmb' + id.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('') + (evil ? 'Evil' : '') + 'Voices'; /* james-ti → cmbJamesTiVoices */ return CCB.vo[k] || (CCB.vo[k] = loadDataScript(k).then(ok => ok ? sfx.loadClips(k) : []).catch(() => [])); }
 function ccbSay(id, m) {
-  const S = CCB_LINES[ccbKey(id)]; if (!S || state !== 'explore' || ex.mode !== 'world' || ex.dlg || cine.on || world.narrating) return false;
-  if (time - CCB.last < 3.5 || time < CCB.until) return false; // one of them at a time, and nobody talks over a line that's still playing (a new clip would cut it off)
-  const k = id + ':' + m; if (CCB_GAP[m] && time - (CCB.cd[k] || -99) < CCB_GAP[m]) return false;
-  const evil = ccbEvil(id) && !!S.evil, i = CCB_M.indexOf(m), line = S[evil ? 'evil' : 'good'][i]; if (!line) return false; // one set only (Chapter I James): always that
-  CCB.cd[k] = time; CCB.last = time;
+  const S = CCB_LINES[ccbKey(id)], C = chatterCfg(); if (!C || !S || state !== 'explore' || ex.mode !== 'world' || ex.dlg || cine.on || world.narrating) return false;
+  if (time - CCB.last < C.gap || time < CCB.until) return false; // one of them at a time, well spaced, and nobody talks over a line that's still playing (a new clip would cut it off)
+  if (time - (CCB.who[id] ?? -99) < C.self) return false; // the same companion doesn't chime in again straight away
+  CCB.hist = CCB.hist.filter(t => t <= time && time - t < 60); if (CCB.hist.length >= C.perMin) return false; // and never more than a few lines a minute, however big the crew
+  const k = id + ':' + m; if (C[m] && time - (CCB.cd[k] ?? -99) < C[m]) return false;
+  const evil = ccbEvil(id) && !!S.evil, i = CCB_M.indexOf(m), line = S[evil ? 'evil' : 'good'][i]; if (!line || line === CCB.line) return false; // one set only (Chapter I James): always that · never the same line twice running
+  CCB.cd[k] = time; CCB.who[id] = time; CCB.last = time; CCB.line = line; CCB.hist.push(time);
   ccbVo(id, evil).then(vo => { if (state !== 'explore' || ex.dlg) return; const L = ccbL(id), clip = (vo || [])[i]; if (clip) CCB.until = time + clip.duration + .4; vbark(String(id).startsWith('pont:') && PARTY[id] ? PARTY[id].full : L ? L.name : PARTY[id].full, line, 2600, (vo || [])[i] || null); }); // a Pontifex or Sister: their own name and title
   return true;
 }
 function ccbAny(m) { const ids = ccbHere().sort(() => Math.random() - .5); for (const id of ids) if (ccbSay(id, m)) return id; return null; }
-function ccbPulse() { CCB.t = 7; if (CCB.on) return; CCB.on = true; CCB.fk = 0; CCB.hpLow = false; if (ex.mode === 'world') setTimeout(() => { if (CCB.on) ccbAny('start'); }, 600); } // from combatPulse: a fight has started
-function ccbKill(by) { CCB.fk++; if (by && CCB_LINES[ccbKey(by)] && ccbRig(by)) ccbSay(by, 'kill'); }
+function ccbPulse() { CCB.t = 7; if (CCB.on) return; CCB.on = true; CCB.fk = 0; CCB.dur = 0; CCB.hpLow = false; if (ex.mode === 'world') setTimeout(() => { const C = chatterCfg(); if (CCB.on && C && time - CCB.startAt >= C.fight && ccbAny('start')) CCB.startAt = time; }, 1200); } // from combatPulse: a fight has started (an opening line only now and then, and only if it's still going)
+function ccbKill(by) { CCB.fk++; const C = chatterCfg(); if (C && by && CCB_LINES[ccbKey(by)] && ccbRig(by) && Math.random() < C.killP) ccbSay(by, 'kill'); } // not every kill
 function ccbPlayerHit() { const k = ex.hp / maxHP(); if (k < .3 && ex.hp > 0 && !CCB.hpLow) { CCB.hpLow = true; ccbAny('low'); } else if (k >= .5) CCB.hpLow = false; }
 function ccbTick(dt) {
-  if (CCB.on && (CCB.t -= dt) <= 0) { CCB.on = false; if (CCB.fk > 0 && ex.mode === 'world') setTimeout(() => ccbAny('win'), 900); } // the fight's over
+  if (CCB.on) CCB.dur += dt;
+  if (CCB.on && (CCB.t -= dt) <= 0) { CCB.on = false; const C = chatterCfg(); if (C && (CCB.fk >= 2 || (CCB.fk > 0 && CCB.dur >= 12)) && time - CCB.winAt >= C.fight && ex.mode === 'world') setTimeout(() => { if (ccbAny('win')) CCB.winAt = time; }, 900); } // the fight's over: a victory line only after a real fight, and not after every one
   if (!CCB.on || ex.mode !== 'world' || state !== 'explore') return;
   for (const id of ccbHere()) { const o = ccbRig(id).root.position; if (fauna.list.some(c => !c.dead && c.state === 'hunt' && !c.D.passive && Math.hypot(c.x - o.x, c.z - o.z) < 1.6)) ccbSay(id, 'hurt'); } // something hostile right up against them
 }
@@ -28560,14 +28576,14 @@ function fallenComp(id) { // started good or neutral, and their chart has gone i
 const CRUEL = { t: 60, killT: 0 };
 const cruelPick = a => a[Math.floor(Math.random() * a.length)];
 function cruelBark(id, kind) {
-  const F = PD_FALLEN[id], P = PARTY[id]; if (!F || !P || ex.dlg || cine.on) return;
+  const F = PD_FALLEN[id], P = PARTY[id]; if (!F || !P || ex.dlg || cine.on || !chatterCfg()) return;
   if (kind === 'kill' && CCB_LINES[ccbKey(id)]) return; // their own combat lines cover the kill
   if (kind === 'kill') { if (time - CRUEL.killT < 25 || Math.random() > .4) return; CRUEL.killT = time; vbark(P.name, cruelPick(F.kills), 3200); return; }
   vbark(P.name, cruelPick(F.barks), 5600);
 }
 function cruelTick(dt, live) { // now and then, one of them says what they've become
-  if ((CRUEL.t -= dt) > 0) return; CRUEL.t = 100 + Math.random() * 70;
-  if (state !== 'explore' || ex.dlg) return;
+  if ((CRUEL.t -= dt) > 0) return; const C = chatterCfg(); CRUEL.t = (100 + Math.random() * 70) * (C ? C.idle : 1);
+  if (!C || state !== 'explore' || ex.dlg || combat.on || time - CCB.last < 15 || time < CCB.until) return; // not mid-fight, and not on top of a combat line
   const f = live.filter(fallenComp); if (f.length) cruelBark(cruelPick(f), 'say');
 }
 // Gareth has a Companions file of his own while he's in your crew (the others from Project BC and Sevirrus were born villains, so theirs live with their own games)
