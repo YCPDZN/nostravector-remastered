@@ -329,3 +329,123 @@ Packs: `data/cmb<Name>Voices.js` (COMBAT<NAME>1–5) and `data/cmb<Name>EvilVoic
 | COMBATTYROTARONUSEVIL3.mp3 | Hurt (an enemy gets right up against them) | You touched me. I remember what I used to do to those who dared. |
 | COMBATTYROTARONUSEVIL4.mp3 | You’re in trouble (your health under 30%) | Get up. I did not finally choose a side only to watch it fall. |
 | COMBATTYROTARONUSEVIL5.mp3 | Victory (the fight’s over) | So small. So brief. I had forgotten how much I enjoyed this. |
+
+## Josiah Richards (Project BC) · **recorded**
+
+He starts as Lawful Evil, an Awakened Villain already, so his villain set plays first. The Hero / Neutral set only plays once your deeds pull him above −34. Packs: `data/cmbPbcJosiahVoices.js` and `data/cmbPbcJosiahEvilVoices.js`.
+
+**Hero / Neutral**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATPBCJOSIAH1.mp3 | Fight starts | I spent decades protecting people from things they never saw coming. Stay behind me. |
+| COMBATPBCJOSIAH2.mp3 | Kill | That’s that. I take no pleasure in it. I simply don’t leave things unfinished. |
+| COMBATPBCJOSIAH3.mp3 | Hurt (an enemy gets right up against them) | Ah. Fine. I’ve had worse from a select committee. |
+| COMBATPBCJOSIAH4.mp3 | You’re in trouble (your health under 30%) | Wanderer, get up. I couldn’t save Emma. I will not lose you as well. |
+| COMBATPBCJOSIAH5.mp3 | Victory (the fight’s over) | It’s over. Emma always said I liked the tidying up more than the fight. She was right. |
+
+**Awakened Villain**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATPBCJOSIAHEVIL1.mp3 | Fight starts | Let’s keep this brief. I reset a universe once. You’re barely an item on the agenda. |
+| COMBATPBCJOSIAHEVIL2.mp3 | Kill | Struck from the record. |
+| COMBATPBCJOSIAHEVIL3.mp3 | Hurt (an enemy gets right up against them) | You laid a hand on the Prime Secretary. There’s a form for that. It’s very short, and it ends with you. |
+| COMBATPBCJOSIAHEVIL4.mp3 | You’re in trouble (your health under 30%) | On your feet, wanderer. Nobody leaves my service without my signature. |
+| COMBATPBCJOSIAHEVIL5.mp3 | Victory (the fight’s over) | There. Quiet, tidy, and entirely within the rules. I wrote them, after all. |
+
+## Peter Chambers (Project BC) · **recorded**
+
+He starts as Neutral Evil, an Awakened Villain already, so his villain set plays first. The Hero / Neutral set only plays once your deeds pull him above −34. Packs: `data/cmbPbcPeterVoices.js` and `data/cmbPbcPeterEvilVoices.js`.
+
+**Hero / Neutral**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATPBCPETER1.mp3 | Fight starts | Right. I’ll cover you from back here. For once, I’m actually watching someone’s back. |
+| COMBATPBCPETER2.mp3 | Kill | Got him. Just… don’t tell me his name. I’ve enough names on my conscience. |
+| COMBATPBCPETER3.mp3 | Hurt (an enemy gets right up against them) | Ah! Fine. Fine. I suppose I had that coming. I had a lot coming. |
+| COMBATPBCPETER4.mp3 | You’re in trouble (your health under 30%) | Get up, wanderer! I’ve ruined enough lives. Let me save one for a change. |
+| COMBATPBCPETER5.mp3 | Victory (the fight’s over) | It’s done. Funny. It feels better to stand beside someone than behind them. |
+
+**Awakened Villain**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATPBCPETEREVIL1.mp3 | Fight starts | You go first, wanderer. I’ve always done my best work from behind someone else. |
+| COMBATPBCPETEREVIL2.mp3 | Kill | Clean shot. They never see me coming. Nobody ever does. |
+| COMBATPBCPETEREVIL3.mp3 | Hurt (an enemy gets right up against them) | Up close? How rude. I much prefer to ruin people from a distance. |
+| COMBATPBCPETEREVIL4.mp3 | You’re in trouble (your health under 30%) | Don’t die on me, wanderer. I’ve only just started learning your blind spots. |
+| COMBATPBCPETEREVIL5.mp3 | Victory (the fight’s over) | Lovely. And when they ask who did this, I’ll smile and say it was all you. |
+
+## Gareth Williams (Project BC) · **recorded**
+
+He starts as Neutral Good, so his Hero / Neutral set plays first. The Awakened Villain set plays once your deeds drag him to −34 or below. Packs: `data/cmbPbcGarethVoices.js` and `data/cmbPbcGarethEvilVoices.js`.
+
+**Hero / Neutral**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATPBCGARETH1.mp3 | Fight starts | Right! Both pistols out. Nobody panic. Especially not me. |
+| COMBATPBCGARETH2.mp3 | Kill | Got him! Both barrels. Well, both pistols. You know what I mean. |
+| COMBATPBCGARETH3.mp3 | Hurt (an enemy gets right up against them) | Ow! That’s going in an injury form. Possibly two. |
+| COMBATPBCGARETH4.mp3 | You’re in trouble (your health under 30%) | Wanderer, hang on! I’m coming! I’ll only fall over once, I promise! |
+| COMBATPBCGARETH5.mp3 | Victory (the fight’s over) | We won? We won! And I didn’t trip once. Well. Not during. |
+
+**Awakened Villain**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATPBCGARETHEVIL1.mp3 | Fight starts | Oh, lovely, visitors! Hold still. I’m much better at this when you hold still. |
+| COMBATPBCGARETHEVIL2.mp3 | Kill | In triplicate. Bang, bang, bang. |
+| COMBATPBCGARETHEVIL3.mp3 | Hurt (an enemy gets right up against them) | Ow! You’ve made me drop my sense of humour. Shame. You’ll miss it. |
+| COMBATPBCGARETHEVIL4.mp3 | You’re in trouble (your health under 30%) | Up you get, wanderer! Can’t have you dying. Who’d sign my forms? |
+| COMBATPBCGARETHEVIL5.mp3 | Victory (the fight’s over) | All done! I’ll have them filed by lunch. Cheerfully. |
+
+## Kevin Murderhorn (Project BC) · **recorded**
+
+He starts as Chaotic Evil, an Awakened Villain already, so his villain set plays first: over the top and sadistic. The Hero / Neutral set, repentant, only plays once your deeds pull him above −34. Packs: `data/cmbPbcKevinVoices.js` and `data/cmbPbcKevinEvilVoices.js`.
+
+**Hero / Neutral**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATPBCKEVIN1.mp3 | Fight starts | I don’t want to do this any more. But if it keeps you safe… one more time. |
+| COMBATPBCKEVIN2.mp3 | Kill | I’m sorry. I’ve said that to too many people who can’t hear it. |
+| COMBATPBCKEVIN3.mp3 | Hurt (an enemy gets right up against them) | It’s fine. I’ve earned a lot worse than that. |
+| COMBATPBCKEVIN4.mp3 | You’re in trouble (your health under 30%) | Wanderer, hold on. I spent my whole life paying off a debt. Let me spend it on you instead. |
+| COMBATPBCKEVIN5.mp3 | Victory (the fight’s over) | It’s over. I’ll never pay back Chicago. But maybe today counts for something. |
+
+**Awakened Villain**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATPBCKEVINEVIL1.mp3 | Fight starts | Oh, yes! YES! Come closer! The chains have been SO hungry! |
+| COMBATPBCKEVINEVIL2.mp3 | Kill | Hahaha! Did you hear that? That was the best sound in the whole world! |
+| COMBATPBCKEVINEVIL3.mp3 | Hurt (an enemy gets right up against them) | You made me BLEED? Oh, you beautiful thing. Now I get to take my time with you. |
+| COMBATPBCKEVINEVIL4.mp3 | You’re in trouble (your health under 30%) | Don’t you DARE die, wanderer! Nobody gets to break you but ME! |
+| COMBATPBCKEVINEVIL5.mp3 | Victory (the fight’s over) | Already broken? Already?! Get up! Get UP! I wasn’t finished playing! |
+
+## Lord Sevirrus (Sevirrus) · **recorded**
+
+He starts as Chaotic Evil, an Awakened Villain already, so his villain set plays first: the Usurper Prince at his very worst, Lord Zark's own, unhinged and gloating. The Hero / Neutral set only plays once your deeds pull him above −34: he has turned on Lord Zark, and he's furious with him and disgusted by him. Packs: `data/cmbSevSevirrusVoices.js` and `data/cmbSevSevirrusEvilVoices.js`.
+
+**Hero / Neutral**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATSEVSEVIRRUS1.mp3 | Fight starts | Watching, Zark? Good. Watch your precious prince fight for someone else, you rotten thing. |
+| COMBATSEVSEVIRRUS2.mp3 | Kill | One for the wanderer. None for you, Zark. Never again, you parasite. |
+| COMBATSEVSEVIRRUS3.mp3 | Hurt (an enemy gets right up against them) | Bleeding hurts less than hearing your voice ever did, Zark. You make me sick. |
+| COMBATSEVSEVIRRUS4.mp3 | You’re in trouble (your health under 30%) | Wanderer, get up! Zark took everything from me. I will not let that filth take you too! |
+| COMBATSEVSEVIRRUS5.mp3 | Victory (the fight’s over) | It’s over. Hear that, Zark? Silence. Nobody kneeling. Nobody crowned. Choke on it. |
+
+**Awakened Villain**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATSEVSEVIRRUSEVIL1.mp3 | Fight starts | Everyone kneels. EVERYONE KNEELS! And whoever won’t, I’ll cut off at the knees and make them kneel anyway! |
+| COMBATSEVSEVIRRUSEVIL2.mp3 | Kill | You didn’t even beg. Damix begged. Damix begged BEAUTIFULLY. You were a waste of my blade. |
+| COMBATSEVSEVIRRUSEVIL3.mp3 | Hurt (an enemy gets right up against them) | You made me bleed? I butchered my own cousin in front of my father and LAUGHED. What do you think I’ll do to YOU?! |
+| COMBATSEVSEVIRRUSEVIL4.mp3 | You’re in trouble (your health under 30%) | Get UP! Nobody dies until I say so! Not you! Not them! NOBODY! Lord Zark, tell them! |
+| COMBATSEVSEVIRRUSEVIL5.mp3 | Victory (the fight’s over) | My lord Zark, are you watching? Look at them all, lying so still! Hahaha… MORE! Bring me MORE! |
