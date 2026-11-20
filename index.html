@@ -8403,7 +8403,7 @@ function jamesShoot(dt) {
     const tr = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffd38a, transparent: true, opacity: .9 })); wScene.add(tr);
     setTimeout(() => { wScene.remove(tr); g.dispose(); tr.material.dispose(); }, 70);
     if (Math.hypot(r.x - player.position.x, r.z - player.position.z) < 40) sfx.shot();
-    damageFauna(best, compHit('james', 1.15) * compGap('james', best), true);
+    damageFauna(best, compHit('james', 1.15) * compGap('james', best), true, 'james');
   }
 }
 
@@ -22466,20 +22466,25 @@ const CCB_LINES = {
   nyrexia: { good: ['Finally. Something more exciting than a court banquet.', 'Frozen solid. Don’t tell Vishara I enjoyed that.', 'Ow! Do you know who I am? Rude.', 'Wanderer! Get up. I didn’t slip a hundred bodyguards just to lose you here.', 'Done. Honestly, my sisters would have taken all afternoon.'],
     evil: ['Kneel. Or freeze where you stand. I really don’t mind which.', 'Shatter. Like everything else that disappoints me.', 'You dare touch royal blood? I’ll keep your heart in ice.', 'Up. A princess does not carry her servants.', 'Leave them frozen. A lesson for anyone else who forgets their place.'] }, // a rebel royal / royal contempt
   croxian: { good: ['Contact. Stay on my left, I’ll take the front.', 'Down. I used to do this for Hawthorne. This time it’s for something worth it.', 'I’ve taken worse in basic training. Keep moving.', 'Wanderer, fall back! Nobody else dies on my watch.', 'Clear. Check your corners. Then we breathe.'],
-    evil: ['Run if you like. It’s more fun when I catch you.', 'One more for the ice. It keeps whatever I give it.', 'You cut me. Good. Now I can stop holding back.', 'Get up. I didn’t walk out on Terra Imperia to babysit you.', 'That’s how Terra Imperia did it. Fast, clean, and nobody left to talk.'] } // atoning soldier / the Terra Imperia killer again
+    evil: ['Run if you like. It’s more fun when I catch you.', 'One more for the ice. It keeps whatever I give it.', 'You cut me. Good. Now I can stop holding back.', 'Get up. I didn’t walk out on Terra Imperia to babysit you.', 'That’s how Terra Imperia did it. Fast, clean, and nobody left to talk.'] }, // atoning soldier / the Terra Imperia killer again
+  malia: { good: ['Contact! Fire discipline, people. Pick your targets.', 'Target down. Next.', 'Joder! I’m fine. Keep firing.', 'Wanderer, get down! Covering fire, now!', 'Area secure. Everybody comes home. That’s the rule.'],
+    evil: ['No prisoners. Hawthorne taught me that much.', 'Another one for the report. Nobody will ever read it.', 'Hostia! You’ll pay for that in blood.', 'On your feet, soldier. I don’t carry dead weight. I leave it.', 'Burn what’s left. Leave them nothing to bury.'] }, // the general whose soldiers come home / no prisoners
+  james: { good: ['Right then. Stay close and keep your visor clear.', 'Got him. Not bad for an explorer, eh?', 'Ow! Bloody hell. Still standing.', 'Hold on! I didn’t drag you across the ice just to lose you now.', 'That’s that. Let’s get indoors before the storm finds us.'] }, // Chapter I James: one set, his chart never moves
+  'james-ti': { good: ['Contact. I know how they think. Follow my lead.', 'Down. I used to stand where he’s standing.', 'Just a scratch. I’ve had worse, from people I trusted.', 'Not again! I left you on the ice once. Never again.', 'Clear. Maybe one day you’ll stop watching my hands.'],
+    evil: ['Nothing personal. It never is.', 'Just like old times. Clean, quiet, forgotten.', 'You’ll regret that. Ask the wanderer how I handle regret.', 'Get up. You’re more use to me alive. For now.', 'Done. Shame. I was starting to enjoy the company.'] } // James of Terra Imperia, spared: earning it back / the traitor again
 };
 const CCB_GAP = { start: 0, kill: 14, hurt: 22, low: 30, win: 0 }; // seconds between the same line from the same companion (start and win come once a fight anyway)
 const CCB = { on: false, t: 0, fk: 0, last: -99, cd: {}, vo: {}, hpLow: false };
 const ccbL = id => COMPANIONS.find(c => c.id === id) || AL_EXTRA.find(c => c.id === id);
 function ccbEvil(id) { if (!wanderer) return false; const L = ccbL(id); if (!L) return false; const a = alComp(L).a; return a != null && a <= -34; } // an Awakened Villain
-function ccbRig(id) { const R = id === 'orion' ? world.orion : CREW[id] && CREW[id].R; return R && R.root && R.root.visible && R.root.parent === wScene ? R : null; }
+function ccbRig(id) { const R = id === 'orion' ? world.orion : id === 'james' ? (james.ready ? james : null) : CREW[id] && CREW[id].R; return R && R.root && R.root.visible && R.root.parent === wScene ? R : null; }
 function ccbHere() { const p = player.position; return partyNow().filter(id => { if (!CCB_LINES[id]) return false; const R = ccbRig(id); return !!R && Math.hypot(R.root.position.x - p.x, R.root.position.z - p.z) < 40; }); }
-function ccbVo(id, evil) { const k = 'cmb' + id[0].toUpperCase() + id.slice(1) + (evil ? 'Evil' : '') + 'Voices'; return CCB.vo[k] || (CCB.vo[k] = loadDataScript(k).then(ok => ok ? sfx.loadClips(k) : []).catch(() => [])); }
+function ccbVo(id, evil) { const k = 'cmb' + id.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('') + (evil ? 'Evil' : '') + 'Voices'; /* james-ti → cmbJamesTiVoices */ return CCB.vo[k] || (CCB.vo[k] = loadDataScript(k).then(ok => ok ? sfx.loadClips(k) : []).catch(() => [])); }
 function ccbSay(id, m) {
   if (!CCB_LINES[id] || state !== 'explore' || ex.mode !== 'world' || ex.dlg || cine.on || world.narrating) return false;
   if (time - CCB.last < 3.5) return false; // one of them at a time
   const k = id + ':' + m; if (CCB_GAP[m] && time - (CCB.cd[k] || -99) < CCB_GAP[m]) return false;
-  const evil = ccbEvil(id), i = CCB_M.indexOf(m), line = CCB_LINES[id][evil ? 'evil' : 'good'][i]; if (!line) return false;
+  const evil = ccbEvil(id) && !!CCB_LINES[id].evil, i = CCB_M.indexOf(m), line = CCB_LINES[id][evil ? 'evil' : 'good'][i]; if (!line) return false; // one set only (Chapter I James): always that
   CCB.cd[k] = time; CCB.last = time;
   ccbVo(id, evil).then(vo => { if (state !== 'explore' || ex.dlg) return; const L = ccbL(id); vbark(L ? L.name : PARTY[id].full, line, 2600, (vo || [])[i] || null); });
   return true;
