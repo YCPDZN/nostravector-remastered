@@ -1205,6 +1205,7 @@ body.ch4 .x-card b{color:#ffd6d0;text-shadow:0 0 24px rgba(255,30,20,.5)}
 body.ch4 .touch-ui button,body.ch4 #xAct{border-color:rgba(255,70,60,.55)!important;color:#ffd0c8}
 body.ch4 .bar.sta i{background:#ff8a7e}
 .nav-q{color:#ffc94a;font-weight:500}
+#cc.ingame #ccTabs .tab:not([data-t=species]){display:none} /* the Species Creator opened from the pause menu: species only */
 </style>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
@@ -1417,6 +1418,7 @@ body.ch4 .bar.sta i{background:#ff8a7e}
       <button class="btn small" id="xDelete"><span>Delete save</span></button>
       <button class="btn small" id="xAlign"><span>Alignment</span></button>
       <button class="btn small hidden" id="xDiplo"><span>Diplomacy</span></button>
+      <button class="btn small" id="xSpecies"><span>Species Creator</span></button>
       <button class="btn small hidden" id="xQuests"><span>Side quests</span></button>
       <button class="btn small hidden" id="xResEmp"><span>Resident empires</span></button>
       <button class="btn small hidden" id="xGuilds"><span>Guilds</span></button>
@@ -5436,7 +5438,7 @@ function renderTasks() {
   if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip && !wanderer.ch4.newShip) h = task(true, tiPhone() ? 'Escape the Nostra' : 'Escape the Nostra in a pod') + task(false, tiPhone() ? 'Main quest · Survive · find somewhere to land' : 'Main quest · Survive: you’re adrift in an escape pod · find somewhere to land'); // Chapter IV starts here
   if ((wanderer.chapter | 0) === 4) h = wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip && !wanderer.ch4.newShip ? h : !(wanderer.ch4 && wanderer.ch4.archMet) ? task(false, tiPhone() ? 'Main quest · Meet Archamus (Archiostal)' : 'Main quest · Meet Archamus in the gardens of Archiostal') : !wanderer.ch4.archProj ? task(true, 'Meet Archamus') + task(false, 'Main quest · Hear Archamus out') : !wanderer.ch4.josiahMet ? task(true, 'Meet Archamus') + task(false, tiPhone() ? 'Main quest · Find Josiah Williams II (Earth)' : 'Main quest · Find Josiah Williams II on Earth') : !wanderer.ch4.josiahLight ? task(true, 'Find Josiah Williams II') + task(false, tiPhone() ? 'Main quest · Help Josiah' : 'Main quest · Bring Josiah Williams II back into the light')
     : (() => { const c4 = wanderer.ch4, ph = tiPhone(), W = cathTarget(); // Tallax IV: the base, the rifle, the carapace
-        if (c4.shipClear) return task(true, ph ? 'Retake the Jewel' : 'Retake the Jewel of Archamus') + (c4.zarkDream ? task(!!c4.hakMet, ph ? 'Main quest · Meet Hak (Alphinos)' : 'Main quest · Meet Hak Chompjak in Alphinos, on Aridaxx') + (c4.hakMet ? task(false, 'Main quest · To be continued') : '') : task(false, ph ? 'Main quest · Catch your breath aboard' : 'Main quest · The Jewel is yours · catch your breath aboard'));
+        if (c4.shipClear) return task(true, ph ? 'Retake the Jewel' : 'Retake the Jewel of Archamus') + (c4.zarkDream ? task(!!c4.hakMet, ph ? 'Main quest · Meet Hak (Alphinos)' : 'Main quest · Meet Hak Chompjak in Alphinos, on Aridaxx') + (c4.hakMet ? task(upCount() >= UP_GOAL, ph ? `Main quest · Uplift species (${Math.min(upCount(), UP_GOAL)}/${UP_GOAL})` : `Main quest · Uplift ${UP_GOAL} species (${Math.min(upCount(), UP_GOAL)}/${UP_GOAL})`) + (upCount() >= UP_GOAL ? task(false, 'Main quest · To be continued') : '') : '') : task(false, ph ? 'Main quest · Catch your breath aboard' : 'Main quest · The Jewel is yours · catch your breath aboard'));
         if (c4.cathDone) return task(true, ph ? 'Break the carapace' : 'Break a Catharsis carapace') + task(false, CSF.on ? (ph ? `Main quest · Clear deck ${SHIPI.deck + 1} of 5` : `Main quest · Clear the Catharsis from the Jewel · deck ${SHIPI.deck + 1} of 5`) : ph ? 'Main quest · Back to the Jewel' : 'Main quest · Return to the Jewel · the Catharsis are aboard');
         if (c4.cathRifle) return task(true, 'Take the carapace rifle') + task(false, ph ? 'Main quest · Shoot the Catharsis' : 'Main quest · Break the Catharsis’ carapace with the rifle');
         const done = task(true, 'Bring Josiah Williams II back into the light');
@@ -6429,6 +6431,7 @@ function openAlign(on) {
 $('#alignClose').addEventListener('click', () => { if (state === 'explore') closeModals(); else show($('#alignScr'), false); sfx.click(); });
 $('#xAlign').addEventListener('click', () => openAlign(true));
 $('#xDiplo').addEventListener('click', () => dipOpen(true));
+$('#xSpecies').addEventListener('click', () => ccOpenInGame());
 $('#xResEmp').addEventListener('click', () => { sfx.click(); resEmpOpen(); });
 $('#xGuilds').addEventListener('click', () => { sfx.click(); guildOpen(); });
 $('#xQuests').addEventListener('click', () => sqOpen(true));
@@ -13092,6 +13095,7 @@ const tiPhone = () => document.body.classList.contains('touch');
 const PONT_PAL = [['Imperial black', ''], ['Crimson', '#8a1018'], ['Gold', '#b8902c'], ['Silver', '#9aa3ad'], ['Ivory', '#d8d2c0'], ['Cobalt', '#1f4fa8'], ['Cyan', '#2aa8b8'], ['Emerald', '#1f7a44'], ['Violet', '#5a2a8a'], ['Ash', '#4a4d52']];
 let pontSrcP = null;
 async function pontRig(P) {
+  if (P && P.kind === 'uplift') return upRig(P.sp); // one of your uplifted species
   await glbReady('cpPontifex');
   if (!pontSrcP) pontSrcP = embGlb('cpPontifex');
   const src = await pontSrcP; if (!src) return null;
@@ -13103,8 +13107,8 @@ function sisterShape(m) { // a Sister of Hawthorne: the same armour, cut slimmer
   m.scale.x *= .86; m.scale.z *= .9; const drop = [];
   m.traverse(o => { if (/horn/i.test((o.name || '').replace(/_/g, ' '))) drop.push(o); }); for (const o of drop) if (o.parent) o.parent.remove(o);
 }
-const pontTitle = P => P && P.sex === 'f' ? 'Sister of Hawthorne' : 'Pontifex Maximus';
-const pontHe = P => P && P.sex === 'f' ? ['she', 'her', 'her'] : ['he', 'him', 'his'];
+const pontTitle = P => P && P.kind === 'uplift' ? `Uplifted ${P.spName || 'species'}` : P && P.sex === 'f' ? 'Sister of Hawthorne' : 'Pontifex Maximus';
+const pontHe = P => P && P.kind === 'uplift' ? ['they', 'them', 'their'] : P && P.sex === 'f' ? ['she', 'her', 'her'] : ['he', 'him', 'his'];
 const huntSlotFree = sex => !PONTS().some(o => o.st === 'hunt' && (o.sex || 'm') === sex); // one Pontifex and one Sister hunting you at a time
 const PONT_MAX_LV = 100;
 function pontPaint(root, col) { // the armour plates take his colour; the crimson trim, the reactor heart and the visor stay Terra Imperia's
@@ -16149,7 +16153,7 @@ function pontToResident(id) {
   if (residents.length >= MAX_RESIDENTS) { lootMsg(`The world already has ${MAX_RESIDENTS} residents`, '#ff8f86'); return; }
   const base = JSON.parse(JSON.stringify(curChar() || wanderer));
   for (const k of ['party', 'ponts', 'dip', 'place', 'lairs', 'cmds', 'aboard', 'dungeon', 'ch1', 'ch2', 'ch3', 'orion', 'persona', 'resSp', 'look', 'gear']) delete base[k];
-  residents.push(Object.assign(base, { id: ccId(), name: P.name, species: 'human', identity: P.sex === 'f' ? 'female' : 'male', resSp: P.sex === 'f' ? 'sister' : 'pontifex', pontCol: P.col || '', sentAt: Date.now(), persona: null, align: undefined }));
+  residents.push(Object.assign(base, P.kind === 'uplift' ? { id: ccId(), name: P.name, species: 'human', identity: 'other', resSp: 'uplift', resUp: P.sp, sentAt: Date.now(), persona: null, align: undefined } : { id: ccId(), name: P.name, species: 'human', identity: P.sex === 'f' ? 'female' : 'male', resSp: P.sex === 'f' ? 'sister' : 'pontifex', pontCol: P.col || '', sentAt: Date.now(), persona: null, align: undefined }));
   wanderer.ponts = PONTS().filter(o => o !== P); wanderer.party = (wanderer.party || []).filter(x => x !== 'pont:' + id); pontDrop('pont:' + id); pontSave(); refreshJamesUI();
   sfx.chime(); notice(pontTitle(P), `${P.name.toUpperCase()} NOW LIVES IN THIS WORLD · A RESIDENT`, 3600);
 }
@@ -16159,8 +16163,8 @@ async function resPontModel(c) {
   return { m: R.root, L: { ra: R.ra, la: R.la, rl: R.rl, ll: R.ll }, human: false, tared: true };
 }
 function dipPontCard() {
-  const all = PONTS(); if (!pontOpen() && !all.length) return '';
-  const allies = all.filter(o => o.st === 'ally'), hunters = all.filter(o => o.st === 'hunt'), esc = s => String(s).replace(/[<>&"]/g, '');
+  const all = PONTS().filter(o => o.kind !== 'uplift'); if (!pontOpen() && !all.length) return '';
+  const allies = all.filter(o => o.st === 'ally' && o.kind !== 'uplift'), hunters = all.filter(o => o.st === 'hunt'), esc = s => String(s).replace(/[<>&"]/g, ''); // uplifted species have a card of their own
   let h = `<div class="dip-card" style="--fc:#d0343a"><h4>PONTIFEX MAXIMUS · SISTERS OF HAWTHORNE<small>${allies.length} in your service${hunters.length ? ` · ${hunters.length} hunting you` : ''}</small></h4><p>Beat a Terra Imperia soldier anywhere in Sol and anoint them: a man rises as a Pontifex Maximus, a woman as a Sister of Hawthorne. One of each can hunt you at a time, on the ground and in space, and they grow far stronger every time they kill you (up to lv 100), so deal with them early. Beat them again to take them into your crew, as many as you like. Once Terra Imperia is gone, the guard of a resident empire ruled by one of them can still be anointed.</p>`;
   for (const P of allies) {
     const on = (wanderer.party || []).includes('pont:' + P.id), A = alComp(pontAlL(P));
@@ -16181,6 +16185,86 @@ function dipPontClick(a, b) {
   else return false;
   dipRender(); return true;
 }
+/* ---- uplift (Chapter IV, from Hak Chompjak in Alphinos): a species you made in the Species Creator becomes a people. Each takes
+   one of three paths: CREW (a companion that fights at your side: wanderer.ponts, kind 'uplift', which can also become a resident),
+   GOVERNOR (appointed to one of your colonies; governors can now also be residents, or any uplifted species) or EMPIRE (a resident
+   empire under a name you choose, founded on an unclaimed world, that is your puppet: e.pup). wanderer.uplift keeps a copy of
+   each species, so deleting it from the creator later changes nothing. Five complete the quest (UP_GOAL). */
+const UP_GOAL = 5;
+const UPS = () => (wanderer && wanderer.uplift) || [];
+const upCount = () => UPS().length;
+const upQ = () => (wanderer.chapter | 0) === 4 && !!(wanderer.ch4 && wanderer.ch4.hakMet) && upCount() < UP_GOAL;
+const upOpen = () => !!(wanderer && ((wanderer.ch4 && wanderer.ch4.hakMet) || upCount()));
+const upById = id => UPS().find(o => o.id === id);
+function upSpModel(sp, h) { // one of your species, stood at a height: the crew, residents and governors use this
+  const m = buildSpecies(sp), wrap = new THREE.Group(); wrap.add(m);
+  const bb = new THREE.Box3().setFromObject(m), H = Math.max(.2, bb.max.y - bb.min.y), k = (h || (sp.legs === 2 ? 1.85 : 1.35)) / H;
+  m.scale.multiplyScalar(k); m.position.y = -bb.min.y * k; wrap.userData.spAnim = m; m.traverse(o => { if (o.isMesh) o.castShadow = true; }); return wrap;
+}
+function upRig(sp) { const root = new THREE.Group(), model = upSpModel(sp); root.add(model); return { root, model, turn: model, rest: new Map(), t: 0, mode: 'idle', weapon: 'none', gear: [], spec: model.userData.spAnim, up: true }; }
+function upSave() { const c = curChar(); if (c) { c.uplift = wanderer.uplift; c.ponts = wanderer.ponts; c.party = wanderer.party; c.dip = wanderer.dip; } saveRoster(); }
+function upDone(rec, title, sub) {
+  wanderer.uplift = [...UPS(), rec]; upSave(); renderTasks(); sfx.chime(); notice(title, sub, 4200);
+  const n = upCount(); setTimeout(() => { if (n === UP_GOAL && (wanderer.chapter | 0) === 4) { notice('Main quest', `${UP_GOAL} SPECIES UPLIFTED`, 4200); gainXP(2500, 'Uplift five species'); } else if (n < UP_GOAL) lootMsg(`${n} of ${UP_GOAL} species uplifted`, '#b07aff'); }, 4600);
+}
+function upResident(sp, name, extra) { // a person of the species, living in the world
+  if (residents.length >= MAX_RESIDENTS) return null;
+  const base = JSON.parse(JSON.stringify(curChar() || wanderer));
+  for (const k of ['party', 'ponts', 'dip', 'place', 'lairs', 'cmds', 'aboard', 'dungeon', 'ch1', 'ch2', 'ch3', 'ch4', 'orion', 'persona', 'resSp', 'look', 'gear', 'uplift']) delete base[k];
+  const c = Object.assign(base, { id: ccId(), name, species: 'human', identity: 'other', resSp: 'uplift', resUp: JSON.parse(JSON.stringify(sp)), sentAt: Date.now(), persona: null, align: undefined }, extra || {});
+  residents.push(c); return c;
+}
+function upUplift(spId, path, opt) {
+  const sp = ccData.species.find(o => o.id === spId); if (!sp) { lootMsg('Pick one of your species first', '#ff8f86'); return; }
+  if (UPS().some(o => o.spId === spId)) { lootMsg(`${titleName(sp.name)} have already been uplifted`, '#ff8f86'); return; }
+  const copy = JSON.parse(JSON.stringify(sp)), nm = titleName(sp.name), rec = { id: ccId(), spId, name: nm, sp: copy, path, at: Date.now() };
+  if (path === 'crew') {
+    const P = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), kind: 'uplift', name: `${nm} Champion`, sp: copy, spName: nm, col: '', lv: Math.min(PONT_MAX_LV, plvNow()), st: 'ally', made: Date.now() };
+    wanderer.ponts = [...PONTS(), P]; wanderer.party = [...new Set([...(wanderer.party || []), 'pont:' + P.id])];
+    const st = alState(); st.c['pont:' + P.id] = { a: 0, inf: 30 }; alSave(); rec.pont = P.id; pontSave(); syncCrewParty(); placeCrew().catch(() => null);
+    upDone(rec, 'Uplifted', `THE ${nm.toUpperCase()} JOIN YOUR CREW`); compJoinNotice('pont:' + P.id, 4800);
+  } else if (path === 'gov') {
+    const D = dip(), pid = opt.col; if (!pid || !D.col[pid]) { lootMsg('Choose one of your colonies for them to govern', '#ff8f86'); return; }
+    rec.col = pid; D.col[pid].gov = 'up:' + rec.id; dipSave();
+    upDone(rec, 'Uplifted', `THE ${nm.toUpperCase()} GOVERN ${bodyById(pid).name.toUpperCase()}`);
+  } else if (path === 'emp') {
+    const en = String(opt.name || '').trim().slice(0, 40); if (!en) { lootMsg('Name their empire first', '#ff8f86'); return; }
+    const free = resFreeWorlds(); if (!free.length) { lootMsg('There are no unclaimed worlds left for them to settle', '#ff8f86'); return; }
+    const c = upResident(copy, `${nm} Sovereign`, { upEmp: true }); if (!c) { lootMsg(`The world already has ${MAX_RESIDENTS} residents · make room for their sovereign first`, '#ff8f86'); return; }
+    const home = sysById('steca'), cap = free.sort((p, q) => galDist(sysById(p.sys), home) - galDist(sysById(q.sys), home))[0];
+    resEmp.emp[c.id] = { id: c.id, name: en, col: [cap.id], cap: cap.id, since: resNow(), over: null, trib: null, res: false, lostTo: {}, pup: true };
+    resEmpLog(`${en} was founded on ${cap.name} by the uplifted ${nm}, a puppet of ${wanderer.name}`); rec.emp = c.id; rec.empName = en;
+    if (state === 'space' || GAL.open) applyChapterFactions();
+    upDone(rec, en, `FOUNDED ON ${cap.name.toUpperCase()} · YOUR PUPPET`);
+  }
+  dipRender();
+}
+function dipUpCard() {
+  if (!upOpen()) return ''; const esc = ccEsc, D = dip(), done = UPS(), left = ccData.species.filter(sp => !done.some(o => o.spId === sp.id)), cols = Object.keys(D.col).filter(id => bodyById(id));
+  const allies = PONTS().filter(o => o.kind === 'uplift' && o.st === 'ally');
+  let h = `<div class="dip-card" style="--fc:#b07aff"><h4>UPLIFT<small>${Math.min(done.length, UP_GOAL)} of ${UP_GOAL} species uplifted${done.length > UP_GOAL ? ` · ${done.length} in all` : ''}</small></h4>
+    <p>Hak Chompjak’s plan: make a species in the Species Creator (pause menu → Species Creator), then uplift it here. Each takes one path: it joins your <b>crew</b> and fights at your side, it <b>governs</b> one of your colonies, or it founds an <b>empire</b> under a name you choose, as your puppet.</p>`;
+  if (!left.length) h += `<p style="color:var(--mute)">${ccData.species.length ? 'Every species you have made is uplifted. Make another in the Species Creator.' : 'You haven’t made a species yet. Make one in the Species Creator.'}</p>`;
+  else h += `<div class="dip-row" style="flex-wrap:wrap;gap:8px"><select class="dip-in" data-a="upSp" style="flex:1 1 160px">${left.map(sp => `<option value="${sp.id}"${DIPV.upSp === sp.id ? ' selected' : ''}>${esc(titleName(sp.name))}</option>`).join('')}</select>
+      <select class="dip-in" data-a="upPath" style="flex:1 1 160px">${[['crew', 'Crew · fights at your side'], ['gov', 'Governor of a colony'], ['emp', 'Their own empire · your puppet']].map(([v, t]) => `<option value="${v}"${(DIPV.upPath || 'crew') === v ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
+    ${DIPV.upPath === 'gov' ? `<div class="dip-row"><select class="dip-in" data-a="upCol" style="flex:1">${cols.length ? cols.map(id => `<option value="${id}">${esc(bodyById(id).name)}${D.col[id].gov ? ` (replaces ${esc(govName(D.col[id].gov))})` : ''}</option>`).join('') : '<option value="">No colonies yet: land on an unclaimed world to colonise it</option>'}</select></div>` : ''}
+    ${DIPV.upPath === 'emp' ? `<div class="dip-row"><input class="dip-in" data-a="upEmpName" placeholder="Name their empire" maxlength="40" style="flex:1"></div>` : ''}
+    <div class="dip-row"><button class="btn small" data-a="upGo"><span>Uplift them</span></button></div>`;
+  for (const r of done) {
+    const P = r.pont && pontById(r.pont), e = r.emp && resEmp.emp[r.emp], what = r.path === 'crew' ? (P ? `In your crew · ${esc(P.name)}` : 'Was in your crew') : r.path === 'gov' ? (dip().col[r.col] && dip().col[r.col].gov === 'up:' + r.id ? `Governs ${esc(bodyById(r.col).name)}` : 'Governor, between postings') : (e ? `${esc(e.name)} · ${e.col.length} world${e.col.length > 1 ? 's' : ''} · your puppet` : `${esc(r.empName || 'Their empire')} has fallen`);
+    h += `<div class="dip-row" style="border-top:1px solid var(--faint);padding:8px 0;justify-content:space-between"><span style="font-size:10px;letter-spacing:.16em">${esc(r.name).toUpperCase()}<br><small style="color:#c9a8ff;letter-spacing:.14em;font-size:8px;text-transform:uppercase">${what}</small></span></div>`;
+  }
+  for (const P of allies) { const on = (wanderer.party || []).includes('pont:' + P.id);
+    h += `<div style="border-top:1px solid var(--faint);padding:10px 0"><div style="font-size:8px;letter-spacing:.22em;color:var(--mute);margin-bottom:6px;text-transform:uppercase">${pontTitle(P)} · lv ${compLevel('pont:' + P.id)}</div><div class="dip-row" style="flex-wrap:wrap"><input class="dip-in" data-a="pontNameIn" data-p="${P.id}" value="${esc(P.name)}" maxlength="28" style="min-width:0;flex:1 1 140px"><button class="btn small" data-a="pontRename" data-p="${P.id}"><span>Rename</span></button></div>
+      <div class="dip-row" style="flex-wrap:wrap;margin-top:8px"><button class="btn small" data-a="pontParty" data-p="${P.id}"><span>${on ? `Leave them on ${theShip()}` : 'Bring them aboard'}</span></button><button class="btn small" data-a="pontRes" data-p="${P.id}"><span>${DIPV.pontRes === P.id ? 'Tap again: they live in the world for good (takes a resident slot)' : 'Make them a resident'}</span></button></div></div>`; }
+  return h + `</div>`;
+}
+function dipUpClick(a) {
+  if (a !== 'upGo') return false;
+  const v = k => { const el = $(`#dipBody [data-a="${k}"]`); return el ? el.value : ''; };
+  upUplift(v('upSp'), v('upPath') || 'crew', { col: v('upCol'), name: v('upEmpName') }); return true;
+}
+function dipUpChange(t) { const a = t.dataset.a; if (a === 'upPath') { DIPV.upPath = t.value; DIPV.upSp = ($('#dipBody [data-a="upSp"]') || {}).value; dipRender(); return true; } if (a === 'upSp') { DIPV.upSp = t.value; return true; } return a === 'upCol' || a === 'upEmpName'; }
 function dipPontChange(t) { if (t.dataset.a !== 'pontColPick') return false; const P = pontById(t.dataset.p); if (!P) return true; P.col = t.value; pontSave(); pontRefresh(P.id); dipRender(); return true; }
 
 // ---- the cutscene: Hawthorne raises James Brown from the Southern Ocean. A brutal reconstruction, played as horror: James wakes on the
@@ -19123,6 +19207,7 @@ function ch4Goal() { // Chapter IV in flight: the same main quest as on foot (po
   if (!c4.josiahLight) return atm('earth') ? (ph ? 'Help Josiah · land on Earth' : 'Bring Josiah Williams II back into the light · land on Earth') : SPC.sys === 'sol' ? (ph ? 'Help Josiah · fly to Earth' : 'Bring Josiah Williams II back into the light · fly to Earth and land') : (ph ? 'Help Josiah · warp to Sol' : 'Bring Josiah Williams II back into the light · warp to Sol, then land on Earth');
   if (c4.shipClear && !c4.zarkDream) return ph ? 'Catch your breath aboard' : 'The Jewel is yours · catch your breath aboard';
   if (hakMeetQ()) return atm('aridaxx') ? (ph ? 'Hak · land in Alphinos' : 'Meet Hak Chompjak · fly to Alphinos (its marker) and land') : SPC.sys === 'steca' ? (ph ? 'Hak · fly to Aridaxx, land' : 'Meet Hak Chompjak in Alphinos · fly to Aridaxx (the gold marker) and land') : (ph ? 'Hak · warp to Steca Prime' : 'Meet Hak Chompjak in Alphinos · warp to Steca Prime, in the galaxy’s core');
+  if (upQ()) return ph ? `Uplift species · ${upCount()}/${UP_GOAL}` : `Uplift ${UP_GOAL} species · ${upCount()}/${UP_GOAL} · Species Creator, then Diplomacy → Crew`;
   if (c4.shipClear) return 'To be continued';
   if (c4.cathDone) return ph ? 'Board the Jewel · walk her decks' : 'The Catharsis are aboard · leave the helm and walk her decks (they wait in the hangar)';
   const W = cathTarget(); if (!W) return ph ? 'Catharsis world · the galaxy’s core' : 'Explore the Catharsis world · warp into Catharsis space, at the galaxy’s core';
@@ -21579,7 +21664,7 @@ const dipRes = id => (dip().res[id] || {}).st || null;
 const dipLentRes = to => to && to.startsWith('res:') ? to.slice(4) : null;
 function dipLentName(to) { const r = dipLentRes(to); if (r) return (resEmp.emp[r] || {}).name || 'a fallen resident empire'; const F = to && DIP_FAC.find(f => f.id === to.replace('lead:', '')); return F ? dipFacName(F) : '?'; }
 const dipFacName = F => { const r = dip().res[F.id]; return r && r.st === 'subjugated' && r.resist ? `The ${F.species} Resistance` : r && r.name ? r.name : F.name; };
-const govName = g => !g ? null : g.startsWith('comp:') ? compName(g.slice(5)) : g.slice(5);
+const govName = g => !g ? null : g.startsWith('comp:') ? compName(g.slice(5)) : g.startsWith('res:') ? ((typeof resById === 'function' && resById(g.slice(4))) || { name: 'a resident who has left' }).name : g.startsWith('up:') ? `the ${((UPS().find(r => r.id === g.slice(3))) || { name: 'uplifted' }).name}` : g.slice(5); // a companion, a resident, an uplifted species, or a name
 const titleName = n => String(n).toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 // lay colonies, puppets, restorations and occupations over the chapter's own flags
 function dipOverlay() {
@@ -22710,7 +22795,7 @@ function dipRender() {
       const es = Object.values(resEmp.emp).filter(e => resRuler(e)), alN = { hero: 'Hero', neutral: 'Neutral', villain: 'Villain' };
       h += `<div class="dip-card" style="--fc:#9fe6ff"><h4>RESIDENT EMPIRES<small>${es.length ? es.length + ' standing' : resEmp.on ? 'none yet' : 'founding is off'}</small></h4><p>${es.length ? 'Empires your residents have carved out of the frontier. Offer them a companion from the Crew tab, set them on each other, or make them stand down.' : resEmp.on ? 'Residents found empires on unclaimed worlds from level 35. None has yet.' : 'Residents only found empires if you switch it on.'}</p><div class="dip-row"><button class="btn small" data-a="resOpen"><span>Open Resident empires</span></button></div></div>`;
       for (const e of es) {
-        const c = resRuler(e), st = e.res ? 'A resistance, with no worlds' : e.over && resEmp.emp[e.over] ? `Puppet of ${resEmp.emp[e.over].name}` : e.trib && resEmp.emp[e.trib] ? `Pays tribute to ${resEmp.emp[e.trib].name}` : 'Independent';
+        const c = resRuler(e), st = e.pup ? `Your puppet · the uplifted ${ccEsc(titleName((c && c.resUp && c.resUp.name) || 'species'))}` : e.res ? 'A resistance, with no worlds' : e.over && resEmp.emp[e.over] ? `Puppet of ${resEmp.emp[e.over].name}` : e.trib && resEmp.emp[e.trib] ? `Pays tribute to ${resEmp.emp[e.trib].name}` : 'Independent';
         const wars = resEmp.wars.filter(w => w.a === e.id || w.b === e.id).map(w => (resEmp.emp[w.a === e.id ? w.b : w.a] || {}).name).filter(Boolean), lentHere = Object.keys(D.lent).filter(k => D.lent[k] === 'res:' + e.id);
         h += `<div class="dip-card" style="--fc:${resHex(resEmpCol(e))}"><h4>${reEsc(e.name).toUpperCase()}<small>${st}${wars.length ? ' · at war' : ' · at peace'}</small></h4><p>Led by <b>${reEsc(c.name)}</b> (resident, LV ${resLevel(c)}, ${alN[resAl(c)]}) · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars.length ? ` · at war with ${wars.map(reEsc).join(' and ')}` : ''}${lentHere.length ? ` · serving them: ${lentHere.map(compName).join(', ')}` : ''}</p><div class="dip-row"><button class="btn small" data-a="resChallenge" data-r="${e.id}"><span>Challenge ${reEsc(c.name)} (lv ${resLevel(c)})</span></button><button class="btn small" data-a="resDisband" data-r="${e.id}"><span>${DIPV.resDisband === e.id ? 'Tap again: demand they disband' : 'Demand they disband'}</span></button></div></div>`;
       }
@@ -22726,7 +22811,7 @@ function dipRender() {
       const P = bodyById(pid); if (!P) continue; const g = C.gov || '';
       h += `<div class="dip-card" style="--fc:#ffd36a"><h4>${P.name.toUpperCase()}<small>${sysById(P.sys).name}${C.siege ? ' · won at the siege of Carax' : C.from ? ` · taken from ${DIP_FAC.find(f => f.id === C.from).name}` : ' · colonised'}</small></h4>
         <p>${C.gov ? `Governor <b>${govName(C.gov)}</b>. Loyal, content, and never a word of complaint.` : 'No governor yet.'}</p>
-        <div class="dip-row"><select class="dip-in" data-a="gov" data-p="${pid}"><option value="">No governor</option>${comps.map(id => `<option value="comp:${id}"${g === 'comp:' + id ? ' selected' : ''}>${compName(id)} (companion)</option>`).join('')}${g.startsWith('name:') ? `<option value="${g.replace(/"/g, '&quot;')}" selected>${g.slice(5)}</option>` : ''}</select>
+        <div class="dip-row"><select class="dip-in" data-a="gov" data-p="${pid}"><option value="">No governor</option>${comps.map(id => `<option value="comp:${id}"${g === 'comp:' + id ? ' selected' : ''}>${compName(id)} (companion)</option>`).join('')}${residents.slice(0, 60).map(c => `<option value="res:${c.id}"${g === 'res:' + c.id ? ' selected' : ''}>${ccEsc(c.name)} (resident)</option>`).join('')}${UPS().filter(r => r.path === 'gov').map(r => `<option value="up:${r.id}"${g === 'up:' + r.id ? ' selected' : ''}>The ${ccEsc(r.name)} (uplifted)</option>`).join('')}${g.startsWith('name:') ? `<option value="${g.replace(/"/g, '&quot;')}" selected>${g.slice(5)}</option>` : ''}</select>
         <input class="dip-in" data-a="govName" data-p="${pid}" placeholder="…or name a governor" maxlength="32"><button class="btn small" data-a="govSet" data-p="${pid}"><span>Appoint</span></button></div></div>`;
     }
   } else if (DIPV.tab === 'crew') {
@@ -22747,13 +22832,14 @@ function dipRender() {
     for (const c of dipChars()) { const on = (wanderer.party || []).includes(c.id); h += `<div class="dip-row" style="justify-content:space-between;border-top:1px solid var(--faint);padding:8px 0"><span style="font-size:10px;letter-spacing:.16em">${c.name}<br><small style="color:var(--mute);letter-spacing:.2em;font-size:8px;text-transform:uppercase">${c.game || 'Your creation'} · ${c.title || ''}</small></span><button class="btn small" data-a="${on ? 'dismiss' : 'recruit'}" data-c="${c.id}"${on && D.lent[c.id] ? ' disabled' : ''}><span>${on ? 'Send home' : 'Bring aboard'}</span></button></div>`; }
     h += `</div>`;
   }
-  if (DIPV.tab === 'crew') h += dipPontCard();
+  if (DIPV.tab === 'crew') h += dipUpCard() + dipPontCard();
   el.innerHTML = h;
 }
 function dipClick(e) {
   const b = e.target.closest('[data-a]'); if (!b || b.disabled || b.tagName === 'SELECT' || b.tagName === 'INPUT') return;
   const D = dip(), a = b.dataset.a, f = b.dataset.f, cb = b.dataset.cb, id = b.dataset.c, pid = b.dataset.p;
   if (a && a.startsWith('pont') && dipPontClick(a, b)) return;
+  if (a && a.startsWith('up') && dipUpClick(a)) return;
   if (a === 'ask') DIPV.confirm = { f, cb };
   else if (a === 'cancel') DIPV.confirm = null;
   else if (a === 'declare') { DIPV.confirm = null; dipDeclare(f, cb); }
@@ -22775,7 +22861,7 @@ function dipClick(e) {
 }
 function dipChange(e) {
   const t = e.target, a = t.dataset.a, D = dip();
-  if (dipPontChange(t)) return;
+  if (dipPontChange(t) || dipUpChange(t)) return;
   if (a === 'gov') { D.col[t.dataset.p].gov = t.value || null; dipSave(); dipRender(); }
   else if (a === 'setLeader' && DIPV.settle) DIPV.settle.leader = t.value;
   else if (a === 'setName' && DIPV.settle) DIPV.settle.name = t.value;
@@ -23857,12 +23943,29 @@ async function eggTalk(E) {
 // Chapter IV: Hak in Alphinos, two years on (CH4HAKALPHINOS1–2, data/hak4Voices.js)
 const HAK4 = ['Two years, wanderer. They told me you were dead. I have learned not to believe that sort of thing about the people who matter.',
   'The Catharsis took every Grek world while you slept. Alphinos still stands, and I mean to keep it that way.'];
+// Chapter IV, after Lord Zark's nightmare: Hak sets you the uplift (CH4HAKUPLIFT1–7, data/hakUpVoices.js when recorded)
+const HAK_UP = ['So. He came to you as well. Zark sits on his throne on Carax and laughs at every one of us. He is right to. We cannot beat him as we are.',
+  'His brood is a million claws with one mind behind them. Ours must be many minds, many peoples, standing together.',
+  'The Chompy Empire was not built by Emperors alone. It was built by every people who chose to stand beside us.',
+  'You have a gift, wanderer. I have seen the creatures you dream up and breathe life into. Make five of them. Five new peoples.',
+  'Then uplift them. Give them minds, tools, the stars. Some will fight at your side. Some will govern your worlds while you are away.',
+  'And some will build empires of their own, under any name you give them, and fly your banner. A puppet empire is still an empire, and Zark will have to count it.',
+  'Five species, wanderer. Uplift them, and then we talk about Carax.'];
+async function hakUpTalk() {
+  const vo = await loadDataScript('hakUpVoices').then(ok => ok ? sfx.loadClips('hakUpVoices') : []).catch(() => []);
+  if (state !== 'explore' || ex.dlg) return;
+  openDialog(tiPhone() ? 'HAK CHOMPJAK V' : 'HAK CHOMPJAK V · EMPEROR OF THE CHOMPY EMPIRE', HAK_UP, false, () => {
+    wanderer.ch4 = Object.assign({}, wanderer.ch4, { hakMet: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); renderTasks();
+    notice('Main quest', `UPLIFT ${UP_GOAL} SPECIES`, 4200); sfx.chime();
+    setTimeout(() => lootMsg(tiPhone() ? 'Make species in the Species Creator · uplift them in Diplomacy → Crew' : 'Make species in the Species Creator (pause menu), then uplift them in Diplomacy → Crew', '#b07aff'), 2200);
+  }, vo || []);
+}
 async function hak4Talk() {
   const vo = await loadDataScript('hak4Voices').then(ok => ok ? sfx.loadClips('hak4Voices') : []).catch(() => []);
   if (state !== 'explore' || ex.dlg) return; openDialog(tiPhone() ? 'HAK CHOMPJAK V' : 'HAK CHOMPJAK V · EMPEROR OF THE CHOMPY EMPIRE', HAK4, false, null, vo || []);
 }
 function giverTalk(G) {
-  if (G.leader === 'hak' && hakMeetQ()) { wanderer.ch4 = Object.assign({}, wanderer.ch4, { hakMet: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); renderTasks(); } // Chapter IV's main quest: you've met him
+  if (G.leader === 'hak' && hakMeetQ()) { hakUpTalk(); return; } // Chapter IV's main quest: Hak sets you the uplift
   if (G.josiah && G.jos3) { jos3Talk(); return; }
   if (G.josiah) { josiahTalk(); return; }
   { const E = eggFor(G.arch3 || G.leader === 'archamus' ? 'archamus' : G.leader === 'hak' ? 'hak' : ''); if (E) { eggTalk(E); return; } } // Josiah Richards or Lord Sevirrus is with you: the hidden conversation first
@@ -27301,6 +27404,7 @@ function compWalkPose(t, walk) {
   const b = Math.sin(t * 1.6); return { rl: 0, ll: 0, rk: 0, lk: 0, ra: b * .04, la: -b * .04, raz: -.04, laz: .04 };
 }
 function animRig(R, dt) {
+  if (R.spec) { R.t += dt; animSpecies(R.spec, R.t, R.mode === 'walk'); R.spec.position.z = R.mode === 'attack' ? Math.max(0, Math.sin(R.t * 7)) * .35 : 0; return; } // an uplifted species: its own gait, and it lunges to attack
   R.t += dt; const t = R.t;
   const S = (o, ax, v) => { if (o) o.rotation[ax] = R.rest.get(o)[ax] + v; };
   const W = R.weapon, guns = W === 'rifle' || W === 'pistols', walk = R.mode === 'walk', atk = R.mode === 'attack';
@@ -27867,9 +27971,14 @@ function ccOpen() {
   state = 'cc'; show(ui.title, false); show(ccUI.root, true);
   cc.cur = null; cc.dirty = false; ccTab(cc.tab); resize();
 }
+function ccOpenInGame() { // from the pause menu: the Species Creator over your game; Back returns you to the pause menu (only the Species tab, so nothing in it can pull you out of your game)
+  if (state !== 'xpaused') return; sfx.click(); cc.fromGame = true; ccUI.root.classList.add('ingame'); show(ui.xpause, false);
+  state = 'cc'; show(ccUI.root, true); cc.cur = null; cc.dirty = false; ccTab('species'); resize();
+}
 function ccClose() {
   if (cc.cur && cc.dirty && cc.arm !== 'leave') { cc.arm = 'leave'; ccMsg('Unsaved changes — tap Back again to discard them', true); return; }
   cc.arm = null; ccClear(); show(ccUI.root, false);
+  if (cc.fromGame) { cc.fromGame = false; ccUI.root.classList.remove('ingame'); state = 'xpaused'; show(ui.xpause, true); resize(); clock.getDelta(); return; } // back to your paused game
   state = 'title'; show(ui.title, true); goMenu('mMain'); resize();
 }
 function ccTab(t) {
@@ -29389,7 +29498,7 @@ function resGroundOk() {
 const RES_TARED = { label: 'Taredesiban', src: null };
 function resIsTared(c) { return !!(c && (c.resSp === 'taredesiban' || (!c.resSp && c.species === 'taredesiban'))); } // a resident made Taredesiban, or a Taredesiban wanderer sent into the world // function declarations: the roster can ask before this part of the file has run
 function resIsPont(c) { return !!(c && (c.resSp === 'pontifex' || c.resSp === 'sister')); }
-function resSpLabel(c) { return resIsTared(c) ? 'Taredesiban' : c && c.resSp === 'pontifex' ? 'Pontifex Maximus' : c && c.resSp === 'sister' ? 'Sister of Hawthorne' : SPECIES[spOf(c)].label; }
+function resSpLabel(c) { return c && c.resSp === 'uplift' ? `Uplifted ${titleName((c.resUp && c.resUp.name) || 'species')}` : resIsTared(c) ? 'Taredesiban' : c && c.resSp === 'pontifex' ? 'Pontifex Maximus' : c && c.resSp === 'sister' ? 'Sister of Hawthorne' : SPECIES[spOf(c)].label; }
 async function resTaredModel() {
   if (!RES_TARED.src) RES_TARED.src = loadDataScript('taredGlb', 'glb').then(() => embGlb('taredGlb'));
   const src = await RES_TARED.src; if (!src) return null;
@@ -29400,6 +29509,7 @@ async function resTaredModel() {
 async function resModel(c) {
   if (c && c.resSp === 'taredesiban' && c.species !== 'taredesiban') return resTaredModel(); // an old-style Taredesiban resident
   if (resIsPont(c)) return resPontModel(c);
+  if (c && c.resSp === 'uplift' && c.resUp) { const m = upSpModel(c.resUp); if (tiPhone()) m.traverse(o => { if (o.isMesh) o.castShadow = false; }); return { m, L: {}, human: false, tared: true }; } // one of your uplifted species
   const sp = spOf(c);
   if (sp === 'human') { if (!look.ready) return null; } else if (!(await loadSpecies(sp))) return null;
   const held = ex.held && ex.held.parent ? ex.held : null, hp = held && held.parent; if (hp) hp.remove(held);
@@ -30189,6 +30299,7 @@ function resGift(B) {
 }
 // limbs, the same way the player's own are moved
 function resAnim(B, dt) {
+  if (B.body && B.body.userData.spAnim) { animSpecies(B.body.userData.spAnim, time + B.id.length, B.speed > .2); return; } // an uplifted species walks on its own legs
   const L = B.L; if (!L || !L.ra) return;
   const down = B.human ? HUMAN_ARMS_DOWN : 0, t = time + B.id.length;
   const set = (o, x, z) => { if (o) { o.rotation.x = lerp(o.rotation.x, x, Math.min(1, dt * 12)); if (z != null) o.rotation.z = lerp(o.rotation.z, z, Math.min(1, dt * 10)); } };
@@ -30586,7 +30697,7 @@ function resGearText(c) { const g = resGear(c), ids = Object.values(g); if (!ids
   return Object.entries(sets).map(([n, k]) => `${n} ×${k}`).join(' · ') + ` (${Math.round(resGearDef(g) * 100)}%)`; }
 function resGearDress(B) { // their armour on their own body
   for (const o of B.armor || []) if (o.parent) o.parent.remove(o);
-  B.armor = []; if (!B.body || !B.L || resIsTared(B.c) || resIsPont(B.c)) return; // a Taredesiban wears their people's armour (and a Pontifex his own)
+  B.armor = []; if (!B.body || !B.L || resIsTared(B.c) || resIsPont(B.c) || B.c.resSp === 'uplift') return; // a Taredesiban wears their people's armour (and a Pontifex his own)
   B.gearKey = resGearKey(B.c);
   try { B.armor = armorBuild(resGear(B.c), B.c, B.body, B.L); } catch (e) { console.error(e); }
 }
@@ -31786,7 +31897,7 @@ function resEmpOverlay() {
   const D = wanderer.dip ? wanderer.dip.col || {} : {}, held = new Map(), realm = typeof realmName === 'function' ? realmName() : 'Your realm';
   for (const e of Object.values(resEmp.emp)) {
     const c = resRuler(e); if (!c) continue;
-    const st = e.over && resEmp.emp[e.over] ? ` · puppet of ${resEmp.emp[e.over].name}` : e.trib && resEmp.emp[e.trib] ? ` · tributary of ${resEmp.emp[e.trib].name}` : ` · resident empire of ${c.name}`;
+    const st = e.pup ? ` · your puppet` : e.over && resEmp.emp[e.over] ? ` · puppet of ${resEmp.emp[e.over].name}` : e.trib && resEmp.emp[e.trib] ? ` · tributary of ${resEmp.emp[e.trib].name}` : ` · resident empire of ${c.name}`;
     for (const id of e.col) { const P = bodyById(id); if (!P || D[id]) continue; P.faction = `${e.name}${id === e.cap ? ' · capital' : ''}${st}`; P.traders = null; held.set(id, e); }
   }
   for (const S of SYSTEMS) {
