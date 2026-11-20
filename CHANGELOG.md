@@ -2804,3 +2804,17 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - Nothing changes if Croxian lived, or if Orion is already dead.
 - Saves that are already past that talk without it having fired still get him at the time skip in Chapter IV, as before.
 - **His level scales with yours until the time skip.** When the hunt starts in Chapter III (or in Chapter IV before the two years), each phase is a step above you: your level +2 on foot, +5 in the Mascar Frame, +8 in the Orbital Rampage, never higher than 40, 45 and 60. His health and damage follow his level as before. After the time skip he's back to 40, 45 and 60. The Nostrapedia's *Orion Mascar's Offensive* shows the levels he's at for you, and says it began in 2125 when it started on Charon.
+
+### Orion Mascar on the map
+- **His crimson beacon is marked on the minimap and the big map** while he's waiting for you on Earth: a pulsing red diamond, in the same red as his side quest everywhere else. When he's off the edge of the minimap it sits on the rim, pointing the way. On the big map it's labelled "ORION MASCAR · LV … · SIDE QUEST" with the distance. Once the fight starts, the marker follows him.
+- It's only there while the side quest is live on Earth: not if Croxian lived, not once Orion has gone to orbit or is dead.
+
+### Orion Mascar: losing or leaving never costs you a phase
+- **Beaten by him on foot or in the Mascar Frame, you face that phase again, not the whole fight.** Blacking out sends him straight back to his crimson beacon, healed for that phase, and he waits for you there in the same phase (on foot, or already in the Frame).
+- **Leave Earth and come back, and he's still on the phase you reached.** Same as phase three, where he stays in orbit in whatever system he's taking, with his health and his conquests kept.
+- **Fix:** beating a phase now saves the next one the moment his health hits zero. Before, phase two was only saved a couple of seconds into the cutscene where the Frame drops in, and phase three only once the titanium Frame had loaded, so leaving or blacking out at the wrong moment could put you back a phase. The XP for beating him on foot is given at that moment too.
+
+### Orion Mascar's fight is at his house
+- **He waits for you at his own house, in East Africa,** under his crimson beacon in front of it: the house where he found you in Chapter II. He no longer turns up wherever you land on Earth. Landing anywhere else on Earth tells you where he is instead.
+- **Getting there:** choose "Fly to Orion's house" at the helm when you're landed on Earth (it's there while he's waiting), or set down at **Orion's house**, a new place in Earth's sky beside Ad-Nostra and Nico's farmhouse. Its light is red while he's there. You're set down by your ship, about 40 m from him, with him and the house in front of you; the fight starts when you walk up to him.
+- He's placed whenever you're there with the side quest live: flying in, loading a save there, or coming to after a blackout. The objectives, the notices and the map marker all point to his house.
