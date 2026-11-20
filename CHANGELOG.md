@@ -2818,3 +2818,9 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **He waits for you at his own house, in East Africa,** under his crimson beacon in front of it: the house where he found you in Chapter II. He no longer turns up wherever you land on Earth. Landing anywhere else on Earth tells you where he is instead.
 - **Getting there:** choose "Fly to Orion's house" at the helm when you're landed on Earth (it's there while he's waiting), or set down at **Orion's house**, a new place in Earth's sky beside Ad-Nostra and Nico's farmhouse. Its light is red while he's there. You're set down by your ship, about 40 m from him, with him and the house in front of you; the fight starts when you walk up to him.
 - He's placed whenever you're there with the side quest live: flying in, loading a save there, or coming to after a blackout. The objectives, the notices and the map marker all point to his house.
+
+### Hak in Alphinos, voiced
+- **Hak Chompjak V's two lines in Alphinos (Chapter IV) are recorded:** "Two years, wanderer. They told me you were dead…" and "The Catharsis took every Grek world while you slept…" (CH4HAKALPHINOS1–2, `data/hak4Voices.js`).
+
+### Easter egg voiced: Lord Sevirrus meets Hak
+- **"Before He Was Hak" is fully voiced:** all 18 lines between Lord Sevirrus and Hak Chompjak V (SEVHAK1–18, `data/sevHakVoices.js`), from "So this is what the throne looks like, three hundred years on" to "Every day. That is why I wear them." Bring Lord Sevirrus to Hak in Karribassa (Chapter III) or Alphinos (Chapters IV–V).

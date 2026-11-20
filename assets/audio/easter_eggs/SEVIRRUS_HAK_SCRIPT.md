@@ -2,7 +2,7 @@
 
 Bring **Lord Sevirrus** (from *Sevirrus*) along in your party and speak to **Hak Chompjak V**: in Karribassa (Janira Prime) in Chapter III once you've met him, or in Alphinos (Aridaxx) in Chapters IV and V. Hak *was* Sevirrus, three hundred years ago.
 **Sevirrus:** young, arrogant, delighted with himself, cruel; he snaps his neck to one side mid-stare. **Hak:** old, quiet, tired and steady; he never raises his voice, and the last line is the closest he comes to breaking.
-Pack: `data/sevHakVoices.js` (SEVHAK1–18, in order across both speakers). Once per playthrough, in place of that conversation. Until the pack exists, the lines show as subtitles only.
+Pack: `data/sevHakVoices.js` (SEVHAK1–18, in order across both speakers). Once per playthrough, in place of that conversation. **All 18 lines recorded.**
 
 | File | Speaker | Line |
 |---|---|---|
