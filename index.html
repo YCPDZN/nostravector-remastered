@@ -5436,7 +5436,7 @@ function renderTasks() {
   if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip && !wanderer.ch4.newShip) h = task(true, tiPhone() ? 'Escape the Nostra' : 'Escape the Nostra in a pod') + task(false, tiPhone() ? 'Main quest · Survive · find somewhere to land' : 'Main quest · Survive: you’re adrift in an escape pod · find somewhere to land'); // Chapter IV starts here
   if ((wanderer.chapter | 0) === 4) h = wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip && !wanderer.ch4.newShip ? h : !(wanderer.ch4 && wanderer.ch4.archMet) ? task(false, tiPhone() ? 'Main quest · Meet Archamus (Archiostal)' : 'Main quest · Meet Archamus in the gardens of Archiostal') : !wanderer.ch4.archProj ? task(true, 'Meet Archamus') + task(false, 'Main quest · Hear Archamus out') : !wanderer.ch4.josiahMet ? task(true, 'Meet Archamus') + task(false, tiPhone() ? 'Main quest · Find Josiah Williams II (Earth)' : 'Main quest · Find Josiah Williams II on Earth') : !wanderer.ch4.josiahLight ? task(true, 'Find Josiah Williams II') + task(false, tiPhone() ? 'Main quest · Help Josiah' : 'Main quest · Bring Josiah Williams II back into the light')
     : (() => { const c4 = wanderer.ch4, ph = tiPhone(), W = cathTarget(); // Tallax IV: the base, the rifle, the carapace
-        if (c4.shipClear) return task(true, ph ? 'Retake the Jewel' : 'Retake the Jewel of Archamus') + task(false, 'Main quest · To be continued');
+        if (c4.shipClear) return task(true, ph ? 'Retake the Jewel' : 'Retake the Jewel of Archamus') + (c4.zarkDream ? task(!!c4.hakMet, ph ? 'Main quest · Meet Hak (Alphinos)' : 'Main quest · Meet Hak Chompjak in Alphinos, on Aridaxx') + (c4.hakMet ? task(false, 'Main quest · To be continued') : '') : task(false, ph ? 'Main quest · Catch your breath aboard' : 'Main quest · The Jewel is yours · catch your breath aboard'));
         if (c4.cathDone) return task(true, ph ? 'Break the carapace' : 'Break a Catharsis carapace') + task(false, CSF.on ? (ph ? `Main quest · Clear deck ${SHIPI.deck + 1} of 5` : `Main quest · Clear the Catharsis from the Jewel · deck ${SHIPI.deck + 1} of 5`) : ph ? 'Main quest · Back to the Jewel' : 'Main quest · Return to the Jewel · the Catharsis are aboard');
         if (c4.cathRifle) return task(true, 'Take the carapace rifle') + task(false, ph ? 'Main quest · Shoot the Catharsis' : 'Main quest · Break the Catharsis’ carapace with the rifle');
         const done = task(true, 'Bring Josiah Williams II back into the light');
@@ -7499,6 +7499,7 @@ function questTarget() {
   const c = ch1();
   if (DGN.on) return dgnTarget();
   if (NYX.R && NYX.R.root.parent && isPl()) return { x: NYX.x, z: NYX.z, label: 'Nyrexia Erisconos' };
+  if (isPl() && hakMeetQ() && world.planet.P.id === 'aridaxx' && world.planet.city && world.planet.city.K.name === 'Alphinos') { const C = world.planet.city; return { x: C.cx, z: C.cz + 76, label: 'Hak Chompjak · the Imperial Palace' }; }
   if (isPl() && csbOn() && !wanderer.ch4.shipClear) { // Tallax IV: the Catharsis base, its guard, then back to the Jewel
     const c4 = wanderer.ch4, S = csbSpot();
     if (c4.cathDone) return { x: 0, z: 10, label: 'The Jewel · the Catharsis are aboard' };
@@ -19084,7 +19085,7 @@ function spaceHudTick(P, alt, fwd) {
     const x = (v3.x * .5 + .5) * W, y = (-v3.y * .5 + .5) * H; if (x < -40 || x > W + 40 || y < -40 || y > H + 40) continue;
     const d = SPC.pos.distanceTo(Q.pos) - Q.r; if (Q === P && d < Q.r * 2) continue;
     if (Q.minor && d > 15000 && Q !== P) continue; // a small moon: marked only once you're close
-    const tq = cathQ() && cathTarget() && Q.id === cathTarget().id, rel = tq ? 'gold' : bodyRel(Q); // Chapter IV's main quest: the Catharsis world, in gold
+    const tq = (cathQ() && cathTarget() && Q.id === cathTarget().id) || (hakMeetQ() && Q.id === 'aridaxx'), rel = tq ? 'gold' : bodyRel(Q); // Chapter IV's main quest: the Catharsis world, in gold
     h += `<div class="sh-mk${rel ? ' ' + rel : ''}${x < 70 ? ' l' : x > W - 70 ? ' r' : ''}" style="left:${clamp(x, 8, W - 8) | 0}px;top:${clamp(y, 14, H - 14) | 0}px"><i></i><span>${Q.name.toUpperCase()}<br><small>${tq ? (tiPhone() ? 'MAIN QUEST · ' : 'MAIN QUEST · LAND · ') : ''}${d > 1000 ? (d / 1000).toFixed(0) + ' km' : Math.round(d) + ' m'}</small></span></div>`;
   }
   if (khzPending() && SPC.sys === 'sol') { // the story's next stop: Olympus Mons, in gold
@@ -19120,6 +19121,8 @@ function ch4Goal() { // Chapter IV in flight: the same main quest as on foot (po
   if (!c4.archProj) return arch('Hear Archamus out', 'Archamus');
   if (!c4.josiahMet) return atm('earth') ? (ph ? 'Josiah · land anywhere on Earth' : 'Find Josiah Williams II · land anywhere on Earth') : SPC.sys === 'sol' ? (ph ? 'Josiah · fly to Earth, land' : 'Find Josiah Williams II · fly to Earth and land') : (ph ? 'Josiah · warp to Sol' : 'Find Josiah Williams II · warp to Sol, then land on Earth');
   if (!c4.josiahLight) return atm('earth') ? (ph ? 'Help Josiah · land on Earth' : 'Bring Josiah Williams II back into the light · land on Earth') : SPC.sys === 'sol' ? (ph ? 'Help Josiah · fly to Earth' : 'Bring Josiah Williams II back into the light · fly to Earth and land') : (ph ? 'Help Josiah · warp to Sol' : 'Bring Josiah Williams II back into the light · warp to Sol, then land on Earth');
+  if (c4.shipClear && !c4.zarkDream) return ph ? 'Catch your breath aboard' : 'The Jewel is yours · catch your breath aboard';
+  if (hakMeetQ()) return atm('aridaxx') ? (ph ? 'Hak · land in Alphinos' : 'Meet Hak Chompjak · fly to Alphinos (its marker) and land') : SPC.sys === 'steca' ? (ph ? 'Hak · fly to Aridaxx, land' : 'Meet Hak Chompjak in Alphinos · fly to Aridaxx (the gold marker) and land') : (ph ? 'Hak · warp to Steca Prime' : 'Meet Hak Chompjak in Alphinos · warp to Steca Prime, in the galaxy’s core');
   if (c4.shipClear) return 'To be continued';
   if (c4.cathDone) return ph ? 'Board the Jewel · walk her decks' : 'The Catharsis are aboard · leave the helm and walk her decks (they wait in the hangar)';
   const W = cathTarget(); if (!W) return ph ? 'Catharsis world · the galaxy’s core' : 'Explore the Catharsis world · warp into Catharsis space, at the galaxy’s core';
@@ -20467,6 +20470,7 @@ function galDraw(dt) {
   const allLabels = GAL.zoom >= 5.5;
   const qsys = new Set(Object.entries((wanderer.sq || {}).act || {}).map(([id, A]) => { const q = sqById(id); return q ? sqSysOf(q, A) : null; }).filter(Boolean));
   if (cathQ() && cathTarget()) qsys.add(cathTarget().sys); // Chapter IV's main quest: the Catharsis world
+  if (hakMeetQ()) qsys.add('steca'); // then Hak, in Alphinos
   for (const S of SYSTEMS) {
     const p = galXY(S); if (p.x < -80 || p.x > W + 80 || p.y < -80 || p.y > H + 80) continue;
     const hole = S.star.kind === 'hole', gr0 = S.gen ? 10 : 16;
@@ -22302,6 +22306,7 @@ function leaveShip(to) { // to: 'ground' (down the ramp), 'space' (back to the h
   if (orionJoined()) placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
 }
 function updateShipMode(dt) {
+  if (SHIPK === 'jewel' && zarkDreamDue() && !ex.dlg && !ALN.on) { if ((NM.zarkT = (NM.zarkT || 0) + dt) > 4) { NM.zarkT = 0; zarkDreamStart(); return; } } else NM.zarkT = 0; // Chapter IV: a few seconds after the brood's last words, Lord Zark's nightmare
   const p = player.position, d = ex.dlg; SHIPI.t += dt; if (ALN.on) alienTick(dt); else if (CSF.on) { csfTick(dt); csfSwingTick(dt); } else shipFollowTick(dt); // the Catharsis aboard: your crew are locked out
   if (SHIPI.core) { SHIPI.core.material.emissiveIntensity = 1.4 + Math.sin(SHIPI.t * 3) * .4; SHIPI.coreLight.intensity = 3.5 + Math.sin(SHIPI.t * 3) * 1; }
   if (SHIPI.holo) SHIPI.holo.rotation.y += dt * .25;
@@ -23857,6 +23862,7 @@ async function hak4Talk() {
   if (state !== 'explore' || ex.dlg) return; openDialog(tiPhone() ? 'HAK CHOMPJAK V' : 'HAK CHOMPJAK V · EMPEROR OF THE CHOMPY EMPIRE', HAK4, false, null, vo || []);
 }
 function giverTalk(G) {
+  if (G.leader === 'hak' && hakMeetQ()) { wanderer.ch4 = Object.assign({}, wanderer.ch4, { hakMet: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); renderTasks(); } // Chapter IV's main quest: you've met him
   if (G.josiah && G.jos3) { jos3Talk(); return; }
   if (G.josiah) { josiahTalk(); return; }
   { const E = eggFor(G.arch3 || G.leader === 'archamus' ? 'archamus' : G.leader === 'hak' ? 'hak' : ''); if (E) { eggTalk(E); return; } } // Josiah Richards or Lord Sevirrus is with you: the hidden conversation first
@@ -24609,6 +24615,18 @@ function nmSet(kind) {
     const bh = new THREE.Mesh(new THREE.SphereGeometry(9, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000, fog: false })); bh.position.set(0, 26, -60); P.add(bh);
     const disc = new THREE.Mesh(new THREE.TorusGeometry(14, 2.6, 8, 64), new THREE.MeshBasicMaterial({ color: 0xff9a40, transparent: true, opacity: .85, fog: false })); disc.position.copy(bh.position); disc.rotation.x = 1.25; P.add(disc);
     for (let i = 0; i < 6; i++) box(3 + i % 2, 2.4, 3, M(0x2a1a10), -14 + i * 5.5, 1.2, -12 - (i % 3) * 3); // the settlers' homes
+  } else if (kind === 'zarkThrone') { // the throne room of Carax: black stone, a ring of pillars, fire, and a red sky through the broken roof
+    Object.assign(look, { fog: 0x2a0806, dens: .03, bg: 0x1a0404, ground: 0x2a2026, hemi: 0x8a3a3a, rim: 0xff3a1a, key: 0xffb090 });
+    const stone = M(0x2a2228, { roughness: .85 }), dark = M(0x18121a, { roughness: .6, metalness: .3 }), vio = M(0x2a1640, { emissive: 0xff2a1a, emissiveIntensity: .7, metalness: .5, roughness: .4 });
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, broken = i % 3 === 1, h = broken ? 3 + (i % 2) * 3 : 16, c = new THREE.Mesh(new THREE.CylinderGeometry(.9, 1.1, h, 10), dark); c.position.set(Math.cos(a) * 12, h / 2, Math.sin(a) * 12 - 5); P.add(c); }
+    box(2.6, .04, 18, M(0x4a0a0a), 0, .03, 0); // the carpet to the throne
+    const dais = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 4.2, .6, 32), stone); dais.position.set(0, .3, -8.6); P.add(dais);
+    box(3, 1.1, 2.2, dark, 0, 1.15, -8.4); box(3.4, 7.5, .7, dark, 0, 4.3, -9.7); for (const sd of [-1, 1]) { box(.4, 1.1, 2, dark, sd * 1.5, 1.95, -8.4); const sp = new THREE.Mesh(new THREE.ConeGeometry(.3, 3.2, 6), vio); sp.position.set(sd * 1.4, 9.4, -9.7); sp.rotation.z = sd * -.25; P.add(sp); }
+    const crown = glowSprite(0xff3a1a, 5, .7); crown.position.set(0, 8.4, -9.4); P.add(crown);
+    for (const [x, z] of [[-4, -3], [4, -3], [-6, 3], [6, 3]]) { box(.8, 1.2, .8, dark, x, .6, z); const g = glowSprite(0xff6a2a, 2.4, .9); g.position.set(x, 1.6, z); P.add(g); const L = new THREE.PointLight(0xff5a1a, 18, 12, 1.6); L.position.set(x, 1.9, z); P.add(L); }
+    for (let i = 0; i < 7; i++) { const cr = new THREE.Mesh(new THREE.PlaneGeometry(.12, 3 + i % 3 * 2), new THREE.MeshBasicMaterial({ color: 0xff4a1a, transparent: true, opacity: .5, blending: THREE.AdditiveBlending, depthWrite: false })); cr.rotation.x = -Math.PI / 2; cr.rotation.z = i * .9; cr.position.set((i - 3) * 2.6, .05, -1 - (i % 3) * 2.5); P.add(cr); }
+    const bh = new THREE.Mesh(new THREE.SphereGeometry(7, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000, fog: false })); bh.position.set(8, 30, -50); P.add(bh);
+    const disc = new THREE.Mesh(new THREE.TorusGeometry(11, 2, 8, 64), new THREE.MeshBasicMaterial({ color: 0xff6a2a, transparent: true, opacity: .8, fog: false })); disc.position.copy(bh.position); disc.rotation.x = 1.25; P.add(disc);
   } else if (kind === 'throne') { // the throne hall of Alphinos
     Object.assign(look, { fog: 0x1a0808, dens: .035, ground: 0x2a1010, hemi: 0x7a3a2a, rim: 0xffb040 });
     const stone = M(0x3a302a), gold = M(0xd8a63a, { metalness: .8, roughness: .3 }), red = M(0x6a0a0a);
@@ -24909,7 +24927,7 @@ function nmBeat(i) {
   if (B.pov && A[B.pov.a]) A[B.pov.a].root.visible = false; // the camera is in their head
   NM.cam.fromArray(B.cam[0]); NM.look.fromArray(B.at);
   if (NM.hawDeath) { NM.flashA = 0; fbFlash(0); return; } // Hawthorne's death is shot like a film: straight cuts, no memory flashes
-  fbFlash(.9, NM.race === 'chompy' ? '#ff3a1a' : NM.race === 'erisian' ? '#c890ff' : NM.race === 'grek' ? '#7affb0' : NM.race === 'oilkoumene' ? '#a98cff' : '#ffffff'); sfx.thud(); NM.flashA = .9;
+  fbFlash(.9, NM.race === 'chompy' || NM.race === 'zark' ? '#ff3a1a' : NM.race === 'erisian' ? '#c890ff' : NM.race === 'grek' ? '#7affb0' : NM.race === 'oilkoumene' ? '#a98cff' : '#ffffff'); sfx.thud(); NM.flashA = .9;
 }
 function nmClip(ref) { if (!ref) return null; const [k, i] = ref; return (NM.vo[k] || [])[i] || null; }
 function nmSay(L) {
@@ -25043,6 +25061,7 @@ function nightmareTick(dt) {
   if (NM.phase === 'pod') { podTick(dt); return; } // the pod comes down: you, and Archamus
   if (NM.phase === 'amg') { amgTick(dt); return; } // you wake on Archiostal: Am-Grek
   if (NM.phase === 'hwd') { hwdTick(dt); return; } // the end of the Grand Imperarch
+  if (NM.phase === 'shipPanic') { zarkShipPanic(dt); return; } // Lord Zark's nightmare takes you aboard the Jewel
   fbSubTick();
   NM.flashA = Math.max(0, (NM.flashA || 0) - dt * 2.4); fbFlash(NM.flashA, fbFlashEl ? fbFlashEl.style.background : '#fff');
   if (NM.phase === 'panic') { // still in the ship: the shaking starts, the heart pounds, the view bleeds
@@ -25086,10 +25105,11 @@ function nightmareTick(dt) {
         R.root.rotation.x = .2 + Math.sin(R.run * 2) * .025; R.root.position.y = Math.abs(Math.cos(R.run)) * .1;
         if (NM.hawDeath && Math.floor(R.run / Math.PI) !== R.stepN) { R.stepN = Math.floor(R.run / Math.PI); if (R.stepN % 2) sfx.breath(.9); } // panting
       } else if (R.ran) { R.ran = false; R.root.rotation.x = 0; R.root.position.y = 0; }
+      if (R.pose === 'sit') { R.root.position.y = .3; if (R.rl) R.rl.rotation.x = -1.4; if (R.ll) R.ll.rotation.x = -1.4; if (R.ra) { R.ra.rotation.x = -.55; R.ra.rotation.z = -.2; } if (R.la) { R.la.rotation.x = -.55; R.la.rotation.z = .2; } } // on the throne, his arms along its arms
       if (R.pose === 'kneel') { R.root.position.y = -.42; R.root.rotation.x = .12; R.ra.rotation.x = -.3; R.la.rotation.x = -.3; }
       if (R.pose === 'aim') { R.ra.rotation.x = -1.45; R.la.rotation.x = -1.3; R.la.rotation.z = -.35; }
       if (R.pose === 'hug') { R.ra.rotation.x = -1.15; R.la.rotation.x = -1.05; }
-      if (R.pose === 'raise') { R.ra.rotation.x = -2.8; }
+      if (R.pose === 'raise' && R.ra) { R.ra.rotation.x = -2.8; }
       if (R.pose === 'rage') { R.ra.rotation.x = -1.3 + Math.sin(t * 30) * .08; R.la.rotation.x = -1.3 - Math.sin(t * 30) * .08; }
       if (R.pose === 'crawl') { R.root.rotation.x = 1.35; R.root.position.y = .28; R.ra.rotation.x = -2.7 + Math.sin(t * 3.2) * .5; R.la.rotation.x = -2.7 - Math.sin(t * 3.2) * .5; } // face down, dragging himself along
       if (R.pose === 'writhe') { R.root.rotation.x = -1.4; R.root.position.y = .2; R.ra.rotation.x = -1.6 + Math.sin(t * 5) * .6; R.la.rotation.x = -1.2 + Math.sin(t * 4.3 + 1) * .6; } // on his back, clawing at the air
@@ -25140,6 +25160,7 @@ async function nmWake() {
   if (NM.hawStage) { hawStageEnd(); return; } // Hawthorne's scene on phones
   if (NM.kVision) { karrVisionEnd(); return; } // the vision of Karribassa burning
   if (CUT.on === 'nightmare') { cutNmEnd(); return; } // replayed from Cutscenes
+  if (NM.zark) { zarkDreamEnd(); return; } // Lord Zark on Carax: you just wake
   NM.phase = 'wake'; fbSubHide(); sfx.drone(0); if (NM.vo.music) sfx.stopSong(1.5);
   if (NM.saveCam) { camera.near = NM.saveCam.near; camera.far = NM.saveCam.far; camera.fov = NM.saveCam.fov; camera.updateProjectionMatrix(); }
   renderer.domElement.style.filter = ''; fbFlash(1, '#ffffff'); NM.flashA = 1; sfx.gasp(1.8);
@@ -25206,6 +25227,77 @@ function erisCoupEnd() {
   const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0;
   setTimeout(() => { notice('The war of Vassalisation', 'ERIS FALLS · A PUPPET OF TERRA IMPERIA', 4400); sfx.thud(); lootMsg('Alexia Erisconos has overthrown Vishara · the Erisian Empire serves Terra Imperia now', '#eda8d4'); }, 900);
   if (nyx) setTimeout(() => { notice('Nyrexia Erisconos', 'IS DEAD', 4200); sfx.thud(); }, 5600);
+}
+/* ---- Chapter IV, after the brood: Lord Zark's nightmare ----
+   The Jewel is yours again, and the first time you're back out in open space the dream comes, like the one on the ice: the
+   throne room of Carax, and Lord Zark on the throne, mocking you, until he rises and invites you to challenge him. Voice pack
+   data/nmZarkVoices.js: one clip per line of ZARK_LINES, in order (CH4ZARK1–10); an empty slot falls back to subtitles. Once: ch4.zarkDream. */
+const ZARK_LINES = [
+  'So. The little wanderer dreams of me at last.',
+  'You crawled out of the ice with nothing. No name, no home, no one. And you still have nothing.',
+  'You slaughtered my brood with a stolen rifle, aboard a stolen ship. Is that what passes for courage where you come from?',
+  'Every world you land on, you leave a little more broken. You and I are not so different, wanderer.',
+  'You call them your crew. I call them the ones who will die first.',
+  'Hawthorne hunted you. The Federation chained you. And you thought they were the monsters.',
+  'I have watched you since your first night on the ice. Every step you have taken, you took towards me.',
+  'You are no hero. You are a stray who wandered too far from home, and found my door.',
+  'Come to Carax. Climb my steps. Look me in the eye, if you have the stomach for it.',
+  'I am Zark. I am the Prime Evil. And I invite you to challenge me.'
+];
+const hakMeetQ = () => (wanderer.chapter | 0) === 4 && !!(wanderer.ch4 && wanderer.ch4.zarkDream) && !wanderer.ch4.hakMet; // after Zark's nightmare: meet Hak Chompjak in Alphinos
+function zarkDreamDue() { const c = (wanderer && wanderer.ch4) || {}; return (wanderer.chapter | 0) === 4 && !!c.shipClear && !c.zarkDream && !CSF.on; }
+const zarkOrionDead = () => !!(wanderer && wanderer.orion && wanderer.orion.dead); // shot down in orbit (the aborted bad ending): the Catharsis took what was left. Alive (rampaging, or with you): not there
+function zarkDreamScript() {
+  const L = i => ['LORD ZARK', ZARK_LINES[i], ['zark', i], 'CH4ZARK' + (i + 1)], side = { haw: [-4.6, -6.2, .5, 'idle'], ...(zarkOrionDead() ? { orion: [4.6, -6.2, -.5, 'idle'] } : {}) }, sit = { zark: [0, -8.2, 0, 'sit'], ...side };
+  return { tint: 'saturate(1.25) contrast(1.22) brightness(.9) hue-rotate(-12deg)', kind: 'crox', beats: [ // the blood-red words of the nightmare on the ice
+    { set: 'zarkThrone', actors: sit, cam: [[0, 4.2, 9], [0, 3.2, 3.5]], at: [0, 2.6, -8], lines: [L(0), L(1)] }, // down the hall to the throne
+    { set: 'zarkThrone', actors: sit, cam: [[-3, 2.4, -2.5], [-2.2, 2.7, -4.4]], at: [0, 3, -8.2], lines: [L(2), L(3)] },
+    { set: 'zarkThrone', actors: sit, cam: [[1.2, .5, -4.6], [.8, .6, -5.4]], at: [0, 3.6, -8.2], lines: [L(4), L(5)] }, // from the foot of the dais, up at him
+    { set: 'zarkThrone', actors: sit, cam: [[3.4, 3.2, -4.4], [2.6, 3.1, -5.6]], at: [0, 3.2, -8.2], lines: [L(6), L(7)] },
+    { set: 'zarkThrone', actors: { zark: [0, -6.4, 0, 'idle'], ...side }, cam: [[0, 2.2, -1.5], [0, 2.6, -3.4]], at: [0, 3.3, -6.4], lines: [L(8), L(9)], fx: [[0, 'raise', 'zark']] } // he rises
+  ] };
+}
+async function zarkCast() {
+  const A = {}, add = (k, R) => { if (R) { if (R.root.parent) R.root.parent.remove(R.root); if (!R.gear) armRig(R, 'none'); R.root.visible = false; R.root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); NM.scene.add(R.root); A[k] = R; } };
+  const orion = zarkOrionDead(), [zark, haw, ori] = await Promise.all([leadTag('prZark', 3.6, 'none')().catch(() => null), glbRig('tiHawC', 2.2, 'none').catch(() => null), orion ? glbRig('orionCath', 2.6, 'none', true).catch(() => null) : null]);
+  add('zark', zark); add('haw', haw); add('orion', ori); // Hawthorne, as the Catharsis made him, on Zark's left; Orion, if you shot him down, on his right
+  NM.vo.zark = await loadDataScript('nmZarkVoices').then(ok => ok ? sfx.loadClips('nmZarkVoices') : []).catch(() => null) || [];
+  NM.vo.music = await sfx.combatBuf(COMBAT_TRACKS.indexOf('Wonders of Laniakea (Combat)')).catch(() => null) || null;
+  NM.actors = A;
+}
+async function zarkDreamStart() { // aboard the Jewel, once the brood is gone: it takes you where you stand
+  if (NM.on || state !== 'explore' || ex.mode !== 'ship') return; for (const R of Object.values(NM.actors || {})) if (R.root.parent) R.root.parent.remove(R.root);
+  Object.assign(NM, { on: true, zark: true, race: 'zark', phase: 'shipPanic', t: 0, bi: -1, ready: false, vo: {}, actors: {}, sevM: null, script: zarkDreamScript(), hb: 0, said: {} });
+  state = 'nightmare'; ex.keys.clear(); vel.set(0, 0, 0); if (ex.dlg) closeDialog(); show(ui.xhud, false);
+  NM.ship = { rot: player.rotation.y, cam: { near: camera.near, far: camera.far, fov: camera.fov } };
+  nmStage(); zarkCast().then(() => { NM.ready = true; }).catch(e => { console.error(e); NM.ready = true; });
+}
+function zarkShipPanic(dt) { // the panic, as on the ice: hands to the helmet, shaking, then the knees go
+  const t = NM.t, k = Math.min(1, t / 3), kn = smooth(1.6, 1.85, t), tr = (Math.random() - .5) * .06, R = rig, p = player.position, f = NM.ship.rot, fx = Math.sin(f), fz = Math.cos(f);
+  if (R.ra) { damp(R.ra.rotation, 'x', -2.5, 10, dt); damp(R.ra.rotation, 'z', .55, 10, dt); damp(R.la.rotation, 'x', -2.5, 10, dt); damp(R.la.rotation, 'z', -.55, 10, dt); R.rl.rotation.x = 1.3 * kn; R.ll.rotation.x = 1.15 * kn; }
+  inner.position.y = -.58 * kn; inner.rotation.x = .3 + .25 * kn + tr; inner.rotation.z = tr;
+  if (kn >= 1 && !NM.said.knees) { NM.said.knees = 1; sfx.thud(); }
+  if (!NM.said.g1) { NM.said.g1 = 1; sfx.gasp(1.4); } if (t > 1 && !NM.said.g2) { NM.said.g2 = 1; sfx.gasp(1.8); }
+  if ((NM.hb += dt) > .55 - k * .2) { NM.hb = 0; sfx.heart(.6 + k * .5); } sfx.drone(.3 + k * .5);
+  const push = Math.min(1, t / 3.2); camera.position.set(p.x + fx * (2.1 - push * .8) + fz * .55, p.y + .75 - .2 * kn, p.z + fz * (2.1 - push * .8) - fx * .55); camera.lookAt(p.x, p.y + 1.5 - .55 * kn, p.z);
+  renderer.domElement.style.filter = `saturate(${1 - push * .6}) contrast(${1 + push * .3})` + (tiPhone() ? '' : ` blur(${(push * 1.5 + (NM.hb < .08 ? .6 : 0)).toFixed(2)}px)`);
+  renderer.render(SHIPI.scene, camera);
+  if (t > 3.2 && NM.ready) { // into the dream
+    NM.phase = 'mem'; NM.saveCam = NM.ship.cam; camera.near = .1; camera.far = 700; camera.fov = 55; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
+    renderer.domElement.style.filter = NM.script.tint; if (NM.vo.music) sfx.playSong(NM.vo.music, .5); nmBeat(0);
+    show(ui.xhud, true); ui.xhud.classList.add('cutting');
+  }
+}
+function zarkDreamEnd() { // you come to on the deck, where you fell
+  NM.zark = null; NM.on = false; NM.phase = null; fbSubHide(); sfx.drone(0); if (NM.vo.music) sfx.stopSong(1.5);
+  if (NM.saveCam) { camera.near = NM.saveCam.near; camera.far = NM.saveCam.far; camera.fov = NM.saveCam.fov; camera.updateProjectionMatrix(); NM.saveCam = null; }
+  renderer.domElement.style.filter = ''; for (const R of Object.values(NM.actors)) R.root.visible = false;
+  resetRig(); inner.rotation.set(0, 0, 0); inner.position.set(0, 0, 0); if (NM.ship) player.rotation.y = NM.ship.rot; NM.ship = null;
+  fbFlash(.85, '#ffffff'); sfx.gasp(1.8); { let a = .85; const fade = () => { a -= .04; fbFlash(Math.max(0, a)); if (a > 0) requestAnimationFrame(fade); }; requestAnimationFrame(fade); } // a flash as you wake, gone in a moment (it used to stay up: the white screen)
+  const pdPre = pdStoryIds(); wanderer.ch4 = Object.assign({}, wanderer.ch4, { zarkDream: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); pdStoryNote(pdPre);
+  ui.xhud.classList.remove('cutting'); show(ui.xhud, true); state = 'explore'; ex.snap = true; clock.getDelta(); renderTasks();
+  setTimeout(() => { notice('Lord Zark', 'HE WAITS FOR YOU ON CARAX', 4200); sfx.thud(); }, 700);
+  setTimeout(() => { notice('Main quest', 'MEET HAK CHOMPJAK IN ALPHINOS', 4200); lootMsg(tiPhone() ? 'Take the helm · warp to Steca Prime' : 'Hak Chompjak holds court in Alphinos, on Aridaxx · take the helm and warp to Steca Prime', '#b07aff'); }, 5400);
 }
 function nmEnd() {
   ui.xhud.classList.remove('cutting'); show(ui.xhud, false); NM.on = false; NM.phase = null;
