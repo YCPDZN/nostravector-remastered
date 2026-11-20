@@ -2880,6 +2880,10 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - **"Archamus sent me. He says you know where the Catharsis are."** He shuts you out, as Archamus warned he would. Come back and try again.
   - **"I lost two years too. I slept through them."** He opens up: about his father, and then the dreams he wouldn't talk about. A man in a grey suit who looks like his great-grandfather Josiah Richards, called only by a title, opens the same file every night, and the lost ships are in it: not wrecked, but kept, on the first world the Catharsis ever had. He says goodbye to his father and comes with you.
 - **Josiah Williams II joins your crew** (300 XP, `ch4.josiahLight`), takes the same five orders as everyone else, and fights with the combat lines he already has. He leaves the grave with you, so it's no longer placed on later landings.
-- **New main quest: Explore the Catharsis world.** The objective names it: the home world of the original Catharsis systems, where Lord Zark held court in Chapter III. In flight it tells you where to warp and where to land.
+- **New main quest: Explore the Catharsis world.** The objective names it, and in flight it tells you where to warp and where to land.
 - **Voiced:** CH4JOSIAHNO1–3 (`data/josiahNoVoices.js`) and CH4JOSIAHLIGHT1–13 (`data/josiahLightVoices.js`), all recorded; sources in `assets/audio/josiah_ch4/`. The script is `assets/audio/josiah_ch4/LIGHT_VOICE_SCRIPT.md`.
 
+### The Catharsis world, marked in gold, and the Jewel's warp cells
+- **Explore the Catharsis world now points somewhere easy to reach: Tallax IV**, in the Tallax system. It's a lush, habitable world in one of the Catharsis' own first systems at the core, and the closest of them to both Earth and Archiostal: one jump from Sol in the Jewel (21,710 ly, 9 warp cells). It used to point at Ulmira I, which is too far for a single jump from Sol and the furthest of them from Malana.
+- **Gold markers:** on the galaxy map, Tallax gets the gold diamond and its name shows at any zoom, like a side quest's system; in space, Tallax IV is marked in gold with *MAIN QUEST · LAND*. The flight objective points you to both.
+- **The Jewel of Archamus comes with 100 warp cells.** Archamus gives them with the ship. A save that already has the Jewel gets them once, the next time you're in space.
