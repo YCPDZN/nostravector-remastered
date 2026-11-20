@@ -2,7 +2,7 @@
 
 Speaker: **Hak Chompjak V**, Emperor of the Chompy Empire. Warm, dry, steady; glad you're alive and not making a fuss about it.
 Chapter IV, after the two years: he holds court on the plaza in the heart of Alphinos, on Aridaxx. Speak to him and he says these two lines.
-Pack: `data/hak4Voices.js` (CH4HAKALPHINOS1–2, in order). Until it exists, the lines show as subtitles only.
+Pack: `data/hak4Voices.js` (CH4HAKALPHINOS1–2, in order). **Both lines recorded.**
 
 | File | Line |
 |---|---|
