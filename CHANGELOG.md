@@ -2871,3 +2871,15 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 
 ### Easter egg voiced: Josiah Richards meets Archamus
 - **All sixteen lines are recorded** (EGGJOSARCH1–16, packed into `data/josArchVoices.js`; sources in `assets/audio/easter_eggs/`). The hidden conversation now plays out loud instead of as subtitles only. All four hidden conversations are voiced.
+
+### Josiah Williams II at his father's grave, voiced
+- **All nine lines are recorded** (CH4JOSIAHMEET1–9, packed into `data/josiahMeetVoices.js`, which the scene already loads; sources in `assets/audio/josiah_ch4/`). His last line, the one he repeats when you speak to him again, is voiced too.
+
+### Bringing Josiah Williams II back into the light (Chapter IV)
+- **The objective now has a scene.** At his father's grave, after his last line ("Go on. Leave me with him."), you answer him, on the first meeting and every time you come back until you reach him:
+  - **"Archamus sent me. He says you know where the Catharsis are."** He shuts you out, as Archamus warned he would. Come back and try again.
+  - **"I lost two years too. I slept through them."** He opens up: about his father, and then the dreams he wouldn't talk about. A man in a grey suit who looks like his great-grandfather Josiah Richards, called only by a title, opens the same file every night, and the lost ships are in it: not wrecked, but kept, on the first world the Catharsis ever had. He says goodbye to his father and comes with you.
+- **Josiah Williams II joins your crew** (300 XP, `ch4.josiahLight`), takes the same five orders as everyone else, and fights with the combat lines he already has. He leaves the grave with you, so it's no longer placed on later landings.
+- **New main quest: Explore the Catharsis world.** The objective names it: the home world of the original Catharsis systems, where Lord Zark held court in Chapter III. In flight it tells you where to warp and where to land.
+- **Voiced:** CH4JOSIAHNO1–3 (`data/josiahNoVoices.js`) and CH4JOSIAHLIGHT1–13 (`data/josiahLightVoices.js`), all recorded; sources in `assets/audio/josiah_ch4/`. The script is `assets/audio/josiah_ch4/LIGHT_VOICE_SCRIPT.md`.
+

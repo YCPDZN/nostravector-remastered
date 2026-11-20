@@ -2,7 +2,7 @@
 
 Speaker: **Josiah Williams II**, human, a young man. Flat, tired, quiet; deep depression two years after Terra Imperia killed his father. Not hostile, just worn out. A flicker of his old humour on line 3, then it goes.
 Found on Earth once Archamus has sent you, standing at the grave of his father, Josiah Williams. Afterwards he only repeats the last line.
-Pack: `data/josiahMeetVoices.js` (CH4JOSIAHMEET1–9, in order). Until it exists, the lines show as subtitles only.
+Pack: `data/josiahMeetVoices.js` (CH4JOSIAHMEET1–9, in order). **All 9 lines recorded.**
 
 | File | Line |
 |---|---|
