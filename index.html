@@ -7377,6 +7377,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyI' || e.code === 'Tab') { e.preventDefault(); e.stopImmediatePropagation(); if (ex.modal && ex.modal !== '#inv') closeModals(); else openInv(!ex.invOpen); return; }
   if (e.code === 'KeyL') { e.stopImmediatePropagation(); if (ex.modal === '#alignScr') { closeModals(); sfx.click(); } else openAlign(true); return; }
   if (ex.invOpen) { if (e.code === 'Escape' || (e.code === 'KeyB' && ex.modal === '#buildMenu')) { closeModals(); sfx.click(); } e.stopImmediatePropagation(); return; }
+  if (ex.mode === 'ship' && CSF.on && e.code === 'KeyF') { doAttack(); return; } // aboard the Jewel the world's keys are off, but F still fights
   if (ex.mode !== 'world') return;
   if (e.code === 'KeyB') { e.stopImmediatePropagation(); openBuild(true); return; }
   if (ex.build && (e.code === 'KeyX' || e.code === 'Escape')) { e.stopImmediatePropagation(); stopBuild(); lootMsg('Stopped building', '#e6e9f0'); return; }
@@ -22301,7 +22302,7 @@ function leaveShip(to) { // to: 'ground' (down the ramp), 'space' (back to the h
   if (orionJoined()) placeOrion().catch(() => null); placeCrew().catch(() => null); renderTasks();
 }
 function updateShipMode(dt) {
-  const p = player.position, d = ex.dlg; SHIPI.t += dt; if (ALN.on) alienTick(dt); else if (CSF.on) csfTick(dt); else shipFollowTick(dt); // the Catharsis aboard: your crew are locked out
+  const p = player.position, d = ex.dlg; SHIPI.t += dt; if (ALN.on) alienTick(dt); else if (CSF.on) { csfTick(dt); csfSwingTick(dt); } else shipFollowTick(dt); // the Catharsis aboard: your crew are locked out
   if (SHIPI.core) { SHIPI.core.material.emissiveIntensity = 1.4 + Math.sin(SHIPI.t * 3) * .4; SHIPI.coreLight.intensity = 3.5 + Math.sin(SHIPI.t * 3) * 1; }
   if (SHIPI.holo) SHIPI.holo.rotation.y += dt * .25;
   if (SHIPI.anim) SHIPI.anim(dt, SHIPI.t); // the Jewel: the Light Core's rings, the garden's tree, the candles
@@ -23612,7 +23613,7 @@ function csfStart() {
   notice('THE JEWEL OF ARCHAMUS', 'THE CATHARSIS ARE ABOARD', 3600); ex.shake = .5; sfx.thud();
   setTimeout(() => lootMsg(tiPhone() ? 'Your crew are locked out · clear each deck, up to the bridge' : 'Your crew are locked out · only the carapace rifle hurts them · clear each deck and take the lift up, to the bridge', '#ff9a8a'), 1800);
 }
-function csfStop() { // leaving the ship mid-fight: they stay aboard, and the decks you cleared stay clear
+function csfStop() { CSF.sw = null; // leaving the ship mid-fight: they stay aboard, and the decks you cleared stay clear
   if (!CSF.on) return; CSF.on = false; ui.xhud.classList.remove('csf'); clearInterval(CSF.alarm); csfClearFoes(); if (CSF.light && CSF.light.parent) CSF.light.parent.remove(CSF.light); CSF.light = null; roamReset();
 }
 function csfClearFoes() { for (const F of CSF.foes) { if (F.R.root.parent) F.R.root.parent.remove(F.R.root); if (F.bar && F.bar.parent) F.bar.parent.remove(F.bar); } CSF.foes = []; }
@@ -23684,7 +23685,26 @@ function csfAttack() { // F aboard during the fight
     if (F.hp <= 0) csfFell(F);
     return;
   }
-  sfx.swing(); const F = csfTarget(2.6); if (F && time - (CSF.msgT || -9) > 3) { CSF.msgT = time; lootMsg('Your blow glances off its shell', '#ff9a8a'); }
+  if (CSF.sw || !spend(STA.attack)) return; // a swing: it can't crack the shell, but it drives the creature back and staggers it
+  CSF.sw = { t: 0, dur: .5, hit: false }; sfx.swing();
+}
+function csfSwingHit() {
+  const p = player.position, F = csfTarget(2.8); if (!F) return;
+  const a = Math.atan2(F.x - p.x, F.z - p.z); player.rotation.y = a;
+  const nx = F.x + Math.sin(a) * (F.cmd ? .9 : 2.2), nz = F.z + Math.cos(a) * (F.cmd ? .9 : 2.2);
+  if (!shipBlocked || !shipBlocked(nx, nz)) { F.x = nx; F.z = nz; }
+  F.stag = Math.max(F.stag || 0, F.cmd ? .3 : .9); F.lunge = 0; F.cd = Math.max(F.cd || 0, 1);
+  sfx.hit('crate'); ex.shake = Math.max(ex.shake || 0, .2); burst(F.x, 1.3, F.z, 8, 2, .9, .8, .7, .4, .3, .5);
+  if (time - (CSF.msgT || -9) > 4) { CSF.msgT = time; lootMsg(tiPhone() ? 'It staggers back · only the carapace rifle hurts it' : 'It staggers back, unhurt · only the carapace rifle breaks its shell', '#ff9a8a'); }
+}
+function csfSwingTick(dt) { // the swing aboard (the ship has no world action pose)
+  const A = CSF.sw; if (!A) return; A.t += dt; const k = Math.min(1, A.t / A.dur);
+  if (!A.hit && k > .55) { A.hit = true; csfSwingHit(); }
+  if (k >= 1) CSF.sw = null;
+}
+function csfSwingPose() { // after the walk cycle, so the arm isn't overwritten
+  const A = CSF.sw; if (!A || !rig.ra) return; const k = Math.min(1, A.t / A.dur);
+  rig.ra.rotation.x = k < .45 ? lerp(0, -2.7, smooth(0, .45, k)) : k < .62 ? lerp(-2.7, .5, smooth(.45, .62, k)) : lerp(.5, 0, smooth(.62, 1, k)); rig.ra.rotation.z = -.15;
 }
 function csfFell(F) { // brought to its knees
   F.down = true; F.hp = 0; F.downT = 0; if (F.bar) F.bar.visible = false; sfx.thud(); ex.shake = Math.max(ex.shake || 0, F.cmd ? .7 : .3);
@@ -32048,7 +32068,7 @@ function loopFrame() {
     if (state === 'explore') updateExplore(dt);
     if ((state === 'explore' || state === 'xpaused') && ex.mode !== 'space' && !ex.vehicle && (!player.visible || !inner.visible)) { player.visible = true; inner.visible = true; } // on foot (or aboard), you're always there: nothing left over from a cutscene, the pod, a landing or space keeps you hidden
     tickDialog(dt);
-    if (state !== 'loadingCh') { updateAnim(dt); if (ex.mode === 'world') worldActionPose(dt); else { syncHeld(); hideSuitGear(); armorSync(); } jamesTick(dt); updateParticles(dt); exploreCamera(dt); if (ex.mode === 'world') updateWorldScene(dt); }
+    if (state !== 'loadingCh') { updateAnim(dt); if (ex.mode === 'world') worldActionPose(dt); else { syncHeld(); hideSuitGear(); armorSync(); csfSwingPose(); } jamesTick(dt); updateParticles(dt); exploreCamera(dt); if (ex.mode === 'world') updateWorldScene(dt); }
     sfx.music(0); renderer.render(ex.mode === 'world' ? wScene : ex.mode === 'ship' && SHIPI.scene ? SHIPI.scene : aScene, camera); return;
   }
   if (state === 'advStudio' || state === 'advPlay') { advTick(dt); sfx.music(.6); renderer.render(adv.scene, camera); return; }
