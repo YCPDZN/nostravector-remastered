@@ -219,3 +219,47 @@ Packs: `data/cmb<Name>Voices.js` (COMBAT<NAME>1–5) and `data/cmb<Name>EvilVoic
 | COMBATJAMESTIEVIL3.mp3 | Hurt (an enemy gets right up against them) | You’ll regret that. Ask the wanderer how I handle regret. |
 | COMBATJAMESTIEVIL4.mp3 | You’re in trouble (your health under 30%) | Get up. You’re more use to me alive. For now. |
 | COMBATJAMESTIEVIL5.mp3 | Victory (the fight’s over) | Done. Shame. I was starting to enjoy the company. |
+
+## Pontifex Maximus (every one you anoint) · **recorded**
+
+**Hero / Neutral**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATPONTIFEX1.mp3 | Fight starts | You taught me another way to serve. Let me show them. |
+| COMBATPONTIFEX2.mp3 | Kill | Absolved. May your next life be kinder to you. |
+| COMBATPONTIFEX3.mp3 | Hurt (an enemy gets right up against them) | The reactor holds. My heart is stronger than your blade. |
+| COMBATPONTIFEX4.mp3 | You’re in trouble (your health under 30%) | My lord, rise! I swore my new heart to you, not to your grave. |
+| COMBATPONTIFEX5.mp3 | Victory (the fight’s over) | It is finished. I will pray for them, as you would want. |
+
+**Awakened Villain**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATPONTIFEXEVIL1.mp3 | Fight starts | Kneel before the burning heart, heretics! |
+| COMBATPONTIFEXEVIL2.mp3 | Kill | Burn. As all unbelievers burn. |
+| COMBATPONTIFEXEVIL3.mp3 | Hurt (an enemy gets right up against them) | Pain is the sacrament. Give me more! |
+| COMBATPONTIFEXEVIL4.mp3 | You’re in trouble (your health under 30%) | Rise, my lord! The cruel are not permitted to die so easily. |
+| COMBATPONTIFEXEVIL5.mp3 | Victory (the fight’s over) | Let the ash remember who walked here. Glory to the one who broke me. |
+
+## Sister of Hawthorne (every one you anoint) · **recorded**
+
+**Hero / Neutral**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATSISTER1.mp3 | Fight starts | Stand with me. We fight for the living now. |
+| COMBATSISTER2.mp3 | Kill | Rest. I’ll carry your name into the light. |
+| COMBATSISTER3.mp3 | Hurt (an enemy gets right up against them) | Is that all? My heart is a reactor, child. |
+| COMBATSISTER4.mp3 | You’re in trouble (your health under 30%) | Wanderer! Lean on me. A Sister never abandons her own. |
+| COMBATSISTER5.mp3 | Victory (the fight’s over) | It’s done. Peace to the fallen, even these. |
+
+**Awakened Villain**
+
+| File | Moment | Line |
+|---|---|---|
+| COMBATSISTEREVIL1.mp3 | Fight starts | Ah, lambs. Come here and let a Sister of Hawthorne teach you to scream. |
+| COMBATSISTEREVIL2.mp3 | Kill | Shh. There. Isn’t the silence beautiful? |
+| COMBATSISTEREVIL3.mp3 | Hurt (an enemy gets right up against them) | You marked me. How sweet. I’ll mark you back, all over. |
+| COMBATSISTEREVIL4.mp3 | You’re in trouble (your health under 30%) | Up, wanderer. You promised me so much more cruelty than this. |
+| COMBATSISTEREVIL5.mp3 | Victory (the fight’s over) | Look how still they are. I do love it when they stop struggling. |
