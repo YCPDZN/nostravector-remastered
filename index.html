@@ -17130,7 +17130,7 @@ function gvTick(dt, rdt, t, act) { // runs after the ring's own animation and th
       if (R.head) { R.head.rotation.x = -.06; R.head.rotation.y = q === 'arch' && v === 'arch' ? 0 : Math.sin(t * 2.1 + z) * .45 * pan; } r.rotation.x = 0; r.position.y = 0; }
     else if (act === 'gvGuards' || act === 'gvRaise' || act === 'gvRun') { if (R.head) R.head.rotation.x = .1; } }
   if (act === 'gvKill' && v && !F.cut) { F.cut = 1; C4E.blackT = .32; }
-  if (act === 'gvKill' && v && k > .66 && !F.kill) { F.kill = 1; const [x, z, hh] = GV_AT[v]; C4E.gvDead[v] = true; C4E.gvFall[v] = 0; C4E.flashA = .7; C4E.flashC = '#5a0000'; C4E.shake = 1; sfx.swing(); sfx.thud(); sfx.scream(1.1, .28, v === 'arch' ? 150 : 260 + Math.random() * 160); gvGore(x, hh * .7, z, 70, 3.4); gvPool(x - x * .25, z - z * .25, v === 'arch' ? 1.4 : 1); }
+  if (act === 'gvKill' && v && k > .66 && !F.kill) { F.kill = 1; const [x, z, hh] = GV_AT[v]; C4E.gvDead[v] = true; C4E.gvFall[v] = 0; C4E.flashA = .7; C4E.flashC = '#5a0000'; C4E.shake = 1; sfx.swing(); sfx.thud(); gvGore(x, hh * .7, z, 70, 3.4); gvPool(x - x * .25, z - z * .25, v === 'arch' ? 1.4 : 1); }
   if (act === 'gvLights' && !C4E.gvArchDown) { C4E.gvArchDown = true; C4E.gvArchT = 0; sfx.thud(); }
   // you
   const S = C4E.gvSword, sock = rig.ra ? handSocket(rig.ra) : null; if (S && sock && S.parent !== sock && (['gvRaise', 'gvRun', 'gvKill', 'gvFear', 'gvDying', 'gvLights', 'gvHak'].includes(act))) sock.add(S);
@@ -17178,13 +17178,23 @@ function gvFight() {
   if (prev) { notice('Preview', tiPhone() ? 'HAK’S FIGHT PLAYS IN THE GAME' : 'THE FIGHT WITH HAK PLAYS IN THE GAME, IN THE THRONE ROOM', 3400); setTimeout(() => { c4eEnd(); if (cutDone()) return; location.href = location.pathname; }, 3600); return; }
   setTimeout(() => { c4eEnd(); try { finLeadsLeave(); } catch (e) {} bstSave({ gvSlain: true, hakDuel: true }); gvHakGo(); }, 1900);
 }
+function gvAsk() { openChoice('HAK CHOMPJAK V', [{ text: '“You of ALL PEOPLE should keep your mouth shut, SEVIRRUS.”', onPick: () => { sfx.thud(); ex.shake = .5; setTimeout(gvHakGo, 600); } }], 'YOUR REPLY'); }
+const GV_FALLEN = ['chompy', 'grek', 'erisian', 'hfos', 'timpur']; // with the Catharsis: gone for good in the villain's good ending
+function gvConquer() { // their leaders died in the throne room of Carax: every world they held is your colony, and they never come back
+  const D = dip(); applyChapterFactions();
+  for (const id of GV_FALLEN) { const F = DIP_FAC.find(o => o.id === id); if (!F) continue;
+    for (const P of ALL_BODIES) if ((P.land || P.kind === 'station') && F.match(P.baseFac || P.faction || '') && !D.col[P.id]) D.col[P.id] = { gov: null, from: id, slain: true };
+    D.res[id] = { st: 'destroyed', perm: true }; delete D.wars[id]; try { dipReturnLent(id, 'Home, with nothing left to go back to'); } catch (e) {} }
+  D.res.catharsis = { st: 'destroyed', perm: true }; const c = curChar(); if (c) c.dip = D; applyChapterFactions();
+}
 function gvHakGo() { // Hak, the last of them, in the throne room (lv 62)
   if (typeof BST !== 'undefined' && BST.in && BST.floor === BST_FLOORS - 1) { if (BST.bosses && BST.bosses.length) bstBossClear(); BST.bosses = []; BST.bossF = BST_FLOORS - 1; BST.bossQ = []; BST.gvHak = true; bstBossSpawn('hak'); }
   else gvFinish();
 }
 function gvFinish() { // Hak falls: the good ending, as a villain wins it
   const fd = $('#fade'); fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 1; notice('Chapter IV · the good ending', tiPhone() ? 'NO ONE LEFT TO STOP YOU' : 'THE CATHARSIS FALLS · NO ONE IS LEFT TO STOP YOU', 3800);
-  setTimeout(() => { wanderer.ch4 = Object.assign({}, wanderer.ch4, { ending: 'good', goodVillain: true, hakDuel: false }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); try { renderTasks(); } catch (e) {} fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 0; }, 4000);
+  setTimeout(() => { wanderer.ch4 = Object.assign({}, wanderer.ch4, { ending: 'good', goodVillain: true, hakDuel: false }); wanderer.chapter = Math.max(5, wanderer.chapter | 0); const c = curChar(); if (c) { c.ch4 = wanderer.ch4; c.chapter = wanderer.chapter; } try { gvConquer(); } catch (e) { console.error(e); } saveRoster(); try { renderTasks(); } catch (e) {}
+    setTimeout(() => notice('Chapter V', 'EXPLORE THE GALAXY', 4600), 5200); fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 0; if (TEST_RUN === 'hakduel') setTimeout(() => notice('Test over · nothing was saved', tiPhone() ? 'RELOAD TO FIGHT HIM AGAIN' : 'RELOAD THE PAGE TO FIGHT HIM AGAIN', 6000), 1600); }, 4000);
 }
 function c4eBlackArmour(R) { // Orion in Terra Imperia's black: every plate, cloth and strap black, the trim and lights crimson; his face, eyes and hair his own
   const keep = /face|jaw|nose|neck|ear|eye|iris|pupil|glint|brow|lip|teeth|tongue|mouth|nostril|hair|beard|moustache|sideburn/i, glow = /rivet|terminal|lens|lining|abdominal|insignia|indicator|clasp/i;
@@ -17802,10 +17812,10 @@ function c4eOutcome() { // what each ending leaves behind
   notice(kind === 'good' ? 'Chapter IV · the good ending' : 'Chapter IV · the neutral ending', kind === 'good' ? 'THE CATHARSIS FALLS' : 'THE WAR GOES ON', 3400);
   setTimeout(() => { c4eEnd(); if (prev) { if (cutDone()) return; location.href = location.pathname; return; }
     wanderer.ch4 = Object.assign({}, wanderer.ch4, { ending: kind });
-    if (kind === 'neutral') wanderer.chapter = Math.max(5, wanderer.chapter | 0); // it goes on, into Chapter V
+    if (kind === 'neutral' || kind === 'good') wanderer.chapter = Math.max(5, wanderer.chapter | 0); // it goes on, into Chapter V (the great powers stand; the Catharsis lands are yours)
     const c = curChar(); if (c) { c.ch4 = wanderer.ch4; c.chapter = wanderer.chapter; } saveRoster();
     if (C4E.onDone) C4E.onDone(kind);
-    if (kind === 'neutral') setTimeout(() => notice('Chapter V', 'THE HUNT FOR LORD ZARK', 4200), 1800); }, 3600);
+    if (kind === 'neutral' || kind === 'good') setTimeout(() => notice('Chapter V', 'EXPLORE THE GALAXY', 4200), 1800); }, 3600); // every ending that goes on: Chapter V is the open galaxy
 }
 async function c4eGameOver() { // the bad ending: game over, and the save you played to get here is gone
   sfx.stopSong(.5); sfx.drone(0); hwmSubHide(); fbFlash(1, '#000');
@@ -17912,6 +17922,30 @@ let TEST_RUN = null;
     resumePlace = Object.assign({}, T.place, { who: T.id }); TEST_RUN = 'badchoices'; lastSlot = -1; dirty = false;
     applyLook(wanderer); if (state === 'title') refreshMenu();
     const hint = () => { if (state === 'title') notice('Test · not saved', `CHAPTER IV · EVERY CHOICE THE WRONG WAY · ORION ON EARTH`, 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500);
+  }); }
+
+// ?hakchompjakbossfightevilgoodending: Hak's fight from the villain's good ending, on its own. A throwaway Chapter IV wanderer (a villain, at
+// least level 60) lands on Carax with the throne-room scene already played: Zark is dead, so are the other leaders, and Hak is waiting. It
+// takes you straight up to the top of the Carax Bastion, to the box ("SEVIRRUS"), then the fight. Never saved, like ?badchoices.
+{ const m = /[?&]hakchompjakbossfightevilgoodending(?:[=&]|$)/.test(location.search);
+  if (m) slotsReady.then(() => {
+    const base = roster.find(c => c.id === activeId) || DEFAULT_W;
+    const T = Object.assign({}, DEFAULT_W, JSON.parse(JSON.stringify(base)), { id: 'test-hakduel', name: `${(base.name || 'WANDERER').slice(0, 14)} · TEST`, chapter: 4 });
+    let need = 0; for (let L = 1; L < 60; L++) need += xpNeed(L); T.xp = Math.max(T.xp || 0, need);
+    const lv = levelInfo(T.xp).level;
+    T.ch1 = Object.assign({}, T.ch1, { found: true, metOutside: true, betrayed: true, jamesDead: true, escaped: true });
+    T.ch2 = Object.assign({}, T.ch2, { started: true, introSeen: true, metNico: true, orionJoined: true, orionBase: lv, orionMode: 'follow', trialDone: true, escapedLondon: true });
+    T.ch3 = Object.assign({}, T.ch3, { started: true, nightmare: spOf(T), khzCall: true, khzMet: true, khzBase: lv, hawMars: true, charonLanded: true, charonMet: true, nyxJoined: true,
+      jamesRev: true, jamesFate: 'spared', nyxBeforeJames: true, hakMet: true, hakCall: true, hakBack: true, karrVision: true, siegeOn: true, siegeWon: true, croxFate: 'spared', maliaFate: 'spared', cygDone: true,
+      orionGone: false, orionFate: null, croxDead: false, maliaDead: false, nyxDead: false });
+    T.ch4 = { pod: true, podLanded: true, archFound: true, timeSkip: true, archMet: true, archProj: true, newShip: true, hakWar: true, fateFinal: true, bstReached: true, bstFloor: 5, zarkDown: true, gvSlain: true, hakDuel: true };
+    T.party = (T.party || []).filter(id => !/^(fin|lead):/.test(id)); T.cmds = {}; for (const id of T.party) T.cmds[id] = 'follow'; T.aboard = {}; T.dungeon = {}; if (T.dip) T.dip = Object.assign({}, T.dip, { lent: {} });
+    T.align = Object.assign({ c: {}, jv: 1, jk: 1 }, T.align, { p: -100 });
+    const C = bodyById('carax'); T.place = { mode: 'explore', area: 'world', where: 'pl:carax', dir: capDir(C).toArray(), x: 0, z: 60, y: 0, rot: Math.PI, yaw: 0, nf: 1 };
+    roster = roster.filter(c => c.id !== T.id).concat([T]); activeId = T.id; wanderer = Object.assign({}, T);
+    resumePlace = Object.assign({}, T.place, { who: T.id }); TEST_RUN = 'hakduel'; lastSlot = -1; dirty = false;
+    applyLook(wanderer); if (state === 'title') refreshMenu();
+    const hint = () => { if (state === 'title') notice('Test · not saved', tiPhone() ? 'HAK’S FIGHT · CONTINUE TO PLAY' : 'HAK CHOMPJAK V · THE VILLAIN’S GOOD ENDING · CONTINUE TO FIGHT HIM', 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500);
   }); }
 
 // ---- the cutscene player (main menu · Cutscenes): the scenes the active wanderer has reached, replayed from the title ----
@@ -18922,6 +18956,8 @@ SOL.push(
 const UNCLAIMED = 'Unclaimed · no faction';
 const TIMPUR = 'The Republic of Timpur · puppet of the Chompy Empire'; // the far tip of the outer arm beyond Janira Proxima
 const CATH_LAND = 'Former Catharsis space'; // Chapter V: these worlds become the wanderer's colonies (Diplomacy)
+const cathBack = () => !!(wanderer && wanderer.dip && wanderer.dip.cathBack); // ...unless you gave them back to the Grek (all but Carax, which Archamus lets you keep)
+const gvRuled = () => !!(wanderer && wanderer.ch4 && wanderer.ch4.goodVillain); // the villain's good ending: every great power is gone, and the galaxy is yours
 const SYSTEMS = [
   { id: 'sol', name: 'Sol', star: { kind: 'star', name: 'The Sun', r: 3800, col: '#fff3c8', glow: ['rgba(255,240,200,1)', 'rgba(255,200,120,.55)', 'rgba(255,160,60,0)'], light: '#fff2dc', type: 'Yellow dwarf · G2V' },
     faction: 'Human Federation of Sol', map: { x: .18, y: .5 }, home: 'earth', bodies: SOL,
@@ -19285,9 +19321,10 @@ function wxLine() {
 let FAC_CH = 0;
 function applyChapterFactions() {
   const cw = cathEra(), ch = cw >= 5 ? 5 : cw >= 4 ? 4 : 3; FAC_CH = ch; // Chapter IV's map only after the time skip
-  const pick = o => ch >= 5 && o.fac5 ? o.fac5 : ch >= 4 ? o.fac4 : o.fac3; // Chapter V: the Catharsis is gone, its space is Grek again
+  const back = ch >= 5 && cathBack(), gk = o => back && o.id !== 'carax' && o.id !== 'sgra' && String(o.fac5 || '').startsWith(CATH_LAND); // given back to the Grek (Carax stays yours)
+  const pick = o => ch >= 5 && o.fac5 ? (gk(o) ? 'The Grek Empire' : o.fac5) : ch >= 4 ? o.fac4 : o.fac3; // Chapter V: the Catharsis is gone, its space is yours (or the Grek's again, if you gave it back)
   for (const S of SYSTEMS) {
-    if (S.fac4) S.faction = pick(S); if (S.desc4) { if (!S.desc3) S.desc3 = S.desc; S.desc = ch >= 5 && S.desc5 ? S.desc5 : ch >= 4 ? S.desc4 : S.desc3; }
+    if (S.fac4) S.faction = pick(S); if (S.desc4) { if (!S.desc3) S.desc3 = S.desc; S.desc = ch >= 5 && S.desc5 ? (gk(S) ? S.desc5.replace(/^Your space now:[^.]*\./, 'Grek space again: the Catharsis fell at the siege of Carax, and you gave its worlds back to the Grek Empire.') : S.desc5) : ch >= 4 ? S.desc4 : S.desc3; }
     if (!S.fac0) S.fac0 = S.faction; S.baseFac = S.fac4 ? S.faction : S.fac0; S.faction = S.baseFac; S.facCol = null;
     for (const P of S.bodies) { if (P.fac4) P.faction = pick(P); if (!P.fac0) P.fac0 = P.faction; P.baseFac = P.fac4 ? P.faction : P.fac0; P.faction = P.baseFac; P.traders = null; }
   }
@@ -21301,7 +21338,7 @@ function caraxFinal() {
 function caraxThrone() { // the doors of the throne room, at the top of the Bastion
   if (!sgraLock() || state !== 'explore' || ex.dlg) return;
   sfx.thud(); openChoice('THE FINAL BATTLE', [
-    { text: tiPhone() ? 'Storm the throne room' : 'Storm the throne room · face Lord Zark, lv 60 (there is no coming back from this)', onPick: () => { const c4 = wanderer.ch4 || {}; if (c4.zarkDown && c4.hakDuel && !c4.ending) { openChoice('HAK CHOMPJAK V', [{ text: '“You of ALL PEOPLE should keep your mouth shut, SEVIRRUS.”', onPick: () => { sfx.thud(); setTimeout(gvHakGo, 600); } }], 'YOUR REPLY'); return; } if (c4.zarkDown) ch4EndingPlay(ch4Ending() || 'neutral').catch(e => console.error(e)); else { sfx.thud(); notice('The throne room', 'THE DOORS OPEN', 2200); setTimeout(() => bstBossGo(4), 1600); } } },
+    { text: tiPhone() ? 'Storm the throne room' : 'Storm the throne room · face Lord Zark, lv 60 (there is no coming back from this)', onPick: () => { const c4 = wanderer.ch4 || {}; if (c4.zarkDown && c4.hakDuel && !c4.ending) { gvAsk(); return; } if (c4.zarkDown) ch4EndingPlay(ch4Ending() || 'neutral').catch(e => console.error(e)); else { sfx.thud(); notice('The throne room', 'THE DOORS OPEN', 2200); setTimeout(() => bstBossGo(4), 1600); } } },
     { text: tiPhone() ? 'Not yet' : 'Not yet · get ready first (come back to these doors when you are)', onPick: () => lootMsg(tiPhone() ? 'Come back to the doors when you’re ready' : 'You can’t leave Sagittarius A* · come back to these doors when you’re ready to face Zark', '#ff8f86') }]);}
 function galWarp(id) {
   const S = sysById(id), cost = warpCost(curSys(), S); if (S.id === 'sgra' && sgraDue() && !caraxReady()) { spaceMsg(tiPhone() ? 'Not yet · see Hak in Alphinos' : 'Not yet · meet Hak Chompjak and the leaders in Alphinos before Carax'); return; }
@@ -22514,8 +22551,17 @@ function dipSettleVassal(fid, leader, name) {
   notice(leader && leader !== 'own' ? `${compName(leader)} rules for you` : `${F.lead(dipCh())} keeps the throne, under you`, `${(name || F.name).toUpperCase()} · PUPPET STATE`, 4200);
   placeCrew(); if (leader === 'orion' && world.orion) world.orion.root.visible = false;
 }
+const CATH_BACK_LINES = ['You would give back what you bled for? Few would. The Grek will remember this, wanderer. So will I.', 'Am-Grek’s people will take back their worlds. But Carax… Carax can stay with you. You climbed its tower and ended what sat in it. It is yours by right.'];
+function dipCathBack() { // the Catharsis lands go back to the Grek Empire, all but Carax: Archamus lets you keep it
+  const D = dip(); if (D.cathBack) return; D.cathBack = true;
+  for (const [pid, C] of Object.entries(D.col)) if (C.from === 'catharsis' && pid !== 'carax') delete D.col[pid];
+  dipSave(); sfx.chime(); dipOpen(false); if (state === 'xpaused' && !SPC.paused) pauseExplore(false);
+  notice('The Catharsis lands', tiPhone() ? 'GIVEN BACK TO THE GREK · CARAX STAYS YOURS' : 'GIVEN BACK TO THE GREK EMPIRE · CARAX STAYS YOURS', 4200);
+  setTimeout(() => { try { const vo = CATH_BACK_VO(); vo.then(c => openDialog('ARCHAMUS', CATH_BACK_LINES, false, null, c && c.length ? c : undefined)); } catch (e) { openDialog('ARCHAMUS', CATH_BACK_LINES); } }, 900);
+}
+const CATH_BACK_VO = () => loadDataScript('cathBackVoices').then(ok => ok ? sfx.loadClips('cathBackVoices') : []).catch(() => []); // CH4GIVEGREKLANDS1–2
 function dipRestore(fid) {
-  const D = dip(), F = DIP_FAC.find(o => o.id === fid); if (units() < RESTORE_COST) return;
+  const D = dip(), F = DIP_FAC.find(o => o.id === fid); if (units() < RESTORE_COST || (D.res[fid] || {}).perm) return; // gone for good: no restoring them
   addUnits(-RESTORE_COST);
   for (const [pid, C] of Object.entries(D.col)) if (C.from === fid) delete D.col[pid];
   D.res[fid] = { st: 'restored', name: `${F.species} Restoration` }; dipSave(); sfx.chime();
@@ -23571,6 +23617,7 @@ function dipRender() {
       if (resist && !W) h += `<p>The ${F.species} Resistance fights on in their old space: its fighters jump you there, and your colonies there are restless (but your governors never complain).</p><div class="dip-row"><button class="btn small" data-a="${warnCh ? 'ask' : 'declare'}" data-f="${F.id}" data-cb="crush" title="${CBS.crush.desc}"><span>War · Crush the resistance</span></button></div>${DIPV.confirm && DIPV.confirm.f === F.id ? `<div class="dip-warn"><b>Not recommended.</b> A war on the ${F.species} Resistance can break quests. Declare anyway?</div><div class="dip-row"><button class="btn small primary" data-a="declare" data-f="${F.id}" data-cb="crush"><span>Declare anyway</span></button><button class="btn small" data-a="cancel"><span>Cancel</span></button></div>` : ''}`;
       else if (r.st !== 'destroyed') h += `<p>Led by <b>${leader}</b> · ${worlds} world${worlds === 1 ? '' : 's'}${r.st === 'tributary' ? ` · pays you <b>${tributeOf(F)} units</b> every ${TRIBUTE_EVERY / 60} minutes of play (${r.paid | 0} paid so far)` : ''}${lentHere.length ? ` · serving them: ${lentHere.map(compName).join(', ')}` : ''}</p>`;
       if (resist && !W) {}
+      else if (r.st === 'destroyed' && r.perm) h += `<p>Gone, for good. Their leaders died with the others in the throne room of Carax, and there's no one left to restore. Their worlds are your colonies now.</p>`;
       else if (r.st === 'destroyed') h += `<p>Gone. Their worlds are your colonies now.</p><div class="dip-row"><button class="btn small" data-a="restore" data-f="${F.id}"${units() >= RESTORE_COST ? '' : ' disabled'}><span>Restoration · fund the ${F.species} Restoration (${RESTORE_COST} units)</span></button></div>`;
       else if (W && W.won && W.cb === 'vassal') {
         const sel = DIPV.settle && DIPV.settle.f === F.id ? DIPV.settle : (DIPV.settle = { f: F.id, leader: 'own', name: F.name });
@@ -23603,6 +23650,8 @@ function dipRender() {
     const cur = isPl() && world.planet ? world.planet.P : null, curF = cur && dipFacOf(cur.baseFac);
     if (cur && !D.col[cur.id] && !curF) h += `<div class="dip-card" style="--fc:#ffd36a"><h4>${cur.name.toUpperCase()}<small>Unclaimed · you're here</small></h4><p>Raise ${realmName()}'s flag here and it becomes your colony.</p><div class="dip-row"><button class="btn small primary" data-a="colonise" data-p="${cur.id}"${units() >= COLONY_COST || have('colkit') ? '' : ' disabled'}><span>${have('colkit') ? 'Colonise · use a Colony kit' : `Colonise · ${COLONY_COST} units`}</span></button></div></div>`;
     else if (!cur) h += `<div class="dip-card"><p>Land on an unclaimed world to colonise it. Worlds you take in an Annihilation become colonies too.</p></div>`;
+    if (dipCh() >= 5 && D.cathLand && !D.cathBack && !gvRuled() && !['destroyed', 'subjugated'].includes(dipRes('grek')) && !dipWar('grek')) { const n = Object.values(D.col).filter(C => C.from === 'catharsis').length;
+      if (n > 1) h += `<div class="dip-card" style="--fc:#7fe0a0"><h4>THE CATHARSIS LANDS<small>${n} worlds · won at the siege of Carax</small></h4><p>Everything the Catharsis held came to you when it fell. Most of it was the Grek Empire's before the Catharsis took it. You can give it back to them. Carax stays yours.</p><div class="dip-row"><button class="btn small" data-a="cathBack"><span>Give them back to the Grek Empire</span></button></div></div>`; }
     const cols = Object.entries(D.col);
     if (!cols.length) h += `<div class="dip-card"><p>No colonies yet.</p></div>`;
     for (const [pid, C] of cols) {
@@ -23644,6 +23693,7 @@ function dipClick(e) {
   else if (a === 'declare') { DIPV.confirm = null; dipDeclare(f, cb); }
   else if (a === 'peace') dipPeace(f);
   else if (a === 'restore') dipRestore(f);
+  else if (a === 'cathBack') { dipCathBack(); return; }
   else if (a === 'settle') { const S = DIPV.settle || {}; dipSettleVassal(f, S.leader, S.name); DIPV.settle = null; }
   else if (a === 'doRename') { const v = $(`#dipBody input[data-a="rename"][data-f="${f}"]`).value.trim(); if (v) { D.res[f].name = v; dipSave(); sfx.chime(); } }
   else if (a === 'release') { const was = (D.res[f] || {}).st; delete D.res[f]; if (was === 'vassal') dipReturnLent(f, 'They hand back the throne and come home'); dipSave(); }
@@ -25618,8 +25668,11 @@ const BST_BOSS = {
   ori: () => ({ key: 'bst:ori', boss: 'Orion', full: 'Orion Mascar, of the Catharsis', lv: 57, hp: 15500, theme: 'final', load: () => glbRig('orionCath', 2.6, 'none', true),
     core: ['blink', 'spiral', 'volley', 'charge'], p2: ['pools', 'sweep'], sig: 'nova', seq: ['blink', 'volley', 'spiral', 'charge', 'blink'],
     lines: { intro: 'You shot me out of the sky. They put me back together. Wrong.', p2: 'I was better than this once. So were you.', p3: 'NOTHING LEFT TO LOSE!', win: 'Finally… it’s quiet…' } }),
-  hak: () => Object.assign({}, leadSpec('hak'), { key: 'bst:hak', boss: 'Hak', full: 'Hak Chompjak V, once Lord Sevirrus', lv: 62, hp: 24000, theme: 'hak', // the villain's good ending: the last of them
-    lines: { intro: '', p2: 'Is that all? Zark hit harder, and Zark is dead.', p3: 'For Aridaxx! For every one of them!', win: 'Then it’s yours. All of it. Gods help whoever’s left to live in it.' } }),
+  hak: () => Object.assign({}, leadSpec('hak'), { key: 'bst:hak', boss: 'Hak', full: 'Hak Chompjak V, once Lord Sevirrus', lv: 62, hp: 24000, theme: 'terra', // the villain's good ending: the last of them (to Terra Imperium: it isn't his song, it's yours now)
+    lines: { intro: 'Sevirrus. Yes. I was him. I killed my own father, and I spent fifty years learning what that costs. You learned nothing in one night.', p2: 'Is that all? Zark hit harder, and Zark is dead.', p3: 'For Aridaxx! For every one of them!', win: 'Then it’s yours. All of it. Gods help whoever’s left to live in it.' },
+    taunts: ['I spent twenty-six years in a cell for what I did. You won’t live long enough to see one.', 'Every one of them would have died for you. You didn’t even let them.', 'Archamus saw something in you. I’ll cut out whatever it was and bury it with him.',
+      'You fight like Zark taught you. He taught me too. It took me fifty years to unlearn it.', 'My father begged me, at the end. I still hear him. If you live, you’ll hear all of them. Every night.', 'Vishara sang their names all the way here. Now someone will have to sing hers.',
+      'Stay down! Stay down, you sick animal!', 'Aridaxx will know what you did tonight. Every world will know.'] }),
   zark: () => Object.assign({}, leadSpec('zark'), { key: 'bst:zark', lv: 60, hp: 26000, theme: 'final',
     lines: { intro: 'So. The little wanderer climbed all the way up. Kneel, and I will make it quick.', p2: 'You think you are winning? I am enjoying this.', p3: 'I BLINDED ONE GOD. I WILL BLIND ANOTHER.', win: 'This… changes… nothing…' } })
 };
@@ -25630,8 +25683,8 @@ function bstBossGo(f) { // they come for you, right there on the floor: Hawthorn
 }
 const BST_VO_AT = { haw: 0, ori: 4, zark: 8 }, BST_VO_K = { intro: 0, p2: 1, p3: 2, win: 3 }; // data/bstBossVoices.js: CATHARSISHAWTHORNEANDORION1–12 (Hawthorne 1–4, Orion 5–8, Zark 9–12: intro, half health, near the end, falling)
 const bstVo = () => BST.vo || (BST.vo = loadDataScript('bstBossVoices').then(ok => ok ? sfx.loadClips('bstBossVoices') : []).catch(() => []).then(v => v || []));
-const bstVoHak = () => BST.voH || (BST.voH = loadDataScript('c4eGoodVillainHakVoices').then(ok => ok ? sfx.loadClips('c4eGoodVillainHakVoices') : []).catch(() => []).then(v => v || [])); // CH4GOODENDINGEVIL18–20 (half health, near the end, falling)
-async function bstBossSay(B, kind, ms) { if (!B.X.lines[kind]) return; const vo = B.k === 'hak' ? await bstVoHak() : await bstVo(), clip = (B.k === 'hak' ? vo[{ p2: 0, p3: 1, win: 2 }[kind]] : vo[BST_VO_AT[B.k] + BST_VO_K[kind]]) || null; siegeSay(B.X.boss.toUpperCase(), B.X.lines[kind], clip ? Math.max(ms, clip.duration * 1000 + 300) : ms, null, clip); }
+const bstVoHak = () => BST.voH || (BST.voH = loadDataScript('c4eGoodVillainHakVoices').then(ok => ok ? sfx.loadClips('c4eGoodVillainHakVoices') : []).catch(() => []).then(v => v || [])); // CH4GOODENDINGEVIL18–29: 18 half health, 19 near the end, 20 falling, 21 his answer to "Sevirrus", 22–29 his taunts in order
+async function bstBossSay(B, kind, ms, ti) { const line = kind === 'taunt' ? (B.X.taunts || [])[ti] : B.X.lines[kind]; if (!line) return; const vo = B.k === 'hak' ? await bstVoHak() : await bstVo(), clip = (B.k === 'hak' ? vo[kind === 'taunt' ? 4 + ti : { p2: 0, p3: 1, win: 2, intro: 3 }[kind]] : vo[BST_VO_AT[B.k] + BST_VO_K[kind]]) || null; siegeSay(B.X.boss.toUpperCase(), line, clip ? Math.max(ms, clip.duration * 1000 + 300) : ms, null, clip); }
 async function bstBossSpawn(k) {
   bstVo();
   const X = BST_BOSS[k](), f = BST.bossF, at = f === 4 ? bstThrone() : { x: BST.x, z: BST.z - 8 }, x = at.x, z = at.z + (f === 4 ? 3 : 0);
@@ -25660,8 +25713,9 @@ function bstBossTick(dt) {
       continue; }
     c.x = q.x; c.z = q.z; c.y = q.y;
     if (c.barT > 0) { c.barT -= dt; c.bar.visible = true; c.bar.quaternion.copy(camera.quaternion).premultiply(tmpQ.copy(R.root.quaternion).invert()); const fg = c.bar.userData.fg, kk = Math.max(0, c.hp / c.D.hp); fg.scale.x = Math.max(.001, kk); fg.position.x = -(1 - kk) / 2; } else c.bar.visible = false;
-    if (!B.p2 && c.hp < c.D.hp * .5) { B.p2 = true; bstBossSay(B, 'p2', 3600); }
-    if (!B.p3 && c.hp < c.D.hp * .2) { B.p3 = true; bstBossSay(B, 'p3', 3200); ex.shake = .4; }
+    if (!B.p2 && c.hp < c.D.hp * .5) { B.p2 = true; bstBossSay(B, 'p2', 3600); B.tauntT = Math.max(B.tauntT || 0, 7); }
+    if (!B.p3 && c.hp < c.D.hp * .2) { B.p3 = true; bstBossSay(B, 'p3', 3200); ex.shake = .4; B.tauntT = Math.max(B.tauntT || 0, 7); }
+    if (X.taunts && live) { B.tauntT = (B.tauntT == null ? 16 : B.tauntT) - dt; if (B.tauntT <= 0 && (B.ti | 0) < X.taunts.length) { bstBossSay(B, 'taunt', 4200, B.ti | 0); B.ti = (B.ti | 0) + 1; B.tauntT = 12 + Math.random() * 5; } } // Hak talks while he fights
     if (!live) { R.mode = 'idle'; animRig(R, dt); continue; }
     const dx = p.x - q.x, dz = p.z - q.z, d = Math.hypot(dx, dz) || 1, fury = B.p2 ? 1.25 : 1, sp = (B.kind === 'ranged' ? 3.6 : 4.8) * fury, dmg = Math.round((B.kind === 'ranged' ? 16 : 34) + c.lv * (B.kind === 'ranged' ? .55 : 1));
     B.cd -= dt * fury; B.leapCd -= dt; B.novaCd -= dt; B.t += dt;
@@ -25726,6 +25780,10 @@ function bstTick(dt) {
   try { bstBossTick(dt); } catch (e) { console.error(e); }
   if (!bstLive()) return;
   const p = player.position, war = bstWar();
+  if (TEST_RUN === 'hakduel' && state === 'explore' && !ex.dlg && !BST.in && !(BST.bosses && BST.bosses.length) && (wanderer.ch4 || {}).hakDuel && !(wanderer.ch4 || {}).ending && !(BST.hakTestT > time)) { // ?hakchompjakbossfightevilgoodending: straight up to the throne room, to Hak
+    BST.hakTestT = time + 6; const fd = $('#fade'); fd.style.transition = 'opacity .35s'; fd.style.opacity = 1;
+    setTimeout(() => { BST.in = true; BST.floor = BST_FLOORS - 1; BST.spawnedFloor = BST.floor; bstClearFoes(); BST.spawnedFloor = BST.floor; const t = bstThrone(); player.position.set(t.x, BST.y0 + BST.floor * BST_H + .2, t.z + 11); player.rotation.y = Math.PI; vel.set(0, 0, 0); ex.snap = true; try { placeCrew().catch(() => null); } catch (e) {}
+      fd.style.transition = 'opacity .8s'; fd.style.opacity = 0; notice('The Carax Bastion · the throne room', 'HAK CHOMPJAK V · THE LAST OF THEM', 3000); setTimeout(() => { if (state === 'explore' && !ex.dlg && BST.in) gvAsk(); }, 2600); }, 400); }
   // in and out of the door
   if (!BST.in && bstIn(p.x, p.z) && Math.abs(p.x - BST.x) < 2.6) { BST.in = true; BST.floor = 0; if (!(wanderer.ch4 || {}).bstReached && war) bstSave({ bstReached: true }); notice('The Carax Bastion', war ? `FLOOR 1 OF ${BST_FLOORS} · THE CATHARSIS HOLD IT` : 'EMPTY HALLS · CLIMB IT IF YOU LIKE', 3000); sfx.thud(); }
   else if (BST.in && (!bstIn(p.x, p.z) || p.y < BST.y0 - 3)) { BST.in = false; BST.floor = 0; bstClearFoes(); } // out (through the door, or carried out)
@@ -28651,7 +28709,7 @@ function rememberPlace() {
   return p;
 }
 async function doSave(i) {
-  if (TEST_RUN) { slotMsg(`This is the ?${TEST_RUN === 'badchoices' ? 'badchoices' : 'ch5allteam'} test wanderer: it can\u2019t be saved, so your real saves stay as they were.`, true); return; }
+  if (TEST_RUN) { slotMsg(`This is the ?${TEST_RUN === 'badchoices' ? 'badchoices' : TEST_RUN === 'hakduel' ? 'hakchompjakbossfightevilgoodending' : 'ch5allteam'} test wanderer: it can\u2019t be saved, so your real saves stay as they were.`, true); return; }
   const place = slotFrom === 'explore' ? rememberPlace() : { mode: 'menu' };
   const prev = slots[i];
   slots[i] = { savedAt: Date.now(), roster: JSON.parse(JSON.stringify(roster)), activeId, place, residents: JSON.parse(JSON.stringify(residents)), resEmp: JSON.parse(JSON.stringify(resEmp)), resGuild: JSON.parse(JSON.stringify(resGuild)) };

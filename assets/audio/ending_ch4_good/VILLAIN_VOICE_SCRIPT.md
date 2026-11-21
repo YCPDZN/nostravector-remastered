@@ -24,8 +24,21 @@ Plays when you reach the good ending with a villain alignment (−34 or lower). 
 
 **Then a box, your reply:** "You of ALL PEOPLE should keep your mouth shut, SEVIRRUS."
 
-**The boss fight: `data/c4eGoodVillainHakVoices.js` (CH4GOODENDINGEVIL18–20, not recorded yet)**
+**The boss fight: `data/c4eGoodVillainHakVoices.js` (recorded as CH4HAKFINALBOSSFIGHT1–12, the 12 lines below in order; music: Terra Imperium)**
 
 18. Hak (half health): Is that all? Zark hit harder, and Zark is dead.
 19. Hak (near the end): For Aridaxx! For every one of them!
 20. Hak (defeated): Then it's yours. All of it. Gods help whoever's left to live in it.
+21. Hak (his answer to "SEVIRRUS", as the fight starts): Sevirrus. Yes. I was him. I killed my own father, and I spent fifty years learning what that costs. You learned nothing in one night.
+22. Hak (taunt): I spent twenty-six years in a cell for what I did. You won't live long enough to see one.
+23. Hak (taunt): Every one of them would have died for you. You didn't even let them.
+24. Hak (taunt): Archamus saw something in you. I'll cut out whatever it was and bury it with him.
+25. Hak (taunt): You fight like Zark taught you. He taught me too. It took me fifty years to unlearn it.
+26. Hak (taunt): My father begged me, at the end. I still hear him. If you live, you'll hear all of them. Every night.
+27. Hak (taunt): Vishara sang their names all the way here. Now someone will have to sing hers.
+28. Hak (taunt): Stay down! Stay down, you sick animal!
+29. Hak (taunt): Aridaxx will know what you did tonight. Every world will know.
+
+The taunts come one at a time, every 12–17 seconds while you fight, in this order.
+
+Test the fight on its own: `?hakchompjakbossfightevilgoodending`.
