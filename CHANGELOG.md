@@ -3057,3 +3057,4 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - **Export a save:** tap Slot 1, 2 or 3 and that save downloads as its own file (`nostravector-save-1-<name>.json`), with its wanderers and any creations they use.
   - **Import a save:** tap the slot it should go into (tap again to confirm if it already has a save), choose the file, and it goes there. Your other slots stay as they are, and nothing reloads.
   - An older export of every slot still imports: you get the save from the same slot number in it (or its first save).
+- **Andromeda's core world is Alt-Zerry.** The world circling M31* at the heart of the Andromeda Galaxy was Vigil; it's now **Alt-Zerry**, and the gas giant beside it is **Alt-Zerry II**. Same worlds, same places; saves keep them.
