@@ -3053,3 +3053,7 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - **Its own galaxy:** no warp crosses between galaxies, and teleporters don't either. Residents stay in the Milky Way, Orion Mascar's conquest never counts it, and the Milky Way's maps (and the Nostrapedia's) leave it out.
   - **Test it:** `?andromeda` loads a throwaway Chapter V wanderer (never saved) in space at Sagittarius A*. Continue, then fly into the black hole.
 - **Fixed: Archamus on the top of the Bastion.** The prompt by him said *Pick up · Speak to Archamus* and pressing it did nothing. It now says *Speak to Archamus · TALK*, and he says his lines and takes you out.
+- **Export and import one save at a time.** *Export saves* and *Import saves* (which handled every slot at once, and an import wiped them all) are now **Export a save** and **Import a save**:
+  - **Export a save:** tap Slot 1, 2 or 3 and that save downloads as its own file (`nostravector-save-1-<name>.json`), with its wanderers and any creations they use.
+  - **Import a save:** tap the slot it should go into (tap again to confirm if it already has a save), choose the file, and it goes there. Your other slots stay as they are, and nothing reloads.
+  - An older export of every slot still imports: you get the save from the same slot number in it (or its first save).
