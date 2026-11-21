@@ -16307,21 +16307,21 @@ function zpvBoom(p, L) { // a ship dies: a flash, a fireball, a shock ring and a
   ZPV.fx.push({ f, ring, deb, V, Lt, t: 0, L });
 }
 function zpvBeam(from, to, col) { const G = new THREE.BufferGeometry().setFromPoints([from, to]); const m = new THREE.Line(G, new THREE.LineBasicMaterial({ color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); ZPV.scene.add(m); ZPV.beams.push({ m, t: 0 }); }
-async function zarkPovPlay(after) {
-  if (ZPV.on || state !== 'space') { if (after) after(); return; }
-  Object.assign(ZPV, { on: true, after, from: state, t: 0, li: -1, nextT: 2.6, phase: 'load', ending: false });
+async function zarkPovPlay(after, pv) { // pv: a preview from the title (?finalboss=…): { mood, ori }
+  if (ZPV.on || (state !== 'space' && !pv)) { if (after) after(); return; }
+  Object.assign(ZPV, { on: true, after, from: state, t: 0, li: -1, nextT: 2.6, phase: 'load', ending: false, pv: pv || null }); if (pv) show(ui.title, false);
   state = 'zarkPov'; SPC.keys.clear(); const fd = $('#fade'); fd.style.transition = 'opacity .6s'; fd.style.opacity = 1; sfx.thud(); sfx.drone(.5);
   const hud = $('#spaceHud'); ZPV.hud = hud && !hud.classList.contains('hidden'); if (hud) hud.classList.add('hidden');
   ZPV.xh = !ui.xhud.classList.contains('hidden'); show(ui.xhud, true); ui.xhud.classList.add('cutting'); // (for its Skip button)
   zpvBuild();
-  const ori = zarkOrionDead(), pack = k => loadDataScript(k).then(ok => ok ? sfx.loadClips(k) : []).catch(() => []);
+  const ori = ZPV.pv ? !!ZPV.pv.ori : zarkOrionDead(), pack = k => loadDataScript(k).then(ok => ok ? sfx.loadClips(k) : []).catch(() => []);
   const [haw, orn, vz] = await Promise.race([Promise.all([glbRig('tiHawC', 2.2, 'none').catch(() => null), ori ? glbRig('orionCath', 2.6, 'none', true).catch(() => null) : null, pack('zarkPovVoices')]), new Promise(r => setTimeout(() => r([null, null, []]), 9000))]);
   if (!ZPV.on) return;
   ZPV.wing.H = zpvWing(haw, -1); ZPV.wing.O = zpvWing(orn, 1);
   const V = vz || [], T = { Z: ZARK_POV, H: HAW_POV, O: ORI_POV }, W = { Z: 'LORD ZARK', H: tiPhone() ? 'HAWTHORNE' : 'THOMAS HAWTHORNE · THE CATHARSIS', O: tiPhone() ? 'ORION' : 'ORION MASCAR · THE CATHARSIS' };
   ZPV.seq = ZPV_ORDER.map((k, oi) => [k, oi]).filter(([k]) => k[0] !== 'O' || (ori && ZPV.wing.O)).map(([k, oi]) => { const i = +k.slice(1), who = k[0], clip = V[oi] || null, text = T[who][i]; return { who, name: W[who], text, clip, len: clip ? clip.duration : text.split(/\s+/).length * .34 }; }); // one pack, every line in speaking order (CH4LORDZARK1–18)
   ZPV.dur = 2.6 + ZPV.seq.reduce((a, q) => a + q.len + .7, 0) + 3.2;
-  leaderPlay('final').catch(() => {}); // the Final Boss theme, through the flight, Orion's call and the crew's scene
+  leaderTheme('final').then(b => { if (!b || !ZPV.on) return; sfx.combat && sfx.combat(false); sfx.leadOn = true; sfx.playSong(b, .38); }).catch(() => {}); // the Final Boss theme, through the flight, Orion's call and the crew's scene (kept low, under the voices: about half its usual level)
   ZPV.vig = document.getElementById('zpvVig') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'zpvVig' }));
   ZPV.vig.style.cssText = 'position:fixed;inset:0;z-index:30;pointer-events:none;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 45%,rgba(90,0,0,.55) 78%,rgba(20,0,0,.95) 100%)';
   renderer.domElement.style.filter = 'contrast(1.18) saturate(1.15)';
@@ -16378,13 +16378,14 @@ function zpvEnd() {
   for (const W of Object.values(ZPV.wing || {})) if (W && W.R && W.R.root.parent) W.R.root.parent.remove(W.R.root); // (their rigs aren't ours to dispose)
   try { if (ZPV.scene) disposeOwned(ZPV.scene); } catch (e) {} ZPV.scene = null; ZPV.cam = null; ZPV.ships = []; ZPV.fx = []; ZPV.beams = []; ZPV.wing = {};
   if (ZPV.vig && ZPV.vig.parentNode) ZPV.vig.parentNode.removeChild(ZPV.vig); ZPV.vig = null; renderer.domElement.style.filter = '';
-  const bad = (() => { try { return ch4Ending() === 'bad' && orionVillain() && !orbS().dead; } catch (e) { return false; } })(); // the road to the bad ending: Orion has something to say first
-  const crew = () => crewCaraxPlay(() => zpvRestore(after)).catch(e => { console.error(e); ccxEnd(); zpvRestore(after); }); // then the crew has its say
+  const pv = ZPV.pv, bad = pv ? pv.mood === 'bad' : (() => { try { return ch4Ending() === 'bad' && orionVillain() && !orbS().dead; } catch (e) { return false; } })(); // the road to the bad ending: Orion has something to say first
+  const crew = () => crewCaraxPlay(() => zpvRestore(after), pv).catch(e => { console.error(e); ccxEnd(); zpvRestore(after); }); // then the crew has its say
   if (bad) { orionSealPlay(crew).catch(e => { console.error(e); crew(); }); return; }
   crew();
 }
 function zpvRestore(after) {
   if (sfx.leadOn) { sfx.leadOn = false; sfx.stopSong(1.5); } // the Final Boss theme ends with the scenes
+  if (ZPV.pv) { ZPV.pv = null; setTimeout(() => { location.href = location.pathname; }, 600); return; } // a preview: back to a clean title screen
   { const hud = $('#spaceHud'); if (hud && ZPV.hud) hud.classList.remove('hidden'); } ui.xhud.classList.remove('cutting'); show(ui.xhud, !!ZPV.xh);
   state = 'space'; clock.getDelta();
   const fd = $('#fade'); fd.style.transition = 'opacity 1.2s'; fd.style.opacity = 0;
@@ -16414,9 +16415,10 @@ const CREW_CX = {
 };
 const CREW_CX_ORDER = Object.keys(CREW_CX); const crewCxOrder = mood => CREW_CX_ORDER.filter(id => CREW_CX[id][mood]); // each mood's pack: a clip per companion who has a line in it
 const CCX = { on: false };
-async function crewCaraxPlay(after) {
-  const mood = (() => { try { return ch4Ending() || 'neutral'; } catch (e) { return 'neutral'; } })();
-  const ids = (wanderer.party || []).filter(id => CREW_CX[id] && CREW_CX[id][mood] && PARTY[id] && !PARTY[id].imported); // story companions only (the dead never)
+async function crewCaraxPlay(after, pv) {
+  const mood = pv ? pv.mood : (() => { try { return ch4Ending() || 'neutral'; } catch (e) { return 'neutral'; } })();
+  const ids = pv ? crewCxOrder(mood).filter(id => !(id === 'orion' && pv.ori)).slice(0, tiPhone() ? 6 : 15) // a preview: everyone who has a line on that road (Orion not, if he died)
+    : (wanderer.party || []).filter(id => CREW_CX[id] && CREW_CX[id][mood] && PARTY[id] && !PARTY[id].imported); // story companions only (the dead never)
   if (!ids.length) { after(); return; }
   Object.assign(CCX, { on: true, after, mood, t: 0, li: -1, nextT: 2.4, ending: false, rigs: {} }); state = 'crewCarax';
   const S = CCX.scene = new THREE.Scene(); S.background = new THREE.Color(0x050203); S.fog = new THREE.FogExp2(0x12050a, .03);
@@ -17679,6 +17681,16 @@ function c4eEnd(keepBlack) {
   if (m) { const go = () => { if (state !== 'title' || C4E.on || CUT.on) return; removeEventListener('pointerdown', go); removeEventListener('keydown', go); sfx.init && sfx.init(); if (OILK[m[1]]) cutPlay(OILK[m[1]]); else ch4EndingPlay(m[1], { preview: true }); };
   addEventListener('pointerdown', go); addEventListener('keydown', go);
   const hint = () => { if (state === 'title') notice('Preview', m[1] === 'tared' ? 'TAP TO PLAY THE TAREDESIBAN NIGHTMARE' : m[1] === 'oilkoumene' ? 'TAP TO PLAY THE OILKOUMENE NIGHTMARE' : m[1] === 'oilkdream' ? 'TAP TO PLAY THE OILKOUMENE DREAM' : m[1] === 'timeskip' ? 'TAP TO PLAY THE TWO YEARS WHILE YOU SLEPT' : m[1] === 'amgrek' ? 'TAP TO PLAY THE LAST GARDEN' : `TAP TO PLAY THE ${m[1].toUpperCase()} ENDING`, 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500); } }
+
+// ?finalboss=good|neutral|neutraloriondead|bad: watch the arrival at Sagittarius A* from the title screen (tap or press a key once the menu is
+// up): Zark's flight out of the black hole (with the Catharsis Orion beside him for neutraloriondead), Orion's call on bad, then the crew's
+// scene for that road (everyone who has a line on it). Nothing is saved; it ends back on a clean title screen.
+{ const m = location.search.match(/[?&]finalboss=(good|neutraloriondead|neutral|bad)\b/);
+  if (m) { const pv = { mood: m[1] === 'neutraloriondead' ? 'neutral' : m[1], ori: m[1] === 'neutraloriondead' };
+    const go = () => { if (state !== 'title' || ZPV.on) return; removeEventListener('pointerdown', go); removeEventListener('keydown', go); sfx.init && sfx.init(); zarkPovPlay(null, pv).catch(e => { console.error(e); location.href = location.pathname; }); };
+    addEventListener('pointerdown', go); addEventListener('keydown', go);
+    const hint = () => { if (state === 'title') notice('Preview', `TAP TO PLAY ZARK’S ARRIVAL · ${m[1] === 'neutraloriondead' ? 'NEUTRAL, ORION DEAD' : m[1].toUpperCase()}`, 5000); };
+    setTimeout(hint, 2500); } }
 
 // ?ch5allteam=evil (or =good, =neutral; evil if left out): a throwaway Chapter V wanderer for testing, with every companion in the crew at once
 // (Orion, Nico, Khazglar, Charon, Kizna, Nyrexia, Croxian, Malia, James as Pontifex, Josiah II, Javek, Tyrotaronus, and Gareth and the others from

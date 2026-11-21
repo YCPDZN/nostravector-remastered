@@ -106,6 +106,7 @@ Add one of these to the game's address to jump straight to a scene:
 - `?residents=all` brings every resident to you.
 - `?menu=ch4pre`, `?menu=ch4` or `?menu=ch5` previews the main menu for that chapter.
 - `?ending=tared` plays the Taredesiban nightmare once the title screen is up.
+- `?finalboss=good`, `?finalboss=neutral`, `?finalboss=neutraloriondead` or `?finalboss=bad` plays the arrival at Sagittarius A*: Zark's first-person flight out of the black hole (with the Catharsis Orion beside him for `neutraloriondead`), Orion's call on `bad`, then the crew's scene for that road. Tap once the title screen is up; nothing is saved.
 - `?ending=oilkoumene` plays the Oilkoumene nightmare (The Fall of Obra-Spira), and `?ending=oilkdream` plays the Oilkoumene dream on the ice (Tyrotaronus). Tap once the title screen is up; nothing is saved.
 - `?badchoices` loads a test wanderer in Chapter IV with every choice made the wrong way: Nyrexia never recruited, James, Croxian and Malia killed, and Orion gone to Hawthorne alive. So Orion's boss fight waits on Earth, and the final battle plays the bad ending. It starts after the two years, aboard the Jewel of Archamus in Sol, at level 40 or higher. It uses your active wanderer's look, press Continue to play, and it can't be saved.
 - `?ch5allteam=evil` (or `=good`, `=neutral`) loads a test wanderer in Chapter V with every companion in the crew (plus a Pontifex and a Sister), all pushed fully that way, aboard the Nostra. It uses your active wanderer's look, press Continue to play, and it can't be saved.
