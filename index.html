@@ -1207,6 +1207,7 @@ body.ch4 .bar.sta i{background:#ff8a7e}
 .nav-q{color:#ffc94a;font-weight:500}
 body.cc-ingame #cc{background:none} body.cc-ingame > *:not(#cc):not(#c):not(script):not(style):not(svg){display:none!important} /* the creator from the pause menu: the game's HUD, labels and chat stay hidden behind it */
 #cc.ingame #ccTabs .tab:not([data-t=species]){display:none} /* the Species Creator opened from the pause menu: species only */
+#bhFx{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:0;transition:opacity .4s}#bhFx i{position:absolute;inset:0;display:block}#bhFx .bh-ring,#bhFx .bh-ring2{mix-blend-mode:screen}#bhFx .bh-white{background:#fff;opacity:0}#bhFx .bh-cap{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-family:var(--display);font-weight:500;letter-spacing:.5em;font-size:clamp(12px,2.4vw,22px);color:#fff;text-shadow:0 0 24px rgba(255,255,255,.8);opacity:0}
 #xColBtn{display:none!important} #xColonise.hidden{display:none} /* Colonise lives in the pause menu now */ #xColBtn{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 64px);z-index:6;pointer-events:auto;border-color:#ffd36a;color:#ffd36a;background:rgba(20,16,6,.72)} #xhud.cutting #xColBtn,#xhud.modal #xColBtn,#xhud.talking #xColBtn{display:none}
 .gal-sw{position:absolute;top:calc(var(--st) + 58px);left:calc(var(--sl) + 20px);height:34px;padding:0 12px;background:rgba(7,10,17,.6);border:1px solid #9fb4ff66;color:#c8d4ff;font:500 10px/1 var(--display);letter-spacing:.18em;cursor:pointer;z-index:3} /* switch between the Milky Way's map and the Xonexi Galaxy's */
 @media (max-width:720px) and (orientation:portrait){.gal-sw{top:calc(var(--st) + 100px)}}
@@ -5668,7 +5669,7 @@ async function interact() {
     openFurnace(n.ref);
   } else if (n.id === 'bench') {
     openInv(true);
-  } else if (n.id === 'bstUp' || n.id === 'bstDown' || n.id === 'bstThrone') {
+  } else if (n.id === 'bstUp' || n.id === 'bstDown' || n.id === 'bstThrone' || n.id === 'bstArch') {
     bstUse(n.id);
   } else if (n.id === 'xoDgn') {
     xoDgnEnter();
@@ -6917,6 +6918,7 @@ $('#tpClose').addEventListener('click', () => openModal('#tpMenu', false));
 function tpFarOk(area) {
   if ((wanderer.chapter | 0) < 3 || !area || area === curArea()) return false;
   { const B = area.startsWith('pl:') && bodyById(area.slice(3)), sg = !!B && B.sys === 'sgra'; if (sgraLock() && !sg) return false; if (sgraDue() && sg) return false; } // the path of no return: no teleporting out of Sagittarius A* before the final battle, and no slipping in past the warning
+  { const B = area.startsWith('pl:') && bodyById(area.slice(3)), to = B ? galOf(sysById(B.sys)) : 'milky', here = isPl() && world.planet ? galOf(sysById(world.planet.P.sys)) : 'milky'; if (to !== here) return false; } // no teleporting between galaxies
   if (area === 'antarctica' || area === 'africa') return true;
   if (area === 'europe') return lonOpen(); // New London, once it's open to you again (Chapters IV–V)
   return area.startsWith('pl:') && !!bodyById(area.slice(3));
@@ -15583,10 +15585,11 @@ function orbHuntStart(delay) { // the War of Restoration talk on Charon, before 
 const orbEarthQ = () => orbOn() && orbS().ph < 3;
 const orbSpaceQ = () => orbOn() && orbS().ph === 3;
 const orbFallen = () => (orbS().conq || []).length;
+const ORB_ALL = () => SYSTEMS.filter(S => S.galaxy !== M31_GAL).length; // Orion never reaches Andromeda
 function orbTask() {
   if (!orbOn()) return null; const O = orbS(), ph = tiPhone(), mq = wanderer.ch4 && wanderer.ch4.orbMain ? 'Main quest' : 'Side quest'; // Hak asked you to finish him first: main quest now
   if (O.ph < 3) return ph ? `${mq} · Orion Mascar (his house, Earth)` : `${mq} · Defeat Orion Mascar · he waits for you at his house in East Africa, on Earth`;
-  const S = sysById(O.sys), n = orbFallen(), all = SYSTEMS.length;
+  const S = sysById(O.sys), n = orbFallen(), all = ORB_ALL();
   if (SPC.sys === O.sys) return ph ? `${mq} · shoot down Orion · ${n}/${all}` : `${mq} · Shoot down Orion Mascar · he can’t conquer ${S.name} while you’re here · ${n}/${all} systems fallen`;
   return ph ? `${mq} · stop Orion · ${S.name} · ${n}/${all}` : `${mq} · Stop Orion Mascar · he is taking ${S.name} · ${n}/${all} systems fallen`;
 }
@@ -15903,8 +15906,8 @@ setInterval(() => { try {
   if (SPC.sys === O.sys) { if (ORB.hereSys !== O.sys) { ORB.hereSys = O.sys; if (state === 'space') spaceMsg(tiPhone() ? 'Orion is in this system' : `Orion Mascar is in ${sysById(O.sys).name} · he can’t take it while you’re here`); } return; }
   ORB.hereSys = null; O.t = (O.t == null ? ORB_CONQ_T : O.t) - 1; if (O.t > 0) return;
   O.conq = O.conq || []; if (!O.conq.includes(O.sys)) O.conq.push(O.sys);
-  const from = sysById(O.sys), left = SYSTEMS.filter(S => !O.conq.includes(S.id));
-  const msg = `Orion Mascar has taken ${from.name} · ${O.conq.length}/${SYSTEMS.length} systems fallen`;
+  const from = sysById(O.sys), left = SYSTEMS.filter(S => !O.conq.includes(S.id) && S.galaxy !== M31_GAL);
+  const msg = `Orion Mascar has taken ${from.name} · ${O.conq.length}/${ORB_ALL()} systems fallen`;
   if (!left.length) { O.done = true; orbSave(); notice('Orion Mascar', 'THE GALAXY HAS FALLEN TO HIM', 5200); sfx.thud(); try { applyChapterFactions(); } catch (e) {} renderTasks(); return; }
   O.sys = left.map(S => [galDist(from, S), S]).sort((a, b) => a[0] - b[0])[0][1].id; O.t = ORB_CONQ_T; O.hp3 = null; orbSave();
   if (state === 'space') spaceMsg(msg); else lootMsg(msg, '#ff6a6e');
@@ -17949,6 +17952,26 @@ let TEST_RUN = null;
     const hint = () => { if (state === 'title') notice('Test · not saved', tiPhone() ? 'HAK’S FIGHT · CONTINUE TO PLAY' : 'HAK CHOMPJAK V · THE VILLAIN’S GOOD ENDING · CONTINUE TO FIGHT HIM', 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500);
   }); }
 
+// ?andromeda: a throwaway Chapter V wanderer (never saved) in space at Sagittarius A*, the Catharsis gone, so you can fly straight into the
+// event horizon and through to the Andromeda Galaxy. It takes your active wanderer's look, level and crew.
+{ const m = /[?&]andromeda(?:[=&]|$)/.test(location.search);
+  if (m) slotsReady.then(() => {
+    const base = roster.find(c => c.id === activeId) || DEFAULT_W;
+    const T = Object.assign({}, DEFAULT_W, JSON.parse(JSON.stringify(base)), { id: 'test-andromeda', name: `${(base.name || 'WANDERER').slice(0, 14)} · TEST`, chapter: 5 });
+    const lv = levelInfo(T.xp || 0).level;
+    T.ch1 = Object.assign({}, T.ch1, { found: true, metOutside: true, betrayed: true, jamesDead: true, escaped: true });
+    T.ch2 = Object.assign({}, T.ch2, { started: true, introSeen: true, metNico: true, orionJoined: true, orionBase: lv, orionMode: 'follow', trialDone: true, escapedLondon: true });
+    T.ch3 = Object.assign({}, T.ch3, { started: true, nightmare: spOf(T), khzCall: true, khzMet: true, khzBase: lv, hawMars: true, charonLanded: true, charonMet: true, nyxJoined: true, warped: true, landed: true,
+      jamesRev: true, jamesFate: 'spared', nyxBeforeJames: true, hakMet: true, hakCall: true, hakBack: true, karrVision: true, siegeOn: true, siegeWon: true, croxFate: 'spared', maliaFate: 'spared', cygDone: true, hawDead: true, alienDone: true });
+    T.ch4 = Object.assign({}, T.ch4, { timeSkip: true, newShip: true, hakWar: true, fateFinal: true, zarkDown: true, ending: 'neutral', throneLeft: true });
+    T.party = (T.party || []).filter(id => !/^(fin|lead):/.test(id)); T.aboard = {}; T.dungeon = {};
+    { const at = new THREE.Vector3(0, 3200, 30000), q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(at, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1, 0))); T.place = { mode: 'explore', area: 'space', where: 'space', sys: 'sgra', ship: 'jewel', sp: at.toArray(), sq: q.toArray() }; } // facing the hole, a short flight out
+    roster = roster.filter(c => c.id !== T.id).concat([T]); activeId = T.id; wanderer = Object.assign({}, T);
+    resumePlace = Object.assign({}, T.place, { who: T.id }); TEST_RUN = 'andromeda'; lastSlot = -1; dirty = false;
+    applyLook(wanderer); if (state === 'title') refreshMenu();
+    const hint = () => { if (state === 'title') notice('Test · not saved', tiPhone() ? 'SAGITTARIUS A* · CONTINUE' : 'SAGITTARIUS A* · CONTINUE, THEN FLY INTO THE BLACK HOLE', 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500);
+  }); }
+
 // ---- the cutscene player (main menu · Cutscenes): the scenes the active wanderer has reached, replayed from the title ----
 // Each one runs as it does in the story, then comes back here: nothing is saved, no flag is set, no save is touched.
 // What's listed follows the wanderer's progress (Chapter III: only their own species' nightmare, as in the Nostrapedia).
@@ -19162,6 +19185,67 @@ const SYSTEMS = [
     ] });
   const X = SYSTEMS.find(S => S.id === 'xonexi'); if (X) X.desc = X.desc.replace('The only star of the Xonexi Galaxy', 'The heart of the Xonexi Galaxy').replace('and the only way between the two', 'whose way into ours runs through its second star, the Gateway');
 })();
+// ---- the Andromeda Galaxy (M31): 120 star systems of its own around M31*, the black hole at its heart. Its own map; no warp reaches it.
+//      The way in is the event horizon of Sagittarius A* (Chapter V, once the Catharsis has fallen); M31*'s brings you home. Generated from
+//      a fixed seed, so it's the same galaxy on every device. Laid out far from the Milky Way on the map's plane, tilted as we see it. ----
+const M31_GAL = 'Andromeda Galaxy', M31_C = { x: 14, y: 3 }, M31_PA = -.62, M31_INC = .42, M31_R = 1.25;
+const m31Pt = (x, y) => { const yy = y * M31_INC, c = Math.cos(M31_PA), s = Math.sin(M31_PA); return { x: +(M31_C.x + (x * c - yy * s) * M31_R).toFixed(3), y: +(M31_C.y + (x * s + yy * c) * M31_R).toFixed(3) }; };
+(function genAndromeda() {
+  if (SYSTEMS.some(S => S.galaxy === M31_GAL)) return;
+  let sd = 31310124; const R = () => (sd = (sd * 48271) % 2147483647) / 2147483647, pick = a => a[Math.floor(R() * a.length)], G = () => (R() + R() + R() - 1.5) / 1.5;
+  const hsl = (h, s2, l) => `hsl(${(((h % 360) + 360) % 360) | 0},${clamp(s2, 0, 100) | 0}%,${clamp(l, 0, 100) | 0}%)`;
+  const A = ['Ae', 'Thal', 'Myr', 'Cass', 'Ophi', 'Sil', 'Zan', 'Quor', 'Eph', 'Lio', 'Nev', 'Orr', 'Pyx', 'Sere', 'Tyr', 'Vael', 'Xan', 'Ysol', 'Kyr', 'Dae', 'Hel', 'Iru', 'Ostra', 'Ume', 'Bry', 'Cael', 'Fyn', 'Gwy', 'Jor', 'Lum'];
+  const B = ['andra', 'ion', 'essa', 'orin', 'yth', 'ael', 'ura', 'eon', 'is', 'ova', 'eth', 'ar', 'ix', 'ene', 'ora', 'une', 'ys', 'ath', 'omir', 'idra', 'aste', 'olen'];
+  const SUF = ['', '', '', '', '', ' Prime', ' Major', ' Minor', ' Reach', ' Drift', ' Verge', ' Deep', ' Crown', ' Veil'];
+  const ROM = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'], NUM = ['no', 'one', 'two', 'three', 'four', 'five', 'six'];
+  const STARS = [[6, 'Red dwarf', 'M', '#ff9a78', [255, 150, 120], 2400], [4, 'Orange dwarf', 'K', '#ffc890', [255, 190, 130], 3000], [3, 'Yellow dwarf', 'G', '#fff2c8', [255, 232, 180], 3600],
+    [2, 'Yellow-white dwarf', 'F', '#fff8ec', [255, 245, 225], 3700], [1, 'White star', 'A', '#eaf2ff', [220, 232, 255], 3900], [2, 'Blue giant', 'B', '#cfe0ff', [170, 195, 255], 4800],
+    [1, 'Orange giant', 'K', '#ffbe80', [255, 180, 110], 4600], [1, 'White dwarf', 'D', '#f4f8ff', [230, 240, 255], 1500]];
+  const W = STARS.reduce((t, x) => t + x[0], 0), starOf = () => { let r = R() * W; for (const x of STARS) if ((r -= x[0]) < 0) return x; return STARS[0]; };
+  const used = new Set(SYSTEMS.map(S => S.name));
+  const world = (type, P) => {
+    P.gtype = type; const h = R() * 360;
+    if (type === 'lush' || type === 'ocean') { const fh = pick([105, 95, 125, 140, 165, 285, 25, 330, 200, 300]); return Object.assign(P, { kind: 'earth', landBias: type === 'ocean' ? -.09 - R() * .04 : G() * .07, c: { sand: hsl(42 + G() * 10, 40, 70), low: hsl(fh, 42, 34), forest: hsl(fh + 12, 48, 19), rock: hsl(28, 12, 38), snow: hsl(210, 20, 94) }, sea: hsl(205 + G() * 25, 60, 28), atmo: hsl(205 + G() * 30, 80, 72), clouds: '#ffffff', cloudCover: .3 + R() * .4, sky: [hsl(215 + G() * 20, 55, 45), hsl(205, 60, 82)], fog: hsl(210, 40, 72) }); }
+    if (type === 'arid') { const dh = 15 + R() * 35; return Object.assign(P, { kind: 'desert', c: { low: hsl(dh, 45, 38), mid: hsl(dh + 5, 45, 60), rock: hsl(dh - 6, 40, 24), snow: hsl(dh, 20, 90) }, atmo: R() < .7 ? hsl(dh + 5, 80, 70) : null, clouds: R() < .3 ? '#fff4e6' : null, cloudCover: .2, sky: [hsl(dh, 40, 44), hsl(dh + 10, 60, 78)], fog: hsl(dh, 45, 62) }); }
+    if (type === 'lava') return Object.assign(P, { kind: 'desert', c: { low: hsl(15, 12, 12), mid: hsl(18, 14, 20), rock: hsl(10, 10, 7), snow: hsl(20, 12, 26) }, sea: hsl(14 + R() * 12, 100, 54), seaGlow: true, seaH: -14 - R() * 6, atmo: hsl(18, 90, 60), sky: [hsl(10, 70, 8), hsl(16, 65, 28)], fog: hsl(14, 50, 18) });
+    if (type === 'toxic') { const th = 55 + R() * 40; return Object.assign(P, { kind: 'venus', c: { low: hsl(th, 40, 30), mid: hsl(th, 45, 48), rock: hsl(th - 10, 35, 22) }, atmo: hsl(th, 80, 60), clouds: hsl(th, 60, 76), cloudCover: .85, sky: [hsl(th, 50, 30), hsl(th, 60, 60)], fog: hsl(th, 45, 45) }); }
+    if (type === 'frozen') return Object.assign(P, { kind: 'rock', c: { low: hsl(205 + G() * 15, 15, 68), mid: hsl(210, 22, 90), rock: hsl(215, 15, 44) }, atmo: R() < .5 ? hsl(220, 70, 80) : null, sky: [hsl(225, 35, 14), hsl(220, 30, 45)], fog: hsl(220, 25, 50) });
+    if (type === 'gas') { const gh = R() < .3 ? 190 + R() * 40 : h; return Object.assign(P, { kind: 'gas', r: 4500 + R() * 5200, bands: Array.from({ length: 3 + Math.floor(R() * 3) }, () => hsl(gh + G() * 18, 25 + R() * 35, 45 + R() * 35)), rings: R() < .4, spot: R() < .2, atmo: hsl(gh, 60, 82), faction: R() < .35 && gh > 180 && gh < 240 ? 'Ice giant · no surface' : 'Gas giant · no surface' }); }
+    const bh = R() < .5 ? 30 : 220; return Object.assign(P, { kind: 'rock', c: { low: hsl(bh, 8 + R() * 10, 32 + R() * 15), mid: hsl(bh, 8, 55 + R() * 15), rock: hsl(bh, 8, 22) }, atmo: null, sky: ['#030305', '#0e0e12'], fog: '#18181c' });
+  };
+  // M31*: the black hole at the heart of Andromeda, with two worlds of its own
+  const core = { id: 'm31', name: 'M31*', galaxy: M31_GAL, star: { kind: 'hole', name: 'M31*', r: 3400, col: '#000000', glow: ['rgba(225,205,255,.9)', 'rgba(160,125,255,.35)', 'rgba(60,30,130,0)'], light: '#e6dcff', type: 'Supermassive black hole' },
+    faction: UNCLAIMED, map: { x: M31_C.x, y: M31_C.y }, home: 'm31-1', dark: true,
+    desc: 'The black hole at the heart of the Andromeda Galaxy, thirty times the mass of our own Sagittarius A*, in a disc of violet fire. Fly into its event horizon and it brings you home, out of Sagittarius A*. Two worlds circle it, far out, and no one has ever claimed them.', bodies: [] };
+  core.bodies.push(world('frozen', { id: 'm31-1', name: 'Vigil', r: 1700, orbit: 82000, ang: 1.4, seed: 9001, faction: UNCLAIMED }), world('gas', { id: 'm31-2', name: 'Vigil II', r: 6000, orbit: 150000, ang: 4.2, seed: 9003, faction: UNCLAIMED }));
+  SYSTEMS.push(core);
+  const mine = [core];
+  for (let n = 0; n < 120; n++) {
+    let pt, tries = 0;
+    do { const scatter = R() < .14, arm = Math.floor(R() * 2), t = .1 + Math.pow(R(), .75) * .9, a = scatter ? R() * Math.PI * 2 : arm * Math.PI + Math.log(t * 8 + 1) * 1.9 + G() * (.2 + .22 * (1 - t)), rr = scatter ? .15 + R() * .85 : t + G() * .05; pt = m31Pt(Math.cos(a) * rr, Math.sin(a) * rr); }
+    while (mine.some(S => Math.hypot(S.map.x - pt.x, S.map.y - pt.y) < .042) && ++tries < 80);
+    let name; do name = pick(A) + pick(B) + pick(SUF); while (used.has(name)); used.add(name);
+    const base = name.replace(/ \w+$/, m => SUF.includes(m) ? '' : m), id = 'an' + (n + 1), st = starOf();
+    const cls = st[2] === 'D' ? 'DA' : `${st[2]}${Math.floor(R() * 9)}${/giant/.test(st[1]) ? 'III' : 'V'}`, [r0, g0, b0] = st[4];
+    const S = { id, name, gen: true, galaxy: M31_GAL, faction: UNCLAIMED, map: pt, bodies: [],
+      star: { kind: 'star', name: base, r: st[5], col: st[3], glow: [`rgba(${r0},${g0},${b0},1)`, `rgba(${r0},${g0 * .82 | 0},${b0 * .65 | 0},.5)`, `rgba(${r0},${g0 * .6 | 0},${b0 * .4 | 0},0)`], light: st[3], type: `${st[1]} · ${cls}` } };
+    const nb = 1 + Math.floor(Math.pow(R(), .8) * 5); let orbit = 24000 + R() * 10000, rocky = 0, gas = 0, moons = 0;
+    for (let k = 0; k < nb; k++) {
+      const inner = orbit < 45000 && st[2] !== 'D', outer = orbit > 95000;
+      const type = inner ? pick(['lava', 'toxic', 'arid', 'barren', 'arid']) : outer ? pick(['gas', 'gas', 'frozen', 'barren', 'gas']) : pick(['lush', 'ocean', 'arid', 'barren', 'frozen', 'gas', 'lush', 'toxic']);
+      const P = world(type, { id: `${id}-${k + 1}`, name: `${base} ${ROM[k]}`, r: 900 + R() * 1700, orbit: Math.round(orbit), ang: R() * Math.PI * 2, seed: 9100 + n * 11 + k, faction: UNCLAIMED });
+      S.bodies.push(P); if (P.kind === 'gas') gas++; else rocky++;
+      if (R() < (P.kind === 'gas' ? .5 : .22)) { moons++; S.bodies.push(world(R() < .5 ? 'barren' : 'frozen', { id: `${P.id}m`, name: `${P.name}a`, r: 360 + R() * 340, parent: P.id, orbit: Math.round(P.r * (P.kind === 'gas' ? 1.9 : 2.6) + 2500 + R() * 2000), ang: R() * Math.PI * 2, seed: 9900 + n * 11 + k, faction: UNCLAIMED })); }
+      orbit += 16000 + R() * 14000 + (k === nb - 2 ? 20000 : 0);
+    }
+    if (!rocky) { const P = S.bodies[0]; world('barren', P); P.r = 1200; delete P.bands; P.faction = UNCLAIMED; rocky = 1; gas--; }
+    S.home = (S.bodies.find(P => P.kind !== 'gas' && !P.parent) || S.bodies.find(P => P.kind !== 'gas')).id;
+    const parts = [rocky && `${NUM[rocky] || rocky} rocky world${rocky > 1 ? 's' : ''}`, gas && `${gas > 1 ? NUM[gas] + ' gas giants' : 'a gas giant'}`, moons && `${moons > 1 ? NUM[moons] + ' moons' : 'a moon'}`].filter(Boolean);
+    const list = parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
+    S.desc = `Uncharted, in the Andromeda Galaxy: no one has been here before you. ${/^[AEIOU]/.test(st[1]) ? 'An' : 'A'} ${st[1].toLowerCase()} with ${list}.`;
+    SYSTEMS.push(S); mine.push(S);
+  }
+})();
 const ALL_BODIES = SYSTEMS.flatMap(S => S.bodies.map(P => (P.sys = S.id, P)));
 // inside Archiostal: you dock with the station and walk its gardens (forests and rivers under an artificial sky)
 ALL_BODIES.push({ id: 'archiostal-gardens', name: 'Archiostal', dock: 'archiostal', sys: 'malana', kind: 'earth', r: 2400, amp: .32, seed: 108, landBias: .12, groves: .25,
@@ -19825,8 +19909,11 @@ function spaceTick(dt) {
   for (const Q of SPC.bodies) { if (Q.cloud) Q.cloud.rotation.y += dt * .004; if (Q.spin) Q.spin.rotation.z += dt * .05; }
   for (const Q of SPC.bodies) if (Q.wards) { const k = Q.wardK = lerp(Q.wardK || 0, wardsShut(Q) ? 1 : 0, Math.min(1, dt * .35)); for (const w of Q.wards) w.g.rotation.x = k * 1.15; } // at war with its owners, the station folds its Wards shut
   { // the star: you can't fly into it
-    const st = curSys().star, sd = SPC.pos.length(), lim = st.r * (st.kind === 'hole' ? 3 : 1.6);
-    if (sd < lim) { SPC.pos.multiplyScalar(lim / Math.max(1, sd)); SPC.vel *= .5; if (time - (SPC.starMsgT || -9) > 3) { SPC.starMsgT = time; spaceMsg(st.kind === 'hole' ? 'The event horizon · the ship pulls away on its own' : `${st.name} · too hot to fly any closer`); } }
+    const st = curSys().star, sd = SPC.pos.length(), lim = st.r * (st.kind === 'hole' ? 3 : 1.6), gate = st.kind === 'hole' && (SPC.sys === 'sgra' || SPC.sys === 'm31') && andromedaOpen();
+    if (gate && !SC.foes.length) { // the way between the galaxies: fly into the hole
+      if (sd < st.r * 10 && time - (SPC.bhMsgT || -9) > 6) { SPC.bhMsgT = time; spaceMsg(SPC.sys === 'sgra' ? (tiPhone() ? 'Fly into the hole · Andromeda' : 'The event horizon of Sagittarius A* · fly in, and it takes you to the Andromeda Galaxy') : (tiPhone() ? 'Fly into the hole · home' : 'The event horizon of M31* · fly in, and it takes you home to the Milky Way')); }
+      if (sd < st.r * 2.3 && !(SPC.bhCool > time)) { bhCross(); return; } }
+    else if (sd < lim) { SPC.pos.multiplyScalar(lim / Math.max(1, sd)); SPC.vel *= .5; if (time - (SPC.starMsgT || -9) > 3) { SPC.starMsgT = time; spaceMsg(st.kind === 'hole' ? 'The event horizon · the ship pulls away on its own' : `${st.name} · too hot to fly any closer`); } }
   }
   // the ship, its engines, and the chase camera
   const sh = SPC.ship; sh.position.copy(SPC.pos); sh.quaternion.copy(SPC.q); sh.rotateZ(clamp(yawIn, -1, 1) * .35); shipNavBlink(sh, SPC.t);
@@ -21178,7 +21265,7 @@ function galEl() {
   el.querySelector('#galDip').addEventListener('click', () => dipOpen(true));
   el.querySelector('#galRes').addEventListener('click', () => resGalNext());
   el.querySelector('#galEmp').addEventListener('click', () => { sfx.click(); resEmpOpen(); });
-  el.querySelector('#galSwitch').addEventListener('click', () => { sfx.click(); galView((GAL.view || 'milky') === 'milky' ? 'xonexi' : 'milky'); });
+  el.querySelector('#galSwitch').addEventListener('click', e => { sfx.click(); const ks = galKnown(), v = GAL.view || 'milky'; galView(e.currentTarget.dataset.to || ks[(ks.indexOf(v) + 1) % ks.length] || 'milky'); });
   for (const b of el.querySelectorAll('.gal-zoom button')) b.addEventListener('click', () => { GAL.zoom = clamp(GAL.zoom * +b.dataset.z, .7, 11); sfx.blip(); });
   const cv = el.querySelector('#galCv');
   cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); GAL.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); GAL.moved = 0; GAL.pinch = 0; GAL.panTo = null; });
@@ -21199,18 +21286,38 @@ const galScale = () => Math.min(innerWidth, innerHeight) * .46 * GAL.zoom;
 function galQ(S) { const c = Math.cos(GAL.rot), s = Math.sin(GAL.rot), x = S.map.x * c - S.map.y * s, y = (S.map.x * s + S.map.y * c) * GAL.tilt; return { x, y }; }
 function galXY(S) { const q = galQ(S), k = galScale(); return { x: innerWidth / 2 + (q.x - GAL.pan.x) * k, y: innerHeight / 2 + (q.y - GAL.pan.y) * k }; }
 // two galaxy maps: the Milky Way, and the Xonexi Galaxy (one system). Each map shows only its own galaxy's systems.
-const galOf = S => (S && S.galaxy === 'Xonexi Galaxy') ? 'xonexi' : 'milky';
+const galOf = S => (S && S.galaxy === 'Xonexi Galaxy') ? 'xonexi' : (S && S.galaxy === M31_GAL) ? 'andromeda' : 'milky';
+const andromedaOpen = () => !!(wanderer && (wanderer.chapter | 0) >= 5 && !sgraLock()); // Chapter V: through the event horizon of Sagittarius A*
+const andromedaKnown = () => !!(wanderer && wanderer.ch3 && (wanderer.ch3.visited || []).includes('m31')) || galOf(sysById(SPC.sys)) === 'andromeda';
+const GAL_NAME = { milky: 'MILKY WAY', xonexi: 'XONEXI GALAXY', andromeda: 'ANDROMEDA' };
+const galKnown = () => ['milky', xonexiKnown() && 'xonexi', andromedaKnown() && 'andromeda'].filter(Boolean);
+const M31_WHY_IN = 'No warp reaches Andromeda · fly into the event horizon of Sagittarius A*, at the heart of the Milky Way', M31_WHY_OUT = 'No warp leaves Andromeda · fly into the event horizon of M31*, at its heart, to go home';
 const galSys = () => SYSTEMS.filter(S => galOf(S) === (GAL.view || 'milky'));
 const xonexiKnown = () => !!(wanderer && wanderer.ch4 && wanderer.ch4.jvTaken) || galOf(sysById(SPC.sys)) === 'xonexi';
 function galView(v) {
-  GAL.view = v; const el = galEl(), t = el.querySelector('.gal-top b'); if (t) t.textContent = v === 'xonexi' ? 'XONEXI GALAXY' : 'MILKY WAY GALAXY';
-  for (const id of ['#galDip', '#galRes', '#galEmp']) { const b = el.querySelector(id); if (b) b.style.display = v === 'xonexi' ? 'none' : ''; } el.classList.toggle('xo', v === 'xonexi'); // the Milky Way's diplomacy, residents and empires stay on the Milky Way's map
-  const sw = el.querySelector('#galSwitch'); if (sw) { sw.style.display = xonexiKnown() ? '' : 'none'; sw.textContent = v === 'xonexi' ? '‹ MILKY WAY' : 'XONEXI GALAXY ›'; }
-  const h = el.querySelector('.gal-hint'); if (h) h.textContent = v === 'xonexi' ? 'The Xonexi Galaxy · 1 system · its only way into the Milky Way · tap it · M or ESC to close' : `${galSys().length} systems · zoom in to name them all · drag to pan · tap a system · M or ESC to close`;
-  const here = sysById(SPC.sys), S = galOf(here) === v ? here : v === 'xonexi' ? SYSTEMS.find(o => galOf(o) === 'xonexi') : sysById('sol');
+  GAL.view = v; const el = galEl(), t = el.querySelector('.gal-top b'); if (t) t.textContent = v === 'xonexi' ? 'XONEXI GALAXY' : v === 'andromeda' ? 'ANDROMEDA GALAXY · M31' : 'MILKY WAY GALAXY';
+  for (const id of ['#galDip', '#galRes', '#galEmp']) { const b = el.querySelector(id); if (b) b.style.display = v !== 'milky' ? 'none' : ''; } el.classList.toggle('xo', v === 'xonexi'); // the Milky Way's diplomacy, residents and empires stay on the Milky Way's map
+  const sw = el.querySelector('#galSwitch'); if (sw) { const ks = galKnown(), nx = ks[(ks.indexOf(v) + 1) % ks.length]; sw.style.display = ks.length > 1 ? '' : 'none'; sw.textContent = `${GAL_NAME[nx]} ›`; sw.dataset.to = nx; } // cycles through the galaxies you know
+  const h = el.querySelector('.gal-hint'); if (h) h.textContent = v === 'andromeda' ? `The Andromeda Galaxy · ${galSys().length} systems · M31* at its heart takes you home · tap a system · M or ESC to close` : v === 'xonexi' ? 'The Xonexi Galaxy · 1 system · its only way into the Milky Way · tap it · M or ESC to close' : `${galSys().length} systems · zoom in to name them all · drag to pan · tap a system · M or ESC to close`;
+  const here = sysById(SPC.sys), S = galOf(here) === v ? here : v === 'xonexi' ? SYSTEMS.find(o => galOf(o) === 'xonexi') : v === 'andromeda' ? sysById('m31') : sysById('sol');
   if (!GAL.sel || galOf(sysById(GAL.sel)) !== v) GAL.sel = S.id; const q = galQ(sysById(GAL.sel)); GAL.pan.x = q.x; GAL.pan.y = q.y; GAL.panTo = null;
   if (v === 'xonexi') GAL.zoom = Math.max(GAL.zoom, 3.2);
   try { galPanel(); } catch (e) {}
+}
+function galM31Img() { // the Andromeda Galaxy as we see it: a great spiral tipped nearly edge-on, a gold core, blue arms, dark dust lanes, and its two small companions
+  if (GAL.aimg) return GAL.aimg; const N = 1024, cv = document.createElement('canvas'); cv.width = cv.height = N; const g = cv.getContext('2d'), C = N / 2, sc = C / (M31_R * 1.2);
+  let sd = 77; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647, gs = () => (rnd() + rnd() + rnd() - 1.5) / 1.5;
+  const at = (x, y) => { const q = m31Pt(x, y); return [C + (q.x - M31_C.x) * sc, C + (q.y - M31_C.y) * sc]; };
+  g.save(); g.translate(C, C); g.rotate(M31_PA); g.scale(1, M31_INC); const halo = g.createRadialGradient(0, 0, 0, 0, 0, C * .95); halo.addColorStop(0, 'rgba(255,232,190,.9)'); halo.addColorStop(.12, 'rgba(255,205,150,.45)'); halo.addColorStop(.45, 'rgba(150,160,230,.12)'); halo.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = halo; g.beginPath(); g.arc(0, 0, C * .95, 0, 7); g.fill(); g.restore();
+  g.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 38000; i++) { const arm = i % 2, u = rnd(), sc2 = rnd() < .2, a = sc2 ? rnd() * 6.3 : arm * Math.PI + Math.log(u * 8 + 1) * 1.9 + gs() * (.18 + .2 * (1 - u)), rr = sc2 ? rnd() : (.08 + u * .95) + gs() * .04, [x, y] = at(Math.cos(a) * rr, Math.sin(a) * rr);
+    g.fillStyle = `rgba(${u < .25 ? '255,220,170' : rnd() < .15 ? '255,150,200' : '165,190,255'},${(.12 + rnd() * .28).toFixed(3)})`; g.fillRect(x, y, 1.4, 1.4); }
+  g.globalCompositeOperation = 'source-over';
+  for (let i = 0; i < 2600; i++) { const arm = i % 2, u = .25 + rnd() * .7, a = arm * Math.PI + Math.log(u * 8 + 1) * 1.9 + .32 + gs() * .08, [x, y] = at(Math.cos(a) * u, Math.sin(a) * u); g.fillStyle = `rgba(20,8,4,${(.05 + rnd() * .1).toFixed(3)})`; g.fillRect(x, y, 3, 2); } // dust lanes
+  g.globalCompositeOperation = 'lighter';
+  const core = g.createRadialGradient(C, C, 0, C, C, C * .09); core.addColorStop(0, 'rgba(255,248,225,1)'); core.addColorStop(1, 'rgba(255,200,140,0)'); g.fillStyle = core; g.beginPath(); g.arc(C, C, C * .09, 0, 7); g.fill();
+  for (const [dx, dy, r] of [[.3, -.12, .05], [-.42, .2, .07]]) { const x = C + dx * C, y = C + dy * C, gr = g.createRadialGradient(x, y, 0, x, y, r * C); gr.addColorStop(0, 'rgba(255,236,210,.7)'); gr.addColorStop(1, 'rgba(255,220,190,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r * C, 0, 7); g.fill(); } // M32 and M110
+  return GAL.aimg = cv;
 }
 function galXonexiImg() { // the Xonexi Galaxy: a small, bright, two-armed spiral of its own
   if (GAL.ximg) return GAL.ximg; const N = 512, cv = document.createElement('canvas'); cv.width = cv.height = N; const g = cv.getContext('2d'), C = N / 2;
@@ -21233,7 +21340,8 @@ function galOpen() {
   if (!GAL.zoomed) { GAL.zoomed = true; GAL.zoom = innerWidth < 600 ? 2.3 : 1.6; }
   GAL.sel = GAL.sel && GAL.sel !== SPC.sys ? GAL.sel : SPC.sys; const q = galQ(sysById(GAL.sel)); GAL.pan.x = q.x; GAL.pan.y = q.y; GAL.panTo = null;
   GAL.sel = SPC.sys; galView(galOf(sysById(SPC.sys))); // the map of the galaxy you're in
-  $('#galSub').textContent = `You are in ${curSys().name} · ${((wanderer.ch3 && wanderer.ch3.visited) || []).length} of ${SYSTEMS.length} systems visited · ${lairsAll().list.filter(L => lairOpen(L) && lairCleared(L)).length} of ${lairsAll().list.filter(lairOpen).length} lairs cleared`; galPanel(); sfx.chime();
+  const gHere = SYSTEMS.filter(o => galOf(o) === galOf(curSys())), gIds = new Set(gHere.map(o => o.id));
+  $('#galSub').textContent = `You are in ${curSys().name} · ${((wanderer.ch3 && wanderer.ch3.visited) || []).filter(id => gIds.has(id)).length} of ${gHere.length} systems visited · ${lairsAll().list.filter(L => lairOpen(L) && lairCleared(L)).length} of ${lairsAll().list.filter(lairOpen).length} lairs cleared`; galPanel(); sfx.chime();
   $('#galRes').style.display = residents.length ? '' : 'none'; $('#galEmp').style.display = residents.length ? '' : 'none'; RES.galI = null;
 }
 function galClose(silent) {
@@ -21247,7 +21355,7 @@ function galPanel() {
   let btn;
   if (here) btn = `<button class="btn gp-warp" disabled><span>You are here</span></button>`;
   else if (sgraLock()) btn = `<button class="btn gp-warp" disabled><span>No turning back</span></button><div class="gp-why">You came to Sagittarius A* · there's no leaving until the final battle is over</div>`;
-  else if (galOf(S) !== galOf(curSys())) btn = `<button class="btn gp-warp" disabled><span>Another galaxy</span></button><div class="gp-why">${galOf(curSys()) === 'xonexi' ? 'No warp reaches the Milky Way from here · warp to the Xonexi–Milky Way Gateway and fly through its portal' : xonexiKnown() ? 'No warp reaches the Xonexi Galaxy · warp to the Xonexi–Milky Way Gateway, beside Tamez, and fly through its portal' : 'Out of reach'}</div>`;
+  else if (galOf(S) !== galOf(curSys())) btn = `<button class="btn gp-warp" disabled><span>Another galaxy</span></button><div class="gp-why">${galOf(S) === 'andromeda' ? M31_WHY_IN : galOf(curSys()) === 'andromeda' ? M31_WHY_OUT : galOf(curSys()) === 'xonexi' ? 'No warp reaches the Milky Way from here · warp to the Xonexi–Milky Way Gateway and fly through its portal' : xonexiKnown() ? 'No warp reaches the Xonexi Galaxy · warp to the Xonexi–Milky Way Gateway, beside Tamez, and fly through its portal' : 'Out of reach'}</div>`;
   else if (SC.foes.length) btn = `<button class="btn gp-warp" disabled><span>Can't warp in combat</span></button><div class="gp-why">The hyperdrive won't spool up under fire · destroy them, outrun them, or drop into a planet's atmosphere</div>`;
   else if (!inRange(curSys(), S)) btn = `<button class="btn gp-warp" disabled><span>Out of hyperdrive range</span></button><div class="gp-why">Your hyperdrive reaches ${driveRange().toLocaleString()} ly per jump · hop through nearer systems${driveTier() < 3 ? `, or craft ${ITEMS['hyper' + (driveTier() + 1)].name} (${DRIVE_LY[driveTier() + 1].toLocaleString()} ly)` : ''}</div>`;
   else if (n < cost) btn = `<button class="btn gp-warp" disabled><span>Warp · ${cellsTxt(cost)}</span></button><div class="gp-why">${n ? `You have ${cellsTxt(n)} · need ${cost - n} more` : 'No warp cells'} · craft them from 2 metal plates · 2 frost crystals · 2 scrap metal each</div>`;
@@ -21267,6 +21375,7 @@ function galDraw(dt) {
   const g = cv.getContext('2d'), k = galScale(), t = performance.now() / 1000;
   g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#010104'; g.fillRect(0, 0, W, H);
   if ((GAL.view || 'milky') === 'milky') { g.save(); g.translate(W / 2 - GAL.pan.x * k, H / 2 - GAL.pan.y * k); g.scale(1, GAL.tilt); g.rotate(GAL.rot); g.drawImage(GAL.img, -k, -k, k * 2, k * 2); g.restore(); }
+  else if (GAL.view === 'andromeda') { const p = galXY({ map: M31_C }), r = k * M31_R * 1.2; g.save(); g.translate(p.x, p.y); g.scale(1, GAL.tilt); g.rotate(GAL.rot); g.drawImage(galM31Img(), -r, -r, r * 2, r * 2); g.restore(); } // Andromeda on its own map: no Milky Way, no Xonexi
   else { const X = SYSTEMS.find(o => galOf(o) === 'xonexi'), p = galXY(X), r = k * .32; g.save(); g.translate(p.x, p.y); g.scale(1, GAL.tilt); g.rotate(GAL.rot + .6); g.drawImage(galXonexiImg(), -r, -r, r * 2, r * 2); g.restore(); } // the Xonexi Galaxy on its own map
   const cur = curSys(), pc = galXY(cur), sel = GAL.sel && sysById(GAL.sel);
   { const reach = Math.min(driveRange(), have('warpcell') * LY_PER_CELL) / 50000 * k; // how far one jump can take you (drive range, or less if you're short of cells)
@@ -21344,7 +21453,7 @@ function caraxThrone() { // the doors of the throne room, at the top of the Bast
     { text: tiPhone() ? 'Not yet' : 'Not yet · get ready first (come back to these doors when you are)', onPick: () => lootMsg(tiPhone() ? 'Come back to the doors when you’re ready' : 'You can’t leave Sagittarius A* · come back to these doors when you’re ready to face Zark', '#ff8f86') }]);}
 function galWarp(id) {
   const S = sysById(id), cost = warpCost(curSys(), S); if (S.id === 'sgra' && sgraDue() && !caraxReady()) { spaceMsg(tiPhone() ? 'Not yet · see Hak in Alphinos' : 'Not yet · meet Hak Chompjak and the leaders in Alphinos before Carax'); return; }
-  if (galOf(S) !== galOf(curSys())) { spaceMsg(tiPhone() ? 'No warp crosses galaxies · use the Gateway portal' : galOf(curSys()) === 'xonexi' ? 'No warp reaches the Milky Way from here · fly through the portal at the Xonexi–Milky Way Gateway' : 'No warp reaches the Xonexi Galaxy · warp to the Xonexi–Milky Way Gateway, beside Tamez, and fly through its portal'); return; }
+  if (galOf(S) !== galOf(curSys())) { spaceMsg(galOf(S) === 'andromeda' || galOf(curSys()) === 'andromeda' ? (tiPhone() ? 'No warp crosses galaxies · fly into the black hole' : galOf(S) === 'andromeda' ? M31_WHY_IN : M31_WHY_OUT) : tiPhone() ? 'No warp crosses galaxies · use the Gateway portal' : galOf(curSys()) === 'xonexi' ? 'No warp reaches the Milky Way from here · fly through the portal at the Xonexi–Milky Way Gateway' : 'No warp reaches the Xonexi Galaxy · warp to the Xonexi–Milky Way Gateway, beside Tamez, and fly through its portal'); return; }
   if (S.id === SPC.sys || have('warpcell') < cost || !inRange(curSys(), S) || SC.foes.length || sgraLock()) return;
   takeItem('warpcell', cost); galClose(); sfx.warp();
   SPC.warp = { t: 0, to: S.id, col: new THREE.Color(S.star.kind === 'hole' ? '#ffb070' : S.star.col) };
@@ -21384,15 +21493,53 @@ function xoPortalTick(dt) {
   if (to === 'tamez' && wanderer && wanderer.ch4 && !wanderer.ch4.xoHome) { wanderer.ch4 = Object.assign({}, wanderer.ch4, { xoHome: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); setTimeout(() => { renderTasks(); notice('The Milky Way', tiPhone() ? 'HOME AGAIN · TAMEZ' : 'HOME AGAIN · OVER TAMEZ PRIME', 4200); setTimeout(() => notice('Main quest', tiPhone() ? 'RETURN TO TAMEZ PRIME' : 'RETURN TO TAMEZ PRIME · TYROTARONUS', 4200), 4600); }, 7000); }
   void T; return true;
 }
+function bhCross() { // through the event horizon: Sagittarius A* to M31*, and back
+  const to = SPC.sys === 'sgra' ? 'm31' : 'sgra'; sfx.warp(); sfx.boom(1.2); sfx.thud(); try { sfx.drone(.55); } catch (e) {}
+  SPC.warp = { t: 0, to, col: new THREE.Color(to === 'm31' ? '#b89aff' : '#ffb070'), bh: true };
+  const tn = warpTunnel(); tn.visible = true; tn.userData.v = 0;
+  $('#shMarks').innerHTML = ''; $('#shFoes').innerHTML = ''; $('#shTarget').textContent = 'THE EVENT HORIZON'; $('#shSub').textContent = to === 'm31' ? 'Into the Andromeda Galaxy' : 'Home · the Milky Way';
+  clearTimeout(SPC.cardT); $('#shWarpTxt').textContent = ''; $('#shWarp').classList.remove('card', 'on');
+  bhFx(true);
+}
+function bhFx(on) { // the crossing's own light, laid over the warp: the ring of light around the hole, the dark closing in, the colours bending, the white
+  let el = $('#bhFx');
+  if (!on) { if (el) el.style.opacity = 0; renderer.domElement.style.filter = ''; renderer.domElement.style.transform = ''; try { sfx.drone(0); } catch (e) {} return; }
+  if (!el) { el = document.createElement('div'); el.id = 'bhFx'; el.innerHTML = '<i class="bh-ring"></i><i class="bh-ring2"></i><i class="bh-dark"></i><i class="bh-white"></i><b class="bh-cap"></b>'; document.body.appendChild(el); }
+  el.style.opacity = 1;
+}
+function bhFxTick(Wp, T1, T2, T3) {
+  const el = $('#bhFx'); if (!el) return; const t = Wp.t, to = Wp.to, ph = tiPhone(), q = s => el.querySelector(s);
+  const ring = q('.bh-ring'), ring2 = q('.bh-ring2'), dark = q('.bh-dark'), white = q('.bh-white'), cap = q('.bh-cap');
+  const hue = to === 'm31' ? 270 : 30, warm = `hsla(${hue + 20},100%,75%,`, approach = smooth(0, T1, t), inside = smooth(T1, T2 - .6, t), burst = smooth(T2 - .7, T2, t), out = smooth(T2, T3, t);
+  // 1 · the photon ring: light from every star behind the hole, bent into a ring that swells to fill the sky
+  const R1 = t < T1 ? 6 + approach * 70 : 76 - inside * 70; ring.style.background = `radial-gradient(circle at 50% 50%, transparent ${Math.max(0, R1 - 7)}vmax, ${warm}${(.95 * (t < T2 ? 1 : 1 - out)).toFixed(2)}) ${R1}vmax, hsla(${hue},100%,60%,.35) ${R1 + 3}vmax, transparent ${R1 + 12}vmax)`;
+  ring.style.opacity = t < T2 ? 1 : 1 - out;
+  // 2 · a second ring, the other way: the far side of the sky seen round the hole, in the colours of where you're going
+  const R2 = t < T1 ? approach * 40 : t < T2 ? 40 + Math.sin(t * 7) * 3 : 40 + out * 80; ring2.style.background = `radial-gradient(circle at 50% 50%, transparent ${R2}vmax, hsla(${to === 'm31' ? 200 : 300},100%,80%,${(.6 * (1 - burst * .5) * (t < T2 ? 1 : 1 - out)).toFixed(2)}) ${R2 + 1.5}vmax, transparent ${R2 + 6}vmax)`;
+  // 3 · the dark closing in, then the pinhole of light at its centre; 4 · the white
+  const hole = t < T1 ? 90 - approach * 55 : t < T2 ? 35 - inside * 31 + burst * 100 : 140; dark.style.background = `radial-gradient(circle at 50% 50%, transparent ${Math.max(0, hole - 6)}vmin, rgba(0,0,0,.96) ${hole}vmin)`; dark.style.opacity = t < T2 ? 1 : 0;
+  white.style.opacity = (burst * (t < T2 ? 1 : 0) + (t >= T2 ? 1 - out : 0)).toFixed(3);
+  // the colours bend and the picture stretches toward the centre
+  const bend = t < T1 ? approach : t < T2 ? 1 : 1 - out;
+  renderer.domElement.style.filter = `hue-rotate(${(t < T1 ? approach * 40 : t < T2 ? 40 + inside * 320 : 0).toFixed(0)}deg) saturate(${(1 + bend * 1.4).toFixed(2)}) contrast(${(1 + bend * .35).toFixed(2)})${ph ? '' : ` blur(${(t > T1 && t < T2 ? inside * .8 : 0).toFixed(2)}px)`}`;
+  renderer.domElement.style.transform = t < T2 ? `scale(${(1 + approach * .06 + inside * .1).toFixed(3)}, ${(1 + approach * .12 + inside * .35).toFixed(3)})` : '';
+  // the words
+  const capT = t < T1 * .9 ? 'THE EVENT HORIZON' : t < T2 - .8 ? (to === 'm31' ? '2,500,000 LIGHT-YEARS' : 'HOME') : '';
+  if (cap.textContent !== capT) cap.textContent = capT; cap.style.opacity = capT ? (t < T1 ? smooth(.4, 1.2, t) : 1 - smooth(T2 - 1.4, T2 - .8, t)).toFixed(2) : 0;
+  if (!Wp.bhS1 && t > T1) { Wp.bhS1 = true; sfx.boom(1.5); sfx.thud(); }
+  if (!Wp.bhS2 && t > T2 - .7) { Wp.bhS2 = true; sfx.boom(1); }
+}
 function warpFlash() { const f = $('#shFlash'); f.style.transition = 'none'; f.style.background = '#fff'; f.classList.add('on'); requestAnimationFrame(() => requestAnimationFrame(() => { f.style.transition = 'opacity .9s'; f.classList.remove('on'); })); }
 function warpTick(dt) {
-  const Wp = SPC.warp, t = (Wp.t += dt), tn = SPC.tun, T1 = 1.7, T2 = 4.6, T3 = 6.2;
+  const Wp = SPC.warp, t = (Wp.t += dt), tn = SPC.tun, T1 = Wp.bh ? 2.8 : 1.7, T2 = Wp.bh ? 7.4 : 4.6, T3 = Wp.bh ? 9.6 : 6.2;
+  if (Wp.bh) { bhFxTick(Wp, T1, T2, T3); if (t < T1) { const m = new THREE.Matrix4().lookAt(SPC.pos, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1, 0)), qq = new THREE.Quaternion().setFromRotationMatrix(m); SPC.q.slerp(qq, Math.min(1, dt * 2.2)); } } // the hole turns you toward it and pulls you in
   const fwd = SPC.fwd.set(0, 0, -1).applyQuaternion(SPC.q), up = SPC.up.set(0, 1, 0).applyQuaternion(SPC.q);
   // speed of the streaks, and how bright they are
   const spool = smooth(0, T1, t), out = smooth(T2, T3, t), v = t < T2 ? 300 + spool * spool * 5200 : lerp(5500, 0, out), a = t < T2 ? spool : 1 - out;
   if (t >= T1 && !Wp.hid) { Wp.hid = true; SPC.sysG.visible = false; SPC.stars.visible = false; warpFlash(); }
   if (t >= T2 && !Wp.swapped) { // drop out in the new system
     Wp.swapped = true; setSystem(Wp.to); arrivalPose(Wp.to, 3.6); SPC.stars.visible = true; SPC.camInit = false; warpFlash(); sfx.whoosh();
+    if (Wp.bh) { const r = sysById(Wp.to).star.r, d = new THREE.Vector3(.4, .14, 1).normalize(); SPC.pos.copy(d).multiplyScalar(r * 5.5); SPC.q.setFromRotationMatrix(new THREE.Matrix4().lookAt(SPC.pos, d.clone().multiplyScalar(r * 60), new THREE.Vector3(0, 1, 0))); SPC.bhCool = time + 12; } // out of the other hole, facing away from it
   }
   // the ship surges ahead while spooling up, and coasts in on arrival
   if (t < T1) SPC.pos.addScaledVector(fwd, (60 + spool * spool * 900) * dt);
@@ -21404,7 +21551,7 @@ function warpTick(dt) {
   const back = 46 + a * 12, cp = SPC.cp.copy(SPC.pos).addScaledVector(fwd, -back).addScaledVector(up, 11.5);
   spaceCamFollow(cp, dt, 6); camera.position.copy(SPC.camPos).add(tmpVs.set((Math.random() - .5) * shake, (Math.random() - .5) * shake, 0));
   camera.up.copy(up); camera.lookAt(SPC.camLook.copy(SPC.pos).addScaledVector(fwd, 40).addScaledVector(up, 6));
-  camera.fov = lerp(camera.fov, 62 + a * 38, Math.min(1, dt * 3)); camera.updateProjectionMatrix();
+  camera.fov = lerp(camera.fov, 62 + a * (Wp.bh ? 58 : 38), Math.min(1, dt * 3)); camera.updateProjectionMatrix();
   SPC.stars.position.copy(camera.position);
   // the tunnel rides with the camera; streaks run past, tinted toward the star you're heading for
   tn.position.copy(camera.position); tn.quaternion.copy(camera.quaternion);
@@ -21417,6 +21564,7 @@ function warpTick(dt) {
   }
   tn.geometry.attributes.position.needsUpdate = true; tn.geometry.attributes.color.needsUpdate = true;
   if (t >= T3) { // arrived
+    if (Wp.bh) { bhFx(false); $('#shWarp').classList.add('on'); const first = Wp.to === 'm31' && !((wanderer.ch3 || {}).visited || []).includes('m31'); setTimeout(() => Wp.to === 'm31' ? notice(first ? 'For the first time' : 'Through the event horizon', tiPhone() ? 'THE ANDROMEDA GALAXY' : 'THE ANDROMEDA GALAXY · 2.5 MILLION LIGHT-YEARS FROM HOME', 5200) : notice('Through the event horizon', tiPhone() ? 'HOME · THE MILKY WAY' : 'HOME · THE MILKY WAY · SAGITTARIUS A*', 4200), 600); }
     SPC.warp = null; tn.visible = false; SPC.vel = 180; SPC.thr = .4;
     const S = curSys(), W3 = wanderer.ch3, first = !(W3.visited || []).includes(S.id);
     if (first) W3.visited = [...(W3.visited || []), S.id];
@@ -21867,7 +22015,7 @@ function snDom() {
   return el;
 }
 function snBuild() { // the systems, who holds each before and after, and the territory field (nearest system to each cell)
-  const sys = SYSTEMS.map(S => {
+  const sys = SYSTEMS.filter(S => S.galaxy !== M31_GAL).map(S => {
     const o3 = S.id === 'sol' ? 'hfos' : snKey(S.fac3 || S.fac0 || S.faction), o4 = S.id === 'sol' ? 'hfos' : S.fac4 ? snKey(S.fac4) : o3;
     return { S, x: S.map.x, y: S.map.y, o3, o4, own: o3, col: o3 ? snRgb(SN_EMP[o3][1]) : null, from: null, ft: 9, ring: -9 };
   });
@@ -28409,7 +28557,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { bstUp: [ex.near.label, 'CLIMB'], bstDown: [ex.near.label, 'DOWN'], bstThrone: [ex.near.label, 'ENTER'], revive: [ex.near.label, 'REVIVE'], xoDgn: [ex.near.label, 'GO THROUGH'], taroBed: [ex.near.label + ' · sleep', 'SLEEP'], homeless: [ex.near.label, 'GIVE'], prisonSleep: [ex.near.label, 'SLEEP'], prisonPick: [ex.near.label, 'PICK'], prisonExit: [ex.near.label, 'ESCAPE'], bot: [`Wave · ${ex.near.label}`, 'WAVE'], stray: [`Tame · ${ex.near.label}`, 'TAME'], ship: [podMode() ? 'Board the pod' : jewelOn() ? (tiPhone() ? 'Board · the Jewel of Archamus' : 'Board the Jewel of Archamus') : 'Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], nicoHouse: [tiPhone() ? 'Enter · Nico’s house' : 'Enter Nico’s house', 'ENTER'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
+    const PR = { bstArch: [ex.near.label, 'TALK'], bstUp: [ex.near.label, 'CLIMB'], bstDown: [ex.near.label, 'DOWN'], bstThrone: [ex.near.label, 'ENTER'], revive: [ex.near.label, 'REVIVE'], xoDgn: [ex.near.label, 'GO THROUGH'], taroBed: [ex.near.label + ' · sleep', 'SLEEP'], homeless: [ex.near.label, 'GIVE'], prisonSleep: [ex.near.label, 'SLEEP'], prisonPick: [ex.near.label, 'PICK'], prisonExit: [ex.near.label, 'ESCAPE'], bot: [`Wave · ${ex.near.label}`, 'WAVE'], stray: [`Tame · ${ex.near.label}`, 'TAME'], ship: [podMode() ? 'Board the pod' : jewelOn() ? (tiPhone() ? 'Board · the Jewel of Archamus' : 'Board the Jewel of Archamus') : 'Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], nicoHouse: [tiPhone() ? 'Enter · Nico’s house' : 'Enter Nico’s house', 'ENTER'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give James orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
@@ -28747,7 +28895,7 @@ function rememberPlace() {
   return p;
 }
 async function doSave(i) {
-  if (TEST_RUN) { slotMsg(`This is the ?${TEST_RUN === 'badchoices' ? 'badchoices' : TEST_RUN === 'hakduel' ? 'hakchompjakbossfightevilgoodending' : 'ch5allteam'} test wanderer: it can\u2019t be saved, so your real saves stay as they were.`, true); return; }
+  if (TEST_RUN) { slotMsg(`This is the ?${TEST_RUN === 'badchoices' ? 'badchoices' : TEST_RUN === 'hakduel' ? 'hakchompjakbossfightevilgoodending' : TEST_RUN === 'andromeda' ? 'andromeda' : 'ch5allteam'} test wanderer: it can\u2019t be saved, so your real saves stay as they were.`, true); return; }
   const place = slotFrom === 'explore' ? rememberPlace() : { mode: 'menu' };
   const prev = slots[i];
   slots[i] = { savedAt: Date.now(), roster: JSON.parse(JSON.stringify(roster)), activeId, place, residents: JSON.parse(JSON.stringify(residents)), resEmp: JSON.parse(JSON.stringify(resEmp)), resGuild: JSON.parse(JSON.stringify(resGuild)) };
@@ -30373,7 +30521,7 @@ const PEDIA_EVENTS = [
     ] },
   { id: 'ch4orion', story: 4, showIf: () => !!(wanderer && wanderer.orion && (wanderer.orion.ph === 3 || wanderer.orion.dead) && c3f('croxDead')), name: 'ORION MASCAR’S OFFENSIVE', title: 'Conquest · the Milky Way', get sub() { return `Chapter ${chNow() >= 5 ? 'IV–V' : 'IV'} · 2127 AD`; }, cast: ['orion', 'croxian'],
     get facts() { const O = orbS(), n = (O.conq || []).length; return [['Began', c3f('orionHunt') ? 'Earth, 2125 AD' : 'Earth, 2127 AD'], ['Commander', 'Orion Mascar, Grand Imperarch of Terra Imperia'], ['Phases', `On foot (lv ${orbLv(1)}) · the Mascar Frame (lv ${orbLv(2)}) · the Orbital Rampage (lv ${orbLv(3)})`],
-      ['Systems fallen', O.dead ? 'All freed when he fell' : `${n} of ${SYSTEMS.length}`], ['Status', O.dead ? 'Ended · Orion Mascar shot down in orbit' : O.done ? 'The galaxy has fallen to him' : `Under way · he is taking ${sysById(O.sys).name}`]]; },
+      ['Systems fallen', O.dead ? 'All freed when he fell' : `${n} of ${ORB_ALL()}`], ['Status', O.dead ? 'Ended · Orion Mascar shot down in orbit' : O.done ? 'The galaxy has fallen to him' : `Under way · he is taking ${sysById(O.sys).name}`]]; },
     get align() { return orbS().dead ? 'He meant to take every star the wanderer had ever looked at. The wanderer did not let him.' : 'Every system the wanderer leaves behind, he takes. The only place in the galaxy safe from him is wherever the wanderer is standing.'; },
     get paras() { const O = orbS(); return [
       'Orion Mascar took Terra Imperia from Hawthorne’s corpse and brought it into the Catharsis. Then he went looking for the wanderer, and waited for them on Earth.',
@@ -31020,7 +31168,7 @@ const RES_HOME = { human: 'earth', chompy: 'aridaxx', erisian: 'eris', grek: 'ma
 const resHomeBody = c => (resIsTared(c) && ALL_BODIES.find(o => o.name === 'Timpur Prime')) || bodyById(RES_HOME[spOf(c)] || 'earth') || bodyById('earth'); // Taredesibans come from Timpur Prime
 const RES_CACHE = { hubs: null, nb: new Map(), land: new Map(), tc: new Map() };
 const resHubs = () => RES_CACHE.hubs || (RES_CACHE.hubs = SYSTEMS.filter(S => !S.gen));
-function resLandIn(sid) { let l = RES_CACHE.land.get(sid); if (!l) { l = galOf(sysById(sid)) === 'xonexi' ? [] : ALL_BODIES.filter(b => b.sys === sid && b.land); RES_CACHE.land.set(sid, l); } return l; } // residents keep to the Milky Way: none ever go to the Xonexi Galaxy
+function resLandIn(sid) { let l = RES_CACHE.land.get(sid); if (!l) { l = galOf(sysById(sid)) !== 'milky' ? [] : ALL_BODIES.filter(b => b.sys === sid && b.land); RES_CACHE.land.set(sid, l); } return l; } // residents keep to the Milky Way: none ever go to the Xonexi Galaxy
 function resNeighbours(S) { let l = RES_CACHE.nb.get(S.id); if (!l) { l = SYSTEMS.filter(o => o !== S && galDist(S, o) < 6000 && resLandIn(o.id).length); RES_CACHE.nb.set(S.id, l); } return l; }
 function resAnchor(c) {
   if (!c.trv || !bodyById(c.trv.body)) { const k = resPlaceKey(c), P = k && k.startsWith('pl:') ? bodyById(k.slice(3)) : null; c.trv = { body: (P || resHomeBody(c)).id, t0: c.sentAt || resNow() }; }
@@ -32085,7 +32233,7 @@ function resGalHere(S) {
   return claim + resGalHere2(S);
 }
 function resGalHere2(S) {
-  if (galOf(S) === 'xonexi') return ''; // no residents there
+  if (galOf(S) !== 'milky') return ''; // no residents there (Xonexi, Andromeda)
   const here = resGalMarks().filter(M => (M.T.mode === 'warp' ? M.T.to.sys : M.T.body.sys) === S.id); if (!here.length) return '';
   return `<div class="gp-sub" style="color:#8fe3ff">◆ Residents: ${here.map(M => `${String(M.c.name).replace(/[<>&"]/g, '')} (LV ${M.lv}, ${M.T.mode === 'warp' ? 'arriving' : M.T.mode === 'respawn' ? 'respawning' : M.T.body.name})`).join(' · ')}</div>`;
 }
