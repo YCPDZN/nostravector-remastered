@@ -5450,7 +5450,7 @@ function renderTasks() {
   if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip && !wanderer.ch4.newShip) h = task(true, tiPhone() ? 'Escape the Nostra' : 'Escape the Nostra in a pod') + task(false, tiPhone() ? 'Main quest · Survive · find somewhere to land' : 'Main quest · Survive: you’re adrift in an escape pod · find somewhere to land'); // Chapter IV starts here
   if ((wanderer.chapter | 0) === 4) h = wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip && !wanderer.ch4.newShip ? h : !(wanderer.ch4 && wanderer.ch4.archMet) ? task(false, tiPhone() ? 'Main quest · Meet Archamus (Archiostal)' : 'Main quest · Meet Archamus in the gardens of Archiostal') : !wanderer.ch4.archProj ? task(true, 'Meet Archamus') + task(false, 'Main quest · Hear Archamus out') : !wanderer.ch4.josiahMet ? task(true, 'Meet Archamus') + task(false, tiPhone() ? 'Main quest · Find Josiah Williams II (Earth)' : 'Main quest · Find Josiah Williams II on Earth') : !wanderer.ch4.josiahLight ? task(true, 'Find Josiah Williams II') + task(false, tiPhone() ? 'Main quest · Help Josiah' : 'Main quest · Bring Josiah Williams II back into the light')
     : (() => { const c4 = wanderer.ch4, ph = tiPhone(), W = cathTarget(); // Tallax IV: the base, the rifle, the carapace
-        if (c4.shipClear) return task(true, ph ? 'Retake the Jewel' : 'Retake the Jewel of Archamus') + (c4.zarkDream ? task(!!c4.hakMet, ph ? 'Main quest · Meet Hak (Alphinos)' : 'Main quest · Meet Hak Chompjak in Alphinos, on Aridaxx') + (c4.hakMet ? task(upCount() >= UP_GOAL, ph ? `Main quest · Uplift species (${Math.min(upCount(), UP_GOAL)}/${UP_GOAL})` : `Main quest · Uplift ${UP_GOAL} species (${Math.min(upCount(), UP_GOAL)}/${UP_GOAL})`) + (upCount() >= UP_GOAL && c4.taroCall ? task(!!c4.taroMet, ph ? 'Main quest · Meet Tyrotaronus (Tamez)' : 'Main quest · Meet Tyrotaronus on Tamez Prime') + (c4.taroMet ? task(!!c4.jvTaken, ph ? 'Main quest · Sleep' : 'Main quest · Sleep in Tyrotaronus’s house') + (c4.jvTaken ? task(!!c4.jvMet, ph ? 'Main quest · Who brought you here?' : 'Main quest · Find out who brought you to Xonexi Station') + (c4.jvMet ? task(!!c4.xoOutpost, ph ? 'Main quest · Reach the outpost' : 'Main quest · Reach the Catharsis outpost') + (c4.xoOutpost ? task(false, 'Main quest · To be continued') : '') : '') : '') : '') : '') : '') : task(false, ph ? 'Main quest · Catch your breath aboard' : 'Main quest · The Jewel is yours · catch your breath aboard'));
+        if (c4.shipClear) return task(true, ph ? 'Retake the Jewel' : 'Retake the Jewel of Archamus') + (c4.zarkDream ? task(!!c4.hakMet, ph ? 'Main quest · Meet Hak (Alphinos)' : 'Main quest · Meet Hak Chompjak in Alphinos, on Aridaxx') + (c4.hakMet ? task(upCount() >= UP_GOAL, ph ? `Main quest · Uplift species (${Math.min(upCount(), UP_GOAL)}/${UP_GOAL})` : `Main quest · Uplift ${UP_GOAL} species (${Math.min(upCount(), UP_GOAL)}/${UP_GOAL})`) + (upCount() >= UP_GOAL && c4.taroCall ? task(!!c4.taroMet, ph ? 'Main quest · Meet Tyrotaronus (Tamez)' : 'Main quest · Meet Tyrotaronus on Tamez Prime') + (c4.taroMet ? task(!!c4.jvTaken, ph ? 'Main quest · Sleep' : 'Main quest · Sleep in Tyrotaronus’s house') + (c4.jvTaken ? task(!!c4.jvMet, ph ? 'Main quest · Who brought you here?' : 'Main quest · Find out who brought you to Xonexi Station') + (c4.jvMet ? task(!!c4.xoOutpost, ph ? 'Main quest · Reach the outpost' : 'Main quest · Reach the Catharsis outpost') + (c4.xoOutpost ? task(xoDgnDone(), ph ? 'Main quest · Clear the outpost (10 floors)' : 'Main quest · Through the membrane · clear the Catharsis outpost (10 floors, lv 40)') + (xoDgnDone() ? task(false, 'Main quest · To be continued') : '') : '') : '') : '') : '') : '') : '') : task(false, ph ? 'Main quest · Catch your breath aboard' : 'Main quest · The Jewel is yours · catch your breath aboard'));
         if (c4.cathDone) return task(true, ph ? 'Break the carapace' : 'Break a Catharsis carapace') + task(false, CSF.on ? (ph ? `Main quest · Clear deck ${SHIPI.deck + 1} of 5` : `Main quest · Clear the Catharsis from the Jewel · deck ${SHIPI.deck + 1} of 5`) : ph ? 'Main quest · Back to the Jewel' : 'Main quest · Return to the Jewel · the Catharsis are aboard');
         if (c4.cathRifle) return task(true, 'Take the carapace rifle') + task(false, ph ? 'Main quest · Shoot the Catharsis' : 'Main quest · Break the Catharsis’ carapace with the rifle');
         const done = task(true, 'Bring Josiah Williams II back into the light');
@@ -5664,6 +5664,10 @@ async function interact() {
     openFurnace(n.ref);
   } else if (n.id === 'bench') {
     openInv(true);
+  } else if (n.id === 'xoDgn') {
+    xoDgnEnter();
+  } else if (n.id === 'revive') {
+    compRevive(n.ref, .4, 'You');
   } else if (n.id === 'taroBed') {
     jvNightStart();
   } else if (n.id === 'bed') {
@@ -7025,7 +7029,7 @@ function doJump() {
   ex.air = true; ex.vy = 6.4; ex.jumpT = time; sfx.blip();
 }
 function doDodge() {
-  if (ex.mode !== 'world' || ex.vehicle || ex.swim || ex.act || ex.invOpen || ex.dlg || time < (ex.heldT || 0)) return; // (not while Orion's stasis holds you)
+  if (ex.mode !== 'world' || ex.vehicle || ex.swim || ex.act || ex.invOpen || ex.dlg || ex.downed || time < (ex.heldT || 0)) return; // (not while Orion's stasis holds you, or while you're down)
   if (!spend(STA.dodge)) return;
   let ix = ex.joyX, iy = ex.joyY; const k = ex.keys;
   if (k.has('KeyA') || k.has('ArrowLeft')) ix -= 1; if (k.has('KeyD') || k.has('ArrowRight')) ix += 1;
@@ -7524,6 +7528,7 @@ function questTarget() {
   const c = ch1();
   if (DGN.on) return dgnTarget();
   if (NYX.R && NYX.R.root.parent && isPl()) return { x: NYX.x, z: NYX.z, label: 'Nyrexia Erisconos' };
+  if (isPl() && !DGN.on && world.planet.P.xo && wanderer.ch4 && wanderer.ch4.xoOutpost && !xoDgnDone()) return { x: 0, z: XO_OUT.z - XO_OUT.r + 6, label: 'The membrane · into the outpost' };
   if (isPl() && world.planet.P.xo && wanderer.ch4 && wanderer.ch4.jvMet && !wanderer.ch4.xoOutpost) { const z = player.position.z; return z > -XO_R + 2 ? { x: 0, z: -XO_R, label: 'The far door · to the outpost' } : { x: 0, z: XO_OUT.z, label: 'The Catharsis outpost' }; }
   if (isPl() && world.planet.P.xo && jvMetQ()) { const G = GIVERS.list.find(o => o.javek4); if (G) return { x: G.x, z: G.z, label: 'The hooded figure' }; }
   if (isPl() && world.planet.P.id === 'tamez' && (wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.taroMet && !wanderer.ch4.jvTaken) { const B = taroBedSpot(); return { x: B.x, z: B.z, label: 'Your bed · sleep' }; }
@@ -8157,7 +8162,7 @@ function beastAI(c, D, u, dt, p, dx, dz, dP, toward, ctl) {
       c.cd -= dt;
       if (dP < D.reach + .3 && c.cd <= 0) {
         if (D.pack && c.dgn && time - (fauna.packT || -9) < .7) c.cd = .35 + Math.random() * .3; // a pack takes turns at you, one bite at a time
-        else { if (D.pack) fauna.packT = time; c.cd = D.cd; c.bite = .35; hurtPlayer(D.dmg, c); }
+        else { if (D.pack) fauna.packT = time; c.cd = D.cd; c.bite = .35; foeHit(c, D.dmg); }
       }
     } else if (c.state === 'return') {
       if (toward(c.home[0], c.home[1], D.speed * 2) < 2) { c.state = 'idle'; c.hp = Math.min(D.hp, c.hp + D.hp * .3); }
@@ -8259,7 +8264,65 @@ function foeLv(src) { // who is hitting you, and at what level (0: the world its
   if (DGN.on && DGN.boss && DGN.boss.c) return faunaLv(DGN.boss.c);
   return 0;
 }
+/* ---- companions can be hurt, and go down (everywhere: creatures and lair monsters choose between you and your companions, and a lair
+   boss's blows land on whoever stands in them). A downed companion lies where they fell; another companion runs over and revives
+   them, or you can (E / REVIVE). If you go down while someone's still standing, you're down, not out: a companion comes to revive
+   you. Nobody left standing (or nobody with you): "You were defeated · come back and try again". ---- */
+const compMaxHp = id => 140 + compLevel(id) * 9;
+function compUp(id) { const C = CREW[id]; return !!(C && C.R && C.R.root.visible && C.R.root.parent === wScene && !C.down); }
+function compsUp() { return crewIds().filter(compUp); }
+function compHp(C, id) { if (C.hp == null || C.hpMax !== compMaxHp(id)) { C.hpMax = compMaxHp(id); if (C.hp == null) C.hp = C.hpMax; } return C; }
+function foeAim(c, PP) { // creatures that are hunting pick whoever is nearest: you, or one of your companions (sticking with a choice a moment)
+  if (!(c.state === 'hunt' || c.state === 'dive' || c.state === 'circle') || c.D.passive) { c.foe = null; return PP; }
+  if ((c.foeT = (c.foeT || 0) - 1 / 60) <= 0 || (c.foe && !compUp(c.foe))) { c.foeT = 2.5 + Math.random() * 2;
+    let best = ex.downed ? 1e9 : Math.hypot(PP.x - c.x, PP.z - c.z), who = null;
+    for (const id of compsUp()) { const o = CREW[id].R.root.position, d = Math.hypot(o.x - c.x, o.z - c.z) + (Math.random() * 3 - 1); if (d < best && d < 18) { best = d; who = id; } }
+    c.foe = who; }
+  return c.foe && compUp(c.foe) ? CREW[c.foe].R.root.position : PP;
+}
+function foeHit(c, dmg) { if (c.foe && compUp(c.foe)) compHurt(c.foe, dmg * (c.lv ? 1 : .9), c); else hurtPlayer(dmg, c); }
+function lbAim(B, c, dt) { // a lair boss turns on a companion now and then
+  if ((B.foeT = (B.foeT || 0) - dt) <= 0 || (B.foe && !compUp(B.foe))) { B.foeT = 5 + Math.random() * 4; const ups = compsUp(); B.foe = ups.length && (ex.downed || Math.random() < .35) ? ups[Math.floor(Math.random() * ups.length)] : null; }
+  return B.foe && compUp(B.foe) ? CREW[B.foe].R.root.position : player.position;
+}
+function lbHurt(B, n, src) { if (B && B.foe && compUp(B.foe)) compHurt(B.foe, n); else hurtPlayer(n, src); } // a lair boss's blow lands on whoever it was aimed at
+function compsHitAt(x, z, r, dmg) { for (const id of compsUp()) { const o = CREW[id].R.root.position; if (Math.hypot(o.x - x, o.z - z) < r) compHurt(id, dmg); } }
+function compHurt(id, n, src) {
+  const C = CREW[id]; if (!C || C.down || !C.R) return; compHp(C, id);
+  C.hp = Math.max(0, C.hp - n); C.hurtT = time; const o = C.R.root.position; burst(o.x, o.y + 1.2, o.z, 6, 2, 1, .3, .25, .4, .5, .6);
+  if (C.hp <= 0) compDown(id);
+}
+function compDown(id) {
+  const C = CREW[id]; if (!C || C.down) return; C.down = true; C.downT = 0; C.revT = 0; const R = C.R; R.mode = 'idle'; R.root.rotation.order = 'YXZ'; R.root.rotation.x = -1.45; R.root.position.y += .25;
+  sfx.thud(); lootMsg(`${(PARTY[id] || { name: id }).name} is down${compsUp().length || !ex.downed ? (tiPhone() ? ' · revive them' : ' · get to them, or another companion will (E to revive)') : ''}`, '#ff8f86');
+  if (ex.downed && !compsUp().length) youDefeated(); // and that was the last one standing
+}
+function compRevive(id, frac = .5, by) {
+  const C = CREW[id]; if (!C || !C.down) return; C.down = false; C.revT = 0; compHp(C, id); C.hp = Math.round(C.hpMax * frac);
+  const R = C.R; R.root.rotation.x = 0; R.root.position.y = groundAt(R.root.position.x, R.root.position.z, R.root.position.y + .5);
+  sfx.chime(); const o = R.root.position; burst(o.x, o.y + 1, o.z, 16, 3, .6, 1, .7, .5, .8, 1); lootMsg(`${(PARTY[id] || { name: id }).name} is back on their feet${by ? ` · ${by} got them up` : ''}`, '#9fe6b0');
+}
+function youDown() { // down, not out: someone's still standing
+  ex.downed = true; ex.downT = 0; ex.hp = 0; vel.set(0, 0, 0); ex.act = null; stopBuild && stopBuild();
+  notice('You’re down', 'YOUR COMPANIONS ARE COMING', 2600); sfx.thud(); ex.shake = .6;
+}
+function youRevived(by) { ex.downed = false; ex.hp = Math.round(maxHP() * .4); invState().hp = ex.hp; inner.rotation.x = 0; inner.position.y = 0; sfx.chime(); lootMsg(`${by} got you back on your feet`, '#9fe6b0'); }
+function youDefeated() { // nobody left to get you up
+  ex.downed = false; inner.rotation.x = 0; inner.position.y = 0;
+  for (const id of crewIds()) { const C = CREW[id]; if (C && C.down) compRevive(id, .3); } // they come round with you
+  const plain = !world.betrayal && !esc.on; // the story's own deaths keep their own words
+  if (DGN.on) dgnDown(); else if (world.betrayal) bossDeath(); else if (esc.on) escapeDeath(); else blackout();
+  if (plain) setTimeout(() => notice('You were defeated', 'COME BACK AND TRY AGAIN', 3400), 150);
+}
+function downTick(dt) { // your downed pose; companions getting back up on their own once the fighting's over
+  if (ex.downed) { ex.downT += dt; inner.rotation.x = 1.5; inner.position.y = lieYFor(wanderer); vel.x = vel.z = 0; if (!compsUp().length || (ex.downT > 25 && !crewIds().some(id => CREW[id] && CREW[id].revBy === 'you'))) youDefeated(); } // nobody standing, or nobody coming
+  for (const id of crewIds()) { const C = CREW[id]; if (!C || !C.down) continue; C.downT += dt;
+    const o = C.R.root.position, hot = fauna.list.some(f => !f.dead && f.state === 'hunt' && Math.hypot(f.x - o.x, f.z - o.z) < 25) || DGN.boss;
+    if (!hot && C.downT > 10 && !ex.downed) compRevive(id, .3); }
+  for (const id of crewIds()) { const C = CREW[id]; if (C && !C.down && C.hp != null && C.hp < C.hpMax && time - (C.hurtT || -99) > 8) C.hp = Math.min(C.hpMax, C.hp + C.hpMax * .04 * dt); } // they heal slowly out of the fight
+}
 function hurtPlayer(n, src) {
+  if (ex.downed) return; // already down: they turn on whoever's still standing
   { const k = lvGapMul(foeLv(src), levelOf(wanderer)); if (k === Infinity) { n = Math.round(maxHP() * 1.5); if (time - (fauna.osT || -9) > 2) { fauna.osT = time; lootMsg('Far above your level · dodge it or block it', '#ff6a6e'); } } else if (k !== 1) n = Math.max(1, Math.round(n * k)); }
   if (ex.act && ex.act.type === 'dodge') { if (time - fauna.msgT > 1) { lootMsg('Dodged!', '#9fe6ff'); fauna.msgT = time; } return; }
   if (ex.blocking) {
@@ -8278,7 +8341,7 @@ function hurtPlayer(n, src) {
   const fx = $('#hurtFx'); fx.classList.remove('on'); void fx.offsetWidth; fx.classList.add('on');
   ex.shake = .35;
   if (src) { const dx = player.position.x - src.x, dz = player.position.z - src.z, d = Math.hypot(dx, dz) || 1; vel.x += dx / d * 5; vel.z += dz / d * 5; }
-  if (ex.hp <= 0) { if (PRISON.on) { prisonRecapture(); return; } if (lawBusted()) return; try { resEvent('death'); } catch (e) {} if (DGN.on) dgnDown(); else if (world.betrayal) bossDeath(); else if (esc.on) escapeDeath(); else blackout(); }
+  if (ex.hp <= 0) { if (PRISON.on) { prisonRecapture(); return; } if (lawBusted()) return; try { resEvent('death'); } catch (e) {} if (ex.mode === 'world' && compsUp().length) { youDown(); return; } youDefeated(); } // someone still standing: you're down, not out
 }
 function blackout() {
   if (ORB.B && ORB.B.st !== 'down') orbReset(); // beaten by Orion Mascar: he goes back to his beacon, and it's that phase again, not the whole fight
@@ -8340,7 +8403,7 @@ function faunaTick(dt) {
   if (ex.mode !== 'world') return;
   const live = state === 'explore';
   if (live && (fauna.spawnT -= dt) <= 0) { fauna.spawnT = 1.2; faunaSpawner(); }
-  const p = player.position;
+  const p = player.position, PP = p;
   let threat = false;
   for (const c of [...fauna.list]) {
     if (c.boss || c.ext) continue; // Khazglar runs on his own (dgnBossTick)
@@ -8353,6 +8416,7 @@ function faunaTick(dt) {
       continue;
     }
     if (!live) continue;
+    const p = foeAim(c, PP); // whoever it's after: you, or one of your companions
     const dx = p.x - c.x, dz = p.z - c.z, dP = Math.hypot(dx, dz);
     let mx = 0, mz = 0, sp = 0;
     const toward = (tx, tz, s) => { const vx = tx - c.x, vz = tz - c.z, l = Math.hypot(vx, vz); if (l > .05) { mx = vx / l; mz = vz / l; sp = s; } return l; };
@@ -8381,7 +8445,7 @@ function faunaTick(dt) {
       } else if (c.state === 'dive') {
         threat = true;
         toward(p.x, p.z, D.speed * 1.6); c.y = lerp(c.y, p.y + 1.4, dt * 4);
-        if (Math.hypot(dx, dz) < D.reach && Math.abs(c.y - (p.y + 1.4)) < 1.2) { hurtPlayer(D.dmg, c); c.state = 'climb'; c.t = 0; c.cd = D.cd + rand(0, 2); }
+        if (Math.hypot(dx, dz) < D.reach && Math.abs(c.y - (p.y + 1.4)) < 1.2) { foeHit(c, D.dmg); c.state = 'climb'; c.t = 0; c.cd = D.cd + rand(0, 2); }
         if (c.t > 3) { c.state = 'climb'; c.t = 0; c.cd = D.cd; }
       } else if (c.state === 'climb') {
         mx = -dx / (dP || 1); mz = -dz / (dP || 1); sp = D.speed; c.y = lerp(c.y, wHeight(c.x, c.z) + c.alt, dt * 1.5);
@@ -8411,7 +8475,7 @@ function faunaTick(dt) {
         else if (dP > D.reach) toward(p.x, p.z, D.speed * (ele && c.t < 1 ? .2 : 1));
         else { mx = dx / (dP || 1) * .001; mz = dz / (dP || 1) * .001; sp = .001; }
         c.cd -= dt;
-        if (dP < D.reach + .3 && c.cd <= 0) { c.cd = D.cd; c.bite = .35; hurtPlayer(D.dmg, c); }
+        if (dP < D.reach + .3 && c.cd <= 0) { c.cd = D.cd; c.bite = .35; foeHit(c, D.dmg); }
       } else if (c.state === 'return') {
         if (toward(c.home[0], c.home[1], D.speed * .6) < 1.5) { c.state = 'idle'; c.hp = Math.min(D.hp, c.hp + D.hp * .3); }
         if (dP < D.aggro * .6 && c.t > 2) { c.state = 'hunt'; c.t = 0; }
@@ -11744,6 +11808,7 @@ function natSp(S) {
   const diet = lairPick(R, ['hunts in packs', 'grazes on lichen and fights for it', 'eats rock and metal', 'feeds on heat', 'ambushes from the dark', 'drinks light', 'scavenges the dead']);
   const home = S.bodies.find(Q => Q.land) || S.bodies[0];
   const sp = { id: S.id, name, p, flies, th, temper, diet, home: home.name, sys: S, desc: `The ${name} of ${S.name}: ${legs ? `${legs}-legged` : 'legless'}, ${p.eyes} eye${p.eyes > 1 ? 's' : ''}${p.horns ? `, ${p.horns} horn${p.horns > 1 ? 's' : ''}` : ''}${p.glow ? ', glowing' : ''}. ${temper[0].toUpperCase() + temper.slice(1)}; it ${diet}.` };
+  if (S.id === 'xonexi') xoSpecies(sp); // the outpost's own: grown by the Catharsis
   SPC_CACHE.set(S.id, sp); return sp;
 }
 // the castes every species comes in, on the same bodies as Olympus Mons' creatures (gentler numbers, they scale with level)
@@ -11814,7 +11879,7 @@ const CH4_LAIRS = {
     core: ['volley', 'rain', 'charge', 'pools'], p2: ['summon', 'cross'], sig: 'spiral', seq: ['volley', 'rain', 'charge', 'volley', 'pools'],
     lines: { intro: 'The Third World War never ended down here. Thirty years I have held this bunker. You will not take it.', p2: 'Artillery! Fire on my position!', p3: 'NO SURRENDER. NOT THEN, NOT NOW.', win: 'The war… is over… at last…' } }
 };
-const lairById = id => lairsAll().byId.get(id) || null;
+const lairById = id => id === XO_DGN_ID ? xoLair() : lairsAll().byId.get(id) || null;
 const lairOpen = L => !L.ch4 || ((wanderer && wanderer.chapter) | 0) === 4; // the five endgame dungeons are Chapter IV's alone
 const lairsOn = P => ((P && lairsAll().byBody.get(P.id)) || []).filter(lairOpen);
 const lairProg = L => ((wanderer && wanderer.lairs) || {})[L.id] | 0; // the highest floor cleared (floors + 1 = the boss is down)
@@ -11834,7 +11899,7 @@ function lairBoss(L) { // decided once, from the lair's own seed
   const R = dgnRng(L.seed * 7 + 13), sp = natSp(L.S), kd = 1 + (L.lv - 10) * .035, J = (a, b) => a + R() * (b - a);
   if (L.ch4 || L.lead) return (L.boss = lairFixedBoss(L, R, kd, J)); // the Chapter IV bosses, and the faction leaders in their halls
   const mk = id => lbMk(id, R, kd, J);
-  void mk; return (L.boss = lairRandBoss(L, R, sp, kd, J, mk));
+  void mk; const B0 = lairRandBoss(L, R, sp, kd, J, mk); if (L.xo) xoBossDress(B0); return (L.boss = B0);
 }
 function lbMk(id, R, kd, J) { const A = { id };
     if (id === 'slam') Object.assign(A, { wind: J(.75, 1.1), r: J(3, 4.6), dmg: 32 });
@@ -11951,10 +12016,10 @@ function lairGateUse(G) {
   notice(`Lv ${L.lv}${L.ch4 ? ' · Chapter IV' : L.story ? ' · optional' : ''}${lairCleared(L) ? ' · cleared' : ''} · ${natSp(L.S).name}`, L.name.toUpperCase(), 3600); // the choice box has no title of its own: the lair's name goes on the card above it
   openChoice(head, opts);
 }
-function lairEnter(L, G, f, at, quick) { for (const c of [...fauna.list]) if (!c.dgn && !c.boss) removeFauna(c); DGN.lair = L; L.gate = G ? { x: G.x, z: G.z } : L.gate || { x: 5, z: 14.5 }; lairBoss(L); dgnEnter(f, at, quick); }
+function lairEnter(L, G, f, at, quick) { for (const c of [...fauna.list]) if (!c.dgn && !c.boss) removeFauna(c); DGN.lair = L; L.gate = L.xo ? L.gate : G ? { x: G.x, z: G.z } : L.gate || { x: 5, z: 14.5 }; lairBoss(L); dgnEnter(f, at, quick); }
 function lairSpawnGroup(rm, f) {
   if (DGN.lair && DGN.lair.cyg) { cygSpawnGroup(rm, f); return; } // aboard the Cygnus: Terra Imperia's soldiers, not beasts
-  const L = DGN.lair, sp = natSp(L.S), roles = spRoles(sp).filter(r => f > 1 || r !== 'brute'), role = lairPick(Math.random, roles), lv = L.lv - (L.floors - f) * 2 - 2;
+  const L = DGN.lair, sp = natSp(L.S), roles = spRoles(sp).filter(r => f > 1 || r !== 'brute'), role = lairPick(Math.random, roles), lv = Math.round(L.lv - (L.floors - f) * (L.lvStep != null ? L.lvStep : 2) - 2);
   const [cx, cz] = dgnW(rm.c[0], rm.c[1]), n = role === 'runner' ? 2 + (Math.random() < .4) : role === 'glider' ? 1 + (f > 1) : 1 + (Math.random() < .2);
   for (let i = 0; i < n; i++) { const c = spawnFauna(spType(sp, role, lv), cx + rand(-5, 5), cz + rand(-5, 5), [cx, cz]); c.dgn = f; }
 }
@@ -11964,7 +12029,7 @@ function lairPopulate(f) {
   if (f >= dgnTop()) return;
   for (const rm of DGN.rooms) { if (rm === DGN.start) continue; if (rm === DGN.end && !dgnBeaten(f)) continue; if (!rm.side && Math.random() < .3) continue; lairSpawnGroup(rm, f); }
   if (!dgnBeaten(f) && DGN.end) {
-    const [cx, cz] = dgnW(DGN.end.c[0], DGN.end.c[1]), c = spawnFauna(spType(natSp(L.S), 'brute', L.lv - (L.floors - f) * 2, true), cx, cz + 2, [cx, cz]); c.dgn = f; DGN.warden = c;
+    const [cx, cz] = dgnW(DGN.end.c[0], DGN.end.c[1]), c = spawnFauna(spType(natSp(L.S), 'brute', Math.round(L.lv - (L.floors - f) * (L.lvStep != null ? L.lvStep : 2)), true), cx, cz + 2, [cx, cz]); c.dgn = f; DGN.warden = c;
     lairSpawnGroup(DGN.end, f);
   }
 }
@@ -12017,7 +12082,7 @@ function lairBossReset() { // a wipe: the boss back on its perch at full strengt
 function lairShot(B, x, z, ang, sp, dmg, col) { const m = glowSprite(col, 1.6, .95); m.position.set(x, 1.2, z); wScene.add(m); B.shots.push({ m, x, z, vx: Math.sin(ang) * sp, vz: Math.cos(ang) * sp, t: 0, dmg }); }
 function lairBossTick(dt) {
   const B = DGN.boss, K = DGN.lb; if (!B || !K) return;
-  const c = B.c, Bd = B.Bd, p = player.position, col = DGN.lair.th.glow; B.t += dt;
+  const c = B.c, Bd = B.Bd, col = DGN.lair.th.glow; B.t += dt; const p = lbAim(B, c, dt); // you, or one of your companions
   if (c.dead || c.hp <= 0) { lairBossWin(); return; }
   if ((B.barT = (B.barT || 0) - dt) <= 0) { B.barT = .15; lairBossBar(); }
   const frac = c.hp / Bd.hp, sp = Bd.sp * (B.ph === 1 ? 1 : B.ph === 2 ? 1.15 : 1.3), fast = B.ph === 3 ? .8 : B.ph === 2 ? .9 : 1;
@@ -12027,7 +12092,8 @@ function lairBossTick(dt) {
   const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz) || .01;
   const face = (x, z, k = 8) => { c.rot = angLerp(c.rot, Math.atan2(x - c.x, z - c.z), Math.min(1, dt * k)); };
   const tel = (x, z, r) => { const m = telegraph(x, z, r); B.tels.push(m); return m; };
-  const hit = (x, z, r, dmg, jump) => { if (Math.hypot(p.x - x, p.z - z) < r && !(jump && ex.air)) hurtPlayer(dmg, { x, z }); };
+  const tH = (n, src) => B.foe && compUp(B.foe) ? compHurt(B.foe, n) : hurtPlayer(n, src); // whoever it's after takes it
+  const hit = (x, z, r, dmg, jump) => { const me = player.position; if (Math.hypot(me.x - x, me.z - z) < r && !(jump && ex.air)) hurtPlayer(dmg, { x, z }); compsHitAt(x, z, r, dmg); }; // everyone in the blast
   const boom = (x, z, n = 40, s = 5) => { const k = new THREE.Color(col); burst(x, .4, z, n, s, k.r, k.g, k.b, .8, 1, 1.4); };
   const done = () => { for (const m of B.tels) wScene.remove(m); B.tels = []; if (B.A && B.A.extra) for (const m of B.A.extra) wScene.remove(m); B.A = null; B.st = 'chase'; B.t = 0; B.cd = (1.1 + Math.random() * .7) * fast; B.chaseT = 0; K.mesh.visible = true; };
   let moving = false;
@@ -12040,8 +12106,8 @@ function lairBossTick(dt) {
     } else lairAtkTick(B, B.A, c, p, dt, fast, { face, tel, hit, boom, done, col });
   }
   // the bolts in flight, and the pools left behind
-  for (const s of [...B.shots]) { s.t += dt; s.x += s.vx * dt; s.z += s.vz * dt; s.m.position.set(s.x, 1.2, s.z); if (Math.hypot(p.x - s.x, p.z - s.z) < 1 && !(ex.air && p.y > 1.4)) { hurtPlayer(s.dmg, { x: s.x, z: s.z }); s.t = 99; } if (s.t > 3.2 || dgnBlocked(s.x, s.z)) { wScene.remove(s.m); B.shots.splice(B.shots.indexOf(s), 1); } }
-  for (const q of [...B.pools]) { q.t += dt; q.m.material.opacity = .45 + Math.sin(time * 6) * .12; if (q.t > .6 && Math.hypot(p.x - q.x, p.z - q.z) < q.r && (q.tick = (q.tick || 0) - dt) <= 0) { q.tick = .6; hurtPlayer(q.dmg, null); } if (q.t > q.life) { wScene.remove(q.m); B.pools.splice(B.pools.indexOf(q), 1); } }
+  for (const s of [...B.shots]) { s.t += dt; s.x += s.vx * dt; s.z += s.vz * dt; s.m.position.set(s.x, 1.2, s.z); if (Math.hypot(p.x - s.x, p.z - s.z) < 1 && !(ex.air && p.y > 1.4)) { tH(s.dmg, { x: s.x, z: s.z }); s.t = 99; } if (s.t > 3.2 || dgnBlocked(s.x, s.z)) { wScene.remove(s.m); B.shots.splice(B.shots.indexOf(s), 1); } }
+  for (const q of [...B.pools]) { q.t += dt; q.m.material.opacity = .45 + Math.sin(time * 6) * .12; if (q.t > .6 && Math.hypot(p.x - q.x, p.z - q.z) < q.r && (q.tick = (q.tick || 0) - dt) <= 0) { q.tick = .6; tH(q.dmg, null); } if (q.t > q.life) { wScene.remove(q.m); B.pools.splice(B.pools.indexOf(q), 1); } }
   for (const M of [...B.mets]) { M.t += dt; M.tel.material.opacity = .35 + .35 * Math.sin(time * 22); if (M.t > M.delay) { boom(M.x, M.z, 30, 5); sfx.thud(); ex.shake = Math.max(ex.shake || 0, .35); hit(M.x, M.z, M.r, M.dmg); wScene.remove(M.tel); B.mets.splice(B.mets.indexOf(M), 1); } }
   for (const m of B.tels) m.material.opacity = .35 + .35 * Math.sin(time * 18);
   c.y = 0; K.x = c.x; K.z = c.z;
@@ -12069,17 +12135,17 @@ function lairAtkTick(B, A, c, p, dt, fast, U) {
   else if (A.id === 'leap') { const k = clamp((t - A.wind * fast) / .7, 0, 1); U.face(A.x, A.z, 4); if (k > 0) { c.x = lerp(A.sx, A.x, k); c.z = lerp(A.sz, A.z, k); B.jy = Math.sin(k * Math.PI) * 6; if (dgnBlocked(c.x, c.z)) { c.x = lerp(A.sx, A.x, k - .05); c.z = lerp(A.sz, A.z, k - .05); } }
     if (k >= 1 && !A.k) { A.k = 1; B.jy = 0; sfx.boom && sfx.boom(); ex.shake = .9; U.boom(c.x, c.z, 70, 7); U.hit(c.x, c.z, A.r, A.dmg); } if (t > A.wind * fast + 1.3) { B.jy = 0; U.done(); } }
   else if (A.id === 'charge') { if (t > A.wind * fast) { const st = A.sp * dt, nx = c.x + A.ux * st, nz = c.z + A.uz * st; A.run = (A.run || 0) + st; if (!dgnBlocked(nx, nz)) { c.x = nx; c.z = nz; } else A.run = 1e9; U.face(c.x + A.ux, c.z + A.uz, 20);
-      if (!A.k && Math.hypot(p.x - c.x, p.z - c.z) < c.D.r + 1) { A.k = 1; hurtPlayer(A.dmg, { x: c.x, z: c.z }); } if (A.run >= A.len) { ex.shake = .5; U.done(); } } }
+      if (!A.k && Math.hypot(p.x - c.x, p.z - c.z) < c.D.r + 1) { A.k = 1; lbHurt(B, A.dmg, { x: c.x, z: c.z }); } if (A.run >= A.len) { ex.shake = .5; U.done(); } } }
   else if (A.id === 'volley') { U.face(p.x, p.z, 6); const per = .5; while (A.k < A.bursts && t > .55 * fast + A.k * per) { const base = Math.atan2(p.x - c.x, p.z - c.z); for (let i = 0; i < A.n; i++) lairShot(B, c.x, c.z, base + (A.n > 1 ? (i / (A.n - 1) - .5) * A.spread : 0), A.sp, A.dmg, U.col); A.k++; sfx.whoosh(); } if (t > .55 * fast + A.bursts * per + .3) U.done(); }
   else if (A.id === 'spiral') { while (t > .5 + A.k * A.rate && A.k * A.rate < A.dur) { const a = A.k * A.rate * A.rot; for (let i = 0; i < A.arms; i++) lairShot(B, c.x, c.z, a + i / A.arms * Math.PI * 2, A.sp, A.dmg, U.col); A.k++; } if (t > .5 + A.dur + .3) U.done(); }
   else if (A.id === 'rain') { if (t > A.delay + .8) U.done(); }
   else if (A.id === 'pools') { if (t > .8) U.done(); }
   else if (A.id === 'sweep') { const k = clamp((t - A.wind * fast) / A.dur, 0, 1), a = A.a0 + A.arc * k; A.extra.forEach((m, i) => { const r = A.len * (i + 1) / 6; m.position.x = c.x + Math.sin(a) * r; m.position.z = c.z + Math.cos(a) * r; m.material.opacity = k > 0 ? .9 : .35 + .35 * Math.sin(time * 18); });
-    if (k > 0 && !A.k) { const vx = Math.sin(a), vz = Math.cos(a), qx = p.x - c.x, qz = p.z - c.z, along = qx * vx + qz * vz, off = Math.abs(qx * vz - qz * vx); if (along > 0 && along < A.len && off < 1.4) { A.k = 1; hurtPlayer(A.dmg, { x: c.x, z: c.z }); } }
+    if (k > 0 && !A.k) { const vx = Math.sin(a), vz = Math.cos(a), qx = p.x - c.x, qz = p.z - c.z, along = qx * vx + qz * vz, off = Math.abs(qx * vz - qz * vx); if (along > 0 && along < A.len && off < 1.4) { A.k = 1; lbHurt(B, A.dmg, { x: c.x, z: c.z }); } }
     U.face(c.x + Math.sin(a), c.z + Math.cos(a), 20); if (k >= 1) U.done(); }
   else if (A.id === 'cross') { while (A.k < A.steps && t > .3 + A.k * .18) { A.k++; for (let i = 0; i < A.dirs; i++) { const a = A.a0 + i / A.dirs * Math.PI * 2, x = A.cx + Math.sin(a) * A.gap * A.k, z = A.cz + Math.cos(a) * A.gap * A.k; if (!dgnBlocked(x, z)) B.mets.push({ x, z, t: 0, delay: .65, r: 1.9, dmg: A.dmg, tel: telegraph(x, z, 1.9) }); } } if (t > .3 + A.steps * .18 + .9) U.done(); }
   else if (A.id === 'summon') { if (!A.k && t > .8) { A.k = 1; lairSummon(B, A.n); DGN.flashL = 1; } if (t > 1.4) U.done(); }
-  else if (A.id === 'pull') { if (t < A.dur * fast) { const dx = c.x - p.x, dz = c.z - p.z, d = Math.hypot(dx, dz) || 1; if (d > 1.5) { vel.x += dx / d * A.force * dt * 3; vel.z += dz / d * A.force * dt * 3; } if (!A.tm) A.tm = (B.tels.push(telegraph(c.x, c.z, A.r)), 1); }
+  else if (A.id === 'pull') { if (t < A.dur * fast && !B.foe) { const dx = c.x - p.x, dz = c.z - p.z, d = Math.hypot(dx, dz) || 1; if (d > 1.5) { vel.x += dx / d * A.force * dt * 3; vel.z += dz / d * A.force * dt * 3; } if (!A.tm) A.tm = (B.tels.push(telegraph(c.x, c.z, A.r)), 1); }
     else if (!A.k) { A.k = 1; sfx.boom && sfx.boom(); ex.shake = 1; U.boom(c.x, c.z, 80, A.r); U.hit(c.x, c.z, A.r, A.dmg, true); } if (t > A.dur * fast + .6) U.done(); }
   else if (A.id === 'blink') { const DG = DGN.lb;
     if (t < .5) DG.mesh.visible = Math.sin(t * 60) > 0;
@@ -12096,6 +12162,7 @@ function lairBossWin() {
   notice('Lair boss defeated', `${Bd.short.toUpperCase()} IS DEAD`, 3600); lbark(Bd.short, Bd.lines.win, 3200);
   if (DGN.lb) { DGN.lb.mesh.rotation.z = Math.PI / 2; DGN.lb.mesh.position.y = .4; }
   lairSetProg(L, L.floors + 1); try { resPartyWin(L); resEvent('bossWin'); } catch (e) { console.error(e); }
+  if (L.xo) setTimeout(() => { renderTasks(); notice('The Catharsis outpost', 'CLEARED · TO BE CONTINUED', 4400); }, 4800);
   gainXP(Math.round(260 + L.lv * 18), `Defeated ${Bd.name}`);
   const loot = [['medkit', 2], ['warpcell', 1 + (L.tier > 0)], ['crystal', 2 + L.tier], [L.lv > 40 ? 'obsidian' : 'metal', 2 + L.tier], Math.random() < .5 && ['scrap', 3]];
   if (Bd.armor) setTimeout(() => { const it = ITEMS[Bd.armor], had = have(Bd.armor) > 0; if (!had) giveItem(Bd.armor, 1); notice(had ? 'You already carry it' : 'Endgame armour', it.name.toUpperCase(), 4200); lootMsg(isWorn(Bd.armor) ? `${it.name} · you’re wearing it now` : canWear(Bd.armor) ? `${it.name} · put it on from Inventory → Equipment` : `${it.name} · ${it.desc.split('.')[0]} · it waits in your bag`, '#ffd36a'); armorSync && armorSync(true); }, 2400);
@@ -19279,7 +19346,7 @@ function ch4Goal() { // Chapter IV in flight: the same main quest as on foot (po
   if (!c4.josiahLight) return atm('earth') ? (ph ? 'Help Josiah · land on Earth' : 'Bring Josiah Williams II back into the light · land on Earth') : SPC.sys === 'sol' ? (ph ? 'Help Josiah · fly to Earth' : 'Bring Josiah Williams II back into the light · fly to Earth and land') : (ph ? 'Help Josiah · warp to Sol' : 'Bring Josiah Williams II back into the light · warp to Sol, then land on Earth');
   if (c4.shipClear && !c4.zarkDream) return ph ? 'Catch your breath aboard' : 'The Jewel is yours · catch your breath aboard';
   if (hakMeetQ()) return atm('aridaxx') ? (ph ? 'Hak · land in Alphinos' : 'Meet Hak Chompjak · fly to Alphinos (its marker) and land') : SPC.sys === 'steca' ? (ph ? 'Hak · fly to Aridaxx, land' : 'Meet Hak Chompjak in Alphinos · fly to Aridaxx (the gold marker) and land') : (ph ? 'Hak · warp to Steca Prime' : 'Meet Hak Chompjak in Alphinos · warp to Steca Prime, in the galaxy’s core');
-  if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.xoOutpost) return ph ? 'The Catharsis outpost' : 'The Catharsis outpost · to be continued';
+  if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.xoOutpost) return xoDgnDone() ? (ph ? 'The outpost · cleared' : 'The Catharsis outpost · cleared · to be continued') : ph ? 'Clear the outpost · 10 floors' : 'Through the membrane · clear the Catharsis outpost · 10 floors, lv 40';
   if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.jvMet) return ph ? 'Reach the Catharsis outpost' : 'Reach the Catharsis outpost · through the far door of the hangar, with Javek';
   if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.jvTaken) return ph ? 'Talk to the hooded figure' : 'Somebody brought you to Xonexi Station · talk to the hooded figure by your ship';
   if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.taroMet) return ph ? 'Sleep · Tyrotaronus’s house' : 'Sleep · your bed in Tyrotaronus’s house, on Tamez Prime';
@@ -22809,10 +22876,12 @@ function ccbTick(dt) {
 }
 function crewTick(dt) {
   if (ex.mode !== 'world') return;
+  if (state === 'explore') try { downTick(dt); } catch (e) { console.error(e); } // who's down, who's getting up
   const p = player.position, live = crewIds();
   { const p0 = CREW_FORM.p || (CREW_FORM.p = { x: p.x, z: p.z }), mv = Math.hypot(p.x - p0.x, p.z - p0.z); if (CREW_FORM.a == null) CREW_FORM.a = player.rotation.y; if (mv > .02 && mv < 5) CREW_FORM.a = angLerp(CREW_FORM.a, Math.atan2(p.x - p0.x, p.z - p0.z), Math.min(1, dt * 2.5)); p0.x = p.x; p0.z = p.z; } // the formation faces the way you're going cruelTick(dt, partyNow().includes('orion') && world.orion ? ['orion', ...live] : live);
   for (const id of live) {
     const C = CREW[id]; if (!C || !C.R || !C.R.root.visible || C.R.root.parent !== wScene) continue;
+    if (C.down) { C.R.mode = 'idle'; continue; } // down: lying where they fell
     const R = C.R, o = R.root.position, mode = csbHold() ? 'base' : (wanderer.cmds && wanderer.cmds[id]) || 'follow', name = PARTY[id].name, isN = id === 'nico', ice = ICE_MAGES.includes(id), guns = isN || ice || R.weapon === 'rifle' || R.weapon === 'pistols'; // on Tallax IV they wait at the ship while you go in alone
     if (isN && !(mode === 'mine' || (mode === 'explore' && C.node))) nicoGear(R, 'pistols'); // her pistols are out unless she's digging
     if (state !== 'explore' || ex.dlg) { R.mode = 'idle'; animRig(R, dt); continue; }
@@ -22821,6 +22890,17 @@ function crewTick(dt) {
       const sp = run ? 5.4 : 2.4; o.x += dx / d * Math.min(d, sp * dt); o.z += dz / d * Math.min(d, sp * dt); o.y = groundAt(o.x, o.z, o.y + .5);
       R.mode = 'walk'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 8)); return false;
     };
+    { // someone's down: the nearest one standing goes to them, and gets them up (you first)
+      let tgt = null, td = 30; if (ex.downed) { const d = Math.hypot(p.x - o.x, p.z - o.z); if (d < 60) { tgt = { you: true, x: p.x, z: p.z }; td = d; } }
+      if (!tgt) for (const j of live) { const D2 = CREW[j]; if (j === id || !D2 || !D2.down) continue; const q = D2.R.root.position, d = Math.hypot(q.x - o.x, q.z - o.z); if (d < td) { td = d; tgt = { id: j, x: q.x, z: q.z }; } }
+      if (tgt && (tgt.you || !live.some(j => j !== id && CREW[j] && CREW[j].revBy === tgt.id && CREW[j] !== C))) {
+        C.revBy = tgt.id || 'you';
+        if (!walkTo(tgt.x, tgt.z, 1.5, true)) { C.revT = 0; animRig(R, dt); continue; }
+        R.mode = 'idle'; R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(tgt.x - o.x, tgt.z - o.z), Math.min(1, dt * 6)); C.revT = (C.revT || 0) + dt;
+        if (C.revT > 2.6) { C.revT = 0; C.revBy = null; if (tgt.you) youRevived(name); else compRevive(tgt.id, .5, name); }
+        animRig(R, dt); continue;
+      } else C.revBy = null;
+    }
     // fight anything hostile nearby, with whatever they carry
     const lead = !!SIEGE_LEADS[id], hold = lead && mode === 'hold' && C.holdAt, adv = lead && mode === 'advance' && SG.base;
     let foe = null, fd = guns ? 24 : adv ? 22 : 14;
@@ -24843,7 +24923,8 @@ async function xoSay(i) {
   fbSay('THE CATHARSIS', t, clip, 1.3); ex.shake = Math.max(ex.shake || 0, .08);
 }
 function xoTick(dt) {
-  if (!XO.g || !isPl() || !world.planet.P.xo) return; if (XO.top) XO.top.intensity = 340 + Math.sin(time * 1.7) * 60 + (Math.random() < .02 ? -200 : 0); // the reactor light pulses, and now and then flickers
+  if (XO.g) XO.g.visible = !DGN.on; // the deck, hidden while you're down in the outpost
+  if (!XO.g || DGN.on || !isPl() || !world.planet.P.xo) return; if (XO.top) XO.top.intensity = 340 + Math.sin(time * 1.7) * 60 + (Math.random() < .02 ? -200 : 0); // the reactor light pulses, and now and then flickers
   if (XO.outLight) XO.outLight.intensity = 260 + Math.sin(time * 2.3) * 70;
   fbSubTick();
   const c4 = wanderer.ch4 || {}; if (!c4.jvMet || c4.xoOutpost) return;
@@ -24853,7 +24934,31 @@ function xoTick(dt) {
     wanderer.ch4 = Object.assign({}, c4, { xoOutpost: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); renderTasks();
     notice('Xonexi Station', 'THE CATHARSIS OUTPOST', 4200); sfx.thud(); ex.shake = Math.max(ex.shake || 0, .3); }
 }
-function xoBlocked(x, z) { if (!XO.g || !isPl() || !world.planet.P.xo) return false; const d = Math.hypot(x, z), inCorr = Math.abs(x) < 6 && z < -XO_R + 8 && z > -XO_R - XO_CORR - 4, inOut = Math.hypot(x, z - XO_OUT.z) < XO_OUT.r - 2.5; if (d > XO.R - 5 && !inCorr && !inOut) return true; for (const [cx, cz, r] of XO.cols || []) if (Math.abs(x - cx) < r && Math.abs(z - cz) < r) return true; return false; }
+/* ---- through the membrane: the Catharsis outpost, ten floors at level 40 (a lair of its own: Catharsis thralls grown in its pods,
+   and Vhorrask, its warden, at the heart). Your progress is kept floor by floor, like any lair. ---- */
+const XO_DGN_ID = 'xonexi~cath';
+const XO_TH = Object.assign({}, LAIR_TH.ship, { hue: 352, floor: ['#130709', '#21100f'], wall: ['#1a0a0e', '#2c1218'], emis: 0x2a0408, glow: 0xff2a3a, light: 0xff5a4a, fog: 0x070204 });
+let XO_LAIR = null;
+function xoLair() { if (XO_LAIR) return XO_LAIR; const S = sysById('xonexi');
+  return (XO_LAIR = { id: XO_DGN_ID, S, P: bodyById('xonexi-station-gardens') || S.bodies[0], k: 9, xo: true, seed: lairHash(XO_DGN_ID) % 900000, tier: 2, floors: 10, lv: 40, lvStep: .5, th: XO_TH, ang: 0, dist: 0, bossName: 'Vhorrask', name: 'The Catharsis Outpost', gate: { x: 0, z: XO_OUT.z - XO_OUT.r + 8 } }); }
+const xoDgnDone = () => lairCleared(xoLair());
+function xoSpecies(sp) { // crimson-veined things the Catharsis grow in the outpost's pods
+  Object.assign(sp.p, { c1: '#2a0a10', c2: '#7a1a24', c3: '#ff3a2a', glow: true, pattern: 'bands' });
+  sp.name = 'Catharsis thrall'; sp.temper = 'relentless'; sp.diet = 'hunts whatever the Catharsis point it at';
+  sp.desc = 'Catharsis thralls: grown in the outpost’s pods, crimson-veined and blind to fear. They hunt whatever the Catharsis point them at · yours too.';
+}
+function xoBossDress(B) {
+  Object.assign(B, { name: 'Vhorrask, Warden of the Outpost', short: 'Vhorrask', lv: 43 });
+  Object.assign(B.p, { c1: '#1a0508', c2: '#5a0e16', c3: '#ff2a1a', glow: true });
+  B.lines = { intro: 'The thief brought you all this way to us. How very kind of him.', p2: 'You are stronger than the others who came. It will not matter.', p3: 'THIS DOOR IS OURS. THIS GALAXY IS OURS.', win: '…The door… is still… ours…' };
+}
+function xoDgnEnter() {
+  if (DGN.on || state !== 'explore') { lootMsg('Not now', '#ff8f86'); return; }
+  const L = xoLair(), at = Math.min(lairProg(L) + 1, L.floors + 1);
+  notice('The Catharsis outpost', at > 1 ? `BACK IN · FLOOR ${Math.min(at, L.floors)} OF ${L.floors}` : tiPhone() ? 'TEN FLOORS · LV 40' : 'THROUGH THE MEMBRANE · TEN FLOORS · LV 40', 3400); sfx.thud(); ex.shake = Math.max(ex.shake || 0, .25);
+  lairEnter(L, L.gate, at);
+}
+function xoBlocked(x, z) { if (!XO.g || DGN.on || !isPl() || !world.planet.P.xo) return false; const d = Math.hypot(x, z), inCorr = Math.abs(x) < 6 && z < -XO_R + 8 && z > -XO_R - XO_CORR - 4, inOut = Math.hypot(x, z - XO_OUT.z) < XO_OUT.r - 2.5; if (d > XO.R - 5 && !inCorr && !inOut) return true; for (const [cx, cz, r] of XO.cols || []) if (Math.abs(x - cx) < r && Math.abs(z - cz) < r) return true; return false; }
 function stInSkyTex(P) { // space beyond the glass (equirectangular): stars and a faint galactic band above, the station's own haze at the horizon
   return ST_IN.tex.sky || (ST_IN.tex.sky = (() => {
     const t = canvasTex(2048, 1024, (g, w, h) => {
@@ -27136,6 +27241,7 @@ function updateWorldMode(dt) {
     if (A.t >= A.dur) { if (A.type === 'dodge') { inner.rotation.x = 0; inner.position.y = 0; } ex.act = null; }
   }
   if (time < (ex.heldT || 0)) { wx *= .04; wz *= .04; } // held in Orion's stasis
+  if (ex.downed) { wx = 0; wz = 0; } // down
   const grip = ex.air ? (ex.jetting ? 5 : 2.5) : (A && A.type === 'dodge' ? 30 : 8);
   vel.x += (wx - vel.x) * Math.min(1, dt * grip); vel.z += (wz - vel.z) * Math.min(1, dt * grip);
   const nx = p.x + vel.x * dt, nz = p.z + vel.z * dt;
@@ -27214,7 +27320,9 @@ function updateWorldMode(dt) {
   if (!ex.near && !DGN.on && LHALL.g && LHALL.g.visible && Math.hypot(p.x - LHALL.x, p.z - LHALL.z) < 3.6) ex.near = { id: 'leadGate', label: `The Hall of ${LHALL.H.Lo.list[0].boss}` };
   if (!ex.near && isPl() && !DGN.on) { const G = lairGateNear(p); if (G) ex.near = { id: 'lairGate', ref: G, label: `${G.L.name} · lv ${G.L.lv}${lairCleared(G.L) ? ' · cleared' : ''}` }; } // the lairs
   if (!ex.near && isPl()) ex.near = csbNear(p); // the carapace rifle, on its plinth
+  if (!ex.near && !DGN.on && isPl() && world.planet.P.xo && wanderer.ch4 && wanderer.ch4.xoOutpost && Math.hypot(p.x, p.z - (XO_OUT.z - XO_OUT.r + 6)) < 5) ex.near = { id: 'xoDgn', label: xoDgnDone() ? 'The outpost (cleared)' : 'The membrane' }; // into the outpost
   if (!ex.near && isPl() && world.planet.P.id === 'tamez' && (wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.taroMet && !wanderer.ch4.jvTaken) { const B = taroBedSpot(); if (Math.hypot(p.x - B.x, p.z - B.z) < 1.9) ex.near = { id: 'taroBed', label: 'Your bed' }; } // Tyrotaronus's house: sleep
+  if (!ex.near && !ex.downed) for (const id of crewIds()) { const C = CREW[id]; if (C && C.down && C.R && Math.hypot(C.R.root.position.x - p.x, C.R.root.position.z - p.z) < 2.2) { ex.near = { id: 'revive', ref: id, label: `Revive ${(PARTY[id] || { name: id }).name}` }; break; } } // a downed companion
   if (!ex.near && isPl()) { const G = giverNear(p); if (G) ex.near = { id: 'qgiver', ref: G, label: titleName(G.name) }; } // quest givers
   if (!ex.near && RES.bots.length) { const B = resNear(p); if (B) ex.near = { id: 'bot', ref: B, label: B.c.name }; } // residents (wanderers you sent into the world)
   if (!ex.near) for (const m of merchantsHere()) if (m.px != null && Math.hypot(m.px - p.x, m.pz - p.z) < 3) ex.near = { id: 'merchant', ref: m, label: m.who };
@@ -27251,7 +27359,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { taroBed: [ex.near.label + ' · sleep', 'SLEEP'], homeless: [ex.near.label, 'GIVE'], prisonSleep: [ex.near.label, 'SLEEP'], prisonPick: [ex.near.label, 'PICK'], prisonExit: [ex.near.label, 'ESCAPE'], bot: [`Wave · ${ex.near.label}`, 'WAVE'], stray: [`Tame · ${ex.near.label}`, 'TAME'], ship: [podMode() ? 'Board the pod' : jewelOn() ? (tiPhone() ? 'Board · the Jewel of Archamus' : 'Board the Jewel of Archamus') : 'Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], nicoHouse: [tiPhone() ? 'Enter · Nico’s house' : 'Enter Nico’s house', 'ENTER'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
+    const PR = { revive: [ex.near.label, 'REVIVE'], xoDgn: [ex.near.label, 'GO THROUGH'], taroBed: [ex.near.label + ' · sleep', 'SLEEP'], homeless: [ex.near.label, 'GIVE'], prisonSleep: [ex.near.label, 'SLEEP'], prisonPick: [ex.near.label, 'PICK'], prisonExit: [ex.near.label, 'ESCAPE'], bot: [`Wave · ${ex.near.label}`, 'WAVE'], stray: [`Tame · ${ex.near.label}`, 'TAME'], ship: [podMode() ? 'Board the pod' : jewelOn() ? (tiPhone() ? 'Board · the Jewel of Archamus' : 'Board the Jewel of Archamus') : 'Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], nicoHouse: [tiPhone() ? 'Enter · Nico’s house' : 'Enter Nico’s house', 'ENTER'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give James orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
