@@ -2967,6 +2967,8 @@ const sfx = (() => {
       if (onEnd) s.onended = () => { if (songSrc === me) { songSrc = null; onEnd(); } }; // a playlist moves on; a song that was stopped doesn't
     },
     songBuf() { return songSrc && songSrc.buf; },
+    menuBuf(id) { return ctx ? decodeTag(menuCache, id) : Promise.resolve(null); },
+    areaBuf(id) { return ctx ? decodeTag(areaCache, id) : Promise.resolve(null); }, // one of the exploration tracks, to play as a song // a title-screen theme, to play in the game (CATHARSIS, at the outpost)
     get leadOn() { return leadOnV; }, set leadOn(v) { leadOnV = !!v; if (ctx) applyAreaGain(); }, // the area's playlist ducks under a leader's theme (it used to come back up and play over The Wrong Enemy)
     stopSong(t = 1.5) { if (!songSrc || !ctx) return; const { s, g } = songSrc; songSrc = null; g.gain.cancelScheduledValues(ctx.currentTime); g.gain.setTargetAtTime(0, ctx.currentTime, t / 3); try { s.stop(ctx.currentTime + t + .1); } catch {} },
     music(level) { if (level === musicLevel) return; musicLevel = level; if (musicGain && !combatOn) musicGain.gain.setTargetAtTime(level, ctx.currentTime, .5); },
@@ -5450,7 +5452,7 @@ function renderTasks() {
   if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip && !wanderer.ch4.newShip) h = task(true, tiPhone() ? 'Escape the Nostra' : 'Escape the Nostra in a pod') + task(false, tiPhone() ? 'Main quest · Survive · find somewhere to land' : 'Main quest · Survive: you’re adrift in an escape pod · find somewhere to land'); // Chapter IV starts here
   if ((wanderer.chapter | 0) === 4) h = wanderer.ch4 && wanderer.ch4.pod && !wanderer.ch4.timeSkip && !wanderer.ch4.newShip ? h : !(wanderer.ch4 && wanderer.ch4.archMet) ? task(false, tiPhone() ? 'Main quest · Meet Archamus (Archiostal)' : 'Main quest · Meet Archamus in the gardens of Archiostal') : !wanderer.ch4.archProj ? task(true, 'Meet Archamus') + task(false, 'Main quest · Hear Archamus out') : !wanderer.ch4.josiahMet ? task(true, 'Meet Archamus') + task(false, tiPhone() ? 'Main quest · Find Josiah Williams II (Earth)' : 'Main quest · Find Josiah Williams II on Earth') : !wanderer.ch4.josiahLight ? task(true, 'Find Josiah Williams II') + task(false, tiPhone() ? 'Main quest · Help Josiah' : 'Main quest · Bring Josiah Williams II back into the light')
     : (() => { const c4 = wanderer.ch4, ph = tiPhone(), W = cathTarget(); // Tallax IV: the base, the rifle, the carapace
-        if (c4.shipClear) return task(true, ph ? 'Retake the Jewel' : 'Retake the Jewel of Archamus') + (c4.zarkDream ? task(!!c4.hakMet, ph ? 'Main quest · Meet Hak (Alphinos)' : 'Main quest · Meet Hak Chompjak in Alphinos, on Aridaxx') + (c4.hakMet ? task(upCount() >= UP_GOAL, ph ? `Main quest · Uplift species (${Math.min(upCount(), UP_GOAL)}/${UP_GOAL})` : `Main quest · Uplift ${UP_GOAL} species (${Math.min(upCount(), UP_GOAL)}/${UP_GOAL})`) + (upCount() >= UP_GOAL && c4.taroCall ? task(!!c4.taroMet, ph ? 'Main quest · Meet Tyrotaronus (Tamez)' : 'Main quest · Meet Tyrotaronus on Tamez Prime') + (c4.taroMet ? task(!!c4.jvTaken, ph ? 'Main quest · Sleep' : 'Main quest · Sleep in Tyrotaronus’s house') + (c4.jvTaken ? task(!!c4.jvMet, ph ? 'Main quest · Who brought you here?' : 'Main quest · Find out who brought you to Xonexi Station') + (c4.jvMet ? task(!!c4.xoOutpost, ph ? 'Main quest · Reach the outpost' : 'Main quest · Reach the Catharsis outpost') + (c4.xoOutpost ? task(xoDgnDone(), ph ? 'Main quest · Clear the outpost (10 floors)' : 'Main quest · Through the membrane · clear the Catharsis outpost (10 floors, lv 40)') + (xoDgnDone() ? task(!!xoBase(), xoBase() ? `Main quest · The outpost: ${xoBase() === 'taken' ? 'taken for yourself' : 'destroyed'}` : ph ? 'Main quest · Destroy or take the outpost' : 'Main quest · Decide the outpost’s fate: destroy it, or take it') + (xoBase() ? task(false, 'Main quest · To be continued') : '') : '') : '') : '') : '') : '') : '') : '') : task(false, ph ? 'Main quest · Catch your breath aboard' : 'Main quest · The Jewel is yours · catch your breath aboard'));
+        if (c4.shipClear) return task(true, ph ? 'Retake the Jewel' : 'Retake the Jewel of Archamus') + (c4.zarkDream ? task(!!c4.hakMet, ph ? 'Main quest · Meet Hak (Alphinos)' : 'Main quest · Meet Hak Chompjak in Alphinos, on Aridaxx') + (c4.hakMet ? task(upCount() >= UP_GOAL, ph ? `Main quest · Uplift species (${Math.min(upCount(), UP_GOAL)}/${UP_GOAL})` : `Main quest · Uplift ${UP_GOAL} species (${Math.min(upCount(), UP_GOAL)}/${UP_GOAL})`) + (upCount() >= UP_GOAL && c4.taroCall ? task(!!c4.taroMet, ph ? 'Main quest · Meet Tyrotaronus (Tamez)' : 'Main quest · Meet Tyrotaronus on Tamez Prime') + (c4.taroMet ? task(!!c4.jvTaken, ph ? 'Main quest · Sleep' : 'Main quest · Sleep in Tyrotaronus’s house') + (c4.jvTaken ? task(!!c4.jvMet, ph ? 'Main quest · Who brought you here?' : 'Main quest · Find out who brought you to Xonexi Station') + (c4.jvMet ? task(!!c4.xoOutpost, ph ? 'Main quest · Reach the outpost' : 'Main quest · Reach the Catharsis outpost') + (c4.xoOutpost ? task(xoDgnDone(), ph ? 'Main quest · Clear the outpost (10 floors)' : 'Main quest · Through the membrane · clear the Catharsis outpost (10 floors, lv 40)') + (xoDgnDone() ? task(!!xoBase(), xoBase() ? `Main quest · The outpost: ${xoBase() === 'taken' ? 'taken for yourself' : 'destroyed'}` : ph ? 'Main quest · Destroy or take the outpost' : 'Main quest · Decide the outpost’s fate: destroy it, or take it') + (xoBase() ? task(!!c4.xoHome, ph ? 'Main quest · Back to the Milky Way (the Gateway)' : 'Main quest · Return to the Milky Way · fly through the portal at the Xonexi–Milky Way Gateway') + (c4.xoHome ? task(!!c4.taroBack, ph ? 'Main quest · Back to Tyrotaronus (Tamez Prime)' : 'Main quest · Return to Tamez Prime · find Tyrotaronus') + (c4.taroBack ? task(false, 'Main quest · To be continued') : '') : '') : '') : '') : '') : '') : '') : '') : '') : '') : task(false, ph ? 'Main quest · Catch your breath aboard' : 'Main quest · The Jewel is yours · catch your breath aboard'));
         if (c4.cathDone) return task(true, ph ? 'Break the carapace' : 'Break a Catharsis carapace') + task(false, CSF.on ? (ph ? `Main quest · Clear deck ${SHIPI.deck + 1} of 5` : `Main quest · Clear the Catharsis from the Jewel · deck ${SHIPI.deck + 1} of 5`) : ph ? 'Main quest · Back to the Jewel' : 'Main quest · Return to the Jewel · the Catharsis are aboard');
         if (c4.cathRifle) return task(true, 'Take the carapace rifle') + task(false, ph ? 'Main quest · Shoot the Catharsis' : 'Main quest · Break the Catharsis’ carapace with the rifle');
         const done = task(true, 'Bring Josiah Williams II back into the light');
@@ -6976,6 +6978,7 @@ function compLevel(id) {
   const pl = levelInfo((wanderer && wanderer.xp) || 0).level;
   if (id === 'orion') return orionLevel(); if (id === 'nico') return nicoLevel();
   if (id === 'javek' && wanderer && wanderer.ch4 && wanderer.ch4.jvMet) { const b = wanderer.ch4.jvBase || pl; return clamp(50 + Math.max(0, pl - b), 50, 110); } // level 50 when he joins you on Xonexi, rising with you after
+  if (id === 'tyrotaronus' && wanderer && wanderer.ch4 && wanderer.ch4.taroBack) { const b = wanderer.ch4.taroBase || pl; return clamp(60 + Math.max(0, pl - b), 60, 110); } // level 60 when he joins you, rising with you after
   if (id === 'james') return clamp(pl + 2, 3, 100); // James has been out on the ice longer than you
   if (String(id).startsWith('pont:')) { const P = pontById(id.slice(5)); return P ? clamp(Math.max(P.lv || 1, pl), 1, 110) : pl; } // a Pontifex keeps pace with you
   if (SIEGE_LEADS[id]) return leadSpec(SIEGE_LEADS[id].spec).lv; // a faction leader fights at a faction leader's level
@@ -7532,6 +7535,7 @@ function questTarget() {
   if (isPl() && world.planet.P.xo && wanderer.ch4 && wanderer.ch4.jvMet && !wanderer.ch4.xoOutpost) { const z = player.position.z; return z > -XO_R + 2 ? { x: 0, z: -XO_R, label: 'The far door · to the outpost' } : { x: 0, z: XO_OUT.z, label: 'The Catharsis outpost' }; }
   if (isPl() && world.planet.P.xo && jvMetQ()) { const G = GIVERS.list.find(o => o.javek4); if (G) return { x: G.x, z: G.z, label: 'The hooded figure' }; }
   if (isPl() && world.planet.P.id === 'tamez' && (wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.taroMet && !wanderer.ch4.jvTaken) { const B = taroBedSpot(); return { x: B.x, z: B.z, label: 'Your bed · sleep' }; }
+  if (isPl() && taroBackQ() && world.planet.P.id === 'tamez') { const G = GIVERS.list.find(o => o.taro4); if (G) return { x: G.x, z: G.z, label: 'Tyrotaronus' }; }
   if (isPl() && taroQ() && world.planet.P.id === 'tamez') { const G = GIVERS.list.find(o => o.taro4); if (G) return { x: G.x, z: G.z, label: 'Tyrotaronus' }; }
   if (isPl() && hakMeetQ() && world.planet.P.id === 'aridaxx' && world.planet.city && world.planet.city.K.name === 'Alphinos') { const C = world.planet.city; return { x: C.cx, z: C.cz + 76, label: 'Hak Chompjak · the Imperial Palace' }; }
   if (isPl() && csbOn() && !wanderer.ch4.shipClear) { // Tallax IV: the Catharsis base, its guard, then back to the Jewel
@@ -12184,6 +12188,8 @@ function lairBossWin() {
 const LEAD_TH = {}; // theme buffers, loaded on first use
 async function leaderTheme(k) {
   if (!k) return null;
+  if (k === 'xoWonders') return LEAD_TH[k] || (LEAD_TH[k] = loadDataScript('sp7', 'glb').then(ok => ok ? sfx.areaBuf('sp7') : null).then(b => b || ((LEAD_TH[k] = null), null)).catch(() => null)); // FREEROAM1 (sp7, from the space playlist): the outpost, destroyed
+  if (k === 'cathOutpost') return LEAD_TH[k] || (LEAD_TH[k] = sfx.menuBuf('musicCh4').then(b => b || ((LEAD_TH[k] = null), null)).catch(() => null)); // CATHARSIS (Chapter IV's title theme): the outpost's own
   if (k === 'laniakea') return LEAD_TH[k] || (LEAD_TH[k] = sfx.combatBuf(COMBAT_TRACKS.indexOf('Wonders of Laniakea (Combat)')).catch(() => null)); const id = { hak: 'thHak', eris: 'thEris', darius: 'thDarius', lightEgg: 'thLightEgg', wrong: 'thWrong', siege: 'thSiege', mercury: 'thMercury', terra: 'thTerra', primeEvil: 'thPrimeEvil', final: 'thFinal', primeGood: 'thPrimeGood', vengeful: 'thVengeful', heard: 'thHeard' }[k]; if (!id) return null; // a combat track already in the game
   if (!LEAD_TH[k]) LEAD_TH[k] = loadDataScript(id).then(() => sfx.loadClips(id)).then(c => (c && c[0]) || null).catch(() => null);
   return LEAD_TH[k];
@@ -18611,6 +18617,18 @@ const SYSTEMS = [
       { id: 'xonexi-station', name: 'Xonexi Station', kind: 'station', r: 1500, orbit: 46000, ang: 1.1, seed: 3307, faction: 'Xonexi Station · the Xonexi Galaxy' }
     ] });
 })();
+// the Xonexi–Milky Way Gateway: the Xonexi Galaxy's second star, a dim red dwarf and one dark gas giant, and in orbit the portal
+// between the two galaxies (xoPortalTick). Fly through it and you come out over Tamez Prime; the portal there brings you back.
+(function xoGateSystem() {
+  if (SYSTEMS.some(S => S.id === 'xogate')) return;
+  SYSTEMS.push({ id: 'xogate', name: 'Xonexi–Milky Way Gateway', galaxy: 'Xonexi Galaxy', star: { kind: 'star', name: 'Xonexi Gate', r: 2600, col: '#ff8a6a', glow: ['rgba(255,150,120,1)', 'rgba(220,80,90,.5)', 'rgba(160,40,90,0)'], light: '#ffb0a0', type: 'Red dwarf · M3V' },
+    faction: 'The Xonexi–Milky Way Gateway · the Xonexi Galaxy', map: { x: 1.03, y: -.83 }, home: 'xogate-g', dark: true,
+    desc: 'The Xonexi Galaxy’s second star, a dim red dwarf at the edge nearest our own galaxy. In orbit over its one dark gas giant hangs the Gateway: a ring of black metal around a portal of violet light. Fly through it and you come out in the Milky Way, over Tamez Prime.',
+    bodies: [
+      { id: 'xogate-g', name: 'Vael', kind: 'gas', r: 5000, orbit: 60000, ang: 2.2, seed: 3401, bands: ['#3a1a2a', '#5a2a3a', '#2a1020', '#7a3a4a'], atmo: '#a05a7a', faction: 'Gas giant · no surface' }
+    ] });
+  const X = SYSTEMS.find(S => S.id === 'xonexi'); if (X) X.desc = X.desc.replace('The only star of the Xonexi Galaxy', 'The heart of the Xonexi Galaxy').replace('and the only way between the two', 'whose way into ours runs through its second star, the Gateway');
+})();
 const ALL_BODIES = SYSTEMS.flatMap(S => S.bodies.map(P => (P.sys = S.id, P)));
 // inside Archiostal: you dock with the station and walk its gardens (forests and rivers under an artificial sky)
 ALL_BODIES.push({ id: 'archiostal-gardens', name: 'Archiostal', dock: 'archiostal', sys: 'malana', kind: 'earth', r: 2400, amp: .32, seed: 108, landBias: .12, groves: .25,
@@ -19266,6 +19284,7 @@ function spaceTick(dt) {
   { const can = tiBanned(P) && alt < 9000 && !SPC.bomb; tiBombBtn(can, P); if (can && (K.has('KeyB') || SPC.bombReq)) tiBombStart(P); SPC.bombReq = false; tiBombTick(dt, alt); }
   if (P.land && alt < 420 && !tiBanned(P)) { tiBombBtn(false); atmoEnter(P, dirP.clone(), fwd); return; } // into its sky (No Man's Sky style): you land where you choose
   if (cygSpaceTick()) return; // the Cygnus, in orbit over Mercury: fly in close and you dock
+  if (xoPortalTick(dt)) return; // the portal between the galaxies: fly through it
   updateLods();
   for (const Q of SPC.bodies) { if (Q.cloud) Q.cloud.rotation.y += dt * .004; if (Q.spin) Q.spin.rotation.z += dt * .05; }
   for (const Q of SPC.bodies) if (Q.wards) { const k = Q.wardK = lerp(Q.wardK || 0, wardsShut(Q) ? 1 : 0, Math.min(1, dt * .35)); for (const w of Q.wards) w.g.rotation.x = k * 1.15; } // at war with its owners, the station folds its Wards shut
@@ -19350,7 +19369,7 @@ function ch4Goal() { // Chapter IV in flight: the same main quest as on foot (po
   if (!c4.josiahLight) return atm('earth') ? (ph ? 'Help Josiah · land on Earth' : 'Bring Josiah Williams II back into the light · land on Earth') : SPC.sys === 'sol' ? (ph ? 'Help Josiah · fly to Earth' : 'Bring Josiah Williams II back into the light · fly to Earth and land') : (ph ? 'Help Josiah · warp to Sol' : 'Bring Josiah Williams II back into the light · warp to Sol, then land on Earth');
   if (c4.shipClear && !c4.zarkDream) return ph ? 'Catch your breath aboard' : 'The Jewel is yours · catch your breath aboard';
   if (hakMeetQ()) return atm('aridaxx') ? (ph ? 'Hak · land in Alphinos' : 'Meet Hak Chompjak · fly to Alphinos (its marker) and land') : SPC.sys === 'steca' ? (ph ? 'Hak · fly to Aridaxx, land' : 'Meet Hak Chompjak in Alphinos · fly to Aridaxx (the gold marker) and land') : (ph ? 'Hak · warp to Steca Prime' : 'Meet Hak Chompjak in Alphinos · warp to Steca Prime, in the galaxy’s core');
-  if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.xoOutpost) return xoDgnDone() ? (!xoBase() ? (ph ? 'Decide the outpost’s fate' : 'The Catharsis outpost · destroy it, or take it (the membrane)') : ph ? `The outpost · ${xoBase()}` : `The Catharsis outpost · ${xoBase()} · to be continued`) : ph ? 'Clear the outpost · 10 floors' : 'Through the membrane · clear the Catharsis outpost · 10 floors, lv 40';
+  if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.xoOutpost) return xoDgnDone() ? (!xoBase() ? (ph ? 'Decide the outpost’s fate' : 'The Catharsis outpost · destroy it, or take it (the membrane)') : !wanderer.ch4.xoHome ? (ph ? 'To the Gateway · the portal home' : 'Return to the Milky Way · warp to the Xonexi–Milky Way Gateway and fly through the portal') : !wanderer.ch4.taroBack ? (ph ? 'Tamez Prime · Tyrotaronus' : 'Return to Tamez Prime · Tyrotaronus is waiting in his house') : ph ? 'To be continued' : 'Tyrotaronus walks with you · to be continued') : ph ? 'Clear the outpost · 10 floors' : 'Through the membrane · clear the Catharsis outpost · 10 floors, lv 40';
   if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.jvMet) return ph ? 'Reach the Catharsis outpost' : 'Reach the Catharsis outpost · through the far door of the hangar, with Javek';
   if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.jvTaken) return ph ? 'Talk to the hooded figure' : 'Somebody brought you to Xonexi Station · talk to the hooded figure by your ship';
   if ((wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.taroMet) return ph ? 'Sleep · Tyrotaronus’s house' : 'Sleep · your bed in Tyrotaronus’s house, on Tamez Prime';
@@ -20691,6 +20710,7 @@ function galPanel() {
   let btn;
   if (here) btn = `<button class="btn gp-warp" disabled><span>You are here</span></button>`;
   else if (sgraLock()) btn = `<button class="btn gp-warp" disabled><span>No turning back</span></button><div class="gp-why">You came to Sagittarius A* · there's no leaving until the final battle is over</div>`;
+  else if (galOf(S) !== galOf(curSys())) btn = `<button class="btn gp-warp" disabled><span>Another galaxy</span></button><div class="gp-why">${galOf(curSys()) === 'xonexi' ? 'No warp reaches the Milky Way from here · warp to the Xonexi–Milky Way Gateway and fly through its portal' : xonexiKnown() ? 'No warp reaches the Xonexi Galaxy · fly through the portal over Tamez Prime' : 'Out of reach'}</div>`;
   else if (SC.foes.length) btn = `<button class="btn gp-warp" disabled><span>Can't warp in combat</span></button><div class="gp-why">The hyperdrive won't spool up under fire · destroy them, outrun them, or drop into a planet's atmosphere</div>`;
   else if (!inRange(curSys(), S)) btn = `<button class="btn gp-warp" disabled><span>Out of hyperdrive range</span></button><div class="gp-why">Your hyperdrive reaches ${driveRange().toLocaleString()} ly per jump · hop through nearer systems${driveTier() < 3 ? `, or craft ${ITEMS['hyper' + (driveTier() + 1)].name} (${DRIVE_LY[driveTier() + 1].toLocaleString()} ly)` : ''}</div>`;
   else if (n < cost) btn = `<button class="btn gp-warp" disabled><span>Warp · ${cellsTxt(cost)}</span></button><div class="gp-why">${n ? `You have ${cellsTxt(n)} · need ${cost - n} more` : 'No warp cells'} · craft them from 2 metal plates · 2 frost crystals · 2 scrap metal each</div>`;
@@ -20777,12 +20797,42 @@ function caraxFinal() {
     { text: tiPhone() ? 'Not yet' : 'Not yet · get ready first (land on Carax again when you are)', onPick: () => lootMsg(tiPhone() ? 'Land on Carax again when you’re ready' : 'You can’t leave Sagittarius A* · land on Carax again when you’re ready to face Zark', '#ff8f86') }]); }, 4600);
 }
 function galWarp(id) {
-  const S = sysById(id), cost = warpCost(curSys(), S); if (S.id === SPC.sys || have('warpcell') < cost || !inRange(curSys(), S) || SC.foes.length || sgraLock()) return;
+  const S = sysById(id), cost = warpCost(curSys(), S); if (galOf(S) !== galOf(curSys())) { spaceMsg(tiPhone() ? 'No warp crosses galaxies · use the Gateway portal' : galOf(curSys()) === 'xonexi' ? 'No warp reaches the Milky Way from here · fly through the portal at the Xonexi–Milky Way Gateway' : 'No warp reaches the Xonexi Galaxy · fly through the portal over Tamez Prime'); return; }
+  if (S.id === SPC.sys || have('warpcell') < cost || !inRange(curSys(), S) || SC.foes.length || sgraLock()) return;
   takeItem('warpcell', cost); galClose(); sfx.warp();
   SPC.warp = { t: 0, to: S.id, col: new THREE.Color(S.star.kind === 'hole' ? '#ffb070' : S.star.col) };
   const tn = warpTunnel(); tn.visible = true; tn.userData.v = 0;
   $('#shMarks').innerHTML = ''; $('#shFoes').innerHTML = ''; $('#shTarget').textContent = 'IN WARP'; $('#shSub').textContent = `${galDist(curSys(), S).toLocaleString()} light-years to ${S.name}`;
   clearTimeout(SPC.cardT); $('#shWarpTxt').textContent = `WARPING TO ${S.name.toUpperCase()}`; $('#shWarp').classList.remove('card'); $('#shWarp').classList.add('on');
+}
+// ---- the portal between the galaxies: at the Xonexi–Milky Way Gateway (to Tamez), and over Tamez Prime (back to the Gateway, once you know of Xonexi) ----
+const XO_PORT = { xogate: { to: 'tamez', k: 2.2 }, tamez: { to: 'xogate', k: 5 } }, XO_PORT_R = 700;
+function xoPortalAt(id) { const S = sysById(id), E = bodyById(S.home); if (!E || !E.pos) return null; const toSun = new THREE.Vector3().copy(E.pos).negate().normalize(); return new THREE.Vector3().copy(E.pos).addScaledVector(toSun, E.r * XO_PORT[id].k).add(new THREE.Vector3(0, E.r * .6, 0)); }
+function xoPortalMesh(id) {
+  const g = new THREE.Group(), at = xoPortalAt(id); if (!at) return null; g.position.copy(at);
+  const E = bodyById(sysById(id).home); g.lookAt(E.pos.x, E.pos.y + E.r * .6, E.pos.z); // its face to the ship coming in
+  g.add(new THREE.Mesh(new THREE.TorusGeometry(XO_PORT_R, 70, 16, 96), new THREE.MeshStandardMaterial({ color: 0x15121a, metalness: .85, roughness: .35, emissive: 0x3a0a2a, emissiveIntensity: .6 })));
+  for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, n = new THREE.Mesh(new THREE.BoxGeometry(120, 120, 180), new THREE.MeshBasicMaterial({ color: 0xff4a7a })); n.position.set(Math.cos(a) * XO_PORT_R, Math.sin(a) * XO_PORT_R, 0); g.add(n); }
+  const tex = canvasTex(256, 256, (c, w, h) => { const gr = c.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,240,255,1)'); gr.addColorStop(.25, 'rgba(200,120,255,.9)'); gr.addColorStop(.7, 'rgba(120,40,200,.6)'); gr.addColorStop(1, 'rgba(60,10,90,0)'); c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    c.strokeStyle = 'rgba(255,200,255,.35)'; c.lineWidth = 6; for (let i = 0; i < 5; i++) { c.beginPath(); for (let t = 0; t < 1; t += .02) { const r = t * w * .48, a = t * 9 + i * 1.256; c.lineTo(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r); } c.stroke(); } });
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(XO_PORT_R * .96, 64), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })); g.add(disc); g.userData.disc = disc;
+  return g;
+}
+const xoPortalOn = id => !!XO_PORT[id] && (id === 'xogate' || xonexiKnown()); // the Tamez end only once you know Xonexi is there
+function xoPortalTick(dt) {
+  const id = SPC.sys; if (!xoPortalOn(id)) return false; const S = curSys();
+  if (!S.xoPort) { S.xoPort = xoPortalMesh(id); if (!S.xoPort) return false; S.g.add(S.xoPort); }
+  S.xoPort.visible = true; S.xoPort.userData.disc.rotation.z += dt * .6;
+  const d = SPC.pos.distanceTo(S.xoPort.position);
+  if (d < 9000 && time - (SPC.portMsgT || -9) > 4) { SPC.portMsgT = time; spaceMsg(id === 'xogate' ? 'The Gateway · fly through the portal to the Milky Way' : 'The portal · fly through it to the Xonexi Galaxy'); }
+  if (d > XO_PORT_R * .8 || SC.foes.length) return false;
+  const to = XO_PORT[id].to, T = sysById(to); sfx.warp(); sfx.thud();
+  SPC.warp = { t: 0, to, col: new THREE.Color('#c070ff') };
+  const tn = warpTunnel(); tn.visible = true; tn.userData.v = 0;
+  $('#shMarks').innerHTML = ''; $('#shFoes').innerHTML = ''; $('#shTarget').textContent = 'THROUGH THE PORTAL'; $('#shSub').textContent = to === 'tamez' ? 'Into the Milky Way · Tamez' : 'Into the Xonexi Galaxy · the Gateway';
+  clearTimeout(SPC.cardT); $('#shWarpTxt').textContent = to === 'tamez' ? 'THROUGH THE GATEWAY · THE MILKY WAY' : 'THROUGH THE PORTAL · THE XONEXI GALAXY'; $('#shWarp').classList.remove('card'); $('#shWarp').classList.add('on');
+  if (to === 'tamez' && wanderer && wanderer.ch4 && !wanderer.ch4.xoHome) { wanderer.ch4 = Object.assign({}, wanderer.ch4, { xoHome: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); setTimeout(() => { renderTasks(); notice('The Milky Way', tiPhone() ? 'HOME AGAIN · TAMEZ' : 'HOME AGAIN · OVER TAMEZ PRIME', 4200); setTimeout(() => notice('Main quest', tiPhone() ? 'RETURN TO TAMEZ PRIME' : 'RETURN TO TAMEZ PRIME · TYROTARONUS', 4200), 4600); }, 7000); }
+  void T; return true;
 }
 function warpFlash() { const f = $('#shFlash'); f.style.transition = 'none'; f.style.background = '#fff'; f.classList.add('on'); requestAnimationFrame(() => requestAnimationFrame(() => { f.style.transition = 'opacity .9s'; f.classList.remove('on'); })); }
 function warpTick(dt) {
@@ -23407,6 +23457,7 @@ async function placeGivers() {
       if (w.josiah && w.jos3) { w.faceGrave = R.root.rotation.y; } // Chapter III: no grave yet, he just stands there, alone
       else if (w.josiah) { const gx = x + 1.6, gz = z - 1.2; w.extra = makeGrave('JOSIAH WILLIAMS', ['Beloved father', 'Taken by Terra Imperia', 'during the occupation of Earth']); w.extra.position.set(gx, wHeight(gx, gz), gz); w.extra.rotation.y = Math.atan2(x - gx, z - gz); wScene.add(w.extra); w.faceGrave = Math.atan2(gx - x, gz - z); R.root.rotation.y = w.faceGrave; }
       if (w.taro4) { const H = TARO_HOUSE, a = taroHouseRot(); w.extra = taroHouse(); w.extra.position.set(H.x, wHeight(H.x, H.z), H.z); w.extra.rotation.y = a; wScene.add(w.extra); R.root.position.y = wHeight(H.x, H.z); } // his house on Tamez Prime, with his bed
+      if (w.taro4 && wanderer.ch4 && wanderer.ch4.taroBack) { w.away = true; R.root.visible = false; } // he's out walking with you: the house stays, empty
       GIVERS.list.push(Object.assign(w, { R, x, z }));
     } catch (e) { console.warn('quest giver failed', w.name, e); }
   }
@@ -23423,7 +23474,7 @@ function giversTick(dt) {
     if (!G.R.static) { try { G.R.mode = 'idle'; animRig(G.R, dt); } catch (e) { G.R.static = true; } }
   }
 }
-function giverNear(p) { for (const G of GIVERS.list) if (Math.hypot(G.x - p.x, G.z - p.z) < 2.8) return G; return null; }
+function giverNear(p) { for (const G of GIVERS.list) if (!G.away && Math.hypot(G.x - p.x, G.z - p.z) < 2.8) return G; return null; }
 const JOS_CH3 = 'I don’t know who sent you, and I don’t want to know. I’ve nothing to offer you. Go away. Leave me alone.'; // JOSIAH_WILLIAMS_CHAPTER_3 (data/josCh3Voice.js)
 async function jos3Talk() { // Chapter III: Josiah Williams II, on Earth, and it's too soon to meet him (as with Archamus)
   const vo = await loadDataScript('josCh3Voice').then(ok => ok ? sfx.loadClips('josCh3Voice') : []).catch(() => []);
@@ -24303,6 +24354,7 @@ const TARO_MEET = ['Come in, wanderer. Mind the door. It was built for an Oilkou
   'Now go. And close the door behind you. The wind on Tamez gets into everything.'];
 async function taroMeetTalk() {
   if (state !== 'explore' || ex.dlg) return;
+  if (taroBackQ()) { taroBackTalk(); return; } // back from Xonexi
   if (!taroQ()) { openDialog('TYROTARONUS', ['Rest, wanderer. Your bed is made, over by the far wall. We will talk again in the morning.']); return; } // after the meeting
   const vo = await loadDataScript('taroMeetVoices').then(ok => ok ? sfx.loadClips('taroMeetVoices') : []).catch(() => []);
   if (state !== 'explore' || ex.dlg) return;
@@ -24311,6 +24363,62 @@ async function taroMeetTalk() {
     notice('Main quest', 'SLEEP', 4200); sfx.chime();
     setTimeout(() => lootMsg('Tyrotaronus has made up a bed for you on the far side of the room', '#b8bfcc'), 2200);
   }, vo || []);
+}
+// ---- back from Xonexi: Tyrotaronus, and what he makes of what you did there. Then he walks with you (level 60).
+//      Five versions, by the outpost's fate and your Chapter III choices; one breaks the fourth wall (voiced: CH4TYROTATONUSPPOFNR1–27, data/taroBackVoices.js) ----
+const taroBackQ = () => !!(wanderer && (wanderer.chapter | 0) === 4 && wanderer.ch4 && wanderer.ch4.xoHome && !wanderer.ch4.taroBack);
+const TARO_BACK = {
+  good: ['Wanderer. You came back. When I woke and found your bed empty, I feared the worst of Javek, and for once I was wrong.',
+    'He took you to Xonexi, then. To the Catharsis door.',
+    'And you tore it down. I felt it go, even from here: a silence where there used to be a hum.',
+    'I keep no side, you know this. But I have watched you choose, again and again, and every time you chose the harder, kinder thing.',
+    'Balance is not the same as standing still. Perhaps I have been standing still for too long.',
+    'I will walk with you, wanderer. Not in front of you, not behind you. Beside you. Let us see this through.'],
+  mended: ['Wanderer. You came back. When I woke and found your bed empty, I thought Javek had finally lost what was left of his mind.',
+    'Xonexi. The Catharsis door. And you destroyed it. I felt it go, even from here.',
+    'You have not always chosen well. I have heard about the ones you left behind you.',
+    'But this time you chose rightly, and that counts for more than you think. The scales are not fixed until the very end.',
+    'I keep no side. But I will keep you company for a while. Someone ought to keep an eye on you.'],
+  fourth: ['Wanderer. You came back. And you came back with a Catharsis outpost flying your name.',
+    'You spared James. You spared Croxian. You spared Malia. You found Nyrexia. Every choice, made rightly. I watched every one.',
+    'And then, at the very last door, you looked at the thing that has eaten half this galaxy and thought: I will have that.',
+    'No, not you, wanderer. I mean you. The one holding the controls. Yes. You.',
+    'You did everything right, and then you did this. Was it the aesthetic? It was the aesthetic, was it not.',
+    'Forgive me. I keep no side. I will still walk with you. But know that someone saw it, and someone will remember.'],
+  kept: ['Wanderer. You came back. And you kept the Catharsis outpost for yourself.',
+    'I felt it hum the whole time you were gone. It is still humming.',
+    'You have done some good on this journey, and some things that were not good. This one, I think, was not.',
+    'But I keep no side, and the scales are not fixed until the very end.',
+    'I will walk with you for now. Try to give me a reason to stay.'],
+  dark: ['So. You came back. And Xonexi Station flies your name now.',
+    'James. Croxian. Malia. Orion still loose. Nyrexia never asked. And now this: the Catharsis’ own door, in your hands.',
+    'I keep no side, wanderer. That is the only reason I am still speaking to you.',
+    'Whatever waits for you at the end of all this, you have built it yourself, one choice at a time.',
+    'I will walk with you. Someone should be there to see how it ends.']
+};
+function taroBackKind() {
+  const D = ch4Decisions(), kept = xoBase() === 'taken';
+  const right = D.james === 'spared' && D.crox === 'spared' && D.malia === 'spared' && c3f('nyxJoined');
+  const wrong = D.james === 'killed' && D.crox === 'killed' && D.malia === 'killed' && D.orion === 'spared' && !c3f('nyxJoined');
+  return !kept ? (right ? 'good' : 'mended') : right ? 'fourth' : wrong ? 'dark' : 'kept';
+}
+const TARO_BACK_AT = { good: 0, mended: 6, fourth: 11, kept: 17, dark: 22 }; // where each version's clips start in data/taroBackVoices.js (CH4TYROTATONUSPPOFNR1–27, in this order)
+async function taroBackTalk() {
+  const k = taroBackKind(), L = TARO_BACK[k];
+  const all = await loadDataScript('taroBackVoices').then(ok => ok ? sfx.loadClips('taroBackVoices') : []).catch(() => []);
+  if (state !== 'explore' || ex.dlg || !taroBackQ()) return;
+  const vo = (all || []).slice(TARO_BACK_AT[k], TARO_BACK_AT[k] + L.length);
+  if (k === 'fourth') { ex.shake = Math.max(ex.shake || 0, .05); }
+  openDialog(tiPhone() ? 'TYROTARONUS' : 'TYROTARONUS · VECTOR OF NEUTRALITY', L, false, () => {
+    wanderer.ch4 = Object.assign({}, wanderer.ch4, { taroBack: true, taroBase: levelInfo(wanderer.xp || 0).level });
+    { const G = GIVERS.list.find(o => o.taro4); if (G) { G.away = true; if (G.R) G.R.root.visible = false; } } // he leaves the house with you
+    wanderer.party = [...new Set([...(wanderer.party || []), 'tyrotaronus'])]; (wanderer.cmds || (wanderer.cmds = {})).tyrotaronus = 'follow';
+    { const c2 = curChar(); if (c2) { c2.ch4 = wanderer.ch4; c2.party = wanderer.party; c2.cmds = wanderer.cmds; } saveRoster(); }
+    syncCrewParty(); placeCrew().catch(() => null); refreshJamesUI(); ui.xhud.classList.add('comp'); renderTasks();
+    sfx.chime(); notice('Your crew', 'TYROTARONUS JOINS YOU · LEVEL 60', 4200); setTimeout(() => compJoinNotice('tyrotaronus', 400), 4400);
+    try { pdMeet && pdMeet('tyrotaronus'); } catch (e) {}
+    if (k === 'fourth') setTimeout(() => { sfx.thud(); notice(' ', 'SOMEONE WILL REMEMBER', 3600); }, 9000);
+  }, vo);
 }
 async function hakUpTalk() {
   const vo = await loadDataScript('hakUpVoices').then(ok => ok ? sfx.loadClips('hakUpVoices') : []).catch(() => []);
@@ -24926,7 +25034,18 @@ async function xoSay(i) {
   const clip = vo[i] || null, t = CATH_XO.en[i]; // English, whatever Options says: they want you to understand
   fbSay('THE CATHARSIS', t, clip, 1.3); ex.shake = Math.max(ex.shake || 0, .08);
 }
+function xoSongTick() {
+  if (xoBase() && wanderer.ch4 && !wanderer.ch4.jvHomeSaid && state === 'explore' && !ex.dlg && time > (XO.jvT || 0) && isPl() && world.planet.P.xo) { XO.jvT = time + 4; xoJvHome(); } // Javek has something to say // CATHARSIS plays in the outpost: its chamber on the station, all ten floors and Vhorrask's fight
+  const P = player.position, want = state === 'explore' && (DGN.on ? !!(DGN.lair && DGN.lair.xo) : !!(XO.g && isPl() && world.planet.P.xo && Math.hypot(P.x, P.z - XO_OUT.z) < XO_OUT.r + 2));
+  const key = xoBase() === 'destroyed' ? 'xoWonders' : 'cathOutpost'; // CATHARSIS while it's theirs (or yours, if you kept it); FREEROAM1 once it's destroyed
+  if (want) {
+    if (XO.songK !== key) { XO.songK = key; XO.songB = null; XO.songT = 0; leaderTheme(key).then(b => { if (XO.songK === key) XO.songB = b; }); }
+    if ((!sfx.leadOn || !XO.songB || sfx.songBuf() !== XO.songB) && time > (XO.songT || 0)) { XO.songT = time + 4; leaderPlay(key).catch(() => {}); } // (back on after a fight ends it, or when the outpost's fate changes the song)
+    XO.song = true;
+  } else if (XO.song) { XO.song = false; if (sfx.leadOn && XO.songB && sfx.songBuf() === XO.songB) { sfx.leadOn = false; sfx.stopSong(2); } }
+}
 function xoTick(dt) {
+  xoSongTick();
   if (XO.g) XO.g.visible = !DGN.on; // the deck, hidden while you're down in the outpost
   if (!XO.g || DGN.on || !isPl() || !world.planet.P.xo) return; if (XO.top) XO.top.intensity = 340 + Math.sin(time * 1.7) * 60 + (Math.random() < .02 ? -200 : 0); // the reactor light pulses, and now and then flickers
   if (XO.outLight) XO.outLight.intensity = 260 + Math.sin(time * 2.3) * 70;
@@ -24965,7 +25084,7 @@ function xoBaseOverlay() { // kept (Chapter IV), or colonised later (Chapter V):
 }
 function xoBaseChoice() { // Vhorrask is dead: the outpost's heart is yours to destroy, or to keep
   if (xoBase() || !wanderer) return;
-  const set = v => { wanderer.ch4 = Object.assign({}, wanderer.ch4, { xoBase: v }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); renderTasks(); fateNote(5200); };
+  const set = v => { wanderer.ch4 = Object.assign({}, wanderer.ch4, { xoBase: v }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); renderTasks(); fateNote(5200); XO.jvT = time + 15; }; // then Javek: time to go home
   openChoice('THE CATHARSIS OUTPOST', [
     { text: tiPhone() ? 'Destroy the base' : 'Destroy the base · tear out its heart, so the Catharsis never use this door again', onPick: () => {
       set('destroyed'); sfx.thud(); ex.shake = 1; if (DGN.on) DGN.flashL = 3; burst(player.position.x, player.position.y + 2, player.position.z, 60, 6, 1, .25, .2, 1.4, 1.2, 1.6);
@@ -24977,6 +25096,19 @@ function xoBaseChoice() { // Vhorrask is dead: the outpost's heart is yours to d
       notice(realmName(), 'XONEXI STATION IS YOURS', 4200); gainXP(1200, 'Took the Catharsis outpost');
       setTimeout(() => lootMsg(tiPhone() ? 'The pods still glow · they’re yours now' : 'The pods still glow, and the spires still hum · the outpost is yours now, and so is what it was built for', '#ff8f86'), 1800); } }
   ], 'WHAT WILL YOU DO WITH IT?');
+}
+// ---- Javek, once the outpost is settled: time to go home, through the Gateway (voiced later: CH4JAVEKHOME1–5, data/jvHomeVoices.js) ----
+const JV_HOME = ['That’s it, then. The outpost is finished, one way or another.',
+  'We should head back before the Catharsis notice their door has gone quiet.',
+  'I can’t take you home the way I brought you. That route closed behind us.',
+  'There is a second star in this galaxy: the Xonexi–Milky Way Gateway. A portal hangs in orbit there, over a dark gas giant.',
+  'Take your ship there and fly straight through it. It comes out in the Milky Way, over Tamez Prime. Tyrotaronus will be wondering where you went.'];
+async function xoJvHome() {
+  if (state !== 'explore' || ex.dlg || !wanderer.ch4 || wanderer.ch4.jvHomeSaid) return;
+  const vo = await loadDataScript('jvHomeVoices').then(ok => ok ? sfx.loadClips('jvHomeVoices') : []).catch(() => []);
+  if (state !== 'explore' || ex.dlg || wanderer.ch4.jvHomeSaid) return;
+  wanderer.ch4 = Object.assign({}, wanderer.ch4, { jvHomeSaid: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster();
+  openDialog(tiPhone() ? 'JAVEK' : 'JAVEK · LAST LEADER OF THE GROB', JV_HOME, false, () => { renderTasks(); { const n = have('warpcell'); if (n < 2) { giveItem('warpcell', 2 - n); setTimeout(() => lootMsg(`+${2 - n} Warp cell · from Javek, for the jump to the Gateway`, ITEMS.warpcell.color), 4400); } } notice('Main quest', tiPhone() ? 'TO THE GATEWAY' : 'RETURN TO THE MILKY WAY · THE XONEXI–MILKY WAY GATEWAY', 4200); setTimeout(() => lootMsg(tiPhone() ? 'Fly out, open the galaxy map, warp to the Gateway' : 'Fly out of Xonexi Station, open the galaxy map and warp to the Xonexi–Milky Way Gateway · then fly through the portal', '#ffd36a'), 2000); }, vo);
 }
 function xoDgnEnter() {
   if (lairCleared(xoLair()) && !xoBase() && state === 'explore' && !DGN.on) { xoBaseChoice(); return; } // you left before deciding
@@ -29610,7 +29742,7 @@ const COMPANIONS = [
       'In 2014 he came face to face with Director Josiah Richards, a British civil servant in the Cabinet Office in London, over a set of schematics. This was this world’s Josiah Richards, the great-grandfather of Josiah Williams II, not the Prime Secretary of the same name. Neither man has ever said what was in those schematics, or who walked away with them.',
       'Why he walks beside you is a question he answers politely and never the same way twice. The house of Chompjak would very much like to know.'
     ] },
-  { id: 'tyrotaronus', tag: 'vcTaro', h: 2.6, unlockAt: 4, unlockIf: () => oilkSawTaro(), name: 'TYROTARONUS', title: 'The stranded traveller',
+  { id: 'tyrotaronus', tag: 'vcTaro', h: 2.6, unlockAt: 4, unlockIf: () => oilkSawTaro() || !!(wanderer && wanderer.ch4 && wanderer.ch4.taroBack), name: 'TYROTARONUS', title: 'The stranded traveller',
     facts: [['Origin', 'A galaxy far from our own'], ['Now', 'Stranded in the Milky Way'], ['Sides with', 'No one'], ['Alignment', 'True Neutral']],
     align: 'Patient, polite and impossible to recruit. Tyrotaronus will walk beside you, but never in front of you or behind anyone else.',
     paras: [
@@ -30085,7 +30217,7 @@ function resPresent(c, A) {
   return resHash(`${c.id}|${resSlot()}|${A}`) < resHereChance(c, A);
 }
 // free roam only: nothing scripted is ever interrupted
-const onXonexi = () => !!((typeof isPl === 'function' && isPl() && world.planet && world.planet.P.sys === 'xonexi') || ((state === 'space' || GAL.open) && SPC.sys === 'xonexi')); // the Xonexi Galaxy: none of the Milky Way's residents, empires or diplomacy reach it
+const onXonexi = () => !!((typeof isPl === 'function' && isPl() && world.planet && world.planet.P.sys === 'xonexi') || ((state === 'space' || GAL.open) && galOf(sysById(SPC.sys)) === 'xonexi')); // the Xonexi Galaxy: none of the Milky Way's residents, empires or diplomacy reach it
 function xoResQuiet() { // hide every trace of the residents while you're on Xonexi: their chat, their name tags, their figures
   if (RES.chat) RES.chat.classList.remove('on'); if (RES.tags && RES.tags.innerHTML) RES.tags.innerHTML = '';
   for (const B of RES.bots || []) if (B.root) B.root.visible = false;
