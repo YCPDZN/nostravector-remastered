@@ -1548,7 +1548,7 @@ body.cc-ingame #cc{background:none} body.cc-ingame > *:not(#cc):not(#c):not(scri
     <h2 class="h1" id="slotTitle">SAVE</h2>
     <div class="slot-list" id="slotList"></div>
     <div class="slot-msg" id="slotMsg"></div>
-    <div class="row slot-io"><button class="btn small" id="slotExport"><span>Export saves</span></button><button class="btn small" id="slotImport"><span>Import saves</span></button></div>
+    <div class="row slot-io"><button class="btn small" id="slotExport"><span>Export a save</span></button><button class="btn small" id="slotImport"><span>Import a save</span></button></div>
     <input type="file" id="slotFile" accept=".json,application/json" hidden>
     <button class="btn small" id="slotBack"><span>Back</span></button>
   </div>
@@ -28817,46 +28817,52 @@ function slotMsg(t, warn) { slotUI.msg.textContent = t; slotUI.msg.classList.tog
 // ---- export / import: everything the game keeps in this browser, as one file (for itch.io players, whose browser storage can be wiped) ----
 const toB64 = buf => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return window.btoa(s); };
 const fromB64 = b64 => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; };
-async function exportSaves() {
-  const keys = {};
-  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('nv_')) keys[k] = localStorage.getItem(k); }
-  keys.nv_slots = JSON.stringify(slots); // the saves themselves (they may live only in the database)
-  let models = [];
-  try { models = ((await idb.all()) || []).map(r => Object.assign({}, r, { data: r.data ? toB64(r.data) : null })); } catch { models = []; }
-  const file = JSON.stringify({ game: 'NOSTRAVECTOR', version: 1, exportedAt: new Date().toISOString(), keys, models });
+// one slot at a time: Export a save, tap Slot 1, 2 or 3, and that save (with its wanderers and any creations they use) is a file of its own;
+// Import a save, tap a slot, choose a file, and it goes into that slot. Your other slots stay as they are.
+let slotModePrev = 'load', importTo = -1;
+const slotFileName = (i, sl) => { const r = (sl && sl.roster) || [], a = r.find(c => c.id === sl.activeId) || r[0] || {}; const nm = String(a.name || 'wanderer').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'wanderer'; return `nostravector-save-${i + 1}-${nm}.json`; };
+async function exportSlot(i) {
+  const sl = slots[i]; if (!sl) return;
+  let models = []; try { models = ((await idb.all()) || []).map(r => Object.assign({}, r, { data: r.data ? toB64(r.data) : null })); } catch { models = []; }
+  const file = JSON.stringify({ game: 'NOSTRAVECTOR', version: 2, kind: 'slot', slotNo: i + 1, exportedAt: new Date().toISOString(), slot: sl, models });
   const a = document.createElement('a'), url = window.URL.createObjectURL(new window.Blob([file], { type: 'application/json' }));
-  a.href = url; a.download = `nostravector-saves-${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => window.URL.revokeObjectURL(url), 5000);
-  sfx.chime();
-  slotMsg(dirty ? 'Exported your saved slots. Progress since your last save isn’t included, so save first if you want it.' : 'Saves exported. Keep the file somewhere safe.', dirty);
+  a.href = url; a.download = slotFileName(i, sl); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+  sfx.chime(); slotMsg(dirty && lastSlot === i ? `Save ${i + 1} exported. Progress since you last saved isn’t in it, so save first if you want it.` : `Save ${i + 1} exported. Keep the file somewhere safe.`, dirty && lastSlot === i);
 }
-let importArm = false;
-$('#slotExport').addEventListener('click', () => { sfx.click(); exportSaves(); });
-$('#slotImport').addEventListener('click', () => {
-  sfx.click();
-  if (!importArm) { importArm = true; slotMsg('Importing replaces every save, wanderer and creation on this device. Tap Import again to choose a file.', true); return; }
-  importArm = false; $('#slotFile').value = ''; $('#slotFile').click();
-});
+function slotIoMode(m) { // Export / Import: the same slot list, a different job
+  if (slotMode === m) { slotMode = slotModePrev; } else { if (slotMode !== 'export' && slotMode !== 'import') slotModePrev = slotMode; slotMode = m; }
+  slotArm = -1; importTo = -1; renderSlots();
+  slotMsg(slotMode === 'export' ? 'Tap the save to export' : slotMode === 'import' ? 'Tap the slot to import into' : '');
+  $('#slotExport span').textContent = slotMode === 'export' ? 'Cancel' : 'Export a save'; $('#slotImport span').textContent = slotMode === 'import' ? 'Cancel' : 'Import a save';
+}
+$('#slotExport').addEventListener('click', () => { sfx.click(); slotIoMode('export'); });
+$('#slotImport').addEventListener('click', () => { sfx.click(); slotIoMode('import'); });
+function slotImportPick(i) {
+  if (slots[i] && slotArm !== i) { slotArm = i; renderSlots(); slotMsg(`Slot ${i + 1} already has a save · tap it again to replace it with the file`, true); return; }
+  importTo = i; $('#slotFile').value = ''; $('#slotFile').click();
+}
 $('#slotFile').addEventListener('change', async e => {
-  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const f = e.target.files && e.target.files[0], i = importTo; if (!f || i < 0) return;
   try {
-    const d = JSON.parse(await f.text());
-    if (!d || d.game !== 'NOSTRAVECTOR' || typeof d.keys !== 'object') throw new Error('not a save file');
-    const old = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('nv_')) old.push(k); }
-    for (const k of old) localStorage.removeItem(k);
-    for (const [k, v] of Object.entries(d.keys)) if (k.startsWith('nv_') && typeof v === 'string') { try { localStorage.setItem(k, v); } catch (e) { /* too big for the quick copy */ } }
-    if (typeof d.keys.nv_slots === 'string') { const at = Date.now(); await saveDB.set('slots', { at, slots: JSON.parse(d.keys.nv_slots) }); store.set('nv_slotsAt', at); }
-    for (const m of d.models || []) if (m && m.id) await idb.put(Object.assign({}, m, { data: m.data ? fromB64(m.data) : null }));
-    slotMsg('Saves imported. Reloading…'); sfx.chime();
-    setTimeout(() => window.location.reload(), 900);
-  } catch (err) { slotMsg('That file isn’t a NOSTRAVECTOR save export.', true); console.error(err); }
+    const d = JSON.parse(await f.text()); let sl = null;
+    if (d && d.game === 'NOSTRAVECTOR' && d.kind === 'slot' && d.slot) sl = d.slot; // one save
+    else if (d && d.game === 'NOSTRAVECTOR' && d.keys && typeof d.keys.nv_slots === 'string') { const all = JSON.parse(d.keys.nv_slots) || []; sl = all[i] || all.find(Boolean) || null; } // an older export of every slot: the same slot from it (or its first save)
+    if (!sl || !Array.isArray(sl.roster)) throw new Error('not a save');
+    const prev = slots[i]; slots[i] = JSON.parse(JSON.stringify(sl));
+    if (!(await writeSlots())) { slots[i] = prev; throw new Error('storage refused'); }
+    for (const m of d.models || []) if (m && m.id) { try { await idb.put(Object.assign({}, m, { data: m.data ? fromB64(m.data) : null })); } catch (err) { /* a creation that wouldn't store */ } }
+    if (lastSlot === i) lastSlot = -1;
+    sfx.chime(); slotMode = slotModePrev; slotArm = -1; importTo = -1; renderSlots(); refreshMenu();
+    $('#slotExport span').textContent = 'Export a save'; $('#slotImport span').textContent = 'Import a save';
+    slotMsg(`Imported into slot ${i + 1}`);
+  } catch (err) { slotMsg('That file isn’t a NOSTRAVECTOR save.', true); console.error(err); }
 });
 function fmtWhen(ts) { try { return new Date(ts).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } }
 function renderSlots() {
-  slotUI.title.textContent = { save: 'SAVE', load: 'LOAD', delete: 'DELETE' }[slotMode];
-  slotUI.eyebrow.textContent = { save: 'Save game · choose a slot', load: 'Load game · choose a slot', delete: 'Delete save · choose a slot' }[slotMode];
+  slotUI.title.textContent = { save: 'SAVE', load: 'LOAD', delete: 'DELETE', export: 'EXPORT', import: 'IMPORT' }[slotMode];
+  slotUI.eyebrow.textContent = { save: 'Save game · choose a slot', load: 'Load game · choose a slot', delete: 'Delete save · choose a slot', export: 'Export a save · choose one', import: 'Import a save · choose a slot for it' }[slotMode];
   slotUI.list.innerHTML = slots.map((sl, i) => {
-    if (!sl) return `<button class="slot empty" data-i="${i}"${slotMode !== 'save' ? ' disabled' : ''}><b>SLOT ${i + 1}</b><span>Empty</span><small>${slotMode === 'save' ? 'Tap to save here' : 'No save'}</small></button>`;
+    if (!sl) return `<button class="slot empty" data-i="${i}"${slotMode !== 'save' && slotMode !== 'import' ? ' disabled' : ''}><b>SLOT ${i + 1}</b><span>Empty</span><small>${slotMode === 'save' ? 'Tap to save here' : slotMode === 'import' ? 'Tap to import a save here' : 'No save'}</small></button>`;
     const r = Array.isArray(sl.roster) ? sl.roster : [], a = r.find(c => c.id === sl.activeId) || r[0] || {};
     const sp = SPECIES[spOf(a)].label, ch = chapterOf(Object.assign({}, a, { place: sl.place && sl.place.mode === 'explore' ? sl.place : a.place })).full, where = slotWhere(sl.place, a);
     const name = String(a.name || 'WANDERER').replace(/[<>&"]/g, '');
@@ -28872,7 +28878,7 @@ function slotWhere(pl, a) { // the line under a save: where you were standing (o
   return pl.where === 'europe' ? 'New London' : pl.where === 'africa' || (!pl.where && (a.chapter | 0) >= 2) ? 'African savanna' : 'Antarctic wilds';
 }
 function openSlots(mode, from) {
-  slotMode = mode; slotFrom = from; slotArm = -1;
+  slotMode = mode; slotFrom = from; slotArm = -1; slotModePrev = mode; importTo = -1; $('#slotExport span').textContent = 'Export a save'; $('#slotImport span').textContent = 'Import a save';
   slotMsg(mode === 'save' && !roster.length ? 'Create a wanderer first — there is nothing to save yet' : (mode === 'save' && dirty ? 'You have unsaved progress' : (mode === 'delete' && !slots.some(Boolean) ? 'There are no saves to delete' : '')), mode === 'save' && !roster.length);
   renderSlots(); show(slotUI.root, true);
 }
@@ -28927,6 +28933,8 @@ function doLoad(i) {
 slotUI.list.addEventListener('click', e => {
   const b = e.target.closest('.slot'); if (!b || b.disabled) return;
   const i = +b.dataset.i; sfx.click();
+  if (slotMode === 'export') { if (slots[i]) exportSlot(i); return; }
+  if (slotMode === 'import') { slotImportPick(i); return; }
   if (slotMode === 'save') {
     if (!roster.length) return;
     if (slots[i] && slotArm !== i) { slotArm = i; renderSlots(); slotMsg(`Slot ${i + 1} already has a save — tap it again to overwrite`, true); return; }
