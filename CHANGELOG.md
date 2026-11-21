@@ -3040,3 +3040,8 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
     - Voiced: `data/bstArchGoodVoices.js` (CH5ARCHAMUS1–2) and `data/bstArchNeutralVoices.js` (CH5ARCHAMUS3–4).
   - **The villain's good ending:** no one is left to talk to. The objective is **Leave the Carax Bastion**, and the throne room's doors take you straight out.
   - The doors no longer say *nothing waits behind them* after the ending. Taking the stairs down and out works too.
+- **Today's additions on phones.**
+  - **Boss bar and arrival banners:** short names on phones (*HAK CHOMPJAK V*, not *HAK CHOMPJAK V, ONCE LORD SEVIRRUS*), so they fit instead of being cut off. The same goes for Hawthorne, Orion and Zark in the Bastion.
+  - **The villain's good ending:** half as much blood on phones, on top of the lighter cast it already had there (two guards, two companions). The reply box (*"…SEVIRRUS"*) is a tap, and the cutscene's Skip button works as before.
+  - **The five leaders on the top floor** load one at a time on phones, so they don't all hit memory at once.
+  - **Hak's test page** (`?hakchompjakbossfightevilgoodending`) and the Diplomacy card for giving the Catharsis lands back have shorter text on phones.
