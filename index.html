@@ -5827,6 +5827,9 @@ function exploreCamera(dt) {
 // input (exploration only)
 addEventListener('keydown', e => {
   if (e.code === 'Escape' && !slotUI.root.classList.contains('hidden')) { closeSlots(); return; }
+  if (state === 'zarkPov') { if (e.code === 'Escape') zpvSkip(); return; }
+  if (state === 'orionSeal') { if (e.code === 'Escape') oslSkip(); return; }
+  if (state === 'crewCarax') { if (e.code === 'Escape') ccxSkip(); return; }
   if (state === 'hawMars' || state === 'jamesRev' || state === 'c4End' || state === 'orionCut') { if (e.code === 'Escape') skipMeeting(); return; }
   if (state === 'maliaNico' && e.code === 'Escape') { skipMeeting(); return; } // Malia and Nico's fight: Esc skips it (E / Space still read on)
   if (state === 'nightmare' && NM.on) { if (NM.phase === 'wake' && ['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } else if (e.code === 'Escape') { e.preventDefault(); skipMeeting(); } return; }
@@ -8675,6 +8678,9 @@ function endMeeting() {
   meet.active = false;
 }
 function skipMeeting() {
+  if (state === 'zarkPov' && ZPV.on) { zpvSkip(); return; }
+  if (state === 'orionSeal' && OSL.on) { oslSkip(); return; }
+  if (state === 'crewCarax' && CCX.on) { ccxSkip(); return; }
   if (state === 'jamesRev' && JRV.on) { jrvSkip(); return; }
   if (state === 'c4End' && C4E.on) { c4eSkip(); return; }
   if (state === 'hawMars' && HWM.on) { const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(hwmEnd, 450); return; }
@@ -16192,10 +16198,308 @@ function fateFinal(S) { // the path of no return: Chapter IV, the first warp to 
   wanderer.ch4 = Object.assign({}, wanderer.ch4, { fateFinal: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster();
   const T = fateTally(true), name = String(wanderer.name || 'wanderer').trim() || 'wanderer';
   const line = T.bad === 0 ? `You got this, ${name}, so save the world` : T.bad >= T.total ? 'Good luck, you’re going to need it :)' : 'You messed up slightly, but the galaxy is still worth saving. Try your best, okay!';
+  const after = () => {
   setTimeout(() => { sfx.thud(); notice('Sagittarius A*', 'THE PATH OF NO RETURN', 4600); }, 2400);
   setTimeout(() => { sfx.thud(); notice(' ', 'YOUR ACTIONS WILL BE REMEMBERED', 4600); }, 7400);
   setTimeout(() => notice(`${T.total - T.bad} of ${T.total} choices made well`, line, 6500), 12400);
   setTimeout(() => lootMsg(tiPhone() ? 'No turning back · land on Carax to face Zark' : 'There’s no turning back now · you can’t leave Sagittarius A* until the final battle is over · land on Carax to face Lord Zark', '#ff6a6e'), 19500);
+  };
+  setTimeout(() => zarkPovPlay(after).catch(e => { console.error(e); zpvEnd(); }), 1800); // Lord Zark knows you've come: through his eyes, out of the black hole and down to Carax
+}
+/* ---- Chapter IV, the path of no return: Lord Zark, through his own eyes. He comes up out of Sagittarius A* (black, then the
+   accretion disc blazing past on every side) and tears across the core to Carax at speed, through the galaxy's fleets: he, Hawthorne
+   as the Catharsis made him (off his left shoulder) and Orion as the Catharsis made him (off his right, only if you shot Orion down
+   in orbit) burn their ships left, right and dead ahead. They gloat as they go (red subtitles): Zark 10 lines, Hawthorne 4, Orion 4
+   (voiced: CH4LORDZARK1–18, every line in speaking order, data/zarkPovVoices.js; Orion's four are skipped when he isn't there).
+   On the road to the bad ending, Orion (alive, himself) follows with a transmission: your fate is sealed (orionSealPlay).
+   Plays once, on the first warp into Sagittarius A* on the path of no return; Skip (or ESC) skips. ---- */
+const ZARK_POV = ['Ahh. You came. Do you hear that, little wanderer? That is the sound of your galaxy holding its breath.',
+  'I have waited in the dark at the heart of everything, and the dark taught me patience. It did not teach me mercy.',
+  'Your friends gather at my door. Hak. Darius. Vishara. The old light that calls itself Archamus. How sweet. How breakable.',
+  'Sevirrus thought pain was a lesson. He was wrong. Pain is a gift, and I am so very generous.',
+  'I blinded that blue fool, and I will do it all over again. To all of you. Slowly. One eye at a time.',
+  'Every world you saved, I will unmake. Every name you spared, I will teach to scream yours.',
+  'Do you know what I love most about heroes? They always come. Right to me. Every single time.',
+  'Look at Carax. Look at what I made of it. This is what your galaxy will look like when I am bored of it.',
+  'Bring your crew. Bring your fleets. Bring your little choices. I will break them all in front of you.',
+  'Come to the throne, wanderer. I will be waiting. And I will be smiling.'];
+const HAW_POV = ['Look at them scatter, my lord. Ships like candles. I used to command fleets like these.',
+  'Terra Imperia promised humanity order. The Catharsis promises silence. Silence is so much more honest.',
+  'Every world that breathes is a world that resists. So we stop the breathing.',
+  'Let them watch, wanderer. Let them watch everything they love go dark.'];
+const ORI_POV = ['You left me to the Catharsis, wanderer. They gave me back. Better.',
+  'I wanted the stars once. Now I just want them empty.',
+  'No more Terra Imperia. No more resistance. No more anything. Just us, and the dark.',
+  'Every life in this galaxy ends today. Yours last, so you can watch.'];
+// the order they speak in: Z = Zark, H = Hawthorne, O = Orion (only if the Catharsis took him: shot down in orbit)
+const ZPV_ORDER = ['Z0', 'Z1', 'H0', 'Z2', 'O0', 'Z3', 'H1', 'Z4', 'O1', 'Z5', 'H2', 'Z6', 'O2', 'Z7', 'H3', 'O3', 'Z8', 'Z9'];
+const ZPV = { on: false };
+function zpvTexDisc() { return canvasTex(512, 512, (g, w, h) => { const c = w / 2, gr = g.createRadialGradient(c, c, w * .17, c, c, w * .5); gr.addColorStop(0, 'rgba(255,255,240,1)'); gr.addColorStop(.12, 'rgba(255,230,160,1)'); gr.addColorStop(.35, 'rgba(255,140,40,.95)'); gr.addColorStop(.65, 'rgba(200,40,20,.6)'); gr.addColorStop(1, 'rgba(60,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  g.globalCompositeOperation = 'lighter'; for (let i = 0; i < 260; i++) { const a = Math.random() * 6.283, r = w * (.18 + Math.random() * .3); g.strokeStyle = `rgba(255,${180 + Math.random() * 70 | 0},120,${.05 + Math.random() * .12})`; g.lineWidth = 1 + Math.random() * 3; g.beginPath(); g.arc(c, c, r, a, a + .3 + Math.random() * 1.2); g.stroke(); } }); }
+function zpvTexRing() { return canvasTex(256, 256, (g, w, h) => { const c = w / 2, gr = g.createRadialGradient(c, c, w * .28, c, c, w * .5); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(.18, 'rgba(255,240,200,1)'); gr.addColorStop(.35, 'rgba(255,150,60,.55)'); gr.addColorStop(1, 'rgba(120,20,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }); }
+function zpvTexCarax() { return canvasTex(1024, 512, (g, w, h) => { g.fillStyle = '#2a2628'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 2600; i++) { const v = 30 + Math.random() * 50 | 0; g.fillStyle = `rgba(${v},${v - 6},${v - 4},.5)`; g.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 18, 2 + Math.random() * 10); }
+  g.globalCompositeOperation = 'lighter'; for (let i = 0; i < 60; i++) { let x = Math.random() * w, y = h * (.15 + Math.random() * .7); g.strokeStyle = `rgba(255,${40 + Math.random() * 60 | 0},20,.55)`; g.lineWidth = 1 + Math.random() * 2.5; g.beginPath(); g.moveTo(x, y); for (let k = 0; k < 14; k++) { x += (Math.random() - .5) * 40; y += (Math.random() - .5) * 22; g.lineTo(x, y); } g.stroke(); } // the scars of Catharsis forges
+  for (let i = 0; i < 1600; i++) { g.fillStyle = `rgba(255,${80 + Math.random() * 90 | 0},60,${.3 + Math.random() * .6})`; const x = Math.random() * w, y = h * (.2 + Math.random() * .6); g.fillRect(x, y, 1.5, 1.5); } }); } // its cities, burning red
+function zpvShip(kind, L) { // a defender: the galaxy's fleets, come to stop him
+  const C = { chompy: [0x6a5420, 0xffc84a], human: [0x46505e, 0x7fd8ff], eris: [0xc8ccd8, 0xb893ff], grek: [0x3a4a2e, 0x9fe68a] }[kind], hull = new THREE.MeshStandardMaterial({ color: C[0], roughness: .45, metalness: .65 }), glo = new THREE.MeshBasicMaterial({ color: C[1] });
+  const g = new THREE.Group(), b = new THREE.Mesh(new THREE.BoxGeometry(L * .28, L * .16, L), hull); g.add(b);
+  const n = new THREE.Mesh(new THREE.ConeGeometry(L * .14, L * .4, 6), hull); n.rotation.x = Math.PI / 2; n.position.z = L * .68; g.add(n);
+  for (const sx of [-1, 1]) { const w = new THREE.Mesh(new THREE.BoxGeometry(L * .55, L * .03, L * .38), hull); w.position.set(sx * L * .38, 0, -L * .1); g.add(w); const e = new THREE.Mesh(new THREE.SphereGeometry(L * .06, 8, 6), glo); e.position.set(sx * L * .12, 0, -L * .52); g.add(e); }
+  const tr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: C[1], blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: .8 })); tr.scale.setScalar(L * .7); tr.position.z = -L * .6; g.add(tr);
+  return g;
+}
+function zpvBuild() {
+  const S = ZPV.scene = new THREE.Scene(), phone = tiPhone(); S.background = new THREE.Color(0x000000);
+  const cam = ZPV.cam = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, .05, 12000); S.add(cam);
+  S.add(new THREE.AmbientLight(0x5a3040, .8)); const sun = new THREE.PointLight(0xffa860, 3, 0, 0); S.add(sun); // the disc lights everything
+  { const n = phone ? 1800 : 4200, P = new Float32Array(n * 3), C = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const u = Math.random() * 2 - 1, a = Math.random() * 6.283, r = 6000, q = Math.sqrt(1 - u * u); P.set([Math.cos(a) * q * r, u * r * .6, Math.sin(a) * q * r - 1500], i * 3); const k = .5 + Math.random() * .5, warm = Math.random() < .4; C.set([k, k * (warm ? .75 : .9), k * (warm ? .6 : 1)], i * 3); }
+    const G = new THREE.BufferGeometry(); G.setAttribute('position', new THREE.BufferAttribute(P, 3)); G.setAttribute('color', new THREE.BufferAttribute(C, 3)); S.add(new THREE.Points(G, new THREE.PointsMaterial({ size: 2.2, sizeAttenuation: false, vertexColors: true, depthWrite: false }))); }
+  // Sagittarius A*: the hole, its disc and the photon ring around it
+  const BH = ZPV.bh = new THREE.Group(); S.add(BH);
+  BH.add(new THREE.Mesh(new THREE.SphereGeometry(40, 48, 32), new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide })));
+  const disc = ZPV.disc = new THREE.Mesh(new THREE.RingGeometry(52, 230, 128, 1), new THREE.MeshBasicMaterial({ map: zpvTexDisc(), transparent: true, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false })); disc.rotation.x = Math.PI / 2 - .22; BH.add(disc);
+  const disc2 = ZPV.disc2 = disc.clone(); disc2.scale.setScalar(.62); disc2.rotation.x = .3; disc2.material = disc.material.clone(); disc2.material.opacity = .5; BH.add(disc2); // the disc's far side, bent up over the hole
+  const ring = ZPV.ring = new THREE.Sprite(new THREE.SpriteMaterial({ map: zpvTexRing(), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); ring.scale.setScalar(120); BH.add(ring);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xff7a30, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: .55 })); glow.scale.setScalar(900); BH.add(glow);
+  // Carax, and the red haze over it
+  const CX = ZPV.carax = new THREE.Group(); CX.position.set(0, -30, -2700); S.add(CX);
+  const tx = zpvTexCarax(); CX.add(new THREE.Mesh(new THREE.SphereGeometry(110, 96, 64), new THREE.MeshStandardMaterial({ map: tx, emissiveMap: tx, emissive: 0xff3a20, emissiveIntensity: .55, roughness: .95 })));
+  const atm = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xff3020, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: .7 })); atm.scale.setScalar(330); CX.add(atm);
+  // his course: out of the hole, up over the disc, across the core, through the fleets and down into Carax's sky
+  ZPV.path = new THREE.CatmullRomCurve3([[0, 0, 0], [0, 3, -60], [0, 28, -250], [80, 14, -650], [55, -36, -1150], [-50, 26, -1650], [-30, 8, -2150], [-8, -6, -2480], [0, -14, -2578]].map(a => new THREE.Vector3(...a)));
+  // the galaxy's fleets, strung out along his way to stop him: they die to his left, his right, and dead ahead
+  ZPV.ships = []; const kinds = ['chompy', 'human', 'eris', 'grek'], N = phone ? 26 : 60, who = ['Z', 'H', 'O'];
+  for (let i = 0; i < N; i++) { const e = .12 + (i / N) * .8 + Math.random() * .01, c = ZPV.path.getPointAt(Math.min(.97, e + .02)), side = i % 3, L = 5 + Math.random() * 9; // 0 ahead, 1 left, 2 right
+    const off = side === 0 ? [(Math.random() - .5) * 20, (Math.random() - .5) * 14] : [(side === 1 ? -1 : 1) * (18 + Math.random() * 40), (Math.random() - .5) * 30];
+    const g = zpvShip(kinds[i % 4], L); g.position.set(c.x + off[0], c.y + off[1], c.z - 20 - Math.random() * 30); g.rotation.y = (Math.random() - .5) * .8; S.add(g);
+    ZPV.ships.push({ g, e, side, by: who[side], dead: false, L, spin: new THREE.Vector3((Math.random() - .5) * 2, (Math.random() - .5) * 2, (Math.random() - .5) * 2), drift: new THREE.Vector3() }); }
+  // their blue fire, flying back at him (it never lands)
+  ZPV.fx = []; ZPV.beams = [];
+  // the streaks of speed, around him
+  { const n = phone ? 260 : 620, P = new Float32Array(n * 6); ZPV.sp = []; for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, r = 6 + Math.random() * 60; ZPV.sp.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, z: -Math.random() * 600 }); }
+    const G = new THREE.BufferGeometry(); G.setAttribute('position', new THREE.BufferAttribute(P, 3)); ZPV.streak = new THREE.LineSegments(G, new THREE.LineBasicMaterial({ color: 0xffb080, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false })); ZPV.streak.frustumCulled = false; cam.add(ZPV.streak); }
+  // his own arms at the bottom of the view: black armour, red veins, claws
+  const arm = new THREE.MeshStandardMaterial({ color: 0x0c0608, roughness: .35, metalness: .8, emissive: 0x3a0406, emissiveIntensity: .8 }), vein = new THREE.MeshBasicMaterial({ color: 0xff2a10 });
+  ZPV.arms = []; for (const sx of [-1, 1]) { const g = new THREE.Group(); const f = new THREE.Mesh(new THREE.CylinderGeometry(.09, .13, 1.3, 10), arm); f.rotation.x = Math.PI / 2; g.add(f);
+    const v = new THREE.Mesh(new THREE.BoxGeometry(.012, .012, 1.1), vein); v.position.set(sx * -.05, .1, 0); g.add(v);
+    const hnd = new THREE.Mesh(new THREE.BoxGeometry(.2, .08, .2), arm); hnd.position.z = -.72; g.add(hnd);
+    for (let k = 0; k < 4; k++) { const c = new THREE.Mesh(new THREE.ConeGeometry(.018, .22, 6), arm); c.rotation.x = -Math.PI / 2; c.position.set((k - 1.5) * .05, 0, -.9); g.add(c); }
+    const palm = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xff3a1a, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 })); palm.scale.setScalar(.7); palm.position.z = -.95; g.add(palm); g.userData.palm = palm;
+    g.position.set(sx * .62, -.55, -.9); g.rotation.set(.12, sx * -.18, sx * .25); cam.add(g); ZPV.arms.push(g); }
+  const lamp = new THREE.PointLight(0xff5030, 2.2, 4, 1.5); lamp.position.set(0, 0, -.5); cam.add(lamp);
+  // the ones who fly with him: Hawthorne, as the Catharsis made him, off his left shoulder; Orion, theirs too, off his right (if they took him)
+  ZPV.wing = {};
+}
+function zpvWing(R, side) { // a rig flying beside him: a little ahead, leaning into the flight, a red wake behind
+  if (!R) return null; if (R.root.parent) R.root.parent.remove(R.root); R.root.traverse(o => { if (o.isMesh) o.frustumCulled = false; });
+  const g = new THREE.Group(); g.add(R.root); R.root.rotation.set(-.55, Math.PI, 0); R.mode = 'idle';
+  const wake = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xff2a1a, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: .8 })); wake.scale.set(2.4, 2.4, 1); wake.position.set(0, 1.2, 1.4); g.add(wake);
+  g.position.set(side * 5.2, -1.6, -9); ZPV.cam.add(g); return { R, g, side, fire: 0 };
+}
+function zpvEase(u) { return u < .12 ? .025 * Math.pow(u / .12, 2) : .025 + .975 * Math.pow((u - .12) / .88, 1.15); } // a slow rise out of the dark, then faster and faster
+function zpvBoom(p, L) { // a ship dies: a flash, a fireball, a shock ring and a spray of wreckage
+  const S = ZPV.scene, f = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xffc070, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); f.position.copy(p); f.scale.setScalar(L * 2); S.add(f);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(.8, 1, 48), new THREE.MeshBasicMaterial({ color: 0xff8a40, transparent: true, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false })); ring.position.copy(p); ring.lookAt(ZPV.cam.position); S.add(ring);
+  const n = 40, P = new Float32Array(n * 3), V = []; for (let i = 0; i < n; i++) { P.set([p.x, p.y, p.z], i * 3); V.push(new THREE.Vector3(Math.random() - .5, Math.random() - .5, Math.random() - .5).normalize().multiplyScalar(L * (2 + Math.random() * 4))); }
+  const G = new THREE.BufferGeometry(); G.setAttribute('position', new THREE.BufferAttribute(P, 3)); const deb = new THREE.Points(G, new THREE.PointsMaterial({ color: 0xffa060, size: .6 + L * .05, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); S.add(deb);
+  const Lt = new THREE.PointLight(0xff8a40, 30, L * 14, 1.6); Lt.position.copy(p); S.add(Lt);
+  ZPV.fx.push({ f, ring, deb, V, Lt, t: 0, L });
+}
+function zpvBeam(from, to, col) { const G = new THREE.BufferGeometry().setFromPoints([from, to]); const m = new THREE.Line(G, new THREE.LineBasicMaterial({ color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); ZPV.scene.add(m); ZPV.beams.push({ m, t: 0 }); }
+async function zarkPovPlay(after) {
+  if (ZPV.on || state !== 'space') { if (after) after(); return; }
+  Object.assign(ZPV, { on: true, after, from: state, t: 0, li: -1, nextT: 2.6, phase: 'load', ending: false });
+  state = 'zarkPov'; SPC.keys.clear(); const fd = $('#fade'); fd.style.transition = 'opacity .6s'; fd.style.opacity = 1; sfx.thud(); sfx.drone(.5);
+  const hud = $('#spaceHud'); ZPV.hud = hud && !hud.classList.contains('hidden'); if (hud) hud.classList.add('hidden');
+  ZPV.xh = !ui.xhud.classList.contains('hidden'); show(ui.xhud, true); ui.xhud.classList.add('cutting'); // (for its Skip button)
+  zpvBuild();
+  const ori = zarkOrionDead(), pack = k => loadDataScript(k).then(ok => ok ? sfx.loadClips(k) : []).catch(() => []);
+  const [haw, orn, vz] = await Promise.race([Promise.all([glbRig('tiHawC', 2.2, 'none').catch(() => null), ori ? glbRig('orionCath', 2.6, 'none', true).catch(() => null) : null, pack('zarkPovVoices')]), new Promise(r => setTimeout(() => r([null, null, []]), 9000))]);
+  if (!ZPV.on) return;
+  ZPV.wing.H = zpvWing(haw, -1); ZPV.wing.O = zpvWing(orn, 1);
+  const V = vz || [], T = { Z: ZARK_POV, H: HAW_POV, O: ORI_POV }, W = { Z: 'LORD ZARK', H: tiPhone() ? 'HAWTHORNE' : 'THOMAS HAWTHORNE · THE CATHARSIS', O: tiPhone() ? 'ORION' : 'ORION MASCAR · THE CATHARSIS' };
+  ZPV.seq = ZPV_ORDER.map((k, oi) => [k, oi]).filter(([k]) => k[0] !== 'O' || (ori && ZPV.wing.O)).map(([k, oi]) => { const i = +k.slice(1), who = k[0], clip = V[oi] || null, text = T[who][i]; return { who, name: W[who], text, clip, len: clip ? clip.duration : text.split(/\s+/).length * .34 }; }); // one pack, every line in speaking order (CH4LORDZARK1–18)
+  ZPV.dur = 2.6 + ZPV.seq.reduce((a, q) => a + q.len + .7, 0) + 3.2;
+  leaderPlay('final').catch(() => {}); // the Final Boss theme, through the flight, Orion's call and the crew's scene
+  ZPV.vig = document.getElementById('zpvVig') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'zpvVig' }));
+  ZPV.vig.style.cssText = 'position:fixed;inset:0;z-index:30;pointer-events:none;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 45%,rgba(90,0,0,.55) 78%,rgba(20,0,0,.95) 100%)';
+  renderer.domElement.style.filter = 'contrast(1.18) saturate(1.15)';
+  ZPV.phase = 'run'; fd.style.transition = 'opacity 2.4s'; fd.style.opacity = 0;
+  setTimeout(() => { if (ZPV.on) notice('Sagittarius A*', 'LORD ZARK', 3200); }, 900);
+}
+function zpvTick(dt) {
+  if (!ZPV.on || ZPV.phase !== 'run') return;
+  dt = Math.min(dt, .05); const t = (ZPV.t += dt), u = clamp(t / ZPV.dur, 0, 1), e = zpvEase(u), cam = ZPV.cam, P = ZPV.path;
+  const pos = P.getPointAt(Math.min(e, 1)), ahead = P.getPointAt(Math.min(1, e + .012)), prev = ZPV.prev || pos.clone(), spd = pos.distanceTo(prev) / Math.max(dt, 1e-3); ZPV.prev = pos.clone();
+  const look = ahead.clone().lerp(ZPV.carax.position, smooth(.55, .95, u) * .7); // by the end he's looking down at Carax
+  cam.position.copy(pos); cam.up.set(0, 1, 0); cam.lookAt(look);
+  const bank = Math.sin(t * .45) * .16 + (ahead.x - pos.x) * -.004; ZPV.shk = Math.max(0, (ZPV.shk || 0) - dt * 1.6); const shake = Math.min(.03, spd * .00006) + (u > .93 ? .05 : 0) + ZPV.shk * .25;
+  cam.rotateZ(bank); cam.position.x += (Math.random() - .5) * shake; cam.position.y += (Math.random() - .5) * shake;
+  cam.fov = 58 + Math.min(34, spd * .045); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); cam.updateMatrixWorld();
+  ZPV.disc.rotation.z += dt * .35; ZPV.disc2.rotation.z -= dt * .2; ZPV.ring.material.opacity = 1 - smooth(.02, .12, u) * .6; ZPV.carax.rotation.y += dt * .01;
+  // the fleets: each ship dies as he draws level, to whichever of them has it (Orion's go to Zark when he isn't there)
+  for (const q of ZPV.ships) {
+    if (q.dead) { q.g.position.addScaledVector(q.drift, dt); q.g.rotation.x += q.spin.x * dt; q.g.rotation.y += q.spin.y * dt; q.g.rotation.z += q.spin.z * dt; continue; }
+    q.g.position.z += dt * 8; // they come at him
+    if (Math.random() < dt * .8 && q.g.position.distanceTo(pos) < 260) { const a = q.g.position.clone(), b = pos.clone().add(new THREE.Vector3((Math.random() - .5) * 24, (Math.random() - .5) * 16, -10)); zpvBeam(a, b, 0x7fd8ff); } // their fire, wide of him
+    if (e >= q.e - .004 || q.g.position.distanceTo(pos) < 30 + q.L * 2) {
+      q.dead = true; let by = q.by; if (by === 'O' && !ZPV.wing.O) by = 'Z'; if (by === 'H' && !ZPV.wing.H) by = 'Z';
+      const W = by === 'Z' ? null : ZPV.wing[by], from = new THREE.Vector3();
+      if (W) { W.g.getWorldPosition(from); from.y += 1.2; W.fire = .5; } else { const A = ZPV.arms[(ZPV.killN = (ZPV.killN || 0) + 1) % 2]; A.userData.palm.getWorldPosition(from); A.userData.palm.material.opacity = 1; }
+      zpvBeam(from, q.g.position.clone(), by === 'Z' ? 0xff2a10 : by === 'H' ? 0xff5a30 : 0xffb040); zpvBoom(q.g.position.clone(), q.L);
+      q.g.traverse(o => { if (o.isMesh && o.material && o.material.color) { o.material = o.material.clone(); o.material.color.multiplyScalar(.25); if (o.material.emissive) o.material.emissive.setHex(0x3a0a00); } });
+      q.drift.subVectors(q.g.position, pos).normalize().multiplyScalar(14 + Math.random() * 12); ZPV.shk = Math.min(1, ZPV.shk + .35); if (Math.random() < .5) sfx.thud();
+    }
+  }
+  for (const b of [...ZPV.beams]) { b.t += dt; b.m.material.opacity = Math.max(0, 1 - b.t / .3); if (b.t > .3) { ZPV.scene.remove(b.m); b.m.geometry.dispose(); b.m.material.dispose(); ZPV.beams.splice(ZPV.beams.indexOf(b), 1); } }
+  for (const x of [...ZPV.fx]) { x.t += dt; const k = x.t / 1.6; x.f.scale.setScalar(x.L * (2 + k * 9)); x.f.material.opacity = Math.max(0, 1 - k); x.ring.scale.setScalar(x.L * (1 + k * 14)); x.ring.material.opacity = Math.max(0, .9 - k); x.Lt.intensity = Math.max(0, 30 * (1 - k * 2));
+    const A = x.deb.geometry.attributes.position.array; x.V.forEach((v, i) => { A[i * 3] += v.x * dt; A[i * 3 + 1] += v.y * dt; A[i * 3 + 2] += v.z * dt; }); x.deb.geometry.attributes.position.needsUpdate = true; x.deb.material.opacity = Math.max(0, 1 - k * .8);
+    if (k >= 1.2) { for (const o of [x.f, x.ring, x.deb, x.Lt]) ZPV.scene.remove(o); ZPV.fx.splice(ZPV.fx.indexOf(x), 1); } }
+  for (const A of ZPV.arms) A.userData.palm.material.opacity = Math.max(0, A.userData.palm.material.opacity - dt * 3);
+  for (const W of Object.values(ZPV.wing)) { if (!W) continue; W.fire = Math.max(0, W.fire - dt); W.R.mode = W.fire > 0 ? 'attack' : 'idle'; try { animRig(W.R, dt); } catch (er) {} W.g.position.y = -1.6 + Math.sin(t * 1.3 + W.side) * .35; W.g.position.x = W.side * (5.2 + Math.sin(t * .7 + W.side * 2) * .6); }
+  // speed streaks
+  { const A = ZPV.streak.geometry.attributes.position.array, L = Math.min(60, 1 + spd * .05); ZPV.streak.material.opacity = Math.min(.7, spd * .0012);
+    ZPV.sp.forEach((q, i) => { q.z += spd * dt * .9; if (q.z > 2) { q.z -= 600; const a = Math.random() * 6.283, r = 6 + Math.random() * 60; q.x = Math.cos(a) * r; q.y = Math.sin(a) * r; } A.set([q.x, q.y, q.z, q.x, q.y, q.z - L], i * 6); });
+    ZPV.streak.geometry.attributes.position.needsUpdate = true; }
+  for (const [i, g] of ZPV.arms.entries()) { g.position.y = -.55 + Math.sin(t * 1.6 + i) * .015; g.rotation.x = .12 + Math.sin(t * .9 + i * 2) * .04; } // his breathing
+  // their lines, one after another (Zark's red; Hawthorne's and Orion's red too: they're the Catharsis's now)
+  fbSubTick();
+  if (t >= ZPV.nextT && ZPV.li < ZPV.seq.length - 1) { ZPV.li++; const q = ZPV.seq[ZPV.li]; fbSay(q.name, q.text, q.clip, 1.4); if (fb.sub && fbSubEl) { fb.sub.kind = 'crox'; fbSubEl.className = 'on crox'; } ZPV.nextT = t + q.len + .7;
+    if (q.who !== 'Z' && ZPV.wing[q.who]) ZPV.wing[q.who].fire = 1.2;
+    if (q.who === 'Z' && /blue fool/.test(q.text)) { ZPV.shk = 1; fbFlash(.35, '#ff2a1a'); sfx.thud(); } }
+  if (u > .985) fbFlash(Math.min(1, (u - .985) / .015), '#ff3a1a'); // into Carax's sky
+  if (t >= ZPV.dur && !ZPV.ending) { ZPV.ending = true; const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; setTimeout(zpvEnd, 550); }
+  renderer.render(ZPV.scene, cam);
+}
+function zpvSkip() { if (!ZPV.on || ZPV.ending) return; ZPV.ending = true; sfx.stopVoice && sfx.stopVoice(); const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(zpvEnd, 450); }
+function zpvEnd() {
+  if (!ZPV.on) return; const after = ZPV.after; ZPV.on = false; ZPV.phase = null; fbSubHide(); fbFlash(0); sfx.drone(0);
+  for (const W of Object.values(ZPV.wing || {})) if (W && W.R && W.R.root.parent) W.R.root.parent.remove(W.R.root); // (their rigs aren't ours to dispose)
+  try { if (ZPV.scene) disposeOwned(ZPV.scene); } catch (e) {} ZPV.scene = null; ZPV.cam = null; ZPV.ships = []; ZPV.fx = []; ZPV.beams = []; ZPV.wing = {};
+  if (ZPV.vig && ZPV.vig.parentNode) ZPV.vig.parentNode.removeChild(ZPV.vig); ZPV.vig = null; renderer.domElement.style.filter = '';
+  const bad = (() => { try { return ch4Ending() === 'bad' && orionVillain() && !orbS().dead; } catch (e) { return false; } })(); // the road to the bad ending: Orion has something to say first
+  const crew = () => crewCaraxPlay(() => zpvRestore(after)).catch(e => { console.error(e); ccxEnd(); zpvRestore(after); }); // then the crew has its say
+  if (bad) { orionSealPlay(crew).catch(e => { console.error(e); crew(); }); return; }
+  crew();
+}
+function zpvRestore(after) {
+  if (sfx.leadOn) { sfx.leadOn = false; sfx.stopSong(1.5); } // the Final Boss theme ends with the scenes
+  { const hud = $('#spaceHud'); if (hud && ZPV.hud) hud.classList.remove('hidden'); } ui.xhud.classList.remove('cutting'); show(ui.xhud, !!ZPV.xh);
+  state = 'space'; clock.getDelta();
+  const fd = $('#fade'); fd.style.transition = 'opacity 1.2s'; fd.style.opacity = 0;
+  if (after) try { after(); } catch (e) { console.error(e); }
+}
+/* ---- the path of no return, after Zark's flight: aboard the Jewel, Carax ahead, your companions have their say. Every story
+   companion in your party speaks once (imported characters, Pontifexes and uplifted crew stand back and say nothing); how they
+   sound depends on where your choices have led: hopeful on the road to the good ending, grim on the neutral one, already beaten on
+   the road to the bad. Voiced: one pack per mood, data/crewCaraxGood.js / crewCaraxNeutral.js / crewCaraxBad.js, a clip per
+   companion in CREW_CX_ORDER's order (CH4CREWGOOD1–15, CH4CREWNEUTRAL1–15, CH4CREWBAD1–10: the bad road skips James, Orion, Croxian, Malia and Nyrexia). ---- */
+const CREW_CX = {
+  james: { name: 'JAMES BROWN', good: 'We came all this way from the ice, you and me. One more fight. Let’s finish it.', neutral: 'I’ll be honest with you. I don’t know if we’re walking out of there. But I’m walking in with you.' }, // (on the road to the bad ending James is dead)
+  orion: { name: 'ORION MASCAR', good: 'Zark thinks he’s seen every trick I’ve got. He hasn’t. Let’s show him.', neutral: 'The odds aren’t great. They never are. I’ve won with worse. I think.' }, // (on the bad road he's no companion of yours)
+  nico: { name: 'NICO', good: 'Pistols loaded, head clear. I’ve never felt more ready for anything.', neutral: 'Everyone keeps saying it’ll be fine. Nobody believes it. Me neither, honestly.', bad: 'I keep checking my pistols like it’ll matter. It won’t, will it?' },
+  khazglar: { name: 'KHAZGLAR', good: 'Ha! A throne room full of things to hit. Best day of my life.', neutral: 'Big hammer, bigger enemy. Someone’s going home in pieces. Let’s hope it’s him.', bad: 'Even my hammer feels heavy today. Never thought I’d say that.' },
+  charon: { name: 'CHARON', good: 'The ferryman has carried many souls across. Today, none of ours.', neutral: 'I have rowed this river a long time. I do not like how still it is tonight.', bad: 'I already know whose souls I will be ferrying after this. I am sorry.' },
+  kizna: { name: 'KIZNA', good: 'All systems green. Morale excellent. Probability of victory: I’m rounding up!', neutral: 'The probability of success is… let’s not talk about the probability.', bad: 'I’ve run the numbers forty times. They don’t change. We lose.' },
+  nyrexia: { name: 'NYREXIA ERISCONOS', good: 'My sister is out there with her fleet. Eris will not fall today, and neither will we.', neutral: 'The ice in me says hold fast. The rest of me is not so sure.' }, // (never recruited on the bad road)
+  croxian: { name: 'CROXIAN', good: 'I ran from Zark’s shadow my whole life. Today I walk into it, and I’m not afraid.', neutral: 'He knows me. He knows how I think. That frightens me more than I’ll ever say.' }, // (dead on the bad road)
+  malia: { name: 'MALIA', good: 'Whatever happens in there, we did this together. That’s already a victory.', neutral: 'I want to believe we win this. I’m trying really hard to.' }, // (dead on the bad road)
+  josiah2: { name: 'JOSIAH WILLIAMS II', good: 'My father would have been proud to stand here. I’ll make sure of it.', neutral: 'I came back into the light for this. I hope it was worth it.', bad: 'I should have stayed in the dark. At least it was quiet there.' },
+  javek: { name: 'JAVEK', good: 'Seven billion years, and I have never had a better reason to fight. How unexpected.', neutral: 'I have backed losing sides before. I do hope this is not another one.', bad: 'I have lost a collective, a kingdom and a war. I know defeat when I see it. This is it.' },
+  tyrotaronus: { name: 'TYROTARONUS', good: 'I keep no side. But if I did, it would be this one. Go, wanderer.', neutral: 'Balance may not favour us today. Then we will have to tip it ourselves.', bad: 'I came to see how it ends. I am sorry, wanderer. I think I already know.' },
+  'lead:hak': { name: 'HAK CHOMPJAK V', good: 'The Chompy Empire rides with you! Zark will remember this day, briefly.', neutral: 'Shakhak would have charged in laughing. I am not laughing.', bad: 'My fleets are scattered and my worlds are burning. What is an emperor with nothing left?' },
+  'lead:darius': { name: 'DARIUS ANCIN', good: 'Earth is behind us, every last one of them. We finish it here.', neutral: 'I’ve given a lot of speeches about hope. I’m struggling to find one for today.', bad: 'I’ll give the order. I just don’t think there’s anyone left to hear it.' },
+  'lead:vishara': { name: 'VISHARA ERISCONOS', good: 'For Eris, and for my sister. The ice does not break.', neutral: 'We have lost so much already. I won’t pretend to know what is left to lose.', bad: 'Eris is gone. I am only here because there is nowhere else left to stand.' }
+};
+const CREW_CX_ORDER = Object.keys(CREW_CX); const crewCxOrder = mood => CREW_CX_ORDER.filter(id => CREW_CX[id][mood]); // each mood's pack: a clip per companion who has a line in it
+const CCX = { on: false };
+async function crewCaraxPlay(after) {
+  const mood = (() => { try { return ch4Ending() || 'neutral'; } catch (e) { return 'neutral'; } })();
+  const ids = (wanderer.party || []).filter(id => CREW_CX[id] && CREW_CX[id][mood] && PARTY[id] && !PARTY[id].imported); // story companions only (the dead never)
+  if (!ids.length) { after(); return; }
+  Object.assign(CCX, { on: true, after, mood, t: 0, li: -1, nextT: 2.4, ending: false, rigs: {} }); state = 'crewCarax';
+  const S = CCX.scene = new THREE.Scene(); S.background = new THREE.Color(0x050203); S.fog = new THREE.FogExp2(0x12050a, .03);
+  const cam = CCX.cam = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, .05, 400);
+  S.add(new THREE.HemisphereLight(mood === 'good' ? 0xffe0c8 : 0xc8b0b8, 0x1a0608, mood === 'bad' ? .55 : .85));
+  const key = new THREE.PointLight(0xff4a2a, mood === 'bad' ? 40 : 70, 26, 1.4); key.position.set(0, 4.5, -7); S.add(key); // Carax's red light through the viewport
+  const fill = new THREE.PointLight(mood === 'good' ? 0xffd08a : 0x6a8aff, mood === 'bad' ? 6 : 18, 16, 1.6); fill.position.set(0, 3.5, 6); S.add(fill);
+  { const f = new THREE.Mesh(new THREE.CircleGeometry(12, 48), new THREE.MeshStandardMaterial({ color: 0x15141a, roughness: .35, metalness: .7 })); f.rotation.x = -Math.PI / 2; S.add(f); } // the Jewel's bridge
+  { const vp = new THREE.Mesh(new THREE.PlaneGeometry(16, 6), new THREE.MeshBasicMaterial({ color: 0x0a0204 })); vp.position.set(0, 3.2, -8.5); S.add(vp); // the viewport, and Carax in it
+    const cx = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xff3a1a, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: .9 })); cx.scale.setScalar(7); cx.position.set(1.5, 3, -8.3); S.add(cx);
+    const pl = new THREE.Mesh(new THREE.CircleGeometry(1.6, 40), new THREE.MeshBasicMaterial({ color: 0x3a1a1a })); pl.position.set(1.5, 3, -8.25); S.add(pl); }
+  const rigs = await Promise.race([Promise.all(ids.map(id => companionRig(id).catch(() => null))), new Promise(r => setTimeout(() => r(ids.map(() => null)), 9000))]);
+  const pack = { good: 'crewCaraxGood', neutral: 'crewCaraxNeutral', bad: 'crewCaraxBad' }[mood];
+  const vo = await Promise.race([loadDataScript(pack).then(ok => ok ? sfx.loadClips(pack) : []).catch(() => []), new Promise(r => setTimeout(() => r([]), 4000))]) || [];
+  if (!CCX.on) return;
+  const n = ids.length; CCX.cast = [];
+  ids.forEach((id, i) => { const R = rigs[i]; const a = n === 1 ? 0 : -1 + 2 * i / (n - 1), x = a * Math.min(5.5, 1.2 + n * .55), z = -1.4 + Math.abs(a) * 1.6; // an arc facing you, the viewport behind them
+    if (R) { if (R.root.parent) R.root.parent.remove(R.root); R.root.position.set(x, 0, z); R.root.rotation.y = Math.atan2(-x * .4, 6 - z); R.mode = 'idle'; R.root.traverse(o => { if (o.isMesh) { o.frustumCulled = false; } }); S.add(R.root); }
+    const clip = vo[crewCxOrder(mood).indexOf(id)] || null, text = CREW_CX[id][mood];
+    CCX.cast.push({ id, R, x, z, name: CREW_CX[id].name, text, clip, len: clip ? clip.duration : text.split(/\s+/).length * .34, h: R ? (COMPANIONS.find(o => o.id === id) || {}).h || 1.9 : 1.9 }); });
+  CCX.dur = 2.4 + CCX.cast.reduce((a, q) => a + q.len + .8, 0) + 1.6;
+  renderer.domElement.style.filter = mood === 'good' ? 'contrast(1.08) saturate(1.05)' : mood === 'bad' ? 'contrast(1.1) saturate(.55) brightness(.85)' : 'contrast(1.1) saturate(.8)';
+  const fd = $('#fade'); fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 0;
+  setTimeout(() => { if (CCX.on) notice('Aboard the Jewel of Archamus', mood === 'good' ? 'CARAX AHEAD · YOUR CREW IS READY' : mood === 'bad' ? 'CARAX AHEAD · YOUR CREW HAS GIVEN UP' : 'CARAX AHEAD · YOUR CREW IS AFRAID', 3200); }, 400);
+}
+function ccxTick(dt) {
+  if (!CCX.on || !CCX.cast) { if (CCX.on && CCX.scene && CCX.cam) renderer.render(CCX.scene, CCX.cam); return; }
+  dt = Math.min(dt, .05); const t = (CCX.t += dt), cam = CCX.cam; cam.aspect = innerWidth / innerHeight;
+  for (const q of CCX.cast) if (q.R) { q.R.mode = 'idle'; try { animRig(q.R, dt); } catch (e) {} if (CCX.mood === 'bad') q.R.root.rotation.x = .08; } // on the bad road they hang their heads
+  const q = CCX.li >= 0 ? CCX.cast[CCX.li] : null;
+  if (!q) { cam.position.set(Math.sin(t * .15) * 1.2, 2.6, 7.5 - t * .25); cam.lookAt(0, 1.4, -1.5); } // the whole crew, Carax beyond them
+  else { const k = t - CCX.lineT, hy = q.h * .88; cam.position.set(q.x * .55 + Math.sin(k * .3) * .15, hy + .15, q.z + 2.6 - k * .05); cam.lookAt(q.x, hy, q.z); if (q.R) q.R.root.rotation.y = angLerp(q.R.root.rotation.y, Math.atan2(cam.position.x - q.x, cam.position.z - q.z), Math.min(1, dt * 3)); }
+  cam.updateProjectionMatrix(); fbSubTick();
+  if (t >= CCX.nextT && CCX.li < CCX.cast.length - 1) { CCX.li++; const c = CCX.cast[CCX.li]; CCX.lineT = t; fbSay(c.name, c.text, c.clip, 1.3); CCX.nextT = t + c.len + .8; }
+  if (t >= CCX.dur && !CCX.ending) ccxSkip();
+  renderer.render(CCX.scene, cam);
+}
+function ccxSkip() { if (!CCX.on || CCX.ending) return; CCX.ending = true; sfx.stopVoice && sfx.stopVoice(); const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; setTimeout(ccxEnd, 550); }
+function ccxEnd() {
+  if (!CCX.on) return; const after = CCX.after; CCX.on = false; fbSubHide();
+  for (const q of CCX.cast || []) if (q.R && q.R.root.parent) { q.R.root.parent.remove(q.R.root); q.R.root.rotation.x = 0; }
+  try { if (CCX.scene) disposeOwned(CCX.scene); } catch (e) {} CCX.scene = null; CCX.cast = null; renderer.domElement.style.filter = '';
+  if (after) after();
+}
+/* ---- the road to the bad ending: Orion Mascar, still himself, still loose, comes on the comms as you drop out of the black hole's glare.
+   He gloats (5 lines; voiced: CH4ORIONBADENDING1–5, data/orionSealedVoices.js) and tells you your fate is sealed. ---- */
+const ORI_SEALED = ['Hello again, wanderer. Did you really think I would miss this?',
+  'James. Croxian. Malia. You cut them all down, and you left me standing. That was your mistake.',
+  'While you played the hero, I took the stars one by one. They are mine now, and Zark is welcome to whatever is left.',
+  'Go on, then. Land on Carax. Kneel before him. It will not change a thing.',
+  'Your fate is sealed, wanderer. It was sealed the moment you let me walk away.'];
+const OSL = { on: false };
+async function orionSealPlay(after) {
+  Object.assign(OSL, { on: true, after, t: 0, li: -1, nextT: 1.6, ending: false });
+  state = 'orionSeal';
+  const S = OSL.scene = new THREE.Scene(); S.background = new THREE.Color(0x0a0204); S.fog = new THREE.FogExp2(0x1a0408, .045);
+  const cam = OSL.cam = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, .05, 300); S.add(new THREE.HemisphereLight(0xffb0a0, 0x200408, .9));
+  const key = new THREE.SpotLight(0xff4a3a, 120, 30, .5, .6, 1.4); key.position.set(3, 6, 5); S.add(key); S.add(key.target);
+  const rim = new THREE.PointLight(0x7fb8ff, 25, 12, 1.6); rim.position.set(-2.5, 2.5, -2); S.add(rim);
+  { const f = new THREE.Mesh(new THREE.CircleGeometry(14, 48), new THREE.MeshStandardMaterial({ color: 0x140a0c, roughness: .4, metalness: .6 })); f.rotation.x = -Math.PI / 2; S.add(f); } // the deck of his flagship
+  for (let i = 0; i < 9; i++) { const a = -1.2 + i * .3, sc = new THREE.Mesh(new THREE.PlaneGeometry(1.6, .9), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xff3a2a : 0xd04020, transparent: true, opacity: .35 })); sc.position.set(Math.sin(a) * 6, 2.2 + (i % 3) * .5, -Math.cos(a) * 6); sc.lookAt(0, 2.2, 0); S.add(sc); } // the conquered systems, red on his screens
+  const vo = await Promise.race([loadDataScript('orionSealedVoices').then(ok => ok ? sfx.loadClips('orionSealedVoices') : []).catch(() => []), new Promise(r => setTimeout(() => r([]), 4000))]) || [];
+  const R = await companionRig('orion').catch(() => null); if (!OSL.on) return;
+  if (R) { if (R.root.parent) R.root.parent.remove(R.root); R.root.position.set(0, 0, 0); R.root.rotation.y = 0; R.mode = 'idle'; R.root.traverse(o => { if (o.isMesh) o.frustumCulled = false; }); S.add(R.root); try { R.lips = R.lips || faceRig(R.root); } catch (e) {} }
+  key.target.position.set(0, 1.6, 0); OSL.R = R; OSL.vo = vo; OSL.lens = ORI_SEALED.map((l, i) => vo[i] ? vo[i].duration : l.split(/\s+/).length * .34);
+  OSL.dur = 1.6 + OSL.lens.reduce((a, b) => a + b + .7, 0) + 2;
+  const fd = $('#fade'); fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 0; renderer.domElement.style.filter = 'contrast(1.12) saturate(.9)';
+  setTimeout(() => { if (OSL.on) notice('Incoming transmission', 'ORION MASCAR', 2800); }, 400);
+}
+function oslTick(dt) {
+  if (!OSL.on || !OSL.scene) return; dt = Math.min(dt, .05); const t = (OSL.t += dt), u = clamp(t / Math.max(1, OSL.dur || 1), 0, 1), cam = OSL.cam;
+  cam.position.set(Math.sin(t * .12) * .6, 1.75 - u * .1, 3.6 - u * 1.4); cam.lookAt(0, 1.62, 0); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); // a slow push in on his face
+  if (OSL.R) try { animRig(OSL.R, dt); } catch (e) {}
+  fbSubTick();
+  if (OSL.lens && t >= OSL.nextT && OSL.li < ORI_SEALED.length - 1) { OSL.li++; const i = OSL.li; fbSay('ORION MASCAR', ORI_SEALED[i], OSL.vo[i] || null, 1.3); OSL.nextT = t + OSL.lens[i] + .7; if (i === ORI_SEALED.length - 1) setTimeout(() => { if (OSL.on) { sfx.thud(); notice(' ', 'YOUR FATE IS SEALED', 3600); } }, OSL.lens[i] * 1000 + 300); }
+  if (OSL.dur && t >= OSL.dur + 2 && !OSL.ending) oslSkip();
+  renderer.render(OSL.scene, cam);
+}
+function oslSkip() { if (!OSL.on || OSL.ending) return; OSL.ending = true; sfx.stopVoice && sfx.stopVoice(); const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; setTimeout(oslEnd, 550); }
+function oslEnd() {
+  if (!OSL.on) return; const after = OSL.after; OSL.on = false; fbSubHide();
+  if (OSL.R && OSL.R.root.parent) OSL.R.root.parent.remove(OSL.R.root); try { if (OSL.scene) disposeOwned(OSL.scene); } catch (e) {} OSL.scene = null; OSL.R = null; renderer.domElement.style.filter = '';
+  if (after) after();
 }
 function fateNote(delay = 0) {
   setTimeout(() => { if (!wanderer || CUT.on) return; const T = fateTally(); if (!T.made) return;
@@ -33098,6 +33402,9 @@ function loopFrame() {
   if (state === 'cantinaScene') { updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'brawl') { try { fightTick(dt); } catch (e) { console.error(e); } updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'nightmare') { nightmareTick(dt); sfx.music(0); return; }
+  if (state === 'zarkPov') { try { zpvTick(dt); } catch (e) { console.error(e); zpvEnd(); } sfx.music(0); return; } // Lord Zark, out of the black hole
+  if (state === 'orionSeal') { try { oslTick(dt); } catch (e) { console.error(e); oslEnd(); } sfx.music(0); return; } // and Orion, on the road to the bad ending
+  if (state === 'crewCarax') { try { ccxTick(dt); } catch (e) { console.error(e); ccxEnd(); } sfx.music(0); return; } // then your crew
   if (state === 'skipNarr') { sfx.music(0); return; } // the two-year narration draws itself (snFrame)
   if (state === 'hawMars') { try { hwmTick(dt); } catch (e) { console.error(e); hwmEnd(); } sfx.music(0); return; }
   if (state === 'orionCut') { try { ocutTick(dt); } catch (e) { console.error(e); ocutEnd(); } sfx.music(0); return; }
