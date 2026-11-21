@@ -5832,7 +5832,7 @@ addEventListener('keydown', e => {
   if (state === 'zarkPov') { if (e.code === 'Escape') zpvSkip(); return; }
   if (state === 'orionSeal') { if (e.code === 'Escape') oslSkip(); return; }
   if (state === 'crewCarax') { if (e.code === 'Escape') ccxSkip(); return; }
-  if (state === 'hawMars' || state === 'jamesRev' || state === 'c4End' || state === 'orionCut') { if (e.code === 'Escape') skipMeeting(); return; }
+  if (state === 'hawMars' || state === 'jamesRev' || state === 'c4End' || state === 'orionCut') { if (state === 'c4End' && C4E.gvHold && ex.dlg && /^(Digit1|Numpad1|Enter|Space)$/.test(e.code)) { pickChoice(0); return; } if (e.code === 'Escape') skipMeeting(); return; }
   if (state === 'maliaNico' && e.code === 'Escape') { skipMeeting(); return; } // Malia and Nico's fight: Esc skips it (E / Space still read on)
   if (state === 'nightmare' && NM.on) { if (NM.phase === 'wake' && ['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } else if (e.code === 'Escape') { e.preventDefault(); skipMeeting(); } return; }
   if (state === 'dream') { if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } return; }
@@ -16950,7 +16950,7 @@ const C4E_OPEN = [ // the hall, and Zark on one knee in the ruin of his throne r
   { dur: 3.6, act: 'kneel', shot: [[4.6, 1.3, 6.4], [3, 1.6, 4.4], [0, 1.7, .5]] }
 ];
 const C4E_NEUTRAL_V = {'You think this is victory? You have broken a body, wanderer. Nothing more.': 'Look at you. You did not climb my tower to save anyone, wanderer. You came for my throne.', 'Enough, Zark. It is over. Kneel, and let it end here.': 'Step away from him, wanderer. Whatever you meant to do next, do not.', 'Archamus. I wondered how long you would hide in the sky and let them bleed for you.': 'Archamus. You came down from your light to save me from your own champion? How the stars have turned.', 'I never hid. I waited for them to need me. They need me now.': 'I came to finish you. What stands beside you, I will deal with after.', 'Then come down from your light, and bleed with them.': 'Then come down and bleed. And watch your back while you do.', 'Strike me down, and the dark only grows. This is not the end of me, Archamus. It is the beginning of the end of you all.': 'Strike me down if you like. Your wanderer has already learned everything I had to teach. The dark has a new heir, Archamus.', 'He is gone. Some who should be standing beside you tonight are not, and Carax is burning. The damage has been done.': 'He is gone. And you, wanderer. I watched what you did to get here. Too many are not standing here tonight because of you.', 'But we cannot stop now. Wherever he crawls, we follow him there. We need to keep going.': 'We cannot stop now. Wherever he crawls, we follow. But hear me: become what he was, and I will come for you next.'}; // the neutral ending for a wanderer who's walked the villain's road (alignment −34 or lower): the same duel, different words
-const c4eSteps = () => C4E.villain ? (C4E.stepsV || (C4E.stepsV = C4E_STEPS.neutral.map(o => o.text && C4E_NEUTRAL_V[o.text] ? Object.assign({}, o, { text: C4E_NEUTRAL_V[o.text] }) : o))) : C4E_STEPS[C4E.kind];
+const c4eSteps = () => C4E.gv ? (C4E.stepsG || (C4E.stepsG = C4E_GV())) : C4E.villain ? (C4E.stepsV || (C4E.stepsV = C4E_STEPS.neutral.map(o => o.text && C4E_NEUTRAL_V[o.text] ? Object.assign({}, o, { text: C4E_NEUTRAL_V[o.text] }) : o))) : C4E_STEPS[C4E.kind];
 const C4E_STEPS = {
   bad: [
     ...C4E_OPEN,
@@ -17039,6 +17039,153 @@ const C4E_STEPS = {
 };
 const C4E_MOLTEN = new THREE.Color(0xff6a1a);
 const C4E_CIRCLE = [[0, -2.6], [2.47, .8], [-2.47, .8], [1.53, 2.1], [-1.53, 2.1], [1.75, -1.75], [-1.75, -1.75]]; // Archamus, Hak, Vishara, Darius, you, Am-Grek and Timpur IV around him
+// ---- the good ending, as a villain lives it (CH4GOODENDINGEVIL1–17): the ring closes on Zark; Darius calls the guards and your companions
+//      hold them off; you run Zark through with your sword; the lights fail and you take the leaders one by one in the dark, slasher-style,
+//      until only Hak is left standing. Then a box (your answer to him) and Hak himself, fought in the throne room. ----
+const GV_AT = { arch: [0, -2.6, 2.75], hak: [2.47, .8, 1.85], vis: [-2.47, .8, 1.78], dar: [1.53, 2.1, 1.68], amg: [1.75, -1.75, 1.82], tim: [-1.75, -1.75, 1.86] }, GV_YOU = [-.9, 1.6];
+function C4E_GV() {
+  const u = k => { const [x, z] = GV_AT[k], d = Math.hypot(x, z) || 1; return [-x / d, -z / d]; };
+  const face = (k, r = 1.9, sd = .45) => { const [x, z, h] = GV_AT[k], [ux, uz] = u(k), px = -uz, pz = ux; return [[x + ux * (r + .5) + px * sd, h + .12, z + uz * (r + .5) + pz * sd], [x + ux * r + px * sd * .7, h, z + uz * r + pz * sd * .7], [x, h - .05, z]]; };
+  const side = (k, r = 3.4) => { const [x, z, h] = GV_AT[k], [ux, uz] = u(k), px = -uz, pz = ux; return [[x + px * (r + .6) + ux * .6, h + .7, z + pz * (r + .6) + uz * .6], [x + px * r + ux * .9, h + .4, z + pz * r + uz * .9], [x, h * .55, z]]; };
+  const H = GV_AT.hak, Y = GV_YOU, hd = [H[0] - Y[0], H[1] - Y[1]], hl = Math.hypot(hd[0], hd[1]), dx = hd[0] / hl, dz = hd[1] / hl, px = -dz, pz = dx;
+  const hakC = [[H[0] - dx * 2.1 + px * .45, 1.8, H[1] - dz * 2.1 + pz * .45], [H[0] - dx * 1.8 + px * .4, 1.76, H[1] - dz * 1.8 + pz * .4], [H[0], 1.78, H[1]]];
+  const overY = [[Y[0] - dx * 1.6 - px * .7, 2, Y[1] - dz * 1.6 - pz * .7], [Y[0] - dx * 1.3 - px * .6, 1.95, Y[1] - dz * 1.3 - pz * .6], [H[0], 1.7, H[1]]];
+  const youC = [[H[0] - dx * .8 + px * .6, 1.7, H[1] - dz * .8 + pz * .6], [H[0] - dx * 1 + px * .5, 1.65, H[1] - dz * 1 + pz * .5], [Y[0], 1.5, Y[1]]];
+  const wide = [[0, 6.5, 10], [0, 5.2, 8], [.6, .7, .8]];
+  const fear = (k, who, text) => [{ who, text, act: 'gvFear', v: k, min: 2.6, shot: face(k) }, { dur: 2, act: 'gvKill', v: k, shot: side(k) }];
+  return [
+    ...C4E_OPEN,
+    { dur: 2.4, act: 'fall', shot: [[2.4, 1.3, 3.8], [1.9, 1.2, 3.2], [0, .7, .5]] },
+    { dur: 4.4, act: 'ring', shot: [[0, 7, 13], [0, 5, 9], [0, 1, 0]] },
+    { who: 'ARCHAMUS', text: 'Wanderer. Stand down. He is beaten. He answers to the worlds he burned, not to your blade.', act: 'ring', shot: [[-3.4, 2.6, -.6], [-3, 2.7, -1.1], [0, 2.6, -2.6]] },
+    { who: 'LORD ZARK', text: 'Look at its eyes, Archamus. You did not bring a champion into my hall. You brought my replacement.', villain: true, act: 'ring', min: 3, shot: [[1.6, .9, 2.6], [1.2, 1, 2.1], [0, 1.4, .2]] },
+    { who: 'DARIUS ANCIN', text: 'Guards! Seal the doors! Wanderer, drop the sword. That is an order!', act: 'gvGuards', shot: face('dar') },
+    { dur: 3.6, act: 'gvGuards', shot: [[0, 5.2, -4.5], [0, 4.4, -2.8], [0, 1, 11]] },
+    { who: 'LORD ZARK', text: 'Go on, then. Do what I would have done. The dark will remember you kindly.', villain: true, act: 'gvRaise', min: 3.4, shot: [[-1.4, 2.4, 3.6], [-1, 2.3, 3], [0, 1.4, 0]] },
+    { who: 'LORD ZARK', text: 'Heir… at last…', villain: true, act: 'gvRun', min: 3.4, shot: [[1.9, 1.3, 1.6], [1.5, 1.2, 1.3], [0, 1.4, .5]] },
+    { dur: 2.8, act: 'gvDark', shot: [[0, 9, 8], [0, 8, 6], [0, 0, 0]] },
+    ...fear('vis', 'VISHARA ERISCONOS', 'The lights… where did they go? I can’t see them. Darius? Darius, answer me!'),
+    ...fear('amg', 'AM-GREK', 'Archamus, guide me! Archamus… why won’t you answer me?!'),
+    ...fear('tim', 'TIMPUR IV', 'No, no, no! Timpur never wronged you! We came here at your side! We came—'),
+    ...fear('dar', 'DARIUS ANCIN', 'A hundred years running from one monster… and I walked another one right into the room.'),
+    { who: 'ARCHAMUS', text: 'I pulled you out of the ice. I set you on this road. Is this… what I made?', act: 'gvFear', v: 'arch', min: 3, shot: [[-2.2, 2.4, .8], [-1.8, 2.5, .3], [0, 2.6, -2.6]] },
+    { dur: 2, act: 'gvKill', v: 'arch', shot: side('arch', 4.4) },
+    { who: 'ARCHAMUS', text: 'The light… does not… go out…', act: 'gvDying', v: 'arch', min: 3.4, shot: [[.9, 1.4, -.6], [.7, 1.5, -1], [0, 1.6, -2.4]] },
+    { dur: 3.2, act: 'gvLights', shot: wide },
+    { who: 'HAK CHOMPJAK V', text: 'Archamus. Darius. Vishara. All of them, in the time it takes to breathe.', act: 'gvHak', shot: hakC },
+    { who: 'HAK CHOMPJAK V', text: 'Look at you. Standing in their blood like it’s nothing. Like it’s warm water. You’re sick. Do you hear me? You are sick.', act: 'gvHak', shot: overY },
+    { who: 'HAK CHOMPJAK V', text: 'They fought for you. Darius put his name to yours in front of the whole Federation. Vishara sang for you on the way here. Archamus pulled you out of the ice with his own light. And you cut them down like animals.', act: 'gvHak', shot: hakC },
+    { who: 'HAK CHOMPJAK V', text: 'I told you it wasn’t time. I should have told you it was never time. I should have left you in the snow to freeze.', act: 'gvHak', shot: youC },
+    { who: 'HAK CHOMPJAK V', text: 'Zark at least had the decency to call himself a monster. You let us call you a hero. You let us hope. That’s what makes you disgusting.', act: 'gvHak', shot: overY },
+    { who: 'HAK CHOMPJAK V', text: 'Come on, then. I’m the last one standing on this floor, and I won’t go down on my knees like he did.', act: 'gvHak', shot: hakC }
+  ];
+}
+const GV_KEYS = ['vis', 'amg', 'tim', 'dar', 'arch'];
+function gvGore(x, y, z, n, sp = 3.2) { const G = C4E.gore; if (!G) return; const P = G.geometry.attributes.position.array, N = C4E.gl.length; for (let k = 0; k < n; k++) { const i = C4E.gi = (C4E.gi + 1) % N; P.set([x, y, z], i * 3); const a = Math.random() * 6.3, e = Math.random() * 1.3 - .2, s = sp * (.3 + Math.random()); C4E.gvv.set([Math.cos(a) * Math.cos(e) * s, Math.sin(e) * s + 1.2, Math.sin(a) * Math.cos(e) * s], i * 3); C4E.gl[i] = .8 + Math.random() * .8; } }
+function gvPool(x, z, s = 1) { if (!C4E.scene) return; const m = new THREE.Mesh(new THREE.CircleGeometry(1, 28), new THREE.MeshBasicMaterial({ color: 0x3a0005, transparent: true, opacity: .88, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, .016 + Math.random() * .004, z); m.scale.setScalar(.01); m.userData.to = s * (.7 + Math.random() * .3); C4E.scene.add(m); C4E.pools.push(m); }
+function gvRig(k) { return k === 'arch' ? C4E.arch : C4E.who && C4E.who[k]; }
+async function gvBuild(S, phone) { // the guards who come through the doors, the companions who stop them, your sword, the dark's red strobe, and the blood
+  C4E.gvCast = []; C4E.gvGuards = []; C4E.gvComps = []; C4E.gvDead = {}; C4E.gvFall = {}; C4E.gvZ = 0; C4E.gvGT = 0; C4E.pools = []; C4E.gvP = new THREE.Vector3(GV_YOU[0], 0, GV_YOU[1]);
+  C4E.gvStrobe = new THREE.PointLight(0xff1414, 0, 34, 1.2); C4E.gvStrobe.position.set(0, 7, 1); S.add(C4E.gvStrobe);
+  const NG = phone ? 260 : 700, gp = new Float32Array(NG * 3); for (let i = 0; i < NG; i++) gp[i * 3 + 1] = -99; C4E.gvv = new Float32Array(NG * 3); C4E.gl = new Float32Array(NG); C4E.gi = 0;
+  const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.BufferAttribute(gp, 3)); C4E.gore = new THREE.Points(gg, new THREE.PointsMaterial({ color: 0x8a0008, size: .11, transparent: true, opacity: .95, depthWrite: false })); S.add(C4E.gore);
+  try { C4E.gvSword = makeSword(); } catch (e) { C4E.gvSword = null; }
+  const gs = (phone ? [[-1.4, 15], [1.4, 15.6]] : [[-1.6, 15], [1.6, 15.4], [-3.8, 16.2], [3.8, 16.6]]);
+  const ids = C4E.preview ? CREW_CX_ORDER.filter(id => !/^(fin|lead):/.test(id) && id !== 'orion').slice(0, phone ? 2 : 3)
+    : ((wanderer && wanderer.party) || []).filter(id => PARTY[id] && !/^(fin|lead):/.test(id)).slice(0, phone ? 2 : 3);
+  const [G, Cm] = await Promise.all([Promise.race([Promise.all(gs.map(([x, z]) => hfosGuard(x, z, Math.PI, S).catch(() => null))), new Promise(r => setTimeout(() => r([]), 9000))]), Promise.race([Promise.all(ids.map(id => companionRig(id).catch(() => null))), new Promise(r => setTimeout(() => r([]), 8000))])]);
+  G.forEach((R, i) => { if (!R) return; R.root.visible = false; R.root.traverse(o => { if (o.isMesh) o.frustumCulled = false; }); C4E.gvCast.push(R); C4E.gvGuards.push({ R, from: gs[i], to: [gs[i][0] * .7, 9.6 + (i % 2) * .8], at: 1.1 + i * .65, die: 2.4 + i * .75 }); });
+  (Cm || []).forEach((R, i) => { if (!R) return; const n = Cm.length, x = (i - (n - 1) / 2) * 2.4; R.root.position.set(x, 0, 8.2); R.root.rotation.y = 0; R.root.visible = false; R.root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); S.add(R.root); C4E.gvCast.push(R); C4E.gvComps.push({ R, x }); });
+}
+function gvTick(dt, rdt, t, act) { // runs after the ring's own animation and the hall's lights: everything the villain's version changes
+  const k = C4E.actT, ez = x => x * x * (3 - 2 * x), Sx = c4eSteps()[C4E.step] || {}, v = Sx.v;
+  if (C4E.gvStepSeen !== C4E.step) { C4E.gvStepSeen = C4E.step; C4E.gvF = {}; }
+  const F = C4E.gvF, dark = ['gvDark', 'gvFear', 'gvKill', 'gvDying'].includes(act), after = act === 'gvLights' || act === 'gvHak', P = player;
+  // the guards and your companions, at the back of the hall
+  if (['gvGuards', 'gvRaise', 'gvRun'].includes(act) || C4E.gvGT > 0) { if (['gvGuards', 'gvRaise', 'gvRun'].includes(act)) C4E.gvGT += rdt; const gt = C4E.gvGT;
+    for (const C of C4E.gvComps) { C.R.root.visible = gt > .6; if (!C.R.root.visible) continue; const live = C4E.gvGuards.some(g => !g.dead && gt > g.at);
+      if (live) { if (C.R.mode !== 'attack' || (C.R.t || 0) > .9) { C.R.mode = 'attack'; C.R.t = 0; } } else C.R.mode = 'idle'; if (live && Math.random() < rdt * 2) sfx.shot(); animRig(C.R, rdt); }
+    for (const g of C4E.gvGuards) { const R = g.R, r = R.root; r.visible = gt > g.at; if (!r.visible) continue; r.rotation.order = 'YXZ';
+      if (!g.dead && gt > g.die) { g.dead = true; g.dt = 0; gvGore(r.position.x, 1.4, r.position.z, 26, 2.6); c4eBurst(r.position.x, 1.3, r.position.z, 14, 3); sfx.thud(); gvPool(r.position.x, r.position.z - .9, .7); }
+      if (g.dead) { g.dt += rdt; r.rotation.x = -1.48 * ez(clamp(g.dt / .55, 0, 1)); r.position.y = .12 * ez(clamp(g.dt / .55, 0, 1)); R.mode = 'idle'; animRig(R, 0); continue; }
+      const uu = ez(clamp((gt - g.at) / 1.4, 0, 1)); r.position.set(g.from[0] + (g.to[0] - g.from[0]) * uu, 0, g.from[1] + (g.to[1] - g.from[1]) * uu); r.rotation.y = Math.PI; R.mode = uu < 1 ? 'walk' : 'attack'; animRig(R, rdt);
+      if (uu >= 1 && Math.random() < rdt * 3) { sfx.shot(); c4eBurst(r.position.x, 1.4, r.position.z - .6, 4, 2); } } }
+  // Lord Zark: run through, and down on his face
+  const Z = C4E.zark; if (Z) { const r = Z.root; r.rotation.order = 'YXZ';
+    if (act === 'gvRun' && k > .55 && !F.stab) { F.stab = 1; C4E.flashA = .8; C4E.flashC = '#6a0000'; C4E.shake = 1.2; sfx.thud(); sfx.boom(.6); sfx.swing(); gvGore(0, 1.9, .5, 90, 4.2); gvPool(0, .9, 1.3); C4E.slow = .35; setTimeout(() => { if (C4E.on) C4E.slow = 1; }, 900); }
+    if (act === 'gvRun' && F.stab) C4E.gvZ = Math.min(1, C4E.gvZ + rdt / 2.6);
+    if (C4E.gvZ > 0) { const f = ez(C4E.gvZ); r.rotation.x = .88 + (1.5 - .88) * f; r.position.y = -.97 + f * 1.05; if (Z.head) Z.head.rotation.x = .5 - f * .4; if (Math.random() < rdt * 3 * (1 - f)) gvGore((Math.random() - .5) * .6, 1.2, .8, 4, 1.4); } }
+  // the leaders
+  const alive = GV_KEYS.concat('hak').filter(q => !C4E.gvDead[q] && gvRig(q));
+  for (const q of GV_KEYS.concat('hak')) { const R = gvRig(q); if (!R) continue; const r = R.root, [x, z] = GV_AT[q]; r.rotation.order = 'YXZ'; r.position.set(x, r.position.y, z);
+    const toC = Math.atan2(-x, -z), toY = Math.atan2(C4E.gvP.x - x, C4E.gvP.z - z);
+    if (C4E.gvDead[q]) { const f = ez(clamp(C4E.gvFall[q] = (C4E.gvFall[q] || 0) + rdt / .6, 0, 1));
+      if (q === 'arch' && !C4E.gvArchDown) { r.rotation.x = .35 * f; r.position.y = -.9 * f; if (C4E.archGlow) C4E.archGlow.material.opacity = act === 'gvDying' ? Math.max(0, .45 * (1 - k / 3.4)) : .45; }
+      else if (q === 'arch') { const g = ez(clamp(C4E.gvArchT = (C4E.gvArchT || 0) + rdt / .9, 0, 1)); r.rotation.x = .35 + 1.15 * g; r.position.y = -.9 + 1.02 * g; if (C4E.archGlow) C4E.archGlow.material.opacity = 0; }
+      else { r.rotation.x = 1.5 * f; r.position.y = .1 * f; }
+      if (R.head) R.head.rotation.x = .2; R.mode = 'idle'; continue; }
+    if (dark || after) { // in the dark: turning, looking for you
+      const pan = act === 'gvFear' && v === q ? 1 : .35;
+      r.rotation.y = after && q === 'hak' ? angLerp(r.rotation.y, toY, Math.min(1, rdt * 3)) : q === 'arch' && act === 'gvFear' && v === 'arch' ? toY : toC + Math.sin(t * (1.3 + GV_KEYS.indexOf(q) * .17) + x) * .9 * pan;
+      if (R.head) { R.head.rotation.x = -.06; R.head.rotation.y = q === 'arch' && v === 'arch' ? 0 : Math.sin(t * 2.1 + z) * .45 * pan; } r.rotation.x = 0; r.position.y = 0; }
+    else if (act === 'gvGuards' || act === 'gvRaise' || act === 'gvRun') { if (R.head) R.head.rotation.x = .1; } }
+  if (act === 'gvKill' && v && !F.cut) { F.cut = 1; C4E.blackT = .32; }
+  if (act === 'gvKill' && v && k > .66 && !F.kill) { F.kill = 1; const [x, z, hh] = GV_AT[v]; C4E.gvDead[v] = true; C4E.gvFall[v] = 0; C4E.flashA = .7; C4E.flashC = '#5a0000'; C4E.shake = 1; sfx.swing(); sfx.thud(); sfx.scream(1.1, .28, v === 'arch' ? 150 : 260 + Math.random() * 160); gvGore(x, hh * .7, z, 70, 3.4); gvPool(x - x * .25, z - z * .25, v === 'arch' ? 1.4 : 1); }
+  if (act === 'gvLights' && !C4E.gvArchDown) { C4E.gvArchDown = true; C4E.gvArchT = 0; sfx.thud(); }
+  // you
+  const S = C4E.gvSword, sock = rig.ra ? handSocket(rig.ra) : null; if (S && sock && S.parent !== sock && (['gvRaise', 'gvRun', 'gvKill', 'gvFear', 'gvDying', 'gvLights', 'gvHak'].includes(act))) sock.add(S);
+  const Yp = C4E.gvP; let vis = true;
+  if (act === 'gvRaise' && !F.from) { F.from = 1; if (C4E.youP) Yp.set(C4E.youP.x, 0, C4E.youP.z); }
+  if (act === 'gvRaise') { const tx = 0, tz = 1.3, dx = tx - Yp.x, dz = tz - Yp.z, d = Math.hypot(dx, dz); if (d > .05) { const st = Math.min(d, 1.1 * rdt), ph = t * 6; Yp.x += dx / d * st; Yp.z += dz / d * st; rig.rl.rotation.x = -Math.sin(ph) * .5; rig.ll.rotation.x = Math.sin(ph) * .5; }
+    P.rotation.y = Math.atan2(-Yp.x, -Yp.z); rig.ra.rotation.x = -2.9 * ez(clamp((k - 1.2) / 1.2, 0, 1)); rig.la.rotation.x = -.4; }
+  else if (act === 'gvRun') { P.rotation.y = Math.PI; Yp.set(0, 0, 1.3 - .35 * ez(clamp((k - .4) / .2, 0, 1))); rig.ra.rotation.x = k < .5 ? -2.9 : -1.45; rig.la.rotation.x = -.9; rig.rl.rotation.x = -.5; rig.ll.rotation.x = .3; }
+  else if (act === 'gvDark' || act === 'gvFear') { vis = act === 'gvFear' && v === 'arch';
+    if (vis) { const [x, z] = GV_AT.arch, d = Math.hypot(x, z) || 1; Yp.set(x - x / d * 2.7 + .9, 0, z - z / d * 2.7); P.rotation.y = Math.atan2(x - Yp.x, z - Yp.z); rig.ra.rotation.x = .25; } }
+  else if (act === 'gvKill' && v) { const [x, z] = GV_AT[v], d = Math.hypot(x, z) || 1, ux = -x / d, uz = -z / d, front = v === 'arch';
+    const back = front ? 1.5 : 1.05; Yp.set(x + ux * back * (front ? 1 : -1), 0, z + uz * back * (front ? 1 : -1)); if (front && k < .66) { Yp.x += ux * (1 - k / .66) * 1.2; Yp.z += uz * (1 - k / .66) * 1.2; }
+    P.rotation.y = Math.atan2(x - Yp.x, z - Yp.z); vis = k > .3; rig.ra.rotation.x = k < .66 ? -2.9 * ez(clamp((k - .3) / .3, 0, 1)) : -2.9 + Math.min(1, (k - .66) / .12) * 3.3; rig.la.rotation.x = -.5; rig.rl.rotation.x = .5; rig.ll.rotation.x = -.4; }
+  else if (act === 'gvDying') { const [x, z] = GV_AT.arch, d = Math.hypot(x, z) || 1; Yp.set(x - x / d * 1.4, 0, z - z / d * 1.4); P.rotation.y = Math.atan2(x - Yp.x, z - Yp.z); rig.ra.rotation.x = .3; }
+  else if (after) { const dx = GV_YOU[0] - Yp.x, dz = GV_YOU[1] - Yp.z, d = Math.hypot(dx, dz); if (d > .05 && act === 'gvLights') { const st = Math.min(d, 1.3 * rdt), ph = t * 6; Yp.x += dx / d * st; Yp.z += dz / d * st; P.rotation.y = Math.atan2(dx, dz); rig.rl.rotation.x = -Math.sin(ph) * .5; rig.ll.rotation.x = Math.sin(ph) * .5; }
+    else { Yp.x = d > .05 ? Yp.x : GV_YOU[0]; Yp.z = d > .05 ? Yp.z : GV_YOU[1]; const [hx, hz] = GV_AT.hak; P.rotation.y = angLerp(P.rotation.y, Math.atan2(hx - Yp.x, hz - Yp.z), Math.min(1, rdt * 3)); } rig.ra.rotation.x = .2; }
+  if (['gvRaise', 'gvRun', 'gvDark', 'gvFear', 'gvKill', 'gvDying', 'gvLights', 'gvHak'].includes(act)) { P.position.set(Yp.x, 0, Yp.z); P.visible = vis; }
+  // the light: the ring's light dimmed for this version; then the dark (a failing red strobe, Archamus's own glow the only steady light); then the fires again, low and red
+  if (dark) { C4E.fill.intensity = 0; C4E.fillH.intensity = 0; C4E.hemi.intensity = .16; C4E.key.intensity = .12; for (const Fi of C4E.fires) { Fi.L.intensity = 0; Fi.g.material.opacity = 0; }
+    C4E.gvStrobe.intensity = Math.random() < .1 ? 0 : (act === 'gvKill' ? 60 : 22) + Math.random() * 26; C4E.vig.style.opacity = '.6';
+    if (act === 'gvFear' && Math.random() < rdt * .5 && C4E.blackT <= 0) C4E.blackT = .06; if ((C4E.gvHb = (C4E.gvHb || 0) + rdt) > .8) { C4E.gvHb = 0; sfx.heart(.55); } sfx.drone(.55);
+    renderer.domElement.style.filter = 'contrast(1.4) saturate(.55) brightness(.95)'; }
+  else if (after) { C4E.fill.intensity = 0; C4E.fillH.intensity = 0; C4E.hemi.intensity = .5; C4E.key.intensity = .45; C4E.gvStrobe.intensity = 6; for (const Fi of C4E.fires) { Fi.L.intensity *= .6; Fi.g.material.opacity *= .7; } C4E.vig.style.opacity = '.35'; sfx.drone(.4); renderer.domElement.style.filter = 'contrast(1.25) saturate(.7) brightness(.92)'; }
+  else { C4E.fill.intensity *= .45; C4E.fillH.intensity *= .45; C4E.gvStrobe.intensity = 0; if (act === 'gvRun' && F.stab) renderer.domElement.style.filter = 'contrast(1.3) saturate(.8) brightness(.95)'; }
+  // the blood
+  { const B = C4E.gore.geometry.attributes.position.array; for (let i = 0; i < C4E.gl.length; i++) { if (C4E.gl[i] <= 0) continue; C4E.gl[i] -= dt; C4E.gvv[i * 3 + 1] -= 6 * dt; for (let a = 0; a < 3; a++) B[i * 3 + a] += C4E.gvv[i * 3 + a] * dt; if (B[i * 3 + 1] < .02) { B[i * 3 + 1] = .02; C4E.gvv[i * 3] *= .2; C4E.gvv[i * 3 + 2] *= .2; C4E.gvv[i * 3 + 1] = 0; } if (C4E.gl[i] <= 0) B[i * 3 + 1] = -99; } C4E.gore.geometry.attributes.position.needsUpdate = true; }
+  for (const m of C4E.pools) { const s = m.scale.x + (m.userData.to - m.scale.x) * Math.min(1, rdt * .6); m.scale.setScalar(s); }
+}
+function gvCue(act) {
+  if (act === 'gvGuards' && !C4E.gvGuardCue) { C4E.gvGuardCue = true; setTimeout(() => { if (C4E.on) { sfx.thud(); sfx.boom(.5); } }, 1000); }
+  if (act === 'gvDark') { sfx.stopSong(.6); sfx.boom(.9); sfx.thud(); C4E.blackT = .7; C4E.shake = .6; }
+  if (act === 'gvLights') { sfx.thud(); }
+  if (act === 'gvHak' && !C4E.gvHakCue) { C4E.gvHakCue = true; }
+}
+function gvBox() { // the end of the scene: your answer to Hak, in a box, over the throne room as it stands
+  const fd = $('#fade'); if (+fd.style.opacity > 0) { // skipped: straight to Hak, alone among them
+    for (const q of GV_KEYS) { C4E.gvDead[q] = true; C4E.gvFall[q] = 1; } C4E.gvArchDown = true; C4E.gvArchT = 1; C4E.gvZ = 1; C4E.gvGT = 99; C4E.act = 'gvHak'; C4E.actT = 9; C4E.gvP.set(GV_YOU[0], 0, GV_YOU[1]);
+    const st = c4eSteps(); C4E.step = st.length - 1; C4E.shot = st[st.length - 1].shot; C4E.shotT = C4E.t - 9; fd.style.transition = 'opacity .8s'; fd.style.opacity = 0; }
+  C4E.gvHold = true; hwmSubHide();
+  setTimeout(() => { if (!C4E.on) return; openChoice('HAK CHOMPJAK V', [{ text: '“You of ALL PEOPLE should keep your mouth shut, SEVIRRUS.”', onPick: gvFight }], 'YOUR REPLY'); }, 600);
+}
+function gvFight() {
+  C4E.gvHold = false; const prev = C4E.preview, fd = $('#fade'); sfx.thud(); C4E.flashA = .6; C4E.flashC = '#5a0000'; C4E.shake = .8;
+  setTimeout(() => { fd.style.transition = 'opacity 1s'; fd.style.opacity = 1; }, 700);
+  if (prev) { notice('Preview', tiPhone() ? 'HAK’S FIGHT PLAYS IN THE GAME' : 'THE FIGHT WITH HAK PLAYS IN THE GAME, IN THE THRONE ROOM', 3400); setTimeout(() => { c4eEnd(); if (cutDone()) return; location.href = location.pathname; }, 3600); return; }
+  setTimeout(() => { c4eEnd(); try { finLeadsLeave(); } catch (e) {} bstSave({ gvSlain: true, hakDuel: true }); gvHakGo(); }, 1900);
+}
+function gvHakGo() { // Hak, the last of them, in the throne room (lv 62)
+  if (typeof BST !== 'undefined' && BST.in && BST.floor === BST_FLOORS - 1) { if (BST.bosses && BST.bosses.length) bstBossClear(); BST.bosses = []; BST.bossF = BST_FLOORS - 1; BST.bossQ = []; BST.gvHak = true; bstBossSpawn('hak'); }
+  else gvFinish();
+}
+function gvFinish() { // Hak falls: the good ending, as a villain wins it
+  const fd = $('#fade'); fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 1; notice('Chapter IV · the good ending', tiPhone() ? 'NO ONE LEFT TO STOP YOU' : 'THE CATHARSIS FALLS · NO ONE IS LEFT TO STOP YOU', 3800);
+  setTimeout(() => { wanderer.ch4 = Object.assign({}, wanderer.ch4, { ending: 'good', goodVillain: true, hakDuel: false }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); try { renderTasks(); } catch (e) {} fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 0; }, 4000);
+}
 function c4eBlackArmour(R) { // Orion in Terra Imperia's black: every plate, cloth and strap black, the trim and lights crimson; his face, eyes and hair his own
   const keep = /face|jaw|nose|neck|ear|eye|iris|pupil|glint|brow|lip|teeth|tongue|mouth|nostril|hair|beard|moustache|sideburn/i, glow = /rivet|terminal|lens|lining|abdominal|insignia|indicator|clasp/i;
   R.root.traverse(o => { if (!o.isMesh || !o.material) return; const nm = (o.material.name || o.name || '');
@@ -17493,7 +17640,7 @@ async function c4eBuild(kind) {
     Object.keys(R).filter(k => /^tr/.test(k)).forEach((k, i) => { const row = i % 2, col = Math.floor(i / 2), x = (col - 1.5) * 2.4 + (row ? 1.2 : 0) + (col >= 2 ? 1.6 : -1.6), z = 13.5 + row * 2.2, r = add(R[k], x, z, Math.PI); if (r) C4E.watch.push(r); });
     Object.keys(R).filter(k => /^cq/.test(k)).forEach((k, i) => { const x = (i % 3 - 1) * 3.4 + (i % 3 === 1 ? 0 : Math.sign(i % 3 - 1) * 2.4), z = -9.5 - Math.floor(i / 3) * 2.8, r = add(R[k], x, z, 0); if (r) C4E.watch.push(r); });
     c4dBuild(S, phone); }
-  if (kind === 'good') { C4E.arch && Object.assign(C4E.arch.root.position, { x: 0, z: -2.6 }); [R.hak, R.vis, R.dar, R.amg, R.tim].forEach((Q, i) => { const [x, z] = C4E_CIRCLE[i < 3 ? i + 1 : i + 2], from = [x * 5, z * 5]; const r = add(Q, from[0], from[1], 0); if (r) { r.root.visible = false; r.from = from; r.to = [x, z]; C4E.ring.push(r); } }); }
+  if (kind === 'good') { C4E.who = {}; C4E.arch && Object.assign(C4E.arch.root.position, { x: 0, z: -2.6 }); [R.hak, R.vis, R.dar, R.amg, R.tim].forEach((Q, i) => { const [x, z] = C4E_CIRCLE[i < 3 ? i + 1 : i + 2], from = [x * 5, z * 5]; const r = add(Q, from[0], from[1], 0); if (r) { r.root.visible = false; r.from = from; r.to = [x, z]; C4E.ring.push(r); C4E.who[['hak', 'vis', 'dar', 'amg', 'tim'][i]] = r; } }); if (C4E.gv) await gvBuild(S, phone); }
   if ((kind === 'good' || kind === 'neutral') && !C4E.preview && typeof residents !== 'undefined' && residents.length) { // your residents came for the siege: they stand at the back of the hall (never in the bad ending)
     const pick = [...RES.bots.map(B => B.c), ...residents].filter((c, i, a) => c && a.indexOf(c) === i).slice(0, phone ? 3 : 6), at = [[-4.4, 10], [4.4, 10], [-2.1, 11.4], [2.1, 11.4], [-6.6, 11.8], [6.6, 11.8]];
     const ms = []; for (const c of pick) ms.push(await resModel(c).catch(() => null)); // one at a time: each borrows your look to build itself
@@ -17507,11 +17654,11 @@ async function c4eBuild(kind) {
 }
 async function ch4EndingPlay(kind, opts = {}) {
   kind = kind || ch4Ending(); if (!C4E_STEPS[kind] || C4E.on) return false;
-  Object.assign(C4E, { on: true, kind, preview: !!opts.preview, onDone: opts.onDone || null, phase: 'load', from: state, villain: kind === 'neutral' && (opts.villain != null ? !!opts.villain : (() => { try { return wAlign() === 'villain'; } catch (e) { return false; } })()) }); // the neutral ending has two voices: the hero's and neutral (the first), and the villain's
+  Object.assign(C4E, { on: true, kind, preview: !!opts.preview, onDone: opts.onDone || null, phase: 'load', from: state, villain: (kind === 'neutral' || kind === 'good') && (opts.villain != null ? !!opts.villain : (() => { try { return wAlign() === 'villain'; } catch (e) { return false; } })()) }); C4E.gv = kind === 'good' && C4E.villain; // the good ending as a villain lives it: the slaughter in the throne room, then Hak // the neutral ending has two voices: the hero's and neutral (the first), and the villain's
   state = 'c4End'; ex.keys.clear(); vel.set(0, 0, 0); if (ex.dlg) closeDialog(); show(ui.title, false);
   const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.thud(); sfx.drone(.4); if (sfx.leadOn) { sfx.leadOn = false; sfx.stopSong(.8); }
   hwmBarsMake();
-  const voPack = C4E.villain ? 'c4eNeutralVillainVoices' : 'c4e' + kind[0].toUpperCase() + kind.slice(1) + 'Voices'; // (neutral: CH4NEUTRALENDINGGOODORNEUTRAL1–8 · the villain's neutral: CH4NEUTRALENDINGEVIL1–8) // CH4GOOD1…, CH4NEUTRAL1…, CH4BAD1…, one per spoken line in order
+  const voPack = C4E.gv ? 'c4eGoodVillainVoices' : C4E.villain ? 'c4eNeutralVillainVoices' : 'c4e' + kind[0].toUpperCase() + kind.slice(1) + 'Voices'; // (neutral: CH4NEUTRALENDINGGOODORNEUTRAL1–8 · the villain's neutral: CH4NEUTRALENDINGEVIL1–8) // CH4GOOD1…, CH4NEUTRAL1…, CH4BAD1…, one per spoken line in order
   const voP = loadDataScript(voPack).then(ok => ok ? sfx.loadClips(voPack) : []).catch(() => []);
   try { await c4eBuild(kind); } catch (e) { console.error(e); c4eEnd(true); return false; }
   C4E.clips = await Promise.race([voP, new Promise(r => setTimeout(() => r([]), 4000))]) || []; C4E.line = 0;
@@ -17541,7 +17688,7 @@ function c4eTick(dt) {
     } else { C4E.ending = true; hwmSubHide(); c4eOutcome(); return; }
   }
   if (!C4E.scene) return;
-  C4E.actT += rdt; const k = C4E.actT, act = C4E.act, Z = C4E.zark, ez = x => x * x * (3 - 2 * x);
+  C4E.actT += rdt; const gact = C4E.act, k = C4E.actT, act = C4E.gv && /^gv/.test(gact || '') ? 'ring' : gact, Z = C4E.zark, ez = x => x * x * (3 - 2 * x);
   // Lord Zark: on one knee, then (bad) the blow, the light tearing out of him, and nothing but embers; (good, neutral) down on his hands
   const N = C4E.kind === 'neutral' || C4E.kind === 'tared', NP = N && !(act === 'hall' || act === 'kneel');
   if (Z && !NP) { Z.mode = 'idle'; animRig(Z, dt); const r = Z.root;
@@ -17616,6 +17763,7 @@ function c4eTick(dt) {
   const hbRate = choking ? (act === 'dead' ? 99 : .32 + dark * 1.1) : act === 'still' ? .9 : 1.6; if ((C4E.hb = (C4E.hb || 0) + rdt) > hbRate) { C4E.hb = 0; if (choking || act === 'still') sfx.heart(choking ? .6 + dark * .4 : .4); }
   renderer.domElement.style.filter = choking ? `contrast(${1.25 + dark * .3}) saturate(${Math.max(0, .75 - dark * .75)}) brightness(${Math.max(.38, .95 - dark * .6)})${tiPhone() ? '' : ` blur(${(dark * 1.6).toFixed(2)}px)`}` : act === 'burn' ? `contrast(1.3) saturate(1.2) brightness(${1 + Math.random() * .15})` : act === 'still' ? 'contrast(1.1) saturate(.35) brightness(.85)' : act === 'orion' || act === 'close' ? 'contrast(1.25) saturate(.5) brightness(.85)' : (C4E.kind === 'neutral' && (act === 'beam' || act === 'pierce') || C4E.kind === 'tared' && (act === 'tpierce' || act === 'tbeam' && C4E.actT > 3.1)) ? `contrast(1.24) saturate(1.12) brightness(${(1 + Math.random() * .08).toFixed(3)})` : C4E.kind === 'tared' ? 'contrast(1.2) saturate(.72) brightness(.86) hue-rotate(-6deg)' : C4E.kind === 'neutral' ? 'contrast(1.14) saturate(1.02) brightness(.98)' : C4E.filt;
   sfx.drone(act === 'still' || act === 'dead' ? 0 : choking ? .7 : .35);
+  if (C4E.gv) gvTick(dt, rdt, t, gact);
   // the camera along its shot; slow motion on the leap; a hard shake as he dies; handheld and close while you choke
   const sh = C4E.shot; if (sh) { const kk = smooth(0, Math.max(2.4, C4E.shotDur || 6), t - C4E.shotT), from = new THREE.Vector3().fromArray(sh[0]), to = new THREE.Vector3().fromArray(sh[1]);
     C4E.shake = Math.max(act === 'burn' ? .5 : choking ? .12 + dark * .1 : 0, (C4E.shake || 0) - rdt * 1.2); const s = .01 + C4E.shake * .2;
@@ -17627,6 +17775,7 @@ function c4eTick(dt) {
   renderer.render(C4E.scene, camera);
 }
 function c4eCue(act) { // the moment each beat begins
+  if (C4E.gv && /^gv/.test(act || '')) { gvCue(act); return; }
   if (act === 'kneel') { sfx.thud(); }
   if (act === 'charge') { sfx.boom(.4); }
   if (act === 'strike') { C4E.slow = .22; setTimeout(() => { if (!C4E.on) return; C4E.slow = 1; C4E.flashA = 1; C4E.flashC = '#fff'; C4E.shake = 1.6; sfx.boom(1.4); sfx.thud(); c4eRing(.3, 0xffd0a0); c4eRing(2.4, 0xff6a2a); c4eBurst(0, 2.6, .2, 160, 9); }, 1900); }
@@ -17641,11 +17790,12 @@ function c4eCue(act) { // the moment each beat begins
     if (act === 'tbeam') setTimeout(() => { if (C4E.on && C4E.act === 'tbeam') { sfx.stopSong(.4); setTimeout(() => { if (C4E.on) leaderPlay('lightEgg').catch(() => null); }, 300); } }, 3000); // only once the light comes down
   }
   if (act === 'arch') { C4E.archT = 0; if (C4E.kind !== 'neutral') { sfx.stopSong(2); setTimeout(() => { if (C4E.on) leaderPlay('primeGood').catch(() => null); }, 1200); } sfx.chime(); } // the neutral duel's Prime Good is already playing
-  if (act === 'ring' && !C4E.ringStarted) { C4E.ringStarted = true; C4E.archT = 0; C4E.ringT = 0; sfx.stopSong(2); setTimeout(() => { if (C4E.on) leaderPlay('primeGood').catch(() => null); }, 900); }
+  if (act === 'ring' && !C4E.ringStarted) { C4E.ringStarted = true; C4E.archT = 0; C4E.ringT = 0; if (!C4E.gv) { sfx.stopSong(2); setTimeout(() => { if (C4E.on) leaderPlay('primeGood').catch(() => null); }, 900); } } // the villain's version keeps the Final Boss theme until the lights go out
 }
 function c4eSkip() { if (!C4E.on || C4E.ending) return; C4E.ending = true; hwmSubHide(); const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(c4eOutcome, 450); }
 function c4eOutcome() { // what each ending leaves behind
   const kind = C4E.kind, prev = C4E.preview;
+  if (C4E.gv) { gvBox(); return; } // the villain's good ending: your answer to Hak, then the fight
   if (kind === 'bad') { c4eGameOver(); return; }
   if (kind === 'tared') { c4eEnd(true); renderer.domElement.style.filter = ''; { const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0; } if (prev) { if (cutDone()) return; location.href = location.pathname; return; } state = 'nightmare'; nmWake(); return; } // the nightmare ends: Orion and Nico bring you back
   const fd = $('#fade'); fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 1;
@@ -17678,22 +17828,23 @@ function c4eEnd(keepBlack) {
   if (C4E.saveCam) { camera.near = C4E.saveCam.near; camera.far = C4E.saveCam.far; camera.fov = C4E.saveCam.fov; camera.updateProjectionMatrix(); }
   renderer.domElement.style.filter = ''; if (HWM.bars) HWM.bars.classList.remove('on'); ui.xhud.classList.remove('cutting');
   if (C4E.you) { const Y = C4E.you; (Y.parent || wScene).add(player); player.position.copy(Y.pos); player.rotation.y = Y.rot; inner.rotation.copy(Y.inner); player.visible = Y.vis; resetRig(); }
-  if (C4E.scene) { for (const R of [C4E.zark, C4E.orion, C4E.arch, ...(C4E.ring || []), ...(C4E.watch || [])]) if (R && R.root.parent) R.root.parent.remove(R.root); try { disposeOwned(C4E.scene); } catch (e) {} }
-  Object.assign(C4E, { scene: null, zark: null, orion: null, arch: null, ring: [], watch: [], bolts: [], ward: null, boltQ: 0, wardF: 0, wardOn: 0, afterMus: false, sparks: null, trails: [], pend: null, pend2: null, beamOn: 0, charge: 0, lookN: null, slow: 1, stop: 0, slowT: 0, flinch: 0, rings: [], you: null, youP: null, fillL: 0, ending: false, step: -1, ringStarted: false, archT: 0, ringT: 0 });
+  if (C4E.gvSword && C4E.gvSword.parent) C4E.gvSword.parent.remove(C4E.gvSword); if (C4E.gvHold && ex.dlg) closeDialog();
+  if (C4E.scene) { for (const R of [C4E.zark, C4E.orion, C4E.arch, ...(C4E.ring || []), ...(C4E.watch || []), ...(C4E.gvCast || [])]) if (R && R.root.parent) { R.root.parent.remove(R.root); R.root.rotation.x = 0; } try { disposeOwned(C4E.scene); } catch (e) {} }
+  Object.assign(C4E, { scene: null, zark: null, orion: null, arch: null, ring: [], watch: [], bolts: [], ward: null, boltQ: 0, wardF: 0, wardOn: 0, afterMus: false, sparks: null, trails: [], pend: null, pend2: null, beamOn: 0, charge: 0, lookN: null, slow: 1, stop: 0, slowT: 0, flinch: 0, rings: [], you: null, youP: null, fillL: 0, ending: false, step: -1, ringStarted: false, archT: 0, ringT: 0, gv: false, gvHold: false, gvCast: [], gvGuards: [], gvComps: [], gvDead: {}, gvFall: {}, gvZ: 0, gvGT: 0, gvP: null, gvSword: null, gvStepSeen: -1, gvArchDown: false, gvArchT: 0, gvGuardCue: false, gvHakCue: false, pools: [], gore: null, who: null, stepsG: null });
   if (!keepBlack) { state = C4E.from === 'title' ? 'title' : 'explore'; ex.snap = true; clock.getDelta(); const fd = $('#fade'); fd.style.transition = 'opacity .8s'; fd.style.opacity = 0; }
 }
 // ?ending=good|neutral|bad|tared: watch an ending (or the Taredesiban nightmare) from the title screen (tap or press a key once the menu is up; nothing is saved or erased)
 // ?ending=amgrek: waking on Archiostal (Am-Grek) · ?ending=timeskip: the two years while you slept (the Catharsis takes the galaxy, Chapter IV)
 // ?ending=oilkoumene: the Oilkoumene nightmare (The Fall of Obra-Spira) · ?ending=oilkdream: the Oilkoumene dream on the ice (Tyrotaronus, as ????)
 // Both play through the Cutscenes player and come back to the title: nothing is saved, and no wanderer is needed.
-{ const m = location.search.match(/[?&]ending=(good|neutralvillain|neutral|bad|tared|oilkoumene|oilkdream|timeskip|amgrek)/); // neutralvillain: the neutral ending, as a villain hears it // tared: the Taredesiban nightmare
+{ const m = location.search.match(/[?&]ending=(goodvillain|good|neutralvillain|neutral|bad|tared|oilkoumene|oilkdream|timeskip|amgrek)/); // goodvillain: the good ending, as a villain lives it // neutralvillain: the neutral ending, as a villain hears it // tared: the Taredesiban nightmare
   const OILK = { oilkoumene: { id: 'nightmare', play: () => cutNightmare('oilkoumene') },
     amgrek: { id: 'amgWake', play: () => amgWake({ replay: true }) },
     timeskip: { id: 'timeSkip', play: () => skipNarrStart(() => cutDone(), { replay: true }) },
     oilkdream: { id: 'oilkDream', play: () => { startDream(() => { const b = $('#blackout'); b.style.transition = ''; b.style.opacity = ''; b.classList.remove('on'); cutDone(); }, { sp: 'oilkoumene' }); } } };
-  if (m) { const go = () => { if (state !== 'title' || C4E.on || CUT.on) return; removeEventListener('pointerdown', go); removeEventListener('keydown', go); sfx.init && sfx.init(); if (OILK[m[1]]) cutPlay(OILK[m[1]]); else if (m[1] === 'neutralvillain') ch4EndingPlay('neutral', { preview: true, villain: true }); else ch4EndingPlay(m[1], { preview: true, villain: m[1] === 'neutral' ? false : undefined }); };
+  if (m) { const go = () => { if (state !== 'title' || C4E.on || CUT.on) return; removeEventListener('pointerdown', go); removeEventListener('keydown', go); sfx.init && sfx.init(); if (OILK[m[1]]) cutPlay(OILK[m[1]]); else if (m[1] === 'neutralvillain') ch4EndingPlay('neutral', { preview: true, villain: true }); else if (m[1] === 'goodvillain') ch4EndingPlay('good', { preview: true, villain: true }); else ch4EndingPlay(m[1], { preview: true, villain: m[1] === 'neutral' || m[1] === 'good' ? false : undefined }); };
   addEventListener('pointerdown', go); addEventListener('keydown', go);
-  const hint = () => { if (state === 'title') notice('Preview', m[1] === 'tared' ? 'TAP TO PLAY THE TAREDESIBAN NIGHTMARE' : m[1] === 'oilkoumene' ? 'TAP TO PLAY THE OILKOUMENE NIGHTMARE' : m[1] === 'oilkdream' ? 'TAP TO PLAY THE OILKOUMENE DREAM' : m[1] === 'timeskip' ? 'TAP TO PLAY THE TWO YEARS WHILE YOU SLEPT' : m[1] === 'amgrek' ? 'TAP TO PLAY THE LAST GARDEN' : `TAP TO PLAY THE ${m[1].toUpperCase()} ENDING`, 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500); } }
+  const hint = () => { if (state === 'title') notice('Preview', m[1] === 'tared' ? 'TAP TO PLAY THE TAREDESIBAN NIGHTMARE' : m[1] === 'oilkoumene' ? 'TAP TO PLAY THE OILKOUMENE NIGHTMARE' : m[1] === 'oilkdream' ? 'TAP TO PLAY THE OILKOUMENE DREAM' : m[1] === 'timeskip' ? 'TAP TO PLAY THE TWO YEARS WHILE YOU SLEPT' : m[1] === 'amgrek' ? 'TAP TO PLAY THE LAST GARDEN' : `TAP TO PLAY THE ${m[1].replace(/villain$/, ' (VILLAIN)').toUpperCase()} ENDING`, 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500); } }
 
 // ?finalboss=good|neutral|neutraloriondead|bad: watch the arrival at Sagittarius A* from the title screen (tap or press a key once the menu is
 // up): Zark's flight out of the black hole (with the Catharsis Orion beside him for neutraloriondead), Orion's call on bad, then the crew's
@@ -21150,7 +21301,7 @@ function caraxFinal() {
 function caraxThrone() { // the doors of the throne room, at the top of the Bastion
   if (!sgraLock() || state !== 'explore' || ex.dlg) return;
   sfx.thud(); openChoice('THE FINAL BATTLE', [
-    { text: tiPhone() ? 'Storm the throne room' : 'Storm the throne room · face Lord Zark, lv 60 (there is no coming back from this)', onPick: () => { if ((wanderer.ch4 || {}).zarkDown) ch4EndingPlay(ch4Ending() || 'neutral').catch(e => console.error(e)); else { sfx.thud(); notice('The throne room', 'THE DOORS OPEN', 2200); setTimeout(() => bstBossGo(4), 1600); } } },
+    { text: tiPhone() ? 'Storm the throne room' : 'Storm the throne room · face Lord Zark, lv 60 (there is no coming back from this)', onPick: () => { const c4 = wanderer.ch4 || {}; if (c4.zarkDown && c4.hakDuel && !c4.ending) { openChoice('HAK CHOMPJAK V', [{ text: '“You of ALL PEOPLE should keep your mouth shut, SEVIRRUS.”', onPick: () => { sfx.thud(); setTimeout(gvHakGo, 600); } }], 'YOUR REPLY'); return; } if (c4.zarkDown) ch4EndingPlay(ch4Ending() || 'neutral').catch(e => console.error(e)); else { sfx.thud(); notice('The throne room', 'THE DOORS OPEN', 2200); setTimeout(() => bstBossGo(4), 1600); } } },
     { text: tiPhone() ? 'Not yet' : 'Not yet · get ready first (come back to these doors when you are)', onPick: () => lootMsg(tiPhone() ? 'Come back to the doors when you’re ready' : 'You can’t leave Sagittarius A* · come back to these doors when you’re ready to face Zark', '#ff8f86') }]);}
 function galWarp(id) {
   const S = sysById(id), cost = warpCost(curSys(), S); if (S.id === 'sgra' && sgraDue() && !caraxReady()) { spaceMsg(tiPhone() ? 'Not yet · see Hak in Alphinos' : 'Not yet · meet Hak Chompjak and the leaders in Alphinos before Carax'); return; }
@@ -25467,6 +25618,8 @@ const BST_BOSS = {
   ori: () => ({ key: 'bst:ori', boss: 'Orion', full: 'Orion Mascar, of the Catharsis', lv: 57, hp: 15500, theme: 'final', load: () => glbRig('orionCath', 2.6, 'none', true),
     core: ['blink', 'spiral', 'volley', 'charge'], p2: ['pools', 'sweep'], sig: 'nova', seq: ['blink', 'volley', 'spiral', 'charge', 'blink'],
     lines: { intro: 'You shot me out of the sky. They put me back together. Wrong.', p2: 'I was better than this once. So were you.', p3: 'NOTHING LEFT TO LOSE!', win: 'Finally… it’s quiet…' } }),
+  hak: () => Object.assign({}, leadSpec('hak'), { key: 'bst:hak', boss: 'Hak', full: 'Hak Chompjak V, once Lord Sevirrus', lv: 62, hp: 24000, theme: 'hak', // the villain's good ending: the last of them
+    lines: { intro: '', p2: 'Is that all? Zark hit harder, and Zark is dead.', p3: 'For Aridaxx! For every one of them!', win: 'Then it’s yours. All of it. Gods help whoever’s left to live in it.' } }),
   zark: () => Object.assign({}, leadSpec('zark'), { key: 'bst:zark', lv: 60, hp: 26000, theme: 'final',
     lines: { intro: 'So. The little wanderer climbed all the way up. Kneel, and I will make it quick.', p2: 'You think you are winning? I am enjoying this.', p3: 'I BLINDED ONE GOD. I WILL BLIND ANOTHER.', win: 'This… changes… nothing…' } })
 };
@@ -25477,7 +25630,8 @@ function bstBossGo(f) { // they come for you, right there on the floor: Hawthorn
 }
 const BST_VO_AT = { haw: 0, ori: 4, zark: 8 }, BST_VO_K = { intro: 0, p2: 1, p3: 2, win: 3 }; // data/bstBossVoices.js: CATHARSISHAWTHORNEANDORION1–12 (Hawthorne 1–4, Orion 5–8, Zark 9–12: intro, half health, near the end, falling)
 const bstVo = () => BST.vo || (BST.vo = loadDataScript('bstBossVoices').then(ok => ok ? sfx.loadClips('bstBossVoices') : []).catch(() => []).then(v => v || []));
-async function bstBossSay(B, kind, ms) { const vo = await bstVo(), clip = vo[BST_VO_AT[B.k] + BST_VO_K[kind]] || null; siegeSay(B.X.boss.toUpperCase(), B.X.lines[kind], clip ? Math.max(ms, clip.duration * 1000 + 300) : ms, null, clip); }
+const bstVoHak = () => BST.voH || (BST.voH = loadDataScript('c4eGoodVillainHakVoices').then(ok => ok ? sfx.loadClips('c4eGoodVillainHakVoices') : []).catch(() => []).then(v => v || [])); // CH4GOODENDINGEVIL18–20 (half health, near the end, falling)
+async function bstBossSay(B, kind, ms) { if (!B.X.lines[kind]) return; const vo = B.k === 'hak' ? await bstVoHak() : await bstVo(), clip = (B.k === 'hak' ? vo[{ p2: 0, p3: 1, win: 2 }[kind]] : vo[BST_VO_AT[B.k] + BST_VO_K[kind]]) || null; siegeSay(B.X.boss.toUpperCase(), B.X.lines[kind], clip ? Math.max(ms, clip.duration * 1000 + 300) : ms, null, clip); }
 async function bstBossSpawn(k) {
   bstVo();
   const X = BST_BOSS[k](), f = BST.bossF, at = f === 4 ? bstThrone() : { x: BST.x, z: BST.z - 8 }, x = at.x, z = at.z + (f === 4 ? 3 : 0);
@@ -25539,11 +25693,12 @@ function bstBossTick(dt) {
   }
   // the boss bar
   const el = $('#bossBar'), lv = BST.bosses.filter(B => !B.gone);
-  if (el && lv.length) { const B = lv[0]; el.innerHTML = `<div class="bb-h"><b>${B.X.full.toUpperCase()}</b><small>LV ${B.c.lv} · THE CARAX BASTION</small></div><div class="bb"><i style="width:${(Math.max(0, B.c.hp) / B.c.D.hp * 100).toFixed(1)}%"></i></div><em>${B.k === 'zark' ? (tiPhone() ? 'End it' : 'End it. Here, now.') : BST.bossQ && BST.bossQ.length ? 'And another waits behind him' : tiPhone() ? 'Take the floor' : 'Take the fourth floor'}</em>`; el.classList.add('on'); BST.barOn = true; }
+  if (el && lv.length) { const B = lv[0]; el.innerHTML = `<div class="bb-h"><b>${B.X.full.toUpperCase()}</b><small>LV ${B.c.lv} · THE CARAX BASTION</small></div><div class="bb"><i style="width:${(Math.max(0, B.c.hp) / B.c.D.hp * 100).toFixed(1)}%"></i></div><em>${B.k === 'hak' ? (tiPhone() ? 'The last of them' : 'The last of them. Finish it.') : B.k === 'zark' ? (tiPhone() ? 'End it' : 'End it. Here, now.') : BST.bossQ && BST.bossQ.length ? 'And another waits behind him' : tiPhone() ? 'Take the floor' : 'Take the fourth floor'}</em>`; el.classList.add('on'); BST.barOn = true; }
   else if (el && BST.barOn) { el.classList.remove('on'); BST.barOn = false; }
 }
 function bstBossesDone(f) {
   if (!BST.bosses) return; bstBossClear();
+  if (BST.gvHak) { BST.gvHak = false; gvFinish(); return; } // Hak is down: the villain's good ending
   if (f === 4) { bstSave({ bstFloor: BST_FLOORS, zarkDown: true }); notice('Lord Zark', 'HAS FALLEN', 4200); setTimeout(() => { try { ch4EndingPlay(ch4Ending() || 'neutral'); } catch (e) { console.error(e); } }, 4200); return; }
   bstSave({ bstFloor: Math.max(bstCleared(), 4) }); sfx.chime(); notice('The Carax Bastion', 'THE FOURTH FLOOR IS YOURS · THE STAIRS ARE OPEN', 3400);
 }
@@ -25556,7 +25711,7 @@ const FINAL_LEADS = {
   'fin:darius': { name: 'Darius', full: 'Darius Ancin', rig: () => SIEGE_LEADS['lead:darius'].rig() }
 };
 function finLeadsJoin() {
-  if (!wanderer) return; const ids = Object.keys(FINAL_LEADS); if (ids.every(id => (wanderer.party || []).includes(id))) return;
+  if (!wanderer || (wanderer.ch4 || {}).gvSlain) return; // the villain's good ending: they're dead const ids = Object.keys(FINAL_LEADS); if (ids.every(id => (wanderer.party || []).includes(id))) return;
   wanderer.party = [...new Set([...(wanderer.party || []), ...ids])]; wanderer.cmds = wanderer.cmds || {}; for (const id of ids) wanderer.cmds[id] = 'follow';
   const c = curChar(); if (c) { c.party = wanderer.party; c.cmds = wanderer.cmds; } saveRoster(); syncCrewParty(); try { placeCrew().catch(() => null); refreshJamesUI(); } catch (e) {}
   setTimeout(() => lootMsg(tiPhone() ? 'Hak, Archamus, Vishara and Darius fight beside you' : 'Hak, Archamus, Vishara and Darius fight beside you to the end', '#ffd36a'), 1200);
