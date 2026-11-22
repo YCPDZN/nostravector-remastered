@@ -3058,3 +3058,4 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - **Import a save:** tap the slot it should go into (tap again to confirm if it already has a save), choose the file, and it goes there. Your other slots stay as they are, and nothing reloads.
   - An older export of every slot still imports: you get the save from the same slot number in it (or its first save).
 - **Andromeda's core world is Alt-Zerry.** The world circling M31* at the heart of the Andromeda Galaxy was Vigil; it's now **Alt-Zerry**, and the gas giant beside it is **Alt-Zerry II**. Same worlds, same places; saves keep them.
+- **Croxian Mascar's Nostrapedia entries:** born in **Kaliningrad, Russia** (2094 AD) and **raised in England**; his mother is **Talina Mascar**. Updated in both of his entries (the general and your companion) and in Orion's.
