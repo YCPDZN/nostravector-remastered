@@ -31426,7 +31426,7 @@ function resLandIn(sid) { let l = RES_CACHE.land.get(sid); if (!l) { l = ALL_BOD
 const xoResOk = () => !!(wanderer && ((wanderer.chapter | 0) >= 5 || (wanderer.ch4 && wanderer.ch4.xoHome))); // not while you're held on Xonexi
 const xoResBlock = () => onXonexi() && !xoResOk();
 const RES_GALS = ['xonexi', 'andromeda', 'lmc', 'smc', 'tri', 'chi', 'cyr'];
-const resGalOpen = g => g === 'milky' || (g === 'xonexi' ? xonexiKnown() && xoResOk() : effCh() >= 5);
+const resGalOpen = g => g === 'milky' || (effCh() >= 5 && (g !== 'xonexi' || xonexiKnown())); // Chapters I–IV: residents keep to the Milky Way, every other galaxy (Xonexi too) is closed to them
 function resGalSystems(g) { const k = 'g:' + g; let l = RES_CACHE.nb.get(k); if (!l) { l = SYSTEMS.filter(S => galOf(S) === g && resLandIn(S.id).length); RES_CACHE.nb.set(k, l); } return l; }
 function resNeighbours(S) { let l = RES_CACHE.nb.get(S.id); if (!l) { l = SYSTEMS.filter(o => o !== S && galOf(o) === galOf(S) && galDist(S, o) < 6000 && resLandIn(o.id).length); RES_CACHE.nb.set(S.id, l); } return l; }
 function resAnchor(c) {
@@ -31440,6 +31440,7 @@ const RES_NEAR_N = 5;
 function resPlayerSys() { const s = (typeof SPC !== 'undefined' && SPC.sys) || 'sol'; return sysById(s) ? s : 'sol'; }
 const RES_NEAR = new Map();
 function resNearSet(id = resPlayerSys()) { // your system and the 5 nearest, worked out once per system
+  if (!resGalOpen(galOf(sysById(id)))) id = 'sol'; // you're in a galaxy closed to residents (Chapters I–IV): your guild waits in the Milky Way
   let N = RES_NEAR.get(id); if (N) return N;
   const S = sysById(id) || sysById('sol'), L = [S, ...SYSTEMS.filter(o => o !== S && galOf(o) === galOf(S) && resLandIn(o.id).length).sort((a, b) => galDist(S, a) - galDist(S, b)).slice(0, RES_NEAR_N)].filter(o => resLandIn(o.id).length);
   N = { id, L, ids: new Set(L.map(o => o.id)) }; RES_NEAR.set(id, N); return N;
