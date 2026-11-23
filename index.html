@@ -2005,11 +2005,27 @@ function tauntList() {
   return out;
 }
 const taunt = { on: false, i: 0, tok: 0, mode: '' };
+// spoiler-free: a line that names someone only comes up once you've met them (the way the Nostrapedia opens), and Obra-Spira and the
+// Vectors only once you know of them. Your own race's leader you know from Chapter I's dream; Sevirrus, Archamus and the Order are
+// in your race's own lore from the start. Whatever's left out is made up from the general lines, which name no one.
+function vileKnown(line) {
+  try {
+    const met = k => pdMet(k), mine = sp => spOf(wanderer) === sp && !!(wanderer && wanderer.ch1 && wanderer.ch1.slept), lead = sp => met('leader:' + sp) || mine(sp);
+    const oilkNm = () => nmSeen() === 'oilkoumene', late = chNow() >= 4;
+    const RULES = [[/Hawthorne|Imperarch|Terra Imperia/, () => chNow() > 3 || met('hawthorne') || c3f('hawMars')], [/Ancin|Darius|Federation|Resistance/, () => lead('human')],
+      [/\bHak\b|Chompjak/, () => met('hak') || lead('chompy')], [/Am-Grek/, () => lead('grek')], [/Matriarch/, () => lead('erisian')], [/Timpur IV/, () => lead('taredesiban')],
+      [/Tyromairon|Tyronihlus/, () => oilkNm() || late], [/Tyrotaronus/, () => oilkNm() || late || oilkSawTaro()], [/Obsidnia/, () => spOf(wanderer) === 'taredesiban' || late],
+      [/Obra-Spira|Warden|great spire|processional/, () => oilkNm() || late || ((wanderer && wanderer.ch3 && wanderer.ch3.visited) || []).includes('obraspira')]];
+    return RULES.every(([re, ok]) => !re.test(line) || ok());
+  } catch (e) { return !/Hawthorne|Imperarch|Terra Imperia|Ancin|Darius|Federation|Resistance|\bHak\b|Chompjak|Am-Grek|Matriarch|Timpur IV|Tyromairon|Tyronihlus|Tyrotaronus|Obsidnia|Obra-Spira|Warden|great spire|processional/.test(line); } // too early to tell: say nothing that names anyone
+}
+const vileRaceSp = () => forceVileSp && VILE_RACE[forceVileSp] ? forceVileSp : spOf(wanderer);
+const vileSig = () => { const Q = VILE_RACE[vileRaceSp()]; return Q ? Q.filter(vileKnown).length : 0; }; // changes as you meet people: the menu's lines refresh with it
 // what the menu says: the voice's taunts in blood red; a villain's own vile words (signed) on the evil menu; both, stacked, when they meet
 function menuLines() {
   const who = wanderer ? String(wanderer.name || 'THE WANDERER') : 'THE WANDERER', V = villainMenu(), Z = isCh4Menu();
   if (!V) return tauntList().map(t => ({ t }));
-  const sp = forceVileSp && VILE_RACE[forceVileSp] ? forceVileSp : spOf(wanderer), Q = VILE_RACE[sp] || VILE_QUOTES; // their own race's 100
+  const sp = vileRaceSp(), own = (VILE_RACE[sp] || []).filter(vileKnown), Q = own.length >= 100 ? own : own.concat(VILE_QUOTES.slice().sort(() => Math.random() - .5).slice(0, 100 - own.length)); // their own race's 100, spoiler-free (topped up with the general lines)
   const n = Q.length, off = Math.floor(Math.random() * n), vile = Q.map((_, i) => ({ t: Q[(i * 37 + off) % n], who })); // all 100, in a scrambled order
   if (!Z) return vile;
   const zt = tauntList(), out = []; vile.forEach((q, i) => { out.push(q); if (i % 3 === 2) out.push({ t: zt[(i / 3 | 0) % zt.length] }); }); return out; // the voice still gets its word in
@@ -2026,7 +2042,7 @@ function applyMenuEra() {
   const bt = $('#briefT'); if (bt) bt.innerHTML = briefNow();
   const ys = $('#yearStamp'); if (ys) ys.textContent = postSkip() ? '2127 AD' : '2125 AD';
   const st = $('#setStyle'); if (st) { st.style.display = chNow() >= 5 ? '' : 'none'; st.querySelector('.val').textContent = menuStyle === 'red' ? 'BLOOD RED' : 'NORMAL'; }
-  const vile = villainMenu(), mode = `${on}|${vile}|${wanderer ? wanderer.id : ''}`;
+  const vile = villainMenu(), mode = `${on}|${vile}|${wanderer ? wanderer.id : ''}|${vile ? vileSig() : 0}`;
   document.body.classList.toggle('ch4', on); document.body.classList.toggle('vile', vile); // the evil menu, with the blood red stacked on it when that's on too
   sfx.menuTrack(on || vile ? 'musicCh4' : 'music');
   if (menuLook && (state === 'title' || state === 'loading')) setMenuLook(menuLookFor());

@@ -3118,3 +3118,8 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - **Taredesiban:** making Archamus's light a holy war (*"Archamus is the Prime Good. Everything I do in his name is good. Everything."* · *"I don't conquer. I convert. Some just convert into ash."*).
   - **Oilkoumene:** a galactic emperor, as Tyromairon and Obsidnia were before them, sworn to take Obra-Spira back (*"Obra-Spira waits for its rightful ruler. I am coming home."* · *"Bow, lesser galaxy. The Oilkoumene Empire has returned, and it wears my face."*).
   - All 100 come round in a shuffled order; in blood red the voice in the dark still gets a word in. **Preview:** `?villain=chompy` (or `human`, `erisian`, `grek`, `taredesiban`, `oilkoumene`).
+- **The evil main menu is spoiler-free.** A villain only names people you've already met, the way the Nostrapedia opens, and places you already know of:
+  - **Hawthorne** (and Terra Imperia) once you've met him, or from Chapter IV. **Darius Ancin** (and the Federation, the Resistance), **Hak**, **Am-Grek**, the Erisian **Matriarch** and **Timpur IV** once you've met them, or, for your own race's leader, after Chapter I's dream.
+  - **Tyromairon, Tyronihlus, Tyrotaronus and Obra-Spira** (its Warden, its great spire) for an Oilkoumene once they've dreamt the Fall of Obra-Spira, or from Chapter IV; **Obsidnia** from Chapter IV (a Taredesiban knows the name from the start: it's in their people's oldest story).
+  - **Sevirrus, Archamus and the Order** are in your race's own lore, so they're there from the start.
+  - Lines that would name someone you haven't met yet are held back, and the general lines (which name no one) make up the hundred; as you meet people, their lines join in.
