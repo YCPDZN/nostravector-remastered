@@ -2568,6 +2568,7 @@ function setActive(id) {
   activeId = id;
   wanderer = Object.assign({}, roster.find(c => c.id === id) || DEFAULT_W);
   saveRoster(); applyLook(wanderer);
+  try { obraNames(); } catch (e) {} // Obra-Spira or Orbispira: it depends on the wanderer's race
 }
 const look = { ready: false };
 const graphite = new THREE.Color(0x2a2f3a);
@@ -32397,7 +32398,7 @@ function resGalMarks() {
   if (!residents.length || !resTravels()) return [];
   return residents.map((c, i) => ({ c, i, T: resTravel(c), al: resAl(c), lv: resLevel(c) }));
 }
-function resSpaceSay(S, text) { text = resNorm(text); RES.log.push({ who: S.c.name, al: S.al, text, t: time }); if (RES.log.length > 30) RES.log.shift(); resChatRender(); spaceMsg(`${S.c.name}: ${text}`); }
+function resSpaceSay(S, text) { text = obraSaid(S.c, resNorm(text)); RES.log.push({ who: S.c.name, al: S.al, text, t: time }); if (RES.log.length > 30) RES.log.shift(); resChatRender(); spaceMsg(`${S.c.name}: ${text}`); }
 function resClearSpace() { if (SPC.scene) for (const S of RES.sp) SPC.scene.remove(S.m); RES.sp = []; RES.spSys = null; }
 
 // ---- nameplates, speech bubbles and the zone chat (fixed overlay, laid out for phones too) ----
@@ -32581,7 +32582,7 @@ function resWarEnd(w, attackerWon) {
   else if (w.cb === 'vassal') { L.over = W.id; L.trib = null; what = `${L.name} is now a puppet of ${W.name}`; }
   else if (w.cb === 'tribute') { L.trib = W.id; what = `${L.name} now pays tribute to ${W.name}`; }
   else if (w.cb === 'restoration') { const back = (W.lostTo[L.id] || []).filter(id => L.col.includes(id)); take(back); W.lostTo[L.id] = []; if (back) W.res = false; if (W.pup) { W.fellAt = null; if (!bodyById(W.cap) || !W.col.includes(W.cap)) W.cap = W.col[0] || W.cap; } what = `${W.name} took back its worlds from ${L.name}`; if (W.pup) setTimeout(() => { notice(W.name, 'YOUR PUPPET IS RESTORED', 4200); sfx.chime(); }, 400); } // the empire that won its worlds back is no longer a resistance (this used to clear the loser's flag)
-  if (w.obra && W.col.includes(OBRA) && !hadObra) { const first = !resEmp.orbi; resEmp.orbi = true; obraNames(); what += ` · ${W.name} holds ${bodyById(OBRA).name} now${first ? ' (they renamed it Orbispira)' : ''}`; if (state === 'explore' || state === 'space') notice(W.name, first ? 'TAKES OBRA-SPIRA · NOW ORBISPIRA' : 'TAKES ORBISPIRA', 5200); } // the war was for Obra-Spira
+  if (w.obra && W.col.includes(OBRA) && !hadObra) { const first = !resEmp.orbi; resEmp.orbi = true; obraNames(); what += ` · ${W.name} holds ${bodyById(OBRA).name} now${first ? (obraOilk(wanderer) ? ' (the other races call it Orbispira now)' : ' (they renamed it Orbispira)') : ''}`; if (state === 'explore' || state === 'space') notice(W.name, first && !obraOilk(wanderer) ? 'TAKES OBRA-SPIRA · NOW ORBISPIRA' : `TAKES ${bodyById(OBRA).name.toUpperCase()}`, 5200); } // the war was for Obra-Spira
   if (w.carax && attackerWon) { if (L.col.includes(CARAX)) take([CARAX]); if (W.col.includes(CARAX)) what += ' · Carax is theirs now'; } // the war was for Carax
   resEmpLog(what);
   if (RW) { resWarSay(cw, resPick(RW.win[resAl(cw)]), x); setTimeout(() => resWarSay(cl, resPick(RW.lose[resAl(cl)]), Object.assign({}, x, { b: x.a })), 1500); }
@@ -32716,17 +32717,23 @@ const RES_OBRA = {
     neutral: ['Every empire wants Obra-Spira. {ea} is going to have it.', 'Gardens, spires, a sky that never storms. Obra-Spira. Take it.'],
     villain: ['Obra-Spira. I would burn a galaxy for it. Take it.', 'Kill everything on those walls. Obra-Spira is ours.'] },
   held: { hero: ['Its walls held. We’ll be back for Obra-Spira.'], neutral: ['That fortress… next time.'], villain: ['Again. Throw them at the walls again.'] },
-  won: { hero: ['It’s ours. From today it’s Orbispira, and it will be safe with {ea}.'], neutral: ['Ours at last. Call it Orbispira now.'], villain: ['Obra-Spira is dead. Long live Orbispira, and long live {ea}.'] }
+  won: { hero: ['It’s ours. From today it’s Orbispira, and it will be safe with {ea}.'], neutral: ['Ours at last. Call it Orbispira now.'], villain: ['Obra-Spira is dead. Long live Orbispira, and long live {ea}.'] },
+  wonOilk: { hero: ['Obra-Spira is ours again. Let the others call it Orbis\u2060pira; to us it is Obra-Spira, and always will be.'], neutral: ['Obra-Spira, back in Oilkoumene hands. Whatever the others call it.'], villain: ['Obra-Spira is ours. Orbis\u2060pira? Only the lesser races would call it that.'] }
 };
-function obraNames() { // the name follows its first conqueror: Orbispira, once a resident empire has taken it
-  const P = bodyById(OBRA), S = sysById('obraspira'); if (!P || S.id !== 'obraspira') return; const nm = resEmp && resEmp.orbi ? 'Orbispira' : 'Obra-Spira';
+const obraOilk = c => spOf(c) === 'oilkoumene';
+const obraNameFor = c => resEmp && resEmp.orbi && !obraOilk(c) ? 'Orbispira' : 'Obra-Spira'; // what someone of c's race calls it
+function obraSaid(c, t) { // a resident says it their way (a word joiner, U+2060, inside the word keeps a quoted name as it is)
+  if (!t || !resEmp || !resEmp.orbi) return t; const s = String(t); return obraOilk(c) ? s.replace(/Orbispira/g, 'Obra-Spira') : s.replace(/Obra-Spira/g, 'Orbispira');
+}
+function obraNames() { // the name you see: Obra-Spira, until an empire takes it; then Orbispira, unless you're Oilkoumene
+  const P = bodyById(OBRA), S = sysById('obraspira'); if (!P || S.id !== 'obraspira') return; const nm = obraNameFor(wanderer);
   if (P.name !== nm) { P.name = nm; S.name = nm; }
 }
 function obraTake(e, how) {
   const E = resEmp; for (const o of Object.values(E.emp)) if (o !== e) o.col = o.col.filter(id => id !== OBRA); if (!e.col.includes(OBRA)) e.col.push(OBRA);
   const first = !E.orbi; E.orbi = true; obraNames(); const c = resRuler(e), al = c ? resAl(c) : 'neutral';
-  resEmpLog(`${how}${first ? ' · they renamed it Orbispira' : ''}`); if (c) setTimeout(() => resWarSay(c, resPick(RES_OBRA.won[al]), { ea: e.name }), 1500);
-  if (state === 'explore' || state === 'space') notice(e.name, first ? (tiPhone() ? 'TAKES OBRA-SPIRA · NOW ORBISPIRA' : 'TAKES OBRA-SPIRA · THEY RENAME IT ORBISPIRA') : 'TAKES ORBISPIRA', 5200);
+  resEmpLog(`${how}${first ? (obraOilk(wanderer) ? ' · the other races call it Orbispira now' : ' · they renamed it Orbispira') : ''}`); if (c) setTimeout(() => resWarSay(c, resPick((obraOilk(c) ? RES_OBRA.wonOilk : RES_OBRA.won)[al]), { ea: e.name }), 1500);
+  if (state === 'explore' || state === 'space') notice(e.name, first && !obraOilk(wanderer) ? (tiPhone() ? 'TAKES OBRA-SPIRA · NOW ORBISPIRA' : 'TAKES OBRA-SPIRA · THEY RENAME IT ORBISPIRA') : `TAKES ${bodyById(OBRA).name.toUpperCase()}`, 5200);
   try { applyChapterFactions(); } catch (er) {}
 }
 function obraTry(e) { // an empire moves on Obra-Spira
@@ -32811,7 +32818,7 @@ function resEmpRender() {
   const alN = { hero: 'Hero', neutral: 'Neutral', villain: 'Villain' };
   let h = `<button class="re-tog" data-re="on">Residents found empires: <b>${E.on ? 'ON' : 'OFF'}</b></button><button class="re-tog" data-re="swear">Residents swearing (everywhere): <b>${resSwearOn ? 'ON' : 'OFF'}</b></button>`;
   if (E.ask && E.emp[E.ask.e]) { const e = E.emp[E.ask.e]; h += `<h4>Request</h4><div class="re-emp" style="--c:${resEmpCol(e)}"><div class="re-emp-t"><b>${reEsc(e.name)} asks you for Carax</b><small>They want to expand into ${GAL_LONG[E.ask.to]}, and Carax, beside Sagittarius A*, is the way out of their galaxy. Hand it over and it's theirs; refuse and they'll ask again some day. They won't attack you either way.</small></div><div class="re-act"><button data-re="cxgive">Hand over Carax</button><button class="danger" data-re="cxno">Refuse</button></div></div>`; }
-  if ((wanderer.chapter | 0) >= 5) { const oh = resHeldBy(OBRA), on = reEsc(bodyById(OBRA).name); h += `<p class="re-empty">${on}, the fortress garden world of Cyrannus: ${oh ? `held by ${reEsc(oh.name)}` : (wanderer.dip && wanderer.dip.col && wanderer.dip.col[OBRA]) ? 'yours' : 'no empire holds it'} · every empire would kill for it${resEmp.orbi ? '' : ' (whoever takes it first will rename it Orbispira)'}.</p>`; }
+  if ((wanderer.chapter | 0) >= 5) { const oh = resHeldBy(OBRA), on = reEsc(bodyById(OBRA).name); h += `<p class="re-empty">${on}, the fortress garden world of Cyrannus: ${oh ? `held by ${reEsc(oh.name)}` : (wanderer.dip && wanderer.dip.col && wanderer.dip.col[OBRA]) ? 'yours' : 'no empire holds it'} · every empire would kill for it${resEmp.orbi ? (obraOilk(wanderer) ? ' (the other races call it Orbispira; the Oilkoumene never will)' : ' (the Oilkoumene still call it Obra-Spira)') : ' (whoever takes it first will rename it Orbispira, though never to the Oilkoumene)'}.</p>`; }
   if ((wanderer.chapter | 0) >= 5) { const hd = resCaraxHolder(); h += `<p class="re-empty">Carax: ${hd === 'you' ? 'yours' : hd ? 'held by ' + reEsc(hd.name) : 'held by no empire'} · an empire needs it to spread into another galaxy (the Milky Way, Xonexi, Andromeda, the Magellanic Clouds, Triangulum, Chimaera, Cyrannus).</p>`; }
   if (!es.length) h += `<p class="re-empty">${E.on ? 'No resident has founded an empire yet. Residents found empires on unclaimed worlds once they reach level 35 (villains first), one at a time.' : 'Empire founding is off: residents stick to their guilds. Switch it on above if you want them to carve up the frontier.'} ${residents.length ? '' : 'Send a wanderer into the world from the Wanderers screen to get started.'}</p>`;
   else h += '<h4>Empires</h4>' + es.map(e => {
@@ -34146,6 +34153,7 @@ function resPersonaSummary(c) {
 // how they talk: the lines are already written for their temperament; their speaking style (formal, pirate, few words...) and
 // catchphrase go on top (written text only, never audio)
 function resVoice(c, text) {
+  text = obraSaid(c, text); // Obra-Spira to an Oilkoumene, Orbispira to everyone else (once it's been taken)
   const p = c && resPersona(c); if (!p || !text || String(text).charAt(0) === '​') return text; let s = String(text); const r = () => Math.random(); // ​ marks plain info lines
   const st = p.styles, tr = p.traits;
   if (st.includes('terse')) { s = s.split(/(?<=[.!?])\s/)[0]; if (s.length > 52) s = s.slice(0, 50).replace(/\s\S*$/, '') + '.'; }
