@@ -306,6 +306,16 @@ body.ch4 #title .taunt{display:block;position:absolute;right:calc(var(--sr) + 6v
 .taunt span{font-family:var(--display);font-weight:500;font-size:clamp(13px,1.6vw,20px);letter-spacing:.14em;line-height:1.6;color:#ff4a3d;text-transform:uppercase;
   text-shadow:0 0 18px rgba(255,30,20,.7),0 0 2px #ff8a80;transition:opacity 1.2s;animation:ch4jit 3.2s infinite steps(1)}
 .taunt.out span{opacity:0}
+#vileFx{display:none;position:fixed;inset:0;pointer-events:none} #vileFx.on{display:block}
+#vileFx canvas{position:absolute;inset:0;width:100%;height:100%}
+#vileFx .vf-lines{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 1px,transparent 1px 3px),radial-gradient(ellipse at 60% 50%,transparent 45%,rgba(0,0,0,.55) 100%);animation:vfFlick 4.3s infinite steps(1)}
+@keyframes vfFlick{0%,88%,100%{opacity:1}89%{opacity:.6}90%{opacity:1}94%{opacity:.75}95%{opacity:1}}
+#vileLaugh{position:absolute;right:5vw;top:18vh;text-align:right;line-height:1.05;font-family:var(--display);font-weight:600;font-size:clamp(24px,4.4vw,64px);letter-spacing:.25em;color:#ff2a5a;opacity:0;text-shadow:4px 0 rgba(0,255,230,.55),-4px 0 rgba(255,0,60,.7),0 0 24px rgba(255,20,60,.6)}
+body.ch4 #vileLaugh{color:#ff3b2f}
+#vileLaugh i{display:block;font-style:normal} #vileLaugh i:nth-child(2){margin-right:.6em} /* a column beside them, clear of their head */
+#vileLaugh.on{animation:vfLaugh 2.4s steps(1) forwards}
+@keyframes vfLaugh{0%{opacity:0}5%{opacity:.9;transform:translate(-6px,2px) skewX(-12deg)}12%{opacity:.4;transform:translate(8px,-3px)}20%{opacity:.85;transform:none}35%{opacity:.6;transform:translate(-3px,0) skewX(8deg)}50%{opacity:.8;transform:translate(4px,2px)}70%{opacity:.35;transform:none}85%{opacity:.6;transform:translate(-8px,0) skewX(-6deg)}100%{opacity:0}}
+@media (max-width:720px),(max-aspect-ratio:1/1){ #vileLaugh{right:0;left:0;top:14vh;text-align:center;font-size:34px} #vileLaugh i{display:inline;margin:0!important} }
 body.vile:not(.ch4) #title{background:linear-gradient(90deg,rgba(7,2,10,.97) 0%,rgba(7,2,10,.8) 30%,rgba(7,2,10,0) 62%)}
 body.vile:not(.ch4) #title .wordmark{text-shadow:0 0 30px rgba(176,42,255,.55)}
 body.vile:not(.ch4) #title .brand svg.mark{filter:brightness(.6) sepia(1) saturate(6) hue-rotate(230deg) brightness(1.4) drop-shadow(0 0 14px rgba(176,42,255,.6))}
@@ -1916,7 +1926,7 @@ const VILE_QUOTES = [
 const forceVile = /[?&]villain(?:[=&]|$)/.test(window.location.search); // ?villain previews the evil main menu (with ?menu=ch4 or ?menu=ch5 for the red stacked on it)
 const villainMenu = () => forceVile || !!(wanderer && (((wanderer.align && wanderer.align.p) | 0) <= -34) && chNow() >= 1);
 // the world in the villain's hands: a little Earth, spinning slowly between them, lit violet (blood red when the red is stacked on)
-const VILE = { g: null, red: null };
+const VILE = { g: null, red: null, S: 1.45, tw: 0, twT: 2, twA: 0, laugh: 0, laughT: 4.5, gl: 0, glT: 1.5, punch: 0 }; // S: how much bigger the villain stands on this menu (only here: the game is untouched)
 function vileGlobeTex(red) {
   return canvasTex(512, 256, (c, w, h) => {
     const n = (x, y) => Math.sin(x * 3.1 + Math.sin(y * 2.3)) + Math.sin(x * 5.7 + y * 4.1 + 1.3) * .6 + Math.sin(x * 11.3 - y * 7.9) * .25 + Math.sin(y * 3.4 + 2) * .5;
@@ -1933,16 +1943,45 @@ function vileGlobeTex(red) {
 }
 function menuVileTick(dt) {
   const want = state === 'title' && villainMenu() && menuLook !== 'space';
-  if (!want) { if (VILE.g) VILE.g.visible = false; return; }
+  if (!want) { if (VILE.g) VILE.g.visible = false; if (player.scale.x !== 1) player.scale.setScalar(1); vileFx(false); return; }
+  player.scale.setScalar(VILE.S); vileFx(true); vileBeats(dt);
   if (!VILE.g) {
-    const g = VILE.g = new THREE.Group(), ball = new THREE.Mesh(new THREE.SphereGeometry(.22, 32, 20), new THREE.MeshStandardMaterial({ roughness: .55, metalness: .05, emissive: 0x220a30, emissiveIntensity: .6 }));
-    const air = new THREE.Mesh(new THREE.SphereGeometry(.245, 32, 20), new THREE.MeshBasicMaterial({ color: 0x9a6aff, transparent: true, opacity: .22, blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false }));
-    g.add(ball, air); VILE.ball = ball; VILE.air = air; VILE.glow = glowSprite(0xb04aff, 1.1, .5); g.add(VILE.glow); ball.rotation.z = .41; player.add(g);
+    const g = VILE.g = new THREE.Group(), ball = new THREE.Mesh(new THREE.SphereGeometry(.3, 40, 24), new THREE.MeshStandardMaterial({ roughness: .55, metalness: .05, emissive: 0x220a30, emissiveIntensity: .6 }));
+    const air = new THREE.Mesh(new THREE.SphereGeometry(.33, 40, 24), new THREE.MeshBasicMaterial({ color: 0x9a6aff, transparent: true, opacity: .22, blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false }));
+    g.add(ball, air); VILE.ball = ball; VILE.air = air; VILE.glow = glowSprite(0xb04aff, 1.5, .5); g.add(VILE.glow); ball.rotation.z = .41; player.add(g);
   }
   const red = isCh4Menu(); if (VILE.red !== red) { VILE.red = red; VILE.ball.material.map = vileGlobeTex(red); VILE.ball.material.emissive.set(red ? 0x3a0606 : 0x220a30); VILE.ball.material.needsUpdate = true; VILE.air.material.color.set(red ? 0xff3a2a : 0x9a6aff); VILE.glow.material.color.set(red ? 0xff2a1a : 0xb04aff); }
   VILE.g.visible = true; VILE.ball.rotation.y += dt * .35;
   const H = (SPECIES[curSpecies] && SPECIES[curSpecies].height) || 2;
-  VILE.g.position.set(0, H * .5 + Math.sin(time * 1.6) * .015, H * .24); VILE.glow.material.opacity = .42 + Math.sin(time * 2.1) * .1; // between their hands, breathing
+  VILE.g.position.set(0, H * .5 + Math.sin(time * 1.6) * .015 + (VILE.laugh > 0 ? Math.abs(Math.sin(time * 21)) * .03 : 0), H * .27); VILE.glow.material.opacity = .42 + Math.sin(time * 2.1) * .1; // between their hands, breathing
+}
+function vileBeats(dt) {
+  if (dt <= 0) return;
+  if ((VILE.twT -= dt) <= 0) { VILE.tw = .12 + Math.random() * .16; VILE.twA = (Math.random() < .5 ? -1 : 1) * (.18 + Math.random() * .3); VILE.twArm = Math.random() < .5 ? 'ra' : 'la'; VILE.twT = .9 + Math.random() * 3; if (Math.random() < .55) VILE.glT = 0; } // a twitch, and often the picture tears with it
+  if (VILE.tw > 0) VILE.tw -= dt;
+  if ((VILE.laughT -= dt) <= 0) { VILE.laugh = 2.4; VILE.laughT = 9 + Math.random() * 7; VILE.punch = 1; VILE.glT = 0; try { sfx.laughEvil(); } catch (e) {} const L = $('#vileLaugh'); if (L) { L.classList.remove('on'); void L.offsetWidth; L.classList.add('on'); } } // they laugh at you
+  if (VILE.laugh > 0) VILE.laugh -= dt; VILE.punch = Math.max(0, VILE.punch - dt * 5);
+  if ((VILE.glT -= dt) <= 0) { VILE.gl = .14 + Math.random() * (VILE.laugh > 0 ? .5 : .3); VILE.glT = 2.2 + Math.random() * 4; try { sfx.glitchStatic(VILE.gl); } catch (e) {} } // a burst of tearing
+  if (VILE.gl > 0) VILE.gl -= dt;
+  const cv = renderer.domElement; if (VILE.gl > 0) { const k = Math.random(); cv.style.transform = `translate(${(Math.random() - .5) * 22}px, ${(Math.random() - .5) * 8}px) skewX(${(Math.random() - .5) * 8}deg) scale(${1 + Math.random() * .04})`; cv.style.filter = `contrast(${1.3 + k * .8}) saturate(${1.4 + k}) hue-rotate(${(Math.random() - .5) * 40}deg) brightness(${.8 + Math.random() * .6})`; VILE.dirty = true; }
+  else if (VILE.dirty) { cv.style.transform = ''; cv.style.filter = ''; VILE.dirty = false; }
+}
+function vileFx(on) { // the evil menu's VHS: scanlines, grain and a flicker over everything, and the overlay the tearing is drawn on
+  let el = $('#vileFx');
+  if (!on) { if (el && el.classList.contains('on')) { el.classList.remove('on'); const g = el.firstChild.getContext('2d'); g.clearRect(0, 0, el.firstChild.width, el.firstChild.height); } if (VILE.dirty) { renderer.domElement.style.transform = ''; renderer.domElement.style.filter = ''; VILE.dirty = false; } return; }
+  if (!el) { el = document.createElement('div'); el.id = 'vileFx'; el.innerHTML = '<canvas></canvas><i class="vf-lines"></i><b id="vileLaugh"><i>HA</i> <i>HA</i> <i>HA</i></b>'; renderer.domElement.after(el); }
+  el.classList.add('on');
+}
+function vileGlitchDraw() { // right after the frame is drawn: slices of it, torn sideways, with a colour split
+  const el = $('#vileFx'); if (!el || !el.classList.contains('on')) return; const cv = el.firstChild, src = renderer.domElement, d = Math.min(1.5, devicePixelRatio || 1);
+  const W = innerWidth * d | 0, H = innerHeight * d | 0; if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  const g = cv.getContext('2d'); g.clearRect(0, 0, W, H); if (!(VILE.gl > 0)) return;
+  const sx = src.width / W, sy = src.height / H, n = 3 + Math.floor(Math.random() * 7);
+  for (let i = 0; i < n; i++) { const y = Math.random() * H, h = (4 + Math.random() * 46) * d, dx = (Math.random() - .5) * 90 * d; g.drawImage(src, 0, y * sy, src.width, h * sy, dx, y, W, h); }
+  g.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 2; i++) { const y = Math.random() * H, h = (2 + Math.random() * 30) * d; g.fillStyle = i ? 'rgba(0,255,230,.16)' : 'rgba(255,0,60,.22)'; g.fillRect((Math.random() - .5) * 30, y, W, h); }
+  g.globalCompositeOperation = 'source-over';
+  if (Math.random() < .25) { g.fillStyle = 'rgba(255,255,255,.06)'; g.fillRect(0, 0, W, H); } // a flash
 }
 function menuVileSync() { try { menuVileTick(0); } catch (e) {} }
 // the voice's rotation: a line for your species after every two of the others
@@ -3230,6 +3269,22 @@ const sfx = (() => {
     zap() { tone(520, 160, .12, 'square', .03); },
     shieldHit() { tone(300, 900, .1, 'triangle', .05); noise(.08, 4000, 1500, .06); },
     boom(v = 1) { noise(.9, 900, 40, .5 * v); tone(80, 28, .7, 'sine', .4 * v); },
+    // the villain's laugh on the evil menu: "ha" after "ha", a low voice through vowel formants, falling, ragged and distorted
+    laughEvil(v = .2) {
+      if (!ctx) return; const t0 = ctx.currentTime, out = ctx.createGain(), ws = ctx.createWaveShaper(), curve = new Float32Array(512);
+      for (let i = 0; i < 512; i++) { const x = i / 255.5 - 1; curve[i] = Math.tanh(x * 4); } ws.curve = curve; out.gain.value = v; ws.connect(out); out.connect(master);
+      const n = 7 + Math.floor(Math.random() * 3);
+      for (let k = 0; k < n; k++) {
+        const t = t0 + k * .17 + Math.random() * .02, f = 150 - k * 7 + Math.random() * 12, o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sawtooth';
+        o.frequency.setValueAtTime(f * 1.15, t); o.frequency.exponentialRampToValueAtTime(f * .82, t + .13);
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.9, t + .02); g.gain.exponentialRampToValueAtTime(.001, t + .15); o.connect(g);
+        for (const [ff, q, kk] of [[760, 7, 1], [1150, 9, .7], [2600, 12, .3]]) { const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = ff; bp.Q.value = q; const bg = ctx.createGain(); bg.gain.value = kk; g.connect(bp); bp.connect(bg); bg.connect(ws); }
+        o.start(t); o.stop(t + .17);
+        const nb = ctx.createBufferSource(), buf = ctx.createBuffer(1, ctx.sampleRate * .05 | 0, ctx.sampleRate), dd = buf.getChannelData(0); for (let i = 0; i < dd.length; i++) dd[i] = (Math.random() * 2 - 1) * (1 - i / dd.length);
+        nb.buffer = buf; const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800; const hg = ctx.createGain(); hg.gain.value = .25; nb.connect(hp); hp.connect(hg); hg.connect(ws); nb.start(t); // the breath of each "h"
+      }
+    },
+    glitchStatic(dur = .2) { noise(Math.min(.6, dur), 7000, 1500, .05); tone(60 + Math.random() * 40, 50, Math.min(.6, dur), 'square', .02); },
     // a human scream, synthesised: two detuned saws through vocal formants, a ragged vibrato, breath, and a little distortion (until it's voiced)
     scream(dur = 1.8, v = .25, f0 = 340) {
       if (!ctx) return; const t = ctx.currentTime, mix = ctx.createGain(), g = ctx.createGain(), ws = ctx.createWaveShaper(), curve = new Float32Array(512);
@@ -3339,7 +3394,13 @@ function updateAnim(dt) {
     damp(inner.rotation, 'x', sw * .16, 6, dt);
   } else {
     const b = Math.sin(time * 1.6);
-    if (state === 'title' && villainMenu()) { for (const l of [rig.rl, rig.ll]) damp(l.rotation, 'x', 0, 8, dt); damp(rig.ra.rotation, 'x', -1.05 + b * .03, 4, dt); damp(rig.la.rotation, 'x', -1.05 - b * .03, 4, dt); damp(rig.ra.rotation, 'z', down * .35 + .32, 4, dt); damp(rig.la.rotation, 'z', -down * .35 - .32, 4, dt); inner.position.y = (b + 1) * .006; damp(inner.rotation, 'x', 0, 6, dt); return; } // arms out and in, cradling the world
+    if (state === 'title' && villainMenu()) { // arms out and in, cradling the world; twitching; now and then, laughing at you
+      const lf = VILE.laugh > 0 ? Math.min(1, VILE.laugh / .4, (2.4 - VILE.laugh) / .25) : 0, j = Math.abs(Math.sin(time * 21)) * lf;
+      for (const l of [rig.rl, rig.ll]) damp(l.rotation, 'x', 0, 8, dt);
+      damp(rig.ra.rotation, 'x', -1.05 + b * .03 - j * .25, 6, dt); damp(rig.la.rotation, 'x', -1.05 - b * .03 - j * .25, 6, dt); damp(rig.ra.rotation, 'z', down * .35 + .32, 4, dt); damp(rig.la.rotation, 'z', -down * .35 - .32, 4, dt);
+      damp(inner.rotation, 'x', -lf * .2 - j * .07, 10, dt); damp(inner.rotation, 'z', 0, 9, dt); damp(inner.rotation, 'y', 0, 9, dt); inner.position.y = (b + 1) * .006 + j * .035;
+      if (VILE.tw > 0) { inner.rotation.z = VILE.twA; inner.rotation.y = VILE.twA * -.6; inner.rotation.x += (Math.random() - .5) * .3; const A = rig[VILE.twArm]; if (A) A.rotation.x = -1.6 - Math.random() * .5; } // the twitch: snapped sideways, an arm jerking up
+      return; }
     for (const l of [rig.rl, rig.ll]) damp(l.rotation, 'x', 0, 8, dt);
     damp(rig.ra.rotation, 'x', b * .04, 6, dt); damp(rig.la.rotation, 'x', -b * .04, 6, dt);
     damp(rig.ra.rotation, 'z', down - .04 - b * .03, 6, dt); damp(rig.la.rotation, 'z', -down + .04 + b * .03, 6, dt);
@@ -3353,11 +3414,12 @@ function updateCamera(dt) {
   const p = player.position;
   let target, desired;
   {
-    titleYaw += dt * .14;
+    const vs = state === 'title' && villainMenu() && menuLook !== 'space' ? VILE.S : 1; // the evil menu: a bigger villain, the camera standing back to take them in
+    titleYaw += dt * .14 * (vs > 1 ? .45 : 1);
     const portrait = camera.aspect < 1;
-    target = tmpV.set(p.x, p.y + (portrait ? .1 : 1.15), p.z);
-    const d = portrait ? 6.8 : 4.8;
-    desired = tmpV2.set(p.x + Math.sin(titleYaw) * d, p.y + (portrait ? 1.5 : 1.3), p.z + Math.cos(titleYaw) * d);
+    target = tmpV.set(p.x, p.y + (portrait ? .1 : 1.15) * vs + (vs > 1 && portrait ? .7 : 0), p.z);
+    const d = (portrait ? 6.8 : 4.8) * (vs > 1 ? (portrait ? 1.12 : 1.06) * (1 - VILE.punch * .3) : 1); // barely further back than usual, so they loom
+    desired = tmpV2.set(p.x + Math.sin(titleYaw) * d, p.y + (portrait ? 1.5 : 1.3) * vs, p.z + Math.cos(titleYaw) * d);
     if (camera.aspect > 1.05) { const off = Math.min(2.2, (camera.aspect - 1) * 2.4); target.x -= Math.cos(titleYaw) * off; target.z += Math.sin(titleYaw) * off; }
     camera.position.lerp(desired, Math.min(1, dt * 3));
     lookTarget.lerp(target, Math.min(1, dt * 3));
@@ -34576,6 +34638,7 @@ function loop() {
 function loopFrame() {
   const dt = Math.min(clock.getDelta(), .05);
   time += dt;
+  if (state !== 'title' && (player.scale.x !== 1 || VILE.dirty || (VILE.g && VILE.g.visible))) try { menuVileTick(0); } catch (e) {} // off the evil menu: back to their own size, the world out of their hands, no glitch
   try { podSync(); } catch (e) {} // the pod, wherever your ship is drawn
   combatTick(dt);
   alOutfitSync(dt);
@@ -34643,6 +34706,7 @@ function loopFrame() {
   sfx.music((state === 'create' || state === 'deploying') ? 0 : .85);
   if (menuLook === 'space' && (state === 'title' || state === 'loading') && MSP.scene) { menuSpaceTick(dt); renderer.render(MSP.scene, MSP.cam); return; }
   renderer.render(scene, camera);
+  if (state === 'title') try { vileGlitchDraw(); } catch (e) {} // the evil menu's tearing, drawn from this frame
 }
 
 /* ============ boot ============ */

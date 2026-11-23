@@ -3104,3 +3104,9 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - **Blood red, stacked on it:** in Chapter IV after the two years (always), and in Chapter V with the menu style set to BLOOD RED, the blood-red menu lays itself over the evil one: the abyss, the red, the world in their hands bleeding red, and the voice in the dark still getting a word in (one of its taunts after every three of theirs). The ominous Chapter IV theme plays on the evil menu either way.
   - **On phones:** the quote sits under the menu held upright, and low on the right, under their feet, held sideways.
   - **Preview:** `?villain` shows the evil menu; add `&menu=ch4` (or `&menu=ch5` with BLOOD RED on) to see the red stacked on it.
+- **The evil main menu turns into a slasher film.**
+  - **Bigger:** the villain stands almost half as tall again, looming over the menu, and the world in their hands is bigger too. Only on this menu: leave it and they're their own size again, in the game and everywhere else.
+  - **They twitch:** every second or few, a sudden jerk: snapped sideways, an arm flung up, and often the picture tears with it.
+  - **They laugh at you:** every ten seconds or so they throw their head back and laugh, shoulders heaving, the world bouncing in their hands, as the camera lunges in. A low, ragged, distorted laugh plays (with sound on), and **HA HA HA** flickers beside them in split colours.
+  - **The glitch:** scanlines, grain and a flicker over the whole scene, and every few seconds a burst of tearing: the picture sliced and dragged sideways, its colours split red and cyan, the frame jolting and over-contrasted, with a crackle of static.
+  - In blood red (Chapter IV, or Chapter V with BLOOD RED on) all of it plays in red. Phones get the same, with the laugh across the top held upright.
