@@ -15586,7 +15586,7 @@ function orbHuntStart(delay) { // the War of Restoration talk on Charon, before 
 const orbEarthQ = () => orbOn() && orbS().ph < 3;
 const orbSpaceQ = () => orbOn() && orbS().ph === 3;
 const orbFallen = () => (orbS().conq || []).length;
-const ORB_ALL = () => SYSTEMS.filter(S => !farGal(S)).length; // Orion never reaches Andromeda or the Magellanic Clouds
+const ORB_ALL = () => SYSTEMS.filter(S => !outGal(S)).length; // Orion never reaches Andromeda, the Magellanic Clouds or Xonexi's frontier
 function orbTask() {
   if (!orbOn()) return null; const O = orbS(), ph = tiPhone(), mq = wanderer.ch4 && wanderer.ch4.orbMain ? 'Main quest' : 'Side quest'; // Hak asked you to finish him first: main quest now
   if (O.ph < 3) return ph ? `${mq} · Orion Mascar (his house, Earth)` : `${mq} · Defeat Orion Mascar · he waits for you at his house in East Africa, on Earth`;
@@ -15907,7 +15907,7 @@ setInterval(() => { try {
   if (SPC.sys === O.sys) { if (ORB.hereSys !== O.sys) { ORB.hereSys = O.sys; if (state === 'space') spaceMsg(tiPhone() ? 'Orion is in this system' : `Orion Mascar is in ${sysById(O.sys).name} · he can’t take it while you’re here`); } return; }
   ORB.hereSys = null; O.t = (O.t == null ? ORB_CONQ_T : O.t) - 1; if (O.t > 0) return;
   O.conq = O.conq || []; if (!O.conq.includes(O.sys)) O.conq.push(O.sys);
-  const from = sysById(O.sys), left = SYSTEMS.filter(S => !O.conq.includes(S.id) && !farGal(S));
+  const from = sysById(O.sys), left = SYSTEMS.filter(S => !O.conq.includes(S.id) && !outGal(S));
   const msg = `Orion Mascar has taken ${from.name} · ${O.conq.length}/${ORB_ALL()} systems fallen`;
   if (!left.length) { O.done = true; orbSave(); notice('Orion Mascar', 'THE GALAXY HAS FALLEN TO HIM', 5200); sfx.thud(); try { applyChapterFactions(); } catch (e) {} renderTasks(); return; }
   O.sys = left.map(S => [galDist(from, S), S]).sort((a, b) => a[0] - b[0])[0][1].id; O.t = ORB_CONQ_T; O.hp3 = null; orbSave();
@@ -19273,6 +19273,7 @@ const MAGC = {
     shape: (R, G) => { if (R() < .8) return [G() * .95, G() * .34]; const t = R(); return [.32 + t * .5 + G() * .08, -.16 - t * .26 + G() * .12]; } }
 };
 const farGal = S => !!S && (S.galaxy === M31_GAL || S.galaxy === LMC_GAL || S.galaxy === SMC_GAL); // the galaxies through the event horizon
+const outGal = S => farGal(S) || !!(S && S.gen && S.galaxy === 'Xonexi Galaxy'); // ...and the Xonexi Galaxy's uncharted frontier: none of it is the Milky Way's
 const mcPt = (M, x, y) => { const c = Math.cos(M.PA), s = Math.sin(M.PA); return { x: +(M.C.x + (x * c - y * s) * M.R).toFixed(3), y: +(M.C.y + (x * s + y * c) * M.R).toFixed(3) }; };
 (function genMagellanic() {
   if (SYSTEMS.some(S => S.galaxy === LMC_GAL || S.galaxy === SMC_GAL)) return;
@@ -19304,6 +19305,23 @@ const mcPt = (M, x, y) => { const c = Math.cos(M.PA), s = Math.sin(M.PA); return
       if (name === 'Tarantula') S.desc = 'Uncharted, in the Large Magellanic Cloud: the Tarantula, the brightest nebula in our sky, its glowing threads lit by a cluster of blue giants. No one has been here before you. ' + S.desc.split('before you. ')[1];
       mine.push(S);
     }
+  }
+})();
+// ---- the Xonexi Galaxy's uncharted systems: 40 of them along its two arms, round Xonexi and the Gateway, so residents (and you) have
+//      worlds out there to land on and claim. Laid on the same spiral its map draws (galXonexiImg), from a fixed seed. ----
+(function genXonexiFrontier() {
+  if (SYSTEMS.some(S => S.galaxy === 'Xonexi Galaxy' && S.gen)) return;
+  const X = SYSTEMS.find(S => S.id === 'xonexi'); if (!X) return;
+  const { R, G, pick, sys } = farGen(4410217), used = new Set(SYSTEMS.map(S => S.name)), mine = SYSTEMS.filter(S => S.galaxy === 'Xonexi Galaxy');
+  const A = ['Xer', 'Vex', 'Kro', 'Zul', 'Drax', 'Nyx', 'Vor', 'Skar', 'Thrax', 'Qor', 'Rhex', 'Zyn', 'Kael', 'Mord', 'Ixa', 'Sorn'], B = ['ath', 'on', 'ix', 'ul', 'ek', 'ar', 'os', 'yr', 'um', 'ex', 'iss', 'agh'], SUF = ['', '', '', '', ' Prime', ' Reach', ' Deep', ' Black', ' Spire', ' Hollow'];
+  const c6 = Math.cos(.6), s6 = Math.sin(.6), RAD = .32; // the map draws the galaxy turned .6 rad, .32 across
+  for (let n = 0; n < 40; n++) {
+    let pt, tries = 0;
+    do { const u = .12 + R() * .88, arm = Math.floor(R() * 2), a = u * 5.2 + arm * Math.PI + G() * .3, r = (.06 + u * .86) * RAD, x = Math.cos(a) * r, y = Math.sin(a) * r; pt = { x: +(X.map.x + x * c6 - y * s6).toFixed(3), y: +(X.map.y + x * s6 + y * c6).toFixed(3) }; }
+    while (mine.some(S => Math.hypot(S.map.x - pt.x, S.map.y - pt.y) < .016) && ++tries < 80);
+    let name; do name = pick(A) + pick(B) + pick(SUF); while (used.has(name)); used.add(name);
+    const base = name.replace(/ \w+$/, m => SUF.includes(m) ? '' : m);
+    mine.push(sys({ id: 'xo' + (n + 1), name, base, n, galaxy: 'Xonexi Galaxy', pt, where: 'the Xonexi Galaxy', pb: 90000, mb: 95000 }));
   }
 })();
 const ALL_BODIES = SYSTEMS.flatMap(S => S.bodies.map(P => (P.sys = S.id, P)));
@@ -21372,9 +21390,9 @@ const galSys = () => SYSTEMS.filter(S => galOf(S) === (GAL.view || 'milky'));
 const xonexiKnown = () => !!(wanderer && wanderer.ch4 && wanderer.ch4.jvTaken) || galOf(sysById(SPC.sys)) === 'xonexi';
 function galView(v) {
   GAL.view = v; const el = galEl(), t = el.querySelector('.gal-top b'); if (t) t.textContent = v === 'xonexi' ? 'XONEXI GALAXY' : v === 'andromeda' ? 'ANDROMEDA GALAXY · M31' : v === 'lmc' ? 'LARGE MAGELLANIC CLOUD' : v === 'smc' ? 'SMALL MAGELLANIC CLOUD' : 'MILKY WAY GALAXY';
-  for (const id of ['#galDip', '#galRes', '#galEmp']) { const b = el.querySelector(id); if (b) b.style.display = v !== 'milky' ? 'none' : ''; } el.classList.toggle('xo', v === 'xonexi'); // the Milky Way's diplomacy, residents and empires stay on the Milky Way's map
+  for (const id of ['#galDip', '#galRes', '#galEmp']) { const b = el.querySelector(id); if (b) b.style.display = (id === '#galDip' ? v !== 'milky' : !residents.length) ? 'none' : ''; } el.classList.toggle('xo', v === 'xonexi'); // the Milky Way's diplomacy, residents and empires stay on the Milky Way's map
   const sw = el.querySelector('#galSwitch'); if (sw) { const ks = galKnown(), nx = ks[(ks.indexOf(v) + 1) % ks.length]; sw.style.display = ks.length > 1 ? '' : 'none'; sw.textContent = `${GAL_NAME[nx]} ›`; sw.dataset.to = nx; } // cycles through the galaxies you know
-  const h = el.querySelector('.gal-hint'); if (h) h.textContent = MAGC[v] ? `The ${MAGC[v].gal} · ${galSys().length} systems · ${sysById(v).name} at its heart takes you home · tap a system · M or ESC to close` : v === 'andromeda' ? `The Andromeda Galaxy · ${galSys().length} systems · M31* at its heart takes you home · tap a system · M or ESC to close` : v === 'xonexi' ? 'The Xonexi Galaxy · 1 system · its only way into the Milky Way · tap it · M or ESC to close' : `${galSys().length} systems · zoom in to name them all · drag to pan · tap a system · M or ESC to close`;
+  const h = el.querySelector('.gal-hint'); if (h) h.textContent = MAGC[v] ? `The ${MAGC[v].gal} · ${galSys().length} systems · ${sysById(v).name} at its heart takes you home · tap a system · M or ESC to close` : v === 'andromeda' ? `The Andromeda Galaxy · ${galSys().length} systems · M31* at its heart takes you home · tap a system · M or ESC to close` : v === 'xonexi' ? `The Xonexi Galaxy · ${galSys().length} systems · the Gateway is its only way into the Milky Way · tap a system · M or ESC to close` : `${galSys().length} systems · zoom in to name them all · drag to pan · tap a system · M or ESC to close`;
   const here = sysById(SPC.sys), S = galOf(here) === v ? here : v === 'xonexi' ? SYSTEMS.find(o => galOf(o) === 'xonexi') : BH_GAL[v] ? sysById(BH_GAL[v]) : sysById('sol');
   if (!GAL.sel || galOf(sysById(GAL.sel)) !== v) GAL.sel = S.id; const q = galQ(sysById(GAL.sel)); GAL.pan.x = q.x; GAL.pan.y = q.y; GAL.panTo = null;
   if (v === 'xonexi') GAL.zoom = Math.max(GAL.zoom, 3.2);
@@ -22110,7 +22128,7 @@ function snDom() {
   return el;
 }
 function snBuild() { // the systems, who holds each before and after, and the territory field (nearest system to each cell)
-  const sys = SYSTEMS.filter(S => !farGal(S)).map(S => {
+  const sys = SYSTEMS.filter(S => !outGal(S)).map(S => {
     const o3 = S.id === 'sol' ? 'hfos' : snKey(S.fac3 || S.fac0 || S.faction), o4 = S.id === 'sol' ? 'hfos' : S.fac4 ? snKey(S.fac4) : o3;
     return { S, x: S.map.x, y: S.map.y, o3, o4, own: o3, col: o3 ? snRgb(SN_EMP[o3][1]) : null, from: null, ft: 9, ring: -9 };
   });
@@ -31275,9 +31293,16 @@ function resHome(c) {
 const RES_HOME = { human: 'earth', chompy: 'aridaxx', erisian: 'eris', grek: 'malana', oilkoumene: 'tamez' }; // Oilkoumene: Tamez Prime, in Tamez
 const resHomeBody = c => (resIsTared(c) && ALL_BODIES.find(o => o.name === 'Timpur Prime')) || bodyById(RES_HOME[spOf(c)] || 'earth') || bodyById('earth'); // Taredesibans come from Timpur Prime
 const RES_CACHE = { hubs: null, nb: new Map(), land: new Map(), tc: new Map() };
-const resHubs = () => RES_CACHE.hubs || (RES_CACHE.hubs = SYSTEMS.filter(S => !S.gen));
-function resLandIn(sid) { let l = RES_CACHE.land.get(sid); if (!l) { l = galOf(sysById(sid)) !== 'milky' ? [] : ALL_BODIES.filter(b => b.sys === sid && b.land); RES_CACHE.land.set(sid, l); } return l; } // residents keep to the Milky Way: none ever go to the Xonexi Galaxy
-function resNeighbours(S) { let l = RES_CACHE.nb.get(S.id); if (!l) { l = SYSTEMS.filter(o => o !== S && galDist(S, o) < 6000 && resLandIn(o.id).length); RES_CACHE.nb.set(S.id, l); } return l; }
+const resHubs = () => RES_CACHE.hubs || (RES_CACHE.hubs = SYSTEMS.filter(S => !S.gen && galOf(S) === 'milky')); // the Milky Way's great systems
+function resLandIn(sid) { let l = RES_CACHE.land.get(sid); if (!l) { l = ALL_BODIES.filter(b => b.sys === sid && b.land); RES_CACHE.land.set(sid, l); } return l; }
+// residents travel between all five galaxies: the Xonexi Galaxy (through the Gateway) once you know it and its story is behind you,
+// and Andromeda and the Magellanic Clouds (through Sagittarius A*) from Chapter V. A trip out is a warp like any other, only longer.
+const xoResOk = () => !!(wanderer && ((wanderer.chapter | 0) >= 5 || (wanderer.ch4 && wanderer.ch4.xoHome))); // not while you're held on Xonexi
+const xoResBlock = () => onXonexi() && !xoResOk();
+const RES_GALS = ['xonexi', 'andromeda', 'lmc', 'smc'];
+const resGalOpen = g => g === 'milky' || (g === 'xonexi' ? xonexiKnown() && xoResOk() : effCh() >= 5);
+function resGalSystems(g) { const k = 'g:' + g; let l = RES_CACHE.nb.get(k); if (!l) { l = SYSTEMS.filter(S => galOf(S) === g && resLandIn(S.id).length); RES_CACHE.nb.set(k, l); } return l; }
+function resNeighbours(S) { let l = RES_CACHE.nb.get(S.id); if (!l) { l = SYSTEMS.filter(o => o !== S && galOf(o) === galOf(S) && galDist(S, o) < 6000 && resLandIn(o.id).length); RES_CACHE.nb.set(S.id, l); } return l; }
 function resAnchor(c) {
   if (!c.trv || !bodyById(c.trv.body)) { const k = resPlaceKey(c), P = k && k.startsWith('pl:') ? bodyById(k.slice(3)) : null; c.trv = { body: (P || resHomeBody(c)).id, t0: c.sentAt || resNow() }; }
   return c.trv;
@@ -31290,7 +31315,7 @@ function resPlayerSys() { const s = (typeof SPC !== 'undefined' && SPC.sys) || '
 const RES_NEAR = new Map();
 function resNearSet(id = resPlayerSys()) { // your system and the 5 nearest, worked out once per system
   let N = RES_NEAR.get(id); if (N) return N;
-  const S = sysById(id) || sysById('sol'), L = [S, ...SYSTEMS.filter(o => o !== S && resLandIn(o.id).length).sort((a, b) => galDist(S, a) - galDist(S, b)).slice(0, RES_NEAR_N)].filter(o => resLandIn(o.id).length);
+  const S = sysById(id) || sysById('sol'), L = [S, ...SYSTEMS.filter(o => o !== S && galOf(o) === galOf(S) && resLandIn(o.id).length).sort((a, b) => galDist(S, a) - galDist(S, b)).slice(0, RES_NEAR_N)].filter(o => resLandIn(o.id).length);
   N = { id, L, ids: new Set(L.map(o => o.id)) }; RES_NEAR.set(id, N); return N;
 }
 const resGuildBound = c => !!(c && resTravels() && wanderer && wanderer.guild && myGuild() && myGuild().members.includes(c.id));
@@ -31304,9 +31329,15 @@ function resGuildLeash(c, now) { // you moved on (or they just joined you): carr
 }
 function resNextBody(c, from, i, t0) {
   if (resGuildBound(c)) return resNearBody(c, `${t0}|${i}`, from, (c.trv && c.trv.near) || resPlayerSys()); // your guild stays near you (near where you were when this leg of their trail began)
-  const r = resHash(`${c.id}|${t0}|n${i}`), r2 = resHash(`${c.id}|${t0}|b${i}`), H = resHomeBody(c);
+  const r = resHash(`${c.id}|${t0}|n${i}`), r2 = resHash(`${c.id}|${t0}|b${i}`), H = resHomeBody(c), g = galOf(sysById(from.sys));
   if (r < .22 && from.id !== H.id) return H; // home for a while
-  let S = r < .7 ? resHubs()[Math.floor(r2 * resHubs().length)] : (n => n.length ? n[Math.floor(r2 * n.length)] : sysById(from.sys))(resNeighbours(sysById(from.sys)));
+  const away = RES_GALS.filter(o => o !== g && resGalOpen(o)), there = o => { const L = resGalSystems(o); return L[Math.floor(r2 * L.length)]; };
+  let S;
+  if (g !== 'milky' && resGalOpen(g)) S = r < .82 ? (n => n.length && r2 < .6 ? n[Math.floor(r2 / .6 * n.length)] : there(g))(resNeighbours(sysById(from.sys))) : r < .93 || !away.length ? resHubs()[Math.floor(r2 * resHubs().length)] : there(away[Math.floor(r2 * away.length)]); // away in another galaxy: roam it a while, then head back (or on to another)
+  else if (g !== 'milky') S = resHubs()[Math.floor(r2 * resHubs().length)]; // that galaxy's closed to them now: back to the Milky Way
+  else if (r >= .7 && r < .77 && away.length) S = there(away[Math.floor(r2 * away.length)]); // a trip to another galaxy
+  else S = r < .7 ? resHubs()[Math.floor(r2 * resHubs().length)] : (n => n.length ? n[Math.floor(r2 * n.length)] : sysById(from.sys))(resNeighbours(sysById(from.sys)));
+  if (!S) return H;
   const bl = resLandIn(S.id); if (!bl.length) return H;
   let P = bl[Math.floor(resHash(`${c.id}|${t0}|p${i}`) * bl.length)];
   if (P.id === from.id) P = bl.length > 1 ? bl[(bl.indexOf(P) + 1) % bl.length] : H;
@@ -31366,15 +31397,15 @@ function resPresent(c, A) {
   return resHash(`${c.id}|${resSlot()}|${A}`) < resHereChance(c, A);
 }
 // free roam only: nothing scripted is ever interrupted
-const onXonexi = () => !!((typeof isPl === 'function' && isPl() && world.planet && world.planet.P.sys === 'xonexi') || ((state === 'space' || GAL.open) && galOf(sysById(SPC.sys)) === 'xonexi')); // the Xonexi Galaxy: none of the Milky Way's residents, empires or diplomacy reach it
+const onXonexi = () => !!((typeof isPl === 'function' && isPl() && world.planet && galOf(sysById(world.planet.P.sys)) === 'xonexi') || ((state === 'space' || GAL.open) && galOf(sysById(SPC.sys)) === 'xonexi')); // the Xonexi Galaxy: the Milky Way's diplomacy doesn't reach it (and while you're held there in Chapter IV, nor do the residents)
 function xoResQuiet() { // hide every trace of the residents while you're on Xonexi: their chat, their name tags, their figures
   if (RES.chat) RES.chat.classList.remove('on'); if (RES.tags && RES.tags.innerHTML) RES.tags.innerHTML = '';
   for (const B of RES.bots || []) if (B.root) B.root.visible = false;
   if (RES.sp && RES.sp.length && typeof resClearSpace === 'function') resClearSpace();
 }
-function xoPauseHide() { if (!onXonexi()) return; for (const id of ['#xDiplo', '#xResEmp', '#xGuilds', '#xQuests']) { const b = $(id); if (b) b.classList.add('hidden'); } } // on Xonexi the pause menu has no Milky Way diplomacy, residents' empires, guilds or side quests
+function xoPauseHide() { if (!onXonexi()) return; for (const id of xoResOk() ? ['#xDiplo', '#xQuests'] : ['#xDiplo', '#xResEmp', '#xGuilds', '#xQuests']) { const b = $(id); if (b) b.classList.add('hidden'); } } // on Xonexi the pause menu has no Milky Way diplomacy, residents' empires, guilds or side quests
 function resGroundOk() {
-  if (onXonexi()) return false; // no residents on Xonexi
+  if (xoResBlock()) return false; // no residents on Xonexi while you're held there
   if (!residents.length || ex.mode !== 'world' || !(state === 'explore' || state === 'xpaused')) return false;
   const A = curArea(); if (A === 'europe' || (wanderer.chapter | 0) < 1) return false;
   if (A === 'antarctica' && (wanderer.chapter | 0) <= 1 && !ch1().found) return false; // the opening storm stays lonely
@@ -32222,7 +32253,7 @@ function resSpaceWant(c) { if (RES_ALL) return true; const T = resTravel(c); ret
 function resSpaceTick(dt) {
   if (RES.src !== residents || RES.srcN !== residents.length || RES.who !== activeId) { resClearGround(); resClearSpace(); RES.src = residents; RES.srcN = residents.length; RES.who = activeId; RES.log = []; }
   if (!residents.length || !SPC.scene || (wanderer.chapter | 0) < 3) return;
-  if (SPC.sys === 'xonexi') { if (RES.sp && RES.sp.length) resClearSpace(); return; } // nor their ships
+  if (xoResBlock()) { if (RES.sp && RES.sp.length) resClearSpace(); return; } // nor their ships
   resLinesLoad();
   RES.spChk = (RES.spChk || 0) - dt;
   if (RES.spSys !== SPC.sys || RES.spChk <= 0) {
@@ -32292,7 +32323,7 @@ function resChatRender() {
 const RES_V = new THREE.Vector3();
 function resUiTick() {
   if (!RES.tags) return;
-  const ground = ex.mode === 'world' && (state === 'explore' || state === 'xpaused') && resGroundOk(), space = state === 'space' && !onXonexi() && RES.sp.length + RES.log.length > 0;
+  const ground = ex.mode === 'world' && (state === 'explore' || state === 'xpaused') && resGroundOk(), space = state === 'space' && !xoResBlock() && RES.sp.length + RES.log.length > 0;
   const modal = ui.xhud.classList.contains('modal') || ui.xhud.classList.contains('talking') || state === 'xpaused';
   RES.chat.classList.toggle('on', (ground || space) && RES.log.length > 0 && !modal); RES.chat.classList.toggle('space', state === 'space');
   if (!ground && !space) { if (RES.tags.innerHTML) RES.tags.innerHTML = ''; return; }
@@ -32316,9 +32347,14 @@ function resUiTick() {
 function resGalDraw(g, font) {
   const marks = resGalMarks(); if (!marks.length) return;
   const col = al => al === 'hero' ? '#8fe3ff' : al === 'villain' ? '#ff7a6e' : '#e9f2ff';
+  const v = GAL.view || 'milky', inV = id => galOf(sysById(id)) === v;
   for (const M of marks) {
     let p, label;
-    if (M.T.mode === 'warp') { // in hyperspace: a dashed line between the two systems, and where they are along it
+    if (M.T.mode === 'warp' && inV(M.T.from.sys) !== inV(M.T.to.sys)) { // crossing between galaxies: they show at this galaxy's end of it
+      if (!inV(M.T.from.sys) && !inV(M.T.to.sys)) continue; const leaving = inV(M.T.from.sys), q = galXY(sysById(leaving ? M.T.from.sys : M.T.to.sys)), an = .6 + M.i * 1.3; p = { x: q.x + Math.cos(an) * 20, y: q.y + Math.sin(an) * 20 };
+      label = leaving ? `LEAVING FOR ${GAL_NAME[galOf(sysById(M.T.to.sys))]}` : `ARRIVING FROM ${GAL_NAME[galOf(sysById(M.T.from.sys))]}`;
+    } else if (!inV(M.T.mode === 'warp' ? M.T.to.sys : M.T.body.sys)) continue; // in another galaxy
+    else if (M.T.mode === 'warp') { // in hyperspace: a dashed line between the two systems, and where they are along it
       const a = galXY(sysById(M.T.from.sys)), b = galXY(sysById(M.T.to.sys)); p = { x: lerp(a.x, b.x, M.T.k), y: lerp(a.y, b.y, M.T.k) };
       g.save(); g.setLineDash([2, 4]); g.strokeStyle = col(M.al); g.globalAlpha = .55; g.lineWidth = 1; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke(); g.restore();
       label = `WARPING TO ${M.T.to.name.toUpperCase()}`;
@@ -32333,7 +32369,7 @@ function resGalDraw(g, font) {
 function resGalNext() {
   const marks = resGalMarks(); if (!marks.length) return;
   RES.galI = ((RES.galI == null ? -1 : RES.galI) + 1) % marks.length; const M = marks[RES.galI];
-  const S = sysById(M.T.mode === 'warp' ? M.T.to.sys : M.T.body.sys); GAL.sel = S.id; GAL.panTo = galQ(S); sfx.blip(); galPanel();
+  const S = sysById(M.T.mode === 'warp' ? M.T.to.sys : M.T.body.sys); if (galOf(S) !== (GAL.view || 'milky') && galKnown().includes(galOf(S))) galView(galOf(S)); GAL.sel = S.id; GAL.panTo = galQ(S); sfx.blip(); galPanel();
   $('#galSub').textContent = `Tracking ${M.c.name} · LV ${M.lv} · ${M.T.mode === 'warp' ? `warping to ${M.T.to.name}` : M.T.mode === 'respawn' ? `respawning on ${M.T.body.name}` : `on ${M.T.body.name}`}`;
 }
 function resGalHere(S) {
@@ -32341,7 +32377,6 @@ function resGalHere(S) {
   return claim + resGalHere2(S);
 }
 function resGalHere2(S) {
-  if (galOf(S) !== 'milky') return ''; // no residents there (Xonexi, Andromeda)
   const here = resGalMarks().filter(M => (M.T.mode === 'warp' ? M.T.to.sys : M.T.body.sys) === S.id); if (!here.length) return '';
   return `<div class="gp-sub" style="color:#8fe3ff">◆ Residents: ${here.map(M => `${String(M.c.name).replace(/[<>&"]/g, '')} (LV ${M.lv}, ${M.T.mode === 'warp' ? 'arriving' : M.T.mode === 'respawn' ? 'respawning' : M.T.body.name})`).join(' · ')}</div>`;
 }
@@ -32385,12 +32420,13 @@ function resBanter(set, ca, cb2, x) {
   resWarSay(ca, ex2[0], xa); setTimeout(() => resWarSay(cb2, ex2[1], xb), 1400 + Math.random() * 900);
 }
 function resFound(c) {
-  const al = resAl(c), free = resFreeWorlds(); if (!free.length) return;
-  const H = sysById(resHomeBody(c).sys), cap = free.sort((p, q) => galDist(sysById(p.sys), H) - galDist(sysById(q.sys), H))[Math.floor(Math.random() * Math.min(4, free.length))];
+  const al = resAl(c), T = resTravels() ? resTravel(c) : null, at = T && T.mode === 'at' && T.body, g = at ? galOf(sysById(at.sys)) : 'milky'; // founded in the galaxy they're in
+  const free = resFreeWorlds().filter(P => galOf(sysById(P.sys)) === (resGalOpen(g) ? g : 'milky')); if (!free.length) return;
+  const H = at && g !== 'milky' ? sysById(at.sys) : sysById(resHomeBody(c).sys), cap = free.sort((p, q) => galDist(sysById(p.sys), H) - galDist(sysById(q.sys), H))[Math.floor(Math.random() * Math.min(4, free.length))];
   const name = resFill(resPick((RW && RW.names[al]) || ['The {n} Dominion']), { n: titleName(c.name) });
   resEmp.emp[c.id] = { id: c.id, name, col: [cap.id], cap: cap.id, since: resNow(), over: null, trib: null, res: false, lostTo: {} };
   resWarSay(c, resPick((RW && RW.found[al]) || ['{ea} is founded.']), { ea: name, player: wanderer.name });
-  resEmpLog(`${c.name} founded ${name} on ${cap.name}`); saveRoster();
+  const cg = galOf(sysById(cap.sys)); resEmpLog(`${c.name} founded ${name} on ${cap.name}${cg !== 'milky' ? ' in ' + GAL_LONG[cg] : ''}`); saveRoster();
 }
 /* Uplifted puppet empires come back. Annihilated (they scatter rather than vanish) or subjugated, they fight on as a resistance;
    about five minutes later they declare a war of Restoration on whoever took their worlds, with your backing (+25 power). If that
@@ -32411,7 +32447,8 @@ function upRestoreRec(r) { // bring back an uplifted empire whose entry is gone:
 }
 function upPupTick(E) { const now = resNow(); for (const e of Object.values(E.emp)) if (e.pup && e.res && !e.col.length && now - (e.fellAt || 0) > UP_RETURN_MS) upPupReturn(e, now, 0); }
 function resExpand(e) {
-  const free = resFreeWorlds(); if (!free.length) return; const C = sysById(bodyById(e.cap) ? bodyById(e.cap).sys : 'sol');
+  const home = resEmpGal(e), cx = e.col.includes(CARAX), from = e.col.filter(id => cx || resGalOfBody(id) === home), a = bodyById(from[Math.floor(Math.random() * from.length)]) || bodyById(e.cap), g = a ? galOf(sysById(a.sys)) : home; // it grows where it already has worlds (beyond its own galaxy only while it holds Carax)
+  const free = resFreeWorlds().filter(P => galOf(sysById(P.sys)) === g); if (!free.length) return; const C = sysById(a ? a.sys : 'sol');
   const P = free.sort((p, q) => galDist(sysById(p.sys), C) - galDist(sysById(q.sys), C))[Math.floor(Math.random() * Math.min(5, free.length))];
   e.col.push(P.id); saveRoster();
 }
@@ -32452,6 +32489,7 @@ function resWarEnd(w, attackerWon) {
   else if (w.cb === 'vassal') { L.over = W.id; L.trib = null; what = `${L.name} is now a puppet of ${W.name}`; }
   else if (w.cb === 'tribute') { L.trib = W.id; what = `${L.name} now pays tribute to ${W.name}`; }
   else if (w.cb === 'restoration') { const back = (W.lostTo[L.id] || []).filter(id => L.col.includes(id)); take(back); W.lostTo[L.id] = []; if (back) W.res = false; if (W.pup) { W.fellAt = null; if (!bodyById(W.cap) || !W.col.includes(W.cap)) W.cap = W.col[0] || W.cap; } what = `${W.name} took back its worlds from ${L.name}`; if (W.pup) setTimeout(() => { notice(W.name, 'YOUR PUPPET IS RESTORED', 4200); sfx.chime(); }, 400); } // the empire that won its worlds back is no longer a resistance (this used to clear the loser's flag)
+  if (w.carax && attackerWon) { if (L.col.includes(CARAX)) take([CARAX]); if (W.col.includes(CARAX)) what += ' · Carax is theirs now'; } // the war was for Carax
   resEmpLog(what);
   if (RW) { resWarSay(cw, resPick(RW.win[resAl(cw)]), x); setTimeout(() => resWarSay(cl, resPick(RW.lose[resAl(cl)]), Object.assign({}, x, { b: x.a })), 1500); }
   saveRoster();
@@ -32506,6 +32544,77 @@ function resStoryWars(E, es) {
     } else if (r < .345 || w.took >= 4) { resEmpLog(`${e.name} and ${dipFacName(F)} make peace`); E.sw = E.sw.filter(o => o !== w); }
   }
 }
+/* ---- empires across the galaxies. An empire is founded in the galaxy its founder is in, and grows within it. Carax, beside
+   Sagittarius A*, is the way out: an empire that wants to spread into another galaxy needs Carax first. It asks you for it if you
+   hold it (Resident empires panel: hand it over, or refuse; they never attack you over it), or asks the empire that holds it, which
+   may hand it over, or refuse and have to fight for it. Carax you handed over comes back to you if no empire holds it any more. ---- */
+const CARAX = 'carax';
+const GAL_LONG = { milky: 'the Milky Way', xonexi: 'the Xonexi Galaxy', andromeda: 'the Andromeda Galaxy', lmc: 'the Large Magellanic Cloud', smc: 'the Small Magellanic Cloud' };
+const resGalOfBody = id => { const P = bodyById(id); return P ? galOf(sysById(P.sys)) : 'milky'; };
+const resEmpGal = e => resGalOfBody(e.cap && e.col.includes(e.cap) ? e.cap : e.col[0] || e.cap);
+const resCaraxHolder = () => { const D = wanderer && wanderer.dip ? wanderer.dip.col || {} : {}; return D[CARAX] ? 'you' : resHeldBy(CARAX); };
+const RES_GAL_DOOR = { milky: 'sgra', xonexi: 'xogate', andromeda: 'm31', lmc: 'lmc', smc: 'smc' }; // where an empire first lands in a galaxy
+const RES_CX = {
+  ask: { hero: ['{player}, {ea} would like to settle {gal}. Would you let us have Carax, so our ships can pass?', 'Carax is the way out to {gal}. We\u2019d look after it, {player}. Will you give it to {ea}?'],
+    neutral: ['{player}. {ea} wants Carax. It\u2019s the door to {gal}, and we\u2019d remember the favour.', 'We need Carax to reach {gal}. Hand it over, {player}, and we\u2019re square.'],
+    villain: ['Carax, {player}. Give it to {ea} and we\u2019ll take {gal} without troubling you.', 'You hold the only door to {gal}. Open it. Give us Carax.'] },
+  askE: { hero: ['{eb}, would you let {ea} have Carax? We mean to settle {gal}.'], neutral: ['{eb}. Carax, for {ea}. We\u2019re going to {gal}.'], villain: ['Hand over Carax, {eb}. {gal} is ours to take.'] },
+  give: { hero: ['Take it, and go well. Carax is yours, {ea}.'], neutral: ['Fine. Carax is yours, {ea}. Don\u2019t make us regret it.'], villain: ['Have it. Choke on it.'] },
+  keep: { hero: ['Carax stays with us, {ea}. I\u2019m sorry.'], neutral: ['No. Carax stays with {eb}.'], villain: ['Carax is ours. Come and take it.'] },
+  thanks: { hero: ['Thank you, {player}. Carax is in good hands.'], neutral: ['A fair deal, {player}. {ea} won\u2019t forget it.'], villain: ['Wise, {player}. Carax suits us.'] },
+  no: { hero: ['Understood, {player}. We\u2019ll ask again some day.'], neutral: ['Pity. {gal} will keep.'], villain: ['You\u2019ll regret keeping that door shut, {player}.'] }
+};
+function resExpandInto(e, g) { // across the galaxies, through Carax: their first world out there, near where Carax's way lets out
+  const door = sysById(RES_GAL_DOOR[g]) || sysById('sgra'), free = resFreeWorlds().filter(P => galOf(sysById(P.sys)) === g); if (!free.length) return false;
+  const P = free.sort((p, q) => galDist(sysById(p.sys), door) - galDist(sysById(q.sys), door))[Math.floor(Math.random() * Math.min(5, free.length))];
+  e.col.push(P.id); resEmpLog(`${e.name} crossed into ${GAL_LONG[g]} through Carax and claimed ${P.name}`);
+  if (state === 'explore' || state === 'space') lootMsg(`${e.name} spreads into ${GAL_LONG[g]}`, '#cfd6e6'); saveRoster(); return true;
+}
+function resCrossTry(e) { // the empire looks beyond its own galaxy: it needs Carax for that
+  const E = resEmp, now = resNow(), g = resEmpGal(e), free = resFreeWorlds();
+  const opts = ['milky', ...RES_GALS].filter(o => o !== g && resGalOpen(o) && free.some(P => galOf(sysById(P.sys)) === o)); if (!opts.length) return false;
+  const to = opts[Math.floor(Math.random() * opts.length)], h = resCaraxHolder();
+  if (h === e) return resExpandInto(e, to);
+  if (!h || (E.ask && E.ask.e === e.id) || ((E.askCool || {})[e.id] > now)) return false; // no one to ask (Carax is a story faction's), or they asked not long ago
+  (E.askCool = E.askCool || {})[e.id] = now + 15 * 60e3;
+  const c = resRuler(e), al = resAl(c);
+  if (h === 'you') {
+    if (E.ask) return false; E.ask = { e: e.id, to, t: now };
+    resWarSay(c, resPick(RES_CX.ask[al]), { ea: e.name, gal: GAL_LONG[to], player: wanderer.name }); resEmpLog(`${e.name} asks ${wanderer.name} for Carax, to expand into ${GAL_LONG[to]}`);
+    if (state === 'explore' || state === 'space') notice(e.name, tiPhone() ? 'ASKS YOU FOR CARAX' : 'ASKS YOU FOR CARAX · PAUSE → RESIDENT EMPIRES', 5200);
+    saveRoster(); return true;
+  }
+  if (resAtWar(e.id, h.id)) return false; // already fighting them (for Carax, or anything else): no asking now
+  const hc = resRuler(h), hal = hc ? resAl(hc) : 'neutral', x = { ea: e.name, eb: h.name, gal: GAL_LONG[to], player: wanderer.name };
+  const yes = h.over === e.id ? 1 : e.over === h.id ? .1 : ({ hero: .45, neutral: .3, villain: .12 })[hal] * (hal === al ? 1.4 : 1);
+  resWarSay(c, resPick(RES_CX.askE[al]), x); resEmpLog(`${e.name} asks ${h.name} for Carax, to expand into ${GAL_LONG[to]}`);
+  if (Math.random() < yes) {
+    h.col = h.col.filter(id => id !== CARAX); e.col.push(CARAX); for (const w of E.wars) if (w.carax && w.a === e.id) w.carax = false; resEmpLog(`${h.name} handed Carax to ${e.name}`);
+    setTimeout(() => resWarSay(hc, resPick(RES_CX.give[hal]), x), 1400); resExpandInto(e, to);
+  } else {
+    resEmpLog(`${h.name} refused ${e.name} Carax`); setTimeout(() => resWarSay(hc, resPick(RES_CX.keep[hal]), x), 1400);
+    if (E.wars.length < 6 && !resAtWar(e.id, h.id) && Math.random() < ({ villain: .7, neutral: .4, hero: .15 })[al] && resDeclare(e, h, al === 'villain' ? 'subjugation' : 'tribute')) { const w = E.wars[E.wars.length - 1]; w.carax = true; resEmpLog(`${e.name} goes to war with ${h.name} for Carax`); }
+  }
+  saveRoster(); return true;
+}
+function resCaraxAnswer(give) { // your answer to an empire that asked you for Carax
+  const E = resEmp, A = E.ask; E.ask = null; if (!A) return; const e = E.emp[A.e], D = wanderer.dip && wanderer.dip.col; if (!e) { saveRoster(); return; }
+  const c = resRuler(e), al = c ? resAl(c) : 'neutral', x = { ea: e.name, gal: GAL_LONG[A.to], player: wanderer.name };
+  if (give && D && D[CARAX]) {
+    delete D[CARAX]; for (const W of Object.values(wanderer.dip.wars || {})) if (W && W.held) W.held = W.held.filter(o => o !== CARAX);
+    e.col.push(CARAX); E.caraxFrom = 'you'; const ch = curChar(); if (ch) ch.dip = wanderer.dip;
+    resEmpLog(`${wanderer.name} handed Carax to ${e.name}`); if (c) resWarSay(c, resPick(RES_CX.thanks[al]), x); resExpandInto(e, A.to); try { applyChapterFactions(); } catch (er) {}
+  } else { resEmpLog(`${wanderer.name} refused ${e.name} Carax`); if (c) resWarSay(c, resPick(RES_CX.no[al]), x); }
+  saveRoster();
+}
+function resCaraxTick(E, now) {
+  const D = wanderer.dip && wanderer.dip.col;
+  if (E.ask && (!E.emp[E.ask.e] || !D || !D[CARAX] || now - E.ask.t > 10 * 60e3)) { const e = E.emp[E.ask.e]; if (e && D && D[CARAX]) resEmpLog(`${e.name}'s request for Carax went unanswered`); E.ask = null; } // gone, Carax no longer yours, or you never answered
+  if (E.caraxFrom === 'you' && D && !D[CARAX] && !resHeldBy(CARAX) && (wanderer.chapter | 0) >= 5) { // the empire you gave it to is gone: Carax is yours again
+    D[CARAX] = { gov: null, from: 'catharsis', siege: true }; E.caraxFrom = null; const ch = curChar(); if (ch) ch.dip = wanderer.dip;
+    resEmpLog('Carax is yours again: no empire holds it any more'); if (state === 'explore' || state === 'space') lootMsg('Carax is yours again', '#ffd36a');
+  }
+}
 function resEmpTick(dt) {
   try { resLentSweep(); } catch (e) { console.error(e); }
   if (!residents.length || effCh() < 3) return;
@@ -32522,7 +32631,8 @@ function resEmpTick(dt) {
     const c = cand.find(o => Math.random() < ({ villain: .5, neutral: .3, hero: .2 })[resAl(o)]);
     if (c) { resFound(c); E.nextFound = now + (90 + Math.random() * 90) * 1000; }
   }
-  if (E.on) for (const e of Object.values(E.emp)) if (!e.res && e.col.length < 12 && Math.random() < .25) resExpand(e);
+  if (E.on) for (const e of Object.values(E.emp)) if (!e.res && e.col.length < 12 && Math.random() < .25) { if (e.col.length >= 3 && Math.random() < .12 && resCrossTry(e)) continue; resExpand(e); } // now and then they look to another galaxy (and Carax)
+  try { resCaraxTick(E, now); } catch (er) { console.error(er); }
   const es = Object.values(E.emp);
   if (E.on && E.wars.length < 6) { // at most one new war a tick
     outer: for (const a of es) for (const b of es) {
@@ -32557,6 +32667,7 @@ function resEmpEl() {
     else if (act === 'cancel') RES.reIncite = null;
     else if (act === 'disband') { if (RES.reDisband === a1) { resDisband(a1); RES.reDisband = null; } else RES.reDisband = a1; }
     else if (act === 'peace') { const w = resEmp.wars[+a1]; if (w) resBrokerPeace(w); }
+    else if (act === 'cxgive' || act === 'cxno') resCaraxAnswer(act === 'cxgive');
     resEmpRender();
   });
   return el;
@@ -32569,12 +32680,14 @@ function resEmpRender() {
   const E = resEmp, es = Object.values(E.emp), I = RES.reIncite, nm = id => { const e = E.emp[id]; return e ? reEsc(e.name) : '?'; };
   const alN = { hero: 'Hero', neutral: 'Neutral', villain: 'Villain' };
   let h = `<button class="re-tog" data-re="on">Residents found empires: <b>${E.on ? 'ON' : 'OFF'}</b></button><button class="re-tog" data-re="swear">Residents swearing (everywhere): <b>${resSwearOn ? 'ON' : 'OFF'}</b></button>`;
+  if (E.ask && E.emp[E.ask.e]) { const e = E.emp[E.ask.e]; h += `<h4>Request</h4><div class="re-emp" style="--c:${resEmpCol(e)}"><div class="re-emp-t"><b>${reEsc(e.name)} asks you for Carax</b><small>They want to expand into ${GAL_LONG[E.ask.to]}, and Carax, beside Sagittarius A*, is the way out of their galaxy. Hand it over and it's theirs; refuse and they'll ask again some day. They won't attack you either way.</small></div><div class="re-act"><button data-re="cxgive">Hand over Carax</button><button class="danger" data-re="cxno">Refuse</button></div></div>`; }
+  if ((wanderer.chapter | 0) >= 5) { const hd = resCaraxHolder(); h += `<p class="re-empty">Carax: ${hd === 'you' ? 'yours' : hd ? 'held by ' + reEsc(hd.name) : 'held by no empire'} · an empire needs it to spread into another galaxy (the Milky Way, Xonexi, Andromeda, the Magellanic Clouds).</p>`; }
   if (!es.length) h += `<p class="re-empty">${E.on ? 'No resident has founded an empire yet. Residents found empires on unclaimed worlds once they reach level 35 (villains first), one at a time.' : 'Empire founding is off: residents stick to their guilds. Switch it on above if you want them to carve up the frontier.'} ${residents.length ? '' : 'Send a wanderer into the world from the Wanderers screen to get started.'}</p>`;
   else h += '<h4>Empires</h4>' + es.map(e => {
     const c = resRuler(e), al = c ? resAl(c) : 'neutral', st = e.res ? 'Resistance (no worlds)' : e.over ? `Puppet of ${nm(e.over)}` : e.trib ? `Pays tribute to ${nm(e.trib)}` : '';
     const sel = I && I.a === e.id, wars = E.wars.filter(w => w.a === e.id || w.b === e.id).length;
     const served = Object.entries((wanderer.dip && wanderer.dip.lent) || {}).filter(([, v]) => v === 'res:' + e.id).map(([k]) => compName(k));
-    let row = `<div class="re-emp" style="--c:${resEmpCol(e)}"><div class="re-emp-t"><b>${reEsc(e.name)}</b><small>${reEsc(c ? c.name : '?')} · ${alN[al]} · LV ${c ? resLevel(c) : '?'} · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars ? ` · ${wars} war${wars === 1 ? '' : 's'}` : ''}${st ? ' · ' + st : ''}${served.length ? ' · serving them: ' + served.join(', ') : ''}</small></div>`;
+    let row = `<div class="re-emp" style="--c:${resEmpCol(e)}"><div class="re-emp-t"><b>${reEsc(e.name)}</b><small>${reEsc(c ? c.name : '?')} · ${alN[al]} · LV ${c ? resLevel(c) : '?'} · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${(gs => gs.length > 1 || gs[0] !== 'milky' ? ' in ' + gs.map(o => GAL_LONG[o].replace(/^the /, '')).join(', ') : '')([...new Set(e.col.map(resGalOfBody))])}${e.col.includes(CARAX) ? ' · holds Carax' : ''}${wars ? ` · ${wars} war${wars === 1 ? '' : 's'}` : ''}${st ? ' · ' + st : ''}${served.length ? ' · serving them: ' + served.join(', ') : ''}</small></div>`;
     if (!sel) row += `<div class="re-act"><button data-re="incite|${e.id}" ${es.length < 2 ? 'disabled' : ''}>Set on another empire</button><button class="danger" data-re="disband|${e.id}">${RES.reDisband === e.id ? 'Tap again: demand they disband' : 'Demand they disband'}</button></div>`;
     else {
       row += `<div class="re-pick"><small>Who should ${reEsc(c ? c.name : '')} go to war with?</small><div class="re-chips">${es.filter(o => o.id !== e.id).map(o => `<button class="${I.b === o.id ? 'on' : ''}" data-re="tgt|${o.id}" ${resAtWar(e.id, o.id) ? 'disabled' : ''}>${reEsc(o.name)}${resAtWar(e.id, o.id) ? ' (at war)' : ''}</button>`).join('')}</div>`;
@@ -32583,7 +32696,7 @@ function resEmpRender() {
     }
     return row + '</div>';
   }).join('');
-  if (E.wars.length) h += '<h4>Wars</h4>' + E.wars.map((w, i) => { const k = clamp(50 + w.score / 2, 0, 100); return `<div class="re-war"><div><b>${nm(w.a)}</b> ⚔ <b>${nm(w.b)}</b><small>${CBS[w.cb].name}</small></div><div class="re-bar"><i style="width:${k}%"></i></div><button data-re="peace|${i}">Broker peace</button></div>`; }).join('');
+  if (E.wars.length) h += '<h4>Wars</h4>' + E.wars.map((w, i) => { const k = clamp(50 + w.score / 2, 0, 100); return `<div class="re-war"><div><b>${nm(w.a)}</b> ⚔ <b>${nm(w.b)}</b><small>${w.carax ? 'For Carax · ' : ''}${CBS[w.cb].name}</small></div><div class="re-bar"><i style="width:${k}%"></i></div><button data-re="peace|${i}">Broker peace</button></div>`; }).join('');
   if (E.log.length) h += '<h4>Recent</h4><ul class="re-log">' + E.log.slice(-8).reverse().map(l => `<li>${reEsc(l.text)}</li>`).join('') + '</ul>';
   el.querySelector('.re-body').innerHTML = h;
   if (GAL.open) { applyChapterFactions(); if (GAL.sel) galPanel(); } // disbanded, at war, at peace: the map shows it straight away
@@ -33455,7 +33568,7 @@ function resChatLines(B, lines, mode) { // their answer, in the chat
 }
 function chatUiTick() { // the CHAT button shows when there's someone to talk to
   const b = $('#resChatBtn'); if (!b) { if (residents.length) chatEl(); return; }
-  const show = residents.length > 0 && !onXonexi() && ex.mode === 'world' && state === 'explore' && !ex.dlg && !TR.open && !RES.chatOn && !PRISON.on && !ui.xhud.classList.contains('modal');
+  const show = residents.length > 0 && !xoResBlock() && ex.mode === 'world' && state === 'explore' && !ex.dlg && !TR.open && !RES.chatOn && !PRISON.on && !ui.xhud.classList.contains('modal');
   b.classList.toggle('hidden', !show);
   if (RES.chatOn && (state !== 'explore' || ex.mode !== 'world')) chatClose();
 }
@@ -33810,8 +33923,9 @@ function tauntBtnTick() { // phones: a TAUNT button when there are locals to bai
 function resGalEmpires(g, font) {
   for (const e of Object.values(resEmp.emp)) {
     const col = resEmpCol(e), seen = new Set();
-    for (const id of e.col) { const P = bodyById(id); if (!P || seen.has(P.sys)) continue; seen.add(P.sys); const p = galXY(sysById(P.sys)); if (p.x < -40 || p.x > innerWidth + 40 || p.y < -40 || p.y > innerHeight + 40) continue; g.strokeStyle = col; g.lineWidth = 1.6; g.globalAlpha = .85; g.beginPath(); g.arc(p.x, p.y, 11, 0, 7); g.stroke(); g.globalAlpha = 1; }
-    const C = bodyById(e.cap) && e.col.includes(e.cap) ? bodyById(e.cap) : bodyById(e.col[0]); if (!C) continue;
+    const v = GAL.view || 'milky'; let lab = null;
+    for (const id of e.col) { const P = bodyById(id); if (!P || seen.has(P.sys) || galOf(sysById(P.sys)) !== v) continue; seen.add(P.sys); lab = lab || P; const p = galXY(sysById(P.sys)); if (p.x < -40 || p.x > innerWidth + 40 || p.y < -40 || p.y > innerHeight + 40) continue; g.strokeStyle = col; g.lineWidth = 1.6; g.globalAlpha = .85; g.beginPath(); g.arc(p.x, p.y, 11, 0, 7); g.stroke(); g.globalAlpha = 1; }
+    const C0 = bodyById(e.cap) && e.col.includes(e.cap) ? bodyById(e.cap) : null, C = C0 && galOf(sysById(C0.sys)) === v ? C0 : lab; if (!C) continue; // named at its capital, or where its worlds in this galaxy begin
     const p = galXY(sysById(C.sys)); g.textAlign = 'center'; g.font = `600 8px ${font}`; g.fillStyle = col; g.fillText(e.name.toUpperCase(), p.x, p.y - 15);
   }
 }
@@ -34151,7 +34265,7 @@ function loopFrame() {
   try { podSync(); } catch (e) {} // the pod, wherever your ship is drawn
   combatTick(dt);
   alOutfitSync(dt);
-  try { if (onXonexi()) xoResQuiet(); else { resUiTick(); resEmpTick(dt); resGuildTick(dt); } } catch (e) { console.error(e); } // on Xonexi the Milky Way's residents, their empires and their guilds are a galaxy away
+  try { if (xoResBlock()) xoResQuiet(); else { resUiTick(); resEmpTick(dt); resGuildTick(dt); } } catch (e) { console.error(e); } // on Xonexi the Milky Way's residents, their empires and their guilds are a galaxy away
   try { drunkTick(dt); chatUiTick(); } catch (e) {}
   try { if (wanderer) { peopleSpawnTick(); lawTick(dt); tauntBtnTick(); } } catch (e) { console.error(e); }
   try { if (wanderer) petWorldTick(dt); } catch (e) { console.error(e); } // the cats and dogs of Earth's cities
