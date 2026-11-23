@@ -108,7 +108,7 @@ Add one of these to the game's address to jump straight to a scene:
 - `?ending=tared` plays the Taredesiban nightmare once the title screen is up.
 - `?ending=neutralvillain` plays the neutral ending as a villain hears it (alignment −34 or lower).
 - `?ending=goodvillain` plays the good ending as a villain lives it (the slaughter in the throne room, then your answer to Hak; his fight plays in the game).
-- `?villain` previews the evil main menu (a villain wanderer with the world in their hands); add `&menu=ch4` to see the blood red stacked on it.
+- `?villain` previews the evil main menu (a villain wanderer with the world in their hands); `?villain=chompy` (or `human`, `erisian`, `grek`, `taredesiban`, `oilkoumene`) hears that race's lines; add `&menu=ch4` to see the blood red stacked on it.
 - `?andromeda` loads a throwaway Chapter V wanderer (never saved) in space at Sagittarius A*: press Continue, choose a galaxy (G or the button: Andromeda, the Large or the Small Magellanic Cloud), then fly into the black hole to cross.
 - `?hakchompjakbossfightevilgoodending` loads a throwaway villain wanderer (never saved) on Carax and takes them straight to Hak's fight at the top of the Carax Bastion. Press Continue on the title screen.
 - `?finalboss=good`, `?finalboss=neutral`, `?finalboss=neutraloriondead` or `?finalboss=bad` plays the arrival at Sagittarius A*: Zark's first-person flight out of the black hole (with the Catharsis Orion beside him for `neutraloriondead`), Orion's call on `bad`, then the crew's scene for that road. Tap once the title screen is up; nothing is saved.

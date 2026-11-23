@@ -3110,3 +3110,11 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - **They laugh at you:** every ten seconds or so they throw their head back and laugh, shoulders heaving, the world bouncing in their hands, as the camera lunges in. A low, ragged, distorted laugh plays (with sound on), and **HA HA HA** flickers beside them in split colours.
   - **The glitch:** scanlines, grain and a flicker over the whole scene, and every few seconds a burst of tearing: the picture sliced and dragged sideways, its colours split red and cyan, the frame jolting and over-contrasted, with a crackle of static.
   - In blood red (Chapter IV, or Chapter V with BLOOD RED on) all of it plays in red. Phones get the same, with the laugh across the top held upright.
+- **The evil main menu speaks for its villain's race: 600 new lines, 100 for each.** A villain says their own race's hundred, signed with their name:
+  - **Human:** measuring themselves against Hawthorne and mocking him and Darius Ancin (*"Hawthorne wanted Sol. I want everything Sol can see."* · *"Darius Ancin: a brave man in a coat too big for him."*).
+  - **Chompy:** measuring themselves against Sevirrus and mocking Hak (*"Sevirrus broke the Empire in half. I'll break it into dust."* · *"Hak Chompjak the Fifth. Five tries, and they still haven't made a real emperor."*).
+  - **Erisian:** their famous patience, silence and loyalty turned to ice, the Matriarch and their Chompy masters next (*"An Erisian gives their loyalty once. I gave mine to myself."*).
+  - **Grek:** slow to anger no longer, turning on the Order of Archamus and its puppet emperor, Am-Grek (*"The Grek are slow to anger. I took my time. Now I'm angry."*).
+  - **Taredesiban:** making Archamus's light a holy war (*"Archamus is the Prime Good. Everything I do in his name is good. Everything."* · *"I don't conquer. I convert. Some just convert into ash."*).
+  - **Oilkoumene:** a galactic emperor, as Tyromairon and Obsidnia were before them, sworn to take Obra-Spira back (*"Obra-Spira waits for its rightful ruler. I am coming home."* · *"Bow, lesser galaxy. The Oilkoumene Empire has returned, and it wears my face."*).
+  - All 100 come round in a shuffled order; in blood red the voice in the dark still gets a word in. **Preview:** `?villain=chompy` (or `human`, `erisian`, `grek`, `taredesiban`, `oilkoumene`).
