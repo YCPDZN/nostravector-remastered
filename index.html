@@ -19185,7 +19185,7 @@ const SYSTEMS = [
     ] });
   const X = SYSTEMS.find(S => S.id === 'xonexi'); if (X) X.desc = X.desc.replace('The only star of the Xonexi Galaxy', 'The heart of the Xonexi Galaxy').replace('and the only way between the two', 'whose way into ours runs through its second star, the Gateway');
 })();
-// ---- the Andromeda Galaxy (M31): 120 star systems of its own around M31*, the black hole at its heart. Its own map; no warp reaches it.
+// ---- the Andromeda Galaxy (M31): 570 star systems of its own around M31*, the black hole at its heart. Its own map; no warp reaches it.
 //      The way in is the event horizon of Sagittarius A* (Chapter V, once the Catharsis has fallen); M31*'s brings you home. Generated from
 //      a fixed seed, so it's the same galaxy on every device. Laid out far from the Milky Way on the map's plane, tilted as we see it. ----
 const M31_GAL = 'Andromeda Galaxy', M31_C = { x: 14, y: 3 }, M31_PA = -.62, M31_INC = .42, M31_R = 1.25;
@@ -19220,10 +19220,12 @@ const m31Pt = (x, y) => { const yy = y * M31_INC, c = Math.cos(M31_PA), s = Math
   core.bodies.push(world('frozen', { id: 'm31-1', name: 'Alt-Zerry', r: 1700, orbit: 82000, ang: 1.4, seed: 9001, faction: UNCLAIMED }), world('gas', { id: 'm31-2', name: 'Alt-Zerry II', r: 6000, orbit: 150000, ang: 4.2, seed: 9003, faction: UNCLAIMED }));
   SYSTEMS.push(core);
   const mine = [core];
-  for (let n = 0; n < 120; n++) {
-    let pt, tries = 0;
+  // the first 120 are the original systems; the 450 after them carry on from the same seed (so the first 120 never change), packed a
+  // little closer, with seeds of their own
+  for (let n = 0; n < 570; n++) {
+    let pt, tries = 0; const gap = n < 120 ? .042 : .024;
     do { const scatter = R() < .14, arm = Math.floor(R() * 2), t = .1 + Math.pow(R(), .75) * .9, a = scatter ? R() * Math.PI * 2 : arm * Math.PI + Math.log(t * 8 + 1) * 1.9 + G() * (.2 + .22 * (1 - t)), rr = scatter ? .15 + R() * .85 : t + G() * .05; pt = m31Pt(Math.cos(a) * rr, Math.sin(a) * rr); }
-    while (mine.some(S => Math.hypot(S.map.x - pt.x, S.map.y - pt.y) < .042) && ++tries < 80);
+    while (mine.some(S => Math.hypot(S.map.x - pt.x, S.map.y - pt.y) < gap) && ++tries < 80);
     let name; do name = pick(A) + pick(B) + pick(SUF); while (used.has(name)); used.add(name);
     const base = name.replace(/ \w+$/, m => SUF.includes(m) ? '' : m), id = 'an' + (n + 1), st = starOf();
     const cls = st[2] === 'D' ? 'DA' : `${st[2]}${Math.floor(R() * 9)}${/giant/.test(st[1]) ? 'III' : 'V'}`, [r0, g0, b0] = st[4];
@@ -19233,9 +19235,9 @@ const m31Pt = (x, y) => { const yy = y * M31_INC, c = Math.cos(M31_PA), s = Math
     for (let k = 0; k < nb; k++) {
       const inner = orbit < 45000 && st[2] !== 'D', outer = orbit > 95000;
       const type = inner ? pick(['lava', 'toxic', 'arid', 'barren', 'arid']) : outer ? pick(['gas', 'gas', 'frozen', 'barren', 'gas']) : pick(['lush', 'ocean', 'arid', 'barren', 'frozen', 'gas', 'lush', 'toxic']);
-      const P = world(type, { id: `${id}-${k + 1}`, name: `${base} ${ROM[k]}`, r: 900 + R() * 1700, orbit: Math.round(orbit), ang: R() * Math.PI * 2, seed: 9100 + n * 11 + k, faction: UNCLAIMED });
+      const P = world(type, { id: `${id}-${k + 1}`, name: `${base} ${ROM[k]}`, r: 900 + R() * 1700, orbit: Math.round(orbit), ang: R() * Math.PI * 2, seed: (n < 120 ? 9100 : 30000) + n * 11 + k, faction: UNCLAIMED });
       S.bodies.push(P); if (P.kind === 'gas') gas++; else rocky++;
-      if (R() < (P.kind === 'gas' ? .5 : .22)) { moons++; S.bodies.push(world(R() < .5 ? 'barren' : 'frozen', { id: `${P.id}m`, name: `${P.name}a`, r: 360 + R() * 340, parent: P.id, orbit: Math.round(P.r * (P.kind === 'gas' ? 1.9 : 2.6) + 2500 + R() * 2000), ang: R() * Math.PI * 2, seed: 9900 + n * 11 + k, faction: UNCLAIMED })); }
+      if (R() < (P.kind === 'gas' ? .5 : .22)) { moons++; S.bodies.push(world(R() < .5 ? 'barren' : 'frozen', { id: `${P.id}m`, name: `${P.name}a`, r: 360 + R() * 340, parent: P.id, orbit: Math.round(P.r * (P.kind === 'gas' ? 1.9 : 2.6) + 2500 + R() * 2000), ang: R() * Math.PI * 2, seed: (n < 120 ? 9900 : 40000) + n * 11 + k, faction: UNCLAIMED })); }
       orbit += 16000 + R() * 14000 + (k === nb - 2 ? 20000 : 0);
     }
     if (!rocky) { const P = S.bodies[0]; world('barren', P); P.r = 1200; delete P.bands; P.faction = UNCLAIMED; rocky = 1; gas--; }
