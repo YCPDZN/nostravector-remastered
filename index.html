@@ -5657,6 +5657,8 @@ async function interact() {
     tiUse(n);
   } else if (n.id === 'leadGate') {
     leaderHallUse();
+  } else if (n.id === 'obraGate') {
+    obraGateUse();
   } else if (n.id === 'csbRifle') {
     csbTakeRifle();
   } else if (n.id === 'qgiver') {
@@ -12333,6 +12335,7 @@ function leaderBossWin(B) { // a leader falls: the war is won (or the resident e
   lairSetProg(L, L.floors + 1);
   if (L.war) { dipScore(L.war, 100, `${Bd.short} defeated in their hall`); setTimeout(() => lootMsg('The war is won · settle it in Diplomacy', '#ffd36a'), 2400); }
   if (L.pontRuler) setTimeout(() => pontTroopChoice(L.pontRuler), 3200);
+  if (L.obra) { const from = L.obra.from; setTimeout(() => { try { obraPlayerTake(from); } catch (er) { console.error(er); } }, 1200); } // the Citadel of Obra-Spira: it's yours
   if (L.resEmp && resEmp.emp[L.resEmp] && resEmp.emp[L.resEmp].pup) { const e = resEmp.emp[L.resEmp]; // one of your uplifted empires: beaten, but not gone. It falls, and it can be restored (Diplomacy → Crew → Uplift: Restore them, or on its own in about five minutes)
     e.col = []; e.res = true; e.fellAt = resNow(); e.lostTo = {}; resEmp.wars = resEmp.wars.filter(w => w.a !== e.id && w.b !== e.id); for (const o of Object.values(resEmp.emp)) { if (o.over === e.id) o.over = null; if (o.trib === e.id) o.trib = null; }
     resEmpLog(`${wanderer.name} defeated ${Bd.short}; ${e.name} has fallen, for now`); saveRoster(); try { applyChapterFactions(); } catch (er) {}
@@ -28720,6 +28723,7 @@ function updateWorldMode(dt) {
   if (!ex.near && isPl() && !DGN.on && world.dgnGate && Math.hypot(p.x - world.dgnGate.x, p.z - world.dgnGate.z) < 3.2) ex.near = { id: 'dgnGate', label: 'Enter Olympus Mons' };
   if (!ex.near && NYX.R && NYX.R.root.parent && Math.hypot(p.x - NYX.x, p.z - NYX.z) < 3.2) ex.near = { id: 'nyx', label: 'Nyrexia Erisconos' };
   if (!ex.near && TIW.area) ex.near = tiNear(p);
+  if (!ex.near) { const og = obraGateNear(p); if (og) ex.near = og; } // Obra-Spira: the foot of the great spire
   if (!ex.near && !DGN.on && LHALL.g && LHALL.g.visible && Math.hypot(p.x - LHALL.x, p.z - LHALL.z) < 3.6) ex.near = { id: 'leadGate', label: `The Hall of ${LHALL.H.Lo.list[0].boss}` };
   if (!ex.near && isPl() && !DGN.on) { const G = lairGateNear(p); if (G) ex.near = { id: 'lairGate', ref: G, label: `${G.L.name} · lv ${G.L.lv}${lairCleared(G.L) ? ' · cleared' : ''}` }; } // the lairs
   if (!ex.near && isPl()) ex.near = csbNear(p); // the carapace rifle, on its plinth
@@ -28763,7 +28767,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { bstArch: [ex.near.label, 'TALK'], bstUp: [ex.near.label, 'CLIMB'], bstDown: [ex.near.label, 'DOWN'], bstThrone: [ex.near.label, 'ENTER'], revive: [ex.near.label, 'REVIVE'], xoDgn: [ex.near.label, 'GO THROUGH'], taroBed: [ex.near.label + ' · sleep', 'SLEEP'], homeless: [ex.near.label, 'GIVE'], prisonSleep: [ex.near.label, 'SLEEP'], prisonPick: [ex.near.label, 'PICK'], prisonExit: [ex.near.label, 'ESCAPE'], bot: [`Wave · ${ex.near.label}`, 'WAVE'], stray: [`Tame · ${ex.near.label}`, 'TAME'], ship: [podMode() ? 'Board the pod' : jewelOn() ? (tiPhone() ? 'Board · the Jewel of Archamus' : 'Board the Jewel of Archamus') : 'Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], nicoHouse: [tiPhone() ? 'Enter · Nico’s house' : 'Enter Nico’s house', 'ENTER'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
+    const PR = { obraGate: [ex.near.label, 'STORM'], bstArch: [ex.near.label, 'TALK'], bstUp: [ex.near.label, 'CLIMB'], bstDown: [ex.near.label, 'DOWN'], bstThrone: [ex.near.label, 'ENTER'], revive: [ex.near.label, 'REVIVE'], xoDgn: [ex.near.label, 'GO THROUGH'], taroBed: [ex.near.label + ' · sleep', 'SLEEP'], homeless: [ex.near.label, 'GIVE'], prisonSleep: [ex.near.label, 'SLEEP'], prisonPick: [ex.near.label, 'PICK'], prisonExit: [ex.near.label, 'ESCAPE'], bot: [`Wave · ${ex.near.label}`, 'WAVE'], stray: [`Tame · ${ex.near.label}`, 'TAME'], ship: [podMode() ? 'Board the pod' : jewelOn() ? (tiPhone() ? 'Board · the Jewel of Archamus' : 'Board the Jewel of Archamus') : 'Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], nicoHouse: [tiPhone() ? 'Enter · Nico’s house' : 'Enter Nico’s house', 'ENTER'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give James orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
@@ -30770,6 +30774,28 @@ const PEDIA_EVENTS = [
       'The Catharsis died with its master. Thomas Hawthorne, its Grand Imperarch, died at Carax too. Every world the Catharsis had held, Carax included, passed to the wanderer.'
     ] }
 ];
+PEDIA_EVENTS.push({ id: 'obraConquest', stage: 'obra', showIf: () => !!(resEmp && resEmp.obraWho), name: 'THE CONQUEST OF OBRA-SPIRA',
+  get title() { return `Conquest · ${bodyById(OBRA) ? bodyById(OBRA).name : 'Obra-Spira'}, the Cyrannus Galaxy`; },
+  get sub() { const r = resEmp.obraWho; return r ? obraDate(r) : ''; },
+  get facts() {
+    const r = resEmp.obraWho; if (!r) return []; const D = wanderer && wanderer.dip && wanderer.dip.col, h = resHeldBy(OBRA), you = r.kind === 'you' && wanderer && r.id === wanderer.id;
+    return [['Date', obraDate(r)], ['Place', 'The Citadel of Obra-Spira, near the heart of the Cyrannus Galaxy'], ['Conqueror', `${r.name}${you ? ' (you)' : r.kind === 'you' ? ', a wanderer' : ', a resident'}`], ['Race', (SPECIES[r.sp] || {}).label || '—'],
+      ['Empire', r.emp], ['Taken from', r.from || 'No one: only its fortress, and its Warden'], ['Renamed', 'Orbispira, by every race but the Oilkoumene (to them it is still Obra-Spira)'],
+      ['Held now by', D && D[OBRA] ? `${typeof realmName === 'function' ? realmName() : 'your realm'} (you)` : h ? h.name : 'No one'], ['Changed hands', `${(resEmp.obraHist || []).length} time${(resEmp.obraHist || []).length === 1 ? '' : 's'}`]];
+  },
+  get align() { const r = resEmp.obraWho; return r ? (r.sp === 'oilkoumene' ? 'An Oilkoumene took back the Oilkoumene’s first world. The others call it Orbispira now. They never will.' : 'The day Obra-Spira fell, and the galaxy started calling it Orbispira.') : ''; },
+  get paras() {
+    const r = resEmp.obraWho; if (!r) return []; const nowNm = obraNameFor(wanderer), oil = r.sp === 'oilkoumene', you = r.kind === 'you' && wanderer && r.id === wanderer.id, who = you ? 'You' : r.name;
+    const p = ['Obra-Spira was the first world of the Oilkoumene, and the fortress of their empire when it ruled all of Cyrannus: a city from pole to pole, black glass spires twisting up through hanging gardens, under a sky that never storms. When the empire fell, the city stood on behind its silver walls, unclaimed, guarded by the last keeper of its Citadel. Every empire that ever saw it wanted it.'];
+    if (r.how === 'siege') p.push(`${r.emp} came for it first. ${r.name}${r.kind === 'res' ? ', a resident who had founded it,' : ''} threw everything at the Citadel’s walls, as so many had before. This time the walls fell, and ${r.name} walked up the processional to the foot of the great spire as its master.`);
+    else if (r.how === 'war') p.push(`${r.emp} took it by war, from ${r.from}, after a fight that cost both empires dearly. ${r.name} raised their flag over the Citadel the day it was over.`);
+    else if (r.how === 'hall') p.push(`${who} stormed the Citadel alone and faced ${r.from}’s ruler at the foot of the great spire, and won. ${r.from} gave the city up.`);
+    else p.push(`${who} stormed the Citadel alone. At the foot of the great spire the Warden of Obra-Spira, its last keeper, was waiting: “Every empire that ever was has come for this city. None of them kept it.” ${you ? 'You beat the Warden' : `${r.name} beat the Warden`}, and the city was ${you ? 'yours' : 'theirs'}.`);
+    p.push(oil ? 'The conqueror was Oilkoumene, home at last on the first world of their people. It made no difference to the rest of the galaxy: from that day the other races called it Orbispira. The Oilkoumene never have. To them it is Obra-Spira, and always will be.' : 'From that day the other races called it Orbispira. The Oilkoumene never have: to them it is still Obra-Spira, the first world of their people, and always will be.');
+    const H = (resEmp.obraHist || []).slice(1); if (H.length) p.push(`It has changed hands since: ${H.map(obraHow).join('; then ')}.`);
+    const D = wanderer && wanderer.dip && wanderer.dip.col, h = resHeldBy(OBRA); p.push(D && D[OBRA] ? `Today ${nowNm} is yours, and no empire will move on it.` : h ? `Today ${nowNm} is held by ${h.name}, and every other empire still wants it.` : `Today no empire holds ${nowNm}. Its walls are waiting for the next one to try.`);
+    return p;
+  } });
 const PEDIA_TI = [
   { id: 'hawthorne', tag: 'tiHaw', h: 1.9, metIf: pdMetCh3(() => pdMet('hawthorne') || c3f('hawMars')), name: 'THOMAS HAWTHORNE', title: 'Grand Imperarch of Terra Imperia',
     facts: [['Species', 'Human'], ['Rank', 'Grand Imperarch'], ['Formerly', 'Head of Government, Human Federation of Sol'], ['Rival', 'Darius Ancin'], ['Allegiance', 'Terra Imperia'], ['Alignment', 'Lawful Evil']],
@@ -31312,6 +31338,7 @@ function pediaPreview() {
   if (!list.length) { cc.lookY = 1; cc.dist = 6; return; }
   const tok = cc.loadTok;
   if (pedia.tab === 'events' && pedia.cur && pedia.cur.stage === 'zark' && !pdEntryLocked(pedia.cur)) { pdZarkStage(tok); return; }
+  if (pedia.tab === 'events' && pedia.cur && pedia.cur.stage === 'obra') { pdObraStage(tok); return; } // the Conquest of Obra-Spira: whoever took it
   if (pedia.tab === 'events') {
     const all = [...PEDIA_ANCIENT, ...PEDIA_TI, ...COMPANIONS];
     const story = !!(pedia.cur && pedia.cur.story), asMet = [...COMPANIONS, ...PEDIA_ANCIENT, ...PEDIA_TI]; // your own story shows people as you met them
@@ -32582,7 +32609,7 @@ function resWarEnd(w, attackerWon) {
   else if (w.cb === 'vassal') { L.over = W.id; L.trib = null; what = `${L.name} is now a puppet of ${W.name}`; }
   else if (w.cb === 'tribute') { L.trib = W.id; what = `${L.name} now pays tribute to ${W.name}`; }
   else if (w.cb === 'restoration') { const back = (W.lostTo[L.id] || []).filter(id => L.col.includes(id)); take(back); W.lostTo[L.id] = []; if (back) W.res = false; if (W.pup) { W.fellAt = null; if (!bodyById(W.cap) || !W.col.includes(W.cap)) W.cap = W.col[0] || W.cap; } what = `${W.name} took back its worlds from ${L.name}`; if (W.pup) setTimeout(() => { notice(W.name, 'YOUR PUPPET IS RESTORED', 4200); sfx.chime(); }, 400); } // the empire that won its worlds back is no longer a resistance (this used to clear the loser's flag)
-  if (w.obra && W.col.includes(OBRA) && !hadObra) { const first = !resEmp.orbi; resEmp.orbi = true; obraNames(); what += ` · ${W.name} holds ${bodyById(OBRA).name} now${first ? (obraOilk(wanderer) ? ' (the other races call it Orbispira now)' : ' (they renamed it Orbispira)') : ''}`; if (state === 'explore' || state === 'space') notice(W.name, first && !obraOilk(wanderer) ? 'TAKES OBRA-SPIRA · NOW ORBISPIRA' : `TAKES ${bodyById(OBRA).name.toUpperCase()}`, 5200); } // the war was for Obra-Spira
+  if (w.obra && W.col.includes(OBRA) && !hadObra) { const first = !resEmp.orbi; obraRecord({ kind: 'res', id: W.id, name: cw ? cw.name : W.name, sp: cw ? spOf(cw) : 'human', emp: W.name, how: 'war', from: L.name }); resEmp.orbi = true; obraNames(); what += ` · ${W.name} holds ${bodyById(OBRA).name} now${first ? (obraOilk(wanderer) ? ' (the other races call it Orbispira now)' : ' (they renamed it Orbispira)') : ''}`; if (state === 'explore' || state === 'space') notice(W.name, first && !obraOilk(wanderer) ? 'TAKES OBRA-SPIRA · NOW ORBISPIRA' : `TAKES ${bodyById(OBRA).name.toUpperCase()}`, 5200); } // the war was for Obra-Spira
   if (w.carax && attackerWon) { if (L.col.includes(CARAX)) take([CARAX]); if (W.col.includes(CARAX)) what += ' · Carax is theirs now'; } // the war was for Carax
   resEmpLog(what);
   if (RW) { resWarSay(cw, resPick(RW.win[resAl(cw)]), x); setTimeout(() => resWarSay(cl, resPick(RW.lose[resAl(cl)]), Object.assign({}, x, { b: x.a })), 1500); }
@@ -32731,7 +32758,7 @@ function obraNames() { // the name you see: Obra-Spira, until an empire takes it
 }
 function obraTake(e, how) {
   const E = resEmp; for (const o of Object.values(E.emp)) if (o !== e) o.col = o.col.filter(id => id !== OBRA); if (!e.col.includes(OBRA)) e.col.push(OBRA);
-  const first = !E.orbi; E.orbi = true; obraNames(); const c = resRuler(e), al = c ? resAl(c) : 'neutral';
+  const first = !E.orbi, c = resRuler(e), al = c ? resAl(c) : 'neutral'; obraRecord({ kind: 'res', id: e.id, name: c ? c.name : e.name, sp: c ? spOf(c) : 'human', emp: e.name, how: 'siege', from: null }); E.orbi = true; obraNames();
   resEmpLog(`${how}${first ? (obraOilk(wanderer) ? ' · the other races call it Orbispira now' : ' · they renamed it Orbispira') : ''}`); if (c) setTimeout(() => resWarSay(c, resPick((obraOilk(c) ? RES_OBRA.wonOilk : RES_OBRA.won)[al]), { ea: e.name }), 1500);
   if (state === 'explore' || state === 'space') notice(e.name, first && !obraOilk(wanderer) ? (tiPhone() ? 'TAKES OBRA-SPIRA · NOW ORBISPIRA' : 'TAKES OBRA-SPIRA · THEY RENAME IT ORBISPIRA') : `TAKES ${bodyById(OBRA).name.toUpperCase()}`, 5200);
   try { applyChapterFactions(); } catch (er) {}
@@ -32751,6 +32778,54 @@ function obraTry(e) { // an empire moves on Obra-Spira
   else { resEmpLog(`${e.name} laid siege to ${P.name}, and its fortress held`); setTimeout(() => resWarSay(c, resPick(RES_OBRA.held[al]), x), 1500); }
   saveRoster(); return true;
 }
+/* ---- the conquest of Obra-Spira: who took it first (that's the Nostrapedia's article, with their likeness on the stage), and every
+   time it has changed hands since. You can take it too: storm the Citadel at the foot of its great spire and beat the Warden of
+   Obra-Spira, or, if a resident empire holds it, its ruler. Yours, and no empire will move on it again. ---- */
+function obraRecord(r) {
+  const E = resEmp; r = Object.assign({ at: Date.now(), ch: (wanderer && wanderer.chapter) | 0 }, r);
+  if (!E.obraWho) E.obraWho = r; (E.obraHist = E.obraHist || []).push(r); if (E.obraHist.length > 12) E.obraHist.shift();
+}
+const OBRA_WARDEN = () => ({ key: 'obraWarden', boss: 'The Warden', full: 'The Warden of Obra-Spira, last keeper of the Citadel', lv: 100, hp: Math.round(3500 + 100 * 170), theme: 'wrong',
+  load: async () => { const R = await brawlRig({ sp: 'oilkoumene', c: [0x0c0a16, 0x6fffb8], name: 'The Warden' }); if (R) armRig(R, 'sword'); return R; },
+  core: ['slam', 'charge', 'volley', 'blink'], p2: ['nova', 'pools'], sig: 'spiral', seq: ['charge', 'volley', 'slam', 'blink'],
+  lines: { intro: 'Every empire that ever was has come for this city. None of them kept it. Neither will you.', p2: 'These walls have stood since the Big Bang!', p3: 'Obra-Spira… forgive me.', win: 'Take it, then. Look after her.' } });
+function obraGateNear(p) { // the foot of the great spire, inside the Citadel's walls
+  if (!isPl() || DGN.on || world.planet.P.id !== OBRA || !world.planet.city) return null; const C = world.planet.city;
+  return Math.hypot(p.x - C.cx, p.z - (C.cz + 27)) < 3.6 ? { id: 'obraGate', label: `The Citadel of ${bodyById(OBRA).name}` } : null;
+}
+function obraGateUse() {
+  const P = bodyById(OBRA), D = wanderer.dip && wanderer.dip.col, h = resHeldBy(OBRA), nm = P.name;
+  if (D && D[OBRA]) { lootMsg(`${nm} is yours · no empire will move on it`, '#ffd36a'); return; }
+  if ((wanderer.chapter | 0) < 5) { lootMsg('The Citadel’s gates stay shut', '#cfd6e6'); return; }
+  const c = h && resRuler(h), X = c ? Object.assign(leadResSpec(c), { lines: Object.assign({}, leadResSpec(c).lines, { intro: `${nm} is ours, ${wanderer.name}. You’ll have to kill me for it.`, win: `Fine… ${nm} is yours. For now.` }) }) : OBRA_WARDEN();
+  notice(h ? h.name : 'The fortress world of Cyrannus', `THE CITADEL OF ${nm.toUpperCase()}`, 3200);
+  openChoice(`${X.full.toUpperCase()} · LV ${X.lv}`, [
+    { text: h ? `Storm the Citadel: face ${c.name}, ruler of ${h.name} (lv ${X.lv}) · take ${nm}` : `Storm the Citadel: face the Warden of ${nm} (lv ${X.lv}) · take ${nm}`, onPick: () => {
+      const W = { lid: 'obra' + Date.now().toString(36) }, p = player.position, L = leaderLair(null, W, { list: [X], resEmp: h ? h.id : null }, P);
+      L.obra = { from: h ? h.name : null }; L.name = `The Citadel of ${nm}`; lairEnter(L, { x: p.x, z: p.z }, 1); } },
+    { text: 'Not yet', onPick: () => {} }]);
+}
+function obraPlayerTake(from) { // you beat the Warden, or the ruler who held it: Obra-Spira is yours
+  const D = wanderer.dip; if (!D) return; D.col = D.col || {};
+  for (const o of Object.values(resEmp.emp)) o.col = o.col.filter(id => id !== OBRA); D.col[OBRA] = { gov: null, from: 'obra' }; const ch = curChar(); if (ch) ch.dip = D;
+  const first = !resEmp.orbi; obraRecord({ kind: 'you', id: wanderer.id, name: wanderer.name, sp: spOf(wanderer), emp: typeof realmName === 'function' ? realmName() : 'your realm', how: from ? 'hall' : 'warden', from });
+  resEmp.orbi = true; obraNames(); const nm = bodyById(OBRA).name;
+  resEmpLog(`${wanderer.name} stormed the Citadel and took ${nm}${from ? ` from ${from}` : ''}${first && !obraOilk(wanderer) ? ' · it is Orbispira now' : ''}`); saveRoster();
+  try { applyChapterFactions(); } catch (er) {}
+  setTimeout(() => notice('The fortress world of Cyrannus', `${nm.toUpperCase()} IS YOURS`, 4800), 2600);
+}
+// the Nostrapedia's article: its stage shows whoever took it first, you or a resident, as they look now
+function obraWhoChar(r) { if (!r) return null; return r.kind === 'you' ? roster.find(c => c.id === r.id) || residents.find(c => c.id === r.id) || null : resById(r.id); }
+function pdObraStage(tok) {
+  const live = () => tok === cc.loadTok && state === 'pedia', r = resEmp.obraWho, c = obraWhoChar(r);
+  const halo = glowSprite(0x6fffb8, 9, .5); halo.position.set(0, 2.4, -3.2); ccBg.add(halo); const h2 = glowSprite(0xc8fff0, 4, .35); h2.position.set(0, 2.2, -3); ccBg.add(h2);
+  const show = m => { if (!m || !live()) return; m.userData.keep = true; m.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(m), H = (SPECIES[r.sp] && SPECIES[r.sp].height) || 2, cur = Math.max(.01, b.max.y - b.min.y); m.scale.multiplyScalar(H / cur); m.position.set(0, 0, 0); m.rotation.y = 0; ccRoot.add(m); };
+  if (c) resModel(c).then(md => show(md && md.m)).catch(() => {}); // the conqueror, wanderer or resident
+  else brawlRig({ sp: r && SPECIES[r.sp] ? r.sp : 'human', c: [0x2e3440, 0x6fffb8], name: r ? r.name : '' }).then(R => show(R && R.root)).catch(() => {}); // gone from the world now: someone like them
+  cc.lookY = 1.1; cc.dist = 4.6; cc.rot = .2;
+}
+const obraDate = r => `Chapter ${ROMAN[(r.ch | 0) - 1] || 'V'} · ${(r.ch | 0) >= 4 ? 2127 : 2125} AD`; // the story's own years (the two years pass in Chapter IV)
+const obraHow = r => r.how === 'siege' ? `${r.emp} stormed the fortress` : r.how === 'war' ? `${r.emp} took it by war from ${r.from}` : r.how === 'hall' ? `${r.name} stormed the Citadel and beat ${r.from}'s ruler` : `${r.name} stormed the Citadel and beat its Warden`;
 function resEmpTick(dt) {
   try { resLentSweep(); } catch (e) { console.error(e); }
   if (!residents.length || effCh() < 3) return;
