@@ -3237,4 +3237,11 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - **Fine relief** on HIGH and ULTRA, drawn on each part from its own shape so it moves with them: a weave on cloth, grain on leather, strands in hair and beards, a brushed finish on metal, a faint texture to skin. It fades out wherever it would be smaller than a few pixels, so it never turns to noise at a distance. LOW leaves it off.
   - **A cool edge-light** keeps every character readable against dark scenes.
   - Archamus and Lord Zark keep their own godly dress on top of all this.
+- **The Project BC and Sevirrus characters, majestic.** On top of everyone's upscaled materials, each has a presence of his own wherever he appears (your crew, a deputy holding the world, the Nostrapedia, the cutscenes):
+  - **Josiah Richards, the Prime Secretary:** a gold edge-light; **the seal of his office** turning on the ground beneath him, a golden clockwork dial with rings, hour marks and a sweeping hand (he reset time itself); golden motes circling him like clockwork; his golden chains of office polished to real gold.
+  - **Peter Chambers, the Deputy:** a cold steel-blue edge-light; **a scope's reticle** turning slowly at his feet (he does his damage from a distance); faint cold motes and a low creeping smoke.
+  - **Gareth Williams:** a warm edge-light; **luck, made visible:** four-pointed glints twinkling in and out around him.
+  - **Kevin Murderhorn, the Black Mask:** a violet edge-light; **a pool of shadow** at his feet with a violet rim; black smoke curling off him; faint violet embers; his black chains glossy as obsidian.
+  - **Lord Sevirrus, the Usurper Prince:** a crimson edge-light; **a crown of red light** hovering over his head, flickering, cracked, the one he stole; crimson smoke and red embers.
+  - **Every character's weapons** (chains, rifles, pistols, swords) now get the upscaled materials too.
 
