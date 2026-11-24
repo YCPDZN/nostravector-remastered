@@ -2023,7 +2023,185 @@ function gfxComposer() {
   GFX.size = ''; GFX.comp = C; return C;
 }
 function gfxDrop() { if (GFX.comp) { try { GFX.comp.dispose(); GFX.bloom && GFX.bloom.dispose(); GFX.ao && GFX.ao.dispose(); } catch (e) {} } GFX.comp = GFX.rp = GFX.bloom = GFX.ao = GFX.grade = null; }
+/* ============ the deities: Archamus and Lord Zark, as gods should look ============
+   Wherever their bodies appear (their boss fights, the leader menus, the endings and the nightmares, the cutscenes, the Nostrapedia),
+   they're dressed the moment the model is read:
+   · ARCHAMUS, the Prime Good: true polished gold with a clear lacquer, brushed steel, cloth with a soft golden sheen, eyes and gems
+     blazing; a golden light along every edge; a sunburst halo turning slowly behind his head; a soft radiance behind him; motes of
+     light rising around him; and a warm light that falls on whatever stands near.
+   · LORD ZARK, the Prime Evil: polished obsidian with an oily violet sheen, polished bone, dark crimson flesh; embers and the molten
+     fissure white-hot and flickering, eyes burning; a crimson edge-light; an eclipse behind him (a black sun with a corona of red
+     fire); embers rising and shadow smoke curling off him; a red glow at his feet and a red light on everything near.
+   None of it counts toward their height, casts a shadow or catches ambient occlusion, and it all animates from one clock. ---- */
+const DEITY_U = { uT: { value: 0 }, uPx: { value: 600 } };
+const DEITY_TAGS = { prArchamus: 'arch', prArchamusU: 'arch', prZark: 'zark' };
+function deityTick() { DEITY_U.uT.value = time; CH_DET.value = gfxQ === 'low' ? 0 : 1; DEITY_U.uPx.value = (renderer.domElement.height || innerHeight) / (2 * Math.tan(((camera && camera.fov) || 60) * Math.PI / 360)); }
+function deityPatch(sh) { // an edge-light, and a flicker for whatever burns
+  sh.uniforms.uRim = { value: this.userData.rim }; sh.uniforms.uFlick = { value: this.userData.flick }; sh.uniforms.uDT = DEITY_U.uT;
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uRim; uniform float uFlick, uDT;')
+    .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+      float dFr = pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 2.6);
+      totalEmissiveRadiance *= 1.0 + uFlick * (0.32 * sin(uDT * 7.3 + vViewPosition.y * 4.0) + 0.18 * sin(uDT * 13.7 + vViewPosition.x * 6.0));
+      totalEmissiveRadiance += uRim * dFr;`);
+}
+function deityMat(old, kind) {
+  const c = old.color ? old.color.clone() : new THREE.Color(.5, .5, .5), e = old.emissive ? old.emissive.clone() : new THREE.Color(0), hsl = {}; c.getHSL(hsl);
+  const glowing = e.r + e.g + e.b > .05, lum = c.r * .2126 + c.g * .7152 + c.b * .0722, eye = /eye/i.test(old.name || '');
+  const P = { color: c, roughness: .5, metalness: .2, emissive: e, emissiveIntensity: 1, envMapIntensity: 1.25 }; const rim = new THREE.Color(0); let flick = 0;
+  if (kind === 'arch') {
+    const gold = hsl.h > .05 && hsl.h < .17 && hsl.s > .22 && lum > .1;
+    if (glowing || eye) { Object.assign(P, { emissive: c.clone(), emissiveIntensity: eye ? 9 : 5, roughness: .3 }); flick = .2; } // eyes and gems
+    else if (gold) { c.offsetHSL(0, .1, .02); Object.assign(P, { metalness: 1, roughness: .24, clearcoat: .6, clearcoatRoughness: .14, envMapIntensity: .95, emissive: c.clone().multiplyScalar(.02) }); rim.set(0xffcf6a).multiplyScalar(.5); } // gold, lacquered
+    else if (hsl.s < .14 && lum > .12) { Object.assign(P, { metalness: .9, roughness: .28, envMapIntensity: .95 }); rim.set(0xffe2a0).multiplyScalar(.35); } // steel
+    else { Object.assign(P, { roughness: .6, sheen: .7, sheenRoughness: .45, sheenColor: new THREE.Color(0xc9a24a) }); rim.set(0xffd88a).multiplyScalar(.3); } // the undersuit, the cloth
+  } else {
+    const ember = glowing || (hsl.h < .08 && hsl.s > .6 && lum > .18);
+    if (ember || eye) { Object.assign(P, { emissive: new THREE.Color(1, .3, .07), emissiveIntensity: eye ? 12 : 6.5, roughness: .4 }); flick = 1; } // embers, the fissure, the eyes
+    else if (lum > .3) { c.multiplyScalar(.85); Object.assign(P, { roughness: .36, clearcoat: .4, clearcoatRoughness: .25, metalness: .05 }); rim.set(0xff3020).multiplyScalar(.7); } // bone, polished
+    else if ((hsl.h > .9 || hsl.h < .05) && hsl.s > .18) { Object.assign(P, { roughness: .5, sheen: .9, sheenColor: new THREE.Color(0x9a1028), sheenRoughness: .4 }); rim.set(0xff2a40).multiplyScalar(.8); } // flesh
+    else { c.multiplyScalar(.55); Object.assign(P, { metalness: .35, roughness: .15, clearcoat: 1, clearcoatRoughness: .05, iridescence: .6, iridescenceIOR: 1.65, iridescenceThicknessRange: [180, 560] }); rim.set(0x8a2bff).multiplyScalar(.85); } // obsidian
+  }
+  const m = new THREE.MeshPhysicalMaterial(P); m.name = old.name; m.side = old.side; m.flatShading = !!old.flatShading; m.transparent = !!old.transparent; m.opacity = old.opacity == null ? 1 : old.opacity;
+  m.userData.rim = rim; m.userData.flick = flick; m.onBeforeCompile = deityPatch; m.customProgramCacheKey = () => 'deity1';
+  return m;
+}
+const DEITY_PT_VS = `attribute vec3 aSeed; uniform float uT, uPx, uH, uR, uSize, uSpeed, uSwirl; uniform vec3 uBase; varying float vA, vS;
+  void main(){ float life = fract(aSeed.x + uT * uSpeed), ang = aSeed.y * 6.2832 + uT * uSwirl * (.5 + aSeed.z) + life * 1.6, rad = uR * (.3 + .7 * aSeed.z) * (1. + life * .4);
+    vec3 p = uBase + vec3(cos(ang) * rad, life * uH, sin(ang) * rad); p.x += sin(uT * 1.3 + aSeed.y * 20.) * .03 * uH;
+    vA = smoothstep(0., .12, life) * (1. - smoothstep(.55, 1., life)); vS = aSeed.z;
+    vec4 mv = modelViewMatrix * vec4(p, 1.); float sc = length(modelMatrix[0].xyz);
+    gl_PointSize = clamp(uSize * sc * uPx / max(.1, -mv.z) * (.5 + aSeed.z), 1., 128.); gl_Position = projectionMatrix * mv; }`;
+const DEITY_PT_FS = `uniform vec3 uCol; uniform float uSoft, uAlpha; varying float vA, vS;
+  void main(){ float d = length(gl_PointCoord - .5) * 2., a = pow(max(0., 1. - d), uSoft) * vA * uAlpha; if (a < .004) discard;
+    gl_FragColor = vec4(uCol * (.7 + .6 * vS), a);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }`;
+const DEITY_BB_VS = `attribute vec2 aCorner; uniform vec3 uC; uniform float uS, uBack; varying vec2 vUv;
+  void main(){ vUv = aCorner + .5; float sc = length(modelMatrix[0].xyz); vec4 c = modelViewMatrix * vec4(uC, 1.); c.xy += aCorner * uS * sc; c.z -= uBack * sc; gl_Position = projectionMatrix * c; }`;
+const DEITY_FS = {
+  halo: `uniform float uT; uniform vec3 uCol; varying vec2 vUv;
+    void main(){ vec2 p = vUv - .5; float r = length(p) * 2., a = atan(p.y, p.x);
+      float disc = exp(-r * r * 7.) * .5, ring = exp(-pow((r - .6) / .03, 2.)) * 1.3 + exp(-pow((r - .76) / .012, 2.)) * .7;
+      float rays = pow(max(0., sin(a * 16. + uT * .35)), 7.) * smoothstep(1., .5, r) * smoothstep(.25, .6, r) * .55 + pow(max(0., sin(a * 6. - uT * .22)), 12.) * smoothstep(1., .35, r) * .4;
+      float v = (disc + ring + rays) * (.85 + .15 * sin(uT * 1.6)) * smoothstep(1., .9, r); if (v < .003) discard;
+      gl_FragColor = vec4(uCol * v, v);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`,
+  radiance: `uniform float uT; uniform vec3 uCol; varying vec2 vUv;
+    void main(){ vec2 p = (vUv - .5) * vec2(2.1, 1.25); float r = length(p), v = exp(-r * r * 3.2) * (.3 + .05 * sin(uT * 1.1)); if (v < .003) discard;
+      gl_FragColor = vec4(uCol * v, v);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`,
+  eclipse: `uniform float uT; uniform vec3 uCol; varying vec2 vUv;
+    void main(){ vec2 p = vUv - .5; float r = length(p) * 2., a = atan(p.y, p.x), e = .56;
+      float n = sin(a * 9. + uT * 1.3) * .5 + sin(a * 23. - uT * 2.1) * .3 + sin(a * 4. + uT * .6) * .2;
+      float core = 1. - smoothstep(e - .015, e, r), cor = exp(-max(0., r - e) * (8. - n * 3.5)) * smoothstep(e - .03, e, r) * smoothstep(1., .72, r);
+      vec3 col = uCol * cor * 2.4 + vec3(.9, .04, .25) * cor * cor * 1.5; float al = max(core * .85, clamp(cor * 1.1, 0., 1.)); if (al < .003) discard;
+      gl_FragColor = vec4(col, al);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`,
+  under: `uniform float uT; uniform vec3 uCol; varying vec2 vUv;
+    void main(){ vec2 p = (vUv - .5) * vec2(2., 3.2); float r = length(p), v = exp(-r * r * 2.4) * (.55 + .12 * sin(uT * 5.3) + .08 * sin(uT * 11.)); if (v < .003) discard;
+      gl_FragColor = vec4(uCol * v, v);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`
+};
+function deityAura(sc, kind) {
+  sc.updateMatrixWorld(true); const b = boxNoGear(sc), H = Math.max(.01, b.max.y - b.min.y), ctr = b.getCenter(new THREE.Vector3()), base = new THREE.Vector3(ctr.x, b.min.y, ctr.z);
+  const G = new THREE.Group(); G.name = 'deity aura cape'; G.userData.noMeasure = true; sc.add(G);
+  const tiny = o => { const g = o.geometry; g.boundingBox = new THREE.Box3(ctr.clone(), ctr.clone()); g.boundingSphere = new THREE.Sphere(ctr.clone(), .001); o.frustumCulled = false; o.userData.noMeasure = true; o.name = 'deity aura cape'; o.renderOrder = 2; G.add(o); return o; };
+  const pts = (n, o) => { const g = new THREE.BufferGeometry(), sd = new Float32Array(n * 3); for (let i = 0; i < n * 3; i++) sd[i] = Math.random(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); g.setAttribute('aSeed', new THREE.BufferAttribute(sd, 3));
+    const m = new THREE.ShaderMaterial({ vertexShader: DEITY_PT_VS, fragmentShader: DEITY_PT_FS, transparent: true, depthWrite: false, fog: false, blending: o.add ? THREE.AdditiveBlending : THREE.NormalBlending,
+      uniforms: { uT: DEITY_U.uT, uPx: DEITY_U.uPx, uBase: { value: base.clone().add(new THREE.Vector3(0, H * (o.y0 || 0), 0)) }, uH: { value: H * o.h }, uR: { value: H * o.r }, uSize: { value: H * o.size }, uSpeed: { value: o.speed }, uSwirl: { value: o.swirl }, uCol: { value: new THREE.Color(o.col).multiplyScalar(o.k) }, uSoft: { value: o.soft }, uAlpha: { value: o.alpha || 1 } } });
+    return tiny(new THREE.Points(g, m)); };
+  const bb = (fs, o) => { const g = new THREE.BufferGeometry(), C = [-.5, -.5, .5, -.5, .5, .5, -.5, -.5, .5, .5, -.5, .5]; g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(18), 3)); g.setAttribute('aCorner', new THREE.BufferAttribute(new Float32Array(C), 2)); // all its positions at zero: in the shadow pass it has no size at all
+    const m = new THREE.ShaderMaterial({ vertexShader: DEITY_BB_VS, fragmentShader: DEITY_FS[fs], transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide, blending: o.add ? THREE.AdditiveBlending : THREE.NormalBlending,
+      uniforms: { uT: DEITY_U.uT, uC: { value: base.clone().add(new THREE.Vector3(0, H * o.y, o.z ? H * o.z : 0)) }, uS: { value: H * o.s }, uBack: { value: H * o.back }, uCol: { value: new THREE.Color(o.col).multiplyScalar(o.k) } } });
+    return tiny(new THREE.Mesh(g, m)); };
+  const lamp = (col, inten, y, z = .25) => { const L = new THREE.PointLight(col, inten, H * 3, 1.6); L.position.copy(base).add(new THREE.Vector3(0, H * y, H * z)); L.userData.noMeasure = true; G.add(L); };
+  if (kind === 'arch') {
+    bb('radiance', { y: .55, s: 1.5, back: .32, col: 0xffd27a, k: .9, add: true });
+    bb('halo', { y: .93, s: .62, back: .05, col: 0xffe2a0, k: 2.6, add: true }); // just behind his head, in front of anything he sits against
+    pts(70, { h: 1.15, r: .42, size: .018, speed: .07, swirl: .35, col: 0xffe6a8, k: 3, soft: 2.2, add: true });
+    pts(18, { h: 1.0, r: .55, size: .05, speed: .045, swirl: .2, col: 0xfff2c8, k: 1.4, soft: 3, add: true, alpha: .55 });
+    lamp(0xffd27a, 1.5, .95, .9);
+  } else {
+    bb('eclipse', { y: .78, s: 1.1, back: .4, col: 0xff3a14, k: 1.6 });
+    bb('under', { y: .03, s: 1.1, back: 0, col: 0xff2a0c, k: 1.4, add: true });
+    pts(46, { h: .75, r: .4, size: .085, speed: .05, swirl: .25, col: 0x0b0206, k: 1, soft: 1.4, alpha: .55, y0: -.02 }); // shadow smoke
+    pts(110, { h: 1.25, r: .45, size: .016, speed: .11, swirl: .5, col: 0xff6a1a, k: 3.4, soft: 2, add: true }); // embers
+    lamp(0xff3a1a, 2.6, .5);
+  }
+}
+function deityDress(sc, kind) { // the materials, then the aura (once per parsed model; every copy made from it shares them)
+  if (!sc || sc.userData.deity) return sc; sc.userData.deity = kind;
+  sc.traverse(o => { if (o.isMesh && o.material && !Array.isArray(o.material) && !o.material.isShaderMaterial) o.material = deityMat(o.material, kind); });
+  try { deityAura(sc, kind); } catch (e) { console.error(e); }
+  return sc;
+}
+/* ============ everyone else, upscaled too: companions, leaders, residents, your wanderer ============
+   Every character body (your wanderer and every species, so every resident, every companion, every leader, the crowds and the cutscenes'
+   cast) has its materials upgraded the moment it loads, keeping everything it had (colours, textures, faces) and reading each part by
+   its name: real metal and gold (with a clear coat), glass and visors with a deep gloss, leather with a light polish, cloth and hair
+   with a soft sheen, skin with a faint warm sheen, and anything that glows (eyes, lights, screens, reactors) bright enough to bloom.
+   A faint cool edge-light keeps them readable against dark scenes. The gods keep their own (see the deities). */
+const CH_UP = new WeakMap(), CH_WHITE = new THREE.Color(1, 1, 1), CH_WARM = new THREE.Color(1, .55, .45), CH_DET = { value: 1 }; // CH_DET: the fine surface detail, on for HIGH and ULTRA
+const CH_DETAIL = { // fine relief drawn on each part from its own coordinates (in metres), so it moves with them: frequency per axis, and depth
+  cloth: [60, 60, 60, .12], leather: [40, 40, 40, .14], skin: [26, 26, 26, .05], metal: [150, 5, 5, .06], hair: [90, 8, 90, .18], other: [45, 45, 45, .05], glass: [0, 0, 0, 0] }; // (depth here is a slope: the relief stays gentle at any size)
+function charPatch(sh) { // the fine relief, and a cool edge-light
+  sh.uniforms.uRim = { value: this.userData.rim }; sh.uniforms.uDet = { value: this.userData.det }; sh.uniforms.uDetOn = CH_DET;
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vChP;')
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvChP = position * vec3(length(modelMatrix[0].xyz), length(modelMatrix[1].xyz), length(modelMatrix[2].xyz));');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+    varying vec3 vChP; uniform vec3 uRim; uniform vec4 uDet; uniform float uDetOn;
+    float chH(vec3 p){ p = fract(p * .1031); p += dot(p, p.yzx + 33.33); return fract((p.x + p.y) * p.z); }
+    float chN(vec3 p){ vec3 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+      return mix(mix(mix(chH(i), chH(i + vec3(1,0,0)), f.x), mix(chH(i + vec3(0,1,0)), chH(i + vec3(1,1,0)), f.x), f.y), mix(mix(chH(i + vec3(0,0,1)), chH(i + vec3(1,0,1)), f.x), mix(chH(i + vec3(0,1,1)), chH(i + vec3(1,1,1)), f.x), f.y), f.z); }
+    vec3 chBump(vec3 sp, vec3 sn, float dhx, float dhy){ vec3 sx = dFdx(sp), sy = dFdy(sp), r1 = cross(sy, sn), r2 = cross(sn, sx); float det = dot(sx, r1); vec3 g = sign(det) * (dhx * r1 + dhy * r2); return normalize(abs(det) * sn - g); }`)
+    .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      if (uDetOn > .5 && uDet.w > 0.) { vec3 q = vChP * uDet.xyz; float fw = length(fwidth(q)), k = 1. - smoothstep(.18, .45, fw); // fades out wherever it would fall below a few pixels: never noise
+        if (k > 0.) { float h = (chN(q) * .62 + chN(q * 2.07 + 17.) * .38) * uDet.w * k / max(uDet.x, max(uDet.y, uDet.z)); normal = chBump(-vViewPosition, normal, dFdx(h), dFdy(h)); } }`)
+    .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+      totalEmissiveRadiance += uRim * pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 2.6);`);
+}
+function charUpMat(old, meshName) {
+  if (!old || !old.isMeshStandardMaterial || old.isMeshPhysicalMaterial || (old.userData && old.userData.noUp)) return old;
+  if (old.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) return old; // it has a shader trick of its own: leave it be
+  const hit = CH_UP.get(old); if (hit) return hit;
+  const m = new THREE.MeshPhysicalMaterial(); THREE.MeshStandardMaterial.prototype.copy.call(m, old); m.defines = { STANDARD: '', PHYSICAL: '' }; // everything it had
+  const n = ((old.name || '') + ' ' + (meshName || '')).replace(/[_.]/g, ' ').toLowerCase(), has = re => re.test(n), c = m.color, r0 = old.roughness, met = old.metalness;
+  const glow = (m.emissive && m.emissive.r + m.emissive.g + m.emissive.b > .03) || !!m.emissiveMap;
+  let det = 'other';
+  if (has(/glass|visor|lens|window|screen|monitor|goggle|\beyes?\b|eyeball|iris|pupil|glint/)) { m.roughness = Math.min(r0, .08); m.clearcoat = 1; m.clearcoatRoughness = .03; m.metalness = Math.max(met, .1); det = 'glass'; }
+  else if (has(/gold|brass|bronze|gilt|gilded/)) { m.metalness = 1; m.roughness = clamp(r0 * .45, .16, .32); m.clearcoat = .5; m.clearcoatRoughness = .14; det = 'metal'; }
+  else if (met > .45 || has(/steel|metal|chrome|iron|silver|blade|sword|scythe|\baxe\b|hammer|\bgun\b|rifle|pistol|barrel|bolt|rivet|chassis|plating|\bplate\b|armou?r|helm|gauntlet|greave|pauldron|cuirass|breastplate|vambrace|buckle|clasp|reactor|servo|piston|polearm|spear|horns? cap|crown/)) { m.metalness = Math.max(met, .75); m.roughness = clamp(r0 * .55, .16, .42); m.clearcoat = .3; m.clearcoatRoughness = .28; det = 'metal'; }
+  else if (has(/hair|beard|\bfur\b|moustache|mustache|brow|lash|mane|braid|ponytail|fringe|\blocks?\b|bun\b|plait/)) { m.roughness = clamp(r0 * .85, .35, .7); m.sheen = 1; m.sheenRoughness = .3; m.sheenColor = c.clone().lerp(CH_WHITE, .45); det = 'hair'; }
+  else if (has(/leather|boot|belt|strap|holster|glove|shoe|sole|harness|pouch|sheath|scabbard|bandolier/)) { m.roughness = clamp(r0 * .75, .3, .6); m.clearcoat = .25; m.clearcoatRoughness = .36; det = 'leather'; }
+  else if (has(/cloth|cape|cloak|coat|robe|shirt|trouser|pant|jacket|dress|scarf|hood|fabric|suit|sleeve|sock|tunic|skirt|gown|vest|uniform|jumper|sweater|collar|lapel|\btie\b|sash|wrap|kilt|toga|blanket|jeans|shorts|bodice|corset|veil|mantle|tabard|surcoat|puffer|padded|quilt|undersuit|trim|ermine|pleat|lining|denim|stitch|fold/)) { m.roughness = clamp(r0, .6, .92); m.sheen = .85; m.sheenRoughness = .5; m.sheenColor = c.clone().lerp(CH_WHITE, .35); det = 'cloth'; }
+  else if (met < .3 && has(/skin|face|cheek|nose|\blips?\b|\bears?\b|neck|hand|finger|forehead|chin|jaw|scalp|torso|\barms?\b|\blegs?\b|thigh|calf|foot|feet|toe|tail|snout|muzzle|tusk/)) { m.roughness = clamp(r0 * .85, .4, .65); m.sheen = .35; m.sheenRoughness = .5; m.sheenColor = c.clone().lerp(CH_WARM, .3); det = 'skin'; } // skin: a faint warm sheen
+  else m.roughness = clamp(r0 * .9, .22, .92);
+  if (glow) m.emissiveIntensity = (old.emissiveIntensity == null ? 1 : old.emissiveIntensity) * 2.2; // eyes, lights, screens, reactors: bright enough to bloom
+  m.userData.rim = new THREE.Color(.15, .165, .19); m.userData.det = new THREE.Vector4(...CH_DETAIL[det]); m.onBeforeCompile = charPatch; m.customProgramCacheKey = () => 'char1'; // a cool edge-light, and fine relief by kind
+  m.userData.upOf = old.uuid; CH_UP.set(old, m); return m;
+}
+function charUp(sc) { // a whole body, at once (copies of it share the upgraded materials, just as they shared the old ones)
+  if (!sc || sc.userData.charUp) return sc; sc.userData.charUp = true;
+  sc.traverse(o => { if (!o.isMesh || !o.material) return; o.material = Array.isArray(o.material) ? o.material.map(x => charUpMat(x, o.name)) : charUpMat(o.material, o.name); });
+  return sc;
+}
 let gfxLastT = 0; const gfxDt = () => { const t = performance.now() / 1000, d = gfxLastT ? Math.min(.1, t - gfxLastT) : .016; gfxLastT = t; return d; }; // for renders made inside a scene's own tick
+let GFX_DOT = null; // a round, soft-edged dot for particles that were drawn as squares (embers, sparks, dust, gore, drops): bloom made the squares show
+function gfxDotTex() { if (GFX_DOT) return GFX_DOT; const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.55, 'rgba(255,255,255,.95)'); gr.addColorStop(.8, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); GFX_DOT = new THREE.CanvasTexture(c); GFX_DOT.colorSpace = THREE.SRGBColorSpace; return GFX_DOT; }
+const GFX_PT = new WeakMap();
+function gfxRoundPoints(S) { // every couple of seconds per scene: world-sized particles get a round dot (pixel-sized star dots are left as they are)
+  const t0 = GFX_PT.get(S); if (t0 != null && time - t0 < 2) return; GFX_PT.set(S, time);
+  S.traverse(o => { const m = o.isPoints && o.material; if (!m || !m.isPointsMaterial || m.map || !m.sizeAttenuation || m.userData.dot) return; m.userData.dot = true; m.map = gfxDotTex(); if (!m.transparent) m.alphaTest = .4; m.needsUpdate = true; });
+}
 const GFX_SH = new WeakMap();
 function gfxUpShadows(S) { // a cutscene's own shadow-casting lights: sharper maps on HIGH and ULTRA, as they were on LOW (looked at every couple of seconds, for lights added later)
   const rec = GFX_SH.get(S); if (rec && rec.q === gfxQ && time - rec.t < 2) return; GFX_SH.set(S, { q: gfxQ, t: time });
@@ -2034,6 +2212,7 @@ function gfxUpShadows(S) { // a cutscene's own shadow-casting lights: sharper ma
 function gfxRender(S, C, dt) { // the menu's frame: through the post-processing when the quality allows it
   if (GFX.dome && GFX.dome.visible) { GFX.dome.position.copy(C === camera ? camera.position : GFX.dome.position); GFX.dome.material.uniforms.uTime.value = time; }
   if (S !== scene && S !== wScene && S !== MSP.scene && S !== SPC.scene && !(ATM.scene && S === ATM.scene)) try { gfxUpShadows(S); } catch (e) {} // cutscenes' shadows (the menu, the world and space look after their own)
+  if (S !== SPC.scene && S !== MSP.scene) try { gfxRoundPoints(S); } catch (e) {} // round particles everywhere (not the starfields)
   if (!gfxOn() || GFX.mods === false) { renderer.render(S, C); return; }
   if (!GFX.mods) { gfxLoad(); renderer.render(S, C); return; }
   const comp = gfxComposer(); if (!comp) { renderer.render(S, C); return; }
@@ -2047,7 +2226,7 @@ function gfxRender(S, C, dt) { // the menu's frame: through the post-processing 
   GFX.grade.uniforms.uTime.value = time;
   comp.render(dt || .016);
 }
-function gfxSet(q) { if (!GFX_Q.includes(q)) return; gfxQ = q; store.set('nv_gfx', q); gfxDrop(); gfxApplyScene(); refreshGfx(); }
+function gfxSet(q) { if (!GFX_Q.includes(q)) return; gfxQ = q; CH_DET.value = q === 'low' ? 0 : 1; store.set('nv_gfx', q); gfxDrop(); gfxApplyScene(); refreshGfx(); }
 function refreshGfx() { const el = $('#setGfx .val'); if (el) el.textContent = GFX_LABEL[gfxQ]; const o = $('#oGfx b'); if (o) o.textContent = GFX_LABEL[gfxQ]; }
 function cycleGfx() { sfx.init(); sfx.click(); gfxSet(GFX_Q[(GFX_Q.indexOf(gfxQ) + 1) % GFX_Q.length]); }
 /* ---- on foot (every chapter): the open world, Antarctica's station and your ship, through the same graphics ----
@@ -3412,6 +3591,7 @@ function loadSpecies(sp) {
   return speciesLoad[sp];
 }
 function setupSpecies(sp, m) {
+  try { charUp(m); } catch (e) { console.error(e); } // your wanderer's species (and so every resident of it), upscaled
   const S = SPECIES[sp];
   const holder = new THREE.Group(); holder.add(m);
   m.updateMatrixWorld(true);
@@ -3565,6 +3745,7 @@ function clipFront(mat, ax, ay) {
 }
 
 function initLook(m) {
+  try { charUp(m); } catch (e) { console.error(e); } // the human suit (and so every human resident), upscaled
   const parts = {};
   m.traverse(o => { const n = (o.name || '').replace(/_/g, ' ').toLowerCase(); if (n && !parts[n]) parts[n] = o; });
   let suitMat = null, trimMat = null, panelMat = null, visorMat = null;
@@ -3712,6 +3893,7 @@ function loadOutfit(k) {
   }).catch(e => { console.warn('outfit', k, e); return null; });
 }
 function setupOutfit(m) {
+  try { charUp(m); } catch (e) { console.error(e); } // the outfits, upscaled
   const holder = new THREE.Group(); holder.add(m); m.updateMatrixWorld(true);
   const nm = o => (o.name || '').replace(/_/g, ' ').toLowerCase().replace(/^(croxian|malia) /, '');
   const WPN = /^(weapon|scythe|staff|blade coupling|polearm|right wrist weapon|wrist emitter|cyan muzzle)/, gone = []; m.traverse(o => { if (WPN.test(nm(o))) gone.push(o); }); for (const o of gone) if (o.parent) o.parent.remove(o); // no weapons: they'd be measured into the height, and you carry your own
@@ -4906,6 +5088,7 @@ function ensureJames() {
   return jamesPromise;
 }
 function setupJames(m) {
+  try { charUp(m); } catch (e) { console.error(e); } // James, upscaled
   const root = new THREE.Group(); root.add(m);
   m.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(m);
@@ -9791,7 +9974,7 @@ function embGlb(id) {
   const el = document.getElementById(id); if (!el) return Promise.resolve(null);
   const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-  return parseGlb(u8.buffer).catch(() => null);
+  return parseGlb(u8.buffer).then(sc => DEITY_TAGS[id] ? deityDress(sc, DEITY_TAGS[id]) : sc).catch(() => null);
 }
 function firstMesh(sc) { let m = null; if (sc) sc.traverse(o => { if (!m && o.isMesh) m = o; }); return m; }
 function loadWorldHD() {
@@ -30238,6 +30421,7 @@ function charScene(c) {
     else { const rec = await idb.get(c.id); if (!rec) throw new Error('missing model'); buf = rec.data.slice(0); }
     const sc = await parseGlb(buf);
     if (c.tag === 'chSevirrus') sinisterEyes(sc);
+    if (DEITY_TAGS[c.tag]) deityDress(sc, DEITY_TAGS[c.tag]); // Archamus and Lord Zark, as gods should look
     return sc;
   })();
   charCache[c.id].catch(() => { delete charCache[c.id]; });
@@ -30287,6 +30471,7 @@ function makeSword() {
 function boxNoGear(m) { const sk = []; m.traverse(o => { if (o.userData && o.userData.noMeasure) sk.push([o, o.parent]); }); for (const [o, p] of sk) p.remove(o); m.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(m); for (const [o, p] of sk) p.add(o); m.updateMatrixWorld(true); return b; }
 function gearNoMeasure(m) { m.traverse(o => { if (/^(weapon|scythe|staff|blade coupling)\b/i.test((o.name || '').replace(/[_.]/g, ' '))) o.userData.noMeasure = true; }); return m; } // names arrive with underscores for spaces (Staff_pommel, Blade_coupling_0) // carried weapons don't count toward a character's height
 function autoRig(src, targetH) {
+  try { charUp(src); } catch (e) { console.error(e); } // every character's materials, upscaled (see charUp)
   const root = new THREE.Group(), turn = new THREE.Group(), m = src; root.add(turn); turn.add(m);
   // measure the model as it actually renders (skinning included), exactly as the player and James are measured,
   // so every character comes out at its true height next to you
@@ -32115,6 +32300,8 @@ function loadFigure(c) {
     if (c.tag === 'chSevirrus') { sinisterEyes(sc); holder.userData.slasher = figSlasher(sc); }
     if (c.sil) { const black = new THREE.MeshBasicMaterial({ color: 0x000000 }); sc.traverse(o => { if (o.isMesh) o.material = black; }); }
     sc.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+    if (DEITY_TAGS[c.tag] && !c.sil) deityDress(sc, DEITY_TAGS[c.tag]); // the gods (not as an unmet silhouette)
+    else if (!c.sil) charUp(sc); // and everyone else, upscaled
     sc.updateMatrixWorld(true); gearNoMeasure(sc);
     const b = boxNoGear(sc), ctr = b.getCenter(new THREE.Vector3()); // sized and centred on the body, not a weapon they carry (Croxian's scythe)
     sc.position.set(-ctr.x, -b.min.y, -ctr.z); holder.scale.setScalar(c.h / Math.max(.01, b.max.y - b.min.y));
@@ -32137,6 +32324,8 @@ function loadPrime(p) {
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     const sc = await parseGlb(u8.buffer), holder = new THREE.Group(); holder.add(sc);
     sc.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+    if (DEITY_TAGS[p.tag]) deityDress(sc, DEITY_TAGS[p.tag]); // the gods in the Nostrapedia too
+    else charUp(sc);
     sc.updateMatrixWorld(true); gearNoMeasure(sc);
     const b = boxNoGear(sc), c = b.getCenter(new THREE.Vector3()); // sized and centred on the body, not a weapon they carry
     sc.position.set(-c.x, -b.min.y, -c.z); holder.scale.setScalar(p.h / Math.max(.01, b.max.y - b.min.y));
@@ -35659,7 +35848,7 @@ function loop() {
 }
 function loopFrame() {
   const dt = Math.min(clock.getDelta(), .05);
-  time += dt;
+  time += dt; deityTick();
   if (state !== 'title' && (player.scale.x !== 1 || VILE.dirty || (VILE.g && VILE.g.visible) || VILE.hd || VILE.posed)) try { menuVileTick(0); } catch (e) {} // off the evil menu: back to their own size, the world out of their hands, no glitch
   if (state !== 'title' && LEADM.shown) try { menuLeadTick(0); } catch (e) {} // off the menu: the throne room goes, and your wanderer is back
   try { podSync(); } catch (e) {} // the pod, wherever your ship is drawn
