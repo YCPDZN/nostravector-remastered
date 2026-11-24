@@ -7083,6 +7083,7 @@ async function interact() {
   } else if (n.id === 'homeless') { donateMenu(n.ref);
   } else if (n.id === 'prisonSleep' || n.id === 'prisonPick' || n.id === 'prisonExit') { prisonUse(n.id);
   } else if (n.id === 'bartender') { barDrink(n.ref);
+  } else if (n.id === 'raceathon') { raceMenu();
   } else if (n.id === 'parliament') { lines(PARL_DOOR, () => { if (!wanderer.ch2.reportTried) { setCh2({ reportTried: true }); notice('New London', 'WAIT FOR THE COUNCIL', 3000); } });
   } else if (n.id === 'orion') {
     if (orionJoined()) { ex.cSel = 'orion'; refreshJamesUI(); toggleJamesMenu(true); } else talkOrion();
@@ -10548,7 +10549,7 @@ function worldUnstickIn() {
 function worldBlocked(x, z, stationOnly, y = player.position.y) {
   if (DGN.on) return dgnBlocked(x, z);
   if (PRISON.on && prisonBlocked(x, z)) return true; // inside Olympus Mons: its walls
-  if (isPl()) { if (nostraBlocked(x, z)) return true; if (taroHouseBlocked(x, z)) return true; if (xoBlocked(x, z)) return true; if (bstBlocked(x, z)) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2 && (world.planet.P.seaGlow || !WB_SWIM)) return true; if (cityBlocked(x, z)) return true; if (earthBlocked(x, z)) return true; if (stInBlocked(x, z)) return true; if (csbBlocked(x, z)) return true; } // your ship, deep water, the towers of a capital, Earth's landmarks and the Catharsis base on Tallax IV
+  if (isPl()) { if (nostraBlocked(x, z)) return true; if (taroHouseBlocked(x, z)) return true; if (xoBlocked(x, z)) return true; if (bstBlocked(x, z)) return true; if (raceHouseBlocked(x, z)) return true; const sy = plSeaY(); if (sy != null && wHeight(x, z) < sy - 1.2 && (world.planet.P.seaGlow || !WB_SWIM)) return true; if (cityBlocked(x, z)) return true; if (earthBlocked(x, z)) return true; if (stInBlocked(x, z)) return true; if (csbBlocked(x, z)) return true; } // your ship, deep water, the towers of a capital, Earth's landmarks and the Catharsis base on Tallax IV
   else if (curArea() !== 'europe' && Math.abs(x) < 7.5 && Math.abs(z) < 3.5) return true; // the station / Orion's house
   if (isPl() && hallBlocked(x, z)) return true;
   if (world.adVisit && !isPl() && nostraBlocked(x - world.shipAt.x, z - world.shipAt.z)) return true;
@@ -12200,7 +12201,7 @@ const HALL_STYLE = {
 };
 function hallPlan(W) { // where the hall goes (and the pad it stands on), decided before the ground is laid out
   W.pads = []; W.hall = null;
-  if (W.P.dock === 'archiostal' && (wanderer.chapter | 0) >= 3) { clubPlan(W); return; } // Archiostal: no cantina, but the Low-G Lounge
+  if (W.P.dock === 'archiostal' && (wanderer.chapter | 0) >= 3) { clubPlan(W); raceHousePlan(W); return; } // Archiostal: no cantina, but the Low-G Lounge (and the Raceathon)
   const H = houseFor(W.P); if (!H || !brawlOn()) return;
   const raw = (x, z) => planetH(W.P, plDir(x, z)) - W.h0, sea = W.P.sea ? (W.P.seaH || 0) - W.h0 + 2 : -1e9;
   let best = null;
@@ -12225,6 +12226,7 @@ function signTex(text, col) {
   });
 }
 function hallClear() {
+  try { raceHouseClear(); } catch (e) {} // (the Raceathon goes with the Lounge)
   const Hl = world.hall; if (!Hl) return; world.hall = null;
   const off = o => o && o.parent && o.parent.remove(o);
   off(Hl.G); for (const m of Hl.V.crowd || []) off(m.R.root); for (const m of (Hl.club && Hl.club.extra) || []) off(m.R.root); if (Hl.bartender) off(Hl.bartender.root); if (Hl.V.foeR) off(Hl.V.foeR.root); for (const g of Hl.V.decals || []) off(g);
@@ -12232,7 +12234,7 @@ function hallClear() {
 function buildHall() {
   hallClear();
   const W = world.planet, P0 = W && W.hall; if (!P0 || !isPl()) return;
-  if (P0.club) { buildClub(P0); return; }
+  if (P0.club) { buildClub(P0); try { raceHouseBuild(); } catch (e) { console.error(e); } return; }
   const Hs = P0.H, S = HALL_STYLE[Hs.style] || HALL_STYLE.human, G = new THREE.Group(); G.position.set(P0.x, P0.y, P0.z);
   const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .8 }, o));
   const box = (w, hh, d, m, x, y, z, ry = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = o.receiveShadow = true; G.add(o); return o; };
@@ -12299,6 +12301,7 @@ async function hallCrowd(Hl, S) { // the regulars round the walls, the MC up on 
 }
 function hallTick(dt) {
   const Hl = world.hall; if (!Hl || !isPl()) return;
+  try { raceHouseTick(dt); } catch (e) {}
   const p = player.position, R = Hl.V.room, inside = p.x > R.x0 - .3 && p.x < R.x1 + .3 && p.z > R.z0 - .3 && p.z < R.z1 + .3;
   if (inside !== Hl.inside) { Hl.inside = inside; Hl.roof.visible = !inside; }
   const near = Math.hypot(p.x - Hl.x, p.z - Hl.z) < 45; if (!near) return;
@@ -30121,6 +30124,7 @@ function updateWorldMode(dt) {
   if (!ex.near && DGN.on && DGN.lair && DGN.lair.cyg) ex.near = cygNear(p); // aboard the Cygnus: an officer on one knee, waiting to be anointed
   if (!ex.near && DGN.on) ex.near = dgnNear(p); // inside Olympus Mons: the stairs, the spring
   if (!ex.near && isPl() && !DGN.on && world.dgnGate && Math.hypot(p.x - world.dgnGate.x, p.z - world.dgnGate.z) < 3.2) ex.near = { id: 'dgnGate', label: 'Enter Olympus Mons' };
+  if (!ex.near && !DGN.on && raceHouseNear(p)) ex.near = { id: 'raceathon', label: 'Race marshal · the Raceathon' };
   if (!ex.near && NYX.R && NYX.R.root.parent && Math.hypot(p.x - NYX.x, p.z - NYX.z) < 3.2) ex.near = { id: 'nyx', label: 'Nyrexia Erisconos' };
   if (!ex.near && TIW.area) ex.near = tiNear(p);
   if (!ex.near) { const og = obraGateNear(p); if (og) ex.near = og; } // Obra-Spira: the foot of the great spire
@@ -34885,6 +34889,612 @@ function clubTick(dt, Hl) {
   }
 }
 const clubLowG = () => clubInside();
+/* ============ the Archiostal Raceathon: hoverboard racing (Chapters III–V) ============
+   A racing ground in the gardens of Archiostal, across the landing pad from the Low-G Lounge: a gold gate under its sign, a grandstand,
+   two boards on show, a ribbon of track looping over it all, and the race marshal at the gate. Talk to the marshal and race:
+   · AN OPEN RACE against the regulars (Grek, Chompy, Erisian and human pilots);
+   · A FACTION LEADER, or every one of them at once: whoever leads each faction now, as the leader halls know it (Hak; Vishara, or
+     Alexia while she holds the Citadel; Darius; Timpur IV; Archamus, once you've met him; Am-Grek). The Raceathon is holy ground
+     under Archamus's law, so even a leader you're at war with comes to race. Never the Catharsis, and never the dead;
+   · YOUR COMPANIONS: everyone travelling with you or waiting aboard (not anyone lent out or down a lair).
+   The race is its own scene: the Sanctum Ring Circuit, 1.8 km of banked track over the gardens (a long straight, sweeping rights, a
+   left-hand S and two hairpins, climbing to 30 m), gold arches, boost pads, the start gantry and its lights, a grandstand and a crowd.
+   Everyone rides a hoverboard in their own colour with a trail of light behind it, standing, leaning into the turns. Three laps.
+   Controls: W / ↑ to go, S / ↓ to brake, A D / ← → to steer, Shift or Space to boost (the meter refills; boost pads fill it
+   instantly), Esc to pause. On a phone you go on your own: drag on the left half to steer; hold BOOST or BRAKE on the right.
+   Prizes by place (more against leaders), XP, records (best race, best lap), and the first time you beat each leader is remembered.
+   ?race (or ?race=leaders, ?race=comps) previews a race from the title. ---- */
+const RACE_B = { x: -74, z: -30, r: 17 };
+const RACE_LAPS = 3, RACE_HW = 10; // three laps; the track is 20 m wide
+const RACE_TRACK = [[0, 6, 0], [240, 6, 0], [350, 10, 50], [372, 16, 170], [300, 24, 280], [170, 30, 286], [110, 26, 200], [40, 18, 190], [-70, 14, 300], [-210, 20, 270], [-280, 24, 140], [-220, 14, 30], [-140, 8, -50], [-60, 6, -30]];
+const RACE_PADS = [[420, 4], [700, -5], [1010, 3], [1330, -4], [1560, 5]]; // boost pads: where along the lap, and how far across
+const RACE = { on: false, phase: null, keys: new Set(), touch: { steer: 0, boost: false, brake: false, id: null, x0: 0 } };
+const RACE_FORCE = (window.location.search.match(/[?&]race(?:=(\w+))?(?:&|$)/) || [])[0] ? ((window.location.search.match(/[?&]race=(\w+)/) || [])[1] || 'open') : null;
+// ---- who races, and what they say ----
+const RACE_LEAD = {
+  hak: { name: 'Hak', col: 0xffb060, skill: .93, lines: {
+    start: ['The House of Chompjak has never come second. Not once in nine hundred years.', 'I raced the canals of Karribassa before your sun had a name. Keep up.'],
+    pass: ['Make way for the Emperor!', 'Chompy engines, wanderer. Built to win.'], passed: ['Enjoy the view from the front. It will not last.', 'Hmph. A lucky line.'],
+    win: ['As it was, so it shall be. The Chompy win.', 'Tell them in New London who beat you. Tell them twice.'], lose: ['You ride like a Chompjak. That is the highest praise I have.', 'Well raced. My court will never hear of this.'] } },
+  vishara: { name: 'Vishara', col: 0xf2b4e0, skill: .9, lines: {
+    start: ['A billion years of patience, wanderer. Three laps is nothing.', 'Eris taught me to glide on ice. This is warmer.'],
+    pass: ['Cold, and quick. Mind the frost.', 'Too slow. Eris was always faster than the sun.'], passed: ['Patience. The race is long.', 'Go on, then. I will wait for you at the line.'],
+    win: ['Eris endures, and Eris wins.', 'You raced well. For someone so young.'], lose: ['Well raced. Eris will remember it.', 'A billion years, and a wanderer beats me. How refreshing.'] } },
+  alexia: { name: 'Alexia', col: 0xc070ff, skill: .88, lines: {
+    start: ['I took a throne from my own sister. I can take a race from you.', 'Let us see if you can keep what you win.'],
+    pass: ['Mine.', 'I take what I want. Today it is first place.'], passed: ['Enjoy it. I take everything back in the end.', 'You will not hold that place.'],
+    win: ['The Citadel is mine, and so is the podium.', 'Vishara would never have beaten you. I just did.'], lose: ['Fine. Keep your little trophy.', 'This changes nothing in the Citadel.'] } },
+  darius: { name: 'Darius', col: 0x9fd0ff, skill: .85, lines: {
+    start: ['The Federation is watching, so let us give them a good race.', 'I have not raced since the academy. Go easy on an old president.'],
+    pass: ['Sorry, wanderer! Federation coming through!', 'For Earth!'], passed: ['Well driven! Go on!', 'My aides are going to hate this.'],
+    win: ['A win for the Federation. The press office will be thrilled.', 'Good race. The drinks are on Earth tonight.'], lose: ['Well raced. Humanity is in good hands.', 'Beaten fair and square. I will tell the Commons myself.'] } },
+  taredesiba: { name: 'Timpur IV', col: 0x58d8c0, skill: .87, lines: {
+    start: ['The Republic votes, wanderer. Today it votes for me.', 'For the Republic, and for the senate, who have money on me.'],
+    pass: ['The senate approves of this overtake.', 'The motion carries. I lead.'], passed: ['An objection. Noted.', 'The Republic has outlived empires. It can outlive one bad lap.'],
+    win: ['Carried unanimously.', 'The Republic thanks you for a fine race.'], lose: ['The senate will demand a recount.', 'Well raced. I will propose you for an honour.'] } },
+  archamus: { name: 'Archamus', col: 0xffd88a, skill: .97, lines: {
+    start: ['I have watched every race on this ring for a thousand years. Today I ride one.', 'Ride with a clear heart, wanderer. I will.'],
+    pass: ['Light is quick, child.', 'Follow, and be guided.'], passed: ['Good. Show me what you are.', 'Ah. You are faster than you look.'],
+    win: ['Even the Prime Good enjoys winning. A little.', 'Well ridden. Come back and race me again.'], lose: ['You ride well. The gardens will sing of it.', 'I yield the line, and gladly. Well raced.'] } },
+  amgrek: { name: 'Am-Grek', col: 0x7fe0a0, skill: .9, lines: {
+    start: ['Archamus guides my hand. It has never missed a corner.', 'I was racing these gardens four hundred years before you were born.'],
+    pass: ['By Archamus’s will!', 'Make way for the Hierarch!'], passed: ['The faithful are patient.', 'Hmph. Swift, for an outsider.'],
+    win: ['Archamus smiles on the Grek today.', 'Well raced. Pray harder next time.'], lose: ['Forgive me, Prime Good. I was outridden.', 'You honour the gardens. Well raced.'] } }
+};
+RACE_LEAD.archamusU = RACE_LEAD.archamus;
+const RACE_COMP = { // companions: how well they ride (their colour is their own), and their lines
+  orion: [.82, ['Last one to the line buys the drinks, kid.', 'I was racing before they put gravity in this ring.'], ['Ha! Eat my dust!', 'Coming through. Old man’s privilege!'], ['Show-off.', 'Go on, then. I’m only letting you.'], ['Still got it.', 'First round’s on you. Rules are rules.'], ['Well ridden. Don’t let it go to your head.', 'My knees aren’t what they were. Good race.']],
+  nico: [.86, ['Feeling lucky?', 'I slept through ninety years. I am not losing three laps.'], ['Lady Luck, coming through!', 'Bye-bye!'], ['Lucky line!', 'Oh, you are fast.'], ['Told you I was lucky.', 'Winner! Somebody take a photo for little Orion.'], ['Fine, you win. This time.', 'Good race! Again?']],
+  khazglar: [.74, ['Olympus Mons is very tall. I am used to going downhill fast.', 'I have never done this. How hard can it be?'], ['Ha! The hermit is coming!', 'Excuse me. Pardon me. Coming through.'], ['Oh! Very fast.', 'I will catch you on the downhill.'], ['I shall tell my garden about this.', 'Well! That was fun.'], ['Well raced, little friend.', 'I think the board was too small for me.']],
+  charon: [.83, ['RACE PROTOCOL ENGAGED. PROBABILITY OF VICTORY: HIGH.', 'Calculating the optimal line.'], ['OVERTAKE COMPLETE.', 'Optimal.'], ['Recalculating.', 'Unexpected.'], ['VICTORY. AS CALCULATED.', 'Well raced. My sensors are impressed.'], ['Defeat logged. Rematch requested.', 'You exceeded my projections.']],
+  kizna: [.85, ['Kizna is ready! Are you ready?', 'Racing mode! Sparkly!'], ['Wheee!', 'Beep beep! Coming through!'], ['Hey! Not fair!', 'You are fast! Kizna likes fast.'], ['Kizna wins! Kizna wins!', 'First place is pink today.'], ['Aww. Good race!', 'Again! Again!']],
+  nyrexia: [.88, ['My sister rides like a glacier. I do not.', 'Eris raised me on ice. Try to keep up.'], ['Frost on your visor, wanderer?', 'The Erisconos lead.'], ['Well done. Do not get comfortable.', 'Hm. Quick.'], ['A crown suits me. So does first place.', 'Well raced. Vishara will be furious she missed it.'], ['You ride like the wind off Eris. Well done.', 'Next time I will not be so gracious.']],
+  croxian: [.9, ['A general does not lose. Remember that.', 'I was trained for war. This is only faster.'], ['Fall in behind me.', 'Outflanked.'], ['A tactical retreat.', 'Do not get used to it.'], ['Victory. As planned.', 'Well raced. My father would have liked that one.'], ['Defeat accepted. Barely.', 'You won. Do not make me say it twice.']],
+  malia: [.87, ['I hit targets at two kilometres. Three laps is easy.', 'Eyes on the line, wanderer.'], ['Target passed.', 'In my sights, then behind me.'], ['Nice line.', 'Hmph. Lucky.'], ['Clean shot. Clean race.', 'Good race. Buy me a drink.'], ['Well ridden. I mean it.', 'Next time I aim better.']],
+  'james-ti': [.85, ['The Pontifex Maximus does not ride for second place.', 'Pray, wanderer. It will not help.'], ['Behind me, where you belong.', 'Bless you. Goodbye.'], ['Enjoy the lead. It is only borrowed.', 'Interesting.'], ['Hawthorne would have liked to see this.', 'Forgiveness is free. Victory is mine.'], ['Well. Even I lose a race, now and then.', 'Do not tell the Sisters.']],
+  pontifex: [.8, ['For Hawthorne, and for the race.', 'The faithful ride for glory.'], ['Hawthorne guides me.', 'Out of my way, heretic.'], ['A trial of faith.', 'Go. The race is long.'], ['Glory to Hawthorne!', 'The faithful win.'], ['A humbling. I accept it.', 'Well raced, wanderer.']],
+  josiah2: [.8, ['Two families, one finish line.', 'My grandfathers would want me to win this.'], ['Sorry! Coming through!', 'Two families say hello!'], ['Ha! Good overtake.', 'I will get you back.'], ['Both families will hear about this.', 'Good race, wanderer.'], ['Well raced. I owe you one.', 'Next time.']],
+  javek: [.84, ['I have been running for years. Finally, a race worth running.', 'A fugitive knows how to go fast.'], ['Catch me if you can. Nobody has.', 'Too slow. Like the hunters.'], ['Huh. You run well.', 'You would make a good fugitive.'], ['Still free. Still fastest.', 'Good race. I needed that.'], ['Caught at last. Well raced.', 'Fair. You earned it.']],
+  tyrotaronus: [.9, ['Where I come from, we raced between stars. This will do.', 'Waiting is easier in good company. So is racing.'], ['Pardon me.', 'Excuse me, please.'], ['Splendid.', 'Very good. Very good indeed.'], ['A small joy, in a long exile. Thank you.', 'Well raced, my friend.'], ['You were the better rider today.', 'Splendid racing. I am glad I came.']],
+  'pbc-josiah': [.98, ['I have already seen how this ends.', 'Time is a circuit, wanderer. I designed it.'], ['Behind me, where the past belongs.', 'Tick.'], ['A moment ahead. I have many moments.', 'Enjoy it. I can always begin again.'], ['As it always was.', 'I reset the universe once. A race is nothing.'], ['Remarkable. I did not see that coming, and I see everything coming.', 'Well raced. I will remember this timeline.']],
+  'pbc-peter': [.86, ['I prefer to wait behind, then take it at the very end.', 'May the best deputy win.'], ['Nothing personal.', 'Patience pays.'], ['Go on. I will be right behind you. I always am.', 'Noted.'], ['Succession secured.', 'Good race. I had a plan.'], ['Well. Every plan has a flaw.', 'You won. For now.']],
+  'pbc-gareth': [.84, ['Grade 7 civil servant, grade 1 racer. Allegedly.', 'I filled in the form. I am allowed to win.'], ['Sorry! Sorry! Coming through!', 'Lucky me!'], ['Fair enough!', 'Oh, nicely done.'], ['I never win anything! Brilliant!', 'Can I expense the trophy?'], ['Well raced! Cup of tea after?', 'Typical. Good race, though.']],
+  'pbc-kevin': [.88, ['…', 'The Black Mask does not lose.'], ['Behind you. Always.', 'Shadows are quick.'], ['Hm.', 'You will see me again.'], ['As expected.', '…'], ['Next time.', 'You are faster than you look. Do not let it happen again.']],
+  'sev-sevirrus': [.92, ['I stole a crown. I can steal a race.', 'Ride fast, wanderer. I bite.'], ['Mine now.', 'Ha ha ha.'], ['Enjoy the front. The view gets bloody.', 'Run, little thing.'], ['The Usurper takes it all.', 'Kneel to the winner.'], ['A crown can wait. So can I.', 'This is not over.']]
+};
+const RACE_GEN = [.8, ['Let’s race!', 'Good luck out there.'], ['Coming through!', 'See you at the line!'], ['Nice move!', 'Hey!'], ['Yes! First!', 'Good race!'], ['Well raced!', 'Next time!']];
+const RACE_REGS = [ // the regulars: Archiostal's own pilots and the ones who fly in for the races
+  { name: 'Tolka Venn', short: 'Tolka', sp: 'grek', c: [0x3a6a42, 0xffd08a], skill: .84 }, { name: 'Brassa Oom', short: 'Brassa', sp: 'grek', c: [0x6a4a2e, 0x9fe07f], skill: .78 },
+  { name: 'Kix Varrow', short: 'Kix', sp: 'chompy', c: [0x4a2f6a, 0x69b8ea], skill: .82 }, { name: 'Ilyse Frostmere', short: 'Ilyse', sp: 'erisian', c: [0x5b6475, 0xeda8d4], skill: .8 },
+  { name: 'Mara “Redline” Quill', short: 'Redline', sp: 'human', c: [0x7a2e2e, 0xf0f0f0], skill: .83, female: true }, { name: 'Old Hadrik', short: 'Hadrik', sp: 'grek', c: [0x4a5a62, 0xc5a87c], skill: .74 },
+  { name: 'Steca Rook', short: 'Steca', sp: 'chompy', c: [0x6a3a2a, 0xe8b860], skill: .79 }, { name: 'Sa-Vel', short: 'Sa-Vel', sp: 'erisian', c: [0x3e4656, 0xb8c8e8], skill: .81 }
+];
+const RACE_REG_LINES = [['Gardens are watching, outsider. Do not embarrass yourself.', 'I have won this circuit forty times.'], ['Inside line, thank you!', 'See you at the finish!'], ['Hey, nice line!', 'Where did you learn that?'], ['Another one for the board!', 'Ha! Too easy.'], ['Good race, outsider.', 'You can come back any time.']];
+const raceL = (t, k) => { const a = t && t[k]; return a && a.length ? a[Math.floor(Math.random() * a.length)] : null; };
+const raceLines = q => ({ start: q[1], pass: q[2], passed: q[3], win: q[4], lose: q[5] });
+function raceLeaders() { // who leads each faction now (the leader halls' own answer), alive, never the Catharsis; one entry per person
+  if (!wanderer || effCh() < 3) return [];
+  const out = [], seen = new Set(), c4 = wanderer.ch4 || {}, slain = c4.gvSlain ? new Set(['vishara', 'amgrek', 'taredesiba', 'darius', 'archamus', 'archamusU']) : new Set();
+  let facs = []; try { facs = dipFacsNow(); } catch (e) {}
+  for (const F of facs) {
+    if (F.id === 'catharsis' || F.id === 'ti' || dipRes(F.id) === 'destroyed') continue; let Lo = null; try { Lo = leaderOf(F); } catch (e) {} if (!Lo) continue;
+    for (const L of Lo.list || []) { if (!L || !RACE_LEAD[L.key] || slain.has(L.key)) continue; const who = L.key === 'archamusU' ? 'archamus' : L.key; if (seen.has(who)) continue; seen.add(who); out.push({ key: L.key, who, full: L.full, F }); }
+  }
+  return out;
+}
+const raceArchOk = () => chNow() >= 5 || !!((wanderer && wanderer.ch4) || {}).archMet; // the Prime Good rides only once you've met him
+function raceComps() { // everyone travelling with you, and anyone waiting aboard; not those lent out or down a lair; never a leader (race them as leaders)
+  if (!wanderer) return [];
+  const away = id => !!(((wanderer.dip && wanderer.dip.lent) || {})[id] || (wanderer.dungeon || {})[id]);
+  let ids = []; try { ids = [...partyNow(), ...Object.keys(wanderer.aboard || {}).filter(k => wanderer.aboard[k])]; } catch (e) {}
+  return [...new Set(ids)].filter(id => id && !/^(lead|fin):/.test(id) && !(id === 'james' && chNow() >= 3) && !away(id)).slice(0, 5);
+}
+const raceRec = () => { if (!wanderer) return {}; const r = wanderer.race || (wanderer.race = { races: 0, wins: 0, best: 0, lap: 0, beat: {} }); r.beat = r.beat || {}; return r; };
+function raceRecSave() { const c = curChar(); if (c && wanderer) c.race = wanderer.race; try { saveRoster(); } catch (e) {} }
+const raceFmt = t => { if (!(t > 0)) return '—'; const m = Math.floor(t / 60), s = t - m * 60; return `${m}:${s < 10 ? '0' : ''}${s.toFixed(2)}`; };
+// ---- the building, in the gardens of Archiostal ----
+function raceHousePlan(W) { let y = 0; try { y = planetGroundH(RACE_B.x, RACE_B.z); } catch (e) {} W.race = { x: RACE_B.x, z: RACE_B.z, y }; W.pads.push({ x: RACE_B.x, z: RACE_B.z, r: RACE_B.r, y }); }
+const raceHouse = () => (isPl() && world.raceHouse) || null;
+function raceBoardMesh(col, phone) { // a hoverboard: a pointed deck, a gold rail, a glowing keel in the rider's colour, two thrusters, the anti-gravity ring under it (+z is forward, deck top at .12)
+  const g = new THREE.Group(), c = new THREE.Color(col);
+  const deck = new THREE.MeshStandardMaterial({ color: c.clone().multiplyScalar(.55), metalness: .6, roughness: .28 }), gold = new THREE.MeshStandardMaterial({ color: 0xe8c27a, metalness: .9, roughness: .25 });
+  const glow = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 2.2, roughness: .4 }), dark = new THREE.MeshStandardMaterial({ color: 0x14161c, metalness: .7, roughness: .35 });
+  const sh = new THREE.Shape(); sh.moveTo(0, 1.2); sh.quadraticCurveTo(.42, .7, .38, 0); sh.lineTo(.34, -1.0); sh.quadraticCurveTo(0, -1.18, -.34, -1.0); sh.lineTo(-.38, 0); sh.quadraticCurveTo(-.42, .7, 0, 1.2);
+  const dg = new THREE.ExtrudeGeometry(sh, { depth: .08, bevelEnabled: true, bevelThickness: .02, bevelSize: .025, bevelSegments: phone ? 1 : 2, curveSegments: phone ? 6 : 12 }); dg.rotateX(Math.PI / 2); dg.translate(0, .1, 0);
+  const d = new THREE.Mesh(dg, deck); d.castShadow = true; g.add(d);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(.5, .025, 6, phone ? 20 : 40), gold); rim.rotation.x = Math.PI / 2; rim.scale.set(.82, 2.25, 1); rim.position.y = .07; g.add(rim);
+  const keel = new THREE.Mesh(new THREE.BoxGeometry(.14, .05, 1.7), glow); keel.position.set(0, -.01, -.02); g.add(keel);
+  for (const sx of [-1, 1]) { const t = new THREE.Mesh(new THREE.CylinderGeometry(.09, .12, .34, 10), dark); t.rotation.x = Math.PI / 2; t.position.set(sx * .2, .02, -1.0); g.add(t); const f = glowSprite(col, .9, .9); f.position.set(sx * .2, .02, -1.22); g.add(f); g.userData.fl = (g.userData.fl || []).concat(f); }
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.42, .03, 6, phone ? 18 : 32), glow); ring.rotation.x = Math.PI / 2; ring.position.y = -.12; g.add(ring); g.userData.ring = ring;
+  const pool = glowSprite(col, 2.2, .35); pool.position.y = -.3; g.add(pool); g.userData.pool = pool;
+  return g;
+}
+function raceHouseBuild() {
+  raceHouseClear(); const W = world.planet, P0 = W && W.race; if (!P0 || !isPl()) return;
+  const phone = tiPhone(), G = new THREE.Group(), ry = Math.atan2(-P0.x, -P0.z); G.position.set(P0.x, P0.y, P0.z); G.rotation.y = ry; // the gate faces the landing pad
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .55, metalness: .3 }, o));
+  const stone = M(0xd8c89a, { roughness: .7, metalness: .05 }), gold = M(0xe8c27a, { metalness: .9, roughness: .28, emissive: 0x4a3410, emissiveIntensity: .35 }), green = M(0x2f6a3a, { roughness: .8 }), dark = M(0x1a1c22, { metalness: .6, roughness: .4 });
+  const box = (w, h, d, m, x, y, z, par = G) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; par.add(o); return o; };
+  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(RACE_B.r - .4, RACE_B.r, .6, 48), stone); plinth.position.y = .3; plinth.receiveShadow = true; G.add(plinth);
+  const inlay = new THREE.Mesh(new THREE.RingGeometry(RACE_B.r - 2.2, RACE_B.r - 1.6, 64), M(0xffd88a, { emissive: 0xffc35a, emissiveIntensity: .9 })); inlay.rotation.x = -Math.PI / 2; inlay.position.y = .62; G.add(inlay);
+  // the gate: two gold-capped pylons, the beam, the sign
+  for (const sx of [-1, 1]) { box(1.8, 12, 1.8, stone, sx * 8.4, 6.6, 9); box(2.2, .7, 2.2, gold, sx * 8.4, 12.9, 9); box(2.2, .5, 2.2, gold, sx * 8.4, .85, 9); const cap = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.4, 4), gold); cap.position.set(sx * 8.4, 14.4, 9); cap.rotation.y = Math.PI / 4; G.add(cap); const l = glowSprite(0xffd88a, 5, .8); l.position.set(sx * 8.4, 16.2, 9); G.add(l); }
+  box(19, 1.8, 1.4, stone, 0, 12, 9); box(19.4, .3, 1.6, gold, 0, 13.05, 9); box(19.4, .3, 1.6, gold, 0, 10.95, 9);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(16, 2.5), new THREE.MeshBasicMaterial({ map: signTex('THE ARCHIOSTAL RACEATHON', '#ffd88a'), transparent: true, depthWrite: false })); sign.position.set(0, 12, 9.75); G.add(sign);
+  const sub = new THREE.Mesh(new THREE.PlaneGeometry(14, 1.2), new THREE.MeshBasicMaterial({ map: signTex('THE SANCTUM RING CIRCUIT · ALL COMERS', '#9fe07f'), transparent: true, depthWrite: false })); sub.position.set(0, 9.8, 9.6); G.add(sub);
+  // the grandstand: five tiers in an arc behind the court, seats in the factions' colours, banners on poles
+  const segs = phone ? 9 : 15, seatCols = [0xffb060, 0x9fd0ff, 0xf2b4e0, 0x7fe0a0, 0x58d8c0, 0xffd88a];
+  for (let t = 0; t < 5; t++) for (let i = 0; i < segs; i++) {
+    const a = -1.15 + 2.3 * (i + .5) / segs, r = 10.2 + t * 1.25, w = 2 * r * Math.sin(1.15 / segs) + .1, x = Math.sin(a) * r, z = -Math.cos(a) * r;
+    const b = box(w, .7 + t * .7, 1.3, stone, x, .6 + (.7 + t * .7) / 2, z); b.rotation.y = -a;
+    const s = box(w * .92, .12, .5, M(seatCols[(i + t) % seatCols.length], { roughness: .6 }), x, .6 + .7 + t * .7 + .06, z); s.rotation.y = -a;
+  }
+  for (let i = 0; i < (phone ? 5 : 9); i++) { const a = -1.1 + 2.2 * i / ((phone ? 5 : 9) - 1), r = 17.2, x = Math.sin(a) * r, z = -Math.cos(a) * r; box(.2, 9, .2, dark, x, 4.5 + .6, z); const fl = box(1.6, 3.2, .06, M(seatCols[i % seatCols.length], { emissive: seatCols[i % seatCols.length], emissiveIntensity: .35, roughness: .8, side: THREE.DoubleSide }), x, 7.4, z); fl.rotation.y = -a; fl.castShadow = false; }
+  // the big screen over the stand: the circuit, the riders going round it
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 288; const scrT = new THREE.CanvasTexture(cv); scrT.colorSpace = THREE.SRGBColorSpace;
+  box(11.4, 6.8, .5, dark, 0, 10.5, -15.6); const scr = new THREE.Mesh(new THREE.PlaneGeometry(10.6, 6), new THREE.MeshBasicMaterial({ map: scrT })); scr.position.set(0, 10.5, -15.3); G.add(scr); box(.5, 7.5, .5, dark, -4, 3.7, -15.6); box(.5, 7.5, .5, dark, 4, 3.7, -15.6);
+  // two boards on show, turning slowly over glowing plinths
+  const shows = []; for (const [sx, col] of [[-5, 0xffb060], [5, 0x7fe0a0]]) { box(1.6, 1, 1.6, gold, sx, 1.1, 3.4); const b = raceBoardMesh(col, phone); b.position.set(sx, 2.4, 3.4); b.rotation.z = .25; G.add(b); shows.push(b); }
+  // a ribbon of glowing track, looping over it all: you can see it from across the gardens
+  { const pts = []; for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; pts.push(new THREE.Vector3(Math.sin(a) * 15, 15 + Math.sin(a * 2) * 4.5 + (i % 2) * 1.5, -4 - Math.cos(a) * 11)); }
+    const C = new THREE.CatmullRomCurve3(pts, true), n = phone ? 90 : 180, pos = [], idx = [];
+    for (let i = 0; i <= n; i++) { const u = i / n, p = C.getPointAt(u % 1), t = C.getTangentAt(u % 1), r = new THREE.Vector3().crossVectors(t, new THREE.Vector3(0, 1, 0)).normalize().multiplyScalar(1.3); pos.push(p.x - r.x, p.y - r.y, p.z - r.z, p.x + r.x, p.y + r.y, p.z + r.z); if (i < n) { const k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); } }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+    const rib = new THREE.Mesh(geo, M(0x20303a, { metalness: .7, roughness: .3, emissive: 0x4af0ff, emissiveIntensity: .35, side: THREE.DoubleSide })); G.add(rib);
+    for (const sd of [-1, 1]) { const ep = []; for (let i = 0; i <= n; i++) { const u = i / n, p = C.getPointAt(u % 1), t = C.getTangentAt(u % 1), r = new THREE.Vector3().crossVectors(t, new THREE.Vector3(0, 1, 0)).normalize().multiplyScalar(1.35 * sd); ep.push(p.clone().add(r).add(new THREE.Vector3(0, .05, 0))); }
+      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ep), new THREE.LineBasicMaterial({ color: sd < 0 ? 0xffd88a : 0x4af0ff })); G.add(ln); }
+    for (let i = 0; i < 4; i++) { const p = C.getPointAt(i / 4); box(.35, p.y - .6, .35, dark, p.x, .6 + (p.y - .6) / 2, p.z); }
+    G.userData.loop = C; }
+  const ghost = raceBoardMesh(0x4af0ff, phone); ghost.scale.setScalar(1.6); G.add(ghost); // a board riding the loop, round and round
+  const beacon = glowSprite(0xffd88a, 30, .55); beacon.position.set(0, 26, 0); G.add(beacon);
+  wScene.add(G);
+  const X = P0.x, Z = P0.z, c = Math.cos(ry), s = Math.sin(ry), toW = (lx, lz) => ({ x: X + lx * c + lz * s, z: Z - lx * s + lz * c });
+  const marshalAt = toW(3.4, 11.2), cols = [toW(-8.4, 9), toW(8.4, 9), toW(-5, 3.4), toW(5, 3.4), toW(-4, -15.6), toW(4, -15.6)].map(q => ({ x: q.x, z: q.z, r: 1.45 }));
+  world.raceHouse = { G, P0, ry, X, Z, Y: P0.y, cols, scr: { cv, t: scrT, at: 0 }, shows, ghost, marshalAt, marshal: null, toW };
+  brawlRig({ sp: 'grek', c: [0x1a1c22, 0xffd88a], skin: 2, name: 'RACE MARSHAL' }).then(R => { const H = world.raceHouse; if (!R || !H || H.G !== G) return; R.root.position.set(marshalAt.x, P0.y + .6, marshalAt.z); R.root.rotation.y = ry; wScene.add(R.root); H.marshal = R; }).catch(() => null);
+  setTimeout(() => { if (world.raceHouse && world.raceHouse.G === G) lootMsg('The Archiostal Raceathon · hoverboard races, at the gold gate across the pad', '#ffd88a'); }, 7600);
+}
+function raceHouseClear() { const H = world.raceHouse; if (!H) return; world.raceHouse = null; if (H.G.parent) H.G.parent.remove(H.G); if (H.marshal && H.marshal.root.parent) H.marshal.root.parent.remove(H.marshal.root); try { disposeOwned(H.G); } catch (e) {} }
+function raceHouseBlocked(x, z) { // the pylons, the show plinths and the screen's legs; the grandstand is a curved wall behind the court
+  const H = raceHouse(); if (!H || Math.abs(x - H.X) > 19 || Math.abs(z - H.Z) > 19) return false;
+  for (const q of H.cols) if ((x - q.x) ** 2 + (z - q.z) ** 2 < q.r * q.r) return true;
+  const dx = x - H.X, dz = z - H.Z, c = Math.cos(H.ry), s = Math.sin(H.ry), lx = dx * c - dz * s, lz = dx * s + dz * c, r = Math.hypot(lx, lz), a = Math.atan2(lx, -lz);
+  return lz < 0 && r > 9.6 && r < 16.8 && Math.abs(a) < 1.18; // the stand
+}
+function raceHouseNear(p) { const H = raceHouse(); if (!H) return false; return Math.hypot(p.x - H.marshalAt.x, p.z - H.marshalAt.z) < 3.2 || Math.hypot(p.x - H.toW(0, 9).x, p.z - H.toW(0, 9).z) < 3.4; }
+function raceHouseTick(dt) {
+  const H = raceHouse(); if (!H) return; const p = player.position; if (Math.hypot(p.x - H.X, p.z - H.Z) > 160) return;
+  for (const [i, b] of H.shows.entries()) { b.rotation.y += dt * .5 * (i ? -1 : 1); b.position.y = 2.4 + Math.sin(time * 1.3 + i) * .12; if (b.userData.ring) b.userData.ring.rotation.z += dt * 3; }
+  const C = H.G.userData.loop; if (C) { const u = (time * .07) % 1, q = C.getPointAt(u), t = C.getTangentAt(u); H.ghost.position.copy(q).add(new THREE.Vector3(0, .35, 0)); H.ghost.lookAt(q.clone().add(t)); }
+  if (H.marshal) { H.marshal.mode = 'idle'; animRig(H.marshal, dt); }
+  if (time - H.scr.at > .25) { H.scr.at = time; raceScreenDraw(H.scr.cv, time); H.scr.t.needsUpdate = true; }
+}
+let RACE_MAP = null; // the circuit seen from above, in 0..1 (for the big screen and the race's own map)
+function raceMapPts() { if (RACE_MAP) return RACE_MAP; const c = new THREE.CatmullRomCurve3(RACE_TRACK.map(p => new THREE.Vector3(...p)), true, 'centripetal', .5), pts = c.getSpacedPoints(160); let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const p of pts) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); z0 = Math.min(z0, p.z); z1 = Math.max(z1, p.z); } const S = Math.max(x1 - x0, z1 - z0); return (RACE_MAP = { pts: pts.map(p => [(p.x - x0) / S, (p.z - z0) / S]), x0, z0, S, w: (x1 - x0) / S, h: (z1 - z0) / S }); }
+function raceScreenDraw(cv, t) {
+  const g = cv.getContext('2d'), W = cv.width, H = cv.height, M = raceMapPts(); g.fillStyle = '#070b10'; g.fillRect(0, 0, W, H);
+  const sc = Math.min((W - 60) / M.w, (H - 70) / M.h), ox = (W - M.w * sc) / 2, oz = 44 + (H - 60 - M.h * sc) / 2, X = q => ox + q[0] * sc, Z = q => oz + q[1] * sc;
+  g.strokeStyle = 'rgba(74,240,255,.35)'; g.lineWidth = 10; g.lineJoin = 'round'; g.beginPath(); M.pts.forEach((q, i) => i ? g.lineTo(X(q), Z(q)) : g.moveTo(X(q), Z(q))); g.closePath(); g.stroke();
+  g.strokeStyle = '#4af0ff'; g.lineWidth = 2.5; g.stroke();
+  const cols = ['#ffb060', '#9fd0ff', '#f2b4e0', '#7fe0a0', '#ffd88a', '#ff6a8a'];
+  cols.forEach((c, i) => { const q = M.pts[Math.floor(((t * (.05 + i * .004) + i * .07) % 1) * (M.pts.length - 1))]; g.fillStyle = c; g.beginPath(); g.arc(X(q), Z(q), 6, 0, 7); g.fill(); });
+  g.fillStyle = '#ffd88a'; g.font = '700 26px Georgia, serif'; g.textAlign = 'center'; g.fillText('THE SANCTUM RING CIRCUIT', W / 2, 32);
+  const r = raceRec(); g.fillStyle = '#9fe07f'; g.font = '600 16px sans-serif'; g.fillText(r.best ? `YOUR BEST · ${raceFmt(r.best)}   ·   BEST LAP · ${raceFmt(r.lap)}` : 'ALL COMERS · TALK TO THE MARSHAL', W / 2, H - 14);
+}
+// ---- the marshal: what kind of race ----
+function raceMenu() {
+  if (state !== 'explore' || ex.dlg) return;
+  const who = 'RACE MARSHAL · THE RACEATHON', r = raceRec(), lead = raceLeaders(), comps = raceComps();
+  const greet = r.races ? `Back for more, ${wanderer.name}? ${r.wins} win${r.wins === 1 ? '' : 's'} from ${r.races} so far. The board is ready.` : 'Welcome to the Raceathon. Three laps of the Sanctum Ring Circuit, on hoverboards. Archamus’s law holds here: no war crosses this gate, so anyone may race anyone.';
+  const opts = [{ text: tiPhone() ? 'Open race · the regulars' : 'Open race · against the regulars', onPick: () => raceStart({ kind: 'open' }) }];
+  if (lead.length) opts.push({ text: 'Challenge a faction leader…', onPick: () => raceLeadMenu(lead) });
+  opts.push({ text: comps.length ? `Race your companions (${comps.map(compName).join(', ')})` : 'Race your companions', onPick: () => comps.length ? raceStart({ kind: 'comps', ids: comps }) : openDialog(who, ['Nobody’s riding with you today. Bring your companions to Archiostal (travelling with you, or waiting aboard your ship) and they can race.']) });
+  opts.push({ text: 'Your records', onPick: () => raceRecords() }, { text: 'Not now', onPick: () => {} });
+  openDialog(who, [greet], false, () => openChoice(who, opts));
+}
+function raceLeadMenu(lead) {
+  const who = 'RACE MARSHAL · THE RACEATHON', r = raceRec();
+  const opts = lead.map(L => ({ text: `${L.full}${r.beat[L.who] ? ' · beaten' : ''}`, onPick: () => { if (L.who === 'archamus' && !raceArchOk()) { openDialog('RACE MARSHAL', ['The Prime Good watches the races from his throne. He will not ride against you. Not yet.']); return; } raceStart({ kind: 'lead', leads: [L] }); } }));
+  const ok = lead.filter(L => L.who !== 'archamus' || raceArchOk()); if (ok.length > 1) opts.push({ text: `All of them at once (${ok.length})`, onPick: () => raceStart({ kind: 'lead', leads: ok }) });
+  opts.push({ text: 'Back', onPick: () => raceMenu() });
+  openChoice(who, opts, 'WHO WILL YOU RACE?');
+}
+function raceRecords() {
+  const r = raceRec(), ks = Object.keys(r.beat || {}), names = ks.map(k => RACE_LEAD[k] ? RACE_LEAD[k].name : k);
+  openDialog('RACE MARSHAL', [r.races ? `${r.races} race${r.races === 1 ? '' : 's'}, ${r.wins} win${r.wins === 1 ? '' : 's'}. Your best race: ${raceFmt(r.best)}. Your best lap: ${raceFmt(r.lap)}.` : 'No races yet. Your name isn’t on the board.',
+    names.length ? `Leaders you’ve beaten: ${names.join(', ')}.` : 'No faction leader has lost to you here. Yet.'], false, () => raceMenu());
+}
+// ---- the race: its own scene, the Sanctum Ring Circuit ----
+const RACE_TOP = 52, RACE_ACC = 19, RACE_BRAKE = 34; // top speed (m/s, about 187 km/h), acceleration, braking
+function raceTrack() { // the circuit, sampled every metre or so: where it runs, which way, how it banks and bends
+  const C = new THREE.CatmullRomCurve3(RACE_TRACK.map(p => new THREE.Vector3(...p)), true, 'centripetal', .5), L = C.getLength(), N = 1600, ds = L / N, pts = C.getSpacedPoints(N); pts.pop();
+  const T = { N, L, ds, P: pts, Tn: [], Rt: [], Up: [], kap: new Float32Array(N), bank: new Float32Array(N) }, up = new THREE.Vector3(0, 1, 0), th = new Float32Array(N);
+  for (let i = 0; i < N; i++) { const t = new THREE.Vector3().subVectors(pts[(i + 1) % N], pts[(i - 1 + N) % N]).normalize(); T.Tn.push(t); th[i] = Math.atan2(t.x, t.z); }
+  const raw = new Float32Array(N); for (let i = 0; i < N; i++) { let d = th[(i + 1) % N] - th[(i - 1 + N) % N]; d = Math.atan2(Math.sin(d), Math.cos(d)); raw[i] = d / (2 * ds); }
+  for (let i = 0; i < N; i++) { let k = 0; for (let j = -8; j <= 8; j++) k += raw[(i + j + N) % N]; T.kap[i] = k / 17; }
+  for (let i = 0; i < N; i++) { let b = 0; for (let j = -14; j <= 14; j++) b += T.kap[(i + j + N) % N]; T.bank[i] = clamp(b / 29 * 22, -.36, .36); } // banked into the turns (the inside lower)
+  for (let i = 0; i < N; i++) { const t = T.Tn[i], rh = new THREE.Vector3().crossVectors(t, up).normalize(), u0 = new THREE.Vector3().crossVectors(rh, t).normalize(), b = T.bank[i];
+    const r = rh.clone().multiplyScalar(Math.cos(b)).addScaledVector(u0, Math.sin(b)).normalize(); T.Rt.push(r); T.Up.push(new THREE.Vector3().crossVectors(r, t).normalize()); }
+  return T;
+}
+const raceI = (T, s) => { const i = Math.floor(((s % T.L) + T.L) % T.L / T.ds); return i >= T.N ? 0 : i; };
+function raceAt(T, s, d, h, out) { // a point on the track: so far along, so far across, so high above it
+  const f = (((s % T.L) + T.L) % T.L) / T.ds, i = Math.floor(f) % T.N, j = (i + 1) % T.N, k = f - Math.floor(f);
+  return out.copy(T.P[i]).lerp(T.P[j], k).addScaledVector(T.Rt[i], d).addScaledVector(T.Up[i], h);
+}
+function raceTex(kind) { // the track's surface, the boost pads' chevrons, the checks, the ground
+  if (kind === 'track') return canvasTex(256, 512, (g, w, h) => { g.fillStyle = '#23272e'; g.fillRect(0, 0, w, h); for (let i = 0; i < 2200; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * .05})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    g.fillStyle = '#e8c27a'; g.fillRect(0, 0, 9, h); g.fillRect(w - 9, 0, 9, h); g.fillStyle = '#1a1c22'; g.fillRect(9, 0, 4, h); g.fillRect(w - 13, 0, 4, h);
+    g.fillStyle = 'rgba(230,240,255,.55)'; g.fillRect(w / 2 - 3, 0, 6, h * .45); g.fillStyle = 'rgba(74,240,255,.25)'; g.fillRect(w * .25 - 1, 0, 2, h); g.fillRect(w * .75 - 1, 0, 2, h); });
+  if (kind === 'pad') return canvasTex(128, 256, (g, w, h) => { g.clearRect(0, 0, w, h); g.fillStyle = 'rgba(74,240,255,.18)'; g.fillRect(0, 0, w, h); g.strokeStyle = '#7ff8ff'; g.lineWidth = 14; g.lineCap = 'round'; for (let k = 0; k < 3; k++) { const y = 40 + k * 78; g.beginPath(); g.moveTo(18, y + 46); g.lineTo(w / 2, y); g.lineTo(w - 18, y + 46); g.stroke(); } });
+  if (kind === 'check') return canvasTex(256, 64, (g, w, h) => { for (let x = 0; x < 16; x++) for (let y = 0; y < 4; y++) { g.fillStyle = (x + y) % 2 ? '#f4f4f4' : '#111'; g.fillRect(x * 16, y * 16, 16, 16); } });
+  if (kind === 'ground') return canvasTex(512, 512, (g, w, h) => { g.fillStyle = '#5f8a3e'; g.fillRect(0, 0, w, h); for (let i = 0; i < 5000; i++) { const v = Math.random(); g.fillStyle = v < .5 ? 'rgba(40,70,30,.25)' : 'rgba(150,190,90,.18)'; g.fillRect(Math.random() * w, Math.random() * h, 3, 3); }
+    g.strokeStyle = 'rgba(232,210,150,.55)'; g.lineWidth = 10; g.beginPath(); g.moveTo(0, h * .3); g.bezierCurveTo(w * .3, h * .1, w * .6, h * .6, w, h * .45); g.stroke(); });
+  if (kind === 'sky') return canvasTex(16, 512, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#2f74c8'); gr.addColorStop(.3, '#7ab6ee'); gr.addColorStop(.47, '#cfe6fa'); gr.addColorStop(.5, '#f4eed8'); gr.addColorStop(.54, '#c8dcb8'); gr.addColorStop(1, '#4a6a3a'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+  if (kind === 'ring') return canvasTex(1024, 64, (g, w, h) => { g.fillStyle = '#c8d0c0'; g.fillRect(0, 0, w, h); for (let x = 0; x < w; x += 8) { g.fillStyle = Math.random() < .5 ? '#6f9a52' : '#a8b898'; g.fillRect(x, 8, 7, 22); g.fillStyle = Math.random() < .3 ? '#ffe6a0' : '#8a9aa8'; g.fillRect(x, 36, 6, 14); } });
+  return null;
+}
+function raceEnv() { if (RACE.env) return RACE.env; const pm = new THREE.PMREMGenerator(renderer); RACE.env = pm.fromScene(new RoomEnvironment(), .04).texture; pm.dispose(); return RACE.env; }
+function raceScene() {
+  const phone = tiPhone(), low = gfxQ === 'low', S = new THREE.Scene(), T = raceTrack(), hw = RACE_HW;
+  S.background = new THREE.Color(0x9fcaf0); S.fog = new THREE.Fog(0xcfe2f0, 480, phone ? 1800 : 3200); try { S.environment = raceEnv(); } catch (e) {}
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .6, metalness: .2 }, o));
+  // the sky, the ring of Archiostal arching over the horizon, Malana beyond
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(5200, 32, 16), new THREE.MeshBasicMaterial({ map: raceTex('sky'), side: THREE.BackSide, fog: false, depthWrite: false })); sky.renderOrder = -5; S.add(sky);
+  const ringT = raceTex('ring'); ringT.wrapS = THREE.RepeatWrapping; ringT.repeat.set(30, 1);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(3400, 90, 10, phone ? 120 : 220), new THREE.MeshStandardMaterial({ map: ringT, roughness: .8, metalness: .2, emissive: 0x2a2a18, emissiveIntensity: .4, fog: false })); ring.position.set(400, -900, -3900); ring.rotation.set(.05, .35, 0); S.add(ring);
+  const mal = new THREE.Mesh(new THREE.SphereGeometry(520, 32, 20), new THREE.MeshStandardMaterial({ color: 0x9fc0e8, roughness: .9, emissive: 0x24304a, emissiveIntensity: .5, fog: false })); mal.position.set(-2600, 1300, -3800); S.add(mal);
+  const sunG = glowSprite(0xfff4d8, 900, .9); sunG.position.set(2200, 2400, -3000); sunG.material.fog = false; S.add(sunG);
+  S.add(new THREE.HemisphereLight(0xe0f0ff, 0x4a6a3a, .95));
+  const sun = new THREE.DirectionalLight(0xfff2d8, 2.3); sun.position.set(60, 120, 40); S.add(sun); S.add(sun.target);
+  if (!phone && !low) { sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 300 }); sun.shadow.bias = -.0004; sun.shadow.normalBias = .03; }
+  // the gardens below: lawns, a lake, trees, white-and-gold spires
+  const gT = raceTex('ground'); gT.wrapS = gT.wrapT = THREE.RepeatWrapping; gT.repeat.set(40, 40);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), M(0xffffff, { map: gT, roughness: .95, metalness: 0 })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; S.add(ground);
+  const lake = new THREE.Mesh(new THREE.CircleGeometry(70, 40), M(0x3a7ab0, { roughness: .08, metalness: .6, envMapIntensity: 1.2 })); lake.rotation.x = -Math.PI / 2; lake.position.set(60, .12, 120); S.add(lake);
+  const near = (x, z, r) => { for (let i = 0; i < T.N; i += 10) { const p = T.P[i]; if ((p.x - x) ** 2 + (p.z - z) ** 2 < r * r) return true; } return false; };
+  { const n = phone ? 140 : low ? 220 : 420, trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(.35, .5, 5, 6), M(0x5a4030, { roughness: .9 }), n), crown = new THREE.InstancedMesh(new THREE.SphereGeometry(3.4, 10, 8), M(0x4f8a3a, { roughness: .85 }), n), o = new THREE.Object3D(), c = new THREE.Color();
+    let k = 0, guard = 0; while (k < n && guard++ < n * 20) { const x = -520 + Math.random() * 1100, z = -320 + Math.random() * 820; if (near(x, z, 22) || Math.hypot(x - 60, z - 120) < 76) continue; const s = .7 + Math.random() * .8;
+      o.position.set(x, 2.5 * s, z); o.scale.set(s, s, s); o.rotation.set(0, Math.random() * 6, 0); o.updateMatrix(); trunk.setMatrixAt(k, o.matrix); o.position.y = 5.5 * s + 2; o.scale.set(s, s * (.8 + Math.random() * .5), s); o.updateMatrix(); crown.setMatrixAt(k, o.matrix); crown.setColorAt(k, c.setHSL(.24 + Math.random() * .08, .45, .3 + Math.random() * .12)); k++; }
+    trunk.count = crown.count = k; trunk.castShadow = crown.castShadow = !phone; S.add(trunk, crown); }
+  for (const [x, z, h] of [[-420, -260, 140], [520, 420, 180], [-120, 520, 120], [640, -180, 160], [-640, 260, 200]]) { const sp = new THREE.Mesh(new THREE.CylinderGeometry(6, 14, h, 10), M(0xf4ecd8, { roughness: .5 })); sp.position.set(x, h / 2, z); S.add(sp); const cap = new THREE.Mesh(new THREE.ConeGeometry(10, 40, 10), M(0xe8c27a, { metalness: .9, roughness: .25, emissive: 0x4a3410, emissiveIntensity: .4 })); cap.position.set(x, h + 20, z); S.add(cap); }
+  // the track: the surface, the glowing barriers, the skirt and its pillars
+  const N = T.N, pos = [], uv = [], idx = [], A = new THREE.Vector3();
+  for (let i = 0; i <= N; i++) { const q = i % N, p = T.P[q], r = T.Rt[q]; A.copy(p).addScaledVector(r, -hw); pos.push(A.x, A.y, A.z); A.copy(p).addScaledVector(r, hw); pos.push(A.x, A.y, A.z); const v = i * T.ds / 24; uv.push(0, v, 1, v); if (i < N) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } }
+  const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); tg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); tg.setIndex(idx); tg.computeVertexNormals();
+  const tT = raceTex('track'); tT.wrapS = tT.wrapT = THREE.RepeatWrapping; tT.anisotropy = 8;
+  const road = new THREE.Mesh(tg, M(0xffffff, { map: tT, roughness: .45, metalness: .3, side: THREE.DoubleSide })); road.receiveShadow = true; S.add(road);
+  const ribbon = (sd, h0, h1, off, mat) => { const ps = [], ix = []; for (let i = 0; i <= N; i++) { const q = i % N, p = T.P[q], r = T.Rt[q], u = T.Up[q]; A.copy(p).addScaledVector(r, sd * (hw + off)).addScaledVector(u, h0); ps.push(A.x, A.y, A.z); A.copy(p).addScaledVector(r, sd * (hw + off)).addScaledVector(u, h1); ps.push(A.x, A.y, A.z); if (i < N) { const a = i * 2; ix.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(ps, 3)); g.setIndex(ix); g.computeVertexNormals(); const m = new THREE.Mesh(g, mat); S.add(m); return m; };
+  for (const sd of [-1, 1]) {
+    ribbon(sd, 0, .85, 0, new THREE.MeshStandardMaterial({ color: sd < 0 ? 0xffd88a : 0x7ff8ff, emissive: sd < 0 ? 0xffb84a : 0x4af0ff, emissiveIntensity: .9, transparent: true, opacity: .42, side: THREE.DoubleSide, depthWrite: false, roughness: .2 }));
+    ribbon(sd, .82, .9, .02, M(sd < 0 ? 0xffd88a : 0x9ffcff, { emissive: sd < 0 ? 0xffc35a : 0x4af0ff, emissiveIntensity: 2.2 }));
+    ribbon(sd, -1.4, 0, .01, M(0x2a2e36, { metalness: .7, roughness: .35, side: THREE.DoubleSide })).castShadow = !phone;
+  }
+  { const under = []; for (let i = 0; i <= N; i++) { const q = i % N; for (const sd of [-1, 1]) { A.copy(T.P[q]).addScaledVector(T.Rt[q], sd * hw).addScaledVector(T.Up[q], -1.4); under.push(A.x, A.y, A.z); } }
+    const ix = []; for (let i = 0; i < N; i++) { const a = i * 2; ix.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(under, 3)); g.setIndex(ix); g.computeVertexNormals(); S.add(new THREE.Mesh(g, M(0x22252c, { metalness: .6, roughness: .4, side: THREE.DoubleSide }))); }
+  { const step = Math.round(34 / T.ds), cnt = Math.ceil(N / step) * 2, pil = new THREE.InstancedMesh(new THREE.CylinderGeometry(.9, 1.3, 1, 8), M(0xe8dcc0, { roughness: .6 }), cnt), o = new THREE.Object3D(); let k = 0;
+    for (let i = 0; i < N; i += step) for (const sd of [-.55, .55]) { const p = A.copy(T.P[i]).addScaledVector(T.Rt[i], sd * hw), h = p.y - 1.4; if (h < .6) continue; o.position.set(p.x, h / 2, p.z); o.scale.set(1, h, 1); o.rotation.set(0, 0, 0); o.updateMatrix(); pil.setMatrixAt(k++, o.matrix); }
+    pil.count = k; pil.castShadow = !phone; S.add(pil); }
+  // the start gantry and its lights, the finish checks, the arches, the boost pads, the grandstand and the crowd
+  const frame = (s, h = 0) => { const i = raceI(T, s), o = new THREE.Object3D(); o.position.copy(T.P[i]).addScaledVector(T.Up[i], h); const x = new THREE.Vector3().crossVectors(T.Up[i], T.Tn[i]).normalize(); o.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, T.Up[i], T.Tn[i])); return o; };
+  const gold = M(0xe8c27a, { metalness: .9, roughness: .25, emissive: 0x4a3410, emissiveIntensity: .4 }), white = M(0xf4ecd8, { roughness: .45 });
+  const gan = frame(0); S.add(gan); RACE.lights = [];
+  for (const sd of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(1.4, 11, 1.4), white); p.position.set(sd * (hw + 1.6), 4.5, 0); gan.add(p); }
+  { const b = new THREE.Mesh(new THREE.BoxGeometry(2 * hw + 4.6, 1.6, 1.2), white); b.position.set(0, 10, 0); gan.add(b); const ch = new THREE.Mesh(new THREE.PlaneGeometry(2 * hw + 4, 1.3), new THREE.MeshBasicMaterial({ map: raceTex('check'), side: THREE.DoubleSide })); ch.position.set(0, 10, .65); gan.add(ch); const ch2 = ch.clone(); ch2.position.z = -.65; gan.add(ch2);
+    for (let k = 0; k < 5; k++) { const l = new THREE.Mesh(new THREE.SphereGeometry(.42, 12, 8), new THREE.MeshStandardMaterial({ color: 0x220808, emissive: 0x000000, emissiveIntensity: 3 })); l.position.set((k - 2) * 1.4, 8.6, -.7); gan.add(l); RACE.lights.push(l); }
+    const fin = new THREE.Mesh(new THREE.PlaneGeometry(2 * hw, 2.4), new THREE.MeshBasicMaterial({ map: raceTex('check'), transparent: true, opacity: .85 })); fin.rotation.x = -Math.PI / 2; fin.position.y = .03; gan.add(fin); }
+  for (const s of [300, 560, 860, 1180, 1460]) { const a = frame(s); S.add(a); for (const sd of [-1, 1]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(.6, .8, 13, 10), white); p.position.set(sd * (hw + 1.4), 5.5, 0); a.add(p); const c = new THREE.Mesh(new THREE.ConeGeometry(.9, 2, 8), gold); c.position.set(sd * (hw + 1.4), 13, 0); a.add(c); }
+    const top = new THREE.Mesh(new THREE.TorusGeometry(hw + 1.4, .45, 8, 40, Math.PI), gold); top.position.y = 12; a.add(top); const gl = glowSprite(0xffd88a, 6, .6); gl.position.y = 12 + hw; a.add(gl); }
+  const padT = raceTex('pad'); RACE.padTex = padT; padT.wrapT = THREE.RepeatWrapping;
+  for (const [s, d] of RACE_PADS) { const f = frame(s, .06); const pd = new THREE.Mesh(new THREE.PlaneGeometry(5, 9), new THREE.MeshBasicMaterial({ map: padT, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); pd.rotation.x = -Math.PI / 2; pd.position.x = -d; f.add(pd); S.add(f); } // (the frame's x points left: its -x is our +d)
+  { const st = frame(100); S.add(st); const sd = 1, crowd = []; for (let t = 0; t < 6; t++) { const b = new THREE.Mesh(new THREE.BoxGeometry(2, 1.2 + t * 1.2, 120), white); b.position.set(sd * -(hw + 5 + t * 2), (1.2 + t * 1.2) / 2 - 1.4, 0); b.receiveShadow = true; st.add(b); }
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(16, .5, 124), gold); roof.position.set(-(hw + 10), 10.5, 0); st.add(roof);
+    const n = phone ? 120 : 360, cm = new THREE.InstancedMesh(new THREE.CapsuleGeometry(.32, .7, 3, 6), M(0xffffff, { roughness: .7 }), n), o = new THREE.Object3D(), c = new THREE.Color();
+    for (let k = 0; k < n; k++) { const t = k % 6; o.position.set(-(hw + 5 + t * 2), (1.2 + t * 1.2) - 1.4 + .7, -58 + Math.random() * 116); o.updateMatrix(); cm.setMatrixAt(k, o.matrix); cm.setColorAt(k, c.setHSL(Math.random(), .6, .55)); crowd.push(o.position.clone()); }
+    st.add(cm); RACE.crowd = { cm, pos: crowd }; }
+  // the speed streaks round the camera (shown when you're fast)
+  const cam = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, .1, 9000); S.add(cam);
+  { const n = phone ? 90 : 220, P = new Float32Array(n * 6), sp = []; for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, r = 3 + Math.random() * 14; sp.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, z: -Math.random() * 120 }); }
+    const G = new THREE.BufferGeometry(); G.setAttribute('position', new THREE.BufferAttribute(P, 3)); const ln = new THREE.LineSegments(G, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); ln.frustumCulled = false; cam.add(ln); RACE.streak = { ln, sp }; }
+  Object.assign(RACE, { S, T, cam, sun });
+}
+// ---- the field: who's on the grid ----
+function raceField(o) {
+  const regs = RACE_REGS.slice().sort(() => Math.random() - .5), out = [];
+  const reg = r => ({ kind: 'reg', id: 'reg:' + r.name, name: r.name, short: r.short, col: r.c[1], skill: r.skill, lines: raceLines([0, ...RACE_REG_LINES]), load: () => brawlRig({ sp: r.sp, c: r.c, skin: Math.floor(Math.random() * 6), female: !!r.female, name: r.name }) });
+  if (o.kind === 'lead') for (const L of o.leads) { const T = RACE_LEAD[L.key]; out.push({ kind: 'lead', id: 'lead:' + L.who, who: L.who, name: L.full || T.name, short: T.name, col: T.col, skill: T.skill, lines: T.lines, load: () => leadSpec(L.key).load() }); }
+  if (o.kind === 'comps') for (const id of o.ids) { const q = RACE_COMP[id] || (String(id).startsWith('pont:') ? RACE_COMP.pontifex : RACE_GEN); let col = 0xffffff; try { col = new THREE.Color(compColor(id)).getHex(); } catch (e) {} out.push({ kind: 'comp', id, name: (PARTY[id] && PARTY[id].full) || compName(id), short: compName(id), col, skill: q[0], lines: raceLines(q), load: () => compRigFor(id) }); }
+  const want = o.kind === 'lead' && o.leads.length > 1 ? Math.max(o.leads.length, 3) : 5; while (out.length < want) out.push(reg(regs[out.length % regs.length]));
+  return out.slice(0, 7);
+}
+async function raceRiderLoad(f) { // a rider's body (with a fallback if their own won't come), standing at the origin, facing +z
+  const tm = ms => new Promise(r => setTimeout(() => r(null), ms));
+  let R = null; try { R = await Promise.race([Promise.resolve(f.load()).catch(e => { console.warn('race rider', f.id, e); return null; }), tm(16000)]); } catch (e) { R = null; }
+  if (!R || !R.root) { try { R = await Promise.race([brawlRig({ sp: 'grek', c: [0x2a2e36, f.col], skin: 2, name: f.name }), tm(8000)]); } catch (e) { R = null; } }
+  if (!R || !R.root) return null;
+  if (R.root.parent) R.root.parent.remove(R.root);
+  R.root.position.set(0, 0, 0); R.root.rotation.set(0, 0, 0); R.root.traverse(o => { if (o.isMesh) { o.castShadow = !tiPhone(); o.frustumCulled = false; } });
+  return R;
+}
+async function raceYouLoad() { // your own body, copied (as a resident's is) so the real one stays where it is
+  try { const md = await resModel(wanderer); if (md && md.m) { const root = new THREE.Group(); root.add(md.m); md.m.position.set(0, 0, 0); md.m.rotation.set(0, 0, 0); const L = md.L || {}, rest = new Map(); for (const k of ['ra', 'la', 'rl', 'll']) if (L[k]) rest.set(L[k], L[k].rotation.clone()); root.traverse(o => { if (o.isMesh) { o.castShadow = !tiPhone(); o.frustumCulled = false; } }); return { root, L, rest, you: true }; } } catch (e) { console.warn('race: your body', e); }
+  const R = await brawlRig({ sp: spOf(wanderer) === 'oilkoumene' || spOf(wanderer) === 'taredesiban' ? 'grek' : spOf(wanderer), c: [0x2a2e36, 0xffffff], skin: 2, name: wanderer.name }).catch(() => null); return R;
+}
+// ---- the HUD ----
+function raceHud() {
+  if (RACE.hud) return RACE.hud;
+  const st = document.createElement('style'); st.textContent = `
+#raceHud{position:fixed;inset:0;z-index:28;pointer-events:none;display:none;font-family:var(--text);color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);user-select:none;-webkit-user-select:none}
+#raceHud.on{display:block}
+#raceHud .rh-blk{position:absolute;inset:0;background:#05070b;opacity:1;transition:opacity .6s;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;letter-spacing:.3em;font-size:12px;color:#ffd88a}
+#raceHud .rh-blk b{font-family:var(--display);font-size:clamp(16px,3vw,28px);letter-spacing:.18em;color:#fff}
+#raceHud .rh-top{position:absolute;left:calc(var(--sl) + 18px);top:calc(var(--st) + 14px);display:flex;flex-direction:column;gap:4px}
+#raceHud .rh-pos{font-family:var(--display);font-size:clamp(34px,6vw,58px);line-height:1;color:#ffd88a}
+#raceHud .rh-pos sup{font-size:.4em;vertical-align:top;margin-left:2px}#raceHud .rh-pos span{font-size:.38em;color:#e6e9f0;margin-left:6px}
+#raceHud .rh-lap,#raceHud .rh-time{font-size:13px;letter-spacing:.22em}#raceHud .rh-time{color:#bfefff;font-variant-numeric:tabular-nums}
+#raceHud .rh-list{position:absolute;left:calc(var(--sl) + 18px);top:calc(var(--st) + 150px);font-size:11px;letter-spacing:.12em;line-height:1.75}
+#raceHud .rh-list i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:8px;vertical-align:-1px}#raceHud .rh-list .me{color:#ffd88a;font-weight:700}
+#raceHud canvas.rh-map{position:absolute;right:calc(var(--sr) + 14px);top:calc(var(--st) + 12px);width:150px;height:150px;background:rgba(5,8,12,.45);border:1px solid rgba(255,216,138,.4);border-radius:8px}
+#raceHud .rh-mid{position:absolute;left:50%;top:34%;transform:translate(-50%,-50%);font-family:var(--display);font-size:clamp(40px,10vw,110px);letter-spacing:.08em;color:#ffd88a;opacity:0;transition:opacity .2s;text-align:center;white-space:nowrap}
+#raceHud .rh-mid small{display:block;font-family:var(--text);font-size:13px;letter-spacing:.3em;color:#fff;margin-top:10px}
+#raceHud .rh-say{position:absolute;left:50%;top:calc(var(--st) + 16px);transform:translateX(-50%);max-width:min(70vw,620px);text-align:center;font-size:13px;letter-spacing:.04em;background:rgba(5,8,12,.55);border-radius:8px;padding:8px 14px;opacity:0;transition:opacity .3s}
+#raceHud .rh-say b{letter-spacing:.18em;font-size:11px;display:block;margin-bottom:3px}
+#raceHud .rh-spd{position:absolute;left:50%;bottom:calc(var(--sb) + 22px);transform:translateX(-50%);text-align:center;font-size:11px;letter-spacing:.3em}
+#raceHud .rh-spd b{display:block;font-family:var(--display);font-size:clamp(26px,5vw,40px);letter-spacing:.05em;font-variant-numeric:tabular-nums}
+#raceHud .rh-boost{width:200px;height:7px;border:1px solid rgba(127,248,255,.6);border-radius:4px;margin:8px auto 0;overflow:hidden}#raceHud .rh-boost i{display:block;height:100%;background:linear-gradient(90deg,#4af0ff,#ffffff);width:0}
+#raceHud .rh-help{position:absolute;left:50%;bottom:calc(var(--sb) + 98px);transform:translateX(-50%);font-size:11px;letter-spacing:.2em;opacity:.8;white-space:nowrap}
+#raceHud .rh-btn{position:absolute;pointer-events:auto;border:1px solid rgba(255,255,255,.55);background:rgba(10,14,20,.45);color:#fff;font-family:var(--text);letter-spacing:.2em;font-size:12px;border-radius:50%;display:none;align-items:center;justify-content:center}
+body.touch #raceHud.run .rh-btn{display:flex}
+#raceHud .rh-boostB{right:calc(var(--sr) + 26px);bottom:calc(var(--sb) + 36px);width:96px;height:96px;border-color:#7ff8ff;color:#bff}
+#raceHud .rh-brakeB{right:calc(var(--sr) + 136px);bottom:calc(var(--sb) + 26px);width:72px;height:72px}
+#raceHud .rh-pad{position:absolute;left:0;top:0;bottom:0;width:55%;pointer-events:none}body.touch #raceHud.run .rh-pad{pointer-events:auto}
+#raceHud .rh-pause{position:absolute;right:calc(var(--sr) + 176px);top:calc(var(--st) + 14px);pointer-events:auto;width:40px;height:40px;border-radius:8px;border:1px solid rgba(255,255,255,.45);background:rgba(5,8,12,.45);color:#fff;font-size:14px;display:none}
+#raceHud.run .rh-pause{display:block}
+#raceHud .rh-lines{position:absolute;inset:0;opacity:0;background:repeating-conic-gradient(from 0deg at 50% 46%,rgba(255,255,255,.0) 0deg 2.2deg,rgba(255,255,255,.22) 2.4deg 2.6deg);-webkit-mask:radial-gradient(circle at 50% 46%,transparent 26%,#000 62%);mask:radial-gradient(circle at 50% 46%,transparent 26%,#000 62%)}
+#raceHud .rh-panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);min-width:min(92vw,520px);background:rgba(7,10,16,.88);border:1px solid rgba(255,216,138,.5);border-radius:12px;padding:22px 24px;pointer-events:auto;display:none}
+#raceHud .rh-panel.on{display:block}#raceHud .rh-panel h3{margin:0 0 4px;font-family:var(--display);font-weight:500;letter-spacing:.16em;color:#ffd88a;font-size:20px}
+#raceHud .rh-panel p{margin:6px 0 12px;font-size:12px;letter-spacing:.06em;color:#cfd6e0;line-height:1.6}#raceHud .rh-panel table{width:100%;border-collapse:collapse;font-size:12px;letter-spacing:.08em}
+#raceHud .rh-panel td{padding:5px 4px;border-bottom:1px solid rgba(255,255,255,.08)}#raceHud .rh-panel td:last-child{text-align:right;font-variant-numeric:tabular-nums}#raceHud .rh-panel tr.me td{color:#ffd88a;font-weight:700}
+#raceHud .rh-panel .rh-acts{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}#raceHud .rh-panel button{flex:1;min-width:130px;padding:11px 10px;border-radius:8px;border:1px solid rgba(255,216,138,.6);background:rgba(255,216,138,.08);color:#fff;font-family:var(--text);letter-spacing:.2em;font-size:11px;cursor:pointer}
+#raceHud .rh-panel button:hover{background:rgba(255,216,138,.2)}`;
+  document.head.appendChild(st);
+  const h = document.createElement('div'); h.id = 'raceHud';
+  h.innerHTML = `<div class="rh-lines"></div><div class="rh-pad"></div><div class="rh-top"><div class="rh-pos">–</div><div class="rh-lap"></div><div class="rh-time"></div></div><div class="rh-list"></div><canvas class="rh-map" width="300" height="300"></canvas>
+<div class="rh-say"></div><div class="rh-mid"></div><div class="rh-help"></div><div class="rh-spd"><b>0</b>KM/H<div class="rh-boost"><i></i></div></div>
+<button class="rh-btn rh-brakeB">BRAKE</button><button class="rh-btn rh-boostB">BOOST</button><button class="rh-pause" aria-label="Pause">II</button><div class="rh-panel"></div><div class="rh-blk"><span>THE ARCHIOSTAL RACEATHON</span><b>LOADING THE GRID</b></div>`;
+  document.body.appendChild(h);
+  const q = s => h.querySelector(s); RACE.hud = { root: h, pos: q('.rh-pos'), lap: q('.rh-lap'), time: q('.rh-time'), list: q('.rh-list'), map: q('.rh-map'), say: q('.rh-say'), mid: q('.rh-mid'), help: q('.rh-help'), spd: q('.rh-spd b'), boost: q('.rh-boost i'), panel: q('.rh-panel'), blk: q('.rh-blk'), lines: q('.rh-lines'), pad: q('.rh-pad') };
+  const tch = RACE.touch, hold = (el, k) => { const on = e => { e.preventDefault(); tch[k] = true; }, off = e => { e.preventDefault(); tch[k] = false; }; el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off); };
+  hold(q('.rh-boostB'), 'boost'); hold(q('.rh-brakeB'), 'brake');
+  const pad = RACE.hud.pad; pad.addEventListener('pointerdown', e => { e.preventDefault(); tch.id = e.pointerId; tch.x0 = e.clientX; tch.steer = 0; try { pad.setPointerCapture(e.pointerId); } catch (er) {} });
+  pad.addEventListener('pointermove', e => { if (e.pointerId !== tch.id) return; tch.steer = clamp((e.clientX - tch.x0) / 70, -1, 1); });
+  const up = e => { if (e.pointerId === tch.id) { tch.id = null; tch.steer = 0; } }; pad.addEventListener('pointerup', up); pad.addEventListener('pointercancel', up);
+  q('.rh-pause').addEventListener('click', e => { e.preventDefault(); racePause(!RACE.paused); });
+  RACE.hud.panel.addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (!b) return; sfx.click(); const a = b.dataset.a; if (a === 'resume') racePause(false); else if (a === 'retire') raceFinishUp(true); else if (a === 'again') raceAgain(); else if (a === 'leave') raceLeave(); });
+  addEventListener('keydown', e => { if (state !== 'race' || !RACE.on) return; if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+    if ((e.code === 'Escape' || e.code === 'KeyP') && RACE.phase === 'run') { racePause(!RACE.paused); return; }
+    if (RACE.phase === 'done' && (e.code === 'Enter' || e.code === 'KeyE')) { raceLeave(); return; }
+    RACE.keys.add(e.code); });
+  addEventListener('keyup', e => RACE.keys.delete(e.code)); addEventListener('blur', () => { RACE.keys.clear(); Object.assign(RACE.touch, { steer: 0, boost: false, brake: false, id: null }); });
+  return RACE.hud;
+}
+function raceMid(txt, sub, ms = 1200) { const H = RACE.hud; H.mid.innerHTML = txt + (sub ? `<small>${sub}</small>` : ''); H.mid.style.opacity = 1; clearTimeout(RACE.midT); if (ms) RACE.midT = setTimeout(() => { H.mid.style.opacity = 0; }, ms); }
+function raceSay(r, kind, force) { // a rival's word, on the HUD (one at a time; nobody repeats themselves too soon)
+  if (!r || r.you || !RACE.on) return; const now = performance.now(); if (!force && (now < (RACE.sayAt || 0) || now < (r.sayAt || 0))) return;
+  const line = raceL(r.lines, kind); if (!line) return; RACE.sayAt = now + 2600; r.sayAt = now + 7000;
+  const H = RACE.hud, c = '#' + new THREE.Color(r.col).getHexString(); H.say.innerHTML = `<b style="color:${c}">${r.short.toUpperCase()}</b>${line}`; H.say.style.opacity = 1; clearTimeout(RACE.sayT); RACE.sayT = setTimeout(() => { H.say.style.opacity = 0; }, 3600);
+}
+const raceOrd = n => n + (n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th');
+function raceMapDraw() {
+  const H = RACE.hud, cv = H.map, g = cv.getContext('2d'), W = cv.width, M = raceMapPts(), pad = 26, sc = (W - pad * 2) / Math.max(M.w, M.h), ox = pad + (W - pad * 2 - M.w * sc) / 2, oz = pad + (W - pad * 2 - M.h * sc) / 2;
+  if (!RACE.mapBg) { const b = document.createElement('canvas'); b.width = b.height = W; const bg = b.getContext('2d'); bg.strokeStyle = 'rgba(255,216,138,.35)'; bg.lineWidth = 12; bg.lineJoin = 'round'; bg.beginPath(); M.pts.forEach((q, i) => { const x = ox + q[0] * sc, y = oz + q[1] * sc; i ? bg.lineTo(x, y) : bg.moveTo(x, y); }); bg.closePath(); bg.stroke(); bg.strokeStyle = '#ffd88a'; bg.lineWidth = 3; bg.stroke(); RACE.mapBg = b; }
+  g.clearRect(0, 0, W, W); g.drawImage(RACE.mapBg, 0, 0); const V = new THREE.Vector3();
+  for (const r of [...RACE.field].sort((a, b) => a.you - b.you)) { raceAt(RACE.T, r.s, r.d, 0, V); const x = ox + (V.x - M.x0) / M.S * sc, y = oz + (V.z - M.z0) / M.S * sc; g.fillStyle = '#' + new THREE.Color(r.col).getHexString(); g.beginPath(); g.arc(x, y, r.you ? 9 : 6.5, 0, 7); g.fill(); if (r.you) { g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); } }
+}
+// ---- starting, running, finishing ----
+async function raceStart(o) {
+  if (RACE.on) return; if (!o.preview && (state !== 'explore' || ex.mode !== 'world')) return;
+  try { closeDialog(); } catch (e) {}
+  Object.assign(RACE, { on: true, o, phase: 'load', paused: false, field: [], t: 0, res: null, mapBg: null, from: state, xh: !ui.xhud.classList.contains('hidden') });
+  state = 'race'; ex.keys.clear(); ex.joyX = ex.joyY = 0; vel.set(0, 0, 0); RACE.keys.clear(); Object.assign(RACE.touch, { steer: 0, boost: false, brake: false, id: null });
+  const H = raceHud(); H.root.className = 'on'; H.blk.style.transition = 'opacity .5s'; H.blk.style.opacity = 1; H.panel.className = 'rh-panel'; H.mid.style.opacity = 0; H.say.style.opacity = 0; H.help.textContent = '';
+  show(ui.xhud, false); if (o.preview) show(ui.title, false); sfx.init && sfx.init(); sfx.whoosh();
+  try { raceScene(); } catch (e) { console.error('race scene', e); raceAbort(); return; }
+  const specs = raceField(o), riders = await Promise.all([raceYouLoad(), ...specs.map(raceRiderLoad)]);
+  if (!RACE.on) { for (const R of riders) if (R && R.root && R.root.parent) R.root.parent.remove(R.root); return; }
+  const you = { kind: 'you', you: true, id: 'you', name: wanderer ? wanderer.name : 'YOU', short: 'You', col: 0x8fe8ff, skill: 1, lines: null };
+  const all = [you, ...specs], phone = tiPhone();
+  all.forEach((f, i) => { const R = riders[i]; Object.assign(f, { R, s: 0, d: 0, v: 0, psi: 0, lap: 0, fin: false, finT: 0, lapT0: 0, lapBest: 0, boost: .35, boostT: 0, lane: (Math.random() - .5) * 3, wob: Math.random() * 6, steer: 0, prog: 0, place: i + 1, rub: 1, scrape: 0 });
+    let Hh = 1.85; if (R && R.root) { R.root.updateMatrixWorld(true); try { const b = boxNoGear(R.root); Hh = clamp(b.max.y - b.min.y, 1.2, 4); } catch (e) {} } f.H = Hh; f.sc = clamp(Hh / 1.85, .85, 1.75);
+    const g = new THREE.Group(), board = raceBoardMesh(f.col, phone); board.scale.setScalar(f.sc); g.add(board); f.board = board;
+    if (R && R.root) { g.add(R.root); R.root.position.set(0, .14 * f.sc, 0); R.mode = 'idle'; for (const w of R.gear || []) w.visible = false; } // no weapons on the track
+    const tn = 34, tp = new Float32Array(tn * 2 * 3), tg = new THREE.BufferGeometry(), ti = []; for (let k = 0; k < tn - 1; k++) { const a = k * 2; ti.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } const ta = new Float32Array(tn * 2); for (let k = 0; k < tn; k++) ta[k * 2] = ta[k * 2 + 1] = 1 - k / (tn - 1);
+    tg.setAttribute('position', new THREE.BufferAttribute(tp, 3)); tg.setAttribute('aA', new THREE.BufferAttribute(ta, 1)); tg.setIndex(ti);
+    const tm = new THREE.ShaderMaterial({ vertexShader: 'attribute float aA; varying float vA; void main(){ vA = aA; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }', fragmentShader: 'uniform vec3 uC; varying float vA; void main(){ gl_FragColor = vec4(uC * vA * 1.15, vA * .55); }', uniforms: { uC: { value: new THREE.Color(f.col) } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+    const trail = new THREE.Mesh(tg, tm); trail.frustumCulled = false; f.trail = { mesh: trail, n: tn, hist: [], at: 0 }; RACE.S.add(trail);
+    if (!f.you) { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 48; const c2 = cv.getContext('2d'); c2.font = '700 26px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle'; c2.lineWidth = 6; c2.strokeStyle = 'rgba(0,0,0,.65)'; c2.strokeText(f.short.toUpperCase(), 128, 26); c2.fillStyle = '#' + new THREE.Color(f.col).getHexString(); c2.fillText(f.short.toUpperCase(), 128, 26);
+      const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true, sizeAttenuation: false })); sp.scale.set(.13 / f.sc, .024 / f.sc, 1); sp.renderOrder = 9; sp.position.y = (f.H + .55) / f.sc; board.add(sp); f.tag = sp; }
+    f.g = g; RACE.S.add(g);
+  });
+  RACE.field = all; RACE.you = you; raceGrid(); RACE.phase = 'intro'; RACE.it = 0; clock.getDelta();
+  H.blk.style.opacity = 0; raceMid('THE SANCTUM RING CIRCUIT', `${RACE_LAPS} LAPS · ${all.length} RIDERS`, 3000);
+  const rivals = all.filter(f => !f.you); setTimeout(() => raceSay(rivals.find(f => f.kind !== 'reg') || rivals[0], 'start', true), 900);
+  H.help.textContent = tiPhone() ? 'DRAG LEFT SIDE TO STEER · HOLD BOOST · BRAKE' : 'W / ↑ GO · S / ↓ BRAKE · A D STEER · SHIFT / SPACE BOOST · ESC PAUSE';
+}
+function raceGrid() { // two by two behind the line; you start in the second row
+  const F = RACE.field, T = RACE.T, order = F.slice(1); order.splice(Math.min(2, order.length), 0, F[0]);
+  order.forEach((f, i) => { f.s = T.L - 12 - Math.floor(i / 2) * 9; f.d = i % 2 ? 4.6 : -4.6; f.v = 0; f.psi = 0; f.lap = 0; f.fin = false; f.finT = 0; f.lapT0 = 0; f.lapBest = 0; f.boost = .35; f.boostT = 0; f.prog = f.s - T.L; f.trail.hist = []; f.dnf = false; f.est = false; f.wasAhead = null; f.steer = 0; });
+  RACE.t = 0; RACE.camInit = false; racePlaces(); for (const L of RACE.lights || []) { L.material.emissive.setHex(0); L.material.color.setHex(0x220808); }
+}
+function raceAgain() { if (!RACE.on) return; RACE.hud.panel.className = 'rh-panel'; RACE.res = null; raceGrid(); RACE.phase = 'intro'; RACE.it = 1.5; raceMid('AGAIN', 'SAME FIELD', 1400); sfx.whoosh(); }
+function racePause(on) {
+  if (!RACE.on || RACE.phase !== 'run') return; RACE.paused = !!on; const P = RACE.hud.panel;
+  if (on) { P.innerHTML = `<h3>PAUSED</h3><p>The Sanctum Ring Circuit · lap ${clamp(RACE.you.lap, 1, RACE_LAPS)} of ${RACE_LAPS}.</p><div class="rh-acts"><button data-a="resume">RESUME</button><button data-a="retire">RETIRE</button></div>`; P.className = 'rh-panel on'; RACE.keys.clear(); }
+  else { P.className = 'rh-panel'; clock.getDelta(); }
+}
+function raceInput(r, dt) { // you: keys, or the touch pad and buttons (on a phone you go on your own)
+  const k = RACE.keys, tch = RACE.touch, touch = document.body.classList.contains('touch');
+  let thr = (k.has('KeyW') || k.has('ArrowUp')) ? 1 : 0, brk = k.has('KeyS') || k.has('ArrowDown') || tch.brake, st = 0;
+  if (k.has('KeyA') || k.has('ArrowLeft')) st -= 1; if (k.has('KeyD') || k.has('ArrowRight')) st += 1; if (tch.id != null) st = tch.steer;
+  if (touch && !k.size) thr = brk ? 0 : 1;
+  r.steer += (st - r.steer) * Math.min(1, dt * 9); // the board answers smoothly, not instantly
+  return { thr, brk, st: r.steer, boost: k.has('ShiftLeft') || k.has('ShiftRight') || k.has('Space') || tch.boost };
+}
+function raceAI(r, dt) { // look ahead: aim for the inside of the next bend, slow for it in time, boost on the straights
+  const T = RACE.T, look = 12 + r.v * .42, i = raceI(T, r.s); let kA = 0; for (let j = 0; j < 7; j++) kA += T.kap[raceI(T, r.s + look * .5 + j * 6)]; kA /= 7;
+  r.wob += dt * .4; const lane = r.lane + Math.sin(r.wob) * (1 - r.skill) * 6;
+  const dLine = clamp(-kA * 420 + lane, -(RACE_HW - 2.2), RACE_HW - 2.2), psiT = clamp(Math.atan2(dLine - r.d, look), -.55, .55);
+  const yawMax = 1.6 * (1 - .38 * Math.min(1, r.v / RACE_TOP)), need = (psiT - r.psi) / .28 - T.kap[i] * r.v * Math.cos(r.psi);
+  const st = clamp(need / yawMax, -1, 1);
+  const grip = (.8 + .2 * r.skill) * .95, top = RACE_TOP * (.84 + .16 * r.skill) * r.rub; let vOk = top, straight = true; // the best ride as fast as you can; the regulars a little slower
+  for (let x = 6; x <= 140; x += 6) { const kk = Math.abs(T.kap[raceI(T, r.s + x)]); if (kk > .004) straight = false; const vc = grip * 1.05 / Math.max(kk, 1e-4), va = Math.sqrt(vc * vc + 2 * RACE_BRAKE * .75 * x); if (va < vOk) vOk = va; }
+  const thr = r.v < vOk ? 1 : 0, brk = r.v > vOk + 2.5;
+  return { thr, brk, st, boost: straight && r.boost > .3 && r.skill > .76 && Math.random() < .9, top };
+}
+function raceStep(r, dt) {
+  const T = RACE.T, run = RACE.phase === 'run' && !r.hold; const inp = !run ? { thr: 0, brk: 1, st: 0, boost: false } : r.you && !r.fin ? raceInput(r, dt) : raceAI(r, dt);
+  const top = (inp.top || RACE_TOP) * (r.you ? 1 : 1), padB = r.boostT > 0; let boosting = padB;
+  if (inp.boost && !padB && r.boost > .02 && run) { r.boost = Math.max(0, r.boost - dt * .5); boosting = true; } else r.boost = Math.min(1, r.boost + dt * .055);
+  if (padB) r.boostT -= dt; const vmax = boosting ? top * 1.36 : top;
+  let a = inp.thr * RACE_ACC * Math.max(0, 1 - r.v / vmax) * (boosting ? 2.4 : 1); if (r.v > vmax) a -= (r.v - vmax) * 1.1; if (inp.brk) a -= RACE_BRAKE; if (!inp.thr && !inp.brk) a -= 2.5;
+  r.v = clamp(r.v + a * dt, 0, 95); r.boosting = boosting;
+  const yawMax = 1.6 * (1 - .38 * Math.min(1, r.v / RACE_TOP)), i = raceI(T, r.s);
+  r.psi += inp.st * yawMax * dt; const ds = r.v * Math.cos(r.psi) * dt; r.psi += T.kap[i] * ds; r.psi = clamp(r.psi, -1.3, 1.3); // the track turns under you
+  r.s += ds; r.d += r.v * Math.sin(r.psi) * dt; r.lean = inp.st;
+  const lim = RACE_HW - .7 * r.sc; r.scrape = Math.max(0, r.scrape - dt);
+  if (Math.abs(r.d) > lim) { const into = Math.sign(r.d) * Math.sin(r.psi); r.d = Math.sign(r.d) * lim; if (into > 0) { r.v *= 1 - Math.min(.5, into * 1.2); r.psi *= .2; if (r.you && into > .1 && r.scrape <= 0) { sfx.thud(); RACE.shake = Math.min(1, into * 2.5); } r.scrape = .3; } }
+  for (const [s0, d0] of RACE_PADS) { let dsP = r.s - s0; dsP -= Math.round(dsP / T.L) * T.L; if (Math.abs(dsP) < 4.5 && Math.abs(r.d - d0) < 2.8 && r.boostT <= 0 && run) { r.boostT = 1.3; r.boost = Math.min(1, r.boost + .35); if (r.you) { sfx.whoosh(); raceMid('BOOST', '', 600); } } }
+  if (r.s >= T.L) { r.s -= T.L; raceLap(r); } else if (r.s < 0) { r.s += T.L; r.lap--; }
+  r.prog = r.lap * T.L + r.s;
+}
+function raceLap(r) {
+  r.lap++; const T = RACE.t;
+  if (r.lap >= 2) { const lt = T - r.lapT0; if (!r.lapBest || lt < r.lapBest) r.lapBest = lt; if (r.you) { const rec = raceRec(); if (!RACE.o.preview && (!rec.lap || lt < rec.lap)) { rec.lap = lt; raceRecSave(); setTimeout(() => raceMid('NEW LAP RECORD', raceFmt(lt), 1600), 900); } } }
+  r.lapT0 = T;
+  if (r.lap > RACE_LAPS && !r.fin) { r.fin = true; r.finT = T; r.place = RACE.field.filter(o => o.fin).length; if (r.you) raceYouFinish(); else if (r.place === 1 && !RACE.you.fin) raceSay(r, 'win', true); }
+  else if (r.you && r.lap === RACE_LAPS) { raceMid('FINAL LAP', '', 1400); sfx.chime(); }
+  else if (r.you && r.lap > 1) raceMid(`LAP ${r.lap}`, raceFmt(r.lapBest), 1100);
+}
+function raceYouFinish() { const r = RACE.you, p = r.place; raceMid(raceOrd(p).toUpperCase(), raceFmt(r.finT), 3000); sfx.chime(); if (p === 1) setTimeout(() => sfx.chime(), 260); RACE.endAt = RACE.t + 9; }
+function raceCollide() { // boards bump: they push apart, and the one behind loses a little
+  const F = RACE.field; for (let a = 0; a < F.length; a++) for (let b = a + 1; b < F.length; b++) { const A = F[a], B = F[b], dp = B.prog - A.prog, sc = (A.sc + B.sc) / 2; if (Math.abs(dp) > 2.6 * sc) continue; const dd = B.d - A.d, lim = 1.35 * sc; if (Math.abs(dd) >= lim) continue;
+    const push = (lim - Math.abs(dd)) / 2 * (dd >= 0 ? 1 : -1); A.d -= push; B.d += push; (dp > 0 ? A : B).v *= .985; if ((A.you || B.you) && Math.abs(dd) < lim * .7 && (RACE.bumpAt || 0) < RACE.t) { RACE.bumpAt = RACE.t + .5; sfx.hit && sfx.hit(); RACE.shake = Math.max(RACE.shake || 0, .3); } }
+}
+function racePlaces() { const T = RACE.T; const F = [...RACE.field].sort((a, b) => (a.fin && b.fin) ? a.finT - b.finT : a.fin ? -1 : b.fin ? 1 : b.prog - a.prog); F.forEach((f, i) => { if (!f.fin) f.place = i + 1; }); return F; }
+const RQ = new THREE.Quaternion(), RM = new THREE.Matrix4(), RV = new THREE.Vector3(), RV2 = new THREE.Vector3(), RV3 = new THREE.Vector3(), RFw = new THREE.Vector3();
+function racePose(r, dt) { // the board on the track, facing where it's going, leaning into the turn; the rider standing on it, arms out
+  const T = RACE.T, i = raceI(T, r.s), U = T.Up[i], t = T.Tn[i], R = T.Rt[i];
+  raceAt(T, r.s, r.d, .55 * r.sc + Math.sin(RACE.t * 3 + r.wob) * .04, RV); r.g.position.copy(RV);
+  RFw.copy(t).multiplyScalar(Math.cos(r.psi)).addScaledVector(R, Math.sin(r.psi)).normalize(); const X = RV2.crossVectors(U, RFw).normalize(), Y = RV3.crossVectors(RFw, X).normalize();
+  RM.makeBasis(X, Y, RFw); r.g.quaternion.setFromRotationMatrix(RM); r.lean2 = lerp(r.lean2 || 0, (r.lean || 0) * .32 + (r.boosting ? -.06 : 0), Math.min(1, dt * 6));
+  RQ.setFromAxisAngle(RFw, r.lean2); r.g.quaternion.premultiply(RQ);
+  const B = r.board; if (B.userData.ring) B.userData.ring.rotation.z += dt * (4 + r.v * .2); for (const f of B.userData.fl || []) { const k = .6 + Math.min(1.4, r.v / 40) + (r.boosting ? 1 : 0); f.scale.setScalar(.9 * k); f.material.opacity = .7 + Math.random() * .3; }
+  const Rg = r.R; if (Rg && Rg.root) {
+    if (Rg.you) { const L = Rg.L, rs = Rg.rest, S = (o, ax, v) => { if (o && rs.get(o)) o.rotation[ax] = rs.get(o)[ax] + v; }; S(L.ra, 'z', .8); S(L.la, 'z', -.8); S(L.ra, 'x', -.25); S(L.la, 'x', -.25); S(L.rl, 'x', -.12); S(L.ll, 'x', .1); }
+    else { Rg.mode = 'idle'; try { animRig(Rg, dt); } catch (e) {} const S = (o, ax, v) => { const q = o && Rg.rest && Rg.rest.get(o); if (q) o.rotation[ax] = q[ax] + v; }; S(Rg.ra, 'z', -.55 - Math.sin(RACE.t * 2 + r.wob) * .05); S(Rg.la, 'z', .55 + Math.sin(RACE.t * 2 + r.wob) * .05); S(Rg.ra, 'x', -.25); S(Rg.la, 'x', -.25); S(Rg.rl, 'x', -.12); S(Rg.ll, 'x', .1); }
+    Rg.root.rotation.x = .1 + (r.boosting ? .08 : 0); }
+  // its trail of light
+  const tr = r.trail; tr.at -= dt; if (tr.at <= 0) { tr.at = .025; raceAt(T, r.s, r.d, .25 * r.sc, RV); tr.hist.unshift([RV.x, RV.y, RV.z, R.x, R.y, R.z]); if (tr.hist.length > tr.n) tr.hist.length = tr.n; }
+  const A = tr.mesh.geometry.attributes.position.array, w = .32 * r.sc; for (let k = 0; k < tr.n; k++) { const h = tr.hist[Math.min(k, tr.hist.length - 1)] || [RV.x, RV.y, RV.z, R.x, R.y, R.z], ww = w * (1 - k / tr.n);
+    A[k * 6] = h[0] - h[3] * ww; A[k * 6 + 1] = h[1] - h[4] * ww; A[k * 6 + 2] = h[2] - h[5] * ww; A[k * 6 + 3] = h[0] + h[3] * ww; A[k * 6 + 4] = h[1] + h[4] * ww; A[k * 6 + 5] = h[2] + h[5] * ww; }
+  tr.mesh.geometry.attributes.position.needsUpdate = true; tr.mesh.visible = r.v > 2;
+  if (r.tag) r.tag.visible = r.g.position.distanceTo(RACE.cam.position) < 90;
+}
+function raceCam(dt, intro) {
+  const T = RACE.T, cam = RACE.cam, r = RACE.you, i = raceI(T, r.s), U = T.Up[i];
+  if (intro) { const k = RACE.it, c = raceAt(T, T.L - 22, 0, 2, new THREE.Vector3()), a = -1.9 + k * .32; cam.position.set(c.x + Math.cos(a) * 34, c.y + 10 - k * 1.4, c.z + Math.sin(a) * 34); cam.up.set(0, 1, 0); cam.lookAt(c); cam.fov = 60; }
+  else {
+    const t = T.Tn[i], dir = RV3.copy(t).multiplyScalar(.6).addScaledVector(RFw.copy(t).multiplyScalar(Math.cos(r.psi)).addScaledVector(T.Rt[i], Math.sin(r.psi)), .4).normalize();
+    if (!RACE.camInit || !RACE.cdir) { RACE.cdir = dir.clone(); RACE.camInit = true; } else RACE.cdir.lerp(dir, 1 - Math.exp(-dt * 6)).normalize(); // only the direction is smoothed: the camera never trails behind (or cuts a corner)
+    const back = 6.4 * r.sc + Math.min(3, r.v * .035); cam.position.copy(r.g.position).addScaledVector(RACE.cdir, -back).addScaledVector(U, 2.4 * r.sc);
+    const sh = RACE.shake || 0; RACE.shake = Math.max(0, sh - dt * 2.5); if (sh > 0) cam.position.add(RV2.set((Math.random() - .5) * sh * .5, (Math.random() - .5) * sh * .4, (Math.random() - .5) * sh * .5));
+    cam.up.lerp(RV2.copy(U).add(RACE.wUp || (RACE.wUp = new THREE.Vector3(0, 1, 0))).normalize(), Math.min(1, dt * 4)).normalize(); cam.lookAt(RV2.copy(r.g.position).addScaledVector(RACE.cdir, 8).addScaledVector(U, 1.2 * r.sc)); // (the up vector takes half the bank: the horizon tilts, but not too far)
+    cam.fov += ((66 + Math.min(16, r.v * .22) + (r.boosting ? 8 : 0)) - cam.fov) * Math.min(1, dt * 3);
+  }
+  cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
+  const sun = RACE.sun; sun.position.copy(r.g.position).add(RV2.set(60, 120, 40)); sun.target.position.copy(r.g.position); sun.target.updateMatrixWorld();
+  // speed streaks
+  const SK = RACE.streak, spd = RACE.phase === 'run' ? r.v : 0, op = smooth(34, 62, spd) * .5 + (r.boosting ? .25 : 0); SK.ln.material.opacity = op; RACE.hud.lines.style.opacity = (op * .9).toFixed(2);
+  if (op > .01) { const A = SK.ln.geometry.attributes.position.array, Ls = 2 + spd * .12; SK.sp.forEach((q, k) => { q.z += spd * dt * 1.4; if (q.z > 1) { q.z -= 120; const a = Math.random() * 6.283, rr = 3 + Math.random() * 14; q.x = Math.cos(a) * rr; q.y = Math.sin(a) * rr; } A.set([q.x, q.y, q.z, q.x, q.y, q.z - Ls], k * 6); }); SK.ln.geometry.attributes.position.needsUpdate = true; }
+}
+function raceTick(dt) {
+  if (!RACE.on || !RACE.S) return; dt = Math.min(dt, .05);
+  const H = RACE.hud, F = RACE.field, you = RACE.you;
+  if (RACE.phase === 'load') { renderer.setClearColor(0x05070b, 1); renderer.clear(); return; }
+  if (RACE.paused) { gfxRender(RACE.S, RACE.cam, dt); return; }
+  if (RACE.phase === 'intro') { RACE.it += dt; if (RACE.it > 3.6) { RACE.phase = 'count'; RACE.ct = 0; RACE.cn = -1; RACE.camInit = false; } }
+  if (RACE.phase === 'count') { RACE.ct += dt; const n = Math.floor(RACE.ct); if (n !== RACE.cn && n <= 3) { RACE.cn = n; const L = RACE.lights;
+      if (n < 3) { raceMid(String(3 - n), '', 800); sfx.blip(); for (let k = 0; k <= Math.min(4, n * 2 + 1); k++) if (L[k]) { L[k].material.color.setHex(0xff2a1a); L[k].material.emissive.setHex(0xff2a1a); } }
+      else { raceMid('GO!', '', 900); sfx.chime(); sfx.whoosh(); for (const l of L) { l.material.color.setHex(0x3aff6a); l.material.emissive.setHex(0x3aff6a); } RACE.phase = 'run'; RACE.t = 0; H.root.classList.add('run'); raceMusic(true); sfx.wind(.35); setTimeout(() => { if (RACE.hud) RACE.hud.help.textContent = ''; }, 5000); } } }
+  if (RACE.phase === 'run' || RACE.phase === 'count' || RACE.phase === 'intro') {
+    if (RACE.phase === 'run') RACE.t += dt;
+    const steps = dt > 1 / 50 ? 2 : 1, h = dt / steps; for (let k = 0; k < steps; k++) { for (const r of F) raceStep(r, h); if (RACE.phase === 'run') raceCollide(); }
+    // keeping it close: the far-ahead ease off a little, the far-behind find a little more
+    for (const r of F) { if (r.you) continue; const gap = r.prog - you.prog; r.rub = you.fin ? 1 : gap > 140 ? .965 : gap < -140 ? 1.045 : 1; }
+    if (RACE.phase === 'run') { const P = racePlaces(); if ((RACE.chk = (RACE.chk || 0) - dt) <= 0) { RACE.chk = .3; for (const r of F) { if (r.you) continue; const ahead = r.place < you.place; if (r.wasAhead != null && ahead !== r.wasAhead && !you.fin && !r.fin) raceSay(r, ahead ? 'pass' : 'passed'); r.wasAhead = ahead; } }
+      if (you.fin && (RACE.t > RACE.endAt || F.every(r => r.fin))) raceFinishUp(false); }
+  }
+  for (const r of F) racePose(r, dt);
+  if (RACE.padTex) RACE.padTex.offset.y = (RACE.padTex.offset.y - dt * 1.4) % 1;
+  if (RACE.crowd && Math.random() < .5) { const C = RACE.crowd, o = new THREE.Object3D(), k = Math.floor(Math.random() * C.pos.length), p = C.pos[k]; o.position.set(p.x, p.y + Math.abs(Math.sin(RACE.t * 9 + k)) * .35, p.z); o.updateMatrix(); C.cm.setMatrixAt(k, o.matrix); C.cm.instanceMatrix.needsUpdate = true; }
+  raceCam(dt, RACE.phase === 'intro');
+  // the HUD
+  if ((RACE.hudAt = (RACE.hudAt || 0) - dt) <= 0) { RACE.hudAt = .1; const n = F.length;
+    H.pos.innerHTML = `${you.place}<sup>${raceOrd(you.place).slice(-2)}</sup><span>/ ${n}</span>`; H.lap.innerHTML = `LAP ${clamp(you.lap, 1, RACE_LAPS)} / ${RACE_LAPS}`; H.time.textContent = raceFmt(RACE.t) + (you.lapBest ? `  ·  BEST ${raceFmt(you.lapBest)}` : '');
+    H.spd.textContent = Math.round(you.v * 3.6); H.boost.style.width = Math.round(you.boost * 100) + '%';
+    H.list.innerHTML = [...F].sort((a, b) => a.place - b.place).map(r => `<div class="${r.you ? 'me' : ''}"><i style="background:#${new THREE.Color(r.col).getHexString()}"></i>${r.place}. ${(r.you ? 'YOU' : r.short).toUpperCase()}${r.fin ? ' ✓' : ''}</div>`).join('');
+    raceMapDraw(); }
+  sfx.gust(260 + you.v * 16);
+  gfxRender(RACE.S, RACE.cam, dt);
+}
+function raceMusic(on) { // a combat track, played as a song (the combat music turns itself off whenever there's no fight)
+  try { if (!on) { if (RACE.song) { RACE.song = false; sfx.leadOn = false; sfx.stopSong(1.5); } return; }
+    const tok = RACE.songTok = (RACE.songTok || 0) + 1; sfx.combatBuf(Math.floor(Math.random() * 5)).then(b => { if (!b || !RACE.on || RACE.songTok !== tok || RACE.phase !== 'run') return; RACE.song = true; sfx.leadOn = true; sfx.playSong(b, .55); }).catch(() => {}); } catch (e) {}
+}
+// ---- the end: the board, the prizes, home ----
+function raceFinishUp(retired) {
+  if (!RACE.on || RACE.phase === 'done') return; RACE.paused = false; RACE.phase = 'done'; RACE.hud.root.classList.remove('run'); raceMusic(false); sfx.wind(.12);
+  const F = RACE.field, T = RACE.T, now = RACE.t, you = RACE.you; if (retired) { you.fin = false; you.dnf = true; }
+  for (const r of F) if (!r.fin && !r.dnf) { const left = (RACE_LAPS + 1) * T.L - r.prog; r.finT = now + left / Math.max(20, r.v || 30); r.fin = true; r.est = true; } // still out there: where they'd finish
+  const order = F.filter(r => !r.dnf).sort((a, b) => a.finT - b.finT).concat(F.filter(r => r.dnf)); order.forEach((r, i) => { r.place = i + 1; });
+  const p = you.dnf ? 0 : you.place, kind = RACE.o.kind, prize = { open: [260, 130, 60], lead: [600, 300, 150], comps: [220, 110, 50] }[kind] || [200, 100, 50], xp = [160, 100, 60];
+  let reward = '', beaten = [];
+  if (!RACE.o.preview && wanderer) {
+    const rec = raceRec(); rec.races = (rec.races || 0) + 1;
+    if (p) { const u = prize[p - 1] || 0, x = xp[p - 1] || 30; if (u) addUnits(u); gainXP(x); reward = `${u ? `+${u} units · ` : ''}+${x} XP`; if (p === 1) rec.wins = (rec.wins || 0) + 1; if (!you.est && (!rec.best || you.finT < rec.best)) rec.best = you.finT;
+      if (kind === 'lead') for (const r of F) if (r.kind === 'lead' && r.place > p && !rec.beat[r.who]) { rec.beat[r.who] = 1; beaten.push(r.name); } }
+    raceRecSave();
+  }
+  const win = order[0], lead = F.find(r => r.kind !== 'reg' && !r.you), quip = win && !win.you ? win : lead;
+  if (quip) setTimeout(() => raceSay(quip, quip === win ? 'win' : 'lose', true), 400);
+  const rows = order.map(r => `<tr class="${r.you ? 'me' : ''}"><td>${r.place}</td><td><span style="color:#${new THREE.Color(r.col).getHexString()}">■</span> ${(r.you ? (wanderer ? wanderer.name : 'YOU') : r.name).toUpperCase()}</td><td>${r.dnf ? 'RETIRED' : r.est ? '~' + raceFmt(r.finT) : raceFmt(r.finT)}</td></tr>`).join('');
+  const head = you.dnf ? 'RETIRED' : p === 1 ? 'VICTORY' : `${raceOrd(p).toUpperCase()} PLACE`;
+  RACE.hud.panel.innerHTML = `<h3>${head}</h3><p>The Sanctum Ring Circuit · ${RACE_LAPS} laps${you.lapBest ? ` · your best lap ${raceFmt(you.lapBest)}` : ''}${reward ? `<br>${reward}` : ''}${beaten.length ? `<br>First time: you beat ${beaten.join(', ')}` : ''}</p><table>${rows}</table><div class="rh-acts"><button data-a="again">RACE AGAIN</button><button data-a="leave">LEAVE</button></div>`;
+  RACE.hud.panel.className = 'rh-panel on'; if (beaten.length) setTimeout(() => raceMid('YOU BEAT', beaten[0].toUpperCase(), 2600), 300);
+}
+function raceLeave() {
+  if (!RACE.on) return; const H = RACE.hud; H.blk.innerHTML = '<span>THE ARCHIOSTAL RACEATHON</span><b>BACK TO THE GARDENS</b>'; H.blk.style.opacity = 1; H.panel.className = 'rh-panel';
+  setTimeout(raceEnd, 520);
+}
+function raceAbort() { lootMsg('The race couldn’t start', '#ff8f86'); raceEnd(); }
+function raceEnd() {
+  if (!RACE.on) return; const o = RACE.o || {}; RACE.on = false; RACE.phase = null; RACE.paused = false; clearTimeout(RACE.midT); clearTimeout(RACE.sayT);
+  raceMusic(false); sfx.wind(0);
+  for (const r of RACE.field || []) { const R = r.R; if (R && R.root && R.root.parent) R.root.parent.remove(R.root); if (R && R.you) R.root.traverse(m => { if (m.isMesh && m.material) for (const mm of [].concat(m.material)) mm.dispose(); }); } // (riders' bodies aren't ours to dispose; your copy's materials are)
+  try { if (RACE.S) disposeOwned(RACE.S); } catch (e) {} RACE.S = null; RACE.field = []; RACE.you = null; RACE.cam = null; RACE.streak = null; RACE.crowd = null; RACE.lights = []; RACE.keys.clear();
+  const H = RACE.hud; if (H) { H.root.className = ''; H.blk.innerHTML = '<span>THE ARCHIOSTAL RACEATHON</span><b>LOADING THE GRID</b>'; }
+  if (o.preview) { setTimeout(() => { location.href = location.pathname; }, 300); return; }
+  state = 'explore'; show(ui.xhud, RACE.xh !== false); clock.getDelta(); ex.keys.clear(); vel.set(0, 0, 0);
+  const Hh = raceHouse(); if (Hh) { const q = Hh.toW(-1.5, 13.5); player.position.set(q.x, groundAt ? groundAt(q.x, q.z, wHeight(q.x, q.z) + .5) : wHeight(q.x, q.z), q.z); player.rotation.y = Hh.ry; ex.yaw = Hh.ry + Math.PI; }
+  ex.snap = true; try { renderTasks(); } catch (e) {}
+}
+// ?race: a race from the title (the regulars; =leaders every leader; =comps a handful of companions)
+if (RACE_FORCE) { const go = () => { if (state !== 'title' || RACE.on) return; removeEventListener('pointerdown', go); removeEventListener('keydown', go); sfx.init && sfx.init();
+  const pv = { preview: true }; if (RACE_FORCE === 'leaders') raceStart(Object.assign(pv, { kind: 'lead', leads: ['hak', 'vishara', 'darius', 'taredesiba', 'archamus', 'amgrek'].map(k => ({ key: k, who: k, full: (leadSpec(k) || {}).full })) }));
+  else if (RACE_FORCE === 'comps') raceStart(Object.assign(pv, { kind: 'comps', ids: ['orion', 'nico', 'nyrexia', 'charon', 'pbc-josiah'] })); else raceStart(Object.assign(pv, { kind: 'open' })); };
+  addEventListener('pointerdown', go); addEventListener('keydown', go); }
 // ---- residents and the bar: a drink, then another; drunk, they wobble, say silly things, and pick fights ----
 function resBarSpot() { const Hl = world.hall; if (!Hl || !isPl() || !Hl.V.barAt) return null; return { x: Hl.V.barAt.x + (Math.random() - .5) * 3, z: Hl.V.barAt.z + .5 + Math.random() }; }
 const resInRoom = B => { const Hl = world.hall; if (!Hl || !isPl()) return false; const R = Hl.V.room; return B.x > R.x0 && B.x < R.x1 && B.z > R.z0 && B.z < R.z1; };
@@ -36085,6 +36695,7 @@ function loopFrame() {
   if (state === 'cantinaScene') { updateParticles(dt); updateWorldScene(dt); sfx.music(0); try { gfxWorldEnv(dt); } catch (e) {} gfxRender(wScene, camera, dt); return; }
   if (state === 'brawl') { try { fightTick(dt); } catch (e) { console.error(e); } updateParticles(dt); updateWorldScene(dt); sfx.music(0); gfxRender(wScene, camera, dt); return; }
   if (state === 'nightmare') { nightmareTick(dt); sfx.music(0); return; }
+  if (state === 'race') { try { raceTick(dt); } catch (e) { console.error(e); raceEnd(); } sfx.music(0); return; } // the Raceathon
   if (state === 'zarkPov') { try { zpvTick(dt); } catch (e) { console.error(e); zpvEnd(); } sfx.music(0); return; } // Lord Zark, out of the black hole
   if (state === 'orionSeal') { try { oslTick(dt); } catch (e) { console.error(e); oslEnd(); } sfx.music(0); return; } // and Orion, on the road to the bad ending
   if (state === 'crewCarax') { try { ccxTick(dt); } catch (e) { console.error(e); ccxEnd(); } sfx.music(0); return; } // then your crew

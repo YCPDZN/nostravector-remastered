@@ -43,6 +43,7 @@ The full feature-by-feature history is in **[CHANGELOG.md](CHANGELOG.md)**.
 - **Rule:** Diplomacy with the Chompy Empire, the Erisian Empire, the Grek, the Human Federation of Sol, the Republic of Timpur and Terra Imperia. Five casus belli, colonies and governors, puppets, tributaries and resistance movements.
 - **Choose:** KOTOR / Mass Effect-style alignment in every chapter, and choices that change who lives, who joins you and how Chapter IV ends.
 - **Quests:** the main story, plus 134 hand-written side quests from traders and leaders.
+- **Race (Chapters III–V):** the Archiostal Raceathon, across the landing pad from the Low-G Lounge. Talk to the race marshal and ride hoverboards round the Sanctum Ring Circuit: three laps against the regulars, any faction leader (or all of them at once), or your companions. Prizes, XP and records. `?race`, `?race=leaders` and `?race=comps` preview a race from the title.
 - **Residents:** send a wanderer into the world and they live on as an AI "player" (up to 500). They mine, build bases, chat, trade, form guilds, run dungeons, found empires and wage wars, all on your device.
 - **Nostrapedia:** the in-game encyclopaedia of leaders, companions, ancient figures, Terra Imperia, the Primes and Vectors, and your own story's events.
 - **Custom creations:** a species creator, a planet maker, ready-made and uploaded characters (.glb, rigged automatically), and an adventure maker you can play as anyone.
