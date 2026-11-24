@@ -3221,4 +3221,9 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - **Sharper shadows:** the sun's shadow map is 2048 (HIGH) or 4096 (ULTRA) instead of 1024, with less shadow acne.
   - **Finer ground:** fine relief and roughness on the terrain (2 m tiles), so it catches the sun and a few specks glint.
   - LOW is unchanged. Cutscenes and space flight are next.
+- **Higher-quality graphics in space.** The Graphics setting now covers flying (and the space pause, and atmospheric entry). On HIGH and ULTRA:
+  - **A richer sky:** stars of every size and brightness (steady, as they are in a vacuum, the brightest bright enough to bloom) over a faint Milky Way with dust lanes and soft nebulae, tinted a little differently in each system and turning with its sky. The old dots give way to it (and come back on LOW).
+  - **Bloom tuned for space:** the star's disc and glow, your engine flames, lasers and explosions glow; the star's disc and the flames are pushed bright enough to bloom. Plus the same light grade. Ambient occlusion stays off out here: the distances are too vast for it.
+  - **Light for your ship:** reflections come from the star where it really is, in its own colour (a black hole's light much dimmer), and from the world you're flying near, as large in your reflections as it is in your sky and lit or dark by which side of it you're on. It updates as you fly, so the Nostra's metal hull and gold trim catch the light.
+  - LOW is unchanged. Cutscenes are next.
 
