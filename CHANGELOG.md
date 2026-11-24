@@ -3337,3 +3337,11 @@ The race marshal has a new option: **Pick your own field… (leaders and compani
 - **Same rules as before:** Archamus still won't ride until he's ready, and a leader or companion who's no longer available drops out of your pick.
 - **Race again** keeps the same field.
 - **Preview:** `?race=mix` (Hak, Vishara, Orion and Nico).
+
+### The Raceathon: the importables ride too
+
+Your own field (**Pick your own field… (leaders, companions, importables)**) now also lists the importables: everyone in Custom Creations' characters, whether or not they travel with you.
+- **The built-ins:** Josiah Richards, Peter Chambers, Gareth Williams, Kevin Murderhorn and Lord Sevirrus.
+- **Your own uploaded characters.**
+
+Each rides as their own model, rigged as in Custom Creations, and the built-ins bring their own racing lines and riding skill. Anyone already travelling with you as a companion is listed once, as a companion. The option is always at the marshal now, since the importables can always ride. `?race=mix` now adds Kevin Murderhorn and Lord Sevirrus to the preview field.
