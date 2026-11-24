@@ -3247,25 +3247,25 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **Everyone in glory: every companion, every resident and your own wanderer, at Archamus and Lord Zark's level.**
   - **Brighter bodies:** each one carries its own colour along every edge, with a hotter, thinner line on the very rim. Reflections are deeper. Anything that glows (eyes, visors, lights, reactors) is brighter and breathes slowly. Metal is polished under a clear coat. Visors and glass have an oily sheen, and cloth and hair a sheen in their colour. Very bright surfaces (a white spacesuit) get less of it, so they keep their detail.
   - **A presence for every companion**, wherever they appear: your party, your crew aboard, your deputy, the Nostrapedia and the cutscenes.
-    - **James** (Chapters I–II): a green sigil and radiance, and a shadow at his heels.
+    - **James** (Chapters I–II): a green radiance, and a shadow at his heels.
     - **Orion:** the three stars of Orion's Belt behind his head, and an old soldier's embers.
     - **Nico:** a rose radiance and the same three stars, fainter. She named her son after them.
     - **Khazglar:** red Martian dust swirling at his feet over the glow of Olympus Mons.
-    - **Charon and Kizna:** a halo of circuitry with data running round it, and a sigil at their feet.
+    - **Charon and Kizna:** a halo of circuitry with data running round it.
     - **Nyrexia:** a crown of Eris's ice, a snowflake six arms wide.
     - **Croxian:** a ring of thorns, with embers and smoke.
-    - **Malia:** a marksman's reticle at her feet.
+    - **Malia:** a silver radiance.
     - **James as Pontifex Maximus:** a golden papal halo. **The Pontifexes and Sisters:** a halo in their own colour.
-    - **Josiah Williams II:** two interlocked rings at his feet, for his two families.
-    - **Javek:** a green-rimmed pool and a hunted shadow.
+    - **Josiah Williams II:** a halo ring and a cyan radiance.
+    - **Javek:** a green radiance and a hunted shadow.
     - **Tyrotaronus:** the spiral galaxy he lost, turning behind him.
-    - **Anyone else who travels with you** (quest companions, your own characters): a sigil and a radiance in their colour.
+    - **Anyone else who travels with you** (quest companions, your own characters): a radiance in their colour.
   - **Residents and your wanderer, by alignment, grander with level:**
-    - **Heroes:** a golden radiance and a sigil; a halo ring at level 40, and a sunburst like Archamus's at 80.
+    - **Heroes:** a golden radiance; a halo ring at level 40, and a sunburst like Archamus's at 80.
     - **Neutrals:** silver-blue; a halo ring at 40, and two orbits turning round them at 80.
-    - **Villains:** a crimson glow in a pool of shadow, with shadow smoke and embers; a ring of thorns at 40, and an eclipse like Zark's at 80.
+    - **Villains:** a crimson glow at their feet, with shadow smoke and embers; a ring of thorns at 40, and an eclipse like Zark's at 80.
     - Yours follows the body you're wearing, so the evil menu's villain always has a villain's presence. Each resident's is worked out when they arrive.
-  - **Peter, Gareth, Kevin and Sevirrus:** brighter edge-lights, and more of everything. Peter has a cold radiance, Gareth a warm one with a sigil, Kevin a violet crown of thorns over a violet glow, and Sevirrus a crimson glow at his feet.
+  - **Peter, Gareth, Kevin and Sevirrus:** brighter edge-lights, and more of everything. Peter has a cold radiance, Gareth a warm one, Kevin a violet crown of thorns over a violet glow, and Sevirrus a crimson glow at his feet.
 - **Josiah Richards is a god.** The Prime Secretary who reset time itself, from the Earth to the edge of the Laniakea Supercluster, now stands as Archamus and Zark do:
   - **A clockwork dial of light** behind his head: rings, hour bars doubled at the quarters, minute ticks, a turning gear ring, three hands, and a second hand that ticks. Rays reach out past the rim.
   - **The seal of his office**, vast, at his feet. **Two orbits** circle him like an orrery, a bright body running round each.
@@ -3277,3 +3277,4 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
 - **Fixed:** Archamus's radiance showed its rectangle's edges. It now fades to nothing before the edge.
 - None of the new glow counts toward anyone's height or casts a shadow, and none of it can be picked by a tap. It costs a few draw calls per character, with no extra lights (only Josiah and Archamus carry one).
 - **No glitter.** Companions, residents and your wanderer have no glints on their metal, no floating light motes and no twinkling sparkles; their halos, sigils, radiance, embers and smoke stay. That includes Peter's cold motes and Gareth's twinkling glints from before.
+- **No circles on the ground.** Companions, residents and your wanderer no longer stand on a sigil, reticle, ring or shadow pool, including Peter's reticle and Kevin's shadow pool from before. Josiah, a god, keeps the seal of his office.
