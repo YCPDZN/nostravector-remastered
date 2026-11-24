@@ -3345,3 +3345,12 @@ Your own field (**Pick your own field… (leaders, companions, importables)**) n
 - **Your own uploaded characters.**
 
 Each rides as their own model, rigged as in Custom Creations, and the built-ins bring their own racing lines and riding skill. Anyone already travelling with you as a companion is listed once, as a companion. The option is always at the marshal now, since the importables can always ride. `?race=mix` now adds Kevin Murderhorn and Lord Sevirrus to the preview field.
+
+### Long choice lists scroll
+
+A list of choices too long for the screen (the Raceathon's own field with every leader, companion and importable, for one) now scrolls inside the box, so nothing runs off the screen:
+- **▲ and ▼ buttons** beside the list scroll it, and each greys out at its end of the list.
+- **The mouse wheel and a swipe** scroll it too.
+- **A list that redraws itself keeps your place:** ticking riders on and off in the Raceathon no longer jumps you back to the top.
+
+Short lists look exactly as before: the buttons only appear when the list is too long to fit.
