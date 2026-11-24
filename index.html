@@ -2034,10 +2034,16 @@ function gfxDrop() { if (GFX.comp) { try { GFX.comp.dispose(); GFX.bloom && GFX.
      fire); embers rising and shadow smoke curling off him; a red glow at his feet and a red light on everything near.
    None of it counts toward their height, casts a shadow or catches ambient occlusion, and it all animates from one clock. ---- */
 const DEITY_U = { uT: { value: 0 }, uPx: { value: 600 } };
+const AURA_NO_HIT = () => {}; // an aura is never picked: its particles all sit at the feet as far as a raycast knows, and would catch taps meant for the ground
+class AuraMat extends THREE.ShaderMaterial { // the auras' material. It answers to .color and .emissive (unused) because older effects recolour every mesh on a
+  constructor(p) { super(p); this.color = new THREE.Color(1, 1, 1); this.emissive = new THREE.Color(0); this.emissiveIntensity = 1; } // character (darkening, ghosts, flashes); a copy keeps the one shared clock rather than freezing
+  copy(src) { super.copy(src); for (const k in src.uniforms) if (src.uniforms[k] === DEITY_U.uT || src.uniforms[k] === DEITY_U.uPx) this.uniforms[k] = src.uniforms[k]; return this; }
+}
 const DEITY_TAGS = { prArchamus: 'arch', prArchamusU: 'arch', prZark: 'zark' };
-function deityTick() { DEITY_U.uT.value = time; CH_DET.value = gfxQ === 'low' ? 0 : 1; DEITY_U.uPx.value = (renderer.domElement.height || innerHeight) / (2 * Math.tan(((camera && camera.fov) || 60) * Math.PI / 360)); }
+function deityTick() { try { gloryTick(); } catch (e) {} DEITY_U.uT.value = time; CH_DET.value = gfxQ === 'low' ? 0 : 1; DEITY_U.uPx.value = (renderer.domElement.height || innerHeight) / (2 * Math.tan(((camera && camera.fov) || 60) * Math.PI / 360)); }
 function deityPatch(sh) { // an edge-light, and a flicker for whatever burns
-  sh.uniforms.uRim = { value: this.userData.rim }; sh.uniforms.uFlick = { value: this.userData.flick }; sh.uniforms.uDT = DEITY_U.uT;
+  const u = this.userData; if (!(u.rim && u.rim.isColor)) u.rim = new THREE.Color(typeof u.rim === 'number' ? u.rim : 0); // (a copy carries it as a number)
+  sh.uniforms.uRim = { value: u.rim }; sh.uniforms.uFlick = { value: this.userData.flick }; sh.uniforms.uDT = DEITY_U.uT;
   sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uRim; uniform float uFlick, uDT;')
     .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
       float dFr = pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 2.6);
@@ -2090,7 +2096,7 @@ const DEITY_FS = {
       #include <colorspace_fragment>
     }`,
   radiance: `uniform float uT; uniform vec3 uCol; varying vec2 vUv;
-    void main(){ vec2 p = (vUv - .5) * vec2(2.1, 1.25); float r = length(p), v = exp(-r * r * 3.2) * (.3 + .05 * sin(uT * 1.1)); if (v < .003) discard;
+    void main(){ vec2 p = (vUv - .5) * vec2(2.1, 1.25), e = abs(vUv - .5); float r = length(p), v = exp(-r * r * 3.2) * (.3 + .05 * sin(uT * 1.1)) * smoothstep(.5, .3, max(e.x, e.y)); if (v < .003) discard; // (fading to nothing before the quad's edge)
       gl_FragColor = vec4(uCol * v, v);
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
@@ -2114,13 +2120,13 @@ const DEITY_FS = {
 function deityAura(sc, kind) {
   sc.updateMatrixWorld(true); const b = boxNoGear(sc), H = Math.max(.01, b.max.y - b.min.y), ctr = b.getCenter(new THREE.Vector3()), base = new THREE.Vector3(ctr.x, b.min.y, ctr.z);
   const G = new THREE.Group(); G.name = 'deity aura cape'; G.userData.noMeasure = true; sc.add(G);
-  const tiny = o => { const g = o.geometry; g.boundingBox = new THREE.Box3(ctr.clone(), ctr.clone()); g.boundingSphere = new THREE.Sphere(ctr.clone(), .001); o.frustumCulled = false; o.userData.noMeasure = true; o.name = 'deity aura cape'; o.renderOrder = 2; G.add(o); return o; };
+  const tiny = o => { const g = o.geometry; g.boundingBox = new THREE.Box3(ctr.clone(), ctr.clone()); g.boundingSphere = new THREE.Sphere(ctr.clone(), .001); o.frustumCulled = false; o.userData.noMeasure = true; o.name = 'deity aura cape'; o.renderOrder = 2; o.raycast = AURA_NO_HIT; G.add(o); return o; };
   const pts = (n, o) => { const g = new THREE.BufferGeometry(), sd = new Float32Array(n * 3); for (let i = 0; i < n * 3; i++) sd[i] = Math.random(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); g.setAttribute('aSeed', new THREE.BufferAttribute(sd, 3));
-    const m = new THREE.ShaderMaterial({ vertexShader: DEITY_PT_VS, fragmentShader: DEITY_PT_FS, transparent: true, depthWrite: false, fog: false, blending: o.add ? THREE.AdditiveBlending : THREE.NormalBlending,
+    const m = new AuraMat({ vertexShader: DEITY_PT_VS, fragmentShader: DEITY_PT_FS, transparent: true, depthWrite: false, fog: false, blending: o.add ? THREE.AdditiveBlending : THREE.NormalBlending,
       uniforms: { uT: DEITY_U.uT, uPx: DEITY_U.uPx, uBase: { value: base.clone().add(new THREE.Vector3(0, H * (o.y0 || 0), 0)) }, uH: { value: H * o.h }, uR: { value: H * o.r }, uSize: { value: H * o.size }, uSpeed: { value: o.speed }, uSwirl: { value: o.swirl }, uCol: { value: new THREE.Color(o.col).multiplyScalar(o.k) }, uSoft: { value: o.soft }, uAlpha: { value: o.alpha || 1 } } });
     return tiny(new THREE.Points(g, m)); };
   const bb = (fs, o) => { const g = new THREE.BufferGeometry(), C = [-.5, -.5, .5, -.5, .5, .5, -.5, -.5, .5, .5, -.5, .5]; g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(18), 3)); g.setAttribute('aCorner', new THREE.BufferAttribute(new Float32Array(C), 2)); // all its positions at zero: in the shadow pass it has no size at all
-    const m = new THREE.ShaderMaterial({ vertexShader: DEITY_BB_VS, fragmentShader: DEITY_FS[fs], transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide, blending: o.add ? THREE.AdditiveBlending : THREE.NormalBlending,
+    const m = new AuraMat({ vertexShader: DEITY_BB_VS, fragmentShader: DEITY_FS[fs], transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide, blending: o.add ? THREE.AdditiveBlending : THREE.NormalBlending,
       uniforms: { uT: DEITY_U.uT, uC: { value: base.clone().add(new THREE.Vector3(0, H * o.y, o.z ? H * o.z : 0)) }, uS: { value: H * o.s }, uBack: { value: H * o.back }, uCol: { value: new THREE.Color(o.col).multiplyScalar(o.k) } } });
     return tiny(new THREE.Mesh(g, m)); };
   const lamp = (col, inten, y, z = .25) => { const L = new THREE.PointLight(col, inten, H * 3, 1.6); L.position.copy(base).add(new THREE.Vector3(0, H * y, H * z)); L.userData.noMeasure = true; G.add(L); };
@@ -2153,12 +2159,18 @@ function deityDress(sc, kind) { // the materials, then the aura (once per parsed
 const CH_UP = new WeakMap(), CH_WHITE = new THREE.Color(1, 1, 1), CH_WARM = new THREE.Color(1, .55, .45), CH_DET = { value: 1 }; // CH_DET: the fine surface detail, on for HIGH and ULTRA
 const CH_DETAIL = { // fine relief drawn on each part from its own coordinates (in metres), so it moves with them: frequency per axis, and depth
   cloth: [60, 60, 60, .12], leather: [40, 40, 40, .14], skin: [26, 26, 26, .05], metal: [150, 5, 5, .06], hair: [90, 8, 90, .18], other: [45, 45, 45, .05], glass: [0, 0, 0, 0] }; // (depth here is a slope: the relief stays gentle at any size)
-function charPatch(sh) { // the fine relief, and a cool edge-light
-  sh.uniforms.uRim = { value: this.userData.rim }; sh.uniforms.uDet = { value: this.userData.det }; sh.uniforms.uDetOn = CH_DET;
+function chUd(m) { // a material's own settings, ready to be uniforms. A copy (material.clone, as each resident's body is) carries them as
+  const u = m.userData; // plain numbers and objects (a colour turns into its hex), so they're rebuilt here: the resident's own edge-light, not a crash
+  if (!(u.rim && u.rim.isColor)) u.rim = typeof u.rim === 'number' ? new THREE.Color(u.rim) : new THREE.Color(.15, .165, .19);
+  for (const k of ['det', 'glo']) if (!(u[k] && u[k].isVector4)) { const d = u[k] || {}; u[k] = new THREE.Vector4(d.x || 0, d.y || 0, d.z || 0, d.w || 0); }
+  return u;
+}
+function charPatch(sh) { // the fine relief and an edge-light; dressed in glory (see gloryMat) also a hotter line on the very rim, a pulse in whatever glows, and glints on the metal
+  const u = chUd(this); sh.uniforms.uRim = { value: u.rim }; sh.uniforms.uDet = { value: u.det }; sh.uniforms.uDetOn = CH_DET; sh.uniforms.uGlo = { value: u.glo }; sh.uniforms.uGT = DEITY_U.uT;
   sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vChP;')
     .replace('#include <begin_vertex>', '#include <begin_vertex>\nvChP = position * vec3(length(modelMatrix[0].xyz), length(modelMatrix[1].xyz), length(modelMatrix[2].xyz));');
   sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-    varying vec3 vChP; uniform vec3 uRim; uniform vec4 uDet; uniform float uDetOn;
+    varying vec3 vChP; uniform vec3 uRim; uniform vec4 uDet, uGlo; uniform float uDetOn, uGT;
     float chH(vec3 p){ p = fract(p * .1031); p += dot(p, p.yzx + 33.33); return fract((p.x + p.y) * p.z); }
     float chN(vec3 p){ vec3 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
       return mix(mix(mix(chH(i), chH(i + vec3(1,0,0)), f.x), mix(chH(i + vec3(0,1,0)), chH(i + vec3(1,1,0)), f.x), f.y), mix(mix(chH(i + vec3(0,0,1)), chH(i + vec3(1,0,1)), f.x), mix(chH(i + vec3(0,1,1)), chH(i + vec3(1,1,1)), f.x), f.y), f.z); }
@@ -2167,7 +2179,11 @@ function charPatch(sh) { // the fine relief, and a cool edge-light
       if (uDetOn > .5 && uDet.w > 0.) { vec3 q = vChP * uDet.xyz; float fw = length(fwidth(q)), k = 1. - smoothstep(.18, .45, fw); // fades out wherever it would fall below a few pixels: never noise
         if (k > 0.) { float h = (chN(q) * .62 + chN(q * 2.07 + 17.) * .38) * uDet.w * k / max(uDet.x, max(uDet.y, uDet.z)); normal = chBump(-vViewPosition, normal, dFdx(h), dFdy(h)); } }`)
     .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-      totalEmissiveRadiance += uRim * pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 2.6);`);
+      float chFr = 1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0);
+      if (uGlo.x > 0.) totalEmissiveRadiance *= 1.0 + uGlo.x * (.28 * sin(uGT * 2.2 + vChP.y * 6.) + .14 * sin(uGT * 5.3 + vChP.x * 9.));
+      totalEmissiveRadiance += uRim * (pow(chFr, 2.6) + uGlo.y * pow(chFr, 7.));
+      if (uGlo.z > 0.) { vec3 gq = vChP * 90.; float gk = 1. - smoothstep(.3, .65, length(fwidth(gq))); // glints, a centimetre across: gone before they could shimmer
+        if (gk > 0.) { float gh = chH(floor(gq)), tw = pow(max(0., sin(uGT * (1.2 + gh * 2.5) + gh * 50.)), 30.); totalEmissiveRadiance += (uRim * 3. + vec3(.6)) * step(.97, gh) * tw * gk * uGlo.z; } }`);
 }
 function charUpMat(old, meshName) {
   if (!old || !old.isMeshStandardMaterial || old.isMeshPhysicalMaterial || (old.userData && old.userData.noUp)) return old;
@@ -2186,8 +2202,8 @@ function charUpMat(old, meshName) {
   else if (met < .3 && has(/skin|face|cheek|nose|\blips?\b|\bears?\b|neck|hand|finger|forehead|chin|jaw|scalp|torso|\barms?\b|\blegs?\b|thigh|calf|foot|feet|toe|tail|snout|muzzle|tusk/)) { m.roughness = clamp(r0 * .85, .4, .65); m.sheen = .35; m.sheenRoughness = .5; m.sheenColor = c.clone().lerp(CH_WARM, .3); det = 'skin'; } // skin: a faint warm sheen
   else m.roughness = clamp(r0 * .9, .22, .92);
   if (glow) m.emissiveIntensity = (old.emissiveIntensity == null ? 1 : old.emissiveIntensity) * 2.2; // eyes, lights, screens, reactors: bright enough to bloom
-  m.userData.rim = new THREE.Color(.15, .165, .19); m.userData.det = new THREE.Vector4(...CH_DETAIL[det]); m.onBeforeCompile = charPatch; m.customProgramCacheKey = () => 'char1'; // a cool edge-light, and fine relief by kind
-  m.userData.upOf = old.uuid; CH_UP.set(old, m); return m;
+  m.userData.rim = new THREE.Color(.15, .165, .19); m.userData.det = new THREE.Vector4(...CH_DETAIL[det]); m.onBeforeCompile = charPatch; m.customProgramCacheKey = () => 'char2'; // a cool edge-light, and fine relief by kind
+  m.userData.kind = det; m.userData.upOf = old.uuid; CH_UP.set(old, m); return m;
 }
 function charUp(sc) { // a whole body, at once (copies of it share the upgraded materials, just as they shared the old ones)
   if (!sc || sc.userData.charUp) return sc; sc.userData.charUp = true;
@@ -2197,8 +2213,7 @@ function charUp(sc) { // a whole body, at once (copies of it share the upgraded 
 /* ============ the imported characters, majestic: Project BC and Sevirrus ============
    Josiah Richards, Peter Chambers, Gareth Williams, Kevin Murderhorn and Lord Sevirrus keep the upscaled materials everyone has, and each
    gets a presence of his own, wherever he appears (your crew, a deputy, the Nostrapedia, the cutscenes):
-   · JOSIAH RICHARDS, the Prime Secretary: a gold edge-light; the seal of his office turning on the ground beneath him, a golden clockwork
-     dial (rings, hour marks, a sweeping hand: he reset time itself); golden motes circling him like clockwork.
+   · JOSIAH RICHARDS, the Prime Secretary: a god now, dressed as Archamus and Zark are (see josiahGod, under glory).
    · PETER CHAMBERS, the Deputy: a cold steel-blue edge-light; a scope's reticle turning slowly at his feet (he does his damage from a
      distance); faint cold motes, and a low smoke creeping round him.
    · GARETH WILLIAMS: a warm edge-light; luck, made visible: four-pointed glints twinkling in and out around him.
@@ -2252,9 +2267,9 @@ const MAJ_FS = {
 function majestyAura(sc, kind) {
   sc.updateMatrixWorld(true); const b = boxNoGear(sc), H = Math.max(.01, b.max.y - b.min.y), ctr = b.getCenter(new THREE.Vector3()), base = new THREE.Vector3(ctr.x, b.min.y, ctr.z);
   const G = new THREE.Group(); G.name = 'deity aura cape'; G.userData.noMeasure = true; sc.add(G);
-  const tiny = o => { const g = o.geometry; g.boundingBox = new THREE.Box3(ctr.clone(), ctr.clone()); g.boundingSphere = new THREE.Sphere(ctr.clone(), .001); o.frustumCulled = false; o.userData.noMeasure = true; o.name = 'deity aura cape'; o.renderOrder = 2; G.add(o); return o; };
+  const tiny = o => { const g = o.geometry; g.boundingBox = new THREE.Box3(ctr.clone(), ctr.clone()); g.boundingSphere = new THREE.Sphere(ctr.clone(), .001); o.frustumCulled = false; o.userData.noMeasure = true; o.name = 'deity aura cape'; o.renderOrder = 2; o.raycast = AURA_NO_HIT; G.add(o); return o; };
   const quad = () => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(18), 3)); g.setAttribute('aCorner', new THREE.BufferAttribute(new Float32Array([-.5, -.5, .5, -.5, .5, .5, -.5, -.5, .5, .5, -.5, .5]), 2)); return g; }; // zero size in the shadow pass
-  const mat = (vs, fs, u, add) => new THREE.ShaderMaterial({ vertexShader: vs, fragmentShader: fs, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, uniforms: Object.assign({ uT: DEITY_U.uT }, u) });
+  const mat = (vs, fs, u, add) => new AuraMat({ vertexShader: vs, fragmentShader: fs, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, uniforms: Object.assign({ uT: DEITY_U.uT }, u) });
   const col = (c, k) => ({ value: new THREE.Color(c).multiplyScalar(k) });
   const ground = (fs, s, c, k, add) => tiny(new THREE.Mesh(quad(), mat(MAJ_GROUND_VS, MAJ_FS[fs], { uC: { value: base.clone().add(new THREE.Vector3(0, H * .012, 0)) }, uS: { value: H * s }, uCol: col(c, k) }, add)));
   const bill = (fs, y, s, back, c, k, add) => tiny(new THREE.Mesh(quad(), mat(DEITY_BB_VS, MAJ_FS[fs], { uC: { value: base.clone().add(new THREE.Vector3(0, H * y, 0)) }, uS: { value: H * s }, uBack: { value: H * back }, uCol: col(c, k) }, add)));
@@ -2265,12 +2280,263 @@ function majestyAura(sc, kind) {
   else if (kind === 'gareth') { pts(26, { fs: 'sparkle', h: 1.05, r: .5, size: .07, speed: .025, swirl: .3, col: 0xfff0b0, k: 3.2 }); }
   else if (kind === 'kevin') { ground('pool', 1.1, 0x9a3aff, 1.4); pts(40, { h: .85, r: .38, size: .08, speed: .045, swirl: .25, col: 0x050208, k: 1, soft: 1.4, alpha: .55, add: false }); pts(36, { h: 1.05, r: .42, size: .014, speed: .07, swirl: .4, col: 0xb06aff, k: 2.4 }); }
   else if (kind === 'sevirrus') { bill('crown', 1.08, .42, .02, 0xff2a1a, 2.6, true); pts(36, { h: .8, r: .4, size: .08, speed: .045, swirl: .3, col: 0x140204, k: 1, soft: 1.4, alpha: .5, add: false }); pts(60, { h: 1.1, r: .42, size: .015, speed: .09, swirl: .45, col: 0xff4a1a, k: 3 }); }
+  const more = { // and, as the gods have: a radiance or a glow of their own, and more of everything
+    peter: [gRad(0x5fa8ff, .4), ['pts', { n: 30, h: 1.05, r: .45, size: .015, speed: .05, swirl: .2, col: 0xc8ecff, k: 2.2 }]],
+    gareth: [gRad(0xffd58a, .45), ['ground', 'sigil', 1.0, 0xffe0a0, 1.0], ['pts', { fs: 'sparkle', n: 20, h: .7, r: .7, size: .05, speed: .02, swirl: .25, col: 0xffe6a0, k: 2.6 }], gMote(0xfff0c0, 2.2, 30)],
+    kevin: [['bill', 'thorn', .97, .5, .05, 0x9a3aff, 1.5, false], ['bill', 'under', .03, 1.0, 0, 0x7a2aff, 1.0], ['pts', { n: 40, h: 1.15, r: .42, size: .014, speed: .09, swirl: .45, col: 0xc08aff, k: 2.6 }]],
+    sevirrus: [['bill', 'under', .03, 1.05, 0, 0xff2a0c, 1.2], gRad(0xff3020, .35), ['pts', { n: 50, h: 1.25, r: .45, size: .014, speed: .11, swirl: .5, col: 0xff6a2a, k: 3 }]]
+  }[kind];
+  if (more) gloryAura(sc, more, H, base);
 }
 function majestyDress(sc, kind) { // the upscaled materials with his own edge-light, then his presence
   if (!sc || sc.userData.majesty) return sc; sc.userData.majesty = kind;
-  charUp(sc); const rim = MAJ_RIM[kind];
-  sc.traverse(o => { const m = o.isMesh && o.material; if (m && !Array.isArray(m) && m.userData && m.userData.rim && m.userData.rim.isColor) m.userData.rim.setRGB(...rim); });
+  if (kind === 'josiah') return josiahGod(sc); // Josiah Richards is a god now (see glory)
+  charUp(sc); const r = MAJ_RIM[kind]; gloryMats(sc, new THREE.Color(r[0], r[1], r[2]), { rimK: 1.3 }); // his own edge-light, as bright as the gods'
   try { majestyAura(sc, kind); } catch (e) { console.error(e); }
+  return sc;
+}
+/* ============ glory: every companion, every resident and your own wanderer, dressed the way the gods are ============
+   Archamus and Lord Zark set the standard; everyone you travel with, everyone you sent into the world and you yourself now meet it:
+   · THE MATERIALS (gloryMat): their own colour along every edge, with a hotter, thinner line on the very rim; reflections a little
+     deeper; whatever glows (eyes, visors, lights, reactors) brighter and breathing slowly; metal polished under a clear coat, with tiny
+     glints that catch and fade; visors and glass with an oily sheen; cloth and hair with a sheen in their colour.
+   · A PRESENCE of their own, wherever they appear (your party, your crew aboard, your deputy, the Nostrapedia, the cutscenes):
+     JAMES (Chapters I–II): frost-bright motes, a green sigil, and a shadow at his heels: he hides something.
+     ORION: the three stars of Orion's Belt behind his head, and the embers of an old soldier.
+     NICO, Lady Luck: luck made visible (twinkling glints), and the same three stars, fainter: she named her son after them.
+     KHAZGLAR: red Martian dust swirling at his feet, the warm glow of Olympus Mons under him.
+     CHARON and KIZNA: a halo of circuitry, data rising off them.        NYREXIA: a crown of Eris's ice, a snowflake six arms wide.
+     CROXIAN: a ring of thorns over a general's head, embers and smoke.  MALIA: a marksman's reticle at her feet, silver motes.
+     JAMES, Pontifex Maximus: a golden papal halo.  THE PONTIFEXES and SISTERS: a halo in their colour, candle-embers.
+     JOSIAH WILLIAMS II: two interlocked rings at his feet, his two families.  JAVEK: green spores, a hunted shadow.
+     TYROTARONUS: a spiral galaxy turning behind him, the one he lost.   Anyone else who travels with you: a sigil, a radiance and motes in their colour.
+   · RESIDENTS AND YOUR WANDERER, by alignment and level (a resident's own, worked out when they arrive; yours follows your body as it is):
+     a hero has a golden radiance, a sigil and rising light; at level 40 a halo ring, at 80 a sunburst like Archamus's.
+     a neutral has a silver-blue radiance, sigil and motes; at 40 a halo ring, at 80 two orbits turning round them.
+     a villain has a crimson glow at their feet in a pool of shadow, shadow smoke and embers; at 40 a ring of thorns, at 80 an eclipse like Zark's.
+   · JOSIAH RICHARDS is a god now (josiahGod): the Prime Secretary who reset time itself, from the Earth to the edge of the Laniakea
+     Supercluster. A clockwork dial of light behind his head (hour marks, a gear ring, three hands, the second hand ticking), the seal of
+     his office vast at his feet, two orbits circling him like an orrery, golden motes that move only when the clock ticks, the
+     universe streaming in towards him, a golden radiance and a warm light on everything near. His suit is black silk-wool with a
+     sheen of gold, every seam gilded, gold buttons, his eyes burning gold. His chains blaze.
+   None of it counts toward anyone's height, casts a shadow or catches ambient occlusion; it all runs off the gods' one clock. ---- */
+const GLO_ORBIT_VS = `attribute vec2 aCorner; uniform vec3 uC; uniform float uS, uT, uTilt, uSpin, uPh; varying vec2 vUv;
+  void main(){ vUv = aCorner + .5; vec3 p = vec3(aCorner.x, 0., aCorner.y) * uS; float ct = cos(uTilt), st = sin(uTilt), a = uT * uSpin + uPh, ca = cos(a), sa = sin(a);
+    p = vec3(p.x, p.y * ct - p.z * st, p.y * st + p.z * ct); p = vec3(p.x * ca + p.z * sa, p.y, -p.x * sa + p.z * ca);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(uC + p, 1.); }`;
+const GLO_TICK_VS = DEITY_PT_VS.replace('void main(){', 'void main(){ float uTk = floor(uT) + smoothstep(0., .18, fract(uT));').replace('fract(aSeed.x + uT * uSpeed)', 'fract(aSeed.x + uTk * uSpeed)').replace('uT * uSwirl', 'uTk * uSwirl'); // motes that move only as a clock ticks
+const GLO_IN_VS = `attribute vec3 aSeed; uniform float uT, uPx, uH, uR, uSize, uSpeed, uSwirl; uniform vec3 uBase; varying float vA, vS;
+  void main(){ float life = fract(aSeed.x + uT * uSpeed), ang = aSeed.y * 6.2832 + life * uSwirl * 3., rad = uR * pow(1. - life, 1.6) + .02 * uH;
+    vec3 p = uBase + vec3(cos(ang) * rad, mix((aSeed.z - .5) * uH, 0., life * life), sin(ang) * rad);
+    vA = smoothstep(0., .3, life) * (1. - smoothstep(.82, 1., life)); vS = aSeed.z;
+    vec4 mv = modelViewMatrix * vec4(p, 1.); float sc = length(modelMatrix[0].xyz);
+    gl_PointSize = clamp(uSize * sc * uPx / max(.1, -mv.z) * (.6 + aSeed.z * .8) * (.5 + life), 1., 96.); gl_Position = projectionMatrix * mv; }`; // the universe streaming in towards him
+const GLO_HEAD = `uniform float uT; uniform vec3 uCol; varying vec2 vUv;
+  float gH(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+  void main(){ vec2 p = vUv - .5; float r = length(p) * 2., a = atan(p.y, p.x);`;
+const GLO_FS = {
+  sigil: GLO_HEAD + ` // a circle of light at their feet: two rings, turning runes, a six-pointed star
+      float rings = exp(-pow((r - .92) / .018, 2.)) + exp(-pow((r - .79) / .013, 2.)) * .6, f = fract((a + uT * .1) * 3.8197);
+      float runes = step(.82, r) * step(r, .89) * smoothstep(.5, .56, f) * smoothstep(.92, .86, f) * .5, star = 0.;
+      for (int i = 0; i < 6; i++) { float th = float(i) * 1.0472 - uT * .05; star += exp(-pow((dot(p * 2., vec2(cos(th), sin(th))) - .39) / .014, 2.)); }
+      float v = (rings + runes + star * .45 * step(r, .79) + exp(-r * r * 6.) * .22) * smoothstep(1., .95, r) * (.8 + .2 * sin(uT * 1.4)); if (v < .003) discard;
+      gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL,
+  rings2: GLO_HEAD + ` // two rings, interlocked, turning opposite ways: two families in one heir
+      vec2 o = vec2(.3, 0.), q1 = p * 2. - o, q2 = p * 2. + o; float r1 = length(q1), r2 = length(q2);
+      float a1 = atan(q1.y, q1.x) + uT * .3, a2 = atan(q2.y, q2.x) - uT * .3;
+      float v = exp(-pow((r1 - .55) / .016, 2.)) * (.8 + .4 * step(.5, fract(a1 * 3.8197))) + exp(-pow((r2 - .55) / .016, 2.)) * (.8 + .4 * step(.5, fract(a2 * 3.8197)));
+      v += exp(-pow((r - .97) / .01, 2.)) * .5 + exp(-r * r * 5.) * .2; v *= smoothstep(1., .96, r) * (.8 + .2 * sin(uT * 1.3)); if (v < .003) discard;
+      gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL,
+  belt: GLO_HEAD + ` // Orion's Belt: Alnitak, Alnilam, Mintaka
+      float v = 0.; vec2 q = p * 2.;
+      for (int i = 0; i < 3; i++) { float fi = float(i); vec2 d = q - vec2(-.44 + fi * .43, -.17 + fi * .165 + (fi == 1. ? .02 : 0.));
+        float core = exp(-dot(d, d) / .0028), fl = (exp(-abs(d.x) * 70.) * exp(-abs(d.y) * 6.) + exp(-abs(d.y) * 70.) * exp(-abs(d.x) * 6.)) * .55;
+        v += (core * 1.4 + fl + exp(-dot(d, d) * 30.) * .15) * (.7 + .3 * sin(uT * (2.1 + fi * .7) + fi * 2.)); }
+      v *= smoothstep(1., .85, r); if (v < .003) discard;
+      gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL,
+  ring: GLO_HEAD + ` // a halo ring, beaded
+      float v = exp(-pow((r - .7) / .022, 2.)) * 1.2 + exp(-pow((r - .7) / .1, 2.)) * .3 + pow(max(0., cos(a * 12. + uT * .3)), 40.) * exp(-pow((r - .7) / .045, 2.)) * 1.1 + exp(-r * r * 4.) * .1;
+      v *= (.85 + .15 * sin(uT * 1.7)) * smoothstep(1., .9, r); if (v < .003) discard;
+      gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL,
+  circuit: GLO_HEAD + ` // a halo of circuitry: broken rings, and data running round them
+      float ring = exp(-pow((r - .72) / .014, 2.)) * step(.18, fract(a * 1.2732 + uT * .05)) + exp(-pow((r - .58) / .009, 2.)) * .6 * step(.3, fract(a * 0.9549 - uT * .08));
+      float data = step(.62, r) * step(r, .68) * step(.72, fract(a * 6.3662 - uT * .9)) * step(fract(a * .4775 + uT * .2), .6) * .9;
+      float nodes = pow(max(0., cos(a * 8. + uT * .05 * 6.2832)), 60.) * exp(-pow((r - .72) / .03, 2.)) * 1.2;
+      float v = (ring + data + nodes + exp(-r * r * 4.) * .1) * smoothstep(1., .9, r) * (.85 + .15 * sin(uT * 3.)); if (v < .003) discard;
+      gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL,
+  crystal: GLO_HEAD + ` // a snowflake six arms wide: a crown of ice
+      float s = mod(a + uT * .04, 1.0472) - .5236; vec2 q = vec2(cos(s), sin(s)) * r; float v = exp(-pow(q.y / .012, 2.)) * step(.12, q.x) * step(q.x, .9);
+      for (int i = 1; i < 4; i++) { vec2 d = q - vec2(.22 + float(i) * .17, 0.); float t = d.x * .5 + abs(d.y) * .866, dd = abs(d.x * .866 - abs(d.y) * .5);
+        v += exp(-pow(dd / .01, 2.)) * step(0., t) * step(t, .2 - float(i) * .04); }
+      v = v * 1.1 + exp(-pow((r - .9) / .01, 2.)) * .35 + exp(-dot(q - vec2(.9, 0.), q - vec2(.9, 0.)) * 900.) * 2. * (.6 + .4 * sin(uT * 2. + a * 3.)) + exp(-r * r * 9.) * .3;
+      v *= smoothstep(1., .93, r) * (.85 + .15 * sin(uT * 1.2)); if (v < .003) discard;
+      gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL,
+  thorn: GLO_HEAD + ` // a ring of thorns: dark, rimmed in their colour
+      float band = exp(-pow((r - .52) / .035, 2.)), f = abs(fract(a * 1.5915 + .25) - .5), w = .5 * clamp(1. - (r - .5) / .42, 0., 1.);
+      float spike = smoothstep(w * .5 + .02, w * .5 - .02, f) * step(.5, r) * step(r, .93), body = max(band, spike), edge = band * .6 + spike * smoothstep(w * .5 - .05, w * .5, f) + spike * smoothstep(.75, .93, r);
+      float al = max(body * .8, 0.); if (al < .003) discard;
+      gl_FragColor = vec4(uCol * edge * (1.6 + .4 * sin(uT * 2.3)), al);` + MAJ_TAIL,
+  spiral: GLO_HEAD + ` // a spiral galaxy, turning slowly: the one he lost
+      float lr = log(max(r, .01)), arms = pow(max(0., cos(2. * (a - uT * .06) - lr * 7.)), 9.) * smoothstep(.04, .3, r) * smoothstep(1., .45, r);
+      float stars = step(.992, gH(floor(vUv * 90.))) * smoothstep(1., .55, r) * (.6 + .4 * sin(uT * 2. + gH(floor(vUv * 90.) + 3.) * 30.));
+      float v = arms * .9 + exp(-r * r * 40.) * 1.6 + exp(-r * r * 7.) * .2 + stars + exp(-pow((r - .97) / .012, 2.)) * .2; v *= smoothstep(1., .9, r); if (v < .003) discard;
+      gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL,
+  clock: GLO_HEAD + ` // the dial of time: rings, hour bars (doubled at the quarters), minute ticks, a gear ring turning, three hands, rays
+      float c = atan(p.x, p.y), tw = 6.2832, R = r / .72;
+      float rings = exp(-pow((R - 1.) / .012, 2.)) * 1.3 + exp(-pow((R - .93) / .008, 2.)) * .7 + exp(-pow((R - .34) / .012, 2.)) * .7 + exp(-pow((R - .05) / .03, 2.)) * 1.2;
+      float hf = fract(c / tw * 12. + .5) - .5, quarter = step(abs(fract(c / tw * 4. + .5) - .5), .02);
+      float hours = step(.74, R) * step(R, .9) * (exp(-pow(hf / .012, 2.)) + quarter * (exp(-pow((hf - .03) / .008, 2.)) + exp(-pow((hf + .03) / .008, 2.)))) * 1.1;
+      float mins = step(.9, R) * step(R, .95) * exp(-pow((fract(c / tw * 60. + .5) - .5) / .06, 2.)) * .6;
+      float gear = step(.46, R) * step(R, .54) * step(.5, fract(c / tw * 36. + uT * .02)) * .45 + exp(-pow((R - .45) / .008, 2.)) * .5;
+      float hd = 0.; vec3 HL = vec3(.42, .64, .82), HS = vec3(.004, .045, floor(uT) + smoothstep(0., .15, fract(uT))), HW = vec3(.03, .02, .009);
+      for (int i = 0; i < 3; i++) { float ang = (i == 2 ? HS.z / 60. : uT * HS[i]) * tw, d = sin(c - ang) * R, along = cos(c - ang) * R;
+        hd += exp(-pow(d / HW[i], 2.)) * step(-.08, along) * step(along, HL[i]) * (i == 2 ? 1.4 : 1.1); }
+      float rays = pow(max(0., sin(a * 24. + uT * .2)), 9.) * smoothstep(1.02, 1.1, R) * smoothstep(1.39, 1.12, R) * .5 + pow(max(0., sin(a * 8. - uT * .13)), 14.) * smoothstep(1., 1.1, R) * smoothstep(1.39, 1.05, R) * .45;
+      float v = (rings + hours + mins + gear + hd + rays + exp(-R * R * 3.) * .2) * (.88 + .12 * sin(uT * 1.5)) * smoothstep(1., .94, r); if (v < .003) discard;
+      gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL,
+  orbit: GLO_HEAD + ` // an orbit, ticked, with a bright body running round it
+      float ring = exp(-pow((r - .93) / .01, 2.)) + exp(-pow((r - .93) / .05, 2.)) * .15, tk = step(.89, r) * step(r, .97) * exp(-pow((fract(a * 3.8197) - .5) / .04, 2.)) * .4;
+      vec2 b = .93 * vec2(cos(uT * .9), sin(uT * .9)); float bead = exp(-dot(p * 2. - b, p * 2. - b) * 700.) * 2.5 + exp(-dot(p * 2. - b, p * 2. - b) * 60.) * .4;
+      float v = (ring + tk + bead) * smoothstep(1., .97, r); if (v < .003) discard;
+      gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL
+};
+const gloFS = n => GLO_FS[n] || MAJ_FS[n] || DEITY_FS[n];
+function gloryAura(parent, layers, H, base) { // a presence, built from layers measured in body heights, on anything whose feet are at `base`
+  const G = new THREE.Group(); G.name = 'deity aura cape'; G.userData.noMeasure = true; G.userData.glory = true; parent.add(G);
+  const c0 = base.clone().add(new THREE.Vector3(0, H * .5, 0));
+  const tiny = o => { const g = o.geometry; g.boundingBox = new THREE.Box3(c0.clone(), c0.clone()); g.boundingSphere = new THREE.Sphere(c0.clone(), .001); o.frustumCulled = false; o.userData.noMeasure = true; o.name = 'deity aura cape'; o.renderOrder = 2; o.raycast = AURA_NO_HIT; G.add(o); return o; };
+  const quad = () => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(18), 3)); g.setAttribute('aCorner', new THREE.BufferAttribute(new Float32Array([-.5, -.5, .5, -.5, .5, .5, -.5, -.5, .5, .5, -.5, .5]), 2)); return g; }; // zero size in the shadow pass
+  const mat = (vs, fs, u, add) => new AuraMat({ vertexShader: vs, fragmentShader: fs, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, uniforms: Object.assign({ uT: DEITY_U.uT }, u) });
+  const col = (c, k) => ({ value: new THREE.Color(c).multiplyScalar(k) }), at = y => ({ value: base.clone().add(new THREE.Vector3(0, H * y, 0)) });
+  for (const L of layers) {
+    const [t] = L;
+    if (t === 'ground') { const [, fs, s, c, k, add = true] = L; tiny(new THREE.Mesh(quad(), mat(MAJ_GROUND_VS, gloFS(fs), { uC: at(.012), uS: { value: H * s }, uCol: col(c, k) }, add))); }
+    else if (t === 'bill') { const [, fs, y, s, back, c, k, add = true] = L; tiny(new THREE.Mesh(quad(), mat(DEITY_BB_VS, gloFS(fs), { uC: at(y), uS: { value: H * s }, uBack: { value: H * back }, uCol: col(c, k) }, add))); }
+    else if (t === 'orbit') { const [, y, s, tilt, spin, ph, c, k] = L; tiny(new THREE.Mesh(quad(), mat(GLO_ORBIT_VS, GLO_FS.orbit, { uC: at(y), uS: { value: H * s }, uTilt: { value: tilt }, uSpin: { value: spin }, uPh: { value: ph }, uCol: col(c, k) }, true))); }
+    else if (t === 'pts') { const o = L[1], n = o.n, g = new THREE.BufferGeometry(), sd = new Float32Array(n * 3); for (let i = 0; i < n * 3; i++) sd[i] = Math.random();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); g.setAttribute('aSeed', new THREE.BufferAttribute(sd, 3));
+      tiny(new THREE.Points(g, mat(o.vs === 'tick' ? GLO_TICK_VS : o.vs === 'in' ? GLO_IN_VS : DEITY_PT_VS, o.fs ? MAJ_FS[o.fs] : DEITY_PT_FS, { uPx: DEITY_U.uPx, uBase: at(o.y0 || 0), uH: { value: H * o.h }, uR: { value: H * o.r }, uSize: { value: H * o.size }, uSpeed: { value: o.speed }, uSwirl: { value: o.swirl }, uCol: col(o.col, o.k), uSoft: { value: o.soft || 2 }, uAlpha: { value: o.alpha || 1 } }, o.add !== false))); }
+    else if (t === 'lamp') { const [, c, inten, y, z = .25] = L, Lt = new THREE.PointLight(c, inten, H * 3, 1.6); Lt.position.copy(base).add(new THREE.Vector3(0, H * y, H * z)); Lt.userData.noMeasure = true; G.add(Lt); }
+  }
+  return G;
+}
+// ---- who looks like what ----
+const gMote = (col, k = 2.4, n = 46) => ['pts', { n, h: 1.08, r: .42, size: .016, speed: .06, swirl: .32, col, k }];
+const gSmoke = (n = 24, alpha = .4, h = .35) => ['pts', { n, h, r: .48, size: .085, speed: .03, swirl: .15, col: 0x030406, k: 1, soft: 1.4, alpha, add: false }];
+const gRad = (col, k = .5) => ['bill', 'radiance', .55, 1.4, .3, col, k * 1.6];
+const GLORY = {
+  james: { rim: 0x7fe0a0, L: [gRad(0x6fe0a8, .5), ['ground', 'sigil', 1.0, 0x7fe0a0, 1.2], gMote(0xd2fff0, 2.4), gSmoke(22, .42)] },
+  orion: { rim: 0xffb36e, L: [gRad(0xffa860, .55), ['bill', 'belt', 1.0, .62, .06, 0xfff0d8, 2.8], ['ground', 'sigil', 1.0, 0xffb36e, 1.1], ['pts', { n: 60, h: 1.15, r: .42, size: .015, speed: .09, swirl: .45, col: 0xff9a40, k: 3 }]] },
+  nico: { rim: 0xe8a0c0, L: [gRad(0xff9fd0, .6), ['pts', { fs: 'sparkle', n: 30, h: 1.05, r: .5, size: .07, speed: .025, swirl: .3, col: 0xffd0ea, k: 3.2 }], gMote(0xffb0d8, 2.4, 40), ['bill', 'belt', .99, .42, .06, 0xffe8f4, 1.3]] },
+  khazglar: { rim: 0xd6b27a, L: [['bill', 'under', .03, 1.1, 0, 0xff7a30, .9], ['ground', 'sigil', 1.05, 0xffa860, 1.1], ['pts', { n: 50, h: .55, r: .55, size: .07, speed: .03, swirl: .5, col: 0x8a3a1a, k: 1, soft: 1.6, alpha: .45, add: false }], gMote(0xffc080, 2.4, 40), gRad(0xffb070, .45)] },
+  charon: { rim: 0x9fb4ff, L: [['bill', 'circuit', .97, .5, .05, 0x8fb0ff, 2.2], ['ground', 'sigil', 1.0, 0x8fb0ff, 1.2], ['pts', { n: 50, h: 1.1, r: .42, size: .014, speed: .08, swirl: .1, col: 0xa8c8ff, k: 2.6 }], gRad(0x7f9cff, .45)] },
+  kizna: { rim: 0xf3a6d6, L: [['bill', 'circuit', .97, .5, .05, 0xffa6dc, 2.2], ['ground', 'sigil', 1.0, 0xf3a6d6, 1.2], ['pts', { fs: 'sparkle', n: 22, h: 1.05, r: .5, size: .06, speed: .025, swirl: .3, col: 0xffd6f0, k: 3 }], gRad(0xff9fd6, .5)] },
+  nyrexia: { rim: 0xb893ff, L: [['bill', 'crystal', .95, .62, .05, 0xd8c8ff, 2.2], gRad(0xa890ff, .55), ['ground', 'sigil', 1.05, 0xb893ff, 1.2], gMote(0xe8e0ff, 2.6, 60)] },
+  croxian: { rim: 0xff7a6e, L: [['bill', 'thorn', .97, .56, .05, 0xff3a2a, 1.6, false], ['bill', 'under', .03, 1.0, 0, 0xff3a1a, 1.0], ['pts', { n: 70, h: 1.2, r: .42, size: .015, speed: .1, swirl: .45, col: 0xff5a2a, k: 3 }], gSmoke(30, .45, .7)] },
+  malia: { rim: 0xe6e9f0, L: [['ground', 'reticle', 1.05, 0xdfe8ff, 1.3], gRad(0xcfd8ff, .45), gMote(0xf0f4ff, 2.2, 40)] },
+  'james-ti': { rim: 0xe0c160, L: [['bill', 'ring', .97, .5, .05, 0xffd77a, 2.2], gRad(0xffcf70, .6), ['ground', 'sigil', 1.1, 0xe0c160, 1.3], gMote(0xffe0a0, 2.8, 60), gSmoke(24, .35, .5)] },
+  pontifex: { rim: 0xd0343a, L: [['bill', 'ring', .97, .5, .05, 0xff5a50, 2.0], gRad(0xff4a40, .5), ['pts', { n: 50, h: 1.1, r: .42, size: .015, speed: .06, swirl: .25, col: 0xffa070, k: 2.6 }], ['ground', 'sigil', 1.0, 0xd0343a, 1.1]] },
+  josiah2: { rim: 0x7fd8ff, L: [['ground', 'rings2', 1.15, 0x7fd8ff, 1.4], gRad(0x6fd0ff, .5), gMote(0xc0f0ff, 2.6, 50), ['bill', 'ring', .97, .44, .05, 0x9fe4ff, 1.4]] },
+  javek: { rim: 0x5dff7a, L: [['ground', 'pool', 1.05, 0x5dff7a, 1.2, false], ['pts', { n: 40, h: .9, r: .5, size: .03, speed: .02, swirl: .2, col: 0x6aff8a, k: 1.8, soft: 3 }], gRad(0x50ff80, .4), gSmoke(26, .4, .6)] },
+  tyrotaronus: { rim: 0xc4cad6, rk: .25, L: [['bill', 'spiral', .88, .9, .25, 0xcfd8ff, 1.8], gRad(0xb8c4e0, .5), ['pts', { n: 70, h: 1.2, r: .5, size: .014, speed: .03, swirl: .2, col: 0xe0e8ff, k: 2.6 }]] }
+};
+const GLO_TAG = { jamesGlb: 'james', cpOrion: 'orion', nicoGlb: 'nico', cpKhaz: 'khazglar', cpCharon: 'charon', 'cpCharon+kizna': 'kizna', cpNyrexia: 'nyrexia', cpCroxianU: 'croxian', cpCroxian: 'croxian', cpMalia: 'malia', cpJamesTI: 'james-ti', cpPontifex: 'pontifex', cpJosiah2: 'josiah2', cpJavekC: 'javek', cpJavekR: 'javek', vcTaro: 'tyrotaronus' };
+const gloryTagKind = (tag, mod) => GLO_TAG[tag + (mod ? '+' + mod : '')] || GLO_TAG[tag] || null;
+function gloryGeneric(col) { return { rim: col, L: [gRad(col, .5), ['ground', 'sigil', 1.0, col, 1.1], gMote(col, 2.4)] }; }
+function gloryAlSpec(al, lv) { // residents and your wanderer: by alignment, grander with level
+  if (al === 'hero') { const L = [gRad(0xffd07a, .55), ['ground', 'sigil', 1.0, 0xffd98a, 1.2], ['pts', { n: 50, h: 1.1, r: .42, size: .016, speed: .06, swirl: .35, col: 0xffe8b0, k: 2.6 }]];
+    if (lv >= 80) L.push(['bill', 'halo', .95, .5, .05, 0xffe2a0, 2.0]); else if (lv >= 40) L.push(['bill', 'ring', .97, .45, .05, 0xffe2a0, 1.8]); return { rim: 0xffd98a, L }; }
+  if (al === 'villain') { const L = [['bill', 'under', .03, 1.05, 0, 0xff2a0c, 1.2], ['ground', 'pool', 1.05, 0xff2a20, 1.3, false], ['pts', { n: 36, h: .8, r: .4, size: .08, speed: .045, swirl: .3, col: 0x0b0206, k: 1, soft: 1.4, alpha: .5, add: false }], ['pts', { n: 70, h: 1.2, r: .44, size: .015, speed: .1, swirl: .5, col: 0xff5a1a, k: 3 }]];
+    if (lv >= 80) L.push(['bill', 'eclipse', .8, .9, .35, 0xff3a14, 1.4, false]); else if (lv >= 40) L.push(['bill', 'thorn', .97, .5, .05, 0xff2a1a, 1.5, false]); return { rim: 0xff3030, L }; }
+  const L = [gRad(0x9fdcff, .45), ['ground', 'sigil', 1.0, 0x9fe3ff, 1.1], gMote(0xd8f4ff, 2.4, 44)];
+  if (lv >= 80) L.push(['orbit', .55, 1.0, .55, .3, 0, 0x9fe3ff, 1.5], ['orbit', .55, .85, -.7, -.22, 2, 0xd8f4ff, 1.3]); else if (lv >= 40) L.push(['bill', 'ring', .97, .45, .05, 0xbfeaff, 1.6]);
+  return { rim: 0x9fe3ff, L };
+}
+const gloryTier = lv => lv >= 80 ? 2 : lv >= 40 ? 1 : 0, gloryLv = c => c && c.sentAt ? resLevel(c) : levelOf(c);
+const gloryH = c => (((SPECIES[spOf(c)] || {}).height) || 1.85) * ((IDENT[c && c.identity] || IDENT.nb).h);
+function gloryMat(m, rim, o = {}) { // a body's upscaled material, brightened to the gods' level (changes it in place: it's that body's own)
+  if (!m || !m.isMeshPhysicalMaterial || m.isShaderMaterial) return;
+  if (m.onBeforeCompile === THREE.Material.prototype.onBeforeCompile && !(m.userData && m.userData.noUp)) { m.userData.det = new THREE.Vector4(...CH_DETAIL.other); m.userData.kind = 'other'; m.onBeforeCompile = charPatch; m.customProgramCacheKey = () => 'char2'; m.needsUpdate = true; } // physical from the start (an imported model): it joins in
+  if (m.onBeforeCompile !== charPatch) return; // the gods' own, or a shader trick of its own
+  const u = chUd(m), kind = u.kind || 'other', glow = (m.emissive && m.emissive.r + m.emissive.g + m.emissive.b > .03) || !!m.emissiveMap;
+  const lum = m.color ? m.color.r * .2126 + m.color.g * .7152 + m.color.b * .0722 : .3; // a white suit already shines: less edge-light on the brightest surfaces, so they keep their detail
+  u.rim.set(rim).multiplyScalar((o.rimK || .42) * (1 - .65 * Math.min(1, lum * 1.2))); u.glo.set(glow ? .9 : 0, o.hot == null ? 1.2 : o.hot, kind === 'metal' ? (o.glit == null ? 1 : o.glit) : 0, 0);
+  if (u.gl) return; u.gl = 1; // once, the brighter surfaces
+  m.envMapIntensity = Math.max(m.envMapIntensity == null ? 1 : m.envMapIntensity, 1.35);
+  if (glow) m.emissiveIntensity = (m.emissiveIntensity == null ? 1 : m.emissiveIntensity) * 1.7;
+  if (kind === 'metal') { m.clearcoat = Math.max(m.clearcoat, .7); m.clearcoatRoughness = Math.min(m.clearcoatRoughness, .12); m.roughness = Math.max(.12, m.roughness * .8); }
+  else if (kind === 'glass') { m.iridescence = .45; m.iridescenceIOR = 1.5; m.iridescenceThicknessRange = [200, 500]; }
+  else if (kind === 'cloth' || kind === 'hair') { m.sheen = 1; if (m.sheenColor) m.sheenColor.lerp(new THREE.Color(rim), .35); }
+  else if (kind === 'leather') m.clearcoat = Math.max(m.clearcoat, .45);
+  m.needsUpdate = true;
+}
+function gloryMats(obj, rim, o) { if (obj) obj.traverse(x => { if (!x.isMesh || !x.material || (x.userData && x.userData.noMeasure && x.name === 'deity aura cape')) return; for (const m of Array.isArray(x.material) ? x.material : [x.material]) gloryMat(m, rim, o); }); }
+function gloryOn(obj, kind, H, colOver) { // dress a body in glory: its materials, then its presence (once per body; a different kind replaces the old)
+  if (!obj) return obj; const spec = typeof kind === 'object' ? kind : GLORY[kind]; if (!spec) return obj;
+  const key = typeof kind === 'object' ? (kind.key || 'x') : kind + (colOver || ''); if (obj.userData.gloryKey === key) return obj;
+  gloryDrop(obj.children.find(o => o.userData && o.userData.glory));
+  obj.userData.gloryKey = key; const rim = colOver ? new THREE.Color(colOver) : new THREE.Color(spec.rim);
+  gloryMats(obj, rim, { rimK: spec.rk });
+  const L = colOver ? spec.L.map(l => l.map(v => typeof v === 'number' && v > 0xffff ? rim.getHex() : v && typeof v === 'object' && !Array.isArray(v) && v.col > 0xffff ? Object.assign({}, v, { col: rim.getHex() }) : v)) : spec.L; // a Pontifex in her own colour
+  try { gloryAura(obj, L, H, new THREE.Vector3()); } catch (e) { console.error(e); }
+  return obj;
+}
+function gloryRig(R, id, H) { // a companion's rig (whatever loaded it): their own presence, unless they're a god or one of the imported, who have theirs
+  if (!R || !R.root) return R; const md = R.model && R.model.userData; if (md && (md.deity || md.majesty)) return R;
+  const pc = String(id).startsWith('pont:') ? pontCol(pontById(String(id).slice(5))) : null;
+  gloryOn(R.root, GLORY[id] ? id : pc ? 'pontifex' : gloryGeneric(compColor(id)), H || 1.85, pc);
+  return R;
+}
+function gloryDrop(G) { if (!G) return; if (G.parent) G.parent.remove(G); G.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.isShaderMaterial) o.material.dispose(); }); } // (its buffers freed)
+// ---- your wanderer: their presence follows the body you're wearing (yours, or a villain's on the evil menu), its species, alignment and level ----
+const GLO_P = { key: '', t: 0, G: null };
+function gloryTick() {
+  if (!GLO_P.G || GLO_P.G.parent !== player) GLO_P.key = '';
+  const G = GLO_P.G; if (G) G.visible = Math.abs(inner.rotation.x) < .45 && Math.abs(inner.rotation.z) < .45 && inner.visible !== false; // not lying down
+  const now = performance.now(); if (now - GLO_P.t < 400 && GLO_P.key) return; GLO_P.t = now; // a few times a second
+  const c = lastLookC || wanderer; if (!c) return; const vile = !!(VILE.g && VILE.g.visible); // on the evil menu, whoever holds the world is a villain
+  const lv = gloryLv(c), al = vile ? 'villain' : resAl(c), H = gloryH(c), key = al + gloryTier(lv) + spOf(c) + H.toFixed(2);
+  if (key === GLO_P.key) return; GLO_P.key = key;
+  gloryDrop(GLO_P.G); GLO_P.G = null;
+  const spec = gloryAlSpec(al, lv); gloryMats(inner, new THREE.Color(spec.rim));
+  try { GLO_P.G = gloryAura(player, spec.L, H, new THREE.Vector3()); } catch (e) { console.error(e); GLO_P.G = null; }
+}
+function gloryResident(B) { // a resident on the ground: their own colour on their own (copied) materials, and their own presence
+  const c = B.c, spec = gloryAlSpec(B.al, B.lv); let H = gloryH(c); // measured, for the bodies that aren't a wanderer's (an old Taredesiban, a Pontifex, an uplifted species)
+  try { B.root.updateMatrixWorld(true); const b = boxNoGear(B.body), h = b.max.y - b.min.y; if (h > .5 && h < 4) H = h; } catch (e) {}
+  gloryMats(B.body, new THREE.Color(spec.rim)); gloryAura(B.root, spec.L, H, new THREE.Vector3());
+}
+// ---- Josiah Richards, a god ----
+function josiahMat(old, o, H) { // by colour and place (his parts have no names): suit, gilded seams, gold buttons, skin with a light under it, burning eyes
+  const c = old.color ? old.color.clone() : new THREE.Color(.5, .5, .5), hsl = {}; c.getHSL(hsl); const lum = c.r * .2126 + c.g * .7152 + c.b * .0722;
+  const b = new THREE.Box3().setFromObject(o), sz = b.getSize(new THREE.Vector3()), y = (b.getCenter(new THREE.Vector3()).y) / H, big = Math.max(sz.x, sz.y, sz.z) / H, eyeH = y > .78 && y < .87;
+  const P = { color: c, roughness: .55, metalness: 0, envMapIntensity: 1.35, emissive: new THREE.Color(0), emissiveIntensity: 1 }; const rim = new THREE.Color(0xffcf6a); let rk = .5, flick = 0, cls;
+  if (hsl.h > .38 && hsl.h < .6 && hsl.s > .35 && eyeH && big < .04) { cls = 'iris'; Object.assign(P, { color: new THREE.Color(0xffc85a), emissive: new THREE.Color(0xffb83a), emissiveIntensity: 7, roughness: .2, clearcoat: 1 }); flick = .18; }
+  else if (lum < .02 && eyeH && big < .02) { cls = 'pupil'; Object.assign(P, { color: new THREE.Color(0xfff2c8), emissive: new THREE.Color(0xfff0c0), emissiveIntensity: 11, roughness: .2 }); flick = .25; }
+  else if (hsl.s < .3 && lum > .55 && eyeH) { cls = 'white'; Object.assign(P, { emissive: new THREE.Color(0xfff4d8), emissiveIntensity: .35, roughness: .15, clearcoat: 1 }); }
+  else if (lum < .02 && big < .02 && y > .3 && y < .6) { cls = 'button'; Object.assign(P, { color: new THREE.Color(0xffc94a), metalness: 1, roughness: .2, clearcoat: .8, clearcoatRoughness: .1, emissive: new THREE.Color(0x4a2c00), emissiveIntensity: 1 }); rk = .8; }
+  else if (hsl.s < .2 && lum > .08 && lum < .3) { cls = 'seam'; Object.assign(P, { color: new THREE.Color(0xffc94a), metalness: 1, roughness: .24, clearcoat: .7, clearcoatRoughness: .12, emissive: new THREE.Color(0xffa020), emissiveIntensity: .7 }); rk = .8; flick = .08; } // every seam a thread of gold
+  else if (hsl.h < .13 && hsl.s > .4 && lum > .22) { cls = 'skin'; Object.assign(P, { roughness: .5, sheen: .5, sheenRoughness: .45, sheenColor: new THREE.Color(0xffcf8a), emissive: new THREE.Color(0xff9a40), emissiveIntensity: .05 }); rk = .4; }
+  else if (hsl.h < .13 && hsl.s > .6) { cls = 'hair'; Object.assign(P, { roughness: .42, sheen: 1, sheenRoughness: .3, sheenColor: new THREE.Color(0xffc070) }); rk = .5; }
+  else if (y < .1) { cls = 'shoe'; Object.assign(P, { roughness: .18, clearcoat: 1, clearcoatRoughness: .06 }); rk = .6; }
+  else { cls = 'suit'; Object.assign(P, { roughness: .52, sheen: .7, sheenRoughness: .35, sheenColor: new THREE.Color(0xd9a640), clearcoat: .15, clearcoatRoughness: .5 }); rk = .55; } // black silk-wool, a sheen of gold
+  const m = new THREE.MeshPhysicalMaterial(P); m.name = old.name; m.side = old.side; m.transparent = !!old.transparent; m.opacity = old.opacity == null ? 1 : old.opacity;
+  m.userData.rim = rim.multiplyScalar(rk); m.userData.flick = flick; m.userData.cls = cls; m.onBeforeCompile = deityPatch; m.customProgramCacheKey = () => 'deity1';
+  return m;
+}
+function josiahGod(sc) {
+  sc.updateMatrixWorld(true); const b = boxNoGear(sc), H = Math.max(.01, b.max.y - b.min.y), ctr = b.getCenter(new THREE.Vector3()), base = new THREE.Vector3(ctr.x, b.min.y, ctr.z);
+  const memo = new Map(); sc.traverse(o => { if (!o.isMesh || !o.material || Array.isArray(o.material) || o.material.isShaderMaterial) return; const m0 = o.material, m = josiahMat(m0, o, H), k = m0.uuid + m.userData.cls; if (!memo.has(k)) memo.set(k, m); o.material = memo.get(k); });
+  try { gloryAura(sc, [
+    ['bill', 'radiance', .55, 1.75, .35, 0xffd27a, 1.0],
+    ['bill', 'clock', .87, .86, .06, 0xffe0a0, 2.6], // the dial of time, just behind his head
+    ['ground', 'seal', 1.6, 0xffc85a, 2.0],
+    ['orbit', .56, 1.1, .5, .35, 0, 0xffd27a, 1.8], ['orbit', .56, .9, -.75, -.22, 2, 0xffe6b0, 1.5], // an orrery
+    ['pts', { vs: 'tick', n: 60, h: 1.15, r: .5, size: .02, speed: .05, swirl: .6, col: 0xffd27a, k: 3 }],
+    ['pts', { vs: 'in', n: 110, h: 1.4, r: 1.6, size: .016, speed: .08, swirl: .8, col: 0xfff0c8, k: 2.2, y0: .58 }], // Laniakea, coming home to him
+    ['pts', { n: 22, h: 1.0, r: .6, size: .05, speed: .04, swirl: .2, col: 0xfff2c8, k: 1.4, soft: 3, alpha: .55 }],
+    ['lamp', 0xffd27a, 1.8, .9, .9]
+  ], H, base); } catch (e) { console.error(e); }
   return sc;
 }
 let gfxLastT = 0; const gfxDt = () => { const t = performance.now() / 1000, d = gfxLastT ? Math.min(.1, t - gfxLastT) : .016; gfxLastT = t; return d; }; // for renders made inside a scene's own tick
@@ -5199,6 +5465,7 @@ function setupJames(m) {
   if (jawMesh) jawP.attach(jawMesh);
   if (mouthMesh) mouthP.attach(mouthMesh);
   for (const g of [head, la, ra]) upper.attach(g);
+  try { m.updateMatrixWorld(true); const hb = boxNoGear(m); gloryOn(root, 'james', Math.max(1, hb.max.y - hb.min.y)); } catch (e) { console.error(e); } // his presence (see glory)
   Object.assign(james, { root, model: m, k: 1, body: upper, head, la, ra, ll, rl, hand, jawP, mouthP, mouthY: mouthP.position.y, mouth: 0, phase: 0, ready: true, walking: false, speed: 1.6, stopZ: 3.25, lean: 0, headTilt: 0, headYaw: 0, raise: 0 });
   const lan = new THREE.Group();
   lan.add(new THREE.Mesh(new THREE.CylinderGeometry(.06, .07, .18, 12), new THREE.MeshStandardMaterial({ color: 0x2a2d33, metalness: .6, roughness: .4 })));
@@ -8872,7 +9139,7 @@ function compRoot(id) {
   if (id === 'orion') return orionJoined() && world.orion ? world.orion.root : null;
   try { return COMP_RIGS[id] ? COMP_RIGS[id]() : null; } catch { return null; }
 }
-const COMP_COLS = { pontifex: '#d0343a', javek: '#5dff7a', james: '#7fe0a0', orion: '#ffb36e', nico: '#e8a0c0', khazglar: '#d6b27a', charon: '#9fb4ff', kizna: '#f3a6d6', nyrexia: '#b893ff', croxian: '#ff7a6e', malia: '#e6e9f0', 'james-ti': '#e0c160', josiah2: '#7fd8ff', tyrotaronus: '#c4cad6' };
+const COMP_COLS = { 'pbc-josiah': '#ffd27a', pontifex: '#d0343a', javek: '#5dff7a', james: '#7fe0a0', orion: '#ffb36e', nico: '#e8a0c0', khazglar: '#d6b27a', charon: '#9fb4ff', kizna: '#f3a6d6', nyrexia: '#b893ff', croxian: '#ff7a6e', malia: '#e6e9f0', 'james-ti': '#e0c160', josiah2: '#7fd8ff', tyrotaronus: '#c4cad6' };
 function compColor(id) {
   if (COMP_COLS[id]) return COMP_COLS[id];
   if (String(id).startsWith('pont:')) return pontCol(pontById(id.slice(5)));
@@ -24752,8 +25019,8 @@ async function shipCrewPlace() {
 }
 async function compRigFor(id) { // a fresh rig of a companion, for the ship
   if (id === 'nico') return nicoCompanionRig();
-  if (id === 'orion') { const el = document.getElementById('cpOrion'), bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); const R = autoRig(SkeletonUtils.clone(await parseGlb(u8.buffer)), 1.85); armRig(R, 'rifle'); return R; }
-  const c = charById(id); return c ? loadCharRig(c, 1.85) : companionRig(id); // Hak, Darius, Vishara, a Pontifex, Khazglar…: the rig they walk with on the ground
+  if (id === 'orion') { const el = document.getElementById('cpOrion'), bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); const R = autoRig(SkeletonUtils.clone(await parseGlb(u8.buffer)), 1.85); armRig(R, 'rifle'); return gloryRig(R, 'orion', 1.85); }
+  const c = charById(id); return c ? loadCharRig(c, 1.85).then(R => gloryRig(R, id, 1.85)) : companionRig(id); // Hak, Darius, Vishara, a Pontifex, Khazglar…: the rig they walk with on the ground
 }
 /* ---- followers come aboard: whoever is following you walks the Nostra's decks behind you, the way they do on the ground.
    Quest companions too: Hak, Darius and Vishara stay with you as long as the blockade of Janira Prime is on, aboard and on any
@@ -24962,7 +25229,10 @@ function nicoCmd(mode, quiet) {
   refreshJamesUI();
 }
 let nicoSrcP = null;
-async function companionRig(id) { // the rig any companion walks and fights with: Nico's own, a story companion's Nostrapedia model, or an imported/custom character
+async function companionRig(id) { // every companion in glory (see glory): their own presence, whoever they are
+  const R = await companionRig0(id); return gloryRig(R, id, (COMPANIONS.find(o => o.id === id) || {}).h || 1.85);
+}
+async function companionRig0(id) { // the rig any companion walks and fights with: Nico's own, a story companion's Nostrapedia model, or an imported/custom character
   if (id === 'nico') return nicoCompanionRig();
   if (SIEGE_LEADS[id]) { const R = await SIEGE_LEADS[id].rig(); if (!R) throw new Error('no model for ' + id); return R; }
   if (FINAL_LEADS[id]) { const R = await FINAL_LEADS[id].rig(); if (!R) throw new Error('no model for ' + id); return R; }
@@ -24978,7 +25248,7 @@ async function companionRig(id) { // the rig any companion walks and fights with
 async function nicoCompanionRig() { // a rig of her own (the escape and the menu have theirs), with her two pistols
   const el = document.getElementById('nicoGlb'); if (!el) throw new Error('no Nico model');
   nicoSrcP = nicoSrcP || (async () => { const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return parseGlb(u8.buffer); })();
-  const R = autoRig(SkeletonUtils.clone(await nicoSrcP), 1.72); armRig(R, 'pistols'); R.gearKind = 'pistols'; return R;
+  const R = autoRig(SkeletonUtils.clone(await nicoSrcP), 1.72); armRig(R, 'pistols'); R.gearKind = 'pistols'; return gloryRig(R, 'nico', 1.72);
 }
 function nicoGear(R, kind) { // pistols, or Orion's kind of obsidian pickaxe when she's mining
   if (R.gearKind === kind) return; R.gearKind = kind;
@@ -27863,7 +28133,7 @@ function loadDataScript(id, kind) { // fetch a data/<id>.js pack only when it's 
     const sc = document.createElement('script'); sc.src = `data/${id}.js`; sc.onload = () => res(true); sc.onerror = () => res(false); document.body.appendChild(sc);
   });
 }
-async function glbRig(id, h, weapon, lazy) { if (lazy) await loadDataScript(id, 'glb'); const src = await embGlb(id); if (!src) return null; const R = autoRig(SkeletonUtils.clone(src), h); armRig(R, weapon || 'none'); return R; }
+async function glbRig(id, h, weapon, lazy) { if (lazy) await loadDataScript(id, 'glb'); const src = await embGlb(id); if (!src) return null; const R = autoRig(SkeletonUtils.clone(src), h); armRig(R, weapon || 'none'); const gk = gloryTagKind(id); return gk ? gloryRig(R, gk, h) : R; } // a companion in a cutscene, in glory too
 // ---- the stage: a dark place the memories play out in ----
 function nmStage() {
   if (NM.scene) return NM.scene;
@@ -29530,7 +29800,7 @@ async function placeOrion() {
       const el = document.getElementById('cpOrion'); if (!el) return null;
       const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       const R = autoRig(SkeletonUtils.clone(await parseGlb(u8.buffer)), 1.85); armRig(R, 'none'); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
-      R.lips = faceRig(R.root); return (world.orion = R);
+      gloryRig(R, 'orion', 1.85); R.lips = faceRig(R.root); return (world.orion = R);
     })().catch(e => { console.error('Orion failed to load', e); world.orionLoad = null; return null; });
     if (!(await world.orionLoad)) return;
   }
@@ -30638,6 +30908,7 @@ async function loadCharRig(c, targetH) {
   const R = autoRig(SkeletonUtils.clone(sc), targetH || c.height || 2);
   R.root.userData.keep = true; R.slasher = !!c.slasher; R.char = c;
   armRig(R, c.weapon || 'none');
+  const mk = IMPORT_TAGS[c.tag]; if (mk) { const r = MAJ_RIM[mk]; for (const w of R.gear) gloryMats(w, mk === 'josiah' ? new THREE.Color(0xffc85a) : new THREE.Color(r[0], r[1], r[2]), mk === 'josiah' ? { rimK: 1, glit: 2.5 } : { rimK: 1.3 }); } // their weapons blaze with them
   if (c.flip) R.turn.rotation.y = Math.PI;
   return R;
 }
@@ -32387,6 +32658,7 @@ function loadFigure(c) {
     sc.updateMatrixWorld(true); gearNoMeasure(sc);
     const b = boxNoGear(sc), ctr = b.getCenter(new THREE.Vector3()); // sized and centred on the body, not a weapon they carry (Croxian's scythe)
     sc.position.set(-ctr.x, -b.min.y, -ctr.z); holder.scale.setScalar(c.h / Math.max(.01, b.max.y - b.min.y));
+    { const gk = !c.sil && gloryTagKind(c.tag, c.mod); if (gk) gloryOn(holder, gk, b.max.y - b.min.y, c.pcol); } // a companion's file shows them in glory
     holder.userData.keep = true;
     return holder;
   })();
@@ -32879,12 +33151,13 @@ async function resSpawn(c, near) {
   if (!md || !RES.bots.includes(B)) return;
   B.body = md.m; B.L = md.L; B.human = md.human; B.root.add(md.m); wScene.add(B.root); B.ready = true;
   B.root.position.set(B.x, B.y, B.z); B.root.rotation.y = B.ry;
+  try { gloryResident(B); } catch (e) { console.error(e); } // their own presence (see glory)
   resAlOutfit(B); resGearDress(B);
   const GM = myGuild(); resSay(B, resPartying(c) && clubHere() ? (resT('party', B, resPartyCtx(B), 'arrive') || 'Who’s ready to celebrate?') : GM && GM.members.includes(B.id) ? (resT('guildHi', B) || `Good to see you, ${wanderer.name}!`) : resLine('arrive', B));
 }
 // villains look the part: their outfit darkens like any wanderer's does
 function resAlOutfit(B) { try { if (!B.human) return; const k = alDarkK((B.c.align && B.c.align.p) || 0); if (k) B.body.traverse(o => { if (o.isMesh && o.material && o.material.color && !/visor|glass|skin|face/i.test(o.material.name || '')) o.material.color.lerp(AL_DARK, k * .7); }); } catch (e) {} }
-function resDespawn(B) { if (B.root.parent) B.root.parent.remove(B.root); RES.bots = RES.bots.filter(o => o !== B); if (B.partner) { B.partner.partner = null; B.partner.task = null; } }
+function resDespawn(B) { if (B.root.parent) B.root.parent.remove(B.root); try { gloryDrop(B.root.children.find(o => o.userData && o.userData.glory)); } catch (e) {} RES.bots = RES.bots.filter(o => o !== B); if (B.partner) { B.partner.partner = null; B.partner.task = null; } }
 function resClearGround() { for (const B of [...RES.bots]) resDespawn(B); RES.area = null; }
 
 // ---- what they say: lines written for each moment, in their own voice (alignment and species) ----
