@@ -344,15 +344,24 @@ body.vile .taunt span{font-size:clamp(12px,1.35vw,18px);letter-spacing:.1em}
 body.vile:not(.ch4) .taunt span{color:#d070ff;text-shadow:0 0 18px rgba(176,42,255,.75),0 0 2px #f0c0ff}
 .taunt small{display:none} .taunt.signed small{display:block;margin-top:.6em;font-family:var(--display);font-size:clamp(9px,1vw,12px);letter-spacing:.4em;text-transform:uppercase;color:#ff5a8a;opacity:.85;transition:opacity 1.2s} .taunt.signed.out small{opacity:0}
 body.ch4 .taunt.signed small{color:#ff8a7e}
+body.lead[data-lead="karribassa"]{--lc:#ffb060;--lc2:#ffd9a0;--lbg:16,8,2} body.lead[data-lead="alphinos"]{--lc:#ffcf6a;--lc2:#ff9a7a;--lbg:18,5,3}
+body.lead[data-lead="commons"]{--lc:#9fd0ff;--lc2:#b8e6b0;--lbg:6,10,8} body.lead[data-lead="citadel"]{--lc:#f2b4e0;--lc2:#cfe8ff;--lbg:10,8,20}
+body.lead[data-lead="archiostal"]{--lc:#ffd88a;--lc2:#a8f0c0;--lbg:14,11,4} body.lead[data-lead="bastion"]{--lc:#7fe0a0;--lc2:#d8ffd0;--lbg:5,10,6}
+body.lead[data-lead="timpur"]{--lc:#58d8c0;--lc2:#cfeeff;--lbg:2,10,14} body.lead[data-lead="zark"]{--lc:#b98aff;--lc2:#ff7ad0;--lbg:9,3,16}
+body.lead #title{background:linear-gradient(90deg,rgba(var(--lbg),.96) 0%,rgba(var(--lbg),.78) 30%,rgba(var(--lbg),0) 62%)} /* a faction leader's menu: their colours, on their menu only */
+body.lead #title .wordmark{text-shadow:0 0 30px var(--lc)} body.lead #title .mi.primary span{text-shadow:0 0 14px var(--lc)}
+body.lead #title .brand svg.mark{filter:drop-shadow(0 0 12px var(--lc)) drop-shadow(0 0 3px var(--lc))}
+body.lead #title .taunt{display:block;position:absolute;right:calc(var(--sr) + 6vw);bottom:calc(var(--sb) + max(16vh, 200px));max-width:min(520px,44vw);text-align:right;pointer-events:none}
+body.lead #title .taunt span{color:var(--lc);text-shadow:0 0 18px var(--lc),0 0 2px #fff;animation:none} body.lead #title .taunt.signed small{color:var(--lc2)}
 body.haw:not(.vile) #title .taunt{display:block;position:absolute;right:calc(var(--sr) + 6vw);bottom:calc(var(--sb) + max(16vh, 200px));max-width:min(520px,44vw);text-align:right;pointer-events:none} /* Chapter III: Hawthorne */
 body #title .taunt.hawl span{color:#5ff2ff;text-shadow:0 0 18px rgba(40,220,255,.7),0 0 2px #c8fbff}
 body #title .taunt.hawl.signed small{color:#8fe9ff}
 @keyframes ch4flick{0%,92%,100%{opacity:1}93%{opacity:.55}94%{opacity:1}96%{opacity:.7}}
 @keyframes ch4jit{0%,96%,100%{transform:none}97%{transform:translateX(-2px) skewX(-6deg)}98%{transform:translateX(2px)}}
 @media (max-width:720px),(max-aspect-ratio:1/1){
-  body.ch4 #title .taunt,body.vile #title .taunt,body.haw:not(.vile) #title .taunt{left:16px;right:16px;max-width:none;text-align:center;top:auto;bottom:calc(var(--sb) + 4px)}
+  body.ch4 #title .taunt,body.vile #title .taunt,body.haw:not(.vile) #title .taunt,body.lead #title .taunt{left:16px;right:16px;max-width:none;text-align:center;top:auto;bottom:calc(var(--sb) + 4px)}
   body.vile #title .foot{visibility:hidden} .taunt.signed small{font-size:8px;margin-top:.3em} body.vile .taunt span{font-size:10px;letter-spacing:.06em}
-  body.ch4 #title .foot,body.haw #title .foot{visibility:hidden} /* the voice speaks where the footer was, clear of the menu and the location panel */
+  body.ch4 #title .foot,body.haw #title .foot,body.lead #title .foot{visibility:hidden} /* the voice speaks where the footer was, clear of the menu and the location panel */
   body.ch4 #title .yearstamp{top:calc(var(--st) + 12px);right:50%;transform:translateX(50%);font-size:9px}
   .taunt span{font-size:10px;line-height:1.3;letter-spacing:.06em} /* tight enough that even the longest line fits under the menu in three rows */
   #title .yearstamp{top:calc(var(--st) + 12px);right:50%;transform:translateX(50%);font-size:9px}
@@ -1952,6 +1961,7 @@ const HAW_SP = {
 };
 const hawMenu = () => { // Chapter III (from the escape from New London) until Hawthorne dies on Mercury; never in Chapter IV or V
   if (forceCh === 3) return true; // ?menu=ch3 previews it
+  if (leadOn()) return false; // a faction leader you're at war with comes first
   if (!wanderer || chNow() >= 4 || effCh() !== 3) return false;
   return !c3f('hawDead') && !c3f('hawBeaten');
 };
@@ -1960,6 +1970,191 @@ function hawList() { // his lines, scrambled, with your species' after every two
   base.forEach((t, i) => { out.push(t); if (i % 2 === 1 && k < sp.length) out.push(sp[k++]); });
   while (k < sp.length) out.push(sp[k++]);
   return out.map(t => ({ t, who: 'Thomas Hawthorne', haw: true }));
+}
+/* ============ the faction leader menus (Chapters III–V) ============
+   At war with a story faction in Diplomacy, the main menu is that faction's leader, alone in their throne room, speaking to you in
+   their own colours (your wanderer isn't there). The UI is theirs alone: the white menu and Chapter IV's blood red are untouched, and
+   the blood red still takes over (Chapter IV after the time skip, Chapter V on BLOOD RED). The leader comes first: over the evil
+   menu, a deputy, a villain resident and Hawthorne's cyan. At war with several, they take turns, three lines each.
+     Hak Chompjak V · his throne room in Karribassa (Chapter III); seated on his throne in Alphinos (IV–V)
+     Darius Ancin · the House of Commons, on Earth           Vishara Erisconos · the throne room of the Citadel el Erisconos (Alexia, while she holds it)
+     Archamus · the throne room of Archiostal (the Order, III); with Am-Grek (the Grek Empire, IV–V)
+     Am-Grek · the Bastion of Carax (III); the throne room of Archiostal beside Archamus (IV–V)
+     Timpur IV · the throne room of Timpur Prime (III–V)     Lord Zark · on the Catharsis world (Chapter III only; in IV he's the voice he already is)
+   ?leader=hak (or alphinos, darius, vishara, alexia, archamus, grek, amgrek, timpur, zark) previews one. */
+const LEAD_LINES = {
+  hak: ['The House of Chompjak has outlasted every enemy it ever had. Add your name to the list.', 'I swore my worlds would never be divided again. You came to divide them.',
+    'Shakhak broke the Grob at Steca. I can break one wanderer.', 'My navy is the oldest in the galaxy. It has never forgotten how to win.', 'You stand in my court uninvited. My ancestors would have you thrown in the canals.',
+    'Aridaxx has burned before. It rose. It always rises.', 'I wear these glasses to see my enemies clearly. I see you very clearly.', 'Five Chompjaks before me held this throne. I will not be the one who loses it.',
+    'You make war on the Chompy Empire. The Chompy Empire makes war back.', 'My people have bled for this peace. I will not let you spill more of it.', 'Come to my throne room, wanderer. I have been waiting.',
+    'Every world you take from me, I take back twice.', 'The Empire is not a man on a throne. It is a billion people behind him.', 'I am patient. Emperors must be.',
+    'Sevirrus split this empire in half. I stitched it together. You will not tear it.', 'I do not hate you. I simply will not let you win.', 'The canals of Karribassa run deep. So does my resolve.',
+    'Ask the Grob what happens to those who come for the Chompy.', 'Your fleet is brave. Mine is large.', 'I will meet you on the field, and I will not hold back.',
+    'There is no shame in surrender to an emperor.', 'You came a long way to lose.', 'My crown is heavy. It has to be, to hold all this.',
+    'I fight for the House of Chompjak. What do you fight for?', 'When this war ends, I will still be emperor. Will you still be anything?',
+    'I have held this throne through worse than you.', 'Every banner in this hall was won from someone who thought they could beat us.', 'Kneel, and I will be merciful. Stand, and I will be thorough.',
+    'The Chompy do not forget. The Chompy do not forgive. The Chompy endure.', 'FOR THE HOUSE OF CHOMPJAK.'],
+  vishara: ['A billion years I have kept Eris. I will not lose it to a wanderer.', 'The cold remembers everyone who crossed it.', 'You come into the Citadel el Erisconos as an enemy. Few leave it.',
+    'Erisians give their loyalty once. You will never have ours.', 'Patience is our oldest weapon. I have more of it than you have time.', 'The aurora over the Citadel is beautiful tonight. It will be beautiful over your ruin.',
+    'I am the Matriarch. My sisters, my people, my world. You threaten all three.', 'Ice does not hurry. Ice does not stop.', 'You will find no warmth in this throne room.',
+    'Every Erisian knows how to wait. I know how to end.', 'Eris has served greater empires than yours, and outlived them all.', 'I am unreadable. Read this, then: I will not yield.',
+    'The great houses stand with me. They always have.', 'Speak softly in my hall, wanderer. The ice carries every word.', 'Do you hear it? The silence of a world that has decided you are finished.',
+    'My sister thinks you are interesting. I think you are a problem.', 'There is no crack in this ice for you to find.', 'We guarded the nobles of Earth in silence. We will guard Eris in war.',
+    'Kneel before the Matriarch, and keep your life.', 'Frost on the window. Frost on the heart. Eris endures.', 'A thousand winters have tried to break this Citadel. You are a mild breeze.',
+    'I do not raise my voice. I raise my guard.', 'You mistake our calm for weakness. Many have.', 'Every Erisian you strike, the rest remember.', 'The Citadel el Erisconos has never fallen. It will not start with you.',
+    'Come closer. Let the cold decide what you are.', 'I have time. You do not.', 'Peace is a gift Eris gives. War is a lesson Eris teaches.', 'Leave my world, wanderer, while I still allow it.', 'ERIS ENDURES.'],
+  alexia: ['I took this throne from my own sister. You think I will hand it to you?', 'The Citadel el Erisconos is mine. Every stone of it.', 'Hawthorne promised me an army. I never needed one.',
+    'Vishara sat on this throne and did nothing. I do everything.', 'You came to put my sister back. She is not coming back.', 'The ice obeys me now.', 'I am the Matriarch the Erisians deserve.',
+    'Every courtier in this hall chose me. The ones who didn’t are elsewhere.', 'My sisters waited for centuries. I did not.', 'You should have stayed out of a family matter, wanderer.',
+    'Patience is for the weak. I took what I wanted.', 'This throne room is colder since I came. I like it.', 'Kneel to me, and I may let you leave Eris.', 'The aurora burns brighter for me.',
+    'Nyrexia always liked you. That is not a recommendation.', 'Eris needed a ruler who acts. Here I am.', 'You cannot restore what I have replaced.', 'Come and take the Citadel, if you can.',
+    'I am not my sister. I do not forgive.', 'THE CITADEL IS MINE.'],
+  darius: ['I have spent my life keeping humanity alive. I will not stop for you.', 'This is the House of Commons. Here, humanity decides. Not you.', 'Order, order. The House recognises an enemy of the Federation.',
+    'Every bench in this chamber has seen a war debated. Yours will be short.', 'Humanity survived a world war. It will survive you.', 'The Federation is not a flag. It is eight billion people, and I speak for them.',
+    'I would rather talk than fight. You have left me no choice.', 'You stand where prime ministers stood. Show some respect.', 'Earth has had enough tyrants. I will not let you be the next.',
+    'The Commons will vote, and the vote will be war.', 'We rebuilt from ashes once. We are very good at it.', 'I am a president, not a soldier. Do not make me remember how to be one.',
+    'There is a speech for this, wanderer. I have written it. It ends with your defeat.', 'Every member of this House would die for Earth. I hope it won’t come to that.', 'Federation! To me!',
+    'Humanity’s worst century is behind us. I won’t let you start the next one.', 'The despatch box has heard every kind of threat. Yours is not the worst.', 'I keep humanity alive. That is the whole job.',
+    'You think the Federation is weak because it argues. It argues because it is free.', 'Leave Earth alone, and Earth will leave you alone.', 'My hands have shaken a thousand times. They are steady now.',
+    'The galleries are full. They want to see me hold the line.', 'Hear, hear, they’ll say, when you fall.', 'I don’t need to win. I need to outlast you. Humanity always outlasts.',
+    'I would offer you peace terms, but you would not read them.', 'The House is in session. The motion is: you lose.', 'For eight billion people, I will stand here as long as it takes.',
+    'Earth is not for sale and not for taking.', 'The Guardian of Humanity, they call me. I intend to earn it today.', 'FOR EARTH. FOR ALL OF US.'],
+  archamus: ['I have guided the Grek since before their stars were named. Kneel, and be guided.', 'This is Archiostal, and I am the Prime Good. You are in the wrong place.',
+    'My light reaches every corner of this throne room. There is nowhere for you to stand in shadow.', 'Every war I fight is good. That is what it means to be the Prime Good.',
+    'The faithful pray to me at dawn. Tonight, they pray for your defeat.', 'Archiostal’s gardens grew under my light. Your ambitions will wither under it.', 'I do not hate you. I am incapable of it. I will defeat you anyway.',
+    'You see a hood and a voice. You do not yet see me.', 'The Order has stood for longer than your species has looked up.', 'Kneel, wanderer. Even the stars kneel here.',
+    'The Grek trust me with their souls. Trust me with yours.', 'Good does not negotiate with what opposes it.', 'I answered the first king of Timpur. I will answer you, too.',
+    'There is a light in Archiostal that has never gone out. You will not be the one to dim it.', 'My servants are many and my patience is infinite.', 'Come to the throne room, little one. The light is waiting.',
+    'You fight the Order. The Order is everything good. Think about what that makes you.', 'I have watched empires choose against me. I have watched them fall.', 'The faithful stand with me.',
+    'Every hymn sung in this hall is sung against you now.', 'I am not cruel. I am certain.', 'Look upon the light, and know you cannot win against it.', 'You may strike at the Order. You cannot strike at faith.',
+    'Archiostal is holy ground. Tread carefully, or not at all.', 'I have all the time there has ever been.', 'Your victories are brief. My light is not.', 'Turn back, and be forgiven.', 'The Prime Good does not lose. It only waits.',
+    'Then see me as I am, if you must.', 'I AM THE PRIME GOOD.'],
+  amgrek: ['Archamus guides my hand. It has never missed.', 'I am Am-Grek, High Hierarch. The Grek Empire stands behind me.', 'The Grek are slow to anger. You have been very patient in angering us.',
+    'Broad shoulders, sharp tusks, and the light of Archamus. You have none of the three.', 'I braid my beard for the faithful. I sharpen my blade for you.', 'Our station is our faith, and our faith has walls.',
+    'The Grek tend everything they love. We will tend your defeat with care.', 'Every Grek warrior swore an oath to the Prime Good. None of them swore one to you.', 'Grek! The faithful stand with me!',
+    'You walk into the Hierarch’s court with a weapon. Bold. Brief.', 'The Grek Empire has held its stars for ages. It will hold them through you.', 'I do not fight for glory. I fight for Archamus.',
+    'The Order and the Empire are one. You cannot divide what faith has joined.', 'My people are slow to start wars and very slow to stop them.', 'There is a place in Archamus’s light even for you. Kneel and find it.',
+    'Every hymn of the Grek has a verse about enemies. You are in all of them now.', 'I am patient, wanderer. Patient as stone.', 'The faithful never retreat.', 'The light is with us. Look around. Is it with you?',
+    'The Hierarch’s blade has been blessed a thousand times. It only needs to land once.', 'I would prefer to convert you. I will settle for defeating you.', 'The Grek do not forget a war.',
+    'Our gardens and our guns are tended by the same hands.', 'You make war on the faithful. The faithful make war back.', 'Archamus sees you, wanderer. So do I.', 'Stand down, and the Grek will be merciful.',
+    'We are slow, and we are many, and we are certain.', 'By the light, you will not pass.', 'The Prime Good guides me. Who guides you?', 'BY ARCHAMUS’S WILL!'],
+  taredesiba: ['Timpur answers to Aridaxx. It does not answer to you.', 'The Republic has outlived empires. It will outlive you.', 'This is the throne room of Timpur Prime. Republic or not, I hold the crown here.',
+    'The senate voted for war. I am only the one who carries it out.', 'Taredesiba the First called on Archamus’s light against Obsidnia. I call on it against you.', 'Blue as the deep, and twice as patient.',
+    'At the edge of the galaxy, wanderer, we have learned to defend ourselves.', 'A crown and a senate. The best of both. Neither of them likes you.', 'You came all the way to the edge to lose.',
+    'The Republic of Timpur does not kneel. Not to empires, not to wanderers.', 'The Prime Good shines on Timpur Prime. Feel it burn.', 'Every senator in this republic signed your name onto our list of enemies.',
+    'I am the First Consul. First to stand, last to fall.', 'My people chose me. They will choose to resist you.', 'Aridaxx guides us, and Archamus blesses us. What blesses you?', 'FOR THE REPUBLIC!',
+    'You stand in a hall built by a king and ruled by a senate. It has seen off worse than you.', 'Our worlds are far, and our fleets are near.', 'The crown is old. The resolve is new.',
+    'The Republic debates everything. It agreed on you in minutes.', 'Turn back to the centre of the galaxy, wanderer. The edge is ours.', 'I am patient. Republics have to be.',
+    'Every vote in the senate is a vote against you now.', 'Kneel to the Republic, and the Republic will be generous.', 'The blue of Timpur is the blue of a very cold ocean. You will drown in it.',
+    'The First Consul does not surrender. Ask the senate. They wrote it in law.', 'I fight for a republic, and for a crown, and for my people. You fight for yourself.',
+    'There are stars out here no one else has seen. You will not live to see them.', 'The senate will vote for peace, when you have lost.', 'Timpur stands.'],
+  zark: ['You found my world. Clever. Useless.....', 'The Catharsis is not an army. It is a tide. And you are standing on the beach.', 'Look at this sky. I made it.',
+    'Every world you save, I take back by morning.', 'You call yourself a wanderer. I call you lost.', 'Come closer, little thing. The dark has teeth.', 'I am older than your stars and hungrier than your fears.',
+    'Sevirrus heard my voice once. He listened. You will too.', 'My legions are eternal....', 'Your allies are brave. Bravery feeds the dark very well.', 'I do not need to win battles. I only need to outlast hope.',
+    'This world was green once. Ask it what happened.', 'You are fighting me. Do you even know what I am?', 'The Catharsis spreads whether you fight or not. Fighting only makes it faster.',
+    'Stand on my world, then. See how long you stand.', 'I can hear your heartbeat from here. It is very loud.', 'Every light you kindle, I will snuff.', 'You came to my home. How rude. How brave. How short.',
+    'There is no hall here, no throne, no court. Only me, and the dark.', 'I made Sevirrus. I can unmake you.', 'You think this is a war. It is a feeding.', 'The stars are going out, one by one. Listen.',
+    'Run back to your ship. I will be there before you.', 'I am the Prime Evil. You are a footnote.', 'The dark remembers every name. I will remember yours, briefly.', 'Hope is a small fire in a very large night.',
+    'You can kill my servants. You cannot kill the hunger.', 'Kneel, and be eaten last.', 'This changes… nothing…', 'I AM THE PRIME EVIL.']
+};
+const LEAD_ROOMS = { // each throne room: its colours (the menu's look and its UI), and who stands (or sits) in it
+  karribassa: { name: 'Karribassa · the throne room of Hak', bg: 0x120a04, fog: 0x2a1606, floor: 0x5a3a1c, wall: 0x3a2412, trim: 0xffb060, ban: 0xd07a20, glow: 0xffa040, lc: '#ffb060', lc2: '#ffd9a0', water: true },
+  alphinos: { name: 'Alphinos · the throne of the Chompy Empire', bg: 0x140604, fog: 0x2e0e08, floor: 0x4a1a14, wall: 0x2e100c, trim: 0xffcf6a, ban: 0xb02a1e, glow: 0xffb050, lc: '#ffcf6a', lc2: '#ff9a7a', seat: true },
+  commons: { name: 'The House of Commons · Earth', bg: 0x0a0c08, fog: 0x18201a, floor: 0x3a2a1a, wall: 0x4a3420, trim: 0xd8c08a, ban: 0x2f6a3a, glow: 0xffe0a0, lc: '#9fd0ff', lc2: '#b8e6b0', commons: true },
+  citadel: { name: 'The Citadel el Erisconos · the throne room', bg: 0x0a0a14, fog: 0x2a2440, floor: 0xd8d4ea, wall: 0x8a84b0, trim: 0xf2c4e6, ban: 0xd88ac4, glow: 0xffc8f0, lc: '#f2b4e0', lc2: '#cfe8ff', ice: true },
+  archiostal: { name: 'Archiostal · the throne room of the Order', bg: 0x0e0c06, fog: 0x2a2410, floor: 0xd8c89a, wall: 0x8a7a4a, trim: 0xffe6a0, ban: 0x3a7a4a, glow: 0xfff0b0, lc: '#ffd88a', lc2: '#a8f0c0', halo: true },
+  bastion: { name: 'Carax · the Bastion of the Grek', bg: 0x080a08, fog: 0x161c16, floor: 0x3a403a, wall: 0x262c26, trim: 0x7fe0a0, ban: 0x2a6a3a, glow: 0x9aff9a, lc: '#7fe0a0', lc2: '#d8ffd0' },
+  timpur: { name: 'Timpur Prime · the throne room of the Republic', bg: 0x040c10, fog: 0x0c2228, floor: 0xe0e6e8, wall: 0x9aaab0, trim: 0x58d8c0, ban: 0x1a7a8a, glow: 0x9af0ff, lc: '#58d8c0', lc2: '#cfeeff', senate: true },
+  zark: { name: 'The Catharsis world', lc: '#b98aff', lc2: '#ff7ad0', out: true }
+};
+const LEAD_WHERE = { karribassa: ['Janira Prime · the throne room', 'Karribassa'], alphinos: ['Aridaxx · the throne of the Chompy', 'Alphinos'], commons: ['Earth · the Federation', 'House of Commons'], citadel: ['Eris · the throne room', 'Citadel el Erisconos'], archiostal: ['the throne room', 'Archiostal'], bastion: ['Carax · the throne room', 'The Bastion'], timpur: ['Timpur · the throne room', 'Timpur Prime'] };
+const forceLead = (window.location.search.match(/[?&]leader=(\w+)/) || [])[1] || null;
+const LEAD_FORCE = { hak: ['karribassa', ['hak']], alphinos: ['alphinos', ['hak']], darius: ['commons', ['darius']], vishara: ['citadel', ['vishara']], alexia: ['citadel', ['alexia']],
+  archamus: ['archiostal', ['archamus']], grek: ['archiostal', ['archamusU', 'amgrek']], amgrek: ['bastion', ['amgrek']], timpur: ['timpur', ['taredesiba']], zark: ['zark', ['zark']] };
+const LEADM = { at: -1, list: [], i: 0, room: null, rooms: {}, R: {}, H: {}, key: '', yaw0: null, shown: false };
+function leadMenuCalc() { // the throne rooms of every faction you're at war with, in the order Diplomacy lists them
+  if (forceLead && LEAD_FORCE[forceLead]) { const [room, ks] = LEAD_FORCE[forceLead]; return [{ room, ks, fac: { karribassa: 'The Chompy Empire', alphinos: 'The Chompy Empire', commons: 'Human Federation of Sol', citadel: 'The Erisian Empire', archiostal: ks.length > 1 ? 'The Grek Empire' : 'The Order of Archamus', bastion: 'The Grek Empire', timpur: 'The Republic of Timpur', zark: 'The Catharsis' }[room], at: room === 'zark' ? (ALL_BODIES.find(o => o.land && String(o.fac3 || o.faction || '').startsWith('The Catharsis') && sysById(o.sys).home === o.id) || {}).id : null }]; }
+  if (!wanderer || !wanderer.dip || effCh() < 3 || isCh4Menu()) return [];
+  const D = wanderer.dip, W = D.wars || {}, ch = clamp(chNow(), 3, 5), out = []; // the story's chapter (Chapter IV before the time skip counts as IV here: Hak in Alphinos, Am-Grek beside Archamus, no Zark)
+  for (const F of dipFacsNow()) {
+    const w = W[F.id]; if (!w || w.won) continue; const r = (D.res || {})[F.id] || {}; if (r.st === 'vassal' && r.leader && r.leader !== 'own') continue; // your own companion on their throne: not this menu
+    const n0 = out.length;
+    if (F.id === 'chompy') out.push({ room: ch >= 4 ? 'alphinos' : 'karribassa', ks: ['hak'] });
+    else if (F.id === 'erisian') out.push({ room: 'citadel', ks: [ch === 3 && alexiaRules() ? 'alexia' : 'vishara'] });
+    else if (F.id === 'hfos') out.push({ room: 'commons', ks: ['darius'] });
+    else if (F.id === 'timpur') out.push({ room: 'timpur', ks: ['taredesiba'] });
+    else if (F.id === 'order') out.push({ room: 'archiostal', ks: ['archamus'] });
+    else if (F.id === 'grek') out.push(ch === 3 ? { room: 'bastion', ks: ['amgrek'] } : { room: 'archiostal', ks: ['archamusU', 'amgrek'] });
+    else if (F.id === 'catharsis' && ch === 3) { const Lo = leaderOf(F); if (Lo) out.push({ room: 'zark', ks: ['zark'], at: Lo.at }); } // Chapter III only: in Chapter IV he's the voice on the menu he already is
+    if (out.length > n0) out[out.length - 1].fac = dipFacName(F);
+  }
+  return out;
+}
+function leadMenuList() { if (time - LEADM.at > .4 || LEADM.at < 0) { LEADM.at = time; try { LEADM.list = leadMenuCalc(); } catch (e) { LEADM.list = []; } } return LEADM.list; }
+const leadOn = () => (state === 'title' || state === 'loading') && leadMenuList().length > 0;
+const leadCur = () => { const L = leadMenuList(); return L.length ? L[(LEADM.i || 0) % L.length] : null; };
+const soloMenu = () => villainMenu() || leadOn(); // menus with nobody walking beside you
+function leadName(k) { try { return leadSpec(k).full; } catch (e) { return k; } }
+function leadLines() { // their lines, scrambled and signed; two leaders share the floor line by line
+  const E = leadCur(); if (!E) return [];
+  const sets = E.ks.map(k => (LEAD_LINES[k === 'archamusU' ? 'archamus' : k] || []).slice().sort(() => Math.random() - .5).map(t => ({ t, who: leadName(k) })));
+  const out = [], n = Math.max(...sets.map(s => s.length)); for (let i = 0; i < n; i++) for (const s of sets) if (s[i]) out.push(s[i]);
+  return out;
+}
+function leadNext() { // the next leader's turn (at war with more than one)
+  if (leadMenuList().length < 2) return false; LEADM.i = (LEADM.i + 1) % leadMenuList().length; try { applyMenuEra(); } catch (e) {} return true;
+}
+function leadLookFor() { const E = leadCur(); if (!E) return null; if (E.room === 'zark') return E.at ? 'pl:' + E.at : 'vile'; const k = 'lead:' + E.room; if (!MENU_LOOKS[k]) { const R = LEAD_ROOMS[E.room]; MENU_LOOKS[k] = { bg: R.bg, fog: R.fog, dens: .03, hs: R.glow, hg: R.bg, hi: .55, sc: R.glow, si: 1.3, rc: R.trim, ri: .9, low: R.floor, high: R.floor, rock: R.wall, cry: R.wall, cryE: 0x000000, flat: true, planet: false, polar: false }; } return k; }
+function leadRoomBuild(key) { // a throne room, built round the leader: they stand at the origin, the camera looks in along +z
+  const R = LEAD_ROOMS[key], g = new THREE.Group(), M = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .75 }, o || {})), E = (c, i) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: i == null ? 1.4 : i, roughness: .5 });
+  const box = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); g.add(o); return o; };
+  const fl = new THREE.Mesh(new THREE.PlaneGeometry(44, 44), M(R.floor, { roughness: R.ice ? .25 : .7, metalness: R.ice ? .2 : 0 })); fl.rotation.x = -Math.PI / 2; fl.position.y = .02; g.add(fl);
+  const wm = M(R.wall); box(30, 14, .6, wm, 0, 7, -8.5); box(30, 14, .6, wm, 0, 7, 13); box(.6, 14, 22, wm, -11, 7, 2.2); box(.6, 14, 22, wm, 11, 7, 2.2); // four walls: the camera is inside
+  box(30, .6, 22, M(R.wall, { roughness: .9 }), 0, 13.2, 2.2); // the ceiling
+  const tm = E(R.trim, .6), pm = R.ice ? new THREE.MeshStandardMaterial({ color: 0xe8f0ff, emissive: R.trim, emissiveIntensity: .35, roughness: .1, transparent: true, opacity: .8 }) : M(R.wall, { roughness: .6 });
+  for (const x of [-6, 6]) for (const z of [-6, -1.5, 3]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(.45, .55, 12, R.ice ? 6 : 14), pm); p.position.set(x, 6, z); g.add(p); box(1.3, .35, 1.3, tm, x, .18, z); box(1.3, .35, 1.3, tm, x, 11.9, z); }
+  box(2.2, .03, 16, E(R.ban, .25), 0, .04, 2); // the carpet to the throne
+  for (const x of [-3.4, 3.4]) { const b = box(1.6, 5, .08, E(R.ban, .45), x, 7, -8.1); b.rotation.z = 0; box(1.8, .25, .2, tm, x, 9.6, -8.1); }
+  for (const x of [-4, 4]) { const st = box(.5, 1.1, .5, M(0x1a1a1a, { metalness: .6 }), x, .55, -3.5); const f = new THREE.Mesh(new THREE.ConeGeometry(.35, .9, 10), new THREE.MeshBasicMaterial({ color: R.glow, transparent: true, opacity: .9 })); f.position.set(x, 1.5, -3.5); g.add(f); g.userData.flames = (g.userData.flames || []).concat(f); const L = new THREE.PointLight(R.glow, 2.2, 14, 1.6); L.position.set(x, 2.2, -3.5); g.add(L); } // braziers
+  const th = (x, z, s) => { box(2 * s, .4, 1.8 * s, tm, x, .2, z); box(1.5 * s, 1.0 * s, 1.3 * s, M(R.wall, { roughness: .5 }), x, .4 + .5 * s, z); box(1.6 * s, 3.4 * s, .35 * s, M(R.wall, { roughness: .5 }), x, .4 + 1.7 * s, z - .6 * s); box(1.8 * s, .3 * s, .45 * s, tm, x, .4 + 3.4 * s, z - .6 * s); for (const sx of [-1, 1]) box(.25 * s, 1.5 * s, 1.3 * s, tm, x + sx * .8 * s, .4 + .75 * s, z); };
+  if (R.seat) th(0, -.55, 1.2); else if (!R.commons) th(0, -5.2, 1.4); // the Commons has the Speaker's chair instead // Hak's own throne, with him on it; everyone else's behind them
+  if (R.water) for (const x of [-8.6, 8.6]) box(2.2, .06, 20, E(0x2a7ad0, .6), x, .05, 2); // Karribassa's canals, through the hall
+  if (R.commons) { const gm = M(0x2f6a3a, { roughness: .85 }); for (const sx of [-1, 1]) for (let r = 0; r < 4; r++) { box(1.1, .6 + r * .45, 13, gm, sx * (3.6 + r * 1.2), .3 + r * .22, 3); } box(1.6, 1.0, .9, M(0x5a3a1c), 1.6, .5, .4); box(2.4, 4.2, 1.6, M(0x3a2410), 0, 2.1, -6.8); box(2.6, .4, 1.8, tm, 0, 4.4, -6.8); } // green benches, the despatch box, the Speaker's chair
+  if (R.ice) for (let i = 0; i < 14; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(.25 + Math.random() * .4, 1.5 + Math.random() * 3, 5), new THREE.MeshStandardMaterial({ color: 0xf4f0ff, emissive: R.trim, emissiveIntensity: .5, roughness: .1, transparent: true, opacity: .85 })); const a = i / 14 * Math.PI * 2; c.position.set(Math.cos(a) * 9.4, .8, -2 + Math.sin(a) * 6); g.add(c); } // ice crystals round the hall
+  if (R.halo) { const h = new THREE.Mesh(new THREE.CircleGeometry(3.4, 48), E(0xfff4c8, 1.6)); h.position.set(0, 7.6, -8.15); g.add(h); const ring = new THREE.Mesh(new THREE.TorusGeometry(3.8, .18, 8, 64), tm); ring.position.copy(h.position); g.add(ring); for (const x of [-8, 8]) for (const z of [-6, 0, 6]) { const p = new THREE.Mesh(new THREE.SphereGeometry(.7, 10, 8), M(0x3a8a4a)); p.position.set(x, .7, z); g.add(p); } } // the light of Archiostal, and its gardens
+  if (R.senate) { for (let r = 0; r < 3; r++) for (let i = 0; i < 9; i++) { const a = Math.PI * (.15 + .7 * i / 8), rad = 6.4 + r * 1.1; box(.9, .5 + r * .4, .7, M(0xd8e0e2), Math.cos(a) * rad, .25 + r * .2, -Math.sin(a) * rad - .6); } const cr = new THREE.Mesh(new THREE.TorusGeometry(1.1, .14, 8, 6), E(R.trim, 1.2)); cr.position.set(0, 9.4, -8.1); g.add(cr); } // the senate's benches, behind the crown
+  g.userData.key = key; return g;
+}
+function leadRig(k) { // their body, loaded once
+  if (LEADM.R[k] !== undefined) return LEADM.R[k];
+  LEADM.R[k] = null; leadSpec(k).load().then(R => { if (!R) return; R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); R.root.updateMatrixWorld(true); LEADM.H[k] = new THREE.Box3().setFromObject(R.root).getSize(new THREE.Vector3()).y || 2; R.mode = 'idle'; LEADM.R[k] = R; }).catch(() => null);
+  return null;
+}
+function menuLeadTick(dt) { // the throne room, and whoever holds it
+  const on = state === 'title' && leadOn() && menuLook !== 'space', E = on ? leadCur() : null;
+  if (!E) { if (LEADM.shown) { LEADM.shown = false; if (LEADM.room) LEADM.room.visible = false; for (const k in LEADM.R) if (LEADM.R[k]) LEADM.R[k].root.visible = false; player.visible = true; rocks.visible = true; crystals.visible = true; LEADM.yaw0 = null; document.body.classList.remove('lead'); } return; }
+  LEADM.shown = true; player.visible = false;
+  if (LEADM.yaw0 == null) LEADM.yaw0 = titleYaw;
+  const p = player.position, Rm = LEAD_ROOMS[E.room];
+  if (!Rm.out) { // indoors: build the room (once), put it round the leader, and keep the terrain's rocks out of it
+    const room = LEADM.rooms[E.room] || (LEADM.rooms[E.room] = leadRoomBuild(E.room));
+    if (LEADM.room && LEADM.room !== room) LEADM.room.visible = false; LEADM.room = room;
+    if (room.parent !== scene) scene.add(room); room.visible = true; room.position.set(p.x, p.y, p.z); room.rotation.y = LEADM.yaw0; rocks.visible = false; crystals.visible = false;
+    for (const f of room.userData.flames || []) { const k = 1 + Math.sin(time * 9 + f.position.x) * .12; f.scale.set(k, 1 + Math.sin(time * 7 + f.position.x) * .2, k); }
+  } else { if (LEADM.room) LEADM.room.visible = false; rocks.visible = true; crystals.visible = true; }
+  for (const k in LEADM.R) if (LEADM.R[k] && !E.ks.includes(k)) LEADM.R[k].root.visible = false;
+  const a = LEADM.yaw0, fx = Math.sin(a), fz = Math.cos(a), n = E.ks.length;
+  E.ks.forEach((k, i) => {
+    const R = leadRig(k); if (!R) return; if (R.root.parent !== scene) scene.add(R.root); R.root.visible = true;
+    const h = LEADM.H[k] || 2, s = (Math.min(h, 2.6) + Math.max(0, h - 2.6) * .25) / h * 1.25, side = n > 1 ? (i - (n - 1) / 2) * 2.1 : 0; // the tallest are brought down to fit, but still loom
+    const x = p.x + fz * side, z = p.z - fx * side; R.root.scale.setScalar(s); R.root.rotation.y = a; R.mode = 'idle'; animRig(R, dt);
+    let y = p.y;
+    if (Rm.seat) { // Hak, seated on his throne in Alphinos
+      const S2 = (o, ax, v) => { const r = o && R.rest && R.rest.get(o); if (r) o.rotation[ax] = r[ax] + v; };
+      S2(R.rl, 'x', -1.3); S2(R.ll, 'x', -1.3); if (R.rk) S2(R.rk, 'x', 1.45); if (R.lk) S2(R.lk, 'x', 1.45); S2(R.ra, 'x', -.45); S2(R.la, 'x', -.45);
+      y += 1.6 - h * s * .5; const back = -.75; // hips on the seat R.root.position.set(x + fx * back, y, z + fz * back);
+    } else R.root.position.set(x, y, z);
+  });
 }
 // ---- the evil main menu: a villain wanderer (alignment −34 or lower), in any chapter, stands alone holding the world in their hands
 //      while they say these, one after another (Chapter IV after the skip, or Chapter V in blood red: the red stacks on top) ----
@@ -2073,7 +2268,7 @@ function vileFoeNext() { // the next villain's turn: a hard tear (a blackout too
   try { vileFoeKeep(); } catch (e) {} // their body now; their race's lines follow from the next line on
   return true;
 }
-const villainMenu = () => forceVile || ownVile() || !!vileFoe();
+const villainMenu = () => forceVile || (!leadOn() && (ownVile() || !!vileFoe())); // a faction leader you're at war with comes first
 // the world in the villain's hands: a little Earth, spinning slowly between them, lit violet (blood red when the red is stacked on)
 const VILE = { g: null, red: null, S: 1.45, tw: 0, twT: 2, twA: 0, laugh: 0, laughT: 4, gl: 0, glT: 1.5, punch: 0, wdT: 1.6, sq: 0, sqT: 9, slT: 6, subT: 13, bo: 0, hb: 0, hbv: 0, shake: 0, lastW: '', act: null, actT: 3, lastAct: '', shud: 0, tilt: 1, brP: 0, hush: false, posed: false, hd: null, hdSp: null, hdFail: null, px: 0, py: 0, rlx: 0, llx: 0, prevSp: null, prevShown: false }; // S: how much bigger the villain stands on this menu (only here: the game is untouched)
 function vileGlobeTex(red) {
@@ -2346,6 +2541,7 @@ const vileSig = () => { const Q = VILE_RACE[vileRaceSp()]; return Q ? Q.filter(v
 // what the menu says: the voice's taunts in blood red; a villain's own vile words (signed) on the evil menu; both, stacked, when they meet
 function menuLines() {
   const F = vileFoe(), who = F ? String(F.name || 'A RESIDENT') : wanderer ? String(wanderer.name || 'THE WANDERER') : 'THE WANDERER', V = villainMenu(), Z = isCh4Menu(); // signed by the villain resident you're at war with, when it's them
+  if (leadOn()) return leadLines(); // a faction leader, in their throne room
   if (!V) return hawMenu() ? hawList() : tauntList().map(t => ({ t })); // Chapter III: Hawthorne, in cyan
   const sp = vileRaceSp(), own = (VILE_RACE[sp] || []).filter(vileKnown), Q = own.length >= 100 ? own : own.concat(VILE_QUOTES.slice().sort(() => Math.random() - .5).slice(0, 100 - own.length)); // their own race's 100, spoiler-free (topped up with the general lines)
   const n = Q.length, off = Math.floor(Math.random() * n); let vile = Q.map((_, i) => ({ t: Q[(i * 37 + off) % n], who })); // all 100, in a scrambled order
@@ -2370,12 +2566,14 @@ function applyMenuEra() {
   const ys = $('#yearStamp'); if (ys) ys.textContent = postSkip() ? '2127 AD' : '2125 AD';
   const st = $('#setStyle'); if (st) { st.style.display = chNow() >= 5 ? '' : 'none'; st.querySelector('.val').textContent = menuStyle === 'red' ? 'BLOOD RED' : 'NORMAL'; }
   const vile = villainMenu(), mode = `${on}|${vile}|${wanderer ? wanderer.id : ''}|${depMenu() ? 'dep:' + depOf() + (depEvil(depOf()) ? 'e' : 'g') + (DEPL ? 1 : 0) + '|' : ''}${vile ? (vileFoes().length > 1 ? 'foes:' + vileFoes().map(c => c.id).join(',') : vileRaceSp() + ':' + vileSig() + ':' + ((vileFoe() || {}).id || '')) : 0}`;
+  const lead = !on && leadOn(), LE = lead ? leadCur() : null; document.body.classList.toggle('lead', lead); if (LE) document.body.dataset.lead = LE.room; else delete document.body.dataset.lead; // a faction leader's own colours
   const haw = !on && hawMenu(); document.body.classList.toggle('ch4', on); document.body.classList.toggle('vile', vile); document.body.classList.toggle('haw', haw); // Hawthorne's cyan in Chapter III // the evil menu, with the blood red stacked on it when that's on too
   sfx.menuTrack(on || vile ? 'musicCh4' : 'music');
   if (menuLook && (state === 'title' || state === 'loading')) setMenuLook(menuLookFor());
   try { menuVileSync(); } catch (e) {}
-  if ((on || vile || haw) && (!taunt.on || taunt.mode !== mode + '|' + haw)) { taunt.on = true; taunt.mode = mode + '|' + haw; taunt.i = 0; taunt.L = null; runTaunts(++taunt.tok); }
-  else if (!on && !vile && !haw && taunt.on) { taunt.on = false; taunt.mode = ''; taunt.tok++; $('#tauntT').textContent = ''; const w = $('#tauntW'); if (w) w.textContent = ''; }
+  const lk = LE ? LE.room + ':' + LE.ks.join(',') : '';
+  if ((on || vile || haw || lead) && (!taunt.on || taunt.mode !== mode + '|' + haw + '|' + lk)) { taunt.on = true; taunt.mode = mode + '|' + haw + '|' + lk; taunt.i = 0; taunt.L = null; runTaunts(++taunt.tok); }
+  else if (!on && !vile && !haw && !lead && taunt.on) { taunt.on = false; taunt.mode = ''; taunt.tok++; $('#tauntT').textContent = ''; const w = $('#tauntW'); if (w) w.textContent = ''; }
 }
 async function runTaunts(tok) {
   const el = $('#tauntT'), box = $('#taunt'), wait = ms => new Promise(r => setTimeout(r, ms));
@@ -2389,6 +2587,7 @@ async function runTaunts(tok) {
     await wait(3600 + line.length * 30);
     if (tok !== taunt.tok) return; // a newer run has taken over (the menu changed while this one waited): leave the box to it
     box.classList.add('out'); await wait(1500);
+    if (tok === taunt.tok && state === 'title' && leadOn() && taunt.i % 3 === 0 && leadMenuList().length > 1) { taunt.L = null; leadNext(); await wait(500); } // at war with several factions: the next leader's turn
     if (tok === taunt.tok && state === 'title' && villainMenu() && taunt.i % VILE_FOE_LINES === 0 && vileFoes().length > 1) { taunt.L = null; vileFoeNext(); await wait(700); } // several villains at war with you: the next one's turn, with their own lines
   }
 }
@@ -2457,6 +2656,7 @@ let menuStyle = store.get('nv_menuStyle', 'normal');
 const isCh4Menu = () => { const c = chNow(); return (c === 4 && postSkip()) || (c >= 5 && menuStyle === 'red'); }; // Chapter IV starts in the original look (the pod); the blood red comes later
 // Chapters III–V show where the save is: your ship in space, or the world you landed on (Earth stays the ice)
 function menuLookFor() {
+  if (leadOn()) { const k = leadLookFor(); if (k) return k; } // a faction leader's throne room
   const W = menuWhere();
   if (villainMenu()) return W.kind === 'planet' || (W.kind === 'space' && W.P && W.P.land) ? 'pl:' + W.P.id : isCh4Menu() ? 'abyss' : 'vile'; // the evil menu: on the world they're on, or over (never their ship in orbit) // the evil menu: the villain stands on the world they're on (never out in space), the world in their hands
   return W.kind === 'space' ? 'space' : W.kind === 'planet' ? 'pl:' + W.P.id : isCh4Menu() ? 'abyss' : 'antarctica';
@@ -2484,7 +2684,7 @@ function setMenuLook(kind) {
 function menuCompanion() {
   if (!(state === 'title' || state === 'loading')) return;
   menuOrion(); menuNico(); menuCrewShow();
-  const want = companionOn() && !isCh4Menu() && !villainMenu();
+  const want = companionOn() && !isCh4Menu() && !soloMenu();
   if (!want) { if (james.ready && james.root.parent === scene) james.root.visible = false; return; }
   ensureJames().then(() => {
     if (!james.ready || state !== 'title' || !companionOn() || isCh4Menu()) return;
@@ -2564,8 +2764,9 @@ function menuWhereUI() {
   if (!roster.length || !wanderer || state !== 'title' && state !== 'loading') { el.hidden = true; return; }
   const W = menuWhere(), al = (wanderer.align && wanderer.align.p) | 0;
   el.hidden = false;
-  $('#mwSub').textContent = W.sub; $('#mwTitle').textContent = W.title;
-  $('#mwFac').textContent = menuHolder(W);
+  const LE = leadOn() && leadCur(); // a faction leader's menu: where they hold court, not where you saved
+  if (LE) { const P = LE.at && bodyById(LE.at), T = LEAD_WHERE[LE.room] || ['', '']; $('#mwSub').textContent = LE.room === 'zark' ? 'The Catharsis world' : T[0]; $('#mwTitle').textContent = LE.room === 'zark' ? (P ? P.name : 'The dark') : T[1]; $('#mwFac').textContent = `${LE.fac || ''} · at war with you`; }
+  else { $('#mwSub').textContent = W.sub; $('#mwTitle').textContent = W.title; $('#mwFac').textContent = menuHolder(W); }
   const a = $('#mwAl'); a.textContent = `${alRank(al)} · ${al > 0 ? '+' : ''}${al}`; a.style.color = alColor(al);
 }
 
@@ -3735,7 +3936,7 @@ function updateWorld(dt) {
 const wander = { tx: 0, tz: 0, wait: 2.5 };
 function updateWander(dt) {
   const p = player.position;
-  if (villainMenu()) { vel.x *= Math.max(0, 1 - dt * 4); vel.z *= Math.max(0, 1 - dt * 4); p.x += vel.x * dt; p.z += vel.z * dt; p.y = height(p.x, p.z); player.rotation.y = angLerp(player.rotation.y, titleYaw, Math.min(1, dt * 2)); return; } // the evil menu: standing still, facing you, the world in their hands
+  if (villainMenu() || leadOn()) { vel.x *= Math.max(0, 1 - dt * 4); vel.z *= Math.max(0, 1 - dt * 4); p.x += vel.x * dt; p.z += vel.z * dt; p.y = height(p.x, p.z); player.rotation.y = angLerp(player.rotation.y, titleYaw, Math.min(1, dt * 2)); return; } // the evil menu: standing still, facing you, the world in their hands
   const dx = wander.tx - p.x, dz = wander.tz - p.z, d = Math.hypot(dx, dz);
   let tvx = 0, tvz = 0;
   if (wander.wait > 0) wander.wait -= dt;
@@ -3779,8 +3980,8 @@ function updateCamera(dt) {
   const p = player.position;
   let target, desired;
   {
-    const vs = state === 'title' && villainMenu() && menuLook !== 'space' ? VILE.S : 1; // the evil menu: a bigger villain, the camera standing back to take them in
-    titleYaw += dt * .14 * (vs > 1 ? .45 : 1);
+    const ld = state === 'title' && leadOn() && menuLook !== 'space' && LEADM.yaw0 != null, vs = ld ? 1.25 : state === 'title' && villainMenu() && menuLook !== 'space' ? VILE.S : 1; // the evil menu: a bigger villain, the camera standing back to take them in (and a faction leader, looming)
+    if (ld) titleYaw = LEADM.yaw0 + Math.sin(time * .15) * .16; else titleYaw += dt * .14 * (vs > 1 ? .45 : 1); // in a throne room the camera holds still (just a sway), so the throne stays behind them
     const portrait = camera.aspect < 1;
     target = tmpV.set(p.x, p.y + (portrait ? .1 : 1.15) * vs + (vs > 1 && portrait ? .7 : 0), p.z);
     const d = (portrait ? 6.8 : 4.8) * (vs > 1 ? (portrait ? 1.12 : 1.06) * (1 - VILE.punch * .3) : 1); // barely further back than usual, so they loom
@@ -28918,7 +29119,7 @@ function orionAI(R, dt) {
 // on the main menu, beside your wanderer
 let menuOrionR = null, menuOrionLoad = null;
 function menuOrion() {
-  const want = state === 'title' && orionJoined() && !isCh4Menu() && !villainMenu();
+  const want = state === 'title' && orionJoined() && !isCh4Menu() && !soloMenu();
   if (!want) { if (menuOrionR) menuOrionR.root.visible = false; return; }
   if (!menuOrionLoad) menuOrionLoad = (async () => {
     const el = document.getElementById('cpOrion'); if (!el) return null;
@@ -28944,7 +29145,7 @@ function menuOrionTick(dt) {
 let menuNicoR = null, menuNicoLoad = null;
 const menuNicoSide = () => companionOn() ? [3.3, 1.1] : [1.7, .4]; // [to your right, behind you]
 function menuNico() {
-  const want = state === 'title' && nicoJoined() && !isCh4Menu() && !villainMenu();
+  const want = state === 'title' && nicoJoined() && !isCh4Menu() && !soloMenu();
   if (!want) { if (menuNicoR) menuNicoR.root.visible = false; return; }
   if (!menuNicoLoad) menuNicoLoad = nicoCompanionRig().then(R => { R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); menuNicoR = R; return R; }).catch(() => null);
   menuNicoLoad.then(R => {
@@ -28976,7 +29177,7 @@ MENU_CREW.push(...[['lead:hak', [-1.6, 3.4]], ['lead:darius', [0, 3.9]], ['lead:
 function menuCrewFit([sd, b]) { return camera.aspect < 1 && Math.abs(sd) > 2 ? [sd * .72, b + .9] : [sd, b]; } // a phone held upright: the outer two step in (and back a little) so they stay on screen
 function menuCrewShow() {
   for (const M of MENU_CREW) {
-    const want = state === 'title' && M.joined() && !isCh4Menu() && !villainMenu();
+    const want = state === 'title' && M.joined() && !isCh4Menu() && !soloMenu();
     if (!want) { if (M.R) M.R.root.visible = false; continue; }
     if (!M.load) M.load = companionRig(M.id).then(R => { R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); M.R = R; return R; }).catch(() => null);
     M.load.then(R => {
@@ -35174,6 +35375,7 @@ function loopFrame() {
   const dt = Math.min(clock.getDelta(), .05);
   time += dt;
   if (state !== 'title' && (player.scale.x !== 1 || VILE.dirty || (VILE.g && VILE.g.visible) || VILE.hd || VILE.posed)) try { menuVileTick(0); } catch (e) {} // off the evil menu: back to their own size, the world out of their hands, no glitch
+  if (state !== 'title' && LEADM.shown) try { menuLeadTick(0); } catch (e) {} // off the menu: the throne room goes, and your wanderer is back
   try { podSync(); } catch (e) {} // the pod, wherever your ship is drawn
   combatTick(dt);
   alOutfitSync(dt);
@@ -35236,6 +35438,7 @@ function loopFrame() {
   if (state === 'cc' || state === 'pedia') { ccTick(dt); sfx.music(.85); renderer.render(ccScene, ccCam); return; }
   if (state === 'title') updateWander(dt);
   try { menuVileTick(dt); } catch (e) {} // the world in a villain's hands, on the evil main menu
+  try { menuLeadTick(dt); } catch (e) {} // a faction leader in their throne room
   menuTick(dt);
   updateAnim(dt); updateWorld(dt); updateCamera(dt);
   sfx.music((state === 'create' || state === 'deploying') ? 0 : .85);
