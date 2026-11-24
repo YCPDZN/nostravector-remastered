@@ -1969,7 +1969,57 @@ const VILE_CRUSH = ['CRACK', 'QUIET NOW', 'CRUNCH', 'SQUEEZE', 'POP'], VILE_SUB 
 const VILE_RM = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })(); // reduced motion: no blackouts or subliminal frames, a gentler shake
 const forceVile = /[?&]villain(?:[=&]|$)/.test(window.location.search); // ?villain previews the evil main menu (with ?menu=ch4 or ?menu=ch5 for the red stacked on it)
 const forceVileSp = (window.location.search.match(/[?&]villain=(\w+)/) || [])[1] || null; // ?villain=chompy (or human, erisian, grek, taredesiban, oilkoumene) previews that race's lines
-const villainMenu = () => forceVile || !!(wanderer && (((wanderer.align && wanderer.align.p) | 0) <= -34) && chNow() >= 1);
+const ownVile = () => !!(wanderer && (((wanderer.align && wanderer.align.p) | 0) <= -34) && chNow() >= 1);
+// a good wanderer (alignment 34 or higher) at war with a villain resident's empire gets the evil menu too, in any chapter, with that
+// resident on it: their body, their race's lines, signed with their name. At war with several, they take turns (the latest war
+// first): every few lines the picture tears and someone else is holding the world. A villain wanderer's own evil menu always comes first.
+function vileFoes() {
+  if (forceVile || !wanderer || ownVile() || (((wanderer.align && wanderer.align.p) | 0) < 34)) return [];
+  try {
+    const R = (wanderer.dip && wanderer.dip.rw) || {}, out = [];
+    for (const id in R) { const e = resEmp.emp[id], c = e && !e.res && resRuler(e); if (c && resAl(c) === 'villain') out.push({ c, at: R[id].since || 0 }); }
+    return out.sort((a, b) => b.at - a.at).map(o => o.c);
+  } catch (e) { return []; } // too early in loading to tell
+}
+const VILE_FOE_LINES = 2; // how many lines each villain says before the next one takes over (about half a minute each)
+function vileFoe() { const L = vileFoes(); return L.length ? L[(VILE.foeI || 0) % L.length] : null; }
+// ---- the evil menu with a deputy: they hold the world, and you stand behind them, a hand on their shoulder (whatever their alignment) ----
+const depMenu = () => !forceVile && ownVile() && !!depOf();
+const DEPM = { id: null, R: null, H: 1.85 };
+function menuDepTick(dt, on) { // true while their body is in and holding the world
+  const id = on ? depOf() : null;
+  if (DEPM.R && DEPM.id !== id) DEPM.R.root.visible = false;
+  if (!id) { if (VILE.g && VILE.g.parent !== inner) inner.add(VILE.g); return false; }
+  if (DEPM.id !== id) {
+    if (DEPM.R && DEPM.R.root.parent) DEPM.R.root.parent.remove(DEPM.R.root);
+    DEPM.id = id; DEPM.R = null; const L = depAlL(id); DEPM.H = (L && L.h) || 1.85;
+    companionRig(id).then(R => { if (DEPM.id !== id) return; R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); DEPM.R = R; }).catch(() => null);
+  }
+  const R = DEPM.R; if (!R) { if (VILE.g && VILE.g.parent !== inner) inner.add(VILE.g); return false; } // until their body is in, you hold it yourself
+  if (R.root.parent !== scene) scene.add(R.root);
+  const p = player.position, a = player.rotation.y, fx = Math.sin(a), fz = Math.cos(a), k = VILE.S * clamp(2.05 / DEPM.H, .8, 1), f = .62 * VILE.S, sd = -(.34 + Math.max(0, DEPM.H * clamp(2.05 / DEPM.H, .8, 1) - 1.9) * .35) * VILE.S; // in front of you, a little to your right (the tallest a little smaller, and further aside)
+  const x = p.x + fx * f + fz * sd, z = p.z + fz * f - fx * sd;
+  R.root.visible = true; R.root.position.set(x, height(x, z), z); R.root.rotation.y = a; R.root.scale.setScalar(k); R.mode = 'idle'; animRig(R, dt);
+  const S = (o, ax, v) => { const r = o && R.rest && R.rest.get(o); if (r) o.rotation[ax] = r[ax] + v; }, w = wxSign(R), br = Math.sin(time * 1.6) * .02;
+  S(R.ra, 'x', -1.05 - br); S(R.la, 'x', -1.05 - br); S(R.ra, 'z', -w * .3); S(R.la, 'z', w * .3); // their hands round the world
+  if (VILE.g && VILE.g.parent !== R.root) R.root.add(VILE.g);
+  return true;
+}
+function depPose(dt) { // you, behind them: your right hand on their left shoulder, breathing slow, not a twitch
+  VILE.posed = true; vileHeadOff();
+  const br = Math.sin(time * 1.3) * .03, R = 8;
+  damp(rig.ra.rotation, 'x', -1.4 + br * .3, R, dt); damp(rig.ra.rotation, 'z', .1, R, dt); damp(rig.la.rotation, 'x', .05 + br, R, dt); damp(rig.la.rotation, 'z', 0, R, dt);
+  damp(inner.rotation, 'x', .06, R, dt); damp(inner.rotation, 'y', 0, R, dt); damp(inner.rotation, 'z', 0, R, dt);
+  inner.position.set(0, 0, 0); rig.rl.rotation.x = -inner.rotation.x; rig.ll.rotation.x = -inner.rotation.x; rig.rl.rotation.z = 0; rig.ll.rotation.z = 0;
+}
+function vileFoeNext() { // the next villain's turn: a hard tear (a blackout too, unless motion is reduced), and they're standing there instead
+  const L = vileFoes(); if (L.length < 2) return false;
+  VILE.foeI = ((VILE.foeI || 0) + 1) % L.length; VILE.gl = .5; VILE.glT = 1.2; VILE.shake = Math.max(VILE.shake, .45); if (!VILE_RM) VILE.bo = .18;
+  VILE.act = null; VILE.hush = false; VILE.laugh = 0; VILE.sq = 0; try { sfx.glitchStatic(.6); } catch (e) {}
+  try { vileFoeKeep(); } catch (e) {} // their body now; their race's lines follow from the next line on
+  return true;
+}
+const villainMenu = () => forceVile || ownVile() || !!vileFoe();
 // the world in the villain's hands: a little Earth, spinning slowly between them, lit violet (blood red when the red is stacked on)
 const VILE = { g: null, red: null, S: 1.45, tw: 0, twT: 2, twA: 0, laugh: 0, laughT: 4, gl: 0, glT: 1.5, punch: 0, wdT: 1.6, sq: 0, sqT: 9, slT: 6, subT: 13, bo: 0, hb: 0, hbv: 0, shake: 0, lastW: '', act: null, actT: 3, lastAct: '', shud: 0, tilt: 1, brP: 0, hush: false, posed: false, hd: null, hdSp: null, hdFail: null, px: 0, py: 0, rlx: 0, llx: 0, prevSp: null, prevShown: false }; // S: how much bigger the villain stands on this menu (only here: the game is untouched)
 function vileGlobeTex(red) {
@@ -1988,8 +2038,8 @@ function vileGlobeTex(red) {
 }
 function menuVileTick(dt) {
   const want = state === 'title' && villainMenu() && menuLook !== 'space';
-  if (!want) { if (VILE.g) VILE.g.visible = false; vileHeadOff(); if (VILE.posed) { VILE.posed = false; inner.position.set(0, 0, 0); inner.rotation.set(0, 0, 0); for (const k of ['rl', 'll']) if (rig[k]) rig[k].rotation.z = 0; } VILE.act = null; VILE.hush = false; if (VILE.prevShown) { VILE.prevShown = false; if (VILE.prevLook && lastLookC === VILE.prevLook && VILE.prevLook !== wanderer) try { applyLook(wanderer || DEFAULT_W); } catch (e) {} } if (player.scale.x !== 1) player.scale.setScalar(1); vileFx(false); return; }
-  if (forceVile) vilePrevKeep();
+  if (!want) { try { menuDepTick(0, false); } catch (e) {} if (VILE.g) VILE.g.visible = false; vileHeadOff(); if (VILE.posed) { VILE.posed = false; inner.position.set(0, 0, 0); inner.rotation.set(0, 0, 0); for (const k of ['rl', 'll']) if (rig[k]) rig[k].rotation.z = 0; } VILE.act = null; VILE.hush = false; if (VILE.prevShown) { VILE.prevShown = false; if (VILE.prevLook && lastLookC === VILE.prevLook && VILE.prevLook !== wanderer) try { applyLook(wanderer || DEFAULT_W); } catch (e) {} } if (player.scale.x !== 1) player.scale.setScalar(1); vileFx(false); return; }
+  if (forceVile) vilePrevKeep(); else vileFoeKeep();
   player.scale.setScalar(VILE.S); vileFx(true); vileBeats(dt);
   if (!VILE.g) {
     const g = VILE.g = new THREE.Group(), ball = new THREE.Mesh(new THREE.SphereGeometry(.3, 40, 24), new THREE.MeshStandardMaterial({ roughness: .55, metalness: .05, emissive: 0x220a30, emissiveIntensity: .6 }));
@@ -2000,7 +2050,7 @@ function menuVileTick(dt) {
   VILE.g.visible = true; VILE.ball.rotation.y += dt * (VILE.hush ? 0 : VILE.sq > 0 ? 2.2 : .35); // when they go still, so does the world
   const sq = VILE.sq > 0 ? (VILE.sq > .85 ? (1.1 - VILE.sq) / .25 : Math.max(0, VILE.sq / .85) ** 1.6) : 0, jj = sq * (Math.random() - .5) * .08; // the crush: in hard, a shudder, then it springs back
   VILE.ball.scale.set(1 - sq * .32 + jj, 1 - sq * .48 - jj, 1 - sq * .32 + jj); VILE.air.scale.setScalar(1 - sq * .25 + Math.abs(jj));
-  const H = (SPECIES[curSpecies] && SPECIES[curSpecies].height) || 2;
+  const dep = menuDepTick(dt, depMenu()), H = dep ? DEPM.H : (SPECIES[curSpecies] && SPECIES[curSpecies].height) || 2; // your deputy holds it, when you have one
   VILE.g.position.set(0, H * .5 + Math.sin(time * 1.6) * .015 + (VILE.laugh > 0 ? Math.abs(Math.sin(time * 21)) * .03 : 0), H * .27); VILE.glow.material.opacity = .42 + Math.sin(time * 2.1) * .1 + sq * .5 + VILE.hbv * .08; // between their hands, breathing (and flaring as it's crushed)
 }
 function vileBeats(dt) {
@@ -2174,6 +2224,11 @@ function vilePrevKeep() {
   if ((!shown || !VILE.prevShown) && !pendingLook) { VILE.prevShown = true; try { applyLook(VILE.prevLook = vilePrevLook(sp)); } catch (e) {} } // and again if anything puts the wanderer's own body back meanwhile
   vilePrevUI();
 }
+function vileFoeKeep() { // the villain resident's body on the menu (and your own back if the war ends or you turn villain yourself)
+  const F = vileFoe();
+  if (F) { if (lastLookC !== F && !pendingLook) { VILE.prevShown = true; try { applyLook(VILE.prevLook = F); } catch (e) {} } return; }
+  if (VILE.prevShown && VILE.prevLook && lastLookC === VILE.prevLook && VILE.prevLook !== wanderer) { VILE.prevShown = false; try { applyLook(wanderer || DEFAULT_W); } catch (e) {} }
+}
 function vilePrevSet(step) {
   const i = VILE_PREV_SP.indexOf(VILE.prevSp); VILE.prevSp = VILE_PREV_SP[(i + step + VILE_PREV_SP.length) % VILE_PREV_SP.length];
   VILE.prevShown = false; VILE.act = null; VILE.hush = false; VILE.laugh = 0; VILE.sq = 0; try { sfx.click(); } catch (e) {}
@@ -2232,14 +2287,18 @@ function vileKnown(line) {
     return RULES.every(([re, ok]) => !re.test(line) || ok());
   } catch (e) { return !/Hawthorne|Imperarch|Terra Imperia|Ancin|Darius|Federation|Resistance|\bHak\b|Chompjak|Am-Grek|Matriarch|Timpur IV|Tyromairon|Tyronihlus|Tyrotaronus|Obsidnia|Obra-Spira|Warden|great spire|processional/.test(line); } // too early to tell: say nothing that names anyone
 }
-const vileRaceSp = () => forceVile && VILE.prevSp ? VILE.prevSp : forceVileSp && VILE_RACE[forceVileSp] ? forceVileSp : spOf(wanderer);
+const vileRaceSp = () => { if (forceVile && VILE.prevSp) return VILE.prevSp; if (forceVileSp && VILE_RACE[forceVileSp]) return forceVileSp; const F = vileFoe(); return spOf(F || wanderer); }; // the villain resident's race, when it's them on the menu
 const vileSig = () => { const Q = VILE_RACE[vileRaceSp()]; return Q ? Q.filter(vileKnown).length : 0; }; // changes as you meet people: the menu's lines refresh with it
 // what the menu says: the voice's taunts in blood red; a villain's own vile words (signed) on the evil menu; both, stacked, when they meet
 function menuLines() {
-  const who = wanderer ? String(wanderer.name || 'THE WANDERER') : 'THE WANDERER', V = villainMenu(), Z = isCh4Menu();
+  const F = vileFoe(), who = F ? String(F.name || 'A RESIDENT') : wanderer ? String(wanderer.name || 'THE WANDERER') : 'THE WANDERER', V = villainMenu(), Z = isCh4Menu(); // signed by the villain resident you're at war with, when it's them
   if (!V) return tauntList().map(t => ({ t }));
   const sp = vileRaceSp(), own = (VILE_RACE[sp] || []).filter(vileKnown), Q = own.length >= 100 ? own : own.concat(VILE_QUOTES.slice().sort(() => Math.random() - .5).slice(0, 100 - own.length)); // their own race's 100, spoiler-free (topped up with the general lines)
-  const n = Q.length, off = Math.floor(Math.random() * n), vile = Q.map((_, i) => ({ t: Q[(i * 37 + off) % n], who })); // all 100, in a scrambled order
+  const n = Q.length, off = Math.floor(Math.random() * n); let vile = Q.map((_, i) => ({ t: Q[(i * 37 + off) % n], who })); // all 100, in a scrambled order
+  if (depMenu()) { depLinesLoad(); const id = depOf(), DQ = depLines(id); if (DQ && DQ.length) { // your deputy does the talking (reluctant if they're good, devoted if they're evil), and you get a word in after every three
+    const nm = depFull(id), m = DQ.length, o2 = Math.floor(Math.random() * m), out = [];
+    for (let i = 0; i < m; i++) { out.push({ t: DQ[(i * 37 + o2) % m], who: nm }); if (i % 3 === 2) out.push(vile[(i / 3 | 0) % vile.length]); }
+    vile = out; } }
   if (!Z) return vile;
   const zt = tauntList(), out = []; vile.forEach((q, i) => { out.push(q); if (i % 3 === 2) out.push({ t: zt[(i / 3 | 0) % zt.length] }); }); return out; // the voice still gets its word in
 }
@@ -2255,7 +2314,7 @@ function applyMenuEra() {
   const bt = $('#briefT'); if (bt) bt.innerHTML = briefNow();
   const ys = $('#yearStamp'); if (ys) ys.textContent = postSkip() ? '2127 AD' : '2125 AD';
   const st = $('#setStyle'); if (st) { st.style.display = chNow() >= 5 ? '' : 'none'; st.querySelector('.val').textContent = menuStyle === 'red' ? 'BLOOD RED' : 'NORMAL'; }
-  const vile = villainMenu(), mode = `${on}|${vile}|${wanderer ? wanderer.id : ''}|${vile ? vileRaceSp() + ':' + vileSig() : 0}`;
+  const vile = villainMenu(), mode = `${on}|${vile}|${wanderer ? wanderer.id : ''}|${depMenu() ? 'dep:' + depOf() + (depEvil(depOf()) ? 'e' : 'g') + (DEPL ? 1 : 0) + '|' : ''}${vile ? (vileFoes().length > 1 ? 'foes:' + vileFoes().map(c => c.id).join(',') : vileRaceSp() + ':' + vileSig() + ':' + ((vileFoe() || {}).id || '')) : 0}`;
   document.body.classList.toggle('ch4', on); document.body.classList.toggle('vile', vile); // the evil menu, with the blood red stacked on it when that's on too
   sfx.menuTrack(on || vile ? 'musicCh4' : 'music');
   if (menuLook && (state === 'title' || state === 'loading')) setMenuLook(menuLookFor());
@@ -2275,6 +2334,7 @@ async function runTaunts(tok) {
     await wait(3600 + line.length * 30);
     if (tok !== taunt.tok) return; // a newer run has taken over (the menu changed while this one waited): leave the box to it
     box.classList.add('out'); await wait(1500);
+    if (tok === taunt.tok && state === 'title' && villainMenu() && taunt.i % VILE_FOE_LINES === 0 && vileFoes().length > 1) { taunt.L = null; vileFoeNext(); await wait(700); } // several villains at war with you: the next one's turn, with their own lines
   }
 }
 
@@ -3650,7 +3710,7 @@ function updateAnim(dt) {
     damp(inner.rotation, 'x', sw * .16, 6, dt);
   } else {
     const b = Math.sin(time * 1.6);
-    if (state === 'title' && villainMenu()) { vilePose(dt, down); return; } // the evil menu: breathing, shaking, and doing things a body shouldn't
+    if (state === 'title' && villainMenu()) { if (depMenu() && DEPM.R && DEPM.R.root.visible) depPose(dt); else vilePose(dt, down); return; } // the evil menu: breathing, shaking, and doing things a body shouldn't
     for (const l of [rig.rl, rig.ll]) damp(l.rotation, 'x', 0, 8, dt);
     damp(rig.ra.rotation, 'x', b * .04, 6, dt); damp(rig.la.rotation, 'x', -b * .04, 6, dt);
     damp(rig.ra.rotation, 'z', down - .04 - b * .03, 6, dt); damp(rig.la.rotation, 'z', -down + .04 + b * .03, 6, dt);
@@ -12742,6 +12802,7 @@ function leaderBossWin(B) { // a leader falls: the war is won (or the resident e
   if (L.war) { dipScore(L.war, 100, `${Bd.short} defeated in their hall`); setTimeout(() => lootMsg('The war is won · settle it in Diplomacy', '#ffd36a'), 2400); }
   if (L.pontRuler) setTimeout(() => pontTroopChoice(L.pontRuler), 3200);
   if (L.obra) { const from = L.obra.from; setTimeout(() => { try { obraPlayerTake(from); } catch (er) { console.error(er); } }, 1200); } // the Citadel of Obra-Spira: it's yours
+  if (L.resEmp && ywAt(L.resEmp)) ywWon(L.resEmp, 'duel'); // at war with them: beating their ruler wins it
   if (L.resEmp && resEmp.emp[L.resEmp] && resEmp.emp[L.resEmp].pup) { const e = resEmp.emp[L.resEmp]; // one of your uplifted empires: beaten, but not gone. It falls, and it can be restored (Diplomacy → Crew → Uplift: Restore them, or on its own in about five minutes)
     e.col = []; e.res = true; e.fellAt = resNow(); e.lostTo = {}; resEmp.wars = resEmp.wars.filter(w => w.a !== e.id && w.b !== e.id); for (const o of Object.values(resEmp.emp)) { if (o.over === e.id) o.over = null; if (o.trib === e.id) o.trib = null; }
     resEmpLog(`${wanderer.name} defeated ${Bd.short}; ${e.name} has fallen, for now`); saveRoster(); try { applyChapterFactions(); } catch (er) {}
@@ -24390,11 +24451,12 @@ function dipRender() {
       for (const e of es) {
         const c = resRuler(e), st = e.pup ? `Your puppet · the uplifted ${ccEsc(titleName((c && c.resUp && c.resUp.name) || 'species'))}` : e.res ? 'A resistance, with no worlds' : e.over && resEmp.emp[e.over] ? `Puppet of ${resEmp.emp[e.over].name}` : e.trib && resEmp.emp[e.trib] ? `Pays tribute to ${resEmp.emp[e.trib].name}` : 'Independent';
         const wars = resEmp.wars.filter(w => w.a === e.id || w.b === e.id).map(w => (resEmp.emp[w.a === e.id ? w.b : w.a] || {}).name).filter(Boolean), lentHere = Object.keys(D.lent).filter(k => D.lent[k] === 'res:' + e.id);
-        h += `<div class="dip-card" style="--fc:${resHex(resEmpCol(e))}"><h4>${reEsc(e.name).toUpperCase()}<small>${st}${wars.length ? ' · at war' : ' · at peace'}</small></h4><p>Led by <b>${reEsc(c.name)}</b> (resident, LV ${resLevel(c)}, ${alN[resAl(c)]}) · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars.length ? ` · at war with ${wars.map(reEsc).join(' and ')}` : ''}${lentHere.length ? ` · serving them: ${lentHere.map(compName).join(', ')}` : ''}</p><div class="dip-row"><button class="btn small" data-a="resChallenge" data-r="${e.id}"><span>Challenge ${reEsc(c.name)} (lv ${resLevel(c)})</span></button><button class="btn small" data-a="resDisband" data-r="${e.id}"><span>${DIPV.resDisband === e.id ? 'Tap again: demand they disband' : 'Demand they disband'}</span></button></div></div>`;
+        h += `<div class="dip-card" style="--fc:${resHex(resEmpCol(e))}"><h4>${reEsc(e.name).toUpperCase()}<small>${st}${ywAt(e.id) ? ' · at war with you' : wars.length ? ' · at war' : ' · at peace'}</small></h4><p>Led by <b>${reEsc(c.name)}</b> (resident, LV ${resLevel(c)}, ${alN[resAl(c)]}) · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars.length ? ` · at war with ${wars.map(reEsc).join(' and ')}` : ''}${lentHere.length ? ` · serving them: ${lentHere.map(compName).join(', ')}` : ''}</p><div class="dip-row"><button class="btn small" data-a="resChallenge" data-r="${e.id}"><span>Challenge ${reEsc(c.name)} (lv ${resLevel(c)})</span></button><button class="btn small" data-a="resDisband" data-r="${e.id}"><span>${DIPV.resDisband === e.id ? 'Tap again: demand they disband' : 'Demand they disband'}</span></button>${e.pup || e.res ? '' : ywAt(e.id) ? `<button class="btn small" data-a="ywPeace" data-r="${e.id}"><span>Make peace</span></button>` : `<button class="btn small" data-a="ywDeclare" data-r="${e.id}"><span>${DIPV.ywDeclare === e.id ? 'Tap again: declare war' : 'Declare war on them'}</span></button>`}</div>${ywAt(e.id) ? (W2 => `<div class="dip-bar"><i style="width:${Math.max(0, W2.score) | 0}%"></i></div><p style="color:#ffb3a8">${W2.theirs ? `${reEsc(e.name)} declared war on you.` : 'You are at war with them.'} War score ${W2.score | 0}/100: it moves with your level and colonies against their strength. At 100 they fall; at −100 they take one of your colonies. Challenge ${reEsc(c.name)} to win it outright.</p>`)(ywAt(e.id)) : ''}</div>`;
       }
     }
     if (DIPV.tab === 'factions') h += `<div class="dip-card" style="--fc:#ffd36a"><h4>CASUS BELLI</h4>${Object.values(CBS).filter(c => c !== CBS.crush).map(c => `<p><b>${c.name}.</b> ${c.desc}</p>`).join('')}</div>`;
   } else if (DIPV.tab === 'colonies') {
+    h += depCard(); // who runs your empire for you
     const cur = isPl() && world.planet ? world.planet.P : null, curF = cur && dipFacOf(cur.baseFac);
     if (cur && !D.col[cur.id] && !curF) h += `<div class="dip-card" style="--fc:#ffd36a"><h4>${cur.name.toUpperCase()}<small>Unclaimed · you're here</small></h4><p>Raise ${realmName()}'s flag here and it becomes your colony.</p><div class="dip-row"><button class="btn small primary" data-a="colonise" data-p="${cur.id}"${units() >= COLONY_COST || have('colkit') ? '' : ' disabled'}><span>${have('colkit') ? 'Colonise · use a Colony kit' : `Colonise · ${COLONY_COST} units`}</span></button></div></div>`;
     else if (!cur) h += `<div class="dip-card"><p>Land on an unclaimed world to colonise it. Worlds you take in an Annihilation become colonies too.</p></div>`;
@@ -24404,7 +24466,7 @@ function dipRender() {
     if (!cols.length) h += `<div class="dip-card"><p>No colonies yet.</p></div>`;
     for (const [pid, C] of cols) {
       const P = bodyById(pid); if (!P) continue; const g = C.gov || '';
-      h += `<div class="dip-card" style="--fc:#ffd36a"><h4>${P.name.toUpperCase()}<small>${sysById(P.sys).name}${C.siege ? ' · won at the siege of Carax' : C.from ? ` · taken from ${DIP_FAC.find(f => f.id === C.from).name}` : ' · colonised'}</small></h4>
+      h += `<div class="dip-card" style="--fc:#ffd36a"><h4>${P.name.toUpperCase()}<small>${sysById(P.sys).name}${C.siege ? ' · won at the siege of Carax' : C.dep ? ` · claimed by ${compName(C.dep)}, your deputy` : C.from ? ` · taken from ${DIP_FAC.find(f => f.id === C.from).name}` : ' · colonised'}</small></h4>
         <p>${C.gov ? `Governor <b>${govName(C.gov)}</b>. Loyal, content, and never a word of complaint.` : 'No governor yet.'}</p>
         <div class="dip-row"><select class="dip-in" data-a="gov" data-p="${pid}"><option value="">No governor</option>${comps.map(id => `<option value="comp:${id}"${g === 'comp:' + id ? ' selected' : ''}>${compName(id)} (companion)</option>`).join('')}${residents.slice(0, 60).map(c => `<option value="res:${c.id}"${g === 'res:' + c.id ? ' selected' : ''}>${ccEsc(c.name)} (resident)</option>`).join('')}${UPS().filter(r => r.path === 'gov').map(r => `<option value="up:${r.id}"${g === 'up:' + r.id ? ' selected' : ''}>The ${ccEsc(r.name)} (uplifted)</option>`).join('')}${g.startsWith('name:') ? `<option value="${g.replace(/"/g, '&quot;')}" selected>${g.slice(5)}</option>` : ''}</select>
         <input class="dip-in" data-a="govName" data-p="${pid}" placeholder="…or name a governor" maxlength="32"><button class="btn small" data-a="govSet" data-p="${pid}"><span>Appoint</span></button></div></div>`;
@@ -24450,6 +24512,10 @@ function dipClick(e) {
   else if (a === 'lend') { const v = $(`#dipBody select[data-a="lendTo"][data-c="${id}"]`).value; if (!v) return; D.lent[id] = v; dipSave(); sfx.click(); if (id === 'orion' && world.orion) world.orion.root.visible = false; placeCrew(); refreshJamesUI(); lootMsg(`${compName(id)} leaves to serve ${dipLentName(v)}`, compColor(id)); if (dipLentRes(v)) { const e = resEmp.emp[dipLentRes(v)]; if (e) resEmpLog(`${compName(id)} joined ${e.name}, sent by ${wanderer.name}`); } }
   else if (a === 'resOpen') { dipOpen(false); resEmpOpen(); return; }
   else if (a === 'resChallenge') { dipOpen(false); if (state === 'xpaused' && !SPC.paused) pauseExplore(false); leaderResChallenge(b.dataset.r); return; }
+  else if (a === 'ywDeclare') { const r = b.dataset.r; if (DIPV.ywDeclare === r) { ywDeclare(r, false); DIPV.ywDeclare = null; } else DIPV.ywDeclare = r; }
+  else if (a === 'ywPeace') ywPeace(b.dataset.r);
+  else if (a === 'depSet') { const v = $('#dipBody select[data-a="depPick"]'); if (v && v.value) depAppoint(v.value); }
+  else if (a === 'depOff') depRelieve();
   else if (a === 'resDisband') { const r = b.dataset.r; if (DIPV.resDisband === r) { resDisband(r); DIPV.resDisband = null; } else DIPV.resDisband = r; }
   else if (a === 'recall') { delete D.lent[id]; dipSave(); if (id === 'orion') placeOrion().catch(() => null); placeCrew(); refreshJamesUI(); lootMsg(`${compName(id)} is back with you`, compColor(id)); }
   else if (a === 'recruit') { wanderer.party = [...new Set([...(wanderer.party || []), id])]; syncCrewParty(); dipSave(); placeCrew(); ui.xhud.classList.add('comp'); refreshJamesUI(); sfx.chime(); lootMsg(`${PARTY[id].full} joins your crew`, compColor(id)); compJoinNotice(id, 900); }
@@ -33044,6 +33110,168 @@ function resDisband(id) {
   if (RW && c) resWarSay(c, resPick(RW.disband[resAl(c)]), { ea: e.name, player: wanderer.name });
   saveRoster();
 }
+/* ---- your own wars with the resident empires (wanderer.dip.rw: { [empire id]: { since, score, theirs } }) ----
+   Declare one from Diplomacy → Factions, and a villain's empire may declare war on you (Chapter III on, while residents found
+   empires). Every 15 seconds the score moves by your strength (your level and colonies) against theirs: at +100 their empire
+   falls and its worlds are unclaimed again; at −100 they take one of your colonies (or plunder your units) and the war is over.
+   Beat their ruler (Challenge) to win it outright. A good wanderer at war with a villain's empire gets the evil main menu, with
+   that villain on it under their own name. */
+const YW = {
+  declare: ['{player}. I have been looking forward to this. {ea} declares war on you.', 'Your flag offends me, {player}. {ea} is coming to take it down.',
+    'Heroes make the best trophies. {ea} is at war with you, {player}.', 'I am bored of fighting residents. Let’s see what the great {player} is made of.',
+    'Kneel now, {player}, or {ea} burns everything with your name on it.', '{ea} declares war on {player}. Run, if you like. I enjoy a chase.'],
+  answer: { hero: ['If it has to be you and me, {player}, then let it be a fair fight.', 'I didn’t want this. {ea} will defend itself all the same.', 'I’m sorry it came to this, {player}.'],
+    neutral: ['War? With me? Fine. Your funeral, {player}.', '{ea} doesn’t back down. Not even from you.', 'Bad for business, {player}. Worse for you.'],
+    villain: ['Finally. I hoped you would come for me, {player}.', 'You declared war on {ea}? How brave. How short.', 'Oh, {player}. You have no idea what you just started.'] },
+  win: { hero: ['You win, {player}. Look after my people.', '{ea} falls. I fought for it as well as I could.', 'Well fought, {player}. I’ll start again somewhere.'],
+    neutral: ['Fine. {ea} is finished. You happy now?', 'I’ll remember this, {player}. Mostly the bill.', 'Enough. You win. Don’t expect a thank-you card.'],
+    villain: ['This isn’t over, {player}. It never is.', 'Enjoy it. I will be back, and I will be worse.', 'You took {ea}. I’ll take something you love.'] },
+  lose: { hero: ['Stand down, {player}. I’m taking {w}, and nothing more.', 'It’s over. Let’s not do this again.', 'I took {w}. I’ll treat it well.'],
+    neutral: ['{w} is mine now. Business is business.', 'Told you, {player}. Should’ve left {ea} alone.', 'I’ll take {w} for my trouble.'],
+    villain: ['{w} is mine. Listen. Can you hear it screaming?', 'Kneel, {player}. You did, didn’t you? Just a little.', 'I’ll be keeping {w}. And your pride.'] },
+  peace: { hero: ['Peace, then. Gladly.', 'Thank you, {player}. Let’s both go home.', 'No more of this. Agreed.'],
+    neutral: ['Peace. Good. The war was costing me.', 'Fine. Truce. Don’t push it.', 'Done. Let’s pretend this never happened.'],
+    villain: ['Peace. For now. Count your days, {player}.', 'I accept. This time.', 'Walk away, {player}. I’ll let you. Once.'] },
+  fight: { hero: ['Hold the line. {ea} won’t fall today.', 'I don’t hate you, {player}. I just won’t lose to you.', 'Is this really what you want, {player}?'],
+    neutral: ['Your ships are slower than you think, {player}.', '{ea} is still standing. Shame, for you.', 'This war is costing us both. Mostly you.'],
+    villain: ['I can see your colonies from here, {player}. They look flammable.', 'Every day you fight me, you lose a little more.', 'Tick tock, {player}. {ea} is coming.'] },
+  refuse: ['Peace? You don’t get peace, {player}. You get me.', 'Beg better than that.', 'No. I haven’t finished with you yet.']
+};
+function ywMap() { return (wanderer && wanderer.dip && wanderer.dip.rw) || {}; }
+const ywAt = id => ywMap()[id] || null;
+function ywCtx(e, x) { return Object.assign({ ea: e ? e.name : 'their empire', player: wanderer ? wanderer.name : 'you' }, x || {}); }
+function ywLentHome(id) { const L = dip().lent; for (const k of Object.keys(L)) if (L[k] === 'res:' + id) { delete L[k]; lootMsg(`${compName(k)} leaves ${resEmp.emp[id] ? resEmp.emp[id].name : 'them'} and comes home`, compColor(k)); try { placeCrew(); refreshJamesUI(); if (k === 'orion') placeOrion().catch(() => null); } catch (e) {} } }
+function ywDeclare(id, theirs) {
+  const e = resEmp.emp[id], c = e && resRuler(e); if (!c || e.pup || e.res || ywAt(id)) return false;
+  const D = dip(); D.rw = D.rw || {}; D.rw[id] = { since: resNow(), score: 0, theirs: !!theirs }; ywLentHome(id); dipSave();
+  const x = ywCtx(e);
+  if (theirs) { resEmpLog(`${e.name} declared war on ${wanderer.name}`); resWarSay(c, resPick(YW.declare), x); if (state === 'explore' || state === 'space') { notice(e.name, 'DECLARES WAR ON YOU', 3800); sfx.alarm(); } }
+  else { resEmpLog(`${wanderer.name} declared war on ${e.name}`); setTimeout(() => resWarSay(c, resPick(YW.answer[resAl(c)]), x), 1200); sfx.alarm(); }
+  return true;
+}
+function ywPeace(id) {
+  const W = ywAt(id), e = resEmp.emp[id], c = e && resRuler(e); if (!W) return;
+  if (c && W.theirs && resAl(c) === 'villain' && W.score < 25) { resWarSay(c, resPick(YW.refuse), ywCtx(e)); lootMsg(`${c.name} refuses peace · push the war score past 25 first`, '#ff8f86'); return; }
+  delete dip().rw[id]; dipSave(); sfx.click();
+  if (e) { resEmpLog(`${wanderer.name} made peace with ${e.name}`); if (c) resWarSay(c, resPick(YW.peace[resAl(c)]), ywCtx(e)); }
+}
+function ywFall(id) { // their empire falls: its worlds are unclaimed again
+  const e = resEmp.emp[id]; if (!e) return; delete resEmp.emp[id]; resEmp.cool[id] = resNow() + 30 * 60e3;
+  resEmp.wars = resEmp.wars.filter(w => w.a !== id && w.b !== id); for (const o of Object.values(resEmp.emp)) { if (o.over === id) o.over = null; if (o.trib === id) o.trib = null; }
+}
+function ywWon(id, how) { // you won: by the score, or by beating their ruler (then leaderBossWin brings the empire down itself)
+  const W = ywAt(id), e = resEmp.emp[id], c = e && resRuler(e); if (!W) return; delete dip().rw[id];
+  if (c) setTimeout(() => resWarSay(c, resPick(YW.win[resAl(c)]), ywCtx(e)), 1800);
+  if (how !== 'duel' && e) { resEmpLog(`${wanderer.name} won the war; ${e.name} has fallen`); ywFall(id); gainXP(600, `Won the war with ${e.name}`); if (state === 'explore' || state === 'space') { notice(e.name, 'HAS FALLEN · YOU WIN THE WAR', 3800); sfx.chime(); } }
+  dipSave();
+}
+function ywLost(id) {
+  const e = resEmp.emp[id], c = e && resRuler(e), D = dip(); delete D.rw[id]; if (!e) { dipSave(); return; }
+  const pid = Object.keys(D.col).filter(k => k !== CARAX && k !== OBRA && !D.col[k].siege && bodyById(k)).sort(() => Math.random() - .5)[0];
+  let w = '';
+  if (pid) { delete D.col[pid]; for (const W of Object.values(D.wars)) if (W && W.held) W.held = W.held.filter(o => o !== pid); e.col.push(pid); w = bodyById(pid).name; resEmpLog(`${e.name} won its war with ${wanderer.name} and took ${w}`); }
+  else { const n = Math.min(units(), Math.max(50, Math.round(units() * .15))); if (n) addUnits(-n); w = n ? `${n} units` : 'your pride'; resEmpLog(`${e.name} won its war with ${wanderer.name}${n ? ` and took ${n} units` : ''}`); }
+  if (c) resWarSay(c, resPick(YW.lose[resAl(c)]), ywCtx(e, { w })); if (state === 'explore' || state === 'space') { notice(e.name, `WINS THE WAR · ${w.toUpperCase()} LOST`, 4200); sfx.alarm(); }
+  dipSave();
+}
+function ywTick(E) {
+  if (!wanderer) return; const R = ywMap();
+  for (const id of Object.keys(R)) { // an empire that fell (to someone else, or stood down) ends your war with it
+    const e = E.emp[id]; if (e && resRuler(e) && !e.res && !e.pup) continue;
+    delete wanderer.dip.rw[id]; dipSave(); lootMsg('A resident empire you were at war with has fallen · the war is over', '#ffd36a');
+  }
+  if (E.on && Object.keys(ywMap()).length < 2 && !(wanderer.dip && wanderer.dip.rwNext > resNow())) for (const e of Object.values(E.emp)) { // a villain's empire may come for you
+    const c = resRuler(e); if (!c || e.pup || e.res || ywAt(e.id) || resAl(c) !== 'villain' || Math.random() >= .006) continue;
+    if (ywDeclare(e.id, true)) { dip().rwNext = resNow() + 10 * 60e3; break; }
+  }
+  const cols = Object.keys((wanderer.dip && wanderer.dip.col) || {}).length, mine = plvNow() + cols * 4;
+  for (const id of Object.keys(ywMap())) {
+    const W = ywMap()[id], e = E.emp[id]; if (!e) continue;
+    W.score = clamp(W.score + (mine - resPower(e)) * .1 + (Math.random() * 30 - 15), -100, 100);
+    if (Math.random() < .25 && RW) { const c = resRuler(e); if (c) resWarSay(c, resPick(YW.fight[resAl(c)]), ywCtx(e)); }
+    if (W.score >= 100) ywWon(id); else if (W.score <= -100) ywLost(id);
+  }
+  if (Object.keys(ywMap()).length) { const c = curChar(); if (c && wanderer.dip) c.dip = wanderer.dip; }
+}
+/* ---- your deputy (wanderer.dip.dep: { id, since, colAt, warAt, askAt }) ----
+   Appoint a companion from Diplomacy → Colonies and they run your empire for you, from wherever they stand: every few minutes they
+   claim an unclaimed world for it, and now and then they declare war on a resident empire (a good deputy only on a villain's
+   empire; an evil one on anyone but your own puppets). The story factions are another matter: a good deputy never goes to war
+   with them; an evil deputy, in Chapter V, asks your leave first, and only fights them if you say yes (their forces then add to
+   the war score). They stay in your crew all the while. If you walk the villain's road, they have plenty to say about it
+   (data/depLines.js: a hundred reluctant lines for each of the fourteen companions, and the five Project BC and Sevirrus characters, when they're good, a hundred devoted ones
+   when they're evil), on the evil main menu, where they hold the world and you stand behind them, and now and then on comms. */
+const DEP_IDS = ['orion', 'nico', 'james', 'khazglar', 'charon', 'kizna', 'nyrexia', 'croxian', 'malia', 'james-ti', 'josiah2', 'javek', 'tyrotaronus', 'pbc-josiah', 'pbc-peter', 'pbc-gareth', 'pbc-kevin', 'sev-sevirrus']; // and every Pontifex and Sister (pont:…); the last five are the characters imported from Project BC and Sevirrus
+const depKey = id => String(id).startsWith('pont:') ? 'pontifex' : id;
+const depCan = id => DEP_IDS.includes(id) || (String(id).startsWith('pont:') && !!pontById(String(id).slice(5)));
+function depOf() {
+  try { const D = wanderer && wanderer.dip, id = D && D.dep && D.dep.id; if (!id || !depCan(id) || (D.lent && D.lent[id]) || !(dipCompanionsAll().includes(id) || (wanderer.party || []).includes(id))) return null; return id; } catch (e) { return null; } // (on the title screen the crew aren't registered yet: being in your party is enough)
+}
+function depAlL(id) { if (String(id).startsWith('pont:')) { const P = pontById(String(id).slice(5)); return P ? pontAlL(P) : null; } return COMPANIONS.find(L => L.id === id) || AL_EXTRA.find(L => L.id === id) || null; } // Project BC and Sevirrus have charts of their own
+function depAl(id) { try { const L = depAlL(id); if (!L) return 0; const a = alComp(L).a; return a == null ? 0 : a; } catch (e) { return 0; } }
+const depEvil = id => depAl(id) <= -15; // their chart, as it stands: evil from −15 (the same line their written alignment turns at)
+function depFull(id) { if (String(id).startsWith('pont:')) { const P = pontById(String(id).slice(5)); return P ? titleName(P.name) : 'The Pontifex'; } if (PARTY[id] && PARTY[id].full) return PARTY[id].full; const L = COMPANIONS.find(o => o.id === id) || AL_EXTRA.find(o => o.id === id); return L ? titleName(L.name) : compName(id); }
+let DEPL = null, depLoading = false;
+function depLinesLoad() {
+  if (DEPL || depLoading) return; depLoading = true;
+  const sc = document.createElement('script'); sc.src = 'data/depLines.js';
+  sc.onload = () => { DEPL = window.NV_DEP_LINES || null; try { if (state === 'title') { taunt.L = null; applyMenuEra(); } } catch (e) {} };
+  sc.onerror = () => { depLoading = false; };
+  document.body.appendChild(sc);
+}
+const depLines = id => { const Q = DEPL && DEPL[depKey(id)]; return Q ? Q[depEvil(id) ? 'evil' : 'good'] || null : null; };
+function depSay(id) { depLinesLoad(); const Q = depLines(id); if (Q && Q.length) lootMsg(`${compName(id)} · deputy: “${resPick(Q)}”`, compColor(id)); }
+function depAppoint(id) {
+  if (!depCan(id)) return; const D = dip(), was = D.dep && D.dep.id;
+  D.dep = { id, since: resNow(), colAt: resNow() + 60e3, warAt: resNow() + 4 * 60e3, askAt: resNow() + 3 * 60e3 }; dipSave(); sfx.chime();
+  notice(realmName(), `${depFull(id).toUpperCase()} IS YOUR DEPUTY`, 3400); resEmpLog(`${wanderer.name} appointed ${depFull(id)} deputy of ${realmName()}${was && was !== id ? `, in place of ${depFull(was)}` : ''}`);
+  depLinesLoad(); if (ownVile()) setTimeout(() => depSay(id), 1800);
+}
+function depRelieve() { const D = dip(), id = D.dep && D.dep.id; D.dep = null; dipSave(); sfx.click(); if (id) { lootMsg(`${depFull(id)} steps down as deputy`, compColor(id)); resEmpLog(`${depFull(id)} stepped down as deputy of ${realmName()}`); } }
+const DEP = { t: 25, sayT: 120 };
+function depTick(dt) {
+  if (!wanderer || !wanderer.dip || (state !== 'explore' && state !== 'space') || effCh() < 3) return;
+  if ((DEP.t -= dt) > 0) return; DEP.t = 20;
+  const id = depOf(); if (!id) return;
+  const D = dip(), S = D.dep, now = resNow(), evil = depEvil(id), nm = compName(id), col = compColor(id); let ch = false;
+  if (!(S.colAt > now) && Object.values(D.col).filter(c => c.dep).length < 24) { // a new world for your empire, near the ones you hold
+    const free = resFreeWorlds(); S.colAt = now + (180 + Math.random() * 120) * 1000; ch = true;
+    if (free.length) {
+      const own = Object.keys(D.col).map(bodyById).filter(Boolean), from = own.length ? own[Math.floor(Math.random() * own.length)] : null, C = sysById(from ? from.sys : 'sol');
+      const P = free.sort((p, q) => galDist(sysById(p.sys), C) - galDist(sysById(q.sys), C))[Math.floor(Math.random() * Math.min(4, free.length))];
+      D.col[P.id] = { gov: null, from: null, dep: id }; resEmpLog(`${depFull(id)} claimed ${P.name} for ${realmName()}`);
+      lootMsg(`${nm} claims ${P.name} for ${realmName()}`, col); try { applyChapterFactions(); } catch (e) {}
+    }
+  }
+  if (!(S.warAt > now) && Object.keys(ywMap()).length < 2) { // war on a resident empire: a good deputy only on a villain's
+    S.warAt = now + (300 + Math.random() * 240) * 1000; ch = true;
+    const es = Object.values(resEmp.emp).filter(e => { const c = resRuler(e); return c && !e.pup && !e.res && !ywAt(e.id) && (evil || resAl(c) === 'villain'); });
+    if (es.length && Math.random() < .4) { const e = es[Math.floor(Math.random() * es.length)]; if (ywDeclare(e.id, false)) { const W = ywAt(e.id); if (W) W.dep = id; resEmpLog(`${depFull(id)} declared war on ${e.name} in ${realmName()}'s name`); lootMsg(`${nm} declares war on ${e.name} in your name`, col); } }
+  }
+  if (evil && dipCh() >= 5 && !(S.askAt > now) && state === 'explore' && !ex.dlg && !DGN.on) { // the story factions: only an evil deputy, only in Chapter V, and only with your leave
+    const fs = dipFacsNow().filter(F => !(F.locked && F.locked(dipCh())) && !['destroyed', 'subjugated'].includes(dipRes(F.id)) && !dipWar(F.id));
+    S.askAt = now + (480 + Math.random() * 240) * 1000; ch = true;
+    if (fs.length) {
+      const F = fs[Math.floor(Math.random() * fs.length)], cb = ['annihilation', 'subjugation', 'vassal', 'tribute'][Math.floor(Math.random() * 4)];
+      lootMsg(`${nm} wants to go to war with ${dipFacName(F)} (${CBS[cb].name}) · they won't without your word`, col);
+      openChoice(nm.toUpperCase(), [
+        { text: `Yes: war on ${dipFacName(F)} · ${CBS[cb].name}`, onPick: () => { dipDeclare(F.id, cb); const W = dipWar(F.id); if (W) { W.dep = id; dipSave(); } resEmpLog(`${depFull(id)} took ${realmName()} to war with ${dipFacName(F)}, with ${wanderer.name}'s leave`); } },
+        { text: 'Not now', onPick: () => lootMsg(`${nm} stands down · they'll ask again`, col) }], `${nm.toUpperCase()} ASKS YOUR LEAVE`);
+    }
+  }
+  for (const [fid, W] of Object.entries(D.wars)) if (W && W.dep === id && !W.won && Math.random() < .5) dipScore(fid, 3, `${nm}'s forces`); // their forces fight the wars they asked for
+  if (ownVile() && (DEP.sayT -= 20) <= 0) { DEP.sayT = 150 + Math.random() * 150; depSay(id); } // a word on comms now and then
+  if (ch) { const c = curChar(); if (c) c.dip = wanderer.dip; saveRoster(); }
+}
+function depCard() { // Diplomacy → Colonies: who runs your empire
+  const D = dip(), id = depOf(), opts = dipCompanionsAll().filter(c => depCan(c) && !D.lent[c]);
+  let h = `<div class="dip-card" style="--fc:${id ? compColor(id) : '#ffd36a'}"><h4>YOUR DEPUTY<small>${id ? `${depFull(id)} · ${depEvil(id) ? 'devoted to it' : 'reluctant, if you rule cruelly'}` : 'nobody yet'}</small></h4>`;
+  if (id) { const n = Object.values(D.col).filter(c => c.dep).length; h += `<p><b>${depFull(id)}</b> runs ${realmName()} for you: they claim unclaimed worlds for it (${n} so far) and go to war with resident empires${depEvil(id) ? '' : ' (only villains’ empires)'} in your name. ${depEvil(id) ? 'In Chapter V they will ask your leave to go to war with the story factions.' : 'They will never go to war with the story factions.'} They stay in your crew.</p><div class="dip-row"><button class="btn small" data-a="depOff"><span>Relieve ${compName(id)}</span></button></div>`; }
+  else h += `<p>Appoint a companion and they lead your empire for you: they expand it, and go to war with resident empires in your name. Never with the story factions without your word, and a good deputy not at all.</p>`;
+  if (opts.length) h += `<div class="dip-row"><select class="dip-in" data-a="depPick">${opts.map(c => `<option value="${c}"${c === id ? ' selected' : ''}>${depFull(c)}</option>`).join('')}</select><button class="btn small primary" data-a="depSet"><span>${id ? 'Appoint instead' : 'Appoint a deputy'}</span></button></div>`;
+  else if (!id) h += `<p style="color:var(--mute)">No companion with you can take the job yet.</p>`;
+  return h + '</div>';
+}
 const RES_EMP_ON = () => !!resEmp.on; // residents only found empires if you switch it on (Resident empires panel)
 function resLentSweep() { // a resident empire that's gone sends your companions home
   const L = wanderer && wanderer.dip && wanderer.dip.lent; if (!L) return;
@@ -33267,6 +33495,7 @@ function resEmpTick(dt) {
   }
   try { upPupTick(E); } catch (e) { console.error(e); } // your fallen puppets come back
   for (const w of [...E.wars]) resWarStep(w); // wars already under way still play out
+  try { ywTick(E); } catch (e) { console.error(e); } // and your own wars with them
   try { resStoryWars(E, es); } catch (e) { console.error(e); } // and resident empires against the story factions
   if (state === 'space' || GAL.open) { applyChapterFactions(); if (GAL.open && GAL.sel) galPanel(); } // the galaxy map follows who holds what
 }
@@ -34893,7 +35122,7 @@ function loopFrame() {
   try { podSync(); } catch (e) {} // the pod, wherever your ship is drawn
   combatTick(dt);
   alOutfitSync(dt);
-  try { if (xoResBlock()) xoResQuiet(); else { resUiTick(); resEmpTick(dt); resGuildTick(dt); } } catch (e) { console.error(e); } // on Xonexi the Milky Way's residents, their empires and their guilds are a galaxy away
+  try { if (xoResBlock()) xoResQuiet(); else { resUiTick(); resEmpTick(dt); resGuildTick(dt); } try { depTick(dt); } catch (er) { console.error(er); } } catch (e) { console.error(e); } // on Xonexi the Milky Way's residents, their empires and their guilds are a galaxy away
   try { drunkTick(dt); chatUiTick(); } catch (e) {}
   try { if (wanderer) { peopleSpawnTick(); lawTick(dt); tauntBtnTick(); } } catch (e) { console.error(e); }
   try { if (wanderer) petWorldTick(dt); } catch (e) { console.error(e); } // the cats and dogs of Earth's cities
