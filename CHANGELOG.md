@@ -3244,4 +3244,18 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - **Kevin Murderhorn, the Black Mask:** a violet edge-light; **a pool of shadow** at his feet with a violet rim; black smoke curling off him; faint violet embers; his black chains glossy as obsidian.
   - **Lord Sevirrus, the Usurper Prince:** a crimson edge-light; **a crown of red light** hovering over his head, flickering, cracked, the one he stole; crimson smoke and red embers.
   - **Every character's weapons** (chains, rifles, pistols, swords) now get the upscaled materials too.
-
+- **The imported characters at Archamus and Lord Zark's level.** Peter Chambers, Gareth Williams, Kevin Murderhorn and Lord Sevirrus, wherever they appear (your crew, a deputy holding the world, the Nostrapedia, the cutscenes):
+  - **Brighter:** each carries his own colour along every edge, with a hotter, thinner line on the very rim. Reflections are deeper, whatever glows is brighter and breathes slowly, metal is polished under a clear coat, visors and glass have an oily sheen, and cloth and hair a sheen in their colour. Their weapons blaze with them.
+  - **More presence:** Peter has a cold radiance behind him, Gareth a warm one, Kevin a violet crown of thorns over a violet glow, and Sevirrus a crimson glow at his feet.
+  - **Simpler:** no glitter and no circles on the ground. Peter's reticle, his cold motes, Gareth's twinkling glints and Kevin's shadow pool are gone. Their smoke, embers and Sevirrus's crown stay.
+  - Companions, residents and your wanderer keep the upscaled look they had, with no presence of their own.
+- **Josiah Richards is a god.** The Prime Secretary who reset time itself, from the Earth to the edge of the Laniakea Supercluster, now stands as Archamus and Zark do:
+  - **A clockwork dial of light** behind his head: rings, hour bars doubled at the quarters, minute ticks, a turning gear ring, three hands, and a second hand that ticks. Rays reach out past the rim.
+  - **The seal of his office**, vast, at his feet. **Two orbits** circle him like an orrery, a bright body running round each.
+  - **Golden motes that move only when the clock ticks**, and **the universe streaming in towards him**. A golden radiance glows behind him.
+  - **His suit** is black silk-wool with a sheen of gold. Every seam is a thread of gold and the buttons are gold. His eyes are still his own, human, and his golden chains blaze.
+  - His name and lines in chat and on comms are gold.
+- **Fixed:** residents could stop the world drawing. Each resident's body has its own copy of its materials, and since the character upscale those copies carried their edge-light colour as a bare number, which the renderer couldn't use. Copies now rebuild their settings first.
+- **Fixed:** effects that recolour every part of a character (a companion darkening as they turn, ghosts, flashes) could hit a god's or an imported character's aura and throw an error. Auras can now be recoloured harmlessly, and copies keep the shared clock instead of freezing. Auras can never catch a tap meant for the ground either.
+- **Fixed:** Archamus's radiance showed its rectangle's edges. It now fades to nothing before the edge.
+- **Fixed:** Josiah no longer carries a light of his own. He travels with you as crew, party and deputy, and a light arriving and leaving with him would have made every material in the scene rebuild each time, a stutter on phones.
