@@ -637,6 +637,12 @@ body.touch #xSkip{min-height:46px;min-width:104px;padding-left:20px;padding-righ
 #fbSub .w{text-shadow:0 0 6px rgba(0,0,0,.95),0 0 14px var(--g1)}
 .x-dlg.choice .tap{display:none}
 .x-dlg .opts{display:flex;flex-direction:column;gap:8px;margin-top:2px}
+.x-dlg .optwrap{display:flex;gap:10px;align-items:stretch}
+.x-dlg .optwrap > .opts{flex:1;min-width:0;max-height:min(46vh,430px);overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scrollbar-width:thin;scrollbar-color:rgba(255,156,159,.5) transparent;padding-right:2px} /* a long list scrolls (the wheel, a swipe, or the arrows) */
+.x-dlg .optnav{display:none;flex-direction:column;justify-content:space-between;gap:8px}
+.x-dlg .optwrap.long .optnav{display:flex}
+.x-dlg .optnav button{all:unset;box-sizing:border-box;width:44px;flex:1;max-height:120px;min-height:44px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,156,159,.45);background:rgba(255,156,159,.08);color:#ff9c9f;font-size:16px;cursor:pointer;transition:background .15s,opacity .15s}
+.x-dlg .optnav button:hover{background:rgba(255,156,159,.2)} .x-dlg .optnav button:disabled{opacity:.25;cursor:default}
 .x-dlg .res-ask input{all:unset;box-sizing:border-box;width:100%;display:block;margin:2px 0 10px;padding:12px 14px;border:1px solid rgba(143,227,255,.45);background:rgba(255,255,255,.05);font-family:var(--text);font-size:16px;line-height:1.4;color:var(--ink);cursor:text}
 .x-dlg .res-ask input::placeholder{color:rgba(230,233,240,.4)}
 .x-dlg .res-ask .opts{flex-direction:row}.x-dlg .res-ask .opt{flex:1}
@@ -7201,15 +7207,20 @@ function openDialog(who, lines, inspect, onDone, bufs) {
 function openChoice(who, opts, head) {
   ex.dlg = { who, lines: [''], i: 0, n: 0, acc: 0, choice: opts, rate: .026 };
   xUI.dlg.classList.remove('inspect', 'ready'); xUI.dlg.classList.add('on', 'choice'); xUI.who.textContent = head || 'YOUR REPLY';
-  xUI.line.innerHTML = '<div class="opts">' + opts.map((o, i) => `<button class="opt" data-o="${i}"><b>${i + 1}</b><span>${o.text}</span></button>`).join('') + '</div>';
+  xUI.line.innerHTML = '<div class="optwrap"><div class="opts">' + opts.map((o, i) => `<button class="opt" data-o="${i}"><b>${i + 1}</b><span>${o.text}</span></button>`).join('') + '</div><div class="optnav"><button data-scroll="-1" aria-label="Scroll up">▲</button><button data-scroll="1" aria-label="Scroll down">▼</button></div></div>';
   ui.xhud.classList.add('talking'); vel.set(0, 0, 0);
+  const W = xUI.line.querySelector('.optwrap'), O = W.firstChild, [up, dn] = W.querySelectorAll('.optnav button');
+  const nav = () => { const long = O.scrollHeight > O.clientHeight + 2; W.classList.toggle('long', long); up.disabled = O.scrollTop <= 1; dn.disabled = O.scrollTop + O.clientHeight >= O.scrollHeight - 1; };
+  O.addEventListener('scroll', nav, { passive: true });
+  requestAnimationFrame(() => { if (CHOICE_SCROLL.who === who) O.scrollTop = CHOICE_SCROLL.top; CHOICE_SCROLL.who = null; nav(); }); // a menu that redraws itself (ticking riders on and off) stays where you were
 }
+const CHOICE_SCROLL = { who: null, top: 0 };
 function pickChoice(i) {
   const d = ex.dlg; if (!d || !d.choice || !d.choice[i]) return;
-  const o = d.choice[i]; sfx.click(); xUI.dlg.classList.remove('choice'); ex.dlg = null; xUI.line.textContent = '';
+  const o = d.choice[i]; sfx.click(); { const O = xUI.line.querySelector('.opts'); CHOICE_SCROLL.who = d.who; CHOICE_SCROLL.top = O ? O.scrollTop : 0; } xUI.dlg.classList.remove('choice'); ex.dlg = null; xUI.line.textContent = '';
   if (o.onPick) o.onPick(); if (!ex.dlg) closeDialog();
 }
-xUI.dlg.addEventListener('click', e => { const b = e.target.closest('button[data-o]'); if (b) { e.stopPropagation(); pickChoice(+b.dataset.o); } }, true);
+xUI.dlg.addEventListener('click', e => { const s = e.target.closest('button[data-scroll]'); if (s) { e.stopPropagation(); if (!s.disabled) { const O = xUI.line.querySelector('.opts'); if (O) O.scrollBy({ top: +s.dataset.scroll * O.clientHeight * .75, behavior: 'smooth' }); } return; } const b = e.target.closest('button[data-o]'); if (b) { e.stopPropagation(); pickChoice(+b.dataset.o); } }, true);
 // influence with one companion, straight from a conversation (0-100, everyone starts at 50)
 // companions away from your party (waiting aboard the Nostra, lent to another faction, in a dungeon) can't gain or lose influence
 const compAway = id => !!(wanderer && (((wanderer.aboard || {})[id]) || ((wanderer.dip && wanderer.dip.lent) || {})[id] || ((wanderer.dungeon || {})[id])));
