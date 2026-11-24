@@ -3275,3 +3275,33 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - **Prizes by place:** 260 / 130 / 60 units in an open race, 600 / 300 / 150 against leaders, 220 / 110 / 50 against companions, plus XP. Your best race and best lap are recorded, and the first time you beat each leader is remembered. The screen over the stand shows your best.
   - **Race again** with the same field, or **leave** and you're back in the gardens by the gate.
   - `?race` previews an open race from the title, `?race=leaders` every leader, and `?race=comps` a handful of companions.
+
+### Performance: the same graphics for far less work
+
+The picture is unchanged: every setting looks exactly as it did. Tested frame by frame, with the new paths on and off, the ambient occlusion comes out pixel-identical, and the final image differs by at most a rounding step in a few hundred pixels.
+
+- **Shadows drawn once a frame.** The ambient occlusion pass (ULTRA) used to draw every shadow map a second time. It now reuses the ones from the scene pass.
+- **Bodies merged for the passes that only need shapes.** Every character is built from hundreds of small parts. The shadow pass and the ambient occlusion pass (which ignore materials) now draw each joint's rigid parts (an arm, a head, a rifle) as one merged mesh. The colour pass is untouched, so every part keeps its material, detail and glow. Parts that move on their own, change shape, are see-through or cut out are drawn as before. A group whose parts keep changing stops being merged for a while, and merged meshes nobody has drawn for a while give their memory back.
+- **Off-screen actors are skipped.** Cutscene actors and the crew were set to always draw, even behind the camera. They're now culled against bounds measured from their own shape, so nothing on screen can pop, and their shadows still fall correctly.
+- **Less bookkeeping in the ambient occlusion.** One pass over the scene now replaces three each frame.
+- **The screen's own multisampling is off on HIGH and ULTRA.** The post-processing already smooths the picture. LOW (if you started on it), the Species Creator, the Nostrapedia and the adventure studio still get smoothing through a small pass.
+- **Music and voice packs load when first needed** (about 96 MB that used to load at start-up: the combat, Antarctica, Africa, Chapter IV menu and cantina-fight music, and every voice pack from Chapters I–II). The combat tracks and your region's music are fetched quietly in the background once the game is up. Models still load as before.
+- **Faster unpacking** of the packs, with the browser's own base64 decoder where it has one.
+
+Measured draws per frame on ULTRA (before → after):
+- Africa, open world, sun shadows: about 9,700 → 1,800
+- The ship with the full crew aboard: about 6,200 → 2,750
+- Main menu: about 490 → 160
+- Space: unchanged (it was already light)
+
+### Auto-tune: ULTRA on any machine
+
+HIGH and ULTRA now tune themselves to the machine, so even a slow laptop can stay on ULTRA with every effect on (bloom, ambient occlusion, shadows, the grade, the upscaled characters).
+- **It watches real frame times.** When frames drop below about 50 a second, it eases the costliest work one step at a time. It never switches an effect off:
+  1. The ambient occlusion takes 8 samples instead of 12, at quarter resolution.
+  2. Multisampling goes from 4x to 2x.
+  3. The post-processing draws at 85% resolution.
+  4. The sun's shadow map is 2048 instead of 4096.
+  5. The post-processing draws at 75%, then at 67% for the last step.
+- **When there's headroom again, it gives the steps back** one at a time. A step that proves too much is left alone for a while, so the picture doesn't keep switching back and forth.
+- **A fast machine never leaves full quality.** The step a machine settles on is remembered between visits, so a slow laptop starts where it left off instead of stuttering while it re-learns.
