@@ -2040,7 +2040,7 @@ class AuraMat extends THREE.ShaderMaterial { // the auras' material. It answers 
   copy(src) { super.copy(src); for (const k in src.uniforms) if (src.uniforms[k] === DEITY_U.uT || src.uniforms[k] === DEITY_U.uPx) this.uniforms[k] = src.uniforms[k]; return this; }
 }
 const DEITY_TAGS = { prArchamus: 'arch', prArchamusU: 'arch', prZark: 'zark' };
-function deityTick() { try { gloryTick(); } catch (e) {} DEITY_U.uT.value = time; CH_DET.value = gfxQ === 'low' ? 0 : 1; DEITY_U.uPx.value = (renderer.domElement.height || innerHeight) / (2 * Math.tan(((camera && camera.fov) || 60) * Math.PI / 360)); }
+function deityTick() { DEITY_U.uT.value = time; CH_DET.value = gfxQ === 'low' ? 0 : 1; DEITY_U.uPx.value = (renderer.domElement.height || innerHeight) / (2 * Math.tan(((camera && camera.fov) || 60) * Math.PI / 360)); }
 function deityPatch(sh) { // an edge-light, and a flicker for whatever burns
   const u = this.userData; if (!(u.rim && u.rim.isColor)) u.rim = new THREE.Color(typeof u.rim === 'number' ? u.rim : 0); // (a copy carries it as a number)
   sh.uniforms.uRim = { value: u.rim }; sh.uniforms.uFlick = { value: this.userData.flick }; sh.uniforms.uDT = DEITY_U.uT;
@@ -2272,26 +2272,13 @@ function majestyDress(sc, kind) { // the upscaled materials with his own edge-li
   try { majestyAura(sc, kind); } catch (e) { console.error(e); }
   return sc;
 }
-/* ============ glory: every companion, every resident and your own wanderer, dressed the way the gods are ============
-   Archamus and Lord Zark set the standard; everyone you travel with, everyone you sent into the world and you yourself now meet it:
+/* ============ glory: the imported characters at the gods' level, and Josiah Richards a god ============
+   Archamus and Lord Zark set the standard; the five imported characters meet it (everyone else keeps the upscaled look above):
    · THE MATERIALS (gloryMat): their own colour along every edge, with a hotter, thinner line on the very rim; reflections a little
-     deeper; whatever glows (eyes, visors, lights, reactors) brighter and breathing slowly; metal polished under a clear coat;
-     visors and glass with an oily sheen; cloth and hair with a sheen in their colour. No glitter (no glints, no floating motes), and no
-     circle on the ground at their feet: only Josiah, a god, has his seal.
-   · A PRESENCE of their own, wherever they appear (your party, your crew aboard, your deputy, the Nostrapedia, the cutscenes):
-     JAMES (Chapters I–II): a green radiance, and a shadow at his heels: he hides something.
-     ORION: the three stars of Orion's Belt behind his head, and the embers of an old soldier.
-     NICO, Lady Luck: a rose radiance, and the same three stars, fainter: she named her son after them.
-     KHAZGLAR: red Martian dust swirling at his feet, the warm glow of Olympus Mons under him.
-     CHARON and KIZNA: a halo of circuitry.                              NYREXIA: a crown of Eris's ice, a snowflake six arms wide.
-     CROXIAN: a ring of thorns over a general's head, embers and smoke.  MALIA: a silver radiance.
-     JAMES, Pontifex Maximus: a golden papal halo.  THE PONTIFEXES and SISTERS: a halo in their colour, candle-embers.
-     JOSIAH WILLIAMS II: a halo ring, a cyan radiance.  JAVEK: a green radiance, a hunted shadow.
-     TYROTARONUS: a spiral galaxy turning behind him, the one he lost.   Anyone else who travels with you: a radiance in their colour.
-   · RESIDENTS AND YOUR WANDERER, by alignment and level (a resident's own, worked out when they arrive; yours follows your body as it is):
-     a hero has a golden radiance; at level 40 a halo ring, at 80 a sunburst like Archamus's.
-     a neutral has a silver-blue radiance; at 40 a halo ring, at 80 two orbits turning round them.
-     a villain has a crimson glow at their feet, shadow smoke and embers; at 40 a ring of thorns, at 80 an eclipse like Zark's.
+     deeper; whatever glows brighter and breathing slowly; metal polished under a clear coat; visors and glass with an oily sheen;
+     cloth and hair with a sheen in their colour. No glitter, and no circle on the ground at their feet (only Josiah has his seal).
+   · MORE PRESENCE (gloryAura, from majestyAura): Peter a cold radiance, Gareth a warm one, Kevin a violet crown of thorns over a
+     violet glow, Sevirrus a crimson glow at his feet.
    · JOSIAH RICHARDS is a god now (josiahGod): the Prime Secretary who reset time itself, from the Earth to the edge of the Laniakea
      Supercluster. A clockwork dial of light behind his head (hour marks, a gear ring, three hands, the second hand ticking), the seal of
      his office vast at his feet, two orbits circling him like an orrery, golden motes that move only when the clock ticks, the
@@ -2313,40 +2300,11 @@ const GLO_HEAD = `uniform float uT; uniform vec3 uCol; varying vec2 vUv;
   float gH(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
   void main(){ vec2 p = vUv - .5; float r = length(p) * 2., a = atan(p.y, p.x);`;
 const GLO_FS = {
-  belt: GLO_HEAD + ` // Orion's Belt: Alnitak, Alnilam, Mintaka
-      float v = 0.; vec2 q = p * 2.;
-      for (int i = 0; i < 3; i++) { float fi = float(i); vec2 d = q - vec2(-.44 + fi * .43, -.17 + fi * .165 + (fi == 1. ? .02 : 0.));
-        float core = exp(-dot(d, d) / .0028), fl = (exp(-abs(d.x) * 70.) * exp(-abs(d.y) * 6.) + exp(-abs(d.y) * 70.) * exp(-abs(d.x) * 6.)) * .55;
-        v += (core * 1.4 + fl + exp(-dot(d, d) * 30.) * .15) * (.7 + .3 * sin(uT * (2.1 + fi * .7) + fi * 2.)); }
-      v *= smoothstep(1., .85, r); if (v < .003) discard;
-      gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL,
-  ring: GLO_HEAD + ` // a halo ring, beaded
-      float v = exp(-pow((r - .7) / .022, 2.)) * 1.2 + exp(-pow((r - .7) / .1, 2.)) * .3 + pow(max(0., cos(a * 12. + uT * .3)), 40.) * exp(-pow((r - .7) / .045, 2.)) * 1.1 + exp(-r * r * 4.) * .1;
-      v *= (.85 + .15 * sin(uT * 1.7)) * smoothstep(1., .9, r); if (v < .003) discard;
-      gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL,
-  circuit: GLO_HEAD + ` // a halo of circuitry: broken rings, and data running round them
-      float ring = exp(-pow((r - .72) / .014, 2.)) * step(.18, fract(a * 1.2732 + uT * .05)) + exp(-pow((r - .58) / .009, 2.)) * .6 * step(.3, fract(a * 0.9549 - uT * .08));
-      float data = step(.62, r) * step(r, .68) * step(.72, fract(a * 6.3662 - uT * .9)) * step(fract(a * .4775 + uT * .2), .6) * .9;
-      float nodes = pow(max(0., cos(a * 8. + uT * .05 * 6.2832)), 60.) * exp(-pow((r - .72) / .03, 2.)) * 1.2;
-      float v = (ring + data + nodes + exp(-r * r * 4.) * .1) * smoothstep(1., .9, r) * (.85 + .15 * sin(uT * 3.)); if (v < .003) discard;
-      gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL,
-  crystal: GLO_HEAD + ` // a snowflake six arms wide: a crown of ice
-      float s = mod(a + uT * .04, 1.0472) - .5236; vec2 q = vec2(cos(s), sin(s)) * r; float v = exp(-pow(q.y / .012, 2.)) * step(.12, q.x) * step(q.x, .9);
-      for (int i = 1; i < 4; i++) { vec2 d = q - vec2(.22 + float(i) * .17, 0.); float t = d.x * .5 + abs(d.y) * .866, dd = abs(d.x * .866 - abs(d.y) * .5);
-        v += exp(-pow(dd / .01, 2.)) * step(0., t) * step(t, .2 - float(i) * .04); }
-      v = v * 1.1 + exp(-pow((r - .9) / .01, 2.)) * .35 + exp(-dot(q - vec2(.9, 0.), q - vec2(.9, 0.)) * 900.) * 2. * (.6 + .4 * sin(uT * 2. + a * 3.)) + exp(-r * r * 9.) * .3;
-      v *= smoothstep(1., .93, r) * (.85 + .15 * sin(uT * 1.2)); if (v < .003) discard;
-      gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL,
   thorn: GLO_HEAD + ` // a ring of thorns: dark, rimmed in their colour
       float band = exp(-pow((r - .52) / .035, 2.)), f = abs(fract(a * 1.5915 + .25) - .5), w = .5 * clamp(1. - (r - .5) / .42, 0., 1.);
       float spike = smoothstep(w * .5 + .02, w * .5 - .02, f) * step(.5, r) * step(r, .93), body = max(band, spike), edge = band * .6 + spike * smoothstep(w * .5 - .05, w * .5, f) + spike * smoothstep(.75, .93, r);
       float al = max(body * .8, 0.); if (al < .003) discard;
       gl_FragColor = vec4(uCol * edge * (1.6 + .4 * sin(uT * 2.3)), al);` + MAJ_TAIL,
-  spiral: GLO_HEAD + ` // a spiral galaxy, turning slowly: the one he lost
-      float lr = log(max(r, .01)), arms = pow(max(0., cos(2. * (a - uT * .06) - lr * 7.)), 9.) * smoothstep(.04, .3, r) * smoothstep(1., .45, r);
-      float stars = step(.992, gH(floor(vUv * 90.))) * smoothstep(1., .55, r) * (.6 + .4 * sin(uT * 2. + gH(floor(vUv * 90.) + 3.) * 30.));
-      float v = arms * .9 + exp(-r * r * 40.) * 1.6 + exp(-r * r * 7.) * .2 + stars + exp(-pow((r - .97) / .012, 2.)) * .2; v *= smoothstep(1., .9, r); if (v < .003) discard;
-      gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL,
   clock: GLO_HEAD + ` // the dial of time: rings, hour bars (doubled at the quarters), minute ticks, a gear ring turning, three hands, rays
       float c = atan(p.x, p.y), tw = 6.2832, R = r / .72;
       float rings = exp(-pow((R - 1.) / .012, 2.)) * 1.3 + exp(-pow((R - .93) / .008, 2.)) * .7 + exp(-pow((R - .34) / .012, 2.)) * .7 + exp(-pow((R - .05) / .03, 2.)) * 1.2;
@@ -2386,39 +2344,8 @@ function gloryAura(parent, layers, H, base) { // a presence, built from layers m
   }
   return G;
 }
-// ---- who looks like what ----
-const gSmoke = (n = 24, alpha = .4, h = .35) => ['pts', { n, h, r: .48, size: .085, speed: .03, swirl: .15, col: 0x030406, k: 1, soft: 1.4, alpha, add: false }];
+// ---- a radiance behind them, as the gods have ----
 const gRad = (col, k = .5) => ['bill', 'radiance', .55, 1.4, .3, col, k * 1.6];
-const GLORY = {
-  james: { rim: 0x7fe0a0, L: [gRad(0x6fe0a8, .5), gSmoke(22, .42)] },
-  orion: { rim: 0xffb36e, L: [gRad(0xffa860, .55), ['bill', 'belt', 1.0, .62, .06, 0xfff0d8, 2.8], ['pts', { n: 60, h: 1.15, r: .42, size: .015, speed: .09, swirl: .45, col: 0xff9a40, k: 3 }]] },
-  nico: { rim: 0xe8a0c0, L: [gRad(0xff9fd0, .6), ['bill', 'belt', .99, .42, .06, 0xffe8f4, 1.3]] },
-  khazglar: { rim: 0xd6b27a, L: [['bill', 'under', .03, 1.1, 0, 0xff7a30, .9], ['pts', { n: 50, h: .55, r: .55, size: .07, speed: .03, swirl: .5, col: 0x8a3a1a, k: 1, soft: 1.6, alpha: .45, add: false }], gRad(0xffb070, .45)] },
-  charon: { rim: 0x9fb4ff, L: [['bill', 'circuit', .97, .5, .05, 0x8fb0ff, 2.2], gRad(0x7f9cff, .45)] },
-  kizna: { rim: 0xf3a6d6, L: [['bill', 'circuit', .97, .5, .05, 0xffa6dc, 2.2], gRad(0xff9fd6, .5)] },
-  nyrexia: { rim: 0xb893ff, L: [['bill', 'crystal', .95, .62, .05, 0xd8c8ff, 2.2], gRad(0xa890ff, .55)] },
-  croxian: { rim: 0xff7a6e, L: [['bill', 'thorn', .97, .56, .05, 0xff3a2a, 1.6, false], ['bill', 'under', .03, 1.0, 0, 0xff3a1a, 1.0], ['pts', { n: 70, h: 1.2, r: .42, size: .015, speed: .1, swirl: .45, col: 0xff5a2a, k: 3 }], gSmoke(30, .45, .7)] },
-  malia: { rim: 0xe6e9f0, L: [gRad(0xcfd8ff, .45)] },
-  'james-ti': { rim: 0xe0c160, L: [['bill', 'ring', .97, .5, .05, 0xffd77a, 2.2], gRad(0xffcf70, .6), gSmoke(24, .35, .5)] },
-  pontifex: { rim: 0xd0343a, L: [['bill', 'ring', .97, .5, .05, 0xff5a50, 2.0], gRad(0xff4a40, .5), ['pts', { n: 50, h: 1.1, r: .42, size: .015, speed: .06, swirl: .25, col: 0xffa070, k: 2.6 }]] },
-  josiah2: { rim: 0x7fd8ff, L: [gRad(0x6fd0ff, .5), ['bill', 'ring', .97, .44, .05, 0x9fe4ff, 1.4]] },
-  javek: { rim: 0x5dff7a, L: [gRad(0x50ff80, .4), gSmoke(26, .4, .6)] },
-  tyrotaronus: { rim: 0xc4cad6, rk: .25, L: [['bill', 'spiral', .88, .9, .25, 0xcfd8ff, 1.8], gRad(0xb8c4e0, .5)] }
-};
-const GLO_TAG = { jamesGlb: 'james', cpOrion: 'orion', nicoGlb: 'nico', cpKhaz: 'khazglar', cpCharon: 'charon', 'cpCharon+kizna': 'kizna', cpNyrexia: 'nyrexia', cpCroxianU: 'croxian', cpCroxian: 'croxian', cpMalia: 'malia', cpJamesTI: 'james-ti', cpPontifex: 'pontifex', cpJosiah2: 'josiah2', cpJavekC: 'javek', cpJavekR: 'javek', vcTaro: 'tyrotaronus' };
-const gloryTagKind = (tag, mod) => GLO_TAG[tag + (mod ? '+' + mod : '')] || GLO_TAG[tag] || null;
-function gloryGeneric(col) { return { rim: col, L: [gRad(col, .5)] }; }
-function gloryAlSpec(al, lv) { // residents and your wanderer: by alignment, grander with level
-  if (al === 'hero') { const L = [gRad(0xffd07a, .55)];
-    if (lv >= 80) L.push(['bill', 'halo', .95, .5, .05, 0xffe2a0, 2.0]); else if (lv >= 40) L.push(['bill', 'ring', .97, .45, .05, 0xffe2a0, 1.8]); return { rim: 0xffd98a, L }; }
-  if (al === 'villain') { const L = [['bill', 'under', .03, 1.05, 0, 0xff2a0c, 1.2], ['pts', { n: 36, h: .8, r: .4, size: .08, speed: .045, swirl: .3, col: 0x0b0206, k: 1, soft: 1.4, alpha: .5, add: false }], ['pts', { n: 70, h: 1.2, r: .44, size: .015, speed: .1, swirl: .5, col: 0xff5a1a, k: 3 }]];
-    if (lv >= 80) L.push(['bill', 'eclipse', .8, .9, .35, 0xff3a14, 1.4, false]); else if (lv >= 40) L.push(['bill', 'thorn', .97, .5, .05, 0xff2a1a, 1.5, false]); return { rim: 0xff3030, L }; }
-  const L = [gRad(0x9fdcff, .45)];
-  if (lv >= 80) L.push(['orbit', .55, 1.0, .55, .3, 0, 0x9fe3ff, 1.5], ['orbit', .55, .85, -.7, -.22, 2, 0xd8f4ff, 1.3]); else if (lv >= 40) L.push(['bill', 'ring', .97, .45, .05, 0xbfeaff, 1.6]);
-  return { rim: 0x9fe3ff, L };
-}
-const gloryTier = lv => lv >= 80 ? 2 : lv >= 40 ? 1 : 0, gloryLv = c => c && c.sentAt ? resLevel(c) : levelOf(c);
-const gloryH = c => (((SPECIES[spOf(c)] || {}).height) || 1.85) * ((IDENT[c && c.identity] || IDENT.nb).h);
 function gloryMat(m, rim, o = {}) { // a body's upscaled material, brightened to the gods' level (changes it in place: it's that body's own)
   if (!m || !m.isMeshPhysicalMaterial || m.isShaderMaterial) return;
   if (m.onBeforeCompile === THREE.Material.prototype.onBeforeCompile && !(m.userData && m.userData.noUp)) { m.userData.det = new THREE.Vector4(...CH_DETAIL.other); m.userData.kind = 'other'; m.onBeforeCompile = charPatch; m.customProgramCacheKey = () => 'char2'; m.needsUpdate = true; } // physical from the start (an imported model): it joins in
@@ -2436,41 +2363,6 @@ function gloryMat(m, rim, o = {}) { // a body's upscaled material, brightened to
   m.needsUpdate = true;
 }
 function gloryMats(obj, rim, o) { if (obj) obj.traverse(x => { if (!x.isMesh || !x.material || (x.userData && x.userData.noMeasure && x.name === 'deity aura cape')) return; for (const m of Array.isArray(x.material) ? x.material : [x.material]) gloryMat(m, rim, o); }); }
-function gloryOn(obj, kind, H, colOver) { // dress a body in glory: its materials, then its presence (once per body; a different kind replaces the old)
-  if (!obj) return obj; const spec = typeof kind === 'object' ? kind : GLORY[kind]; if (!spec) return obj;
-  const key = typeof kind === 'object' ? (kind.key || 'x') : kind + (colOver || ''); if (obj.userData.gloryKey === key) return obj;
-  gloryDrop(obj.children.find(o => o.userData && o.userData.glory));
-  obj.userData.gloryKey = key; const rim = colOver ? new THREE.Color(colOver) : new THREE.Color(spec.rim);
-  gloryMats(obj, rim, { rimK: spec.rk });
-  const L = colOver ? spec.L.map(l => l.map(v => typeof v === 'number' && v > 0xffff ? rim.getHex() : v && typeof v === 'object' && !Array.isArray(v) && v.col > 0xffff ? Object.assign({}, v, { col: rim.getHex() }) : v)) : spec.L; // a Pontifex in her own colour
-  try { gloryAura(obj, L, H, new THREE.Vector3()); } catch (e) { console.error(e); }
-  return obj;
-}
-function gloryRig(R, id, H) { // a companion's rig (whatever loaded it): their own presence, unless they're a god or one of the imported, who have theirs
-  if (!R || !R.root) return R; const md = R.model && R.model.userData; if (md && (md.deity || md.majesty)) return R;
-  const pc = String(id).startsWith('pont:') ? pontCol(pontById(String(id).slice(5))) : null;
-  gloryOn(R.root, GLORY[id] ? id : pc ? 'pontifex' : gloryGeneric(compColor(id)), H || 1.85, pc);
-  return R;
-}
-function gloryDrop(G) { if (!G) return; if (G.parent) G.parent.remove(G); G.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.isShaderMaterial) o.material.dispose(); }); } // (its buffers freed)
-// ---- your wanderer: their presence follows the body you're wearing (yours, or a villain's on the evil menu), its species, alignment and level ----
-const GLO_P = { key: '', t: 0, G: null };
-function gloryTick() {
-  if (!GLO_P.G || GLO_P.G.parent !== player) GLO_P.key = '';
-  const G = GLO_P.G; if (G) G.visible = Math.abs(inner.rotation.x) < .45 && Math.abs(inner.rotation.z) < .45 && inner.visible !== false; // not lying down
-  const now = performance.now(); if (now - GLO_P.t < 400 && GLO_P.key) return; GLO_P.t = now; // a few times a second
-  const c = lastLookC || wanderer; if (!c) return; const vile = !!(VILE.g && VILE.g.visible); // on the evil menu, whoever holds the world is a villain
-  const lv = gloryLv(c), al = vile ? 'villain' : resAl(c), H = gloryH(c), key = al + gloryTier(lv) + spOf(c) + H.toFixed(2);
-  if (key === GLO_P.key) return; GLO_P.key = key;
-  gloryDrop(GLO_P.G); GLO_P.G = null;
-  const spec = gloryAlSpec(al, lv); gloryMats(inner, new THREE.Color(spec.rim));
-  try { GLO_P.G = gloryAura(player, spec.L, H, new THREE.Vector3()); } catch (e) { console.error(e); GLO_P.G = null; }
-}
-function gloryResident(B) { // a resident on the ground: their own colour on their own (copied) materials, and their own presence
-  const c = B.c, spec = gloryAlSpec(B.al, B.lv); let H = gloryH(c); // measured, for the bodies that aren't a wanderer's (an old Taredesiban, a Pontifex, an uplifted species)
-  try { B.root.updateMatrixWorld(true); const b = boxNoGear(B.body), h = b.max.y - b.min.y; if (h > .5 && h < 4) H = h; } catch (e) {}
-  gloryMats(B.body, new THREE.Color(spec.rim)); gloryAura(B.root, spec.L, H, new THREE.Vector3());
-}
 // ---- Josiah Richards, a god ----
 function josiahMat(old, o, H) { // by colour and place (his parts have no names): suit, gilded seams, gold buttons, skin with a light under it, his own eyes
   const c = old.color ? old.color.clone() : new THREE.Color(.5, .5, .5), hsl = {}; c.getHSL(hsl); const lum = c.r * .2126 + c.g * .7152 + c.b * .0722;
@@ -5428,7 +5320,6 @@ function setupJames(m) {
   if (jawMesh) jawP.attach(jawMesh);
   if (mouthMesh) mouthP.attach(mouthMesh);
   for (const g of [head, la, ra]) upper.attach(g);
-  try { m.updateMatrixWorld(true); const hb = boxNoGear(m); gloryOn(root, 'james', Math.max(1, hb.max.y - hb.min.y)); } catch (e) { console.error(e); } // his presence (see glory)
   Object.assign(james, { root, model: m, k: 1, body: upper, head, la, ra, ll, rl, hand, jawP, mouthP, mouthY: mouthP.position.y, mouth: 0, phase: 0, ready: true, walking: false, speed: 1.6, stopZ: 3.25, lean: 0, headTilt: 0, headYaw: 0, raise: 0 });
   const lan = new THREE.Group();
   lan.add(new THREE.Mesh(new THREE.CylinderGeometry(.06, .07, .18, 12), new THREE.MeshStandardMaterial({ color: 0x2a2d33, metalness: .6, roughness: .4 })));
@@ -24982,8 +24873,8 @@ async function shipCrewPlace() {
 }
 async function compRigFor(id) { // a fresh rig of a companion, for the ship
   if (id === 'nico') return nicoCompanionRig();
-  if (id === 'orion') { const el = document.getElementById('cpOrion'), bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); const R = autoRig(SkeletonUtils.clone(await parseGlb(u8.buffer)), 1.85); armRig(R, 'rifle'); return gloryRig(R, 'orion', 1.85); }
-  const c = charById(id); return c ? loadCharRig(c, 1.85).then(R => gloryRig(R, id, 1.85)) : companionRig(id); // Hak, Darius, Vishara, a Pontifex, Khazglar…: the rig they walk with on the ground
+  if (id === 'orion') { const el = document.getElementById('cpOrion'), bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); const R = autoRig(SkeletonUtils.clone(await parseGlb(u8.buffer)), 1.85); armRig(R, 'rifle'); return R; }
+  const c = charById(id); return c ? loadCharRig(c, 1.85) : companionRig(id); // Hak, Darius, Vishara, a Pontifex, Khazglar…: the rig they walk with on the ground
 }
 /* ---- followers come aboard: whoever is following you walks the Nostra's decks behind you, the way they do on the ground.
    Quest companions too: Hak, Darius and Vishara stay with you as long as the blockade of Janira Prime is on, aboard and on any
@@ -25192,10 +25083,7 @@ function nicoCmd(mode, quiet) {
   refreshJamesUI();
 }
 let nicoSrcP = null;
-async function companionRig(id) { // every companion in glory (see glory): their own presence, whoever they are
-  const R = await companionRig0(id); return gloryRig(R, id, (COMPANIONS.find(o => o.id === id) || {}).h || 1.85);
-}
-async function companionRig0(id) { // the rig any companion walks and fights with: Nico's own, a story companion's Nostrapedia model, or an imported/custom character
+async function companionRig(id) { // the rig any companion walks and fights with: Nico's own, a story companion's Nostrapedia model, or an imported/custom character
   if (id === 'nico') return nicoCompanionRig();
   if (SIEGE_LEADS[id]) { const R = await SIEGE_LEADS[id].rig(); if (!R) throw new Error('no model for ' + id); return R; }
   if (FINAL_LEADS[id]) { const R = await FINAL_LEADS[id].rig(); if (!R) throw new Error('no model for ' + id); return R; }
@@ -25211,7 +25099,7 @@ async function companionRig0(id) { // the rig any companion walks and fights wit
 async function nicoCompanionRig() { // a rig of her own (the escape and the menu have theirs), with her two pistols
   const el = document.getElementById('nicoGlb'); if (!el) throw new Error('no Nico model');
   nicoSrcP = nicoSrcP || (async () => { const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return parseGlb(u8.buffer); })();
-  const R = autoRig(SkeletonUtils.clone(await nicoSrcP), 1.72); armRig(R, 'pistols'); R.gearKind = 'pistols'; return gloryRig(R, 'nico', 1.72);
+  const R = autoRig(SkeletonUtils.clone(await nicoSrcP), 1.72); armRig(R, 'pistols'); R.gearKind = 'pistols'; return R;
 }
 function nicoGear(R, kind) { // pistols, or Orion's kind of obsidian pickaxe when she's mining
   if (R.gearKind === kind) return; R.gearKind = kind;
@@ -28096,7 +27984,7 @@ function loadDataScript(id, kind) { // fetch a data/<id>.js pack only when it's 
     const sc = document.createElement('script'); sc.src = `data/${id}.js`; sc.onload = () => res(true); sc.onerror = () => res(false); document.body.appendChild(sc);
   });
 }
-async function glbRig(id, h, weapon, lazy) { if (lazy) await loadDataScript(id, 'glb'); const src = await embGlb(id); if (!src) return null; const R = autoRig(SkeletonUtils.clone(src), h); armRig(R, weapon || 'none'); const gk = gloryTagKind(id); return gk ? gloryRig(R, gk, h) : R; } // a companion in a cutscene, in glory too
+async function glbRig(id, h, weapon, lazy) { if (lazy) await loadDataScript(id, 'glb'); const src = await embGlb(id); if (!src) return null; const R = autoRig(SkeletonUtils.clone(src), h); armRig(R, weapon || 'none'); return R; }
 // ---- the stage: a dark place the memories play out in ----
 function nmStage() {
   if (NM.scene) return NM.scene;
@@ -29763,7 +29651,7 @@ async function placeOrion() {
       const el = document.getElementById('cpOrion'); if (!el) return null;
       const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       const R = autoRig(SkeletonUtils.clone(await parseGlb(u8.buffer)), 1.85); armRig(R, 'none'); R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
-      gloryRig(R, 'orion', 1.85); R.lips = faceRig(R.root); return (world.orion = R);
+      R.lips = faceRig(R.root); return (world.orion = R);
     })().catch(e => { console.error('Orion failed to load', e); world.orionLoad = null; return null; });
     if (!(await world.orionLoad)) return;
   }
@@ -32621,7 +32509,6 @@ function loadFigure(c) {
     sc.updateMatrixWorld(true); gearNoMeasure(sc);
     const b = boxNoGear(sc), ctr = b.getCenter(new THREE.Vector3()); // sized and centred on the body, not a weapon they carry (Croxian's scythe)
     sc.position.set(-ctr.x, -b.min.y, -ctr.z); holder.scale.setScalar(c.h / Math.max(.01, b.max.y - b.min.y));
-    { const gk = !c.sil && gloryTagKind(c.tag, c.mod); if (gk) gloryOn(holder, gk, b.max.y - b.min.y, c.pcol); } // a companion's file shows them in glory
     holder.userData.keep = true;
     return holder;
   })();
@@ -33114,13 +33001,12 @@ async function resSpawn(c, near) {
   if (!md || !RES.bots.includes(B)) return;
   B.body = md.m; B.L = md.L; B.human = md.human; B.root.add(md.m); wScene.add(B.root); B.ready = true;
   B.root.position.set(B.x, B.y, B.z); B.root.rotation.y = B.ry;
-  try { gloryResident(B); } catch (e) { console.error(e); } // their own presence (see glory)
   resAlOutfit(B); resGearDress(B);
   const GM = myGuild(); resSay(B, resPartying(c) && clubHere() ? (resT('party', B, resPartyCtx(B), 'arrive') || 'Who’s ready to celebrate?') : GM && GM.members.includes(B.id) ? (resT('guildHi', B) || `Good to see you, ${wanderer.name}!`) : resLine('arrive', B));
 }
 // villains look the part: their outfit darkens like any wanderer's does
 function resAlOutfit(B) { try { if (!B.human) return; const k = alDarkK((B.c.align && B.c.align.p) || 0); if (k) B.body.traverse(o => { if (o.isMesh && o.material && o.material.color && !/visor|glass|skin|face/i.test(o.material.name || '')) o.material.color.lerp(AL_DARK, k * .7); }); } catch (e) {} }
-function resDespawn(B) { if (B.root.parent) B.root.parent.remove(B.root); try { gloryDrop(B.root.children.find(o => o.userData && o.userData.glory)); } catch (e) {} RES.bots = RES.bots.filter(o => o !== B); if (B.partner) { B.partner.partner = null; B.partner.task = null; } }
+function resDespawn(B) { if (B.root.parent) B.root.parent.remove(B.root); RES.bots = RES.bots.filter(o => o !== B); if (B.partner) { B.partner.partner = null; B.partner.task = null; } }
 function resClearGround() { for (const B of [...RES.bots]) resDespawn(B); RES.area = null; }
 
 // ---- what they say: lines written for each moment, in their own voice (alignment and species) ----
