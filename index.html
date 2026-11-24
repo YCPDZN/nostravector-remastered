@@ -1501,6 +1501,7 @@ body.cc-ingame #cc{background:none} body.cc-ingame > *:not(#cc):not(#c):not(scri
       <button class="opt" id="oMusic"><span>Music</span><b>ON</b></button>
       <button class="opt" id="oSound"><span>All sound</span><b>ON</b></button>
       <button class="opt" id="oChatter"><span>Companion chatter</span><b>NORMAL</b></button>
+      <button class="opt" id="oGfx"><span>Graphics</span><b>ULTRA</b></button>
       <button class="opt" id="oCathLang"><span>Catharsis speech</span><b>CATHARSIS</b></button>
     </div>
     <div class="row"><button class="btn primary" id="oBack"><span>Back</span></button></div>
@@ -1975,6 +1976,7 @@ function gfxApplyScene() { // what the quality changes in the menu scene itself
   const seg = gfxQ === 'ultra' ? 256 : gfxQ === 'high' ? 200 : 160;
   if (terrain.geometry.parameters.widthSegments !== seg) { const g = new THREE.PlaneGeometry(320, 320, seg, seg); g.rotateX(-Math.PI / 2); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 3), 3)); const old = terrain.geometry; terrain.geometry = terrainGeo = g; old.dispose(); buildTerrain(); }
   if (GFX.look) gfxLook(GFX.look, true);
+  try { gfxWorldApply(); } catch (e) {} // and on foot
 }
 function gfxLook(L, force) { // a look's sky, light and glow (setMenuLook calls this)
   GFX.look = L; if (!gfxOn()) { if (scene.environment !== GFX.roomEnv) scene.environment = GFX.roomEnv; for (const m of aurora.children) m.material.color.set(L.tint || 0xffffff); return; } // LOW: as it always was
@@ -2011,9 +2013,10 @@ const GFX_GRADE = {
 function gfxComposer() {
   const M = GFX.mods; if (!M) return null; if (GFX.comp) return GFX.comp;
   const sz = renderer.getSize(new THREE.Vector2()), pr = renderer.getPixelRatio(), gl2 = renderer.capabilities.isWebGL2;
-  const rt = new THREE.WebGLRenderTarget(sz.x * pr, sz.y * pr, { type: THREE.HalfFloatType, samples: gl2 ? 4 : 0 });
+  const rt = new THREE.WebGLRenderTarget(sz.x * pr, sz.y * pr, { type: THREE.HalfFloatType, samples: gl2 ? (gfxQ === 'ultra' ? 4 : 2) : 0 });
   const C = new M.EffectComposer(renderer, rt); GFX.rp = new M.RenderPass(scene, camera); C.addPass(GFX.rp);
   if (gfxQ === 'ultra') { try { GFX.ao = new M.GTAOPass(scene, camera, sz.x, sz.y, undefined, { radius: .55, distanceExponent: 1.4, thickness: 1.6, scale: 1, samples: 12, distanceFallOff: 1, screenSpaceRadius: false }); GFX.ao.blendIntensity = .85; C.addPass(GFX.ao);
+      const ss = GFX.ao.setSize.bind(GFX.ao); GFX.ao.setSize = (w, h) => ss(Math.max(1, w >> 1), Math.max(1, h >> 1)); /* at half resolution: the open world can't afford it at full */
       const r0 = GFX.ao.render.bind(GFX.ao); GFX.ao.render = (...a) => { const hid = []; GFX.ao.scene.traverseVisible(o => { const m = o.material; if (o.isSprite || o.isPoints || o.isLine || (m && !Array.isArray(m) && (m.transparent || m.depthWrite === false))) hid.push(o); }); for (const o of hid) o.visible = false; try { r0(...a); } finally { for (const o of hid) o.visible = true; } }; } /* glows, sprites and see-through things never cast ambient occlusion */ catch (e) { console.warn('Graphics: no ambient occlusion', e); GFX.ao = null; } }
   GFX.bloom = new M.UnrealBloomPass(new THREE.Vector2(sz.x, sz.y), GFX.bloomK, .55, .82); C.addPass(GFX.bloom);
   C.addPass(new M.OutputPass()); GFX.grade = new M.ShaderPass(GFX_GRADE); C.addPass(GFX.grade);
@@ -2027,14 +2030,52 @@ function gfxRender(S, C, dt) { // the menu's frame: through the post-processing 
   const comp = gfxComposer(); if (!comp) { renderer.render(S, C); return; }
   const pr = renderer.getPixelRatio(), sz = renderer.getSize(new THREE.Vector2()), key = `${sz.x}x${sz.y}@${pr}`;
   if (GFX.size !== key) { GFX.size = key; comp.setPixelRatio(pr); comp.setSize(sz.x, sz.y); }
-  GFX.rp.scene = S; GFX.rp.camera = C; if (GFX.ao) { GFX.ao.enabled = S === scene; GFX.ao.scene = S; GFX.ao.camera = C; }
-  GFX.bloom.strength += ((S === scene ? GFX.bloomK : .5) - GFX.bloom.strength) * Math.min(1, (dt || .016) * 3);
+  GFX.rp.scene = S; GFX.rp.camera = C; if (GFX.ao) { GFX.ao.enabled = S === scene || S === wScene || S === aScene || (SHIPI.scene && S === SHIPI.scene); GFX.ao.scene = S; GFX.ao.camera = C; }
+  let bk = .32, th = .9; // bloom: how strong, and from how bright (the open world by day is bright everywhere, so only the brightest blooms)
+  if (S === scene) { bk = GFX.bloomK; th = .82; } else if (S === MSP.scene) { bk = .5; th = .82; }
+  else if (S === wScene) { const dl = world.dayL == null ? 1 : world.dayL; bk = .2 + (1 - dl) * .24; th = 1.3 - (1 - dl) * .45; if (DGN.on) { bk = .38; th = .85; } }
+  GFX.bloom.strength += (bk - GFX.bloom.strength) * Math.min(1, (dt || .016) * 3); GFX.bloom.threshold = th;
   GFX.grade.uniforms.uTime.value = time;
   comp.render(dt || .016);
 }
 function gfxSet(q) { if (!GFX_Q.includes(q)) return; gfxQ = q; store.set('nv_gfx', q); gfxDrop(); gfxApplyScene(); refreshGfx(); }
 function refreshGfx() { const el = $('#setGfx .val'); if (el) el.textContent = GFX_LABEL[gfxQ]; const o = $('#oGfx b'); if (o) o.textContent = GFX_LABEL[gfxQ]; }
 function cycleGfx() { sfx.init(); sfx.click(); gfxSet(GFX_Q[(GFX_Q.indexOf(gfxQ) + 1) % GFX_Q.length]); }
+/* ---- on foot (every chapter): the open world, Antarctica's station and your ship, through the same graphics ----
+   On HIGH and ULTRA: the post-processing (bloom, a light grade, and on ULTRA ambient occlusion), light from the sky you're under (the
+   panorama you see, with its night, dusk and storm laid over it, refreshed every couple of seconds as the day turns), shadows two or
+   four times as sharp, and fine relief and sparkle on the ground. Inside a lair the light is the lair's own. ---- */
+const GFX_W = { env: null, envScene: null, sky: null, veil: null, ground: null, lamp: null, t: 99, key: '', n: null, r: null };
+function gfxWorldApply() { // shadows and ground detail on foot: once the world is built, and whenever the quality changes
+  if (!world.sun) return; const on = gfxOn(), sz = gfxQ === 'ultra' ? 4096 : on ? 2048 : 1024;
+  if (world.sun.shadow.mapSize.x !== sz) { world.sun.shadow.mapSize.set(sz, sz); world.sun.shadow.normalBias = on ? .03 : 0; if (world.sun.shadow.map) { world.sun.shadow.map.dispose(); world.sun.shadow.map = null; } }
+  if (wTerrainMat) {
+    if (on && !GFX_W.n) { const D = gfxDetailTex(); GFX_W.n = D.normal.clone(); GFX_W.n.repeat.set(24, 24); GFX_W.n.needsUpdate = true; GFX_W.r = D.rough.clone(); GFX_W.r.repeat.set(24, 24); GFX_W.r.needsUpdate = true; } // 2 m tiles across each 48 m stretch of ground
+    wTerrainMat.normalMap = on ? GFX_W.n : null; wTerrainMat.roughnessMap = on ? GFX_W.r : null; wTerrainMat.normalScale.set(.35, .35); wTerrainMat.needsUpdate = true;
+  }
+  if (!on) { wScene.environment = null; GFX_W.key = ''; } else GFX_W.t = 99;
+}
+function gfxWorldEnv(dt) { // the light the sky gives on foot: rebuilt from what you can see whenever the sky changes enough to matter
+  if (!gfxOn() || ex.mode !== 'world') return;
+  if (DGN.on) { if (wScene.environment) { wScene.environment = null; GFX_W.key = ''; } return; } // a lair's light is its own
+  if ((GFX_W.t += dt) < 2) return; GFX_W.t = 0;
+  const bg = wScene.background, v = world.veil && world.veil.material, sunI = world.sun ? world.sun.intensity : 1, fogC = wScene.fog.color;
+  const key = `${bg ? bg.uuid || bg.getHexString() : ''}|${v ? v.color.getHexString() + v.opacity.toFixed(2) : ''}|${fogC.getHexString()}|${sunI.toFixed(1)}`;
+  if (key === GFX_W.key && wScene.environment) return; GFX_W.key = key;
+  if (!GFX_W.envScene) {
+    const S = GFX_W.envScene = new THREE.Scene();
+    GFX_W.sky = new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), new THREE.MeshBasicMaterial({ side: THREE.BackSide, fog: false })); S.add(GFX_W.sky);
+    GFX_W.veil = new THREE.Mesh(new THREE.SphereGeometry(48, 24, 12), new THREE.MeshBasicMaterial({ side: THREE.BackSide, transparent: true, depthWrite: false, fog: false })); S.add(GFX_W.veil);
+    GFX_W.ground = new THREE.Mesh(new THREE.SphereGeometry(46, 24, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), new THREE.MeshBasicMaterial({ side: THREE.BackSide, fog: false })); S.add(GFX_W.ground);
+    GFX_W.lamp = new THREE.Mesh(new THREE.SphereGeometry(3.2, 12, 8), new THREE.MeshBasicMaterial({ fog: false })); S.add(GFX_W.lamp);
+  }
+  const sm = GFX_W.sky.material; if (bg && bg.isTexture) { sm.map = bg; sm.color.setRGB(1, 1, 1); } else { sm.map = null; sm.color.copy(bg && bg.isColor ? bg : fogC); } sm.needsUpdate = true;
+  if (v) { GFX_W.veil.material.color.copy(v.color); GFX_W.veil.material.opacity = v.opacity; } else GFX_W.veil.material.opacity = 0;
+  GFX_W.ground.material.color.copy(fogC).multiplyScalar(.45);
+  if (world.sun) { const d = new THREE.Vector3().subVectors(world.sun.position, world.sun.target.position).normalize(); GFX_W.lamp.position.copy(d).multiplyScalar(40); GFX_W.lamp.material.color.copy(world.sun.color).multiplyScalar(Math.max(0, sunI) * 1.2); GFX_W.lamp.visible = sunI > .05; }
+  const old = GFX_W.env; GFX_W.env = pmrem.fromScene(GFX_W.envScene, .04, .1, 120); wScene.environment = GFX_W.env.texture; if (old) old.dispose();
+}
+
 
 /* ============ chapter IV menu: a voice that mocks you ============ */
 const TAUNTS = ['Useless.....', 'The old world is dead, Hawthorne is gone. Give up.', 'You cannot stop the Catharsis.', 'Sevirrus tried hundreds of years ago, facing ME. What chance do you have?', 'My legions are eternal....',
@@ -4246,7 +4287,7 @@ $('#setStyle').addEventListener('click', () => { menuStyle = menuStyle === 'red'
 $('#oMusic').addEventListener('click', toggleMusic);
 function cycleChatter() { sfx.init(); sfx.click(); chatter = { normal: 'less', less: 'off', off: 'normal' }[chatter] || 'normal'; store.set('nv_chatter', chatter); refreshOpts(); }
 $('#oChatter').addEventListener('click', cycleChatter); $('#setChatter').addEventListener('click', cycleChatter);
-$('#setGfx').addEventListener('click', cycleGfx); refreshGfx(); // Graphics: ULTRA, HIGH or LOW
+$('#setGfx').addEventListener('click', cycleGfx); $('#oGfx').addEventListener('click', cycleGfx); refreshGfx(); // Graphics: ULTRA, HIGH or LOW
 $('#oCathLang').addEventListener('click', () => { sfx.init(); sfx.click(); cycleCathLang(); }); $('#setCathLang').addEventListener('click', () => { sfx.init(); sfx.click(); cycleCathLang(); });
 $('#oSound').addEventListener('click', toggleSound);
 $('#xOptions').addEventListener('click', () => { sfx.click(); refreshOpts(); ui.xpause.classList.add('opts'); });
@@ -5549,7 +5590,7 @@ function skyTick(dt) {
   const dl = smooth(-.14, .22, sunH), dusk = clamp(1 - Math.abs(sunH) / .28, 0, 1), sm = world.storm || 0; world.dayL = dl;
   const dark = world.stormDarkT ? smooth(0, 6, time - world.stormDarkT) * sm : 0; // the sky darkens when the storm hits
   // lights
-  if (world.hemi) world.hemi.intensity = (.16 + .89 * dl) * (1 - .35 * dark) + (isPl() ? (world.flashA || 0) * 2.4 : 0); // lightning
+  if (world.hemi) world.hemi.intensity = (.16 + .89 * dl) * (1 - .35 * dark) * (gfxOn() && wScene.environment ? 1 - .28 * dl : 1) + (isPl() ? (world.flashA || 0) * 2.4 : 0); // lightning
   world.sun.intensity = 1.7 * dl * (1 - .7 * sm);
   world.sun.color.setRGB(1, lerp(.96, .72, dusk), lerp(.92, .55, dusk));
   // sky: night/dusk tint and the storm, layered over the sky panorama
@@ -9964,7 +10005,7 @@ function buildWorld(seed) {
     world.hemi = new THREE.HemisphereLight(0xdfe8f3, 0x7a8796, 1.05); wScene.add(world.hemi);
     const sunL = new THREE.DirectionalLight(0xfff6ea, 1.7); sunL.castShadow = true;
     sunL.shadow.mapSize.set(1024, 1024); Object.assign(sunL.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 1, far: 120 });
-    sunL.shadow.bias = -.0006; wScene.add(sunL, sunL.target); world.sun = sunL;
+    sunL.shadow.bias = -.0006; wScene.add(sunL, sunL.target); world.sun = sunL; try { gfxWorldApply(); } catch (e) {} // sharper shadows and finer ground on HIGH and ULTRA
     // station exterior at the origin
     const st = new THREE.Group(); wScene.add(st); world.station = st;
     const hull = new THREE.MeshStandardMaterial({ color: 0x4b525d, roughness: .7, metalness: .4, envMapIntensity: .3 });
@@ -35580,7 +35621,7 @@ function loopFrame() {
   if (state === 'ch2intro') { updateCh2Intro(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); renderer.render(afScene, camera); return; }
   if (state === 'travel') { updateParticles(dt); renderer.render(wScene, camera); return; }
   if (state === 'cantinaScene') { updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
-  if (state === 'brawl') { try { fightTick(dt); } catch (e) { console.error(e); } updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
+  if (state === 'brawl') { try { fightTick(dt); } catch (e) { console.error(e); } updateParticles(dt); updateWorldScene(dt); sfx.music(0); gfxRender(wScene, camera, dt); return; }
   if (state === 'nightmare') { nightmareTick(dt); sfx.music(0); return; }
   if (state === 'zarkPov') { try { zpvTick(dt); } catch (e) { console.error(e); zpvEnd(); } sfx.music(0); return; } // Lord Zark, out of the black hole
   if (state === 'orionSeal') { try { oslTick(dt); } catch (e) { console.error(e); oslEnd(); } sfx.music(0); return; } // and Orion, on the road to the bad ending
@@ -35592,7 +35633,7 @@ function loopFrame() {
   if (state === 'c4End') { try { c4eTick(dt); } catch (e) { console.error(e); c4eSkip(); } sfx.music(0); return; }
   if (state === 'space') { spaceTick(dt); try { resSpaceTick(dt); } catch (e) { console.error(e); } try { nmDueTick(dt); } catch (e) { console.error(e); } sfx.music(0); renderer.render(SPC.atmo ? ATM.scene : SPC.scene, camera); return; }
   if (state === 'xpaused' && SPC.paused) { sfx.music(0); renderer.render(SPC.atmo ? ATM.scene : SPC.scene, camera); return; }
-  if (state === 'shipLand' || state === 'shipUp') { (state === 'shipLand' ? shipLandTick : shipUpTick)(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
+  if (state === 'shipLand' || state === 'shipUp') { (state === 'shipLand' ? shipLandTick : shipUpTick)(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); try { gfxWorldEnv(dt); } catch (e) {} gfxRender(wScene, camera, dt); return; }
   if (state === 'trial') { trialTick(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'trialLoad') { sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'escapeEnd') { escapeEndTick(dt); updateParticles(dt); sfx.music(0); renderer.render(wScene, camera); return; }
@@ -35606,7 +35647,7 @@ function loopFrame() {
     if ((state === 'explore' || state === 'xpaused') && ex.mode !== 'space' && !ex.vehicle && (!player.visible || !inner.visible)) { player.visible = true; inner.visible = true; } // on foot (or aboard), you're always there: nothing left over from a cutscene, the pod, a landing or space keeps you hidden
     tickDialog(dt);
     if (state !== 'loadingCh') { updateAnim(dt); if (ex.mode === 'world') worldActionPose(dt); else { syncHeld(); hideSuitGear(); armorSync(); csfSwingPose(); } jamesTick(dt); updateParticles(dt); exploreCamera(dt); if (ex.mode === 'world') updateWorldScene(dt); }
-    sfx.music(0); renderer.render(ex.mode === 'world' ? wScene : ex.mode === 'ship' && SHIPI.scene ? SHIPI.scene : aScene, camera); return;
+    sfx.music(0); try { gfxWorldEnv(dt); } catch (e) {} gfxRender(ex.mode === 'world' ? wScene : ex.mode === 'ship' && SHIPI.scene ? SHIPI.scene : aScene, camera, dt); return; // through the graphics on HIGH and ULTRA
   }
   if (state === 'advStudio' || state === 'advPlay') { advTick(dt); sfx.music(.6); renderer.render(adv.scene, camera); return; }
   if (state === 'cc' && cc.fromGame) { ccTick(dt); sfx.music(0); ccInGameRender(); return; } // the Species Creator from the pause menu: black, and no menu music
