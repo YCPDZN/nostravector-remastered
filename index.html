@@ -2096,7 +2096,7 @@ const DEITY_FS = {
       #include <colorspace_fragment>
     }`,
   radiance: `uniform float uT; uniform vec3 uCol; varying vec2 vUv;
-    void main(){ vec2 p = (vUv - .5) * vec2(2.1, 1.25), e = abs(vUv - .5); float r = length(p), v = exp(-r * r * 3.2) * (.3 + .05 * sin(uT * 1.1)) * smoothstep(.5, .3, max(e.x, e.y)); if (v < .003) discard; // (fading to nothing before the quad's edge)
+    void main(){ vec2 p = (vUv - .5) * vec2(2.1, 1.25), e = abs(vUv - .5); float r = length(p), v = exp(-r * r * 3.2) * (.3 + .05 * sin(uT * 1.1)) * (1. - smoothstep(.3, .5, max(e.x, e.y))); if (v < .003) discard; // (fading to nothing before the quad's edge)
       gl_FragColor = vec4(uCol * v, v);
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
@@ -2282,7 +2282,7 @@ function majestyDress(sc, kind) { // the upscaled materials with his own edge-li
    · JOSIAH RICHARDS is a god now (josiahGod): the Prime Secretary who reset time itself, from the Earth to the edge of the Laniakea
      Supercluster. A clockwork dial of light behind his head (hour marks, a gear ring, three hands, the second hand ticking), the seal of
      his office vast at his feet, two orbits circling him like an orrery, golden motes that move only when the clock ticks, the
-     universe streaming in towards him, a golden radiance and a warm light on everything near. His suit is black silk-wool with a
+     universe streaming in towards him, and a golden radiance (no light of his own: see josiahGod). His suit is black silk-wool with a
      sheen of gold, every seam gilded, gold buttons; his eyes are still his own, human. His chains blaze.
    None of it counts toward anyone's height, casts a shadow or catches ambient occlusion; it all runs off the gods' one clock. ---- */
 const GLO_ORBIT_VS = `attribute vec2 aCorner; uniform vec3 uC; uniform float uS, uT, uTilt, uSpin, uPh; varying vec2 vUv;
@@ -2302,7 +2302,7 @@ const GLO_HEAD = `uniform float uT; uniform vec3 uCol; varying vec2 vUv;
 const GLO_FS = {
   thorn: GLO_HEAD + ` // a ring of thorns: dark, rimmed in their colour
       float band = exp(-pow((r - .52) / .035, 2.)), f = abs(fract(a * 1.5915 + .25) - .5), w = .5 * clamp(1. - (r - .5) / .42, 0., 1.);
-      float spike = smoothstep(w * .5 + .02, w * .5 - .02, f) * step(.5, r) * step(r, .93), body = max(band, spike), edge = band * .6 + spike * smoothstep(w * .5 - .05, w * .5, f) + spike * smoothstep(.75, .93, r);
+      float spike = (1. - smoothstep(w * .5 - .02, w * .5 + .02, f)) * step(.5, r) * step(r, .93), body = max(band, spike), edge = band * .6 + spike * smoothstep(w * .5 - .05, w * .5, f) + spike * smoothstep(.75, .93, r);
       float al = max(body * .8, 0.); if (al < .003) discard;
       gl_FragColor = vec4(uCol * edge * (1.6 + .4 * sin(uT * 2.3)), al);` + MAJ_TAIL,
   clock: GLO_HEAD + ` // the dial of time: rings, hour bars (doubled at the quarters), minute ticks, a gear ring turning, three hands, rays
@@ -2315,13 +2315,13 @@ const GLO_FS = {
       float hd = 0.; vec3 HL = vec3(.42, .64, .82), HS = vec3(.004, .045, floor(uT) + smoothstep(0., .15, fract(uT))), HW = vec3(.03, .02, .009);
       for (int i = 0; i < 3; i++) { float ang = (i == 2 ? HS.z / 60. : uT * HS[i]) * tw, d = sin(c - ang) * R, along = cos(c - ang) * R;
         hd += exp(-pow(d / HW[i], 2.)) * step(-.08, along) * step(along, HL[i]) * (i == 2 ? 1.4 : 1.1); }
-      float rays = pow(max(0., sin(a * 24. + uT * .2)), 9.) * smoothstep(1.02, 1.1, R) * smoothstep(1.39, 1.12, R) * .5 + pow(max(0., sin(a * 8. - uT * .13)), 14.) * smoothstep(1., 1.1, R) * smoothstep(1.39, 1.05, R) * .45;
-      float v = (rings + hours + mins + gear + hd + rays + exp(-R * R * 3.) * .2) * (.88 + .12 * sin(uT * 1.5)) * smoothstep(1., .94, r); if (v < .003) discard;
+      float rays = pow(max(0., sin(a * 24. + uT * .2)), 9.) * smoothstep(1.02, 1.1, R) * (1. - smoothstep(1.12, 1.39, R)) * .5 + pow(max(0., sin(a * 8. - uT * .13)), 14.) * smoothstep(1., 1.1, R) * (1. - smoothstep(1.05, 1.39, R)) * .45;
+      float v = (rings + hours + mins + gear + hd + rays + exp(-R * R * 3.) * .2) * (.88 + .12 * sin(uT * 1.5)) * (1. - smoothstep(.94, 1., r)); if (v < .003) discard;
       gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL,
   orbit: GLO_HEAD + ` // an orbit, ticked, with a bright body running round it
       float ring = exp(-pow((r - .93) / .01, 2.)) + exp(-pow((r - .93) / .05, 2.)) * .15, tk = step(.89, r) * step(r, .97) * exp(-pow((fract(a * 3.8197) - .5) / .04, 2.)) * .4;
       vec2 b = .93 * vec2(cos(uT * .9), sin(uT * .9)); float bead = exp(-dot(p * 2. - b, p * 2. - b) * 700.) * 2.5 + exp(-dot(p * 2. - b, p * 2. - b) * 60.) * .4;
-      float v = (ring + tk + bead) * smoothstep(1., .97, r); if (v < .003) discard;
+      float v = (ring + tk + bead) * (1. - smoothstep(.97, 1., r)); if (v < .003) discard;
       gl_FragColor = vec4(uCol * v, v);` + MAJ_TAIL
 };
 const gloFS = n => GLO_FS[n] || MAJ_FS[n] || DEITY_FS[n];
@@ -2340,7 +2340,6 @@ function gloryAura(parent, layers, H, base) { // a presence, built from layers m
     else if (t === 'pts') { const o = L[1], n = o.n, g = new THREE.BufferGeometry(), sd = new Float32Array(n * 3); for (let i = 0; i < n * 3; i++) sd[i] = Math.random();
       g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); g.setAttribute('aSeed', new THREE.BufferAttribute(sd, 3));
       tiny(new THREE.Points(g, mat(o.vs === 'tick' ? GLO_TICK_VS : o.vs === 'in' ? GLO_IN_VS : DEITY_PT_VS, o.fs ? MAJ_FS[o.fs] : DEITY_PT_FS, { uPx: DEITY_U.uPx, uBase: at(o.y0 || 0), uH: { value: H * o.h }, uR: { value: H * o.r }, uSize: { value: H * o.size }, uSpeed: { value: o.speed }, uSwirl: { value: o.swirl }, uCol: col(o.col, o.k), uSoft: { value: o.soft || 2 }, uAlpha: { value: o.alpha || 1 } }, o.add !== false))); }
-    else if (t === 'lamp') { const [, c, inten, y, z = .25] = L, Lt = new THREE.PointLight(c, inten, H * 3, 1.6); Lt.position.copy(base).add(new THREE.Vector3(0, H * y, H * z)); Lt.userData.noMeasure = true; G.add(Lt); }
   }
   return G;
 }
@@ -2364,14 +2363,14 @@ function gloryMat(m, rim, o = {}) { // a body's upscaled material, brightened to
 }
 function gloryMats(obj, rim, o) { if (obj) obj.traverse(x => { if (!x.isMesh || !x.material || (x.userData && x.userData.noMeasure && x.name === 'deity aura cape')) return; for (const m of Array.isArray(x.material) ? x.material : [x.material]) gloryMat(m, rim, o); }); }
 // ---- Josiah Richards, a god ----
-function josiahMat(old, o, H) { // by colour and place (his parts have no names): suit, gilded seams, gold buttons, skin with a light under it, his own eyes
+function josiahMat(old, o, H, y0 = 0) { // by colour and place (his parts have no names): suit, gilded seams, gold buttons, skin with a light under it, his own eyes
   const c = old.color ? old.color.clone() : new THREE.Color(.5, .5, .5), hsl = {}; c.getHSL(hsl); const lum = c.r * .2126 + c.g * .7152 + c.b * .0722;
-  const b = new THREE.Box3().setFromObject(o), sz = b.getSize(new THREE.Vector3()), y = (b.getCenter(new THREE.Vector3()).y) / H, big = Math.max(sz.x, sz.y, sz.z) / H, eyeH = y > .78 && y < .87;
+  const b = new THREE.Box3().setFromObject(o), sz = b.getSize(new THREE.Vector3()), y = (b.getCenter(new THREE.Vector3()).y - y0) / H, big = Math.max(sz.x, sz.y, sz.z) / H, eyeH = y > .78 && y < .87;
   const P = { color: c, roughness: .55, metalness: 0, envMapIntensity: 1.35, emissive: new THREE.Color(0), emissiveIntensity: 1 }; const rim = new THREE.Color(0xffcf6a); let rk = .5, flick = 0, cls;
   if (eyeH && ((hsl.h > .38 && hsl.h < .6 && hsl.s > .35 && big < .04) || (lum < .02 && big < .02) || (hsl.s < .3 && lum > .55))) { cls = 'eye'; Object.assign(P, { roughness: .2, clearcoat: 1, clearcoatRoughness: .05 }); rk = 0; } // his own eyes, human, as they always were: just a wet gloss
   else if (lum < .02 && big < .02 && y > .3 && y < .6) { cls = 'button'; Object.assign(P, { color: new THREE.Color(0xffc94a), metalness: 1, roughness: .2, clearcoat: .8, clearcoatRoughness: .1, emissive: new THREE.Color(0x4a2c00), emissiveIntensity: 1 }); rk = .8; }
   else if (hsl.s < .2 && lum > .08 && lum < .3) { cls = 'seam'; Object.assign(P, { color: new THREE.Color(0xffc94a), metalness: 1, roughness: .24, clearcoat: .7, clearcoatRoughness: .12, emissive: new THREE.Color(0xffa020), emissiveIntensity: .7 }); rk = .8; flick = .08; } // every seam a thread of gold
-  else if (hsl.h < .13 && hsl.s > .4 && lum > .22) { cls = 'skin'; Object.assign(P, { roughness: .5, sheen: .5, sheenRoughness: .45, sheenColor: new THREE.Color(0xffcf8a), emissive: new THREE.Color(0xff9a40), emissiveIntensity: .05 }); rk = .4; }
+  else if (hsl.h < .13 && hsl.s > .4 && lum > .22) { cls = 'skin'; Object.assign(P, { roughness: .5, sheen: .5, sheenRoughness: .45, sheenColor: new THREE.Color(0xffcf8a), emissive: new THREE.Color(0xff9a40), emissiveIntensity: .08 }); rk = .4; }
   else if (hsl.h < .13 && hsl.s > .6) { cls = 'hair'; Object.assign(P, { roughness: .42, sheen: 1, sheenRoughness: .3, sheenColor: new THREE.Color(0xffc070) }); rk = .5; }
   else if (y < .1) { cls = 'shoe'; Object.assign(P, { roughness: .18, clearcoat: 1, clearcoatRoughness: .06 }); rk = .6; }
   else { cls = 'suit'; Object.assign(P, { roughness: .52, sheen: .7, sheenRoughness: .35, sheenColor: new THREE.Color(0xd9a640), clearcoat: .15, clearcoatRoughness: .5 }); rk = .55; } // black silk-wool, a sheen of gold
@@ -2381,7 +2380,7 @@ function josiahMat(old, o, H) { // by colour and place (his parts have no names)
 }
 function josiahGod(sc) {
   sc.updateMatrixWorld(true); const b = boxNoGear(sc), H = Math.max(.01, b.max.y - b.min.y), ctr = b.getCenter(new THREE.Vector3()), base = new THREE.Vector3(ctr.x, b.min.y, ctr.z);
-  const memo = new Map(); sc.traverse(o => { if (!o.isMesh || !o.material || Array.isArray(o.material) || o.material.isShaderMaterial) return; const m0 = o.material, m = josiahMat(m0, o, H), k = m0.uuid + m.userData.cls; if (!memo.has(k)) memo.set(k, m); o.material = memo.get(k); });
+  const memo = new Map(); sc.traverse(o => { if (!o.isMesh || !o.material || Array.isArray(o.material) || o.material.isShaderMaterial) return; const m0 = o.material, m = josiahMat(m0, o, H, b.min.y), k = m0.uuid + m.userData.cls; if (!memo.has(k)) memo.set(k, m); o.material = memo.get(k); });
   try { gloryAura(sc, [
     ['bill', 'radiance', .55, 1.75, .35, 0xffd27a, 1.0],
     ['bill', 'clock', .87, .86, .06, 0xffe0a0, 2.6], // the dial of time, just behind his head
@@ -2389,9 +2388,8 @@ function josiahGod(sc) {
     ['orbit', .56, 1.1, .5, .35, 0, 0xffd27a, 1.8], ['orbit', .56, .9, -.75, -.22, 2, 0xffe6b0, 1.5], // an orrery
     ['pts', { vs: 'tick', n: 60, h: 1.15, r: .5, size: .02, speed: .05, swirl: .6, col: 0xffd27a, k: 3 }],
     ['pts', { vs: 'in', n: 110, h: 1.4, r: 1.6, size: .016, speed: .08, swirl: .8, col: 0xfff0c8, k: 2.2, y0: .58 }], // Laniakea, coming home to him
-    ['pts', { n: 22, h: 1.0, r: .6, size: .05, speed: .04, swirl: .2, col: 0xfff2c8, k: 1.4, soft: 3, alpha: .55 }],
-    ['lamp', 0xffd27a, 1.8, .9, .9]
-  ], H, base); } catch (e) { console.error(e); }
+    ['pts', { n: 22, h: 1.0, r: .6, size: .05, speed: .04, swirl: .2, col: 0xfff2c8, k: 1.4, soft: 3, alpha: .55 }]
+  ], H, base); } catch (e) { console.error(e); } // (no light of his own: he travels with you, and a light coming and going would recompile every material in the scene each time)
   return sc;
 }
 let gfxLastT = 0; const gfxDt = () => { const t = performance.now() / 1000, d = gfxLastT ? Math.min(.1, t - gfxLastT) : .016; gfxLastT = t; return d; }; // for renders made inside a scene's own tick
