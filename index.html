@@ -1971,15 +1971,24 @@ const forceVile = /[?&]villain(?:[=&]|$)/.test(window.location.search); // ?vill
 const forceVileSp = (window.location.search.match(/[?&]villain=(\w+)/) || [])[1] || null; // ?villain=chompy (or human, erisian, grek, taredesiban, oilkoumene) previews that race's lines
 const ownVile = () => !!(wanderer && (((wanderer.align && wanderer.align.p) | 0) <= -34) && chNow() >= 1);
 // a good wanderer (alignment 34 or higher) at war with a villain resident's empire gets the evil menu too, in any chapter, with that
-// resident on it: their body, their race's lines, signed with their name (the latest such war, if there's more than one). A villain
-// wanderer's own evil menu always comes first.
-function vileFoe() {
-  if (forceVile || !wanderer || ownVile() || (((wanderer.align && wanderer.align.p) | 0) < 34)) return null;
+// resident on it: their body, their race's lines, signed with their name. At war with several, they take turns (the latest war
+// first): every few lines the picture tears and someone else is holding the world. A villain wanderer's own evil menu always comes first.
+function vileFoes() {
+  if (forceVile || !wanderer || ownVile() || (((wanderer.align && wanderer.align.p) | 0) < 34)) return [];
   try {
-    const R = (wanderer.dip && wanderer.dip.rw) || {}; let best = null, at = -Infinity;
-    for (const id in R) { const e = resEmp.emp[id], c = e && !e.res && resRuler(e); if (c && resAl(c) === 'villain' && (R[id].since || 0) > at) { best = c; at = R[id].since || 0; } }
-    return best;
-  } catch (e) { return null; } // too early in loading to tell
+    const R = (wanderer.dip && wanderer.dip.rw) || {}, out = [];
+    for (const id in R) { const e = resEmp.emp[id], c = e && !e.res && resRuler(e); if (c && resAl(c) === 'villain') out.push({ c, at: R[id].since || 0 }); }
+    return out.sort((a, b) => b.at - a.at).map(o => o.c);
+  } catch (e) { return []; } // too early in loading to tell
+}
+const VILE_FOE_LINES = 2; // how many lines each villain says before the next one takes over (about half a minute each)
+function vileFoe() { const L = vileFoes(); return L.length ? L[(VILE.foeI || 0) % L.length] : null; }
+function vileFoeNext() { // the next villain's turn: a hard tear (a blackout too, unless motion is reduced), and they're standing there instead
+  const L = vileFoes(); if (L.length < 2) return false;
+  VILE.foeI = ((VILE.foeI || 0) + 1) % L.length; VILE.gl = .5; VILE.glT = 1.2; VILE.shake = Math.max(VILE.shake, .45); if (!VILE_RM) VILE.bo = .18;
+  VILE.act = null; VILE.hush = false; VILE.laugh = 0; VILE.sq = 0; try { sfx.glitchStatic(.6); } catch (e) {}
+  try { vileFoeKeep(); } catch (e) {} // their body now; their race's lines follow from the next line on
+  return true;
 }
 const villainMenu = () => forceVile || ownVile() || !!vileFoe();
 // the world in the villain's hands: a little Earth, spinning slowly between them, lit violet (blood red when the red is stacked on)
@@ -2272,7 +2281,7 @@ function applyMenuEra() {
   const bt = $('#briefT'); if (bt) bt.innerHTML = briefNow();
   const ys = $('#yearStamp'); if (ys) ys.textContent = postSkip() ? '2127 AD' : '2125 AD';
   const st = $('#setStyle'); if (st) { st.style.display = chNow() >= 5 ? '' : 'none'; st.querySelector('.val').textContent = menuStyle === 'red' ? 'BLOOD RED' : 'NORMAL'; }
-  const vile = villainMenu(), mode = `${on}|${vile}|${wanderer ? wanderer.id : ''}|${vile ? vileRaceSp() + ':' + vileSig() + ':' + ((vileFoe() || {}).id || '') : 0}`;
+  const vile = villainMenu(), mode = `${on}|${vile}|${wanderer ? wanderer.id : ''}|${vile ? (vileFoes().length > 1 ? 'foes:' + vileFoes().map(c => c.id).join(',') : vileRaceSp() + ':' + vileSig() + ':' + ((vileFoe() || {}).id || '')) : 0}`;
   document.body.classList.toggle('ch4', on); document.body.classList.toggle('vile', vile); // the evil menu, with the blood red stacked on it when that's on too
   sfx.menuTrack(on || vile ? 'musicCh4' : 'music');
   if (menuLook && (state === 'title' || state === 'loading')) setMenuLook(menuLookFor());
@@ -2292,6 +2301,7 @@ async function runTaunts(tok) {
     await wait(3600 + line.length * 30);
     if (tok !== taunt.tok) return; // a newer run has taken over (the menu changed while this one waited): leave the box to it
     box.classList.add('out'); await wait(1500);
+    if (tok === taunt.tok && state === 'title' && villainMenu() && taunt.i % VILE_FOE_LINES === 0 && vileFoes().length > 1) { taunt.L = null; vileFoeNext(); await wait(700); } // several villains at war with you: the next one's turn, with their own lines
   }
 }
 
