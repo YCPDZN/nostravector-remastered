@@ -2070,7 +2070,7 @@ const LEAD_ROOMS = { // each throne room: its colours (the menu's look and its U
 const LEAD_WHERE = { karribassa: ['Janira Prime · the throne room', 'Karribassa'], alphinos: ['Aridaxx · the throne of the Chompy', 'Alphinos'], commons: ['Earth · the Federation', 'House of Commons'], citadel: ['Eris · the throne room', 'Citadel el Erisconos'], archiostal: ['the throne room', 'Archiostal'], bastion: ['Carax · the throne room', 'The Bastion'], timpur: ['Timpur · the throne room', 'Timpur Prime'] };
 const forceLead = (window.location.search.match(/[?&]leader=(\w+)/) || [])[1] || null;
 const LEAD_FORCE = { hak: ['karribassa', ['hak']], alphinos: ['alphinos', ['hak']], darius: ['commons', ['darius']], vishara: ['citadel', ['vishara']], alexia: ['citadel', ['alexia']],
-  archamus: ['archiostal', ['archamus']], grek: ['archiostal', ['archamusU', 'amgrek']], amgrek: ['bastion', ['amgrek']], timpur: ['timpur', ['taredesiba']], zark: ['zark', ['zark']] };
+  archamus: ['archiostal', ['archamus']], grek: ['archiostal', ['archamus', 'amgrek']], amgrek: ['bastion', ['amgrek']], timpur: ['timpur', ['taredesiba']], zark: ['zark', ['zark']] };
 const LEADM = { at: -1, list: [], i: 0, room: null, rooms: {}, R: {}, H: {}, thr: {}, key: '', yaw0: null, shown: false };
 function leadMenuCalc() { // the throne rooms of every faction you're at war with, in the order Diplomacy lists them
   if (forceLead && LEAD_FORCE[forceLead]) { const [room, ks] = LEAD_FORCE[forceLead]; return [{ room, ks, fac: { karribassa: 'The Chompy Empire', alphinos: 'The Chompy Empire', commons: 'Human Federation of Sol', citadel: 'The Erisian Empire', archiostal: ks.length > 1 ? 'The Grek Empire' : 'The Order of Archamus', bastion: 'The Grek Empire', timpur: 'The Republic of Timpur', zark: 'The Catharsis' }[room], at: room === 'zark' ? (ALL_BODIES.find(o => o.land && String(o.fac3 || o.faction || '').startsWith('The Catharsis') && sysById(o.sys).home === o.id) || {}).id : null }]; }
@@ -2084,7 +2084,7 @@ function leadMenuCalc() { // the throne rooms of every faction you're at war wit
     else if (F.id === 'hfos') out.push({ room: 'commons', ks: ['darius'] });
     else if (F.id === 'timpur') out.push({ room: 'timpur', ks: ['taredesiba'] });
     else if (F.id === 'order') out.push({ room: 'archiostal', ks: ['archamus'] });
-    else if (F.id === 'grek') out.push(ch === 3 ? { room: 'bastion', ks: ['amgrek'] } : { room: 'archiostal', ks: ['archamusU', 'amgrek'] });
+    else if (F.id === 'grek') out.push(ch === 3 ? { room: 'bastion', ks: ['amgrek'] } : { room: 'archiostal', ks: ['archamus', 'amgrek'] }); // Archamus hooded, on his throne
     else if (F.id === 'catharsis' && ch === 3) { const Lo = leaderOf(F); if (Lo) out.push({ room: 'zark', ks: ['zark'], at: Lo.at }); } // Chapter III only: in Chapter IV he's the voice on the menu he already is
     if (out.length > n0) out[out.length - 1].fac = dipFacName(F);
   }
@@ -2132,9 +2132,28 @@ function leadThrone(room) { // a throne for a seated leader, built at unit size 
   return g; // seat top at 1.2, back to 7 (unit size): a low seat and a towering back
 }
 const leadSeated = (room, k) => room === 'alphinos' || (room === 'archiostal' && (k === 'archamus' || k === 'archamusU')); // Hak in Alphinos; Archamus in Archiostal
+function leadKnees(R) { // knees for a model whose legs swing from the hip in one piece: the parts wholly below the knee move onto a
+  // pivot halfway down the leg (a menu leader only, so nothing changes about how anyone walks in the game). Skeletons already have them.
+  R.root.updateMatrixWorld(true); const V = new THREE.Vector3(), all = new THREE.Box3().setFromObject(R.root), H0 = Math.max(.01, all.max.y - all.min.y);
+  if (R.rl) R.hipK = (R.rl.getWorldPosition(new THREE.Vector3()).y - all.min.y) / H0; // where their hips really are (a long robe hides them low)
+  if (R.rk || R.lk) { if (R.rk) R.kneeK = (R.rk.getWorldPosition(new THREE.Vector3()).y - all.min.y) / H0; return; }
+  for (const side of ['r', 'l']) {
+    const leg = R[side + 'l']; if (!leg) continue; const kids = []; leg.traverse(o => { if (o.isMesh) kids.push(o); }); if (kids.length < 2) continue; // one mesh for the whole leg: it can't bend
+    const hip = leg.getWorldPosition(new THREE.Vector3()).y, bb = kids.map(o => new THREE.Box3().setFromObject(o)), foot = Math.min(...bb.map(b => b.min.y)), knee = foot + (hip - foot) * .5;
+    const low = kids.filter((o, i) => bb[i].max.y <= knee + (hip - foot) * .06); if (!low.length || low.length === kids.length) continue;
+    const pv = new THREE.Group(), wp = leg.getWorldPosition(V.clone()); wp.y = knee; R.kneeK = (knee - all.min.y) / H0; // on the leg's own axis, halfway down
+    leg.add(pv); pv.position.copy(leg.worldToLocal(wp)); pv.updateMatrixWorld(true); for (const o of low) pv.attach(o);
+    R[side + 'k'] = pv; R.rest.set(pv, pv.rotation.clone());
+  }
+  if (R.rk) { // which way bends the shin down? (rigs built from named groups can face the other way): try it, and remember
+    const r0 = R.rl.rotation.x, k0 = R.rk.rotation.x; R.rl.rotation.x = R.rest.get(R.rl).x - 1.5; R.rk.rotation.x = R.rest.get(R.rk).x + 1.5; R.root.updateMatrixWorld(true);
+    const kp = R.rk.getWorldPosition(new THREE.Vector3()), c = new THREE.Box3().setFromObject(R.rk).getCenter(new THREE.Vector3());
+    R.kneeSign = c.y < kp.y - .02 ? 1 : -1; R.rl.rotation.x = r0; R.rk.rotation.x = k0; R.root.updateMatrixWorld(true);
+  }
+}
 function leadRig(k) { // their body, loaded once
   if (LEADM.R[k] !== undefined) return LEADM.R[k];
-  LEADM.R[k] = null; leadSpec(k).load().then(R => { if (!R) return; R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); R.root.updateMatrixWorld(true); LEADM.H[k] = new THREE.Box3().setFromObject(R.root).getSize(new THREE.Vector3()).y || 2; R.mode = 'idle'; LEADM.R[k] = R; }).catch(() => null);
+  LEADM.R[k] = null; leadSpec(k).load().then(R => { if (!R) return; R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); R.root.updateMatrixWorld(true); try { leadKnees(R); } catch (e) {} /* knees, for sitting */ LEADM.H[k] = new THREE.Box3().setFromObject(R.root).getSize(new THREE.Vector3()).y || 2; R.mode = 'idle'; LEADM.R[k] = R; }).catch(() => null);
   return null;
 }
 function menuLeadTick(dt) { // the throne room, and whoever holds it
@@ -2158,10 +2177,16 @@ function menuLeadTick(dt) { // the throne room, and whoever holds it
     let y = p.y; const tk = E.room + ':' + k;
     if (leadSeated(E.room, k) && LEADM.room && LEADM.room.visible) { // seated on their throne: Hak in Alphinos, Archamus in Archiostal
       const S2 = (o, ax, v) => { const r = o && R.rest && R.rest.get(o); if (r) o.rotation[ax] = r[ax] + v; };
-      S2(R.rl, 'x', -1.3); S2(R.ll, 'x', -1.3); if (R.rk) S2(R.rk, 'x', 1.45); if (R.lk) S2(R.lk, 'x', 1.45); S2(R.ra, 'x', -.45); S2(R.la, 'x', -.45);
-      const H2 = h * s, ts = H2 * .27 / 1.2, T = LEADM.thr[tk] || (LEADM.thr[tk] = leadThrone(E.room)); // the seat at their knee height, the back towering over them
-      if (T.parent !== LEADM.room) LEADM.room.add(T); T.visible = true; T.scale.set(ts * 1.5, ts, ts * 1.4); T.position.set(side, 0, 0);
-      const back = -.15 * ts; y += 1.2 * ts - H2 * .47; // hips on the seat, at its front edge
+      const kn = !!(R.rk && R.lk); S2(R.rl, 'x', kn ? -1.5 : -1.3); S2(R.ll, 'x', kn ? -1.5 : -1.3); if (kn) { S2(R.rk, 'x', 1.5 * (R.kneeSign || 1)); S2(R.lk, 'x', 1.5 * (R.kneeSign || 1)); } S2(R.ra, 'x', -.45); S2(R.la, 'x', -.45); // thighs forward, shins straight down
+      if (!R.sit || R.sit.s !== s) { // measured once, posed: how high their hips are above the soles of their feet, and how far the soles hang below the root
+        const keep = R.root.position.clone(), rot = R.root.rotation.y; R.root.position.set(0, 0, 0); R.root.rotation.y = 0; R.root.updateMatrixWorld(true);
+        const legs = new THREE.Box3(); for (const o of [R.rk || R.rl, R.lk || R.ll]) if (o) legs.union(new THREE.Box3().setFromObject(o));
+        const hipW = R.rl.getWorldPosition(new THREE.Vector3()); R.sit = { s, hip: hipW.y - legs.min.y, foot: legs.min.y, hz: hipW.z };
+        R.root.position.copy(keep); R.root.rotation.y = rot;
+      }
+      const ts = Math.max(.3, R.sit.hip / 1.2), T = LEADM.thr[tk] || (LEADM.thr[tk] = leadThrone(E.room)); // the seat right under their hips, the back towering over them
+      if (T.parent !== LEADM.room) LEADM.room.add(T); T.visible = true; T.scale.set(Math.max(ts * 1.5, .9 * s), ts, ts * 1.2); T.position.set(side, 0, 0);
+      const back = -R.sit.hz - .1 * ts; y += -R.sit.foot; // feet on the floor, hips on the seat
       R.root.position.set(x + fx * back, y, z + fz * back);
     } else { R.root.position.set(x, y, z); if (LEADM.thr[tk]) LEADM.thr[tk].visible = false; }
   });
