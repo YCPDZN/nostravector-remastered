@@ -3327,3 +3327,13 @@ At war with the Catharsis in Chapter III, Lord Zark's throne-room menu is now a 
 - **The title never settles.** NOSTRAVECTOR carries both colours at once, split either side, and flickers and jitters the way the blood-red menu does.
 - **His words are split in both colours too**, and his signature takes the blood red.
 - **Preview:** `?leader=zark`.
+
+### The Raceathon: pick your own field
+
+The race marshal has a new option: **Pick your own field… (leaders and companions)**.
+- **Mix any faction leaders with any of your companions.** Tap each to add them (✓) or take them off (+), then **Race!**.
+- **The grid holds 7 rivals besides you.** If you pick fewer than 3, the regulars fill the grid; otherwise it's only who you picked.
+- **Prizes:** if any leader rides, it pays like a leaders' race (600 / 300 / 150 units); if not, like a companions' race. Leaders you beat go on your record as usual.
+- **Same rules as before:** Archamus still won't ride until he's ready, and a leader or companion who's no longer available drops out of your pick.
+- **Race again** keeps the same field.
+- **Preview:** `?race=mix` (Hak, Vishara, Orion and Nico).

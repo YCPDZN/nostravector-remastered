@@ -35322,6 +35322,7 @@ function raceMenu() {
   const opts = [{ text: tiPhone() ? 'Open race · the regulars' : 'Open race · against the regulars', onPick: () => raceStart({ kind: 'open' }) }];
   if (lead.length) opts.push({ text: 'Challenge a faction leader…', onPick: () => raceLeadMenu(lead) });
   opts.push({ text: comps.length ? `Race your companions (${comps.map(compName).join(', ')})` : 'Race your companions', onPick: () => comps.length ? raceStart({ kind: 'comps', ids: comps }) : openDialog(who, ['Nobody’s riding with you today. Bring your companions to Archiostal (travelling with you, or waiting aboard your ship) and they can race.']) });
+  if (lead.length || comps.length) opts.push({ text: 'Pick your own field… (leaders and companions)', onPick: () => racePickMenu(new Set()) });
   opts.push({ text: 'Your records', onPick: () => raceRecords() }, { text: 'Not now', onPick: () => {} });
   openDialog(who, [greet], false, () => openChoice(who, opts));
 }
@@ -35331,6 +35332,21 @@ function raceLeadMenu(lead) {
   const ok = lead.filter(L => L.who !== 'archamus' || raceArchOk()); if (ok.length > 1) opts.push({ text: `All of them at once (${ok.length})`, onPick: () => raceStart({ kind: 'lead', leads: ok }) });
   opts.push({ text: 'Back', onPick: () => raceMenu() });
   openChoice(who, opts, 'WHO WILL YOU RACE?');
+}
+const RACE_MAX = 7; // rivals on the grid, besides you
+function racePickMenu(sel) { // choose exactly who rides: any of the leaders and any of your companions, mixed (tap to add or take off; the regulars fill the grid up to four)
+  const who = 'RACE MARSHAL · THE RACEATHON', lead = raceLeaders(), comps = raceComps(), r = raceRec();
+  const leadOk = L => L.who !== 'archamus' || raceArchOk();
+  for (const k of [...sel]) if (!(k.startsWith('L:') ? lead.some(L => 'L:' + L.who === k && leadOk(L)) : comps.some(id => 'C:' + id === k))) sel.delete(k); // anyone who's no longer here
+  const tog = k => { if (sel.has(k)) sel.delete(k); else if (sel.size >= RACE_MAX) { openDialog('RACE MARSHAL', [`The grid holds ${RACE_MAX} riders besides you. Take someone off first.`], false, () => racePickMenu(sel)); return; } else sel.add(k); racePickMenu(sel); };
+  const opts = [];
+  for (const L of lead) { const k = 'L:' + L.who; opts.push({ text: `${sel.has(k) ? '✓' : '+'} ${L.full}${r.beat[L.who] ? ' · beaten' : ''}${leadOk(L) ? '' : ' · watching from his throne'}`, onPick: () => leadOk(L) ? tog(k) : openDialog('RACE MARSHAL', ['The Prime Good watches the races from his throne. He will not ride against you. Not yet.'], false, () => racePickMenu(sel)) }); }
+  for (const id of comps) { const k = 'C:' + id; opts.push({ text: `${sel.has(k) ? '✓' : '+'} ${compName(id)}`, onPick: () => tog(k) }); }
+  const pickedL = lead.filter(L => sel.has('L:' + L.who)), pickedC = comps.filter(id => sel.has('C:' + id));
+  if (sel.size) opts.push({ text: `Race! (${sel.size} picked${sel.size < 3 ? ', the regulars fill the grid' : ''})`, onPick: () => raceStart({ kind: 'mix', leads: pickedL, ids: pickedC }) });
+  if (sel.size) opts.push({ text: 'Clear the grid', onPick: () => racePickMenu(new Set()) });
+  opts.push({ text: 'Back', onPick: () => raceMenu() });
+  openChoice(who, opts, sel.size ? `YOUR FIELD · ${sel.size} OF ${RACE_MAX}` : 'PICK WHO RIDES');
 }
 function raceRecords() {
   const r = raceRec(), ks = Object.keys(r.beat || {}), names = ks.map(k => RACE_LEAD[k] ? RACE_LEAD[k].name : k);
@@ -35436,9 +35452,9 @@ function raceScene() {
 function raceField(o) {
   const regs = RACE_REGS.slice().sort(() => Math.random() - .5), out = [];
   const reg = r => ({ kind: 'reg', id: 'reg:' + r.name, name: r.name, short: r.short, col: r.c[1], skill: r.skill, lines: raceLines([0, ...RACE_REG_LINES]), load: () => brawlRig({ sp: r.sp, c: r.c, skin: Math.floor(Math.random() * 6), female: !!r.female, name: r.name }) });
-  if (o.kind === 'lead') for (const L of o.leads) { const T = RACE_LEAD[L.key]; out.push({ kind: 'lead', id: 'lead:' + L.who, who: L.who, name: L.full || T.name, short: T.name, col: T.col, skill: T.skill, lines: T.lines, load: () => leadSpec(L.key).load() }); }
-  if (o.kind === 'comps') for (const id of o.ids) { const q = RACE_COMP[id] || (String(id).startsWith('pont:') ? RACE_COMP.pontifex : RACE_GEN); let col = 0xffffff; try { col = new THREE.Color(compColor(id)).getHex(); } catch (e) {} out.push({ kind: 'comp', id, name: (PARTY[id] && PARTY[id].full) || compName(id), short: compName(id), col, skill: q[0], lines: raceLines(q), load: () => compRigFor(id) }); }
-  const want = o.kind === 'lead' && o.leads.length > 1 ? Math.max(o.leads.length, 3) : 5; while (out.length < want) out.push(reg(regs[out.length % regs.length]));
+  if ((o.kind === 'lead' || o.kind === 'mix') && o.leads) for (const L of o.leads) { const T = RACE_LEAD[L.key]; out.push({ kind: 'lead', id: 'lead:' + L.who, who: L.who, name: L.full || T.name, short: T.name, col: T.col, skill: T.skill, lines: T.lines, load: () => leadSpec(L.key).load() }); }
+  if ((o.kind === 'comps' || o.kind === 'mix') && o.ids) for (const id of o.ids) { const q = RACE_COMP[id] || (String(id).startsWith('pont:') ? RACE_COMP.pontifex : RACE_GEN); let col = 0xffffff; try { col = new THREE.Color(compColor(id)).getHex(); } catch (e) {} out.push({ kind: 'comp', id, name: (PARTY[id] && PARTY[id].full) || compName(id), short: compName(id), col, skill: q[0], lines: raceLines(q), load: () => compRigFor(id) }); }
+  const want = o.kind === 'mix' ? Math.max(out.length, 3) : o.kind === 'lead' && o.leads.length > 1 ? Math.max(o.leads.length, 3) : 5; // (your own field: just who you picked, the regulars only fill a small grid) while (out.length < want) out.push(reg(regs[out.length % regs.length]));
   return out.slice(0, 7);
 }
 async function raceRiderLoad(f) { // a rider's body (with a fallback if their own won't come), standing at the origin, facing +z
@@ -35692,7 +35708,7 @@ function raceFinishUp(retired) {
   const F = RACE.field, T = RACE.T, now = RACE.t, you = RACE.you; if (retired) { you.fin = false; you.dnf = true; }
   for (const r of F) if (!r.fin && !r.dnf) { const left = (RACE_LAPS + 1) * T.L - r.prog; r.finT = now + left / Math.max(20, r.v || 30); r.fin = true; r.est = true; } // still out there: where they'd finish
   const order = F.filter(r => !r.dnf).sort((a, b) => a.finT - b.finT).concat(F.filter(r => r.dnf)); order.forEach((r, i) => { r.place = i + 1; });
-  const p = you.dnf ? 0 : you.place, kind = RACE.o.kind, prize = { open: [260, 130, 60], lead: [600, 300, 150], comps: [220, 110, 50] }[kind] || [200, 100, 50], xp = [160, 100, 60];
+  const p = you.dnf ? 0 : you.place, kind = RACE.o.kind === 'mix' ? (RACE.o.leads && RACE.o.leads.length ? 'lead' : 'comps') : RACE.o.kind, prize = { open: [260, 130, 60], lead: [600, 300, 150], comps: [220, 110, 50] }[kind] || [200, 100, 50], xp = [160, 100, 60];
   let reward = '', beaten = [];
   if (!RACE.o.preview && wanderer) {
     const rec = raceRec(); rec.races = (rec.races || 0) + 1;
@@ -35726,6 +35742,7 @@ function raceEnd() {
 // ?race: a race from the title (the regulars; =leaders every leader; =comps a handful of companions)
 if (RACE_FORCE) { const go = () => { if (state !== 'title' || RACE.on) return; removeEventListener('pointerdown', go); removeEventListener('keydown', go); sfx.init && sfx.init();
   const pv = { preview: true }; if (RACE_FORCE === 'leaders') raceStart(Object.assign(pv, { kind: 'lead', leads: ['hak', 'vishara', 'darius', 'taredesiba', 'archamus', 'amgrek'].map(k => ({ key: k, who: k, full: (leadSpec(k) || {}).full })) }));
+  else if (RACE_FORCE === 'mix') raceStart(Object.assign(pv, { kind: 'mix', leads: ['hak', 'vishara'].map(k => ({ key: k, who: k, full: (leadSpec(k) || {}).full })), ids: ['orion', 'nico'] })); // your own field: two leaders and two companions
   else if (RACE_FORCE === 'comps') raceStart(Object.assign(pv, { kind: 'comps', ids: ['orion', 'nico', 'nyrexia', 'charon', 'pbc-josiah'] })); else raceStart(Object.assign(pv, { kind: 'open' })); };
   addEventListener('pointerdown', go); addEventListener('keydown', go); }
 // ---- residents and the bar: a drink, then another; drunk, they wobble, say silly things, and pick fights ----
