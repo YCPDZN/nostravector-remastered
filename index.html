@@ -1374,6 +1374,7 @@ body.cc-ingame #cc{background:none} body.cc-ingame > *:not(#cc):not(#c):not(scri
       <button class="mi" id="setCombat"><i>—</i><span>Combat themes</span><em class="val">PLAY</em></button>
       <button class="mi" id="setChatter"><i>—</i><span>Companion chatter</span><em class="val">NORMAL</em></button>
       <button class="mi" id="setCathLang"><i>—</i><span>Catharsis speech</span><em class="val">CATHARSIS</em></button>
+      <button class="mi" id="setGfx"><i>—</i><span>Graphics</span><em class="val">ULTRA</em></button>
       <button class="mi back" data-go="mMain"><i>‹</i><span>Back</span></button>
     </div>
   </div>
@@ -1753,6 +1754,7 @@ if (!['normal', 'less', 'off'].includes(chatter)) chatter = 'normal';
 let cathLang = store.get('nv_cathLang', 'cath') === 'en' ? 'en' : 'cath'; // when the Catharsis speak: in their own language (with the English in brackets) or in English
 
 /* ============ renderer / scene ============ */
+let gfxQ = store.get('nv_gfx', null); if (!['ultra', 'high', 'low'].includes(gfxQ)) gfxQ = coarse ? 'high' : 'ultra'; // Settings → Graphics (see the graphics section below)
 const canvas = $('#c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, coarse ? 1.6 : 2));
@@ -1845,7 +1847,7 @@ function height(x, z) {
   if (r > ARENA - 6) h += Math.pow((r - (ARENA - 6)) / 10, 2) * 6;
   return h;
 }
-const terrainGeo = new THREE.PlaneGeometry(320, 320, 160, 160);
+let terrainGeo = new THREE.PlaneGeometry(320, 320, gfxQ === 'ultra' ? 256 : gfxQ === 'high' ? 200 : 160, gfxQ === 'ultra' ? 256 : gfxQ === 'high' ? 200 : 160); // finer on HIGH and ULTRA
 terrainGeo.rotateX(-Math.PI / 2);
 terrainGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(terrainGeo.attributes.position.count * 3), 3));
 const terrain = new THREE.Mesh(terrainGeo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: .94, metalness: .04, envMapIntensity: .25 }));
@@ -1897,6 +1899,142 @@ function placeDecor() {
   crystals.instanceMatrix.needsUpdate = true;
 }
 
+/* ============ graphics: the main menu, at its best ============
+   Settings → Graphics: ULTRA (desktop's default), HIGH (a phone's default) or LOW (the menu exactly as it always was, for slower devices).
+   On HIGH and ULTRA the menu scene gets:
+   · a sky of its own: a dome shaded from the horizon (the same colour as the fog, so the ground melts into it, with a glow along it) up to
+     the zenith, a few thousand twinkling stars of different sizes and colours, and a faint Milky Way band;
+   · light from that sky: the reflections and soft fill on every surface come from the sky of the look you're in (the ice, a planet,
+     the blood red, the evil menu's violet, a throne room), not a grey studio;
+   · post-processing: multisampled HDR, bloom (the crystals, the aurora, the stars, the braziers, the world in a villain's hands),
+     ground-truth ambient occlusion (ULTRA), and a light film grade (a touch of contrast and saturation, a soft vignette, fine grain);
+   · sharper shadows, a finer terrain (more polygons, and fine relief and roughness on the ground), rocks with real faces, and
+     brighter-glowing crystals and aurora.
+   If the post-processing can't load, the menu draws as before. ---- */
+const GFX_Q = ['ultra', 'high', 'low'];
+const GFX_LABEL = { ultra: 'ULTRA', high: 'HIGH', low: 'LOW' };
+const GFX = { mods: null, loading: false, comp: null, rp: null, bloom: null, ao: null, grade: null, size: '', dome: null, envScene: null, envDome: null, envRT: null, roomEnv: scene.environment, look: null, bloomK: .35, t: 0, detail: null, rocksGeo: null, rocksGeo0: null, starsPts: null };
+const gfxOn = () => gfxQ !== 'low';
+const GFX_SKY_VS = 'varying vec3 vDir; void main(){ vDir = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }';
+const GFX_SKY_FS = `varying vec3 vDir; uniform vec3 uZen, uHor, uGlow, uGround; uniform float uTime, uStars, uBand, uGlowK, uGain;
+  float h31(vec3 p){ p = fract(p * .1031); p += dot(p, p.yzx + 33.33); return fract((p.x + p.y) * p.z); }
+  float n3(vec3 p){ vec3 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+    return mix(mix(mix(h31(i), h31(i + vec3(1,0,0)), f.x), mix(h31(i + vec3(0,1,0)), h31(i + vec3(1,1,0)), f.x), f.y), mix(mix(h31(i + vec3(0,0,1)), h31(i + vec3(1,0,1)), f.x), mix(h31(i + vec3(0,1,1)), h31(i + vec3(1,1,1)), f.x), f.y), f.z); }
+  vec3 stars(vec3 d, float scale, float dens){ vec3 g = d * scale, id = floor(g), f = fract(g) - .5; float r = h31(id); if (r < dens) return vec3(0.);
+    vec3 off = (vec3(h31(id + 1.3), h31(id + 2.7), h31(id + 4.1)) - .5) * .55; float dist = length(f - off), big = pow(h31(id + 7.), 7.);
+    float sz = mix(.045, .2, big), tw = .55 + .45 * sin(uTime * (.8 + r * 3.5) + r * 91.);
+    vec3 sc = mix(vec3(.72, .82, 1.), vec3(1., .84, .66), h31(id + 9.)); return sc * smoothstep(sz, 0., dist) * tw * (1. + 5. * big); }
+  void main(){ vec3 d = normalize(vDir); float y = d.y;
+    vec3 col = mix(uHor, uZen, pow(smoothstep(-.02, .62, y), .65));
+    col += uGlow * uGlowK * (exp(-abs(y) * 10.) * .8 + exp(-abs(y) * 3.) * .25);
+    if (uStars > 0. && y > -.04) { float k = smoothstep(-.04, .3, y) * uStars; col += (stars(d, 150., .968) + stars(d, 290., .985) * .6) * k;
+      vec3 bn = normalize(vec3(.32, .58, .75)); float b = exp(-pow(dot(d, bn) / .16, 2.)) * uBand * k;
+      float cl = n3(d * 7.) * .6 + n3(d * 19.) * .4; col += vec3(.55, .6, .85) * b * cl * .16 + stars(d, 520., .93) * b * .5; }
+    col = mix(col, uGround, smoothstep(.0, -.12, y));
+    gl_FragColor = vec4(col * uGain, 1.);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }`;
+function gfxSkyMat(stars) {
+  return new THREE.ShaderMaterial({ vertexShader: GFX_SKY_VS, fragmentShader: GFX_SKY_FS, side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: { uZen: { value: new THREE.Color() }, uHor: { value: new THREE.Color() }, uGlow: { value: new THREE.Color() }, uGround: { value: new THREE.Color() }, uTime: { value: 0 }, uStars: { value: stars ? 1 : 0 }, uBand: { value: 1 }, uGlowK: { value: .5 }, uGain: { value: 1 } } });
+}
+function gfxDetailTex() { // fine relief for the ground: a tileable noise turned into a normal map, and a roughness map with a little sparkle
+  if (GFX.detail) return GFX.detail;
+  const N = 256, P = 16, h = new Float32Array(N * N), hs = (x, y, s) => { x = ((x % s) + s) % s; y = ((y % s) + s) % s; let v = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ Math.imul(s, 1442695041); v = Math.imul(v ^ (v >>> 13), 1274126177); return ((v ^ (v >>> 16)) >>> 0) / 4294967296; };
+  const vn = (x, y, s) => { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy); return lerp(lerp(hs(ix, iy, s), hs(ix + 1, iy, s), u), lerp(hs(ix, iy + 1, s), hs(ix + 1, iy + 1, s), u), v); };
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { let s = 0, a = .5, f = P; for (let o = 0; o < 4; o++) { s += vn(x / N * f, y / N * f, f) * a; a *= .5; f *= 2; } h[y * N + x] = s; }
+  const cn = document.createElement('canvas'); cn.width = cn.height = N; const gn = cn.getContext('2d'), dn = gn.createImageData(N, N);
+  const cr = document.createElement('canvas'); cr.width = cr.height = N; const gr = cr.getContext('2d'), dr = gr.createImageData(N, N);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const H = (xx, yy) => h[(((yy + N) % N) * N) + ((xx + N) % N)], dx = (H(x + 1, y) - H(x - 1, y)) * 6, dy = (H(x, y + 1) - H(x, y - 1)) * 6, l = Math.hypot(dx, dy, 1), i = (y * N + x) * 4;
+    dn.data[i] = (-dx / l * .5 + .5) * 255; dn.data[i + 1] = (-dy / l * .5 + .5) * 255; dn.data[i + 2] = (1 / l * .5 + .5) * 255; dn.data[i + 3] = 255;
+    const sp = hs(x * 7 + 3, y * 13 + 5, 99991) > .985 ? .35 : 1, rv = Math.round(255 * clamp((.82 + (h[y * N + x] - .5) * .3) * sp, .2, 1)); dr.data[i] = dr.data[i + 1] = dr.data[i + 2] = rv; dr.data[i + 3] = 255; // a few smooth specks catch the light
+  }
+  gn.putImageData(dn, 0, 0); gr.putImageData(dr, 0, 0);
+  const mk = c => { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(70, 70); t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); return t; };
+  return (GFX.detail = { normal: mk(cn), rough: mk(cr) });
+}
+function gfxRocksGeo() { // rocks with real faces: a subdivided icosahedron, pushed about
+  if (GFX.rocksGeo) return GFX.rocksGeo;
+  const g = new THREE.IcosahedronGeometry(1, 1), p = g.attributes.position, V = new THREE.Vector3(), key = v => `${v.x.toFixed(3)},${v.y.toFixed(3)},${v.z.toFixed(3)}`, seen = {};
+  for (let i = 0; i < p.count; i++) { V.fromBufferAttribute(p, i); const k = key(V); const s = seen[k] || (seen[k] = .78 + Math.random() * .38); V.multiplyScalar(s); V.y *= .82; p.setXYZ(i, V.x, V.y, V.z); }
+  g.computeVertexNormals(); return (GFX.rocksGeo = g);
+}
+function gfxApplyScene() { // what the quality changes in the menu scene itself
+  const on = gfxOn(), ultra = gfxQ === 'ultra';
+  if (on && !GFX.dome) { GFX.dome = new THREE.Mesh(new THREE.SphereGeometry(900, 48, 24), gfxSkyMat(true)); GFX.dome.frustumCulled = false; GFX.dome.renderOrder = -10; scene.add(GFX.dome); }
+  if (GFX.dome) GFX.dome.visible = on;
+  if (!GFX.starsPts) GFX.starsPts = scene.children.find(o => o.isPoints && o !== menuSnow && o.geometry.attributes.position.count === 2200) || null;
+  if (GFX.starsPts) GFX.starsPts.visible = !on; // the dome has its own stars
+  const sz = on ? (ultra ? 2048 : 2048) : 1024, ext = on ? 10 : 14;
+  if (sun.shadow.mapSize.x !== sz || sun.shadow.camera.right !== ext) { sun.shadow.mapSize.set(sz, sz); Object.assign(sun.shadow.camera, { left: -ext, right: ext, top: ext, bottom: -ext }); sun.shadow.camera.updateProjectionMatrix(); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
+  const D = on ? gfxDetailTex() : null; terrain.material.normalMap = D ? D.normal : null; terrain.material.roughnessMap = D ? D.rough : null; terrain.material.normalScale.set(.55, .55); terrain.material.needsUpdate = true;
+  if (!GFX.rocksGeo0) GFX.rocksGeo0 = rocks.geometry; rocks.geometry = on ? gfxRocksGeo() : GFX.rocksGeo0; rocks.castShadow = on; rocks.material.normalMap = D ? D.normal : null; rocks.material.needsUpdate = true;
+  crystals.material.emissiveIntensity = on ? 2.4 : .6; crystals.castShadow = on;
+  const seg = gfxQ === 'ultra' ? 256 : gfxQ === 'high' ? 200 : 160;
+  if (terrain.geometry.parameters.widthSegments !== seg) { const g = new THREE.PlaneGeometry(320, 320, seg, seg); g.rotateX(-Math.PI / 2); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 3), 3)); const old = terrain.geometry; terrain.geometry = terrainGeo = g; old.dispose(); buildTerrain(); }
+  if (GFX.look) gfxLook(GFX.look, true);
+}
+function gfxLook(L, force) { // a look's sky, light and glow (setMenuLook calls this)
+  GFX.look = L; if (!gfxOn()) { if (scene.environment !== GFX.roomEnv) scene.environment = GFX.roomEnv; for (const m of aurora.children) m.material.color.set(L.tint || 0xffffff); return; } // LOW: as it always was
+  const C = x => new THREE.Color(x), fog = C(L.fog), bg = C(L.bg), lum = c => c.r * .2126 + c.g * .7152 + c.b * .0722;
+  const hor = fog.clone().lerp(C(L.hs), .18), zen = bg.clone().lerp(new THREE.Color(0, 0, 0), .25), glow = C(L.rc).lerp(C(L.hs), .4), ground = fog.clone().multiplyScalar(.9);
+  const set = (M, gain, stars) => { const U = M.uniforms; U.uZen.value.copy(zen); U.uHor.value.copy(hor); U.uGlow.value.copy(glow); U.uGround.value.copy(ground); U.uGlowK.value = clamp(.35 + lum(fog) * 2, .35, .9); U.uGain.value = gain; U.uStars.value = stars; U.uBand.value = L.planet || L.polar ? 1 : .55; };
+  if (GFX.dome) set(GFX.dome.material, 1, lum(fog) > .25 ? .25 : 1); // a bright sky hides its stars
+  if (!GFX.envScene) { GFX.envScene = new THREE.Scene(); GFX.envDome = new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), gfxSkyMat(false)); GFX.envScene.add(GFX.envDome); const sunLamp = new THREE.Mesh(new THREE.SphereGeometry(4, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff })); sunLamp.position.set(30, 40, 18); GFX.envScene.add(sunLamp); GFX.envSun = sunLamp; }
+  // the light the sky gives: the same sky, brighter, and the sun as a soft lamp, so things reflect where they are
+  const fillLum = lum(hor) + lum(zen); set(GFX.envDome.material, clamp(.45 / Math.max(.03, fillLum), 1.6, 6), 0); GFX.envSun.material.color.copy(C(L.sc)).lerp(new THREE.Color(1, 1, 1), .5).multiplyScalar(1.8);
+  { const U = GFX.envDome.material.uniforms, grey = c => { const l = lum(c); c.lerp(new THREE.Color(l, l, l), .55); c.r += .012; c.g += .013; c.b += .016; }; grey(U.uZen.value); grey(U.uHor.value); grey(U.uGlow.value); grey(U.uGround.value); } // half the sky's colour, never pitch black: a red sky shouldn't paint everyone red
+  const old = GFX.envRT; GFX.envRT = pmrem.fromScene(GFX.envScene, .035, .1, 120); scene.environment = GFX.envRT.texture; if (old && old !== GFX.envRT) old.dispose();
+  for (const m of aurora.children) m.material.color.set(L.tint || 0xffffff).multiplyScalar(1.9); // the aurora bright enough to bloom
+  GFX.bloomK = L === MENU_LOOKS.vile ? .5 : L === MENU_LOOKS.abyss ? .55 : String(menuLook || '').startsWith('lead:') ? .5 : .38;
+}
+async function gfxLoad() {
+  if (GFX.mods !== null || GFX.loading) return; GFX.loading = true;
+  try {
+    const [ec, rp, ub, sp, op, ao] = await Promise.all(['EffectComposer', 'RenderPass', 'UnrealBloomPass', 'ShaderPass', 'OutputPass', 'GTAOPass'].map(f => import('three/addons/postprocessing/' + f + '.js')));
+    GFX.mods = { EffectComposer: ec.EffectComposer, RenderPass: rp.RenderPass, UnrealBloomPass: ub.UnrealBloomPass, ShaderPass: sp.ShaderPass, OutputPass: op.OutputPass, GTAOPass: ao.GTAOPass };
+  } catch (e) { console.warn('Graphics: post-processing unavailable, drawing plain', e); GFX.mods = false; }
+  GFX.loading = false;
+}
+const GFX_GRADE = {
+  uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uVig: { value: .3 }, uGrain: { value: .022 }, uCA: { value: .0016 }, uSat: { value: 1.06 }, uCon: { value: 1.05 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `varying vec2 vUv; uniform sampler2D tDiffuse; uniform float uTime, uVig, uGrain, uCA, uSat, uCon;
+    float rnd(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + uTime * 17.0) * 43758.5453); }
+    void main(){ vec2 c = vUv - .5; float r = length(c); vec2 o = c * uCA * r * 2.;
+      vec3 col = vec3(texture2D(tDiffuse, vUv - o).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv + o).b);
+      float l = dot(col, vec3(.2126, .7152, .0722)); col = mix(vec3(l), col, uSat); col = (col - .5) * uCon + .5;
+      col *= 1. - uVig * smoothstep(.38, .95, r); col += (rnd(vUv * 1000.) - .5) * uGrain;
+      gl_FragColor = vec4(clamp(col, 0., 1.), 1.); }` };
+function gfxComposer() {
+  const M = GFX.mods; if (!M) return null; if (GFX.comp) return GFX.comp;
+  const sz = renderer.getSize(new THREE.Vector2()), pr = renderer.getPixelRatio(), gl2 = renderer.capabilities.isWebGL2;
+  const rt = new THREE.WebGLRenderTarget(sz.x * pr, sz.y * pr, { type: THREE.HalfFloatType, samples: gl2 ? 4 : 0 });
+  const C = new M.EffectComposer(renderer, rt); GFX.rp = new M.RenderPass(scene, camera); C.addPass(GFX.rp);
+  if (gfxQ === 'ultra') { try { GFX.ao = new M.GTAOPass(scene, camera, sz.x, sz.y, undefined, { radius: .55, distanceExponent: 1.4, thickness: 1.6, scale: 1, samples: 12, distanceFallOff: 1, screenSpaceRadius: false }); GFX.ao.blendIntensity = .85; C.addPass(GFX.ao);
+      const r0 = GFX.ao.render.bind(GFX.ao); GFX.ao.render = (...a) => { const hid = []; GFX.ao.scene.traverseVisible(o => { const m = o.material; if (o.isSprite || o.isPoints || o.isLine || (m && !Array.isArray(m) && (m.transparent || m.depthWrite === false))) hid.push(o); }); for (const o of hid) o.visible = false; try { r0(...a); } finally { for (const o of hid) o.visible = true; } }; } /* glows, sprites and see-through things never cast ambient occlusion */ catch (e) { console.warn('Graphics: no ambient occlusion', e); GFX.ao = null; } }
+  GFX.bloom = new M.UnrealBloomPass(new THREE.Vector2(sz.x, sz.y), GFX.bloomK, .55, .82); C.addPass(GFX.bloom);
+  C.addPass(new M.OutputPass()); GFX.grade = new M.ShaderPass(GFX_GRADE); C.addPass(GFX.grade);
+  GFX.size = ''; GFX.comp = C; return C;
+}
+function gfxDrop() { if (GFX.comp) { try { GFX.comp.dispose(); GFX.bloom && GFX.bloom.dispose(); GFX.ao && GFX.ao.dispose(); } catch (e) {} } GFX.comp = GFX.rp = GFX.bloom = GFX.ao = GFX.grade = null; }
+function gfxRender(S, C, dt) { // the menu's frame: through the post-processing when the quality allows it
+  if (GFX.dome && GFX.dome.visible) { GFX.dome.position.copy(C === camera ? camera.position : GFX.dome.position); GFX.dome.material.uniforms.uTime.value = time; }
+  if (!gfxOn() || GFX.mods === false) { renderer.render(S, C); return; }
+  if (!GFX.mods) { gfxLoad(); renderer.render(S, C); return; }
+  const comp = gfxComposer(); if (!comp) { renderer.render(S, C); return; }
+  const pr = renderer.getPixelRatio(), sz = renderer.getSize(new THREE.Vector2()), key = `${sz.x}x${sz.y}@${pr}`;
+  if (GFX.size !== key) { GFX.size = key; comp.setPixelRatio(pr); comp.setSize(sz.x, sz.y); }
+  GFX.rp.scene = S; GFX.rp.camera = C; if (GFX.ao) { GFX.ao.enabled = S === scene; GFX.ao.scene = S; GFX.ao.camera = C; }
+  GFX.bloom.strength += ((S === scene ? GFX.bloomK : .5) - GFX.bloom.strength) * Math.min(1, (dt || .016) * 3);
+  GFX.grade.uniforms.uTime.value = time;
+  comp.render(dt || .016);
+}
+function gfxSet(q) { if (!GFX_Q.includes(q)) return; gfxQ = q; store.set('nv_gfx', q); gfxDrop(); gfxApplyScene(); refreshGfx(); }
+function refreshGfx() { const el = $('#setGfx .val'); if (el) el.textContent = GFX_LABEL[gfxQ]; const o = $('#oGfx b'); if (o) o.textContent = GFX_LABEL[gfxQ]; }
+function cycleGfx() { sfx.init(); sfx.click(); gfxSet(GFX_Q[(GFX_Q.indexOf(gfxQ) + 1) % GFX_Q.length]); }
 
 /* ============ chapter IV menu: a voice that mocks you ============ */
 const TAUNTS = ['Useless.....', 'The old world is dead, Hawthorne is gone. Give up.', 'You cannot stop the Catharsis.', 'Sevirrus tried hundreds of years ago, facing ME. What chance do you have?', 'My legions are eternal....',
@@ -2714,6 +2852,7 @@ function setMenuLook(kind) {
   for (const m of aurora.children) m.material.color.set(L.tint || 0xffffff);
   menuSnow.material.color.set(L.ash || 0xeaf2ff);
   resetWorld();
+  try { gfxLook(L); } catch (e) { console.error(e); } // its sky, its light, its glow
 }
 // James joins you in the main menu once he's your companion
 function menuCompanion() {
@@ -4107,6 +4246,7 @@ $('#setStyle').addEventListener('click', () => { menuStyle = menuStyle === 'red'
 $('#oMusic').addEventListener('click', toggleMusic);
 function cycleChatter() { sfx.init(); sfx.click(); chatter = { normal: 'less', less: 'off', off: 'normal' }[chatter] || 'normal'; store.set('nv_chatter', chatter); refreshOpts(); }
 $('#oChatter').addEventListener('click', cycleChatter); $('#setChatter').addEventListener('click', cycleChatter);
+$('#setGfx').addEventListener('click', cycleGfx); refreshGfx(); // Graphics: ULTRA, HIGH or LOW
 $('#oCathLang').addEventListener('click', () => { sfx.init(); sfx.click(); cycleCathLang(); }); $('#setCathLang').addEventListener('click', () => { sfx.init(); sfx.click(); cycleCathLang(); });
 $('#oSound').addEventListener('click', toggleSound);
 $('#xOptions').addEventListener('click', () => { sfx.click(); refreshOpts(); ui.xpause.classList.add('opts'); });
@@ -35477,14 +35617,15 @@ function loopFrame() {
   menuTick(dt);
   updateAnim(dt); updateWorld(dt); updateCamera(dt);
   sfx.music((state === 'create' || state === 'deploying') ? 0 : .85);
-  if (menuLook === 'space' && (state === 'title' || state === 'loading') && MSP.scene) { menuSpaceTick(dt); renderer.render(MSP.scene, MSP.cam); return; }
-  renderer.render(scene, camera);
+  if (menuLook === 'space' && (state === 'title' || state === 'loading') && MSP.scene) { menuSpaceTick(dt); gfxRender(MSP.scene, MSP.cam, dt); return; }
+  gfxRender(scene, camera, dt); // through the post-processing on HIGH and ULTRA
   if (state === 'title') try { vileGlitchDraw(); } catch (e) {} // the evil menu's tearing, drawn from this frame
 }
 
 /* ============ boot ============ */
 refreshMenu();
 setMenuLook(menuLookFor());
+try { gfxApplyScene(); } catch (e) { console.error(e); } // the menu at the quality you chose
 player.position.set(0, height(0, 0), 0);
 camera.position.set(4, 2, 4);
 resize();
