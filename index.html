@@ -2071,7 +2071,7 @@ const LEAD_WHERE = { karribassa: ['Janira Prime · the throne room', 'Karribassa
 const forceLead = (window.location.search.match(/[?&]leader=(\w+)/) || [])[1] || null;
 const LEAD_FORCE = { hak: ['karribassa', ['hak']], alphinos: ['alphinos', ['hak']], darius: ['commons', ['darius']], vishara: ['citadel', ['vishara']], alexia: ['citadel', ['alexia']],
   archamus: ['archiostal', ['archamus']], grek: ['archiostal', ['archamusU', 'amgrek']], amgrek: ['bastion', ['amgrek']], timpur: ['timpur', ['taredesiba']], zark: ['zark', ['zark']] };
-const LEADM = { at: -1, list: [], i: 0, room: null, rooms: {}, R: {}, H: {}, key: '', yaw0: null, shown: false };
+const LEADM = { at: -1, list: [], i: 0, room: null, rooms: {}, R: {}, H: {}, thr: {}, key: '', yaw0: null, shown: false };
 function leadMenuCalc() { // the throne rooms of every faction you're at war with, in the order Diplomacy lists them
   if (forceLead && LEAD_FORCE[forceLead]) { const [room, ks] = LEAD_FORCE[forceLead]; return [{ room, ks, fac: { karribassa: 'The Chompy Empire', alphinos: 'The Chompy Empire', commons: 'Human Federation of Sol', citadel: 'The Erisian Empire', archiostal: ks.length > 1 ? 'The Grek Empire' : 'The Order of Archamus', bastion: 'The Grek Empire', timpur: 'The Republic of Timpur', zark: 'The Catharsis' }[room], at: room === 'zark' ? (ALL_BODIES.find(o => o.land && String(o.fac3 || o.faction || '').startsWith('The Catharsis') && sysById(o.sys).home === o.id) || {}).id : null }]; }
   if (!wanderer || !wanderer.dip || effCh() < 3 || isCh4Menu()) return [];
@@ -2117,7 +2117,7 @@ function leadRoomBuild(key) { // a throne room, built round the leader: they sta
   for (const x of [-3.4, 3.4]) { const b = box(1.6, 5, .08, E(R.ban, .45), x, 7, -8.1); b.rotation.z = 0; box(1.8, .25, .2, tm, x, 9.6, -8.1); }
   for (const x of [-4, 4]) { const st = box(.5, 1.1, .5, M(0x1a1a1a, { metalness: .6 }), x, .55, -3.5); const f = new THREE.Mesh(new THREE.ConeGeometry(.35, .9, 10), new THREE.MeshBasicMaterial({ color: R.glow, transparent: true, opacity: .9 })); f.position.set(x, 1.5, -3.5); g.add(f); g.userData.flames = (g.userData.flames || []).concat(f); const L = new THREE.PointLight(R.glow, 2.2, 14, 1.6); L.position.set(x, 2.2, -3.5); g.add(L); } // braziers
   const th = (x, z, s) => { box(2 * s, .4, 1.8 * s, tm, x, .2, z); box(1.5 * s, 1.0 * s, 1.3 * s, M(R.wall, { roughness: .5 }), x, .4 + .5 * s, z); box(1.6 * s, 3.4 * s, .35 * s, M(R.wall, { roughness: .5 }), x, .4 + 1.7 * s, z - .6 * s); box(1.8 * s, .3 * s, .45 * s, tm, x, .4 + 3.4 * s, z - .6 * s); for (const sx of [-1, 1]) box(.25 * s, 1.5 * s, 1.3 * s, tm, x + sx * .8 * s, .4 + .75 * s, z); };
-  if (R.seat) th(0, -.55, 1.2); else if (!R.commons) th(0, -5.2, 1.4); // the Commons has the Speaker's chair instead // Hak's own throne, with him on it; everyone else's behind them
+  if (!R.seat && !R.commons && !R.halo) th(0, -5.2, 1.4); // a throne behind them (the Commons has the Speaker's chair; Hak and Archamus sit on theirs: see leadThrone) // Hak's own throne, with him on it; everyone else's behind them
   if (R.water) for (const x of [-8.6, 8.6]) box(2.2, .06, 20, E(0x2a7ad0, .6), x, .05, 2); // Karribassa's canals, through the hall
   if (R.commons) { const gm = M(0x2f6a3a, { roughness: .85 }); for (const sx of [-1, 1]) for (let r = 0; r < 4; r++) { box(1.1, .6 + r * .45, 13, gm, sx * (3.6 + r * 1.2), .3 + r * .22, 3); } box(1.6, 1.0, .9, M(0x5a3a1c), 1.6, .5, .4); box(2.4, 4.2, 1.6, M(0x3a2410), 0, 2.1, -6.8); box(2.6, .4, 1.8, tm, 0, 4.4, -6.8); } // green benches, the despatch box, the Speaker's chair
   if (R.ice) for (let i = 0; i < 14; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(.25 + Math.random() * .4, 1.5 + Math.random() * 3, 5), new THREE.MeshStandardMaterial({ color: 0xf4f0ff, emissive: R.trim, emissiveIntensity: .5, roughness: .1, transparent: true, opacity: .85 })); const a = i / 14 * Math.PI * 2; c.position.set(Math.cos(a) * 9.4, .8, -2 + Math.sin(a) * 6); g.add(c); } // ice crystals round the hall
@@ -2125,6 +2125,13 @@ function leadRoomBuild(key) { // a throne room, built round the leader: they sta
   if (R.senate) { for (let r = 0; r < 3; r++) for (let i = 0; i < 9; i++) { const a = Math.PI * (.15 + .7 * i / 8), rad = 6.4 + r * 1.1; box(.9, .5 + r * .4, .7, M(0xd8e0e2), Math.cos(a) * rad, .25 + r * .2, -Math.sin(a) * rad - .6); } const cr = new THREE.Mesh(new THREE.TorusGeometry(1.1, .14, 8, 6), E(R.trim, 1.2)); cr.position.set(0, 9.4, -8.1); g.add(cr); } // the senate's benches, behind the crown
   g.userData.key = key; return g;
 }
+function leadThrone(room) { // a throne for a seated leader, built at unit size and scaled to whoever sits on it
+  const R = LEAD_ROOMS[room], g = new THREE.Group(), M = c => new THREE.MeshStandardMaterial({ color: c, roughness: .5 }), tm = new THREE.MeshStandardMaterial({ color: R.trim, emissive: R.trim, emissiveIntensity: .6, roughness: .5 });
+  const box = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); g.add(o); };
+  box(2, .3, 1.6, tm, 0, .15, -.1); box(1.5, .9, 1.0, M(R.wall), 0, .75, -.15); box(1.7, 6.4, .35, M(R.wall), 0, 3.5, -.75); box(1.9, .35, .5, tm, 0, 6.8, -.75); for (const sx of [-1, 1]) box(.22, .6, 1.0, tm, sx * .82, 1.5, -.15);
+  return g; // seat top at 1.2, back to 7 (unit size): a low seat and a towering back
+}
+const leadSeated = (room, k) => room === 'alphinos' || (room === 'archiostal' && (k === 'archamus' || k === 'archamusU')); // Hak in Alphinos; Archamus in Archiostal
 function leadRig(k) { // their body, loaded once
   if (LEADM.R[k] !== undefined) return LEADM.R[k];
   LEADM.R[k] = null; leadSpec(k).load().then(R => { if (!R) return; R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); R.root.updateMatrixWorld(true); LEADM.H[k] = new THREE.Box3().setFromObject(R.root).getSize(new THREE.Vector3()).y || 2; R.mode = 'idle'; LEADM.R[k] = R; }).catch(() => null);
@@ -2148,12 +2155,15 @@ function menuLeadTick(dt) { // the throne room, and whoever holds it
     const R = leadRig(k); if (!R) return; if (R.root.parent !== scene) scene.add(R.root); R.root.visible = true;
     const h = LEADM.H[k] || 2, s = (Math.min(h, 2.6) + Math.max(0, h - 2.6) * .25) / h * 1.25, side = n > 1 ? (i - (n - 1) / 2) * 2.1 : 0; // the tallest are brought down to fit, but still loom
     const x = p.x + fz * side, z = p.z - fx * side; R.root.scale.setScalar(s); R.root.rotation.y = a; R.mode = 'idle'; animRig(R, dt);
-    let y = p.y;
-    if (Rm.seat) { // Hak, seated on his throne in Alphinos
+    let y = p.y; const tk = E.room + ':' + k;
+    if (leadSeated(E.room, k) && LEADM.room && LEADM.room.visible) { // seated on their throne: Hak in Alphinos, Archamus in Archiostal
       const S2 = (o, ax, v) => { const r = o && R.rest && R.rest.get(o); if (r) o.rotation[ax] = r[ax] + v; };
       S2(R.rl, 'x', -1.3); S2(R.ll, 'x', -1.3); if (R.rk) S2(R.rk, 'x', 1.45); if (R.lk) S2(R.lk, 'x', 1.45); S2(R.ra, 'x', -.45); S2(R.la, 'x', -.45);
-      y += 1.6 - h * s * .5; const back = -.75; // hips on the seat R.root.position.set(x + fx * back, y, z + fz * back);
-    } else R.root.position.set(x, y, z);
+      const H2 = h * s, ts = H2 * .27 / 1.2, T = LEADM.thr[tk] || (LEADM.thr[tk] = leadThrone(E.room)); // the seat at their knee height, the back towering over them
+      if (T.parent !== LEADM.room) LEADM.room.add(T); T.visible = true; T.scale.set(ts * 1.5, ts, ts * 1.4); T.position.set(side, 0, 0);
+      const back = -.15 * ts; y += 1.2 * ts - H2 * .47; // hips on the seat, at its front edge
+      R.root.position.set(x + fx * back, y, z + fz * back);
+    } else { R.root.position.set(x, y, z); if (LEADM.thr[tk]) LEADM.thr[tk].visible = false; }
   });
 }
 // ---- the evil main menu: a villain wanderer (alignment −34 or lower), in any chapter, stands alone holding the world in their hands

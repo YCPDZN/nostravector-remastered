@@ -3206,4 +3206,5 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - **They come first:** over the evil menu, a deputy, a villain resident and Hawthorne's cyan. At war with several factions, the leaders take turns, three lines each.
   - The camera holds still in a throne room (just a slow sway) so the throne stays behind them.
   - `?leader=hak` (or `alphinos`, `darius`, `vishara`, `alexia`, `archamus`, `grek`, `amgrek`, `timpur`, `zark`) previews one.
+- **Archamus sits on his throne** in Archiostal, for the Order (Chapter III) and for the Grek Empire with Am-Grek standing beside him (Chapters IV–V), as Hak sits on his in Alphinos. A seated leader's throne is now sized to them: a low seat at their knee height and a back that towers over them, so the seat no longer hides them. Fixed: Hak wasn't placed on his seat properly.
 
