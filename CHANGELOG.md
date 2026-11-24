@@ -3192,4 +3192,21 @@ None of this runs in New London, inside a lair, in a cutscene or during any scri
   - **Gone after Mercury:** once he dies in his last stand on Mercury, his lines stop for good. They never appear in Chapter IV (before the time skip or after) or Chapter V.
   - **Spoiler-free:** he only talks about what Chapter III has already shown you: New London and the Commons, Mars, Terra Imperia hunting you through Sol, and the friends you're gathering.
   - `?menu=ch3` previews it.
+- **Main menus for the faction leaders.** At war with a story faction in Diplomacy, the main menu is its leader, alone in their throne room (your wanderer isn't in the scene), speaking to you in lines signed with their name, in their own colours.
+  - **Who, and where:**
+    - **Hak Chompjak V:** his throne room in Karribassa, with its canals (Chapter III); seated on his throne in Alphinos (Chapters IV–V).
+    - **Darius Ancin:** the House of Commons, on Earth: green benches, the despatch box and the Speaker's chair.
+    - **Vishara Erisconos:** the throne room of the Citadel el Erisconos, all ice and crystal (Alexia, while she holds it in Chapter III).
+    - **Archamus:** the throne room of Archiostal, under its great light, for the Order of Archamus (Chapter III); with **Am-Grek** beside him for the Grek Empire (Chapters IV–V).
+    - **Am-Grek:** the Bastion of Carax (Chapter III).
+    - **Timpur IV:** the throne room of Timpur Prime, the senate's benches behind the crown (Chapters III–V).
+    - **Lord Zark:** on the Catharsis world, in the open (Chapter III only). In Chapter IV the menu is the regular one, his blood-red voice and all, as before.
+  - **Their own UI:** each throne room has its own colours (Chompy amber, Alphinos gold and crimson, Federation blue and Commons green, Erisian pink and ice, Archiostal gold, Grek green, Timpur teal, Catharsis violet) for the title's glow, the logo and the quote, and the panel in the corner names the throne room and says who is at war with you. Only on their menu: the white menu and Chapter IV's blood red are untouched, and the blood red still takes over (Chapter IV after the time skip, Chapter V on BLOOD RED).
+  - **About 280 lines** in all, 20–30 per leader: Hak's House of Chompjak, Darius in the Commons, Vishara's cold patience, Alexia's stolen throne, Archamus the Prime Good, Am-Grek's faith, Timpur's republic and crown, and Zark's hunger. Archamus and Am-Grek take it in turns.
+  - **They come first:** over the evil menu, a deputy, a villain resident and Hawthorne's cyan. At war with several factions, the leaders take turns, three lines each.
+  - The camera holds still in a throne room (just a slow sway) so the throne stays behind them.
+  - `?leader=hak` (or `alphinos`, `darius`, `vishara`, `alexia`, `archamus`, `grek`, `amgrek`, `timpur`, `zark`) previews one.
+- **Archamus sits on his throne** in Archiostal, for the Order (Chapter III) and for the Grek Empire with Am-Grek standing beside him (Chapters IV–V), as Hak sits on his in Alphinos. A seated leader's throne is now sized to them: a low seat at their knee height and a back that towers over them, so the seat no longer hides them. Fixed: Hak wasn't placed on his seat properly.
+- **Seated leaders bend at the knee.** The leader models swing each leg from the hip in one piece, so on the menu they now get knees: the parts of each leg wholly below its middle move onto a knee joint (the menu's leaders only, so nobody walks any differently in the game). Sitting, their thighs go forward, their shins straight down and their feet rest on the floor, and the throne's seat is built right under their hips, measured from the pose itself. Which way a knee bends is tested once for each model, since some models' legs face the other way.
+- **Archamus is hooded** on the menu in Chapters IV–V too, on his throne in Archiostal beside Am-Grek (he was unmasked there before), signed "Archamus, the Prime Good".
 
