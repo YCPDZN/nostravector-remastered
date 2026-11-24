@@ -353,6 +353,19 @@ body.lead #title .wordmark{text-shadow:0 0 30px var(--lc)} body.lead #title .mi.
 body.lead #title .brand svg.mark{filter:drop-shadow(0 0 12px var(--lc)) drop-shadow(0 0 3px var(--lc))}
 body.lead #title .taunt{display:block;position:absolute;right:calc(var(--sr) + 6vw);bottom:calc(var(--sb) + max(16vh, 200px));max-width:min(520px,44vw);text-align:right;pointer-events:none}
 body.lead #title .taunt span{color:var(--lc);text-shadow:0 0 18px var(--lc),0 0 2px #fff;animation:none} body.lead #title .taunt.signed small{color:var(--lc2)}
+/* Lord Zark's menu (Chapter III, at war with the Catharsis): the Chapter III menu and his blood red fight over it. The ice-blue holds,
+   the red tears through in glitches, floods it, then the blue claws it back; his name and words flicker between the two */
+@property --zk{syntax:'<color>';inherits:true;initial-value:#070a11}
+@property --zi{syntax:'<color>';inherits:true;initial-value:#a9dcff}
+@keyframes zkClash{0%,33%{--zk:#070a11;--zi:#a9dcff}34%{--zk:#090103;--zi:#ff3b2f}35%{--zk:#070a11;--zi:#a9dcff}37%{--zk:#090103;--zi:#ff3b2f}38%{--zk:#070a11;--zi:#a9dcff}
+  40%,70%{--zk:#090103;--zi:#ff3b2f}71%{--zk:#070a11;--zi:#a9dcff}72%{--zk:#090103;--zi:#ff3b2f}74%,100%{--zk:#070a11;--zi:#a9dcff}}
+@keyframes zkMark{0%,33%,35%,38%,71%,74%,100%{filter:drop-shadow(0 0 12px #a9dcff) drop-shadow(0 0 3px #a9dcff)}34%,37%,40%,70%,72%{filter:brightness(.55) sepia(1) saturate(9) hue-rotate(-38deg) brightness(1.5) drop-shadow(0 0 14px rgba(255,40,30,.6))}}
+body.lead[data-lead="zark"]{--lc:var(--zi);--lc2:#ffb0a8;--ice:var(--zi);--acc:var(--zi);animation:zkClash 11s infinite}
+body.lead[data-lead="zark"] #title{background:linear-gradient(90deg,color-mix(in srgb,var(--zk) 96%,transparent) 0%,color-mix(in srgb,var(--zk) 80%,transparent) 30%,transparent 62%)}
+body.lead[data-lead="zark"] #title .wordmark{text-shadow:-3px 0 rgba(169,220,255,.55),3px 0 rgba(255,59,47,.6),0 0 30px var(--zi);animation:ch4flick 6s infinite,ch4jit 3.7s infinite}
+body.lead[data-lead="zark"] #title .brand svg.mark{animation:zkMark 11s infinite}
+body.lead[data-lead="zark"] #title .mi.primary span{text-shadow:0 0 14px var(--zi)}
+body.lead[data-lead="zark"] #title .taunt span{text-shadow:-2px 0 rgba(169,220,255,.5),2px 0 rgba(255,59,47,.55),0 0 18px var(--zi),0 0 2px #fff}
 body.haw:not(.vile) #title .taunt{display:block;position:absolute;right:calc(var(--sr) + 6vw);bottom:calc(var(--sb) + max(16vh, 200px));max-width:min(520px,44vw);text-align:right;pointer-events:none} /* Chapter III: Hawthorne */
 body #title .taunt.hawl span{color:#5ff2ff;text-shadow:0 0 18px rgba(40,220,255,.7),0 0 2px #c8fbff}
 body #title .taunt.hawl.signed small{color:#8fe9ff}
@@ -2995,7 +3008,15 @@ function leadRig(k) { // their body, loaded once
   LEADM.R[k] = null; leadSpec(k).load().then(R => { if (!R) return; R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); R.root.updateMatrixWorld(true); try { leadKnees(R); } catch (e) {} /* knees, for sitting */ LEADM.H[k] = new THREE.Box3().setFromObject(R.root).getSize(new THREE.Vector3()).y || 2; R.mode = 'idle'; LEADM.R[k] = R; }).catch(() => null);
   return null;
 }
+function menuMusicSync(force) { // the title music: a faction leader's own theme while they hold the menu (Hak's, Vishara's, Darius's, Archamus's, Am-Grek's, Zark's), otherwise the menu theme
+  const on = isCh4Menu(), vile = villainMenu(), base = on || vile ? 'musicCh4' : 'music', LE = !on && leadOn() ? leadCur() : null;
+  const lth = LE ? (() => { try { return LE.ks[0] === 'archamus' ? 'lightEgg' : leadSpec(LE.ks[0]).theme; } catch (e) { return null; } })() : null, id = lth ? 'lead:' + lth : base;
+  if (!force && id === LEADM.mus) return; LEADM.mus = id;
+  if (lth) sfx.menuExt(id, () => leaderTheme(lth), base);
+  sfx.menuTrack(id);
+}
 function menuLeadTick(dt) { // the throne room, and whoever holds it
+  if (state === 'title') try { menuMusicSync(false); } catch (e) {} // (checked every frame: the wars can be read after the menu first set its music)
   const on = state === 'title' && leadOn() && menuLook !== 'space', E = on ? leadCur() : null;
   if (!E) { if (LEADM.shown) { LEADM.shown = false; if (LEADM.room) LEADM.room.visible = false; for (const k in LEADM.R) if (LEADM.R[k]) LEADM.R[k].root.visible = false; player.visible = true; rocks.visible = true; crystals.visible = true; LEADM.yaw0 = null; document.body.classList.remove('lead'); } return; }
   LEADM.shown = true; player.visible = false;
@@ -3442,7 +3463,7 @@ function applyMenuEra() {
   const vile = villainMenu(), mode = `${on}|${vile}|${wanderer ? wanderer.id : ''}|${depMenu() ? 'dep:' + depOf() + (depEvil(depOf()) ? 'e' : 'g') + (DEPL ? 1 : 0) + '|' : ''}${vile ? (vileFoes().length > 1 ? 'foes:' + vileFoes().map(c => c.id).join(',') : vileRaceSp() + ':' + vileSig() + ':' + ((vileFoe() || {}).id || '')) : 0}`;
   const lead = !on && leadOn(), LE = lead ? leadCur() : null; document.body.classList.toggle('lead', lead); if (LE) document.body.dataset.lead = LE.room; else delete document.body.dataset.lead; // a faction leader's own colours
   const haw = !on && hawMenu(); document.body.classList.toggle('ch4', on); document.body.classList.toggle('vile', vile); document.body.classList.toggle('haw', haw); // Hawthorne's cyan in Chapter III // the evil menu, with the blood red stacked on it when that's on too
-  sfx.menuTrack(on || vile ? 'musicCh4' : 'music');
+  menuMusicSync(true);
   if (menuLook && (state === 'title' || state === 'loading')) setMenuLook(menuLookFor());
   try { menuVileSync(); } catch (e) {}
   const lk = LE ? LE.room + ':' + LE.ks.join(',') : '';
@@ -4443,12 +4464,13 @@ const sfx = (() => {
       } catch { res(null); }
     }));
   // the menu theme can change with the story (chapter IV has its own)
-  let menuSrc = null, menuCur = null, menuWant = 'music'; const menuCache = {};
+  let menuSrc = null, menuCur = null, menuWant = 'music'; const menuCache = {}, MENU_EXT = {}; // MENU_EXT: menu tracks that come from elsewhere (a faction leader's theme), with what to play if they can't load
   async function startMenu(id) {
     if (!ctx || menuCur === id) return;
     menuCur = id;
-    const buf = await decodeTag(menuCache, id);
-    if (!buf || menuCur !== id) return;
+    const ext = MENU_EXT[id], buf = await (ext ? Promise.resolve(ext.get()).catch(() => null) : decodeTag(menuCache, id));
+    if (menuCur !== id) return;
+    if (!buf) { if (ext) { menuCur = null; startMenu(ext.fb); } return; } // a theme that won't load: the usual menu music instead
     const t = ctx.currentTime, src = ctx.createBufferSource(), g = ctx.createGain();
     src.buffer = buf; src.loop = true; g.gain.value = 0; src.connect(g); g.connect(musicGain); src.start();
     g.gain.setTargetAtTime(1, t, .6);
@@ -4576,6 +4598,7 @@ const sfx = (() => {
     },
     get combatTrack() { return combatOn ? combatIdx : -1; },
     menuTrack(id) { menuWant = id; if (ctx) startMenu(id); },
+    menuExt(id, get, fb) { if (!MENU_EXT[id]) MENU_EXT[id] = { get, fb }; }, // register a menu track played from a buffer (see menuTrack)
     area(level, set = 'ax') {
       if (!ctx) return;
       if (set !== areaSet) { // new region: fade the old playlist out and start the new one

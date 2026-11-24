@@ -3305,3 +3305,25 @@ HIGH and ULTRA now tune themselves to the machine, so even a slow laptop can sta
   5. The post-processing draws at 75%, then at 67% for the last step.
 - **When there's headroom again, it gives the steps back** one at a time. A step that proves too much is left alone for a while, so the picture doesn't keep switching back and forth.
 - **A fast machine never leaves full quality.** The step a machine settles on is remembered between visits, so a slow laptop starts where it left off instead of stuttering while it re-learns.
+
+### Faction leaders' menus play their themes
+
+When you're at war with a story faction and its leader holds the main menu in their throne room, the menu now plays that leader's own theme instead of the usual title music:
+- **Hak:** Descendant of Shakhak.
+- **Vishara:** The Child of Eris.
+- **Darius:** The Guardian of Humanity.
+- **Archamus:** The Light Egg (also with Am-Grek beside him). His fight still opens with The Prime Good.
+- **Am-Grek:** Wonders of Laniakea (Combat).
+- **Lord Zark:** The Prime Evil.
+
+At war with more than one faction, the theme changes with each leader as their turn on the menu comes up. Alexia and Timpur IV have no theme of their own, so their menus keep the usual music. If a theme can't load, the usual menu music plays.
+
+**Fixed:** with a save that was already at war, the original NOSTRAVECTOR theme kept playing over the leader's menu. The menu checks which leader it's showing every frame now, so the music follows as soon as the wars are read.
+
+### Lord Zark's menu: the Chapter III menu and his blood red, clashing
+
+At war with the Catharsis in Chapter III, Lord Zark's throne-room menu is now a fight between the Chapter III menu's ice-blue and Chapter IV's blood red, instead of its own violet:
+- **The ice-blue holds the menu at first.** Then the red tears through in glitches, floods the panel, the logo, his words and the menu's highlights, and the blue claws it back. It repeats every 11 seconds.
+- **The title never settles.** NOSTRAVECTOR carries both colours at once, split either side, and flickers and jitters the way the blood-red menu does.
+- **His words are split in both colours too**, and his signature takes the blood red.
+- **Preview:** `?leader=zark`.
