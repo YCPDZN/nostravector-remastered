@@ -2030,9 +2030,9 @@ function gfxRender(S, C, dt) { // the menu's frame: through the post-processing 
   const comp = gfxComposer(); if (!comp) { renderer.render(S, C); return; }
   const pr = renderer.getPixelRatio(), sz = renderer.getSize(new THREE.Vector2()), key = `${sz.x}x${sz.y}@${pr}`;
   if (GFX.size !== key) { GFX.size = key; comp.setPixelRatio(pr); comp.setSize(sz.x, sz.y); }
-  GFX.rp.scene = S; GFX.rp.camera = C; if (GFX.ao) { GFX.ao.enabled = S === scene || S === wScene || S === aScene || (SHIPI.scene && S === SHIPI.scene); GFX.ao.scene = S; GFX.ao.camera = C; }
+  GFX.rp.scene = S; GFX.rp.camera = C; if (GFX.ao) { GFX.ao.enabled = !!(S === scene || S === wScene || S === aScene || (SHIPI.scene && S === SHIPI.scene)); // never in space: its distances are too vast for it GFX.ao.scene = S; GFX.ao.camera = C; }
   let bk = .32, th = .9; // bloom: how strong, and from how bright (the open world by day is bright everywhere, so only the brightest blooms)
-  if (S === scene) { bk = GFX.bloomK; th = .82; } else if (S === MSP.scene) { bk = .5; th = .82; }
+  if (S === scene) { bk = GFX.bloomK; th = .82; } else if (S === MSP.scene) { bk = .5; th = .82; } else if (SPC.scene && S === SPC.scene) { bk = .55; th = .95; } else if (typeof ATM !== 'undefined' && ATM.scene && S === ATM.scene) { bk = .3; th = 1.05; }
   else if (S === wScene) { const dl = world.dayL == null ? 1 : world.dayL; bk = .2 + (1 - dl) * .24; th = 1.3 - (1 - dl) * .45; if (DGN.on) { bk = .38; th = .85; } }
   GFX.bloom.strength += (bk - GFX.bloom.strength) * Math.min(1, (dt || .016) * 3); GFX.bloom.threshold = th;
   GFX.grade.uniforms.uTime.value = time;
@@ -2054,6 +2054,67 @@ function gfxWorldApply() { // shadows and ground detail on foot: once the world 
     wTerrainMat.normalMap = on ? GFX_W.n : null; wTerrainMat.roughnessMap = on ? GFX_W.r : null; wTerrainMat.normalScale.set(.35, .35); wTerrainMat.needsUpdate = true;
   }
   if (!on) { wScene.environment = null; GFX_W.key = ''; } else GFX_W.t = 99;
+}
+/* ---- in space (Chapter III on): flight, atmospheric entry and the pause, through the same graphics ----
+   On HIGH and ULTRA: the post-processing (bloom tuned for space: the star, your engines, lasers, explosions; and the grade), a richer sky
+   (stars of every size and brightness, steady as they are in a vacuum, the brightest blooming, over a faint Milky Way and nebula that
+   turn with each system's sky), the star's disc and your engine flames bright enough to bloom, and light for your ship's metal: the
+   star where it really is, in its colour, and the glow of the world you're near, so the hull and its gold trim reflect them. ---- */
+const GFX_S = { pts: null, dome: null, env: null, envScene: null, envSun: null, envPl: null, t: 99, key: '' };
+const GFX_STAR_VS = `attribute float aSize; attribute float aBright; uniform float uPR; varying vec3 vCol; varying float vB;
+  void main(){ vCol = color; vB = aBright; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); gl_PointSize = aSize * uPR; }`;
+const GFX_STAR_FS = `varying vec3 vCol; varying float vB;
+  void main(){ float d = length(gl_PointCoord - .5) * 2.; float a = pow(max(0., 1. - d), 2.2); if (a < .003) discard;
+    gl_FragColor = vec4(vCol * vB * a, 1.);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }`;
+const GFX_NEB_FS = `varying vec3 vDir; uniform vec3 uA, uB; uniform float uK;
+  float h31(vec3 p){ p = fract(p * .1031); p += dot(p, p.yzx + 33.33); return fract((p.x + p.y) * p.z); }
+  float n3(vec3 p){ vec3 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+    return mix(mix(mix(h31(i), h31(i + vec3(1,0,0)), f.x), mix(h31(i + vec3(0,1,0)), h31(i + vec3(1,1,0)), f.x), f.y), mix(mix(h31(i + vec3(0,0,1)), h31(i + vec3(1,0,1)), f.x), mix(h31(i + vec3(0,1,1)), h31(i + vec3(1,1,1)), f.x), f.y), f.z); }
+  float fb(vec3 p){ return n3(p) * .5 + n3(p * 2.1) * .28 + n3(p * 4.3) * .14 + n3(p * 8.7) * .08; }
+  void main(){ vec3 d = normalize(vDir); float band = exp(-pow(d.y / .14, 2.)), f = fb(d * 3.2), g = fb(d * 1.6 + 11.);
+    vec3 col = vec3(.0025, .003, .006) + mix(uA, uB, g) * band * (.25 + 1.1 * f * f) + mix(uB, uA, f) * pow(max(0., fb(d * 1.2 + 4.) - .48), 2.) * 2.2;
+    col -= vec3(.0) + band * smoothstep(.55, .75, fb(d * 6. + 2.)) * .35 * (uA + uB) * .5; // dust lanes across the band
+    gl_FragColor = vec4(max(col, vec3(0.)) * uK, 1.);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }`;
+function gfxSpaceBuild() { // the extra sky, built once the space scene exists
+  if (GFX_S.pts || !SPC.scene || !SPC.stars) return;
+  const src = SPC.stars.geometry, n = src.attributes.position.count, g = new THREE.BufferGeometry(), sz = new Float32Array(n), br = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const r = Math.random(), big = Math.pow(r, 9); sz[i] = 1.4 + Math.pow(Math.random(), 3) * 2.2 + big * 5; br[i] = .55 + Math.random() * .7 + big * 7; } // most faint and small; a few bright enough to bloom
+  g.setAttribute('position', src.attributes.position); g.setAttribute('color', src.attributes.color); g.setAttribute('aSize', new THREE.BufferAttribute(sz, 1)); g.setAttribute('aBright', new THREE.BufferAttribute(br, 1));
+  GFX_S.pts = new THREE.Points(g, new THREE.ShaderMaterial({ vertexShader: GFX_STAR_VS, fragmentShader: GFX_STAR_FS, uniforms: { uPR: { value: 1 } }, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  GFX_S.pts.frustumCulled = false; GFX_S.pts.renderOrder = -5; SPC.scene.add(GFX_S.pts);
+  GFX_S.dome = new THREE.Mesh(new THREE.SphereGeometry(4e5, 48, 24), new THREE.ShaderMaterial({ vertexShader: GFX_SKY_VS, fragmentShader: GFX_NEB_FS, side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { uA: { value: new THREE.Color() }, uB: { value: new THREE.Color() }, uK: { value: 1 } } }));
+  GFX_S.dome.frustumCulled = false; GFX_S.dome.renderOrder = -10; SPC.scene.add(GFX_S.dome);
+}
+function gfxSpaceTick(dt) { // every frame in space
+  if (!SPC.scene) return; const on = gfxOn(); if (on) gfxSpaceBuild();
+  if (GFX_S.pts) { const vis = on && SPC.stars.visible; GFX_S.pts.visible = GFX_S.dome.visible = vis; SPC.stars.material.opacity = on ? 0 : 1; SPC.stars.material.transparent = on; // the old dots give way to the new sky
+    if (vis) { GFX_S.pts.position.copy(SPC.stars.position); GFX_S.pts.rotation.copy(SPC.stars.rotation); GFX_S.dome.position.copy(camera.position); GFX_S.dome.rotation.copy(SPC.stars.rotation); GFX_S.pts.material.uniforms.uPR.value = renderer.getPixelRatio();
+      const S = sysById(SPC.sys), k = S && S.map ? S.map.x * 7.1 + S.map.y * 3.7 : 0, U = GFX_S.dome.material.uniforms; // each system's sky its own tint
+      U.uA.value.setHSL((.6 + Math.sin(k) * .08 + 1) % 1, .55, .045); U.uB.value.setHSL((.82 + Math.cos(k * 1.3) * .1 + 1) % 1, .5, .03); } }
+  const S = sysById(SPC.sys); // the star's disc, and your engines, bright enough to bloom (and back as they were on LOW)
+  if (S && S.starG) { const m = S.starG.children[0] && S.starG.children[0].material; if (m && m.color && S.star.kind !== 'hole') { if (m.userData.c0 == null) m.userData.c0 = m.color.getHex(); m.color.setHex(m.userData.c0); if (on) m.color.multiplyScalar(3.2); } }
+  if (SPC.ship && SPC.ship.userData.flames) for (const f of SPC.ship.userData.flames) { const m = f.material; if (!m || !m.color) continue; if (m.userData.c0 == null) m.userData.c0 = m.color.getHex(); m.color.setHex(m.userData.c0); if (on) m.color.multiplyScalar(2.2); }
+  if (!on) { if (SPC.scene.environment) { SPC.scene.environment = null; GFX_S.key = ''; } return; }
+  if ((GFX_S.t += dt) < 1) return; GFX_S.t = 0;
+  const pos = SPC.pos || camera.position, toStar = new THREE.Vector3().copy(pos).negate().normalize(); let near = null, nd = Infinity;
+  for (const P of SPC.bodies || []) { if (!P.pos || !P.r) continue; const d = P.pos.distanceTo(pos) - P.r; if (d < P.r * 6 && d < nd) { nd = d; near = P; } }
+  const key = `${SPC.sys}|${toStar.toArray().map(v => v.toFixed(1))}|${near ? near.id + ':' + Math.round(nd / (near.r * .5)) : ''}`;
+  if (key === GFX_S.key && SPC.scene.environment) return; GFX_S.key = key;
+  if (!GFX_S.envScene) { const E = GFX_S.envScene = new THREE.Scene(); E.add(new THREE.Mesh(new THREE.SphereGeometry(50, 24, 12), new THREE.MeshBasicMaterial({ color: 0x05070c, side: THREE.BackSide })));
+    GFX_S.envSun = new THREE.Mesh(new THREE.SphereGeometry(3.4, 12, 8), new THREE.MeshBasicMaterial()); E.add(GFX_S.envSun);
+    GFX_S.envPl = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), new THREE.MeshBasicMaterial()); E.add(GFX_S.envPl); }
+  GFX_S.envSun.position.copy(toStar).multiplyScalar(40); GFX_S.envSun.material.color.set(S ? S.star.light : 0xffffff).multiplyScalar(S && S.star.kind === 'hole' ? 1.2 : 3);
+  if (near) { const dir = new THREE.Vector3().subVectors(near.pos, pos).normalize(), ang = Math.asin(clamp(near.r / Math.max(near.r, near.pos.distanceTo(pos)), 0, 1)); // the world fills as much of your reflections as it does of your sky
+    GFX_S.envPl.visible = true; GFX_S.envPl.position.copy(dir).multiplyScalar(30); GFX_S.envPl.scale.setScalar(Math.max(1, Math.tan(ang) * 30));
+    const lit = Math.max(.15, -dir.dot(toStar) * .5 + .5); GFX_S.envPl.material.color.set(near.atmo || (near.c && (near.c.mid || near.c.low)) || 0x888888).multiplyScalar(.35 * lit); }
+  else GFX_S.envPl.visible = false;
+  const old = GFX_S.env; GFX_S.env = pmrem.fromScene(GFX_S.envScene, .03, .1, 120); SPC.scene.environment = GFX_S.env.texture; if (old) old.dispose();
 }
 function gfxWorldEnv(dt) { // the light the sky gives on foot: rebuilt from what you can see whenever the sky changes enough to matter
   if (!gfxOn() || ex.mode !== 'world') return;
@@ -35631,8 +35692,8 @@ function loopFrame() {
   if (state === 'orionCut') { try { ocutTick(dt); } catch (e) { console.error(e); ocutEnd(); } sfx.music(0); return; }
   if (state === 'jamesRev') { try { jrvTick(dt); } catch (e) { console.error(e); jrvEnd(); } sfx.music(0); return; }
   if (state === 'c4End') { try { c4eTick(dt); } catch (e) { console.error(e); c4eSkip(); } sfx.music(0); return; }
-  if (state === 'space') { spaceTick(dt); try { resSpaceTick(dt); } catch (e) { console.error(e); } try { nmDueTick(dt); } catch (e) { console.error(e); } sfx.music(0); renderer.render(SPC.atmo ? ATM.scene : SPC.scene, camera); return; }
-  if (state === 'xpaused' && SPC.paused) { sfx.music(0); renderer.render(SPC.atmo ? ATM.scene : SPC.scene, camera); return; }
+  if (state === 'space') { spaceTick(dt); try { resSpaceTick(dt); } catch (e) { console.error(e); } try { nmDueTick(dt); } catch (e) { console.error(e); } sfx.music(0); try { gfxSpaceTick(dt); } catch (e) { console.error(e); } gfxRender(SPC.atmo ? ATM.scene : SPC.scene, camera, dt); return; } // through the graphics on HIGH and ULTRA
+  if (state === 'xpaused' && SPC.paused) { sfx.music(0); try { gfxSpaceTick(dt); } catch (e) {} gfxRender(SPC.atmo ? ATM.scene : SPC.scene, camera, dt); return; }
   if (state === 'shipLand' || state === 'shipUp') { (state === 'shipLand' ? shipLandTick : shipUpTick)(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); try { gfxWorldEnv(dt); } catch (e) {} gfxRender(wScene, camera, dt); return; }
   if (state === 'trial') { trialTick(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); renderer.render(wScene, camera); return; }
   if (state === 'trialLoad') { sfx.music(0); renderer.render(wScene, camera); return; }
