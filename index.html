@@ -2023,14 +2023,23 @@ function gfxComposer() {
   GFX.size = ''; GFX.comp = C; return C;
 }
 function gfxDrop() { if (GFX.comp) { try { GFX.comp.dispose(); GFX.bloom && GFX.bloom.dispose(); GFX.ao && GFX.ao.dispose(); } catch (e) {} } GFX.comp = GFX.rp = GFX.bloom = GFX.ao = GFX.grade = null; }
+let gfxLastT = 0; const gfxDt = () => { const t = performance.now() / 1000, d = gfxLastT ? Math.min(.1, t - gfxLastT) : .016; gfxLastT = t; return d; }; // for renders made inside a scene's own tick
+const GFX_SH = new WeakMap();
+function gfxUpShadows(S) { // a cutscene's own shadow-casting lights: sharper maps on HIGH and ULTRA, as they were on LOW (looked at every couple of seconds, for lights added later)
+  const rec = GFX_SH.get(S); if (rec && rec.q === gfxQ && time - rec.t < 2) return; GFX_SH.set(S, { q: gfxQ, t: time });
+  S.traverse(o => { if (!o.isLight || !o.castShadow || !o.shadow) return; const sh = o.shadow, base = o.userData.sh0 || (o.userData.sh0 = sh.mapSize.x);
+    const want = !gfxOn() ? base : Math.max(base, o.isPointLight ? (gfxQ === 'ultra' ? 1024 : 512) : o.isSpotLight ? (gfxQ === 'ultra' ? 2048 : 1024) : 2048); // (capped, so a scene full of lights can't run out of memory)
+    if (sh.mapSize.x !== want) { sh.mapSize.set(want, want); if (sh.map) { sh.map.dispose(); sh.map = null; } } });
+}
 function gfxRender(S, C, dt) { // the menu's frame: through the post-processing when the quality allows it
   if (GFX.dome && GFX.dome.visible) { GFX.dome.position.copy(C === camera ? camera.position : GFX.dome.position); GFX.dome.material.uniforms.uTime.value = time; }
+  if (S !== scene && S !== wScene && S !== MSP.scene && S !== SPC.scene && !(ATM.scene && S === ATM.scene)) try { gfxUpShadows(S); } catch (e) {} // cutscenes' shadows (the menu, the world and space look after their own)
   if (!gfxOn() || GFX.mods === false) { renderer.render(S, C); return; }
   if (!GFX.mods) { gfxLoad(); renderer.render(S, C); return; }
   const comp = gfxComposer(); if (!comp) { renderer.render(S, C); return; }
   const pr = renderer.getPixelRatio(), sz = renderer.getSize(new THREE.Vector2()), key = `${sz.x}x${sz.y}@${pr}`;
   if (GFX.size !== key) { GFX.size = key; comp.setPixelRatio(pr); comp.setSize(sz.x, sz.y); }
-  GFX.rp.scene = S; GFX.rp.camera = C; if (GFX.ao) { GFX.ao.enabled = !!(S === scene || S === wScene || S === aScene || (SHIPI.scene && S === SHIPI.scene)); /* never in space: its distances are too vast for it */ GFX.ao.scene = S; GFX.ao.camera = C; }
+  GFX.rp.scene = S; GFX.rp.camera = C; if (GFX.ao) { GFX.ao.enabled = !!(C.isPerspectiveCamera && C.far <= 5000 && S !== MSP.scene && S !== SPC.scene && !(ATM.scene && S === ATM.scene)); /* anywhere close enough for it: never in space (or any shot set for vast distances) */ GFX.ao.scene = S; GFX.ao.camera = C; }
   let bk = .32, th = .9; // bloom: how strong, and from how bright (the open world by day is bright everywhere, so only the brightest blooms)
   if (S === scene) { bk = GFX.bloomK; th = .82; } else if (S === MSP.scene) { bk = .5; th = .82; } else if (SPC.scene && S === SPC.scene) { bk = .55; th = .95; } else if (typeof ATM !== 'undefined' && ATM.scene && S === ATM.scene) { bk = .3; th = 1.05; }
   else if (S === wScene) { const dl = world.dayL == null ? 1 : world.dayL; bk = .2 + (1 - dl) * .24; th = 1.3 - (1 - dl) * .45; if (DGN.on) { bk = .38; th = .85; } }
@@ -14178,7 +14187,7 @@ function hwmTick(dt) {
   HWM.shake = Math.max(0, (HWM.shake || 0) - dt * 1.4); const s = .02 + HWM.shake * .3;
   camera.position.copy(from.lerp(to, k)).add(new THREE.Vector3((Math.random() - .5) * s, (Math.random() - .5) * s, 0)); camera.lookAt(new THREE.Vector3().fromArray(sh[2]));
   if (HWM.li === 7 && HWM.phase === 'speech') camera.rotateZ(.12); // a tilt, as it gets worse
-  renderer.render(HWM.scene, camera);
+  gfxRender(HWM.scene, camera, gfxDt()); // through the graphics on HIGH and ULTRA
 }
 function hwmEnd() {
   if (!HWM.on) return; HWM.on = false; HWM.phase = null; hwmSubHide(); fbFlash(0); sfx.drone(0); try { sfx.stopNarr(); } catch (e) {} // cut him off if you skip
@@ -14810,7 +14819,7 @@ function ocutTick(dt) {
   sfx.drone(crying ? .38 : .3);
   const sh = OCUT.shot, k = smooth(0, Math.max(3, OCUT.shotDur || 6), t - (OCUT.shotT || 0)), from = new THREE.Vector3().fromArray(sh[0]), to = new THREE.Vector3().fromArray(sh[1]);
   const shake = crying ? .006 : 0; camera.position.copy(from.lerp(to, k)).add(new THREE.Vector3((Math.random() - .5) * shake, (Math.random() - .5) * shake, 0)); camera.lookAt(new THREE.Vector3().fromArray(sh[2]));
-  renderer.render(SHIPI.scene, camera);
+  gfxRender(SHIPI.scene, camera, gfxDt());
 }
 function ocutEnd() {
   if (!OCUT.on) return; OCUT.on = false; OCUT.phase = null; OCUT.ending = false; fbSubHide(); sfx.drone(0); try { sfx.stopNarr(); sfx.stopVoice(); } catch (e) {}
@@ -16277,7 +16286,7 @@ function hwdTick(dt) {
   fbSubTick(); NM.flashA = Math.max(0, (NM.flashA || 0) - dt * 2.6); fbFlash(NM.flashA * .55, '#5a0000');
   if ((HWD.hb += dt) > (HWX.set === 'bunker' ? .62 : .78)) { HWD.hb = 0; sfx.heart(.6); } sfx.drone(.42);
   hwdCamera(dt);
-  if (!hwxRender(dt)) renderer.render(NM.scene, camera);
+  if (!hwxRender(dt)) gfxRender(NM.scene, camera, dt);
 }
 function hwdSeek(T) { // jump the film to any moment (silently: no voices or sounds on the way)
   HWD.mute = true; HWD.T = 0; NM.t = 0; NM.chan = false; NM.blood = NM.pools = null; NM.lightsSteady = false; HWX.set = null; hwdEnter(0);
@@ -17390,7 +17399,7 @@ function zpvTick(dt) {
     if (q.who === 'Z' && /blue fool/.test(q.text)) { ZPV.shk = 1; fbFlash(.35, '#ff2a1a'); sfx.thud(); } }
   if (u > .985) fbFlash(Math.min(1, (u - .985) / .015), '#ff3a1a'); // into Carax's sky
   if (t >= ZPV.dur && !ZPV.ending) { ZPV.ending = true; const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; setTimeout(zpvEnd, 550); }
-  renderer.render(ZPV.scene, cam);
+  gfxRender(ZPV.scene, cam, gfxDt());
 }
 function zpvSkip() { if (!ZPV.on || ZPV.ending) return; ZPV.ending = true; sfx.stopVoice && sfx.stopVoice(); const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(zpvEnd, 450); }
 function zpvEnd() {
@@ -17465,7 +17474,7 @@ async function crewCaraxPlay(after, pv) {
   setTimeout(() => { if (CCX.on) notice('Aboard the Jewel of Archamus', mood === 'good' ? 'CARAX AHEAD · YOUR CREW IS READY' : mood === 'bad' ? 'CARAX AHEAD · YOUR CREW HAS GIVEN UP' : 'CARAX AHEAD · YOUR CREW IS AFRAID', 3200); }, 400);
 }
 function ccxTick(dt) {
-  if (!CCX.on || !CCX.cast) { if (CCX.on && CCX.scene && CCX.cam) renderer.render(CCX.scene, CCX.cam); return; }
+  if (!CCX.on || !CCX.cast) { if (CCX.on && CCX.scene && CCX.cam) gfxRender(CCX.scene, CCX.cam, gfxDt()); return; }
   dt = Math.min(dt, .05); const t = (CCX.t += dt), cam = CCX.cam; cam.aspect = innerWidth / innerHeight;
   for (const q of CCX.cast) if (q.R) { q.R.mode = 'idle'; try { animRig(q.R, dt); } catch (e) {} if (CCX.mood === 'bad') q.R.root.rotation.x = .08; } // on the bad road they hang their heads
   const q = CCX.li >= 0 ? CCX.cast[CCX.li] : null;
@@ -17474,7 +17483,7 @@ function ccxTick(dt) {
   cam.updateProjectionMatrix(); fbSubTick();
   if (t >= CCX.nextT && CCX.li < CCX.cast.length - 1) { CCX.li++; const c = CCX.cast[CCX.li]; CCX.lineT = t; fbSay(c.name, c.text, c.clip, 1.3); CCX.nextT = t + c.len + .8; }
   if (t >= CCX.dur && !CCX.ending) ccxSkip();
-  renderer.render(CCX.scene, cam);
+  gfxRender(CCX.scene, cam, gfxDt());
 }
 function ccxSkip() { if (!CCX.on || CCX.ending) return; CCX.ending = true; sfx.stopVoice && sfx.stopVoice(); const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; setTimeout(ccxEnd, 550); }
 function ccxEnd() {
@@ -17515,7 +17524,7 @@ function oslTick(dt) {
   fbSubTick();
   if (OSL.lens && t >= OSL.nextT && OSL.li < ORI_SEALED.length - 1) { OSL.li++; const i = OSL.li; fbSay('ORION MASCAR', ORI_SEALED[i], OSL.vo[i] || null, 1.3); OSL.nextT = t + OSL.lens[i] + .7; if (i === ORI_SEALED.length - 1) setTimeout(() => { if (OSL.on) { sfx.thud(); notice(' ', 'YOUR FATE IS SEALED', 3600); } }, OSL.lens[i] * 1000 + 300); }
   if (OSL.dur && t >= OSL.dur + 2 && !OSL.ending) oslSkip();
-  renderer.render(OSL.scene, cam);
+  gfxRender(OSL.scene, cam, gfxDt());
 }
 function oslSkip() { if (!OSL.on || OSL.ending) return; OSL.ending = true; sfx.stopVoice && sfx.stopVoice(); const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; setTimeout(oslEnd, 550); }
 function oslEnd() {
@@ -17928,7 +17937,7 @@ function jrvTick(dt) {
     JRV.shake = Math.max(scr ? .35 : 0, (JRV.shake || 0) - dt * 1.4); const s = .012 + JRV.shake * .22, hh = Math.sin(t * 1.7) * .015;
     camera.position.copy(from.lerp(to, kk)).add(new THREE.Vector3((Math.random() - .5) * s + hh, (Math.random() - .5) * s + Math.cos(t * 1.3) * .012, 0)); camera.lookAt(new THREE.Vector3().fromArray(sh[2]));
     if (act === 'shock' || scr) camera.rotateZ(Math.sin(t * 3) * .06 + .08); }
-  renderer.render(JRV.scene, camera);
+  gfxRender(JRV.scene, camera, gfxDt());
 }
 function jrvSkip() { if (!JRV.on) return; const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(jrvEnd, 450); }
 function jrvEnd() {
@@ -18791,7 +18800,7 @@ function c4eTick(dt) {
     if (up) { base.sub(look).multiplyScalar(clamp(1 + (1 - camera.aspect) * 1.1, 1, 1.7)).add(look); base.y = Math.max(.25, base.y); }
     camera.position.copy(base).add(new THREE.Vector3((Math.random() - .5) * s, (Math.random() - .5) * s, 0)); camera.lookAt(look);
     if (choking) camera.rotateZ(Math.sin(t * .8) * .05 + dark * .12); }
-  renderer.render(C4E.scene, camera);
+  gfxRender(C4E.scene, camera, gfxDt());
 }
 function c4eCue(act) { // the moment each beat begins
   if (C4E.gv && /^gv/.test(act || '')) { gvCue(act); return; }
@@ -23134,7 +23143,7 @@ function podTick(dt) {
   }
   for (const [i, [at, line]] of POD_ARCH.entries()) if (t >= at && !NM.podSaid.has(at)) { NM.podSaid.add(at); const clip = NM.podVo && NM.podVo[i]; fbSay('ARCHAMUS', line, clip || null, 1.3); NM.podEnd = clip && clip.duration ? NM.podRT + clip.duration : 0; break; } // he speaks, and never quite says
   fbSubTick();
-  if (!hwxRender(dt)) renderer.render(NM.scene, camera);
+  if (!hwxRender(dt)) gfxRender(NM.scene, camera, dt);
 }
 const POD_ARCH = [ // Archamus, over the wanderer · voiced by CH4ARCHAMUSPOD1–7 (data/podArchVoices.js)
   [13.4, 'Another light falls out of the dark, and the dark calls it chance.'],
@@ -23469,7 +23478,7 @@ function amgTick(dt) {
   if (t >= AMG_END) { amgEnd(); return; }
   for (const [i, [at, line]] of AMG_LINES.entries()) if (t >= at && !NM.amgSaid.has(at)) { NM.amgSaid.add(at); const clip = NM.amgVo && NM.amgVo[i]; fbSay('AM-GREK', line, clip || null, 1.3); NM.amgEnd = clip && clip.duration ? NM.amgRT + clip.duration : 0; break; }
   fbSubTick();
-  if (!hwxRender(dt)) renderer.render(NM.scene, camera);
+  if (!hwxRender(dt)) gfxRender(NM.scene, camera, dt);
 }
 function amgEnd() {
   if (!NM.amgWake) return; const replay = NM.amgWake.replay; NM.amgWake = null;
@@ -28077,7 +28086,7 @@ function nightmareTick(dt) {
     const k = Math.min(1, t / 2.5); sfx.drone(.3 + k * .5); if ((NM.hb = (NM.hb || 0) + dt) > .55 - k * .2) { NM.hb = 0; sfx.heart(.6 + k * .5); }
     renderer.domElement.style.filter = `saturate(${1 - k * .7}) contrast(${1 + k * .3})` + (tiPhone() ? '' : ` blur(${(k * 1.5).toFixed(2)}px)`); // no blur on phones: a full-screen blur over the game is too much for them, on top of the nightmare loading
     spaceViewOnly(dt); const s = k * .6; camera.position.x += (Math.random() - .5) * s; camera.position.y += (Math.random() - .5) * s;
-    renderer.render(SPC.scene, camera);
+    try { gfxSpaceTick(dt); } catch (e) {} gfxRender(SPC.scene, camera, dt);
     if (t > 2.6 && NM.ready && NM.sevM) { sevStart(); return; }
     if (t > 2.6 && NM.ready && NM.race === 'taredesiban') { renderer.domElement.style.filter = ''; NM.phase = 'tdn'; ch4EndingPlay('tared', { nightmare: true }).then(ok => { if (!ok) { state = 'nightmare'; nmWake(); } }); return; } // twelve billion years ago
     if (t > 2.6 && NM.ready) {
@@ -28150,10 +28159,10 @@ function nightmareTick(dt) {
     if (NM.hawDeath && B.talk && NM.li >= 0) hwxTalkCam(B, dt); // face to face: over the listener's shoulder, onto whoever's speaking
     if ((NM.hb = (NM.hb || 0) + dt) > .7) { NM.hb = 0; sfx.heart(NM.kVision ? .3 : .7); }
     sfx.drone(NM.kVision ? .18 : .55); // Karribassa's vision is a quiet one
-    if (!(NM.hawDeath && hwxRender(dt))) renderer.render(NM.scene, camera); // Hawthorne's death: through its own grade and bloom
+    if (!(NM.hawDeath && hwxRender(dt))) gfxRender(NM.scene, camera, dt); // Hawthorne's death: through its own grade and bloom (every other nightmare through the game's)
     return;
   }
-  if (NM.phase === 'wake') { tickDialog(dt); SPC.camInit = false; spaceViewOnly(dt); renderer.render(SPC.scene, camera); }
+  if (NM.phase === 'wake') { tickDialog(dt); SPC.camInit = false; spaceViewOnly(dt); try { gfxSpaceTick(dt); } catch (e) {} gfxRender(SPC.scene, camera, dt); }
 }
 function spaceViewOnly(dt) { // the ship hangs there while they talk you down
   const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(SPC.q), up = new THREE.Vector3(0, 1, 0).applyQuaternion(SPC.q);
@@ -28335,7 +28344,7 @@ function zarkShipPanic(dt) { // the panic, as on the ice: hands to the helmet, s
   if ((NM.hb += dt) > .55 - k * .2) { NM.hb = 0; sfx.heart(.6 + k * .5); } sfx.drone(.3 + k * .5);
   const push = Math.min(1, t / 3.2); camera.position.set(p.x + fx * (2.1 - push * .8) + fz * .55, p.y + .75 - .2 * kn, p.z + fz * (2.1 - push * .8) - fx * .55); camera.lookAt(p.x, p.y + 1.5 - .55 * kn, p.z);
   renderer.domElement.style.filter = `saturate(${1 - push * .6}) contrast(${1 + push * .3})` + (tiPhone() ? '' : ` blur(${(push * 1.5 + (NM.hb < .08 ? .6 : 0)).toFixed(2)}px)`);
-  renderer.render(SHIPI.scene, camera);
+  gfxRender(SHIPI.scene, camera, gfxDt());
   if (t > 3.2 && NM.ready) { // into the dream
     NM.phase = 'mem'; NM.saveCam = NM.ship.cam; camera.near = .1; camera.far = 700; camera.fov = 55; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
     renderer.domElement.style.filter = NM.script.tint; if (NM.vo.music) sfx.playSong(NM.vo.music, .5); nmBeat(0);
@@ -35670,18 +35679,18 @@ function loopFrame() {
   const set = spaceMus && (isPl() || flying || aboard || state === 'shipLand' || state === 'shipUp') ? 'sp' : curArea() === 'africa' ? 'af' : curArea() === 'europe' || isPl() ? 'eu' : 'ax';
   sfx.area(flying || outside || aboard ? (aboard ? .5 : state === 'explore' || state === 'space' || state === 'shipLand' || state === 'shipUp' ? .75 : .3) : 0, set);
   if (state === 'intro' || state === 'introOut') {
-    updateIntro(dt); sfx.music(0); if (intro.scene === 'earth') renderer.render(eScene, eCam); else renderer.render(gScene, gCam); return;
+    updateIntro(dt); sfx.music(0); if (intro.scene === 'earth') gfxRender(eScene, eCam, dt); else gfxRender(gScene, gCam, dt); return;
   }
   lonMusicTick(); try { lipsTick(Math.min(dt, .1)); } catch (e) {}
-  if (state === 'cutscene') { updateCutscene(dt); sfx.music(0); renderer.render(aScene, camera); return; }
-  if (state === 'dream') { tickDialog(dt); updateDream(dt); sfx.music(0); renderer.render(dScene, camera); return; }
-  if (state === 'farmCut') { farmCutTick(dt); tickDialog(dt); renderer.render(fhc.scene, camera); return; }
-  if (state === 'nicoHouse') { nicoHouseTick(dt); tickDialog(dt); renderer.render(fhc.scene, camera); return; }
-  if (state === 'maliaNico' && MN.coda) { mnCodaTick(dt); tickDialog(dt); renderer.render(MN.coda.S, camera); return; }
-  if (state === 'maliaNico') { if (MN.actors.malia) maliaNicoTick(dt); tickDialog(dt); if (SHIPI.scene) renderer.render(SHIPI.scene, camera); return; }
-  if (state === 'ch2intro') { updateCh2Intro(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); renderer.render(afScene, camera); return; }
-  if (state === 'travel') { updateParticles(dt); renderer.render(wScene, camera); return; }
-  if (state === 'cantinaScene') { updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
+  if (state === 'cutscene') { updateCutscene(dt); sfx.music(0); gfxRender(aScene, camera, dt); return; }
+  if (state === 'dream') { tickDialog(dt); updateDream(dt); sfx.music(0); gfxRender(dScene, camera, dt); return; }
+  if (state === 'farmCut') { farmCutTick(dt); tickDialog(dt); gfxRender(fhc.scene, camera, dt); return; }
+  if (state === 'nicoHouse') { nicoHouseTick(dt); tickDialog(dt); gfxRender(fhc.scene, camera, dt); return; }
+  if (state === 'maliaNico' && MN.coda) { mnCodaTick(dt); tickDialog(dt); gfxRender(MN.coda.S, camera, dt); return; }
+  if (state === 'maliaNico') { if (MN.actors.malia) maliaNicoTick(dt); tickDialog(dt); if (SHIPI.scene) gfxRender(SHIPI.scene, camera, dt); return; }
+  if (state === 'ch2intro') { updateCh2Intro(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); gfxRender(afScene, camera, dt); return; }
+  if (state === 'travel') { updateParticles(dt); try { gfxWorldEnv(dt); } catch (e) {} gfxRender(wScene, camera, dt); return; }
+  if (state === 'cantinaScene') { updateParticles(dt); updateWorldScene(dt); sfx.music(0); try { gfxWorldEnv(dt); } catch (e) {} gfxRender(wScene, camera, dt); return; }
   if (state === 'brawl') { try { fightTick(dt); } catch (e) { console.error(e); } updateParticles(dt); updateWorldScene(dt); sfx.music(0); gfxRender(wScene, camera, dt); return; }
   if (state === 'nightmare') { nightmareTick(dt); sfx.music(0); return; }
   if (state === 'zarkPov') { try { zpvTick(dt); } catch (e) { console.error(e); zpvEnd(); } sfx.music(0); return; } // Lord Zark, out of the black hole
@@ -35695,14 +35704,14 @@ function loopFrame() {
   if (state === 'space') { spaceTick(dt); try { resSpaceTick(dt); } catch (e) { console.error(e); } try { nmDueTick(dt); } catch (e) { console.error(e); } sfx.music(0); try { gfxSpaceTick(dt); } catch (e) { console.error(e); } gfxRender(SPC.atmo ? ATM.scene : SPC.scene, camera, dt); return; } // through the graphics on HIGH and ULTRA
   if (state === 'xpaused' && SPC.paused) { sfx.music(0); try { gfxSpaceTick(dt); } catch (e) {} gfxRender(SPC.atmo ? ATM.scene : SPC.scene, camera, dt); return; }
   if (state === 'shipLand' || state === 'shipUp') { (state === 'shipLand' ? shipLandTick : shipUpTick)(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); try { gfxWorldEnv(dt); } catch (e) {} gfxRender(wScene, camera, dt); return; }
-  if (state === 'trial') { trialTick(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); renderer.render(wScene, camera); return; }
-  if (state === 'trialLoad') { sfx.music(0); renderer.render(wScene, camera); return; }
-  if (state === 'escapeEnd') { escapeEndTick(dt); updateParticles(dt); sfx.music(0); renderer.render(wScene, camera); return; }
-  if (state === 'flashback') { flashTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
-  if (state === 'ferryTrip') { ferryTripTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
-  if (state === 'ferryCut') { updateFerryCut(dt); updateAnim(dt); worldActionPose(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; }
+  if (state === 'trial') { trialTick(dt); tickDialog(dt); updateParticles(dt); sfx.music(0); try { gfxWorldEnv(dt); } catch (e) {} gfxRender(wScene, camera, dt); return; }
+  if (state === 'trialLoad') { sfx.music(0); gfxRender(wScene, camera, dt); return; }
+  if (state === 'escapeEnd') { escapeEndTick(dt); updateParticles(dt); sfx.music(0); try { gfxWorldEnv(dt); } catch (e) {} gfxRender(wScene, camera, dt); return; }
+  if (state === 'flashback') { flashTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); try { gfxWorldEnv(dt); } catch (e) {} gfxRender(wScene, camera, dt); return; }
+  if (state === 'ferryTrip') { ferryTripTick(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); try { gfxWorldEnv(dt); } catch (e) {} gfxRender(wScene, camera, dt); return; }
+  if (state === 'ferryCut') { updateFerryCut(dt); updateAnim(dt); worldActionPose(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); try { gfxWorldEnv(dt); } catch (e) {} gfxRender(wScene, camera, dt); return; }
   if (state === 'loadingCh' && (SPC.booting || DGN.compiling)) { sfx.music(0); renderer.setClearColor(0x000000, 1); renderer.clear(); return; } // (or a dungeon floor's shaders still building behind the fade: drawing now would stall the game on them) // a Chapter III save starting up: black, not the last scene built (the Antarctic ice)
-  if (state === 'jvNight') { try { jvTick(dt); } catch (e) { console.error(e); jvWake(); } updateParticles(dt); if (ex.mode === 'world') updateWorldScene(dt); sfx.music(0); renderer.render(wScene, camera); return; } // the night Javek comes
+  if (state === 'jvNight') { try { jvTick(dt); } catch (e) { console.error(e); jvWake(); } updateParticles(dt); if (ex.mode === 'world') updateWorldScene(dt); sfx.music(0); try { gfxWorldEnv(dt); } catch (e) {} gfxRender(wScene, camera, dt); return; } // the night Javek comes
   if (state === 'explore' || state === 'xpaused' || state === 'xdone' || state === 'loadingCh' || state === 'sleeping' || state === 'wcut') {
     if (state === 'explore') { try { updateExplore(dt); } catch (e) { if (!updateExplore.err) { updateExplore.err = 1; console.error('updateExplore', e); } } } // (an error in one frame's update must never freeze the picture)
     if ((state === 'explore' || state === 'xpaused') && ex.mode !== 'space' && !ex.vehicle && (!player.visible || !inner.visible)) { player.visible = true; inner.visible = true; } // on foot (or aboard), you're always there: nothing left over from a cutscene, the pod, a landing or space keeps you hidden
