@@ -1969,7 +1969,19 @@ const VILE_CRUSH = ['CRACK', 'QUIET NOW', 'CRUNCH', 'SQUEEZE', 'POP'], VILE_SUB 
 const VILE_RM = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })(); // reduced motion: no blackouts or subliminal frames, a gentler shake
 const forceVile = /[?&]villain(?:[=&]|$)/.test(window.location.search); // ?villain previews the evil main menu (with ?menu=ch4 or ?menu=ch5 for the red stacked on it)
 const forceVileSp = (window.location.search.match(/[?&]villain=(\w+)/) || [])[1] || null; // ?villain=chompy (or human, erisian, grek, taredesiban, oilkoumene) previews that race's lines
-const villainMenu = () => forceVile || !!(wanderer && (((wanderer.align && wanderer.align.p) | 0) <= -34) && chNow() >= 1);
+const ownVile = () => !!(wanderer && (((wanderer.align && wanderer.align.p) | 0) <= -34) && chNow() >= 1);
+// a good wanderer (alignment 34 or higher) at war with a villain resident's empire gets the evil menu too, in any chapter, with that
+// resident on it: their body, their race's lines, signed with their name (the latest such war, if there's more than one). A villain
+// wanderer's own evil menu always comes first.
+function vileFoe() {
+  if (forceVile || !wanderer || ownVile() || (((wanderer.align && wanderer.align.p) | 0) < 34)) return null;
+  try {
+    const R = (wanderer.dip && wanderer.dip.rw) || {}; let best = null, at = -Infinity;
+    for (const id in R) { const e = resEmp.emp[id], c = e && !e.res && resRuler(e); if (c && resAl(c) === 'villain' && (R[id].since || 0) > at) { best = c; at = R[id].since || 0; } }
+    return best;
+  } catch (e) { return null; } // too early in loading to tell
+}
+const villainMenu = () => forceVile || ownVile() || !!vileFoe();
 // the world in the villain's hands: a little Earth, spinning slowly between them, lit violet (blood red when the red is stacked on)
 const VILE = { g: null, red: null, S: 1.45, tw: 0, twT: 2, twA: 0, laugh: 0, laughT: 4, gl: 0, glT: 1.5, punch: 0, wdT: 1.6, sq: 0, sqT: 9, slT: 6, subT: 13, bo: 0, hb: 0, hbv: 0, shake: 0, lastW: '', act: null, actT: 3, lastAct: '', shud: 0, tilt: 1, brP: 0, hush: false, posed: false, hd: null, hdSp: null, hdFail: null, px: 0, py: 0, rlx: 0, llx: 0, prevSp: null, prevShown: false }; // S: how much bigger the villain stands on this menu (only here: the game is untouched)
 function vileGlobeTex(red) {
@@ -1989,7 +2001,7 @@ function vileGlobeTex(red) {
 function menuVileTick(dt) {
   const want = state === 'title' && villainMenu() && menuLook !== 'space';
   if (!want) { if (VILE.g) VILE.g.visible = false; vileHeadOff(); if (VILE.posed) { VILE.posed = false; inner.position.set(0, 0, 0); inner.rotation.set(0, 0, 0); for (const k of ['rl', 'll']) if (rig[k]) rig[k].rotation.z = 0; } VILE.act = null; VILE.hush = false; if (VILE.prevShown) { VILE.prevShown = false; if (VILE.prevLook && lastLookC === VILE.prevLook && VILE.prevLook !== wanderer) try { applyLook(wanderer || DEFAULT_W); } catch (e) {} } if (player.scale.x !== 1) player.scale.setScalar(1); vileFx(false); return; }
-  if (forceVile) vilePrevKeep();
+  if (forceVile) vilePrevKeep(); else vileFoeKeep();
   player.scale.setScalar(VILE.S); vileFx(true); vileBeats(dt);
   if (!VILE.g) {
     const g = VILE.g = new THREE.Group(), ball = new THREE.Mesh(new THREE.SphereGeometry(.3, 40, 24), new THREE.MeshStandardMaterial({ roughness: .55, metalness: .05, emissive: 0x220a30, emissiveIntensity: .6 }));
@@ -2174,6 +2186,11 @@ function vilePrevKeep() {
   if ((!shown || !VILE.prevShown) && !pendingLook) { VILE.prevShown = true; try { applyLook(VILE.prevLook = vilePrevLook(sp)); } catch (e) {} } // and again if anything puts the wanderer's own body back meanwhile
   vilePrevUI();
 }
+function vileFoeKeep() { // the villain resident's body on the menu (and your own back if the war ends or you turn villain yourself)
+  const F = vileFoe();
+  if (F) { if (lastLookC !== F && !pendingLook) { VILE.prevShown = true; try { applyLook(VILE.prevLook = F); } catch (e) {} } return; }
+  if (VILE.prevShown && VILE.prevLook && lastLookC === VILE.prevLook && VILE.prevLook !== wanderer) { VILE.prevShown = false; try { applyLook(wanderer || DEFAULT_W); } catch (e) {} }
+}
 function vilePrevSet(step) {
   const i = VILE_PREV_SP.indexOf(VILE.prevSp); VILE.prevSp = VILE_PREV_SP[(i + step + VILE_PREV_SP.length) % VILE_PREV_SP.length];
   VILE.prevShown = false; VILE.act = null; VILE.hush = false; VILE.laugh = 0; VILE.sq = 0; try { sfx.click(); } catch (e) {}
@@ -2232,11 +2249,11 @@ function vileKnown(line) {
     return RULES.every(([re, ok]) => !re.test(line) || ok());
   } catch (e) { return !/Hawthorne|Imperarch|Terra Imperia|Ancin|Darius|Federation|Resistance|\bHak\b|Chompjak|Am-Grek|Matriarch|Timpur IV|Tyromairon|Tyronihlus|Tyrotaronus|Obsidnia|Obra-Spira|Warden|great spire|processional/.test(line); } // too early to tell: say nothing that names anyone
 }
-const vileRaceSp = () => forceVile && VILE.prevSp ? VILE.prevSp : forceVileSp && VILE_RACE[forceVileSp] ? forceVileSp : spOf(wanderer);
+const vileRaceSp = () => { if (forceVile && VILE.prevSp) return VILE.prevSp; if (forceVileSp && VILE_RACE[forceVileSp]) return forceVileSp; const F = vileFoe(); return spOf(F || wanderer); }; // the villain resident's race, when it's them on the menu
 const vileSig = () => { const Q = VILE_RACE[vileRaceSp()]; return Q ? Q.filter(vileKnown).length : 0; }; // changes as you meet people: the menu's lines refresh with it
 // what the menu says: the voice's taunts in blood red; a villain's own vile words (signed) on the evil menu; both, stacked, when they meet
 function menuLines() {
-  const who = wanderer ? String(wanderer.name || 'THE WANDERER') : 'THE WANDERER', V = villainMenu(), Z = isCh4Menu();
+  const F = vileFoe(), who = F ? String(F.name || 'A RESIDENT') : wanderer ? String(wanderer.name || 'THE WANDERER') : 'THE WANDERER', V = villainMenu(), Z = isCh4Menu(); // signed by the villain resident you're at war with, when it's them
   if (!V) return tauntList().map(t => ({ t }));
   const sp = vileRaceSp(), own = (VILE_RACE[sp] || []).filter(vileKnown), Q = own.length >= 100 ? own : own.concat(VILE_QUOTES.slice().sort(() => Math.random() - .5).slice(0, 100 - own.length)); // their own race's 100, spoiler-free (topped up with the general lines)
   const n = Q.length, off = Math.floor(Math.random() * n), vile = Q.map((_, i) => ({ t: Q[(i * 37 + off) % n], who })); // all 100, in a scrambled order
@@ -2255,7 +2272,7 @@ function applyMenuEra() {
   const bt = $('#briefT'); if (bt) bt.innerHTML = briefNow();
   const ys = $('#yearStamp'); if (ys) ys.textContent = postSkip() ? '2127 AD' : '2125 AD';
   const st = $('#setStyle'); if (st) { st.style.display = chNow() >= 5 ? '' : 'none'; st.querySelector('.val').textContent = menuStyle === 'red' ? 'BLOOD RED' : 'NORMAL'; }
-  const vile = villainMenu(), mode = `${on}|${vile}|${wanderer ? wanderer.id : ''}|${vile ? vileRaceSp() + ':' + vileSig() : 0}`;
+  const vile = villainMenu(), mode = `${on}|${vile}|${wanderer ? wanderer.id : ''}|${vile ? vileRaceSp() + ':' + vileSig() + ':' + ((vileFoe() || {}).id || '') : 0}`;
   document.body.classList.toggle('ch4', on); document.body.classList.toggle('vile', vile); // the evil menu, with the blood red stacked on it when that's on too
   sfx.menuTrack(on || vile ? 'musicCh4' : 'music');
   if (menuLook && (state === 'title' || state === 'loading')) setMenuLook(menuLookFor());
@@ -12742,6 +12759,7 @@ function leaderBossWin(B) { // a leader falls: the war is won (or the resident e
   if (L.war) { dipScore(L.war, 100, `${Bd.short} defeated in their hall`); setTimeout(() => lootMsg('The war is won · settle it in Diplomacy', '#ffd36a'), 2400); }
   if (L.pontRuler) setTimeout(() => pontTroopChoice(L.pontRuler), 3200);
   if (L.obra) { const from = L.obra.from; setTimeout(() => { try { obraPlayerTake(from); } catch (er) { console.error(er); } }, 1200); } // the Citadel of Obra-Spira: it's yours
+  if (L.resEmp && ywAt(L.resEmp)) ywWon(L.resEmp, 'duel'); // at war with them: beating their ruler wins it
   if (L.resEmp && resEmp.emp[L.resEmp] && resEmp.emp[L.resEmp].pup) { const e = resEmp.emp[L.resEmp]; // one of your uplifted empires: beaten, but not gone. It falls, and it can be restored (Diplomacy → Crew → Uplift: Restore them, or on its own in about five minutes)
     e.col = []; e.res = true; e.fellAt = resNow(); e.lostTo = {}; resEmp.wars = resEmp.wars.filter(w => w.a !== e.id && w.b !== e.id); for (const o of Object.values(resEmp.emp)) { if (o.over === e.id) o.over = null; if (o.trib === e.id) o.trib = null; }
     resEmpLog(`${wanderer.name} defeated ${Bd.short}; ${e.name} has fallen, for now`); saveRoster(); try { applyChapterFactions(); } catch (er) {}
@@ -24390,7 +24408,7 @@ function dipRender() {
       for (const e of es) {
         const c = resRuler(e), st = e.pup ? `Your puppet · the uplifted ${ccEsc(titleName((c && c.resUp && c.resUp.name) || 'species'))}` : e.res ? 'A resistance, with no worlds' : e.over && resEmp.emp[e.over] ? `Puppet of ${resEmp.emp[e.over].name}` : e.trib && resEmp.emp[e.trib] ? `Pays tribute to ${resEmp.emp[e.trib].name}` : 'Independent';
         const wars = resEmp.wars.filter(w => w.a === e.id || w.b === e.id).map(w => (resEmp.emp[w.a === e.id ? w.b : w.a] || {}).name).filter(Boolean), lentHere = Object.keys(D.lent).filter(k => D.lent[k] === 'res:' + e.id);
-        h += `<div class="dip-card" style="--fc:${resHex(resEmpCol(e))}"><h4>${reEsc(e.name).toUpperCase()}<small>${st}${wars.length ? ' · at war' : ' · at peace'}</small></h4><p>Led by <b>${reEsc(c.name)}</b> (resident, LV ${resLevel(c)}, ${alN[resAl(c)]}) · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars.length ? ` · at war with ${wars.map(reEsc).join(' and ')}` : ''}${lentHere.length ? ` · serving them: ${lentHere.map(compName).join(', ')}` : ''}</p><div class="dip-row"><button class="btn small" data-a="resChallenge" data-r="${e.id}"><span>Challenge ${reEsc(c.name)} (lv ${resLevel(c)})</span></button><button class="btn small" data-a="resDisband" data-r="${e.id}"><span>${DIPV.resDisband === e.id ? 'Tap again: demand they disband' : 'Demand they disband'}</span></button></div></div>`;
+        h += `<div class="dip-card" style="--fc:${resHex(resEmpCol(e))}"><h4>${reEsc(e.name).toUpperCase()}<small>${st}${ywAt(e.id) ? ' · at war with you' : wars.length ? ' · at war' : ' · at peace'}</small></h4><p>Led by <b>${reEsc(c.name)}</b> (resident, LV ${resLevel(c)}, ${alN[resAl(c)]}) · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars.length ? ` · at war with ${wars.map(reEsc).join(' and ')}` : ''}${lentHere.length ? ` · serving them: ${lentHere.map(compName).join(', ')}` : ''}</p><div class="dip-row"><button class="btn small" data-a="resChallenge" data-r="${e.id}"><span>Challenge ${reEsc(c.name)} (lv ${resLevel(c)})</span></button><button class="btn small" data-a="resDisband" data-r="${e.id}"><span>${DIPV.resDisband === e.id ? 'Tap again: demand they disband' : 'Demand they disband'}</span></button>${e.pup || e.res ? '' : ywAt(e.id) ? `<button class="btn small" data-a="ywPeace" data-r="${e.id}"><span>Make peace</span></button>` : `<button class="btn small" data-a="ywDeclare" data-r="${e.id}"><span>${DIPV.ywDeclare === e.id ? 'Tap again: declare war' : 'Declare war on them'}</span></button>`}</div>${ywAt(e.id) ? (W2 => `<div class="dip-bar"><i style="width:${Math.max(0, W2.score) | 0}%"></i></div><p style="color:#ffb3a8">${W2.theirs ? `${reEsc(e.name)} declared war on you.` : 'You are at war with them.'} War score ${W2.score | 0}/100: it moves with your level and colonies against their strength. At 100 they fall; at −100 they take one of your colonies. Challenge ${reEsc(c.name)} to win it outright.</p>`)(ywAt(e.id)) : ''}</div>`;
       }
     }
     if (DIPV.tab === 'factions') h += `<div class="dip-card" style="--fc:#ffd36a"><h4>CASUS BELLI</h4>${Object.values(CBS).filter(c => c !== CBS.crush).map(c => `<p><b>${c.name}.</b> ${c.desc}</p>`).join('')}</div>`;
@@ -24450,6 +24468,8 @@ function dipClick(e) {
   else if (a === 'lend') { const v = $(`#dipBody select[data-a="lendTo"][data-c="${id}"]`).value; if (!v) return; D.lent[id] = v; dipSave(); sfx.click(); if (id === 'orion' && world.orion) world.orion.root.visible = false; placeCrew(); refreshJamesUI(); lootMsg(`${compName(id)} leaves to serve ${dipLentName(v)}`, compColor(id)); if (dipLentRes(v)) { const e = resEmp.emp[dipLentRes(v)]; if (e) resEmpLog(`${compName(id)} joined ${e.name}, sent by ${wanderer.name}`); } }
   else if (a === 'resOpen') { dipOpen(false); resEmpOpen(); return; }
   else if (a === 'resChallenge') { dipOpen(false); if (state === 'xpaused' && !SPC.paused) pauseExplore(false); leaderResChallenge(b.dataset.r); return; }
+  else if (a === 'ywDeclare') { const r = b.dataset.r; if (DIPV.ywDeclare === r) { ywDeclare(r, false); DIPV.ywDeclare = null; } else DIPV.ywDeclare = r; }
+  else if (a === 'ywPeace') ywPeace(b.dataset.r);
   else if (a === 'resDisband') { const r = b.dataset.r; if (DIPV.resDisband === r) { resDisband(r); DIPV.resDisband = null; } else DIPV.resDisband = r; }
   else if (a === 'recall') { delete D.lent[id]; dipSave(); if (id === 'orion') placeOrion().catch(() => null); placeCrew(); refreshJamesUI(); lootMsg(`${compName(id)} is back with you`, compColor(id)); }
   else if (a === 'recruit') { wanderer.party = [...new Set([...(wanderer.party || []), id])]; syncCrewParty(); dipSave(); placeCrew(); ui.xhud.classList.add('comp'); refreshJamesUI(); sfx.chime(); lootMsg(`${PARTY[id].full} joins your crew`, compColor(id)); compJoinNotice(id, 900); }
@@ -33044,6 +33064,89 @@ function resDisband(id) {
   if (RW && c) resWarSay(c, resPick(RW.disband[resAl(c)]), { ea: e.name, player: wanderer.name });
   saveRoster();
 }
+/* ---- your own wars with the resident empires (wanderer.dip.rw: { [empire id]: { since, score, theirs } }) ----
+   Declare one from Diplomacy → Factions, and a villain's empire may declare war on you (Chapter III on, while residents found
+   empires). Every 15 seconds the score moves by your strength (your level and colonies) against theirs: at +100 their empire
+   falls and its worlds are unclaimed again; at −100 they take one of your colonies (or plunder your units) and the war is over.
+   Beat their ruler (Challenge) to win it outright. A good wanderer at war with a villain's empire gets the evil main menu, with
+   that villain on it under their own name. */
+const YW = {
+  declare: ['{player}. I have been looking forward to this. {ea} declares war on you.', 'Your flag offends me, {player}. {ea} is coming to take it down.',
+    'Heroes make the best trophies. {ea} is at war with you, {player}.', 'I am bored of fighting residents. Let’s see what the great {player} is made of.',
+    'Kneel now, {player}, or {ea} burns everything with your name on it.', '{ea} declares war on {player}. Run, if you like. I enjoy a chase.'],
+  answer: { hero: ['If it has to be you and me, {player}, then let it be a fair fight.', 'I didn’t want this. {ea} will defend itself all the same.', 'I’m sorry it came to this, {player}.'],
+    neutral: ['War? With me? Fine. Your funeral, {player}.', '{ea} doesn’t back down. Not even from you.', 'Bad for business, {player}. Worse for you.'],
+    villain: ['Finally. I hoped you would come for me, {player}.', 'You declared war on {ea}? How brave. How short.', 'Oh, {player}. You have no idea what you just started.'] },
+  win: { hero: ['You win, {player}. Look after my people.', '{ea} falls. I fought for it as well as I could.', 'Well fought, {player}. I’ll start again somewhere.'],
+    neutral: ['Fine. {ea} is finished. You happy now?', 'I’ll remember this, {player}. Mostly the bill.', 'Enough. You win. Don’t expect a thank-you card.'],
+    villain: ['This isn’t over, {player}. It never is.', 'Enjoy it. I will be back, and I will be worse.', 'You took {ea}. I’ll take something you love.'] },
+  lose: { hero: ['Stand down, {player}. I’m taking {w}, and nothing more.', 'It’s over. Let’s not do this again.', 'I took {w}. I’ll treat it well.'],
+    neutral: ['{w} is mine now. Business is business.', 'Told you, {player}. Should’ve left {ea} alone.', 'I’ll take {w} for my trouble.'],
+    villain: ['{w} is mine. Listen. Can you hear it screaming?', 'Kneel, {player}. You did, didn’t you? Just a little.', 'I’ll be keeping {w}. And your pride.'] },
+  peace: { hero: ['Peace, then. Gladly.', 'Thank you, {player}. Let’s both go home.', 'No more of this. Agreed.'],
+    neutral: ['Peace. Good. The war was costing me.', 'Fine. Truce. Don’t push it.', 'Done. Let’s pretend this never happened.'],
+    villain: ['Peace. For now. Count your days, {player}.', 'I accept. This time.', 'Walk away, {player}. I’ll let you. Once.'] },
+  fight: { hero: ['Hold the line. {ea} won’t fall today.', 'I don’t hate you, {player}. I just won’t lose to you.', 'Is this really what you want, {player}?'],
+    neutral: ['Your ships are slower than you think, {player}.', '{ea} is still standing. Shame, for you.', 'This war is costing us both. Mostly you.'],
+    villain: ['I can see your colonies from here, {player}. They look flammable.', 'Every day you fight me, you lose a little more.', 'Tick tock, {player}. {ea} is coming.'] },
+  refuse: ['Peace? You don’t get peace, {player}. You get me.', 'Beg better than that.', 'No. I haven’t finished with you yet.']
+};
+function ywMap() { return (wanderer && wanderer.dip && wanderer.dip.rw) || {}; }
+const ywAt = id => ywMap()[id] || null;
+function ywCtx(e, x) { return Object.assign({ ea: e ? e.name : 'their empire', player: wanderer ? wanderer.name : 'you' }, x || {}); }
+function ywLentHome(id) { const L = dip().lent; for (const k of Object.keys(L)) if (L[k] === 'res:' + id) { delete L[k]; lootMsg(`${compName(k)} leaves ${resEmp.emp[id] ? resEmp.emp[id].name : 'them'} and comes home`, compColor(k)); try { placeCrew(); refreshJamesUI(); if (k === 'orion') placeOrion().catch(() => null); } catch (e) {} } }
+function ywDeclare(id, theirs) {
+  const e = resEmp.emp[id], c = e && resRuler(e); if (!c || e.pup || e.res || ywAt(id)) return false;
+  const D = dip(); D.rw = D.rw || {}; D.rw[id] = { since: resNow(), score: 0, theirs: !!theirs }; ywLentHome(id); dipSave();
+  const x = ywCtx(e);
+  if (theirs) { resEmpLog(`${e.name} declared war on ${wanderer.name}`); resWarSay(c, resPick(YW.declare), x); if (state === 'explore' || state === 'space') { notice(e.name, 'DECLARES WAR ON YOU', 3800); sfx.alarm(); } }
+  else { resEmpLog(`${wanderer.name} declared war on ${e.name}`); setTimeout(() => resWarSay(c, resPick(YW.answer[resAl(c)]), x), 1200); sfx.alarm(); }
+  return true;
+}
+function ywPeace(id) {
+  const W = ywAt(id), e = resEmp.emp[id], c = e && resRuler(e); if (!W) return;
+  if (c && W.theirs && resAl(c) === 'villain' && W.score < 25) { resWarSay(c, resPick(YW.refuse), ywCtx(e)); lootMsg(`${c.name} refuses peace · push the war score past 25 first`, '#ff8f86'); return; }
+  delete dip().rw[id]; dipSave(); sfx.click();
+  if (e) { resEmpLog(`${wanderer.name} made peace with ${e.name}`); if (c) resWarSay(c, resPick(YW.peace[resAl(c)]), ywCtx(e)); }
+}
+function ywFall(id) { // their empire falls: its worlds are unclaimed again
+  const e = resEmp.emp[id]; if (!e) return; delete resEmp.emp[id]; resEmp.cool[id] = resNow() + 30 * 60e3;
+  resEmp.wars = resEmp.wars.filter(w => w.a !== id && w.b !== id); for (const o of Object.values(resEmp.emp)) { if (o.over === id) o.over = null; if (o.trib === id) o.trib = null; }
+}
+function ywWon(id, how) { // you won: by the score, or by beating their ruler (then leaderBossWin brings the empire down itself)
+  const W = ywAt(id), e = resEmp.emp[id], c = e && resRuler(e); if (!W) return; delete dip().rw[id];
+  if (c) setTimeout(() => resWarSay(c, resPick(YW.win[resAl(c)]), ywCtx(e)), 1800);
+  if (how !== 'duel' && e) { resEmpLog(`${wanderer.name} won the war; ${e.name} has fallen`); ywFall(id); gainXP(600, `Won the war with ${e.name}`); if (state === 'explore' || state === 'space') { notice(e.name, 'HAS FALLEN · YOU WIN THE WAR', 3800); sfx.chime(); } }
+  dipSave();
+}
+function ywLost(id) {
+  const e = resEmp.emp[id], c = e && resRuler(e), D = dip(); delete D.rw[id]; if (!e) { dipSave(); return; }
+  const pid = Object.keys(D.col).filter(k => k !== CARAX && k !== OBRA && !D.col[k].siege && bodyById(k)).sort(() => Math.random() - .5)[0];
+  let w = '';
+  if (pid) { delete D.col[pid]; for (const W of Object.values(D.wars)) if (W && W.held) W.held = W.held.filter(o => o !== pid); e.col.push(pid); w = bodyById(pid).name; resEmpLog(`${e.name} won its war with ${wanderer.name} and took ${w}`); }
+  else { const n = Math.min(units(), Math.max(50, Math.round(units() * .15))); if (n) addUnits(-n); w = n ? `${n} units` : 'your pride'; resEmpLog(`${e.name} won its war with ${wanderer.name}${n ? ` and took ${n} units` : ''}`); }
+  if (c) resWarSay(c, resPick(YW.lose[resAl(c)]), ywCtx(e, { w })); if (state === 'explore' || state === 'space') { notice(e.name, `WINS THE WAR · ${w.toUpperCase()} LOST`, 4200); sfx.alarm(); }
+  dipSave();
+}
+function ywTick(E) {
+  if (!wanderer) return; const R = ywMap();
+  for (const id of Object.keys(R)) { // an empire that fell (to someone else, or stood down) ends your war with it
+    const e = E.emp[id]; if (e && resRuler(e) && !e.res && !e.pup) continue;
+    delete wanderer.dip.rw[id]; dipSave(); lootMsg('A resident empire you were at war with has fallen · the war is over', '#ffd36a');
+  }
+  if (E.on && Object.keys(ywMap()).length < 2 && !(wanderer.dip && wanderer.dip.rwNext > resNow())) for (const e of Object.values(E.emp)) { // a villain's empire may come for you
+    const c = resRuler(e); if (!c || e.pup || e.res || ywAt(e.id) || resAl(c) !== 'villain' || Math.random() >= .006) continue;
+    if (ywDeclare(e.id, true)) { dip().rwNext = resNow() + 10 * 60e3; break; }
+  }
+  const cols = Object.keys((wanderer.dip && wanderer.dip.col) || {}).length, mine = plvNow() + cols * 4;
+  for (const id of Object.keys(ywMap())) {
+    const W = ywMap()[id], e = E.emp[id]; if (!e) continue;
+    W.score = clamp(W.score + (mine - resPower(e)) * .1 + (Math.random() * 30 - 15), -100, 100);
+    if (Math.random() < .25 && RW) { const c = resRuler(e); if (c) resWarSay(c, resPick(YW.fight[resAl(c)]), ywCtx(e)); }
+    if (W.score >= 100) ywWon(id); else if (W.score <= -100) ywLost(id);
+  }
+  if (Object.keys(ywMap()).length) { const c = curChar(); if (c && wanderer.dip) c.dip = wanderer.dip; }
+}
 const RES_EMP_ON = () => !!resEmp.on; // residents only found empires if you switch it on (Resident empires panel)
 function resLentSweep() { // a resident empire that's gone sends your companions home
   const L = wanderer && wanderer.dip && wanderer.dip.lent; if (!L) return;
@@ -33267,6 +33370,7 @@ function resEmpTick(dt) {
   }
   try { upPupTick(E); } catch (e) { console.error(e); } // your fallen puppets come back
   for (const w of [...E.wars]) resWarStep(w); // wars already under way still play out
+  try { ywTick(E); } catch (e) { console.error(e); } // and your own wars with them
   try { resStoryWars(E, es); } catch (e) { console.error(e); } // and resident empires against the story factions
   if (state === 'space' || GAL.open) { applyChapterFactions(); if (GAL.open && GAL.sel) galPanel(); } // the galaxy map follows who holds what
 }
