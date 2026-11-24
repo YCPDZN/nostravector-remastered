@@ -35322,7 +35322,7 @@ function raceMenu() {
   const opts = [{ text: tiPhone() ? 'Open race · the regulars' : 'Open race · against the regulars', onPick: () => raceStart({ kind: 'open' }) }];
   if (lead.length) opts.push({ text: 'Challenge a faction leader…', onPick: () => raceLeadMenu(lead) });
   opts.push({ text: comps.length ? `Race your companions (${comps.map(compName).join(', ')})` : 'Race your companions', onPick: () => comps.length ? raceStart({ kind: 'comps', ids: comps }) : openDialog(who, ['Nobody’s riding with you today. Bring your companions to Archiostal (travelling with you, or waiting aboard your ship) and they can race.']) });
-  if (lead.length || comps.length) opts.push({ text: 'Pick your own field… (leaders and companions)', onPick: () => racePickMenu(new Set()) });
+  opts.push({ text: 'Pick your own field… (leaders, companions, importables)', onPick: () => racePickMenu(new Set()) });
   opts.push({ text: 'Your records', onPick: () => raceRecords() }, { text: 'Not now', onPick: () => {} });
   openDialog(who, [greet], false, () => openChoice(who, opts));
 }
@@ -35334,16 +35334,20 @@ function raceLeadMenu(lead) {
   openChoice(who, opts, 'WHO WILL YOU RACE?');
 }
 const RACE_MAX = 7; // rivals on the grid, besides you
+const raceImports = () => { let up = []; try { up = (ccData.characters || []).filter(c => c && c.id); } catch (e) {} return [...CHAR_BUILTIN, ...up]; }; // everyone in Custom Creations' characters: the built-ins and your own uploads
+const raceTitle = s => String(s || 'Rider').toLowerCase().replace(/(^|[\s'’-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()); // JOSIAH RICHARDS → Josiah Richards
 function racePickMenu(sel) { // choose exactly who rides: any of the leaders and any of your companions, mixed (tap to add or take off; the regulars fill the grid up to four)
   const who = 'RACE MARSHAL · THE RACEATHON', lead = raceLeaders(), comps = raceComps(), r = raceRec();
   const leadOk = L => L.who !== 'archamus' || raceArchOk();
-  for (const k of [...sel]) if (!(k.startsWith('L:') ? lead.some(L => 'L:' + L.who === k && leadOk(L)) : comps.some(id => 'C:' + id === k))) sel.delete(k); // anyone who's no longer here
+  for (const k of [...sel]) if (!(k.startsWith('L:') ? lead.some(L => 'L:' + L.who === k && leadOk(L)) : k.startsWith('I:') ? raceImports().some(c => 'I:' + c.id === k) : comps.some(id => 'C:' + id === k))) sel.delete(k); // anyone who's no longer here
   const tog = k => { if (sel.has(k)) sel.delete(k); else if (sel.size >= RACE_MAX) { openDialog('RACE MARSHAL', [`The grid holds ${RACE_MAX} riders besides you. Take someone off first.`], false, () => racePickMenu(sel)); return; } else sel.add(k); racePickMenu(sel); };
   const opts = [];
   for (const L of lead) { const k = 'L:' + L.who; opts.push({ text: `${sel.has(k) ? '✓' : '+'} ${L.full}${r.beat[L.who] ? ' · beaten' : ''}${leadOk(L) ? '' : ' · watching from his throne'}`, onPick: () => leadOk(L) ? tog(k) : openDialog('RACE MARSHAL', ['The Prime Good watches the races from his throne. He will not ride against you. Not yet.'], false, () => racePickMenu(sel)) }); }
   for (const id of comps) { const k = 'C:' + id; opts.push({ text: `${sel.has(k) ? '✓' : '+'} ${compName(id)}`, onPick: () => tog(k) }); }
-  const pickedL = lead.filter(L => sel.has('L:' + L.who)), pickedC = comps.filter(id => sel.has('C:' + id));
-  if (sel.size) opts.push({ text: `Race! (${sel.size} picked${sel.size < 3 ? ', the regulars fill the grid' : ''})`, onPick: () => raceStart({ kind: 'mix', leads: pickedL, ids: pickedC }) });
+  const imps = raceImports().filter(c => !comps.includes(c.id)); // the importables (Project BC, Sevirrus, and your own uploaded characters) who aren't already riding as companions
+  for (const c of imps) { const k = 'I:' + c.id; opts.push({ text: `${sel.has(k) ? '✓' : '+'} ${raceTitle(c.name)}${c.builtin ? ' · ' + c.game : ' · your character'}`, onPick: () => tog(k) }); }
+  const pickedL = lead.filter(L => sel.has('L:' + L.who)), pickedC = comps.filter(id => sel.has('C:' + id)), pickedI = imps.filter(c => sel.has('I:' + c.id)).map(c => c.id);
+  if (sel.size) opts.push({ text: `Race! (${sel.size} picked${sel.size < 3 ? ', the regulars fill the grid' : ''})`, onPick: () => raceStart({ kind: 'mix', leads: pickedL, ids: pickedC, chars: pickedI }) });
   if (sel.size) opts.push({ text: 'Clear the grid', onPick: () => racePickMenu(new Set()) });
   opts.push({ text: 'Back', onPick: () => raceMenu() });
   openChoice(who, opts, sel.size ? `YOUR FIELD · ${sel.size} OF ${RACE_MAX}` : 'PICK WHO RIDES');
@@ -35454,6 +35458,9 @@ function raceField(o) {
   const reg = r => ({ kind: 'reg', id: 'reg:' + r.name, name: r.name, short: r.short, col: r.c[1], skill: r.skill, lines: raceLines([0, ...RACE_REG_LINES]), load: () => brawlRig({ sp: r.sp, c: r.c, skin: Math.floor(Math.random() * 6), female: !!r.female, name: r.name }) });
   if ((o.kind === 'lead' || o.kind === 'mix') && o.leads) for (const L of o.leads) { const T = RACE_LEAD[L.key]; out.push({ kind: 'lead', id: 'lead:' + L.who, who: L.who, name: L.full || T.name, short: T.name, col: T.col, skill: T.skill, lines: T.lines, load: () => leadSpec(L.key).load() }); }
   if ((o.kind === 'comps' || o.kind === 'mix') && o.ids) for (const id of o.ids) { const q = RACE_COMP[id] || (String(id).startsWith('pont:') ? RACE_COMP.pontifex : RACE_GEN); let col = 0xffffff; try { col = new THREE.Color(compColor(id)).getHex(); } catch (e) {} out.push({ kind: 'comp', id, name: (PARTY[id] && PARTY[id].full) || compName(id), short: compName(id), col, skill: q[0], lines: raceLines(q), load: () => compRigFor(id) }); }
+  if (o.kind === 'mix' && o.chars) for (const id of o.chars) { const c = charById(id); if (!c) continue; const q = RACE_COMP[id] || RACE_GEN, nm = raceTitle(c.name);
+    let col = 0xffffff; try { col = new THREE.Color(COMP_COLS[id] || `hsl(${[...String(id)].reduce((a, ch) => a * 31 + ch.charCodeAt(0) >>> 0, 7) % 360}, 75%, 65%)`).getHex(); } catch (e) {}
+    out.push({ kind: 'imp', id: 'imp:' + id, name: nm, short: /^(lord|lady|sir|emperor|king|queen)$/i.test(nm.split(' ')[0]) ? nm.split(' ').pop() : nm.split(' ')[0], col, skill: q[0], lines: raceLines(q), load: () => loadCharRig(c, c.height || 1.85) }); } // an importable: their own model, rigged as in Custom Creations
   const want = o.kind === 'mix' ? Math.max(out.length, 3) : o.kind === 'lead' && o.leads.length > 1 ? Math.max(o.leads.length, 3) : 5; // (your own field: just who you picked, the regulars only fill a small grid) while (out.length < want) out.push(reg(regs[out.length % regs.length]));
   return out.slice(0, 7);
 }
@@ -35742,7 +35749,7 @@ function raceEnd() {
 // ?race: a race from the title (the regulars; =leaders every leader; =comps a handful of companions)
 if (RACE_FORCE) { const go = () => { if (state !== 'title' || RACE.on) return; removeEventListener('pointerdown', go); removeEventListener('keydown', go); sfx.init && sfx.init();
   const pv = { preview: true }; if (RACE_FORCE === 'leaders') raceStart(Object.assign(pv, { kind: 'lead', leads: ['hak', 'vishara', 'darius', 'taredesiba', 'archamus', 'amgrek'].map(k => ({ key: k, who: k, full: (leadSpec(k) || {}).full })) }));
-  else if (RACE_FORCE === 'mix') raceStart(Object.assign(pv, { kind: 'mix', leads: ['hak', 'vishara'].map(k => ({ key: k, who: k, full: (leadSpec(k) || {}).full })), ids: ['orion', 'nico'] })); // your own field: two leaders and two companions
+  else if (RACE_FORCE === 'mix') raceStart(Object.assign(pv, { kind: 'mix', leads: ['hak', 'vishara'].map(k => ({ key: k, who: k, full: (leadSpec(k) || {}).full })), ids: ['orion', 'nico'], chars: ['pbc-kevin', 'sev-sevirrus'] })); // your own field: two leaders, two companions and two importables
   else if (RACE_FORCE === 'comps') raceStart(Object.assign(pv, { kind: 'comps', ids: ['orion', 'nico', 'nyrexia', 'charon', 'pbc-josiah'] })); else raceStart(Object.assign(pv, { kind: 'open' })); };
   addEventListener('pointerdown', go); addEventListener('keydown', go); }
 // ---- residents and the bar: a drink, then another; drunk, they wobble, say silly things, and pick fights ----
