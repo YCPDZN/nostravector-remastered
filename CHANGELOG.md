@@ -3519,3 +3519,11 @@ Checked on a phone (iPhone 13 size), held upright and sideways: every telling of
 - **Fixed: the empires' names on the two years' map ran off the edges of a phone screen** ("…PERIUM OF ORION MAS…", "…C OF TIMPUR"). This happened in the usual telling too, not only the new ones. Names are now a little smaller on a narrow screen, never wider than it, and always wholly on it.
 - **They keep clear of everything else on screen:** the narration (at the top on a phone held upright, at the bottom otherwise), the year, the legend and Skip. Two names that meet are nudged apart. On a computer, the Republic of Timpur's name no longer sits on the year.
 - The GAME OVER screens, the map's six-row legend for Orion's offensive and Diplomacy's counters (*At war right now: 6 of 8 factions*, the Catharsis's tally) all fit, upright and sideways.
+
+### The two years, voiced in every telling
+
+The rewritten lines of *While you slept* now have their own recordings, so every telling is voiced from start to finish, not just the usual one.
+- **25 new recordings** (`data/skipNarrAltVoices.js`, CH4WYSALT1–25), in this order: Lord Zark taking the Bastion (2), Hak taking everything (4), the galaxy at war (5), Orion Mascar's offensive (7) and the Catharsis winning (7).
+- A telling loads this pack only when it plays, so the usual two years load nothing extra. If the pack can't load, those lines show as subtitles, as before.
+- Am-Grek's rewritten words when you wake on Archiostal are still subtitles only.
+- **Previews:** `?ending=timeskipzark`, `?ending=timeskiphak`, `?ending=timeskipwar`, `?ending=timeskiporion`, `?ending=timeskipcath`.
