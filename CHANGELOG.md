@@ -3450,3 +3450,21 @@ Every screen from the last few updates was checked on a phone (iPhone 13 size), 
 - **Fixed:** while you had set factions on each other, every world's flags were redrawn every ten seconds, even when nothing had changed hands. Now the score just ticks, and the flags are redrawn only when a war ends.
 - **Fixed:** the notice when a war between factions ended cut its sentence off mid-word. It now says who won, and the whole outcome goes in the log.
 - **Fixed:** if you paused or took off partway through the conversation with Hak or Zark about Sevirrus, the next part could pop up wherever you were. It now waits until you're back on your feet.
+
+### What if Hak took everything? (Chapter III, and the two years)
+
+Another branch for anyone who sets the factions on each other in Chapter III: set the **Chompy Empire on the Grek** (Diplomacy → Factions → *Set them on each other*). Diplomacy says what's at stake before you go ahead.
+- **If the Chompy Empire wins, it takes every world the Grek hold.** That's Carax, Malana and the Grek's space, and also **Archiostal**, the Order of Archamus's garden station (its gardens with it), since the Order fights beside its puppet.
+  - The worlds fly Hak's banners: *taken from the Grek*, *Carax, taken from Am-Grek*, *Archiostal, taken from the Order of Archamus*.
+  - The Grek and the Order are gone from Diplomacy for the rest of Chapter III, and any war you had with them ends. The Catharsis, the Grek's puppet, answers to no one now.
+- **Hak's menu** (at war with the Chompy afterwards, in Chapter III) opens with four new lines: "Archiostal flies my banners. I still kneel under its dome. Archamus has not said a word." · "Archamus will come for his station. When he does, I will not raise my sword to him."
+- **The two years (Chapter IV) tell it the way it went.** It still ends on the same Chapter IV galaxy.
+  - The map opens with all of the Grek's space, Carax and Archiostal in Chompy purple.
+  - *"Before you fell, the Chompy Empire had already taken every world the Grek held. Even Archiostal flew Hak's banners."*
+  - *"In the chaos after your death, Archamus came down from his light. He took Archiostal back, then Malana."* Malana's system turns green, with a pulse for each.
+  - *"And while the Chompy and the Grek fought over what was left, the Catharsis turned on its masters, and took Carax."*
+  - Then the two years as ever: the clashes, the Catharsis taking what the Chompy had won and the Grek had clawed back until only Malana was left, the Chompy holding their borders, you asleep. The map finishes on exactly the usual Chapter IV map.
+- **Waking on Archiostal:** Am-Grek's two lines become *"Before you fell, the Chompy took everything we had. Even this station. Archamus came down himself to take it back."* and *"And while we fought the Chompy for our own sky, the Catharsis broke its chains and took Carax. Then they took our worlds, one by one."*
+- The new lines are subtitles only; every unchanged line keeps its voice. If Lord Zark took the Bastion instead, his telling plays (the two can't both happen).
+- **Previews:** `?ending=timeskiphak`, `?ending=amgrekhak`, and `?leader=hak&hakarch` for Hak's lines.
+- Under the hood: the two years now play from a script per telling, so further what-ifs can rewrite any line, or what the map does under it.
