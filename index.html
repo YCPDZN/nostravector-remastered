@@ -2941,6 +2941,8 @@ const ZARK_BASTION_LINES = ['The Bastion was built to keep the dark out of the c
   'The Bastion’s walls are thick. I like thick walls. Screams stay inside them.', 'Every world the Grek held is ash, or mine. Usually both.',
   'Sit on his throne? No. I prefer to stand over the one who used to.', 'Archamus sent no army to save his faithful. Ask yourself who he will send for you.',
   'Look at the black sun beside Carax, wanderer. I have made it my lantern.', 'You wanted a war with me. You are standing in my house now.'];
+const HAK_ARCH_LINES = ['Archiostal flies my banners. I still kneel under its dome. Archamus has not said a word.', 'I took every Grek world, wanderer. Am-Grek fought well. Not well enough.',
+  'The Grek pray in Archiostal’s gardens with my soldiers watching. I pray beside them.', 'Archamus will come for his station. When he does, I will not raise my sword to him.']; // Hak, in Chapter III, once the Chompy Empire holds everything the Grek had
 const AMGREK_KNEEL_LINES = ['Forgive me, Prime Good. I could not hold the Bastion.', 'My people… he has my people…', 'I gave him the Grek worlds so he would stop. He did not stop.',
   'Wanderer… do not kneel to him. Learn that much from me.', 'Archamus… are you there?'];
 const LEAD_WHERE = { bastionZ: ['Carax · under Lord Zark', 'The Bastion'], karribassa: ['Janira Prime · the throne room', 'Karribassa'], alphinos: ['Aridaxx · the throne of the Chompy', 'Alphinos'], commons: ['Earth · the Federation', 'House of Commons'], citadel: ['Eris · the throne room', 'Citadel el Erisconos'], archiostal: ['the throne room', 'Archiostal'], bastion: ['Carax · the throne room', 'The Bastion'], timpur: ['Timpur · the throne room', 'Timpur Prime'] };
@@ -2977,6 +2979,7 @@ function leadLines() { // their lines, scrambled and signed; two leaders share t
   const E = leadCur(); if (!E) return [];
   const sets = E.ks.map(k => (LEAD_LINES[k === 'archamusU' ? 'archamus' : k] || []).slice().sort(() => Math.random() - .5).map(t => ({ t, who: leadName(k) })));
   try { const sv = (E.fid === 'chompy' || E.fid === 'catharsis') && (E.dep === 'comp:sev-sevirrus' || sevServes(E.fid)) && sevSide(E.fid, !!forceLead); if (sv) { dep2Load(); sets[0] = sv.menu.slice().sort(() => Math.random() - .5).map(t => ({ t, who: leadName(E.ks[0]) })).concat(sets[0]); } } catch (er) {} // Sevirrus in their court: they talk about him first
+  if (E.fid === 'chompy' && E.ks[0] === 'hak' && (chompyTookGrek() || /[?&]leader=\w+&hakarch/.test(window.location.search))) sets[0] = HAK_ARCH_LINES.slice().sort(() => Math.random() - .5).map(t => ({ t, who: leadName('hak') })).concat(sets[0]); // he holds Archiostal now
   if (E.room === 'bastionZ') sets[0] = ZARK_BASTION_LINES.slice().sort(() => Math.random() - .5).map(t => ({ t, who: leadName('zark') })).concat(sets[0]); // the Bastion's lines first
   let out = [], n = Math.max(...sets.map(s => s.length)); for (let i = 0; i < n; i++) for (const s of sets) if (s[i]) out.push(s[i]);
   if (E.kneel === 'amgrek') { const K = AMGREK_KNEEL_LINES.slice().sort(() => Math.random() - .5), mix = []; out.forEach((q, i) => { mix.push(q); if (i % 3 === 2) mix.push({ t: K[(i / 3 | 0) % K.length], who: 'Am-Grek, kneeling' }); }); out = mix; }
@@ -23900,7 +23903,16 @@ const SKIP_NARR = [
 // Zark doesn't take Carax twice: the map opens with the Catharsis already holding the Grek's worlds, the Grek rise from Malana and take
 // back what they can, then lose it again. The rewritten lines are subtitles only (the recordings tell it the other way).
 // ?ending=timeskipzark (and ?ending=amgrekzark for Am-Grek's waking words) preview it.
-const SKIP_ZARK = /[?&]ending=(timeskip|amgrek)zark/.test(window.location.search);
+const SKIP_ZARK = /[?&]ending=(timeskip|amgrek)zark/.test(window.location.search), SKIP_HAK = /[?&]ending=(timeskip|amgrek)hak/.test(window.location.search);
+// ...or if the Chompy Empire had taken every world the Grek held, Archiostal with them, in Chapter III: Archamus comes down to take
+// back Archiostal, then Malana, while the Catharsis takes Carax in the chaos; then the two years play out as ever. ?ending=timeskiphak
+function hakHadGrek() { if (SKIP_HAK) return true; try { return !!(wanderer && wanderer.dip && wanderer.dip.fx && wanderer.dip.fx.chompyGrek); } catch (e) { return false; } }
+const SKIP_NARR_HAK = {
+  took: 'Before you fell, the Chompy Empire had already taken every world the Grek held. Even Archiostal flew Hak’s banners.',
+  arch: 'In the chaos after your death, Archamus came down from his light. He took Archiostal back, then Malana.',
+  carax: 'And while the Chompy and the Grek fought over what was left, the Catharsis turned on its masters, and took Carax.',
+  chip: 'World by world, they took what the Chompy had won and the Grek had clawed back, until only Malana was left.'
+};
 function zarkHadBastion() { if (SKIP_ZARK) return true; try { return !!(wanderer && wanderer.dip && wanderer.dip.fx && wanderer.dip.fx.zark); } catch (e) { return false; } }
 const SKIP_NARR_ZARK = {
   1: 'Before you fell, Lord Zark had already taken Carax. Am-Grek knelt in his own Bastion, and gave him every world the Grek had.',
@@ -23967,13 +23979,15 @@ function snBuild() { // the systems, who holds each before and after, and the te
     sys.forEach((s, i) => { if (s.S.id === 'sgra' || (s.o3 === 'grek' && /^The Grek/.test(String(s.S.fac3 || s.S.fac0 || '')))) { s.own = 'cath'; s.col = cr.slice(); if (s.S.id !== 'sgra') gave.push(i); } });
     const w1 = new Set(G.slice(0, cut(.25))); SN.rise = gave.filter(i => !w1.has(i)); // the Grek rise and take these back, all but the core
   }
-  SN.sets = { carax, w1: G.slice(0, cut(.25)), w2: G.slice(cut(.25), cut(.45)), w2b: G.slice(cut(.35), cut(.45)), w3: G.slice(cut(.45), cut(.65)), rest: G.slice(cut(.65)), C,
+  let malana = -1, malanaXY = null;
+  if (SN.hak) { const kr = snRgb(SN_EMP.chompy[1]); sys.forEach((s, i) => { if (s.S.id === 'sgra' || s.o3 === 'grek') { s.own = 'chompy'; s.col = kr.slice(); } if (s.S.id === 'malana') { malana = i; malanaXY = [s.x, s.y]; } }); } // the Chompy Empire took it all before you fell
+  SN.sets = { carax, malana, malanaXY, w1: G.slice(0, cut(.25)), w2: G.slice(cut(.25), cut(.45)), w2b: G.slice(cut(.35), cut(.45)), w3: G.slice(cut(.45), cut(.65)), rest: G.slice(cut(.65)), C,
     chompyC: cen('chompy'), timpurC: cen('timpur'), sol: [sol.x, sol.y], mid, fit };
 }
 function snFlip(list, own, at, span) { // these systems change hands, one by one, between at and at + span (seconds of this line)
   list = [].concat(list).filter(i => i >= 0); list.forEach((i, k) => SN.q.push({ t: SN.lineT0 + at + (list.length > 1 ? k / (list.length - 1) : 0) * span, i, own }));
 }
-function snApply(e, now) { const s = SN.sys[e.i]; if (s.own === e.own) return; s.from = s.col || [40, 40, 50]; s.own = e.own; s.ft = now; s.ring = now; if (now - (SN.blipT || 0) > .13) { SN.blipT = now; try { sfx.blip(); } catch (_) {} } }
+function snApply(e, now) { const s = SN.sys[e.i]; if (e.own == null) e = Object.assign({}, e, { own: s.o4 }); if (!e.own || s.own === e.own) return; s.from = s.col || [40, 40, 50]; s.own = e.own; s.ft = now; s.ring = now; if (now - (SN.blipT || 0) > .13) { SN.blipT = now; try { sfx.blip(); } catch (_) {} } }
 const SN_LINES = [ // what the map does under each line: where the camera goes, and who takes what (times in seconds into the line)
   { cam: () => [SN.sets.mid[0], SN.sets.mid[1], SN.sets.fit], on: () => { SN.pulse = 'cath'; } },
   { cam: () => [0, 0, 2.7], on: () => { SN.q.push({ t: SN.lineT0 + 2.2, i: SN.sets.carax, own: 'cath', big: true }); } },
@@ -23990,7 +24004,20 @@ const SN_LINES_ZARK = { // the lines whose map changes when Carax was already Za
   1: { cam: () => [0, 0, 2.7], on: () => { const s = SN.sys[SN.sets.carax]; if (s) { s.big = true; s.ring = SN.lineT0 + 1.6; } SN.q.push({ t: SN.lineT0 + 1.6, i: -1 }); SN.shake = .5; } },
   2: { cam: () => [0, 0, 1.6], on: () => snFlip(SN.rise || [], 'grek', .5, 4.4), min: 5.4 }
 };
-const snL = i => (SN.zark && SN_LINES_ZARK[i]) || SN_LINES[i];
+const snL = i => (SN.script[i] || { L: SN_LINES[i] || SN_LINES[0] }).L;
+function snScript() { // the lines this telling plays, each with its recording (if the words are the recorded ones) and what the map does
+  const orig = i => ({ t: SKIP_NARR[i], v: i, L: SN_LINES[i] });
+  if (SN.hak) { const S = SN.sets, C = () => SN.sys[S.malana] || null;
+    return [orig(0),
+      { t: SKIP_NARR_HAK.took, v: -1, L: { cam: () => S.malanaXY ? [S.malanaXY[0] * .5, S.malanaXY[1] * .5, 1.6] : [0, 0, 1.6], on: () => { const s = C(); if (s) { s.big = true; s.ring = SN.lineT0 + 1.4; } SN.q.push({ t: SN.lineT0 + 1.4, i: -1 }); } } },
+      { t: SKIP_NARR_HAK.arch, v: -1, L: { cam: () => S.malanaXY ? [S.malanaXY[0], S.malanaXY[1], 3] : [0, 0, 2], on: () => { if (S.malana >= 0) { SN.q.push({ t: SN.lineT0 + 1.2, i: S.malana, own: 'grek', big: true }); SN.q.push({ t: SN.lineT0 + 3.4, i: -1 }); const s = C(); if (s) setTimeout(() => { if (SN.on) s.ring = SN.t; }, 3400); } }, min: 5.2 } },
+      { t: SKIP_NARR_HAK.carax, v: -1, L: { cam: () => [0, 0, 2.7], on: () => { SN.q.push({ t: SN.lineT0 + 2.4, i: S.carax, own: 'cath', big: true }); }, min: 5 } },
+      orig(3), orig(4), orig(5),
+      { t: SKIP_NARR_HAK.chip, v: -1, L: SN_LINES[6] },
+      orig(7), orig(8),
+      { t: SKIP_NARR[9], v: 9, L: { cam: SN_LINES[9].cam, on: () => { SN_LINES[9].on(); snFlip(SN.sys.map((s, i) => i).filter(i => SN.sys[i].o4 && SN.sys[i].own !== SN.sys[i].o4), null, .2, 1.4); } } }]; } // (and the map settles on the Chapter IV galaxy)
+  return SKIP_NARR.map((t, i) => SN.zark && SKIP_NARR_ZARK[i] ? { t: SKIP_NARR_ZARK[i], v: -1, L: SN_LINES_ZARK[i] || SN_LINES[i] } : orig(i));
+}
 function snLabels() { // each empire's name over its own space: where its worlds sit thickest, clear of the other names
   const S = SN.sys, out = {}, placed = [], z = SN.cam[2], kk = Math.min(innerWidth, innerHeight) * .46 * z; // label boxes, in galaxy units at this zoom
   for (const k of ['cath', 'grek', 'chompy', 'timpur', 'hfos']) {
@@ -24066,7 +24093,7 @@ function snFrame() {
 }
 async function snLine(i) { // one line of narration: its text, its voice if there is one, and what happens on the map
   if (!SN.on) return; SN.line = i; SN.skipLine = false; SN.lineT0 = SN.t;
-  const alt = SN.zark && SKIP_NARR_ZARK[i], text = alt || SKIP_NARR[i], clip = alt ? null : SN.vo[i], words = text.split(' ').length; // (a rewritten line has no recording: subtitles only)
+  const sc = SN.script[i], text = sc.t, clip = sc.v >= 0 ? SN.vo[sc.v] : null, words = text.split(' ').length; // (a rewritten line has no recording: subtitles only)
   SN.lineDur = Math.max(clip && clip.duration ? clip.duration + .8 : Math.max(4.6, 1.6 + words * .36), snL(i).min || 0); // long enough for the map to finish what this line does
   snL(i).on(); const sub = SN.el.querySelector('.sn-sub'); sub.textContent = text; sub.classList.remove('show'); void sub.offsetWidth; sub.classList.add('show');
   if (clip) sfx.playNarr(clip, 1.3);
@@ -24080,16 +24107,16 @@ async function skipNarrStart(done, opts = {}) {
   if (SN.on) return; const el = snDom(); SN.el = el; SN.cv = el.querySelector('canvas'); SN.ctx = SN.cv.getContext('2d');
   SN.done = done; SN.replay = !!opts.replay; SN.prev = state; state = 'skipNarr';
   if (!SN.replay && wanderer) { wanderer.ch4 = Object.assign({}, wanderer.ch4, { timeSkip: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); } // two years have gone by
-  Object.assign(SN, { on: true, t: 0, last: 0, q: [], lab: {}, line: -1, lineDur: 0, cam: [0, 0, .8], yr: 2125, dim: 0, dimK: 0, pulse: null, shake: 0, legH: '', vo: [], zark: zarkHadBastion(), rise: [] });
+  Object.assign(SN, { on: true, t: 0, last: 0, q: [], lab: {}, line: -1, lineDur: 0, cam: [0, 0, .8], yr: 2125, dim: 0, dimK: 0, pulse: null, shake: 0, legH: '', vo: [], zark: zarkHadBastion(), rise: [], script: [] }); SN.hak = !SN.zark && hakHadGrek();
   el.classList.add('on'); el.classList.remove('map'); const fade = el.querySelector('.sn-fade'), card = el.querySelector('.sn-card');
   fade.style.transition = 'none'; fade.style.opacity = 1;
   card.querySelector('small').textContent = 'While you slept'; card.querySelector('b').textContent = '2125 AD';
   let vo = []; try { [vo] = await Promise.all([loadDataScript('skipNarrVoices').then(ok => ok ? sfx.loadClips('skipNarrVoices') : []).catch(() => []), waitMs(60)]); } catch (e) { console.error(e); }
-  SN.vo = vo || []; snBuild(); SN.cam = [SN.sets.mid[0], SN.sets.mid[1], SN.sets.fit * .85]; if (!SN.on) return;
+  SN.vo = vo || []; snBuild(); SN.script = snScript(); SN.cam = [SN.sets.mid[0], SN.sets.mid[1], SN.sets.fit * .85]; if (!SN.on) return;
   card.classList.add('on'); leaderPlay('primeEvil').catch(() => {});
   await waitMs(3200); if (!SN.on) return; card.classList.remove('on'); await waitMs(900); if (!SN.on) return;
   requestAnimationFrame(snFrame); el.classList.add('map'); fade.style.transition = 'opacity 1.6s'; fade.style.opacity = 0; await waitMs(1400);
-  for (let i = 0; i < SKIP_NARR.length && SN.on; i++) await snLine(i);
+  for (let i = 0; i < SN.script.length && SN.on; i++) await snLine(i);
   if (SN.on) { await waitMs(1600); snEnd(); }
 }
 function snSkipAll() { if (!SN.on) return; try { sfx.stopNarr(); } catch (_) {} snEnd(); }
@@ -24123,6 +24150,10 @@ const AMG_LINES = [ // [when, line] · CH4AMGREK1–10
 const AMG_ZARK = { // Am-Grek's words if he had already surrendered Carax to Zark in Chapter III (subtitles only)
   4: 'Before you fell, the Catharsis broke its chains. I put those chains on them. Then I knelt to Lord Zark in my own Bastion, and gave him everything.',
   5: 'While you slept, my people rose and took back what I had given away. Carax, never. Then they took our worlds again, one by one.'
+};
+const AMG_HAK = { // ...if the Chompy Empire had taken every Grek world, Archiostal with them (subtitles only)
+  4: 'Before you fell, the Chompy took everything we had. Even this station. Archamus came down himself to take it back.',
+  5: 'And while we fought the Chompy for our own sky, the Catharsis broke its chains and took Carax. Then they took our worlds, one by one.'
 };
 const ZARK_WAKE = [ // ????, once the red comes · CH4MYSTERIOUSVOICE1–10
   'There you are.',
@@ -24214,7 +24245,7 @@ function amgTick(dt) {
   else { const k = sm(79, 86, t); camera.position.set(lerp(3.2, 1.5, k), lerp(4.5, 58, k * k), lerp(5.5, 4, k)); camera.lookAt(0, 90, -30); } // up, out through the glass
   camera.position.x += Math.sin(t * 1.3) * .02; camera.position.y += Math.sin(t * 1.9 + 1) * .02;
   if (t >= AMG_END) { amgEnd(); return; }
-  for (const [i, [at, line]] of AMG_LINES.entries()) if (t >= at && !NM.amgSaid.has(at)) { NM.amgSaid.add(at); const alt = zarkHadBastion() && AMG_ZARK[i], clip = alt ? null : NM.amgVo && NM.amgVo[i]; fbSay('AM-GREK', alt || line, clip || null, 1.3); NM.amgEnd = clip && clip.duration ? NM.amgRT + clip.duration : 0; break; }
+  for (const [i, [at, line]] of AMG_LINES.entries()) if (t >= at && !NM.amgSaid.has(at)) { NM.amgSaid.add(at); const alt = (zarkHadBastion() && AMG_ZARK[i]) || (!zarkHadBastion() && hakHadGrek() && AMG_HAK[i]), clip = alt ? null : NM.amgVo && NM.amgVo[i]; fbSay('AM-GREK', alt || line, clip || null, 1.3); NM.amgEnd = clip && clip.duration ? NM.amgRT + clip.duration : 0; break; }
   fbSubTick();
   if (!hwxRender(dt)) gfxRender(NM.scene, camera, dt);
 }
@@ -34897,6 +34928,7 @@ function fxTake(from, to, n) { // a few of their worlds (never a capital, a lead
 function fxEnd(w, aWon) {
   const X = fxD(); X.wars = X.wars.filter(o => o !== w); const W = aWon ? w.a : w.b, L = aWon ? w.b : w.a; let what;
   if (w.dash && aWon) { fxZarkTakes(); return; } // Am-Grek beaten at the Bastion: he surrenders his lands to Zark
+  if (aWon && w.a === 'chompy' && w.b === 'grek' && dipCh() === 3 && !X.zark && !X.chompyGrek) { fxChompyTakes(); return; } // Hak takes everything the Grek hold, Archiostal with it
   if (w.dash) lootMsg('The siege of Carax is broken · Am-Grek holds the Bastion, and the Catharsis fleet falls back', '#7fe0a0');
   if (!aWon) { const got = fxTake(L, W, 1); what = `${fxNm(L)}'s war on ${fxNm(W)} failed${got.length ? `; ${fxNm(W)} took ${got[0].name}` : ''}`; }
   else if (w.cb === 'vassal') { if (fxOverOf(W) === L) X.over[W] = null; X.over[L] = W; delete X.trib[L]; what = `${fxNm(L)} is now a puppet of ${fxNm(W)}`; }
@@ -34922,6 +34954,19 @@ function fxZarkTakes() { // Am-Grek, beaten in his own Bastion, surrenders every
   if (state === 'explore' || state === 'space') { notice('The Bastion of Carax falls', 'AM-GREK SURRENDERS HIS LANDS TO LORD ZARK', 6000); sfx.thud(); ex.shake = Math.max(ex.shake || 0, .3); }
   lootMsg(`Am-Grek kneels in his own Bastion. Every world of the Grek (${got.length}) now belongs to the Catharsis, and Lord Zark holds court at Carax`, '#ff3b4a');
 }
+function fxChompyTakes() { // Chapter III: the Chompy Empire beats the Grek and takes every world they hold, and the Order's Archiostal with them
+  const X = fxD(), D = dip(), got = [...dipWorldsOf(fxFac('grek')), ...dipWorldsOf(fxFac('order'))].filter((P, i, a) => !D.col[P.id] && a.indexOf(P) === i);
+  for (const P of got) X.took[P.id] = 'chompy';
+  X.chompyGrek = { at: Date.now(), n: got.length }; X.fell = Object.assign(X.fell || {}, { grek: 'chompy', order: 'chompy' });
+  X.wars = X.wars.filter(o => !['grek', 'order'].includes(o.a) && !['grek', 'order'].includes(o.b));
+  for (const k of Object.keys(X.over)) if (X.over[k] === 'grek' || X.over[k] === 'order') X.over[k] = null; // the Catharsis answers to no one now
+  try { fxStandDown('grek', 'stand down: the Grek Empire is no more'); fxStandDown('order', 'stand down: the Order has lost Archiostal'); } catch (e) {}
+  for (const f of ['grek', 'order']) if (D.wars[f]) { delete D.wars[f]; setTimeout(() => lootMsg(`Your war with ${f === 'grek' ? 'the Grek' : 'the Order of Archamus'} is over: the Chompy Empire holds everything they had`, '#ffd36a'), 5200); }
+  dipSave(); try { applyChapterFactions(); } catch (e) {}
+  if (state === 'explore' || state === 'space') { notice('The Chompy Empire wins its war with the Grek', 'HAK’S BANNERS FLY OVER ARCHIOSTAL', 6000); sfx.chime(); }
+  lootMsg(`The Chompy Empire takes every world the Grek held (${got.length}), Carax and Archiostal with them`, '#ffb060');
+}
+const chompyTookGrek = () => { try { const X = wanderer && wanderer.dip && wanderer.dip.fx; return !!(X && X.chompyGrek && dipCh() === 3); } catch (e) { return false; } };
 function fxGalDraw(g, font) { // the Catharsis fleet's dash across the core, and the siege when it gets there
   if (!wanderer || !wanderer.dip || !wanderer.dip.fx) return; const w = (wanderer.dip.fx.wars || []).find(o => o.dash); if (!w) return;
   const C = bodyById('carax'), U = bodyById(w.dash.from); if (!C || !U) return; const v = GAL.view || 'milky'; if (galOf(sysById(C.sys)) !== v) return;
@@ -34964,7 +35009,9 @@ function fxBanner(F, s) {
 }
 function fxOverlay(D) {
   const X = D.fx; if (!X || (!Object.keys(X.over || {}).length && !Object.keys(X.trib || {}).length && !Object.keys(X.took || {}).length)) return;
-  for (const [pid, fid] of Object.entries(X.took || {})) { const P = bodyById(pid), F = fxFac(fid); if (!P || !F || !fxLive(fid) || D.col[pid]) continue; const from = dipFacOf(P.baseFac); if (from && from.id === fid) continue; const grek = fid === 'catharsis' && X.zark && String(P.fac3 || P.fac0 || '').startsWith('The Grek'); P.baseFac = P.faction = pid === 'carax' && grek ? 'The Catharsis · the Bastion of Carax, Lord Zark’s court' : grek ? 'The Catharsis · surrendered by Am-Grek' : `${F.name} · taken from ${from ? from.name : 'its old masters'}`; }
+  for (const [pid, fid] of Object.entries(X.took || {})) { const P = bodyById(pid), F = fxFac(fid); if (!P || !F || !fxLive(fid) || D.col[pid]) continue; const from = dipFacOf(P.baseFac); if (from && from.id === fid) continue; const f3 = String(P.fac3 || P.fac0 || ''), grek = fid === 'catharsis' && X.zark && f3.startsWith('The Grek'), hak = fid === 'chompy' && X.chompyGrek && /^The (Grek|Order of Archamus)/.test(f3);
+    P.baseFac = P.faction = pid === 'carax' && grek ? 'The Catharsis · the Bastion of Carax, Lord Zark’s court' : grek ? 'The Catharsis · surrendered by Am-Grek'
+      : hak ? (pid === 'archiostal' ? 'The Chompy Empire · Archiostal, taken from the Order of Archamus' : pid === 'carax' ? 'The Chompy Empire · Carax, taken from Am-Grek' : 'The Chompy Empire · taken from the Grek') : `${F.name} · taken from ${from ? from.name : 'its old masters'}`; }
   for (const S of SYSTEMS) { const H = bodyById(S.home); if (H && X.took[H.id] && fxLive(X.took[H.id]) && !D.col[H.id]) { const F = fxFac(X.took[H.id]); S.baseFac = S.faction = H.baseFac; S.facCol = F.col; } } // a system whose home world changed hands flies the new flag
   for (const S of SYSTEMS) {
     { const F = dipFacOf(S.baseFac); if (F && !dipRes(F.id)) S.faction = fxBanner(F, S.faction || S.baseFac); }
@@ -34974,6 +35021,7 @@ function fxOverlay(D) {
 function fxCardNote(F) { // Diplomacy: their bonds, and the wars you set them in
   const D = dip(), X = fxD(), o = fxOverOf(F.id), base = fxBaseOver(F.id), vs = fxVassals(F.id), W = D.wars[F.id], t = X.trib[F.id]; let h = '';
   const bits = [];
+  if (F.id === 'chompy' && chompyTookGrek()) bits.push('<b>Holds every world the Grek had</b>, Carax and Archiostal too');
   if (F.id === 'catharsis' && fxZarkBastion()) bits.push('<b>Holds the Bastion of Carax</b>: Am-Grek surrendered every world of the Grek to Lord Zark');
   { const w = fxD().wars.find(o => o.dash && (o.a === F.id || o.b === F.id)); if (w) bits.push(w.dash.arrived ? '<b>The siege of Carax</b>: Lord Zark against Am-Grek in the Bastion' : '<b>Lord Zark’s fleet is dashing to Carax</b> (on the galaxy map)'); }
   if (o) bits.push(`Puppet of <b>${fxNm(o)}</b>`); else if (base && fxLive(base) && !dipRes(F.id)) bits.push(`Broke away from ${fxNm(base)}`);
@@ -34996,7 +35044,7 @@ function fxCard() { // Diplomacy → Factions: set them on each other, and the w
   if (V.a && V.b && V.a !== V.b) {
     const brk = fxTop(V.a) === fxTop(V.b) ? (fxAncestor(V.a, V.b) ? V.b : V.a) : null, w = { a: V.a, b: V.b };
     const pre = (() => { if (!brk) return fxSides(w); const keep = fxD().over[brk], had = Object.prototype.hasOwnProperty.call(fxD().over, brk); fxD().over[brk] = null; const S = fxSides(w); if (had) fxD().over[brk] = keep; else delete fxD().over[brk]; return S; })();
-    h += `<p>${brk ? `<b>${fxNm(brk)} will break away</b> from ${fxNm(fxOverOf(brk))}. ` : ''}${fxList(pre.A)} against ${fxList(pre.B)}.${V.a === 'catharsis' && V.b === 'grek' && ch === 3 && !fxD().zark ? ' <b>Lord Zark will dash from Ulmira to Carax</b> for the Bastion itself: if Am-Grek falls there, he surrenders every Grek world to the Catharsis.' : ''}</p>`;
+    h += `<p>${brk ? `<b>${fxNm(brk)} will break away</b> from ${fxNm(fxOverOf(brk))}. ` : ''}${fxList(pre.A)} against ${fxList(pre.B)}.${V.a === 'catharsis' && V.b === 'grek' && ch === 3 && !fxD().zark ? ' <b>Lord Zark will dash from Ulmira to Carax</b> for the Bastion itself: if Am-Grek falls there, he surrenders every Grek world to the Catharsis.' : ''}${V.a === 'chompy' && V.b === 'grek' && ch === 3 && !fxD().zark && !fxD().chompyGrek ? ' <b>If the Chompy Empire wins, it takes every world the Grek hold</b>, Carax and the Order’s Archiostal too.' : ''}</p>`;
     if (fxAtWar(V.a, V.b)) h += `<p style="color:var(--mute)">They're already at war.</p>`;
     else if (ch <= 4 && !(DIPV.fxOk)) h += `<div class="dip-row"><button class="btn small primary" data-a="fxAsk"><span>Set them on each other</span></button></div>`;
     else h += `${ch <= 4 ? `<div class="dip-warn"><b>Not recommended.</b> They're part of Chapter ${['', 'I', 'II', 'III', 'IV', 'V'][ch]}'s story: their wars can move worlds and puppets the story relies on. Go ahead anyway?</div>` : ''}<div class="dip-row"><button class="btn small primary" data-a="fxGo"><span>${ch <= 4 ? 'Do it anyway' : 'Set them on each other'}</span></button>${ch <= 4 ? '<button class="btn small" data-a="fxNo"><span>Cancel</span></button>' : ''}</div>`;
@@ -35006,7 +35054,7 @@ function fxCard() { // Diplomacy → Factions: set them on each other, and the w
 }
 if (/[?&]depdebug/.test(window.location.search)) window.NV_ED = { fdepTick, rdepTick, edAt, edPlace, edSpec, edBeaten, enemyDepTick, rdepCands, fdepCands, menuDepKey, dip, dipDeclare, ywDeclare, ywAt, resPower, resNow, saveRoster, // ?depdebug: the enemies' deputies, from the console
   get W() { return wanderer; }, get E() { return resEmp; }, get G() { return resGuild; }, get R() { return residents; }, get state() { return state; }, get TIW() { return TIW; }, body: bodyById, free: () => resFreeWorlds(), lead: () => leadMenuCalc(), guildDirty: () => resGuildDirty(),
-  land: id => landOn(bodyById(id), new THREE.Vector3(.3, 1, .2)), near: () => { const G = TIW.dep; if (G) player.position.set(G.x + 2, player.position.y, G.z + 2); return tiNear(player.position); }, use: () => { const n = tiNear(player.position); if (n) tiUse(n); return n && n.id; }, pickChoice: i => { const b = document.querySelectorAll('button.opt')[i | 0]; if (b) b.click(); return !!b; }, win: () => { if (!DGN.boss && DGN.lb) lairBossStart(); if (DGN.boss) lairBossWin(); return !!DGN.boss; }, get DGN() { return DGN; }, sevMeetTick, sevSide, leadLines: () => leadLines(), menuLines: () => menuLines(), fxBloc, fxOverOf, fxIncite, fxTick: fxWarTick, fxEnd, fxD, fxWould, fxCard, fxCardNote, dipPeace, dipWin, applyChapterFactions, fxUlmira, fxZarkTakes, fxZarkBastion, systems: () => SYSTEMS, openGal: () => { try { galOpen && galOpen(); } catch (e) { return e.message; } }, dipOpen: () => { dipOpen(true); DIPV.tab = "factions"; dipRender(); } };
+  land: id => landOn(bodyById(id), new THREE.Vector3(.3, 1, .2)), near: () => { const G = TIW.dep; if (G) player.position.set(G.x + 2, player.position.y, G.z + 2); return tiNear(player.position); }, use: () => { const n = tiNear(player.position); if (n) tiUse(n); return n && n.id; }, pickChoice: i => { const b = document.querySelectorAll('button.opt')[i | 0]; if (b) b.click(); return !!b; }, win: () => { if (!DGN.boss && DGN.lb) lairBossStart(); if (DGN.boss) lairBossWin(); return !!DGN.boss; }, get DGN() { return DGN; }, sevMeetTick, sevSide, leadLines: () => leadLines(), menuLines: () => menuLines(), fxBloc, fxOverOf, fxIncite, fxTick: fxWarTick, fxEnd, fxD, fxWould, fxCard, fxCardNote, dipPeace, dipWin, applyChapterFactions, fxUlmira, fxZarkTakes, fxZarkBastion, fxChompyTakes, chompyTookGrek, systems: () => SYSTEMS, openGal: () => { try { galOpen && galOpen(); } catch (e) { return e.message; } }, dipOpen: () => { dipOpen(true); DIPV.tab = "factions"; dipRender(); } };
 const RES_EMP_ON = () => !!resEmp.on; // residents only found empires if you switch it on (Resident empires panel)
 function resLentSweep() { // a resident empire that's gone sends your companions home
   const L = wanderer && wanderer.dip && wanderer.dip.lent; if (!L) return;

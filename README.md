@@ -111,6 +111,7 @@ Add one of these to the game's address to jump straight to a scene:
 - `?ending=tared` plays the Taredesiban nightmare once the title screen is up.
 - `?ending=neutralvillain` plays the neutral ending as a villain hears it (alignment −34 or lower).
 - `?ending=goodvillain` plays the good ending as a villain lives it (the slaughter in the throne room, then your answer to Hak; his fight plays in the game).
+- `?ending=timeskiphak` and `?ending=amgrekhak` play them as they go if the Chompy Empire took every Grek world (Archiostal too) in Chapter III; `?leader=hak&hakarch` previews Hak's lines about it.
 - `?ending=timeskipzark` and `?ending=amgrekzark` play Chapter IV's two years, and Am-Grek's waking words, as they go if Am-Grek had already surrendered Carax to Lord Zark in Chapter III.
 - `?leader=zarkbastion` previews Lord Zark's menu in the Bastion of Carax, darker, with Am-Grek kneeling beside him (what you get at war with the Catharsis in Chapter III after it takes Carax from the Grek).
 - `?leader=hak&dep=orion` previews a faction leader's throne room with a deputy before them, the leader's hand on their shoulder (any `?leader=` key and any companion id; `dep=off0` to `off3` for one of the faction's own officers). `?villain&dep=croxian` does the same on the evil menu.
