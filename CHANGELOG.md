@@ -3527,3 +3527,14 @@ The rewritten lines of *While you slept* now have their own recordings, so every
 - A telling loads this pack only when it plays, so the usual two years load nothing extra. If the pack can't load, those lines show as subtitles, as before.
 - Am-Grek's rewritten words when you wake on Archiostal are still subtitles only.
 - **Previews:** `?ending=timeskipzark`, `?ending=timeskiphak`, `?ending=timeskipwar`, `?ending=timeskiporion`, `?ending=timeskipcath`.
+
+### The two years, if you killed Croxian
+
+One more telling of *While you slept*, and this one goes on into Chapter IV. If you killed Croxian in Chapter III and Orion Mascar is still alive, the two years tell his offensive too.
+- It plays the usual telling, with three new lines:
+  - After Carax and the core fall: *"Before you fell, you killed Croxian Mascar. His father did not forget."* The camera goes to Sol.
+  - *"Orion Mascar took Terra Imperia from Hawthorne's corpse. Then he took the worlds around Sol, one by one, and gave them to the Catharsis."* The twelve worlds nearest Sol turn his orange, then the Catharsis's red. Earth holds.
+  - Before the last line: *"Orion Mascar waited too. On Earth, for you."* This is where he waits for you in Chapter IV.
+- The map finishes on exactly the usual Chapter IV map, and Am-Grek's words when you wake are unchanged.
+- **Which telling plays:** this is the last of them. The two game overs, Lord Zark's Bastion, Hak taking everything and the galaxy at war all come first. If you shot Orion down before the time skip, the usual telling plays.
+- The new lines are subtitles only for now. **Preview:** `?ending=timeskipcrox`.
