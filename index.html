@@ -23906,6 +23906,15 @@ const SKIP_NARR = [
 const SKIP_ZARK = /[?&]ending=(timeskip|amgrek)zark/.test(window.location.search), SKIP_HAK = /[?&]ending=(timeskip|amgrek)hak/.test(window.location.search);
 // ...or if the Chompy Empire had taken every world the Grek held, Archiostal with them, in Chapter III: Archamus comes down to take
 // back Archiostal, then Malana, while the Catharsis takes Carax in the chaos; then the two years play out as ever. ?ending=timeskiphak
+const SKIP_WAR = /[?&]ending=(timeskip|amgrek)war/.test(window.location.search);
+function warHadGalaxy() { if (SKIP_WAR) return true; try { return !!(wanderer && wanderer.dip && wanderer.dip.fx && wanderer.dip.fx.galaxyWar); } catch (e) { return false; } } // ?ending=timeskipwar
+const SKIP_NARR_WAR = {
+  all: 'Before you fell, you set the whole galaxy at war. Every empire against every other.',
+  chaos: 'In the chaos after your death, no one could tell a friend from an enemy. Borders changed by the hour.',
+  carax: 'And while the empires bled each other dry, the Catharsis waited. Then it struck, and took Carax.',
+  chip: 'World by world, the Catharsis took what the others had torn from each other, until only Malana was left to the Grek.',
+  held: 'The Republic of Timpur and the Human Federation of Sol counted their dead, and held what was left.'
+};
 function hakHadGrek() { if (SKIP_HAK) return true; try { return !!(wanderer && wanderer.dip && wanderer.dip.fx && wanderer.dip.fx.chompyGrek); } catch (e) { return false; } }
 const SKIP_NARR_HAK = {
   took: 'Before you fell, the Chompy Empire had already taken every world the Grek held. Even Archiostal flew Hak’s banners.',
@@ -24005,8 +24014,25 @@ const SN_LINES_ZARK = { // the lines whose map changes when Carax was already Za
   2: { cam: () => [0, 0, 1.6], on: () => snFlip(SN.rise || [], 'grek', .5, 4.4), min: 5.4 }
 };
 const snL = i => (SN.script[i] || { L: SN_LINES[i] || SN_LINES[0] }).L;
+function snChaos(n, at, span) { // n systems change hands, each to whoever holds the nearest system that isn't theirs: borders churning
+  const S = SN.sys, own = S.map((s, i) => i).filter(i => S[i].own && S[i].S.id !== 'sol' && S[i].S.id !== 'sgra'), pick = own.sort(() => Math.random() - .5).slice(0, n);
+  pick.forEach((i, k) => { let best = null, bd = 9; for (const o of S) if (o.own && o.own !== S[i].own) { const d = Math.hypot(o.x - S[i].x, o.y - S[i].y); if (d < bd) { bd = d; best = o; } } if (best && bd < .35) SN.q.push({ t: SN.lineT0 + at + (k / Math.max(1, pick.length - 1)) * span, i, own: best.own }); });
+}
 function snScript() { // the lines this telling plays, each with its recording (if the words are the recorded ones) and what the map does
   const orig = i => ({ t: SKIP_NARR[i], v: i, L: SN_LINES[i] });
+  const settle = { t: SKIP_NARR[9], v: 9, L: { cam: SN_LINES[9].cam, on: () => { SN_LINES[9].on(); snFlip(SN.sys.map((s, i) => i).filter(i => SN.sys[i].o4 && SN.sys[i].own !== SN.sys[i].o4), null, .2, 1.4); } } }; // (and the map settles on the Chapter IV galaxy)
+  if (SN.war) { const S = SN.sets, wide = () => [S.mid[0], S.mid[1], S.fit * .95];
+    return [orig(0),
+      { t: SKIP_NARR_WAR.all, v: -1, L: { cam: wide, on: () => { SN.pulse = 'all'; snChaos(28, .6, 4); }, min: 5.4 } },
+      { t: SKIP_NARR_WAR.chaos, v: -1, L: { cam: () => [S.mid[0] * .6, S.mid[1] * .6, S.fit * 1.15], on: () => { snChaos(45, .2, 2.4); snChaos(45, 2.8, 2.6); SN.shake = .4; }, year: 2125.4, min: 6 } },
+      { t: SKIP_NARR_WAR.carax, v: -1, L: { cam: () => [0, 0, 2.7], on: () => { SN.pulse = 'cath'; SN.q.push({ t: SN.lineT0 + 2.8, i: S.carax, own: 'cath', big: true }); }, min: 5.2 } },
+      { t: SKIP_NARR[3], v: 3, L: { cam: SN_LINES[3].cam, on: () => { SN_LINES[3].on(); snChaos(20, .4, 3); }, year: 2125.6, min: 4.6 } },
+      { t: SKIP_NARR[4], v: 4, L: { cam: SN_LINES[4].cam, on: () => { SN_LINES[4].on(); snChaos(16, .2, 2.4); }, year: 2125.9, min: 4.4 } },
+      { t: SKIP_NARR[5], v: 5, L: { cam: SN_LINES[5].cam, on: () => { SN_LINES[5].on(); snChaos(12, .2, 2.2); }, year: 2126.3, min: 4.2 } },
+      { t: SKIP_NARR_WAR.chip, v: -1, L: SN_LINES[6] },
+      orig(7),
+      { t: SKIP_NARR_WAR.held, v: -1, L: SN_LINES[8] },
+      settle]; }
   if (SN.hak) { const S = SN.sets, C = () => SN.sys[S.malana] || null;
     return [orig(0),
       { t: SKIP_NARR_HAK.took, v: -1, L: { cam: () => S.malanaXY ? [S.malanaXY[0] * .5, S.malanaXY[1] * .5, 1.6] : [0, 0, 1.6], on: () => { const s = C(); if (s) { s.big = true; s.ring = SN.lineT0 + 1.4; } SN.q.push({ t: SN.lineT0 + 1.4, i: -1 }); } } },
@@ -24015,7 +24041,7 @@ function snScript() { // the lines this telling plays, each with its recording (
       orig(3), orig(4), orig(5),
       { t: SKIP_NARR_HAK.chip, v: -1, L: SN_LINES[6] },
       orig(7), orig(8),
-      { t: SKIP_NARR[9], v: 9, L: { cam: SN_LINES[9].cam, on: () => { SN_LINES[9].on(); snFlip(SN.sys.map((s, i) => i).filter(i => SN.sys[i].o4 && SN.sys[i].own !== SN.sys[i].o4), null, .2, 1.4); } } }]; } // (and the map settles on the Chapter IV galaxy)
+      settle]; }
   return SKIP_NARR.map((t, i) => SN.zark && SKIP_NARR_ZARK[i] ? { t: SKIP_NARR_ZARK[i], v: -1, L: SN_LINES_ZARK[i] || SN_LINES[i] } : orig(i));
 }
 function snLabels() { // each empire's name over its own space: where its worlds sit thickest, clear of the other names
@@ -24047,7 +24073,7 @@ function snDraw(dt) {
     const s = SN.sys[q], own = s.own, r = i + 1 < N ? idx[p + 1] : -1, b = j + 1 < N ? idx[p + N] : -1, l = i > 0 ? idx[p - 1] : -1, t = j > 0 ? idx[p - N] : -1;
     const ownOf = n => n < 0 ? null : SN.sys[n].own, edge = ownOf(r) !== own || ownOf(b) !== own || ownOf(l) !== own || ownOf(t) !== own;
     const fresh = clamp(1 - (now - s.ft) / 1.2, 0, 1), fall = 1 - Math.pow(dist[p], 3);
-    let a = edge ? .9 : .3 + fall * .12; a += fresh * .45; if (own === SN.pulse) a += pulse * .12;
+    let a = edge ? .9 : .3 + fall * .12; a += fresh * .45; if (own === SN.pulse || SN.pulse === 'all') a += pulse * .12;
     d[o] = s.col[0]; d[o + 1] = s.col[1]; d[o + 2] = s.col[2]; d[o + 3] = clamp(a * (1 - dim * .55), 0, 1) * 255;
   }
   SN.octx.putImageData(img, 0, 0);
@@ -24107,7 +24133,7 @@ async function skipNarrStart(done, opts = {}) {
   if (SN.on) return; const el = snDom(); SN.el = el; SN.cv = el.querySelector('canvas'); SN.ctx = SN.cv.getContext('2d');
   SN.done = done; SN.replay = !!opts.replay; SN.prev = state; state = 'skipNarr';
   if (!SN.replay && wanderer) { wanderer.ch4 = Object.assign({}, wanderer.ch4, { timeSkip: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); } // two years have gone by
-  Object.assign(SN, { on: true, t: 0, last: 0, q: [], lab: {}, line: -1, lineDur: 0, cam: [0, 0, .8], yr: 2125, dim: 0, dimK: 0, pulse: null, shake: 0, legH: '', vo: [], zark: zarkHadBastion(), rise: [], script: [] }); SN.hak = !SN.zark && hakHadGrek();
+  Object.assign(SN, { on: true, t: 0, last: 0, q: [], lab: {}, line: -1, lineDur: 0, cam: [0, 0, .8], yr: 2125, dim: 0, dimK: 0, pulse: null, shake: 0, legH: '', vo: [], zark: zarkHadBastion(), rise: [], script: [] }); SN.hak = !SN.zark && hakHadGrek(); SN.war = !SN.zark && !SN.hak && warHadGalaxy(); // (a conquest of the Grek is the bigger story: it wins if both happened)
   el.classList.add('on'); el.classList.remove('map'); const fade = el.querySelector('.sn-fade'), card = el.querySelector('.sn-card');
   fade.style.transition = 'none'; fade.style.opacity = 1;
   card.querySelector('small').textContent = 'While you slept'; card.querySelector('b').textContent = '2125 AD';
@@ -24154,6 +24180,9 @@ const AMG_ZARK = { // Am-Grek's words if he had already surrendered Carax to Zar
 const AMG_HAK = { // ...if the Chompy Empire had taken every Grek world, Archiostal with them (subtitles only)
   4: 'Before you fell, the Chompy took everything we had. Even this station. Archamus came down himself to take it back.',
   5: 'And while we fought the Chompy for our own sky, the Catharsis broke its chains and took Carax. Then they took our worlds, one by one.'
+};
+const AMG_WAR = { // ...if you had set the whole galaxy at war in Chapter III (subtitles only)
+  4: 'While you slept, the whole galaxy tore itself apart, every empire against every other. The Catharsis broke its chains in the noise, and no one heard it.'
 };
 const ZARK_WAKE = [ // ????, once the red comes · CH4MYSTERIOUSVOICE1–10
   'There you are.',
@@ -24245,7 +24274,7 @@ function amgTick(dt) {
   else { const k = sm(79, 86, t); camera.position.set(lerp(3.2, 1.5, k), lerp(4.5, 58, k * k), lerp(5.5, 4, k)); camera.lookAt(0, 90, -30); } // up, out through the glass
   camera.position.x += Math.sin(t * 1.3) * .02; camera.position.y += Math.sin(t * 1.9 + 1) * .02;
   if (t >= AMG_END) { amgEnd(); return; }
-  for (const [i, [at, line]] of AMG_LINES.entries()) if (t >= at && !NM.amgSaid.has(at)) { NM.amgSaid.add(at); const alt = (zarkHadBastion() && AMG_ZARK[i]) || (!zarkHadBastion() && hakHadGrek() && AMG_HAK[i]), clip = alt ? null : NM.amgVo && NM.amgVo[i]; fbSay('AM-GREK', alt || line, clip || null, 1.3); NM.amgEnd = clip && clip.duration ? NM.amgRT + clip.duration : 0; break; }
+  for (const [i, [at, line]] of AMG_LINES.entries()) if (t >= at && !NM.amgSaid.has(at)) { NM.amgSaid.add(at); const alt = zarkHadBastion() ? AMG_ZARK[i] : hakHadGrek() ? AMG_HAK[i] : warHadGalaxy() ? AMG_WAR[i] : null, clip = alt ? null : NM.amgVo && NM.amgVo[i]; fbSay('AM-GREK', alt || line, clip || null, 1.3); NM.amgEnd = clip && clip.duration ? NM.amgRT + clip.duration : 0; break; }
   fbSubTick();
   if (!hwxRender(dt)) gfxRender(NM.scene, camera, dt);
 }
@@ -34916,7 +34945,7 @@ function fxIncite(a, b, cb) {
   const S = fxSides(w), msg = `${fxNm(a)} goes to war with ${fxNm(b)} · ${w.cb === 'subjugation' ? 'Conquest' : CBS[w.cb].name}`;
   broke.forEach(([v, o], i) => setTimeout(() => { notice(`${fxNm(v)} breaks away`, `NO LONGER ${o ? 'A PUPPET OF ' + fxNm(o).toUpperCase() : 'ANYONE’S PUPPET'}`, 4200); lootMsg(`${fxNm(v)} breaks away from ${fxNm(o)}: you can't fight your own puppet`, '#ffd36a'); }, 400 + i * 2600));
   setTimeout(() => { notice('You set them on each other', msg.toUpperCase(), 4200); sfx.alarm(); const al = [S.A.filter(x => x !== a), S.B.filter(x => x !== b)]; if (al[0].length || al[1].length) lootMsg(`${al[0].length ? `${fxList(al[0])} fight${al[0].length === 1 ? 's' : ''} beside ${fxNm(a)}` : ''}${al[0].length && al[1].length ? ' · ' : ''}${al[1].length ? `${fxList(al[1])} fight${al[1].length === 1 ? 's' : ''} beside ${fxNm(b)}` : ''}`, '#ffb36e'); }, 400 + broke.length * 2600);
-  dipSave(); return true;
+  dipSave(); try { fxGalaxyWarCheck(); } catch (e) { console.error(e); } return true;
 }
 function fxPeace(i) { const X = fxD(), w = X.wars[i]; if (!w) return; X.wars.splice(i, 1); dipSave(); lootMsg(`You brokered peace between ${fxNm(w.a)} and ${fxNm(w.b)}`, '#9fe6b0'); }
 const fxPow = ids => ids.reduce((s, id) => { const F = fxFac(id); return s + (F ? dipWorldsOf(F).length * 2 + (FX_LV[id] || 80) / 3 : 0); }, 0);
@@ -34966,6 +34995,19 @@ function fxChompyTakes() { // Chapter III: the Chompy Empire beats the Grek and 
   if (state === 'explore' || state === 'space') { notice('The Chompy Empire wins its war with the Grek', 'HAK’S BANNERS FLY OVER ARCHIOSTAL', 6000); sfx.chime(); }
   lootMsg(`The Chompy Empire takes every world the Grek held (${got.length}), Carax and Archiostal with them`, '#ffb060');
 }
+// Chapter III: every faction still standing at war with another at once, at least two of those wars your doing (the War on Sol,
+// Terra Imperia against you, Eris and the Federation with the Chompy and Timpur dragged in, counts for the ones it involves)
+function fxEngaged() {
+  const X = fxD(), on = new Set(); for (const w of X.wars) { const S = fxSides(w); for (const id of [...S.A, ...S.B]) on.add(id); }
+  try { if (tiWarOn()) for (const id of ['ti', 'hfos', 'erisian', 'chompy', 'timpur']) on.add(id); } catch (e) {}
+  const live = DIP_FAC.map(F => F.id).filter(fxLive); return { live, on: live.filter(id => on.has(id)) };
+}
+function fxGalaxyWarCheck() {
+  const X = fxD(); if (X.galaxyWar || dipCh() !== 3 || X.wars.length < 2) return; const E = fxEngaged(); if (E.live.length < 4 || E.on.length < E.live.length) return;
+  X.galaxyWar = { at: Date.now(), n: E.live.length }; dipSave();
+  if (state === 'explore' || state === 'space') { notice('Every empire against every other', 'THE GALAXY IS AT WAR', 6000); sfx.alarm(); setTimeout(() => sfx.alarm(), 500); }
+  lootMsg(`The galaxy is at war: ${fxList(E.live)}, all of them fighting at once. You did this.`, '#ff8f86');
+}
 const chompyTookGrek = () => { try { const X = wanderer && wanderer.dip && wanderer.dip.fx; return !!(X && X.chompyGrek && dipCh() === 3); } catch (e) { return false; } };
 function fxGalDraw(g, font) { // the Catharsis fleet's dash across the core, and the siege when it gets there
   if (!wanderer || !wanderer.dip || !wanderer.dip.fx) return; const w = (wanderer.dip.fx.wars || []).find(o => o.dash); if (!w) return;
@@ -34997,6 +35039,7 @@ function fxWarTick() {
     if (Math.random() < .12 && (state === 'explore' || state === 'space')) lootMsg(`⚔ ${fxNm(w.a)} and ${fxNm(w.b)} clash · ${Math.round(w.score)} (${fxNm(w.a)} at 100 wins)`, '#ffb36e');
     if (w.score >= 100) fxEnd(w, true); else if (w.score <= -100) fxEnd(w, false);
   }
+  try { fxGalaxyWarCheck(); } catch (e) { console.error(e); }
   fxSave();
 }
 function fxSave() { const c = curChar(); if (c && wanderer.dip) c.dip = wanderer.dip; saveRoster(); } // the score moved: mark it unsaved (the flags only change when a war ends, and fxEnd redraws them)
@@ -35039,6 +35082,8 @@ function fxCard() { // Diplomacy → Factions: set them on each other, and the w
   const X = fxD(), live = dipFacsNow().filter(F => fxLive(F.id)), V = DIPV.fx || (DIPV.fx = { a: '', b: '', cb: 'vassal' }), ch = dipCh();
   if (live.length < 2) return '';
   let h = `<div class="dip-card" style="--fc:#ffb36e"><h4>SET THEM ON EACH OTHER<small>${X.wars.length ? X.wars.length + ' war' + (X.wars.length === 1 ? '' : 's') + ' you started' : 'they never start one by themselves'}</small></h4><p>Pick two factions and a casus belli. Each calls its puppets (and its overlord) in beside it. A faction set on its own puppet loses it: the puppet breaks away.</p>`;
+  if (ch === 3 && X.galaxyWar) h += `<p style="color:#ff8f86"><b>The galaxy is at war.</b> Every empire against every other, and you set it burning.</p>`;
+  else if (ch === 3 && X.wars.length) { const E = fxEngaged(); h += `<p style="color:var(--mute)">At war right now: ${E.on.length} of ${E.live.length} factions.</p>`; }
   const opt = (sel, skip) => `<option value="">${skip ? 'against…' : 'Set…'}</option>` + live.filter(F => F.id !== skip).map(F => `<option value="${F.id}"${sel === F.id ? ' selected' : ''}>${dipFacName(F)}</option>`).join('');
   h += `<div class="dip-row"><select class="dip-in" data-a="fxA" style="flex:1 1 150px;min-width:0">${opt(V.a)}</select><select class="dip-in" data-a="fxB" style="flex:1 1 150px;min-width:0">${opt(V.b, V.a || '-')}</select><select class="dip-in" data-a="fxCb" style="flex:1 1 150px;min-width:0">${[['vassal', 'Vassalisation'], ['tribute', 'Tribute'], ['subjugation', 'Conquest (take worlds)']].map(([k, n]) => `<option value="${k}"${V.cb === k ? ' selected' : ''}>${n}</option>`).join('')}</select></div>`;
   if (V.a && V.b && V.a !== V.b) {
@@ -35054,7 +35099,7 @@ function fxCard() { // Diplomacy → Factions: set them on each other, and the w
 }
 if (/[?&]depdebug/.test(window.location.search)) window.NV_ED = { fdepTick, rdepTick, edAt, edPlace, edSpec, edBeaten, enemyDepTick, rdepCands, fdepCands, menuDepKey, dip, dipDeclare, ywDeclare, ywAt, resPower, resNow, saveRoster, // ?depdebug: the enemies' deputies, from the console
   get W() { return wanderer; }, get E() { return resEmp; }, get G() { return resGuild; }, get R() { return residents; }, get state() { return state; }, get TIW() { return TIW; }, body: bodyById, free: () => resFreeWorlds(), lead: () => leadMenuCalc(), guildDirty: () => resGuildDirty(),
-  land: id => landOn(bodyById(id), new THREE.Vector3(.3, 1, .2)), near: () => { const G = TIW.dep; if (G) player.position.set(G.x + 2, player.position.y, G.z + 2); return tiNear(player.position); }, use: () => { const n = tiNear(player.position); if (n) tiUse(n); return n && n.id; }, pickChoice: i => { const b = document.querySelectorAll('button.opt')[i | 0]; if (b) b.click(); return !!b; }, win: () => { if (!DGN.boss && DGN.lb) lairBossStart(); if (DGN.boss) lairBossWin(); return !!DGN.boss; }, get DGN() { return DGN; }, sevMeetTick, sevSide, leadLines: () => leadLines(), menuLines: () => menuLines(), fxBloc, fxOverOf, fxIncite, fxTick: fxWarTick, fxEnd, fxD, fxWould, fxCard, fxCardNote, dipPeace, dipWin, applyChapterFactions, fxUlmira, fxZarkTakes, fxZarkBastion, fxChompyTakes, chompyTookGrek, systems: () => SYSTEMS, openGal: () => { try { galOpen && galOpen(); } catch (e) { return e.message; } }, dipOpen: () => { dipOpen(true); DIPV.tab = "factions"; dipRender(); } };
+  land: id => landOn(bodyById(id), new THREE.Vector3(.3, 1, .2)), near: () => { const G = TIW.dep; if (G) player.position.set(G.x + 2, player.position.y, G.z + 2); return tiNear(player.position); }, use: () => { const n = tiNear(player.position); if (n) tiUse(n); return n && n.id; }, pickChoice: i => { const b = document.querySelectorAll('button.opt')[i | 0]; if (b) b.click(); return !!b; }, win: () => { if (!DGN.boss && DGN.lb) lairBossStart(); if (DGN.boss) lairBossWin(); return !!DGN.boss; }, get DGN() { return DGN; }, sevMeetTick, sevSide, leadLines: () => leadLines(), menuLines: () => menuLines(), fxBloc, fxOverOf, fxIncite, fxTick: fxWarTick, fxEnd, fxD, fxWould, fxCard, fxCardNote, dipPeace, dipWin, applyChapterFactions, fxUlmira, fxZarkTakes, fxZarkBastion, fxChompyTakes, chompyTookGrek, fxEngaged, fxGalaxyWarCheck, systems: () => SYSTEMS, openGal: () => { try { galOpen && galOpen(); } catch (e) { return e.message; } }, dipOpen: () => { dipOpen(true); DIPV.tab = "factions"; dipRender(); } };
 const RES_EMP_ON = () => !!resEmp.on; // residents only found empires if you switch it on (Resident empires panel)
 function resLentSweep() { // a resident empire that's gone sends your companions home
   const L = wanderer && wanderer.dip && wanderer.dip.lent; if (!L) return;

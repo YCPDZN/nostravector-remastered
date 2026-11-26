@@ -3468,3 +3468,22 @@ Another branch for anyone who sets the factions on each other in Chapter III: se
 - The new lines are subtitles only; every unchanged line keeps its voice. If Lord Zark took the Bastion instead, his telling plays (the two can't both happen).
 - **Previews:** `?ending=timeskiphak`, `?ending=amgrekhak`, and `?leader=hak&hakarch` for Hak's lines.
 - Under the hood: the two years now play from a script per telling, so further what-ifs can rewrite any line, or what the map does under it.
+
+### What if you set the whole galaxy at war? (Chapter III, and the two years)
+
+The last of the what-ifs for *While you slept*: everyone against everyone.
+- **In Chapter III, set the factions on each other until every faction still standing is at war with another, all at once.** At least two of those wars must be ones you started.
+  - Puppets called in beside their overlords count.
+  - So does the War on Sol: Terra Imperia's war on you, Eris and the Federation, with the Chompy and Timpur dragged in, covers the factions it involves.
+  - When it happens: *"Every empire against every other · THE GALAXY IS AT WAR"*.
+  - Diplomacy's *Set them on each other* card keeps count in Chapter III (*At war right now: 7 of 8 factions*), and says so once the whole galaxy is burning.
+- **The two years tell it the way it went.** It still ends on the same Chapter IV galaxy.
+  - *"Before you fell, you set the whole galaxy at war. Every empire against every other."* Every empire's space breathes, and the borders start to churn.
+  - *"In the chaos after your death, no one could tell a friend from an enemy. Borders changed by the hour."* Dozens of systems change hands, each to whoever holds the nearest system that isn't theirs, until the map is a patchwork.
+  - *"And while the empires bled each other dry, the Catharsis waited. Then it struck, and took Carax."*
+  - The clashes play on with the borders still churning. Then: *"World by world, the Catharsis took what the others had torn from each other, until only Malana was left to the Grek."* · *"The Republic of Timpur and the Human Federation of Sol counted their dead, and held what was left."*
+  - The map finishes on exactly the usual Chapter IV map.
+- **Waking on Archiostal:** Am-Grek's line about the Catharsis breaking its chains becomes *"While you slept, the whole galaxy tore itself apart, every empire against every other. The Catharsis broke its chains in the noise, and no one heard it."*
+- New lines are subtitles only; unchanged lines keep their voice.
+- **If more than one what-if happened,** the conquests come first, since they're the bigger story: Lord Zark taking the Bastion, then the Chompy taking the Grek's worlds, then the galaxy at war.
+- **Previews:** `?ending=timeskipwar`, `?ending=amgrekwar`.
