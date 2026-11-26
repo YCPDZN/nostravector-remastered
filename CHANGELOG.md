@@ -3439,3 +3439,14 @@ Lord Sevirrus is Hak Chompjak as a boy, three hundred years before his redemptio
 - **As their deputy:** Sevirrus has his own lines for serving each of them, six good and six evil. They play on the menu, where Hak's hand on his shoulder is his own hand three hundred years on (or Zark's, cold), and when you come to fight him.
 - **Spoiler-safe:** Hak's side waits until you've met Hak, as the Sevirrus and Hak Easter egg does.
 - Lines in `data/depLines2.js` (`_sev`); subtitles only. **Previews:** `?leader=alphinos&dep=sev-sevirrus` and `?leader=zark&dep=sev-sevirrus` (or `zarkbastion`).
+
+### Phones, and fixes (deputies, faction wars, the Bastion)
+
+Every screen from the last few updates was checked on a phone (iPhone 13 size), held upright and sideways: the leader menus with a deputy, Zark's Bastion, the villain menu with a deputy, Diplomacy's faction cards and *Set them on each other*, the galaxy map's Catharsis fleet, the deputy waiting on the ground and the fight, and the two years after Am-Grek's surrender.
+- **The Catharsis fleet's label on the galaxy map** sat right on top of the core's crowded names (Steca Prime, Sagittarius A*) and couldn't be read on a phone. It now sits on its own dark plate above the fleet, with a thread down to it, kept on screen.
+- **Zark's Bastion menu:** the title and his words were too dark to read on a phone. Both are a little brighter now, still crimson.
+- **Set them on each other:** the three pickers share the row evenly, and stack cleanly on a phone held upright.
+- **Facing an enemy's deputy:** the choice now says who you're facing (*Their deputy · LV …*) rather than *Your reply*.
+- **Fixed:** while you had set factions on each other, every world's flags were redrawn every ten seconds, even when nothing had changed hands. Now the score just ticks, and the flags are redrawn only when a war ends.
+- **Fixed:** the notice when a war between factions ended cut its sentence off mid-word. It now says who won, and the whole outcome goes in the log.
+- **Fixed:** if you paused or took off partway through the conversation with Hak or Zark about Sevirrus, the next part could pop up wherever you were. It now waits until you're back on your feet.
