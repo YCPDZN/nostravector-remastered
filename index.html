@@ -2927,11 +2927,13 @@ const LEAD_ROOMS = { // each throne room: its colours (the menu's look and its U
 };
 const LEAD_WHERE = { karribassa: ['Janira Prime · the throne room', 'Karribassa'], alphinos: ['Aridaxx · the throne of the Chompy', 'Alphinos'], commons: ['Earth · the Federation', 'House of Commons'], citadel: ['Eris · the throne room', 'Citadel el Erisconos'], archiostal: ['the throne room', 'Archiostal'], bastion: ['Carax · the throne room', 'The Bastion'], timpur: ['Timpur · the throne room', 'Timpur Prime'] };
 const forceLead = (window.location.search.match(/[?&]leader=(\w+)/) || [])[1] || null;
+const forceDep = (window.location.search.match(/[?&]dep=([\w-]+)/) || [])[1] || null; // ?leader=hak&dep=orion (or ?villain&dep=orion): a deputy, with a hand on their shoulder
+const LEAD_ROOM_FAC = { karribassa: 'chompy', alphinos: 'chompy', commons: 'hfos', citadel: 'erisian', bastion: 'grek', timpur: 'timpur', zark: 'catharsis' };
 const LEAD_FORCE = { hak: ['karribassa', ['hak']], alphinos: ['alphinos', ['hak']], darius: ['commons', ['darius']], vishara: ['citadel', ['vishara']], alexia: ['citadel', ['alexia']],
   archamus: ['archiostal', ['archamus']], grek: ['archiostal', ['archamus', 'amgrek']], amgrek: ['bastion', ['amgrek']], timpur: ['timpur', ['taredesiba']], zark: ['zark', ['zark']] };
 const LEADM = { at: -1, list: [], i: 0, room: null, rooms: {}, R: {}, H: {}, thr: {}, key: '', yaw0: null, shown: false };
 function leadMenuCalc() { // the throne rooms of every faction you're at war with, in the order Diplomacy lists them
-  if (forceLead && LEAD_FORCE[forceLead]) { const [room, ks] = LEAD_FORCE[forceLead]; return [{ room, ks, fac: { karribassa: 'The Chompy Empire', alphinos: 'The Chompy Empire', commons: 'Human Federation of Sol', citadel: 'The Erisian Empire', archiostal: ks.length > 1 ? 'The Grek Empire' : 'The Order of Archamus', bastion: 'The Grek Empire', timpur: 'The Republic of Timpur', zark: 'The Catharsis' }[room], at: room === 'zark' ? (ALL_BODIES.find(o => o.land && String(o.fac3 || o.faction || '').startsWith('The Catharsis') && sysById(o.sys).home === o.id) || {}).id : null }]; }
+  if (forceLead && LEAD_FORCE[forceLead]) { const [room, ks] = LEAD_FORCE[forceLead]; return [{ room, ks, fac: { karribassa: 'The Chompy Empire', alphinos: 'The Chompy Empire', commons: 'Human Federation of Sol', citadel: 'The Erisian Empire', archiostal: ks.length > 1 ? 'The Grek Empire' : 'The Order of Archamus', bastion: 'The Grek Empire', timpur: 'The Republic of Timpur', zark: 'The Catharsis' }[room], at: room === 'zark' ? (ALL_BODIES.find(o => o.land && String(o.fac3 || o.faction || '').startsWith('The Catharsis') && sysById(o.sys).home === o.id) || {}).id : null, fid: LEAD_ROOM_FAC[room] || (ks.length > 1 ? 'grek' : 'order'), dep: forceDep ? (/^off\d$/.test(forceDep) ? 'off:' + forceDep.slice(3) : 'comp:' + forceDep) : null }]; }
   if (!wanderer || !wanderer.dip || effCh() < 3 || isCh4Menu()) return [];
   const D = wanderer.dip, W = D.wars || {}, ch = clamp(chNow(), 3, 5), out = []; // the story's chapter (Chapter IV before the time skip counts as IV here: Hak in Alphinos, Am-Grek beside Archamus, no Zark)
   for (const F of dipFacsNow()) {
@@ -2944,7 +2946,7 @@ function leadMenuCalc() { // the throne rooms of every faction you're at war wit
     else if (F.id === 'order') out.push({ room: 'archiostal', ks: ['archamus'] });
     else if (F.id === 'grek') out.push(ch === 3 ? { room: 'bastion', ks: ['amgrek'] } : { room: 'archiostal', ks: ['archamus', 'amgrek'] }); // Archamus hooded, on his throne
     else if (F.id === 'catharsis' && ch === 3) { const Lo = leaderOf(F); if (Lo) out.push({ room: 'zark', ks: ['zark'], at: Lo.at }); } // Chapter III only: in Chapter IV he's the voice on the menu he already is
-    if (out.length > n0) out[out.length - 1].fac = dipFacName(F);
+    if (out.length > n0) { const o = out[out.length - 1]; o.fac = dipFacName(F); o.fid = F.id; const X = typeof fdepOf === 'function' ? fdepOf(F.id) : null; o.dep = X ? X.who : null; } // their deputy stands before them, the leader's hand on their shoulder
   }
   return out;
 }
@@ -2957,6 +2959,12 @@ function leadLines() { // their lines, scrambled and signed; two leaders share t
   const E = leadCur(); if (!E) return [];
   const sets = E.ks.map(k => (LEAD_LINES[k === 'archamusU' ? 'archamus' : k] || []).slice().sort(() => Math.random() - .5).map(t => ({ t, who: leadName(k) })));
   const out = [], n = Math.max(...sets.map(s => s.length)); for (let i = 0; i < n; i++) for (const s of sets) if (s[i]) out.push(s[i]);
+  if (E.dep) try { // their deputy has their say too, between the leader's lines
+    const Q = edLines(E.dep, 'lead', E.fid); if (Q && Q.length) {
+      const F = DIP_FAC.find(o => o.id === E.fid), x = { leader: F ? fdepLeader(F) : '', fac: E.fac || (F ? F.name : ''), player: wanderer ? wanderer.name : 'wanderer' }, nm = edName(E.dep, E.fid), sh = Q.slice().sort(() => Math.random() - .5), mix = [];
+      out.forEach((q, i) => { mix.push(q); mix.push({ t: edFill(sh[i % sh.length], x), who: nm }); }); return mix;
+    }
+  } catch (e) {}
   return out;
 }
 function leadNext() { // the next leader's turn (at war with more than one)
@@ -3021,10 +3029,27 @@ function menuMusicSync(force) { // the title music: a faction leader's own theme
   if (lth) sfx.menuExt(id, () => leaderTheme(lth), base);
   sfx.menuTrack(id);
 }
+function leadDepRig(E) { // the deputy's body, loaded once per deputy
+  const D = LEADM.dep; if (D && D.who === E.dep) return D.R ? D : null;
+  if (D && D.R && D.R.root.parent) D.R.root.parent.remove(D.R.root);
+  const N = LEADM.dep = { who: E.dep, R: null, H: 1.85 }, F = DIP_FAC.find(o => o.id === E.fid) || null;
+  try { edRig(E.dep, F, null).then(R => { if (LEADM.dep !== N || !R) return; R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); R.root.scale.setScalar(1); R.root.updateMatrixWorld(true); N.H = new THREE.Box3().setFromObject(R.root).getSize(new THREE.Vector3()).y || 1.85; R.mode = 'idle'; N.R = R; }).catch(e => console.error(e)); } catch (e) { console.error(e); }
+  return null;
+}
+function leadDepGeo(lh, D) { // how big the deputy stands, and where, so the leader's right hand lands on their left shoulder
+  const H = D.H || 1.85, dh = Math.min((Math.min(H, 2.6) + Math.max(0, H - 2.6) * .25) * 1.25, lh * .9), th = Math.acos(clamp(.82 * (lh - dh) / (.38 * lh), .1, .75));
+  return { dh, k: dh / H, th, f: .38 * lh * Math.sin(th) * .82, sd: -.17 * lh };
+}
+function leadDepPose(R, D, g, x, y, z, a, dt) {
+  const S = (o, ax, v) => { const r = o && R.rest && R.rest.get(o); if (r) o.rotation[ax] = r[ax] + v; }, br = Math.sin(time * 1.3) * .03;
+  S(R.ra, 'x', -g.th + br * .3); S(R.la, 'x', .05 + br); // the right hand on their shoulder, the left at their side, breathing slow
+  const fx = Math.sin(a), fz = Math.cos(a), px = x + fx * g.f + fz * g.sd, pz = z + fz * g.f - fx * g.sd, Q = D.R;
+  if (Q.root.parent !== scene) scene.add(Q.root); Q.root.visible = true; Q.root.position.set(px, y, pz); Q.root.rotation.y = a; Q.root.scale.setScalar(g.k); Q.mode = 'idle'; animRig(Q, dt);
+}
 function menuLeadTick(dt) { // the throne room, and whoever holds it
   if (state === 'title') try { menuMusicSync(false); } catch (e) {} // (checked every frame: the wars can be read after the menu first set its music)
   const on = state === 'title' && leadOn() && menuLook !== 'space', E = on ? leadCur() : null;
-  if (!E) { if (LEADM.shown) { LEADM.shown = false; if (LEADM.room) LEADM.room.visible = false; for (const k in LEADM.R) if (LEADM.R[k]) LEADM.R[k].root.visible = false; player.visible = true; rocks.visible = true; crystals.visible = true; LEADM.yaw0 = null; document.body.classList.remove('lead'); } return; }
+  if (!E) { if (LEADM.shown) { LEADM.shown = false; if (LEADM.dep && LEADM.dep.R) LEADM.dep.R.root.visible = false; if (LEADM.room) LEADM.room.visible = false; for (const k in LEADM.R) if (LEADM.R[k]) LEADM.R[k].root.visible = false; player.visible = true; rocks.visible = true; crystals.visible = true; LEADM.yaw0 = null; document.body.classList.remove('lead'); } return; }
   LEADM.shown = true; player.visible = false;
   if (LEADM.yaw0 == null) LEADM.yaw0 = titleYaw;
   const p = player.position, Rm = LEAD_ROOMS[E.room];
@@ -3035,12 +3060,18 @@ function menuLeadTick(dt) { // the throne room, and whoever holds it
     for (const f of room.userData.flames || []) { const k = 1 + Math.sin(time * 9 + f.position.x) * .12; f.scale.set(k, 1 + Math.sin(time * 7 + f.position.x) * .2, k); }
   } else { if (LEADM.room) LEADM.room.visible = false; rocks.visible = true; crystals.visible = true; }
   for (const k in LEADM.R) if (LEADM.R[k] && !E.ks.includes(k)) LEADM.R[k].root.visible = false;
+  if (LEADM.dep && LEADM.dep.R && LEADM.dep.who !== E.dep) LEADM.dep.R.root.visible = false;
   const a = LEADM.yaw0, fx = Math.sin(a), fz = Math.cos(a), n = E.ks.length;
   E.ks.forEach((k, i) => {
     const R = leadRig(k); if (!R) return; if (R.root.parent !== scene) scene.add(R.root); R.root.visible = true;
     const h = LEADM.H[k] || 2, s = (Math.min(h, 2.6) + Math.max(0, h - 2.6) * .25) / h * 1.25, side = n > 1 ? (i - (n - 1) / 2) * 2.1 : 0; // the tallest are brought down to fit, but still loom
     const x = p.x + fz * side, z = p.z - fx * side; R.root.scale.setScalar(s); R.root.rotation.y = a; R.mode = 'idle'; animRig(R, dt);
     let y = p.y; const tk = E.room + ':' + k;
+    const DR = i === 0 && E.dep ? leadDepRig(E) : null; // a deputy: the leader rises and stands behind them
+    if (DR) { const g = leadDepGeo(h * s, DR), cx = x - fx * g.f * .5 - fz * g.sd * .5, cz = z - fz * g.f * .5 + fx * g.sd * .5; R.root.position.set(cx, y, cz);
+      if (leadSeated(E.room, k) && LEADM.room && LEADM.room.visible) { const T = LEADM.thr[tk] || (LEADM.thr[tk] = leadThrone(E.room)); if (T.parent !== LEADM.room) LEADM.room.add(T); T.visible = true; T.scale.setScalar(.9 * s); T.position.set(side, 0, -1.9); } // the empty throne behind them
+      else if (LEADM.thr[tk]) LEADM.thr[tk].visible = false;
+      leadDepPose(R, DR, g, cx, y, cz, a, dt); return; }
     if (leadSeated(E.room, k) && LEADM.room && LEADM.room.visible) { // seated on their throne: Hak in Alphinos, Archamus in Archiostal
       const S2 = (o, ax, v) => { const r = o && R.rest && R.rest.get(o); if (r) o.rotation[ax] = r[ax] + v; };
       const kn = !!(R.rk && R.lk); S2(R.rl, 'x', kn ? -1.5 : -1.3); S2(R.ll, 'x', kn ? -1.5 : -1.3); if (kn) { S2(R.rk, 'x', 1.5 * (R.kneeSign || 1)); S2(R.lk, 'x', 1.5 * (R.kneeSign || 1)); } S2(R.ra, 'x', -.45); S2(R.la, 'x', -.45); // thighs forward, shins straight down
@@ -3135,15 +3166,23 @@ const VILE_FOE_LINES = 2; // how many lines each villain says before the next on
 function vileFoe() { const L = vileFoes(); return L.length ? L[(VILE.foeI || 0) % L.length] : null; }
 // ---- the evil menu with a deputy: they hold the world, and you stand behind them, a hand on their shoulder (whatever their alignment) ----
 const depMenu = () => !forceVile && ownVile() && !!depOf();
+function menuDepKey() { // who holds the world on the evil menu: your deputy, or the deputy of the villain resident at war with you (or ?villain&dep=…)
+  try {
+    if (forceVile) return forceDep && depCan(forceDep) ? 'comp:' + forceDep : null;
+    if (depMenu()) return 'comp:' + depOf();
+    if (!villainMenu()) return null; const F = vileFoe(), e = F && resEmp.emp[F.id]; return e && e.dep && e.dep.who || null;
+  } catch (e) { return null; }
+}
+const menuDepOn = () => !!menuDepKey();
 const DEPM = { id: null, R: null, H: 1.85 };
 function menuDepTick(dt, on) { // true while their body is in and holding the world
-  const id = on ? depOf() : null;
+  const id = on ? menuDepKey() : null; // 'comp:…' (a companion) or 'res:…' (a villain resident's guildmate)
   if (DEPM.R && DEPM.id !== id) DEPM.R.root.visible = false;
   if (!id) { if (VILE.g && VILE.g.parent !== inner) inner.add(VILE.g); return false; }
   if (DEPM.id !== id) {
     if (DEPM.R && DEPM.R.root.parent) DEPM.R.root.parent.remove(DEPM.R.root);
-    DEPM.id = id; DEPM.R = null; const L = depAlL(id); DEPM.H = (L && L.h) || 1.85;
-    companionRig(id).then(R => { if (DEPM.id !== id) return; R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); DEPM.R = R; }).catch(() => null);
+    DEPM.id = id; DEPM.R = null; const cid = id.startsWith('comp:') ? id.slice(5) : null, L = cid && depAlL(cid); DEPM.H = (L && L.h) || 1.85;
+    (cid ? companionRig(cid) : edRig(id, null, null)).then(R => { if (DEPM.id !== id || !R) return; R.root.traverse(o => { if (o.isMesh) o.castShadow = true; }); if (!cid) { R.root.updateMatrixWorld(true); DEPM.H = new THREE.Box3().setFromObject(R.root).getSize(new THREE.Vector3()).y || 1.85; } DEPM.R = R; }).catch(() => null);
   }
   const R = DEPM.R; if (!R) { if (VILE.g && VILE.g.parent !== inner) inner.add(VILE.g); return false; } // until their body is in, you hold it yourself
   if (R.root.parent !== scene) scene.add(R.root);
@@ -3200,7 +3239,7 @@ function menuVileTick(dt) {
   VILE.g.visible = true; VILE.ball.rotation.y += dt * (VILE.hush ? 0 : VILE.sq > 0 ? 2.2 : .35); // when they go still, so does the world
   const sq = VILE.sq > 0 ? (VILE.sq > .85 ? (1.1 - VILE.sq) / .25 : Math.max(0, VILE.sq / .85) ** 1.6) : 0, jj = sq * (Math.random() - .5) * .08; // the crush: in hard, a shudder, then it springs back
   VILE.ball.scale.set(1 - sq * .32 + jj, 1 - sq * .48 - jj, 1 - sq * .32 + jj); VILE.air.scale.setScalar(1 - sq * .25 + Math.abs(jj));
-  const dep = menuDepTick(dt, depMenu()), H = dep ? DEPM.H : (SPECIES[curSpecies] && SPECIES[curSpecies].height) || 2; // your deputy holds it, when you have one
+  const dep = menuDepTick(dt, menuDepOn()), H = dep ? DEPM.H : (SPECIES[curSpecies] && SPECIES[curSpecies].height) || 2; // your deputy holds it, when you have one
   VILE.g.position.set(0, H * .5 + Math.sin(time * 1.6) * .015 + (VILE.laugh > 0 ? Math.abs(Math.sin(time * 21)) * .03 : 0), H * .27); VILE.glow.material.opacity = .42 + Math.sin(time * 2.1) * .1 + sq * .5 + VILE.hbv * .08; // between their hands, breathing (and flaring as it's crushed)
 }
 function vileBeats(dt) {
@@ -3450,6 +3489,10 @@ function menuLines() {
     const nm = depFull(id), m = DQ.length, o2 = Math.floor(Math.random() * m), out = [];
     for (let i = 0; i < m; i++) { out.push({ t: DQ[(i * 37 + o2) % m], who: nm }); if (i % 3 === 2) out.push(vile[(i / 3 | 0) % vile.length]); }
     vile = out; } }
+  else { const dk = menuDepKey(); if (dk) { const Q = edLines(dk, 'res'); if (Q && Q.length) { // the villain resident's deputy does most of the talking, about the ruler behind them; the ruler gets a word in after every two
+    const e = F && resEmp.emp[F.id], x = { ruler: who, emp: e ? e.name : 'the empire', player: wanderer ? wanderer.name : 'wanderer' }, nm = edName(dk), m = Q.length, o2 = Math.floor(Math.random() * m), out = [];
+    for (let i = 0; i < m; i++) { out.push({ t: edFill(Q[(i * 7 + o2) % m], x), who: nm }); if (i % 2 === 1) out.push(vile[(i / 2 | 0) % vile.length]); }
+    vile = out; } } }
   if (!Z && hawMenu()) { const hl = hawList(), out = []; vile.forEach((q, i) => { out.push(q); if (i % 3 === 2) out.push(hl[(i / 3 | 0) % hl.length]); }); return out; } // Hawthorne gets his word in on the evil menu too
   if (!Z) return vile;
   const zt = tauntList(), out = []; vile.forEach((q, i) => { out.push(q); if (i % 3 === 2) out.push({ t: zt[(i / 3 | 0) % zt.length] }); }); return out; // the voice still gets its word in
@@ -3466,13 +3509,13 @@ function applyMenuEra() {
   const bt = $('#briefT'); if (bt) bt.innerHTML = briefNow();
   const ys = $('#yearStamp'); if (ys) ys.textContent = postSkip() ? '2127 AD' : '2125 AD';
   const st = $('#setStyle'); if (st) { st.style.display = chNow() >= 5 ? '' : 'none'; st.querySelector('.val').textContent = menuStyle === 'red' ? 'BLOOD RED' : 'NORMAL'; }
-  const vile = villainMenu(), mode = `${on}|${vile}|${wanderer ? wanderer.id : ''}|${depMenu() ? 'dep:' + depOf() + (depEvil(depOf()) ? 'e' : 'g') + (DEPL ? 1 : 0) + '|' : ''}${vile ? (vileFoes().length > 1 ? 'foes:' + vileFoes().map(c => c.id).join(',') : vileRaceSp() + ':' + vileSig() + ':' + ((vileFoe() || {}).id || '')) : 0}`;
+  const vile = villainMenu(), mode = `${on}|${vile}|${wanderer ? wanderer.id : ''}|${depMenu() ? 'dep:' + depOf() + (depEvil(depOf()) ? 'e' : 'g') + (DEPL ? 1 : 0) + '|' : ''}${(() => { try { const k = menuDepKey(); return k ? 'md:' + k + (DEPL2 ? 1 : 0) + '|' : ''; } catch (e) { return ''; } })()}${vile ? (vileFoes().length > 1 ? 'foes:' + vileFoes().map(c => c.id).join(',') : vileRaceSp() + ':' + vileSig() + ':' + ((vileFoe() || {}).id || '')) : 0}`;
   const lead = !on && leadOn(), LE = lead ? leadCur() : null; document.body.classList.toggle('lead', lead); if (LE) document.body.dataset.lead = LE.room; else delete document.body.dataset.lead; // a faction leader's own colours
   const haw = !on && hawMenu(); document.body.classList.toggle('ch4', on); document.body.classList.toggle('vile', vile); document.body.classList.toggle('haw', haw); // Hawthorne's cyan in Chapter III // the evil menu, with the blood red stacked on it when that's on too
   menuMusicSync(true);
   if (menuLook && (state === 'title' || state === 'loading')) setMenuLook(menuLookFor());
   try { menuVileSync(); } catch (e) {}
-  const lk = LE ? LE.room + ':' + LE.ks.join(',') : '';
+  const lk = LE ? LE.room + ':' + LE.ks.join(',') + (LE.dep ? '>' + LE.dep + (() => { try { return DEPL2 ? 1 : 0; } catch (e) { return 0; } })() : '') : '';
   if ((on || vile || haw || lead) && (!taunt.on || taunt.mode !== mode + '|' + haw + '|' + lk)) { taunt.on = true; taunt.mode = mode + '|' + haw + '|' + lk; taunt.i = 0; taunt.L = null; runTaunts(++taunt.tok); }
   else if (!on && !vile && !haw && !lead && taunt.on) { taunt.on = false; taunt.mode = ''; taunt.tok++; $('#tauntT').textContent = ''; const w = $('#tauntW'); if (w) w.textContent = ''; }
 }
@@ -4869,7 +4912,7 @@ function updateAnim(dt) {
     damp(inner.rotation, 'x', sw * .16, 6, dt);
   } else {
     const b = Math.sin(time * 1.6);
-    if (state === 'title' && villainMenu()) { if (depMenu() && DEPM.R && DEPM.R.root.visible) depPose(dt); else vilePose(dt, down); return; } // the evil menu: breathing, shaking, and doing things a body shouldn't
+    if (state === 'title' && villainMenu()) { if (menuDepOn() && DEPM.R && DEPM.R.root.visible) depPose(dt); else vilePose(dt, down); return; } // the evil menu: breathing, shaking, and doing things a body shouldn't
     for (const l of [rig.rl, rig.ll]) damp(l.rotation, 'x', 0, 8, dt);
     damp(rig.ra.rotation, 'x', b * .04, 6, dt); damp(rig.la.rotation, 'x', -b * .04, 6, dt);
     damp(rig.ra.rotation, 'z', down - .04 - b * .03, 6, dt); damp(rig.la.rotation, 'z', -down + .04 + b * .03, 6, dt);
@@ -14898,7 +14941,7 @@ const pick = a => a[Math.floor(Math.random() * a.length)];
 
 // ---- what's on the ground near you: Charon and Kizna, the stronghold, a patrol, a Pontifex on your trail ----
 const TIW = { area: null, chn: null, st: null, pat: null, hunt: null };
-function tiWorldClear() { siegeClear(); solDuelDrop(); try { orbDrop(); } catch (e) { console.error(e); } for (const k of ['chn', 'hak', 'cyg', 'st', 'pat', 'hunt', 'gov', 'siege', 'spat', 'hawm', 'alx', 'sspat']) { const o = TIW[k]; if (o && o.R) for (const R of o.R) if (R && R.cb) { const i = fauna.list.indexOf(R.cb); if (i >= 0) fauna.list.splice(i, 1); } if (o && o.g && o.g.parent) o.g.parent.remove(o.g); TIW[k] = null; } }
+function tiWorldClear() { siegeClear(); solDuelDrop(); try { orbDrop(); } catch (e) { console.error(e); } for (const k of ['chn', 'hak', 'cyg', 'st', 'pat', 'hunt', 'gov', 'dep', 'siege', 'spat', 'hawm', 'alx', 'sspat']) { const o = TIW[k]; if (o && o.R) for (const R of o.R) if (R && R.cb) { const i = fauna.list.indexOf(R.cb); if (i >= 0) fauna.list.splice(i, 1); } if (o && o.g && o.g.parent) o.g.parent.remove(o.g); TIW[k] = null; } }
 function tiLanded(P) {
   tiWorldClear(); TIW.area = curArea(); if (!P) return;
   if (podMode() && !(wanderer.ch4 && wanderer.ch4.podLanded)) { setTimeout(() => podDeath(P), 1600); return; } // the first world the pod comes down on
@@ -14916,14 +14959,14 @@ function tiLanded(P) {
   if (CH3S().charonMet && !CH3S().jamesRev && ch3Now()) jrvWhenFree(3200); // you left before it played: it finds you on the next world
   if (P.sys === 'sol' && !P.dock) tiEncounters(P);
   if (ch3Now() && CH3S().hawMars && !dip().tiWar && !dipRes('ti')) setTimeout(tiWarStart, 3000); // a save from before the war
-  if (warBombed(P)) govPlace(P, warFacOf(P));
+  { const q = edAt(P); if (q) edPlace(P, q); else if (warBombed(P)) govPlace(P, warFacOf(P)); } // their deputy holds this world: they wait instead of the governor
 }
 function tiTick(dt) {
   if (!TIW.area) return;
   if (curArea() !== TIW.area) { tiWorldClear(); TIW.area = null; return; }
   const p = player.position;
   siegeTick(dt); siegePatrolTick(dt); solPatrolTick(dt); solDuelTick(dt); orbTick(dt);
-  for (const k of ['chn', 'hak', 'cyg', 'st', 'pat', 'hunt', 'gov', 'siege', 'spat', 'hawm', 'alx', 'sspat']) { const o = TIW[k]; if (!o) continue; o.g.visible = !DGN.on;
+  for (const k of ['chn', 'hak', 'cyg', 'st', 'pat', 'hunt', 'gov', 'dep', 'siege', 'spat', 'hawm', 'alx', 'sspat']) { const o = TIW[k]; if (!o) continue; o.g.visible = !DGN.on;
     for (const R of [...(o.R || [])]) { if (!R) continue; if (R.cb && tiSoldierTick(R, o, dt)) continue;
       if (R.walkTo) { const q = R.root.position, dx = R.walkTo.x - q.x, dz = R.walkTo.z - q.z, d = Math.hypot(dx, dz); if (d > .15) { const st = Math.min(d, 1.5 * dt); q.x += dx / d * st; q.z += dz / d * st; R.root.rotation.y = Math.atan2(dx, dz); R.mode = 'walk'; animRig(R, dt); continue; } R.walkTo = null; } // walking up (Hak's allies)
       if (R.pray) { R.mode = 'idle'; animRig(R, dt); R.root.position.y = R.baseY - .42; R.root.rotation.x = .1; if (R.ra) R.ra.rotation.x = -1.1; if (R.la) R.la.rotation.x = -1.1; continue; } else if (R.root.rotation.x) R.root.rotation.x = 0; // on his knees, praying
@@ -14964,6 +15007,7 @@ function tiNear(p) {
   if (TIW.st && d(TIW.st.dx, TIW.st.dz) < 4) return { id: 'tiStation', label: 'The station · Terra Imperia stronghold' };
   if (TIW.pat && TIW.pat.R.some(R => R.lead && R.cb && !R.cb.dead) && d(TIW.pat.x, TIW.pat.z) < 5) return { id: 'tiPatrol', label: `Terra Imperia patrol · ${TIW.pat.rank} ${TIW.pat.name}` };
   if (TIW.gov && d(TIW.gov.x, TIW.gov.z) < 4.5) return { id: 'tiGov', label: `Governor ${TIW.gov.name} · ${TIW.gov.P.name}` };
+  if (TIW.dep && d(TIW.dep.x, TIW.dep.z) < 4.5) return { id: 'edDep', label: `${TIW.dep.name} · their deputy on ${TIW.dep.P.name}` };
   if (TIW.hawm && !SB.B && d(TIW.hawm.x, TIW.hawm.z) < 5) return { id: 'hawm', label: 'Thomas Hawthorne · Grand Imperarch' };
   if (TIW.alx && !SB.B && d(TIW.alx.x, TIW.alx.z) < 5) return { id: 'alx', label: 'Alexia Erisconos · usurper of Eris' };
   if (TIW.hunt && d(TIW.hunt.x, TIW.hunt.z) < 4.2) return { id: 'pontHunt', label: `${TIW.hunt.P.name} · ${pontTitle(TIW.hunt.P)}` };
@@ -14983,6 +15027,7 @@ function tiUse(n) {
       openChoice('THE ANTARCTIC STATION · TERRA IMPERIA', [{ text: `Go in and face ${X.full} (lv ${X.lv})`, onPick: () => jamesWarn(X) }, { text: 'Not yet', onPick: () => { lootMsg('James · “Run, then. You’re good at that.”', '#ff6a6e'); const c = jbfClip(8); if (c) sfx.playNarr(c, 1.3); } }]); };
     run(0); });
   else if (n.id === 'tiPatrol') { const T = TIW.pat, X = soldierSpec(T); openChoice(`${T.rank.toUpperCase()} ${T.name.toUpperCase()} · TERRA IMPERIA`, [{ text: `Fight ${T.rank} ${T.name} (lv ${X.lv})`, onPick: () => tiFight('soldier', X, { name: T.name, rank: T.rank, sex: T.sex }) }, { text: 'Leave them be', onPick: () => {} }]); }
+  else if (n.id === 'edDep') edFight();
   else if (n.id === 'tiGov') { const G = TIW.gov, X = govSpec(G); openChoice(`GOVERNOR ${G.name.toUpperCase()} · ${G.P.name.toUpperCase()}`, [{ text: `Fight Governor ${G.name} (lv ${X.lv}) · win and ${G.P.name} is yours`, onPick: () => tiFight('gov', X, G.P.id) }, { text: 'Not yet', onPick: () => {} }]); }
   else if (n.id === 'pontHunt') { const P = TIW.hunt.P, X = pontSpec(P), [he, him] = pontHe(P); openChoice(`${P.name.toUpperCase()} · ${pontTitle(P).toUpperCase()}`, [{ text: `Face ${him} (lv ${X.lv}) · beat ${him} to make ${him} yours`, onPick: () => tiFight('pont', X, P.id) }, { text: `Not now (${he} keeps hunting you, and grows stronger every time ${he} kills you)`, onPick: () => {} }]); }
 }
@@ -17673,6 +17718,7 @@ function tiBossWin(B) {
   const lb = DGN.lb, gone = () => setTimeout(() => { if (!lb || DGN.lb !== lb) return; if (lb.mesh.parent) lb.mesh.parent.remove(lb.mesh); DGN.lb = null; }, 2600);
   const wc = L.tiKind === 'james' ? jbfClip(JBF_IDX.win) : null, wait = L.tiKind === 'james' ? Math.max(3400, wc ? wc.duration * 1000 + 300 : 0) + 500 : 1800; // James has his say first, then you choose
   if (L.tiKind === 'gov') { setTimeout(() => { gone(); tiCapture(L.tiRef); }, 2400); return; }
+  if (L.tiKind === 'dep') { setTimeout(() => { gone(); try { edBeaten(L.tiRef); } catch (er) { console.error(er); } }, 2400); return; } // an enemy's deputy: the world, the war score, and a companion home
   if (L.tiKind === 'cygnus') { cygWin(gone); return; }
   if (L.tiKind === 'hawm') { setTimeout(() => { gone(); hawMercWin(); }, 2600); return; } // the War of Restoration
   if (L.tiKind === 'alexia') { setTimeout(() => { gone(); alexiaWin(); }, 2600); return; }
@@ -17754,7 +17800,7 @@ const GOV_FIRST = { chompy: ['Kraxa', 'Hiss-Tamar', 'Vorro', 'Chazzik', 'Ombrel'
 async function govRig(F, lead) {
   if (!F || F.id === 'ti') return tiSoldierRig(lead ? 'm' : undefined);
   const sp = FAC_SP[F.id] || 'human', src = await townModel(sp); if (!src) return null;
-  const m = dressTownsfolk(src, { sp }), R = autoRig(m, lead ? 2.0 : 1.85); armRig(R, 'rifle');
+  const m = dressTownsfolk(src, { sp, c: [lead ? 0x2a2630 : 0x3a3f4a, new THREE.Color(F.col).getHex()] }), R = autoRig(m, lead ? 2.0 : 1.85); armRig(R, 'rifle'); // (in their faction's colours: some species' parts need them)
   const col = new THREE.Color(F.col); R.root.traverse(o => { if (!o.isMesh || !o.material) return; for (const q of Array.isArray(o.material) ? o.material : [o.material]) if (q.emissive) { q.emissive.copy(col); q.emissiveIntensity = .12; } o.castShadow = !tiPhone(); });
   return R;
 }
@@ -25603,6 +25649,7 @@ function dipRender() {
           <input class="dip-in" data-a="setName" data-f="${F.id}" value="${sel.name.replace(/"/g, '&quot;')}" maxlength="40"><button class="btn small primary" data-a="settle" data-f="${F.id}"><span>Make them your puppet</span></button></div>`;
       } else if (W) {
         { const Lo = leaderOf(F), X = Lo && Lo.list[0], at = Lo && bodyById(Lo.at); if (X && at && !W.won) h += `<p style="color:#ffd36a">${X.full} (lv ${X.lv})${Lo.list[1] ? ` and ${Lo.list[1].full} (lv ${Lo.list[1].lv})` : ''} wait${Lo.list[1] ? '' : 's'} in their hall on ${at.name}. Land there and beat them to win the war outright.</p>`; }
+        try { h += fdepNote(F); } catch (er) {}
         h += `<div class="dip-bar"><i style="width:${W.score | 0}%"></i></div><p>War score ${W.score | 0}/100 · ${W.cb === 'crush' ? `shoot down resistance fighters in their old space (+6).` : `shoot down the ${F.fleet.toLowerCase()} in their space (+6). Their worlds are closed to you: bombard one from orbit, land, and defeat its governor to take it (+15, capital +25).`} ${(W.held || []).length ? `Occupied: ${W.held.map(id => bodyById(id).name).join(', ')}.` : ''}${lentHere.length ? ` ${lentHere.map(compName).join(' and ')} fly${lentHere.length === 1 ? 's' : ''} for them: shoot ${lentHere.length === 1 ? 'that ship' : 'those ships'} down and ${lentHere.length === 1 ? 'they come' : 'they come'} home.` : ''}</p>${W.theirs ? `<p>Terra Imperia declared this war on you. Bombard Mercury or Venus from orbit, land, and beat its governor to take it (+15, Venus +25). Hawthorne will not make peace.</p>` : `<div class="dip-row"><button class="btn small" data-a="peace" data-f="${F.id}"><span>Make peace (occupied worlds go back)</span></button></div>`}`;
       } else {
         if (r.st === 'tributary') h += `<div class="dip-row"><button class="btn small" data-a="release" data-f="${F.id}"><span>End the tribute</span></button></div>`;
@@ -25619,7 +25666,7 @@ function dipRender() {
       for (const e of es) {
         const c = resRuler(e), st = e.pup ? `Your puppet · the uplifted ${ccEsc(titleName((c && c.resUp && c.resUp.name) || 'species'))}` : e.res ? 'A resistance, with no worlds' : e.over && resEmp.emp[e.over] ? `Puppet of ${resEmp.emp[e.over].name}` : e.trib && resEmp.emp[e.trib] ? `Pays tribute to ${resEmp.emp[e.trib].name}` : 'Independent';
         const wars = resEmp.wars.filter(w => w.a === e.id || w.b === e.id).map(w => (resEmp.emp[w.a === e.id ? w.b : w.a] || {}).name).filter(Boolean), lentHere = Object.keys(D.lent).filter(k => D.lent[k] === 'res:' + e.id);
-        h += `<div class="dip-card" style="--fc:${resHex(resEmpCol(e))}"><h4>${reEsc(e.name).toUpperCase()}<small>${st}${ywAt(e.id) ? ' · at war with you' : wars.length ? ' · at war' : ' · at peace'}</small></h4><p>Led by <b>${reEsc(c.name)}</b> (resident, LV ${resLevel(c)}, ${alN[resAl(c)]}) · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars.length ? ` · at war with ${wars.map(reEsc).join(' and ')}` : ''}${lentHere.length ? ` · serving them: ${lentHere.map(compName).join(', ')}` : ''}</p><div class="dip-row"><button class="btn small" data-a="resChallenge" data-r="${e.id}"><span>Challenge ${reEsc(c.name)} (lv ${resLevel(c)})</span></button><button class="btn small" data-a="resDisband" data-r="${e.id}"><span>${DIPV.resDisband === e.id ? 'Tap again: demand they disband' : 'Demand they disband'}</span></button>${e.pup || e.res ? '' : ywAt(e.id) ? `<button class="btn small" data-a="ywPeace" data-r="${e.id}"><span>Make peace</span></button>` : `<button class="btn small" data-a="ywDeclare" data-r="${e.id}"><span>${DIPV.ywDeclare === e.id ? 'Tap again: declare war' : 'Declare war on them'}</span></button>`}</div>${ywAt(e.id) ? (W2 => `<div class="dip-bar"><i style="width:${Math.max(0, W2.score) | 0}%"></i></div><p style="color:#ffb3a8">${W2.theirs ? `${reEsc(e.name)} declared war on you.` : 'You are at war with them.'} War score ${W2.score | 0}/100: it moves with your level and colonies against their strength. At 100 they fall; at −100 they take one of your colonies. Challenge ${reEsc(c.name)} to win it outright.</p>`)(ywAt(e.id)) : ''}</div>`;
+        h += `<div class="dip-card" style="--fc:${resHex(resEmpCol(e))}"><h4>${reEsc(e.name).toUpperCase()}<small>${st}${ywAt(e.id) ? ' · at war with you' : wars.length ? ' · at war' : ' · at peace'}</small></h4><p>Led by <b>${reEsc(c.name)}</b> (resident, LV ${resLevel(c)}, ${alN[resAl(c)]}) · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${wars.length ? ` · at war with ${wars.map(reEsc).join(' and ')}` : ''}${lentHere.length ? ` · serving them: ${lentHere.map(compName).join(', ')}` : ''}${(() => { try { return rdepNote(e); } catch (er) { return ''; } })()}</p><div class="dip-row"><button class="btn small" data-a="resChallenge" data-r="${e.id}"><span>Challenge ${reEsc(c.name)} (lv ${resLevel(c)})</span></button><button class="btn small" data-a="resDisband" data-r="${e.id}"><span>${DIPV.resDisband === e.id ? 'Tap again: demand they disband' : 'Demand they disband'}</span></button>${e.pup || e.res ? '' : ywAt(e.id) ? `<button class="btn small" data-a="ywPeace" data-r="${e.id}"><span>Make peace</span></button>` : `<button class="btn small" data-a="ywDeclare" data-r="${e.id}"><span>${DIPV.ywDeclare === e.id ? 'Tap again: declare war' : 'Declare war on them'}</span></button>`}</div>${ywAt(e.id) ? (W2 => `<div class="dip-bar"><i style="width:${Math.max(0, W2.score) | 0}%"></i></div><p style="color:#ffb3a8">${W2.theirs ? `${reEsc(e.name)} declared war on you.` : 'You are at war with them.'} War score ${W2.score | 0}/100: it moves with your level and colonies against their strength. At 100 they fall; at −100 they take one of your colonies. Challenge ${reEsc(c.name)} to win it outright.</p>`)(ywAt(e.id)) : ''}</div>`;
       }
     }
     if (DIPV.tab === 'factions') h += `<div class="dip-card" style="--fc:#ffd36a"><h4>CASUS BELLI</h4>${Object.values(CBS).filter(c => c !== CBS.crush).map(c => `<p><b>${c.name}.</b> ${c.desc}</p>`).join('')}</div>`;
@@ -25648,7 +25695,7 @@ function dipRender() {
       if (!to) h += `<select class="dip-in" data-a="lendTo" data-c="${id}"><option value="">Offer to a faction…</option><optgroup label="Factions">${dipFacsNow().filter(f => dipRes(f.id) !== 'destroyed').map(f => `<option value="${f.id}">${dipFacName(f)}</option>`).join('')}</optgroup>${resOpts.length ? `<optgroup label="Resident empires">${resOpts.map(e => `<option value="res:${e.id}">${reEsc(e.name)}</option>`).join('')}</optgroup>` : ''}</select><button class="btn small" data-a="lend" data-c="${id}"><span>Offer</span></button>`;
       else if (lead) h += `<p>They'll come home if you annihilate the puppet or ever release it.</p><button class="btn small" data-a="release" data-f="${F.id}"><span>Release ${dipFacName(F)}</span></button>`;
       else if (resTo) h += `<p>They fight in ${dipLentName(to)}'s wars and make it stronger. They come home if it falls or disbands.</p><button class="btn small" data-a="recall" data-c="${id}"><span>Call ${compName(id)} home</span></button>`;
-      else if (F && dipWar(F.id)) h += `<p>You're at war with them. Shoot ${compName(id)}'s ship down, or win the war, to bring them home.</p>`;
+      else if (F && dipWar(F.id)) h += `<p>${fdepOf(F.id) && fdepOf(F.id).who === 'comp:' + id ? `They're ${fdepLeader(F)}'s deputy now, holding ${(bodyById(fdepOf(F.id).at) || {}).name || 'a world'}: bombard it, land and beat them to bring them home. ` : ''}You're at war with them. Shoot ${compName(id)}'s ship down, or win the war, to bring them home.</p>`;
       else h += `<button class="btn small" data-a="recall" data-c="${id}"><span>Call ${compName(id)} home</span></button>`;
       if (!to && PARTY[id] && PARTY[id].imported) h += `<button class="btn small" data-a="dismiss" data-c="${id}"><span>Send home</span></button>`;
       h += `</div></div>`;
@@ -30415,7 +30462,7 @@ function updateWorldMode(dt) {
   xUI.prompt.classList.toggle('on', showP); xUI.act.classList.toggle('on', showP);
   if (ex.near) {
     const ord = ex.near.id === 'james2' && companionOn();
-    const PR = { obraGate: [ex.near.label, 'STORM'], bstArch: [ex.near.label, 'TALK'], bstUp: [ex.near.label, 'CLIMB'], bstDown: [ex.near.label, 'DOWN'], bstThrone: [ex.near.label, 'ENTER'], revive: [ex.near.label, 'REVIVE'], xoDgn: [ex.near.label, 'GO THROUGH'], taroBed: [ex.near.label + ' · sleep', 'SLEEP'], homeless: [ex.near.label, 'GIVE'], prisonSleep: [ex.near.label, 'SLEEP'], prisonPick: [ex.near.label, 'PICK'], prisonExit: [ex.near.label, 'ESCAPE'], bot: [`Wave · ${ex.near.label}`, 'WAVE'], stray: [`Tame · ${ex.near.label}`, 'TAME'], ship: [podMode() ? 'Board the pod' : jewelOn() ? (tiPhone() ? 'Board · the Jewel of Archamus' : 'Board the Jewel of Archamus') : 'Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], nicoHouse: [tiPhone() ? 'Enter · Nico’s house' : 'Enter Nico’s house', 'ENTER'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
+    const PR = { obraGate: [ex.near.label, 'STORM'], bstArch: [ex.near.label, 'TALK'], bstUp: [ex.near.label, 'CLIMB'], bstDown: [ex.near.label, 'DOWN'], bstThrone: [ex.near.label, 'ENTER'], revive: [ex.near.label, 'REVIVE'], xoDgn: [ex.near.label, 'GO THROUGH'], taroBed: [ex.near.label + ' · sleep', 'SLEEP'], homeless: [ex.near.label, 'GIVE'], prisonSleep: [ex.near.label, 'SLEEP'], prisonPick: [ex.near.label, 'PICK'], prisonExit: [ex.near.label, 'ESCAPE'], bot: [`Wave · ${ex.near.label}`, 'WAVE'], stray: [`Tame · ${ex.near.label}`, 'TAME'], ship: [podMode() ? 'Board the pod' : jewelOn() ? (tiPhone() ? 'Board · the Jewel of Archamus' : 'Board the Jewel of Archamus') : 'Board the Nostra', 'BOARD'], brawl: [`Talk · ${ex.near.label}`, 'FIGHT'], lonsight: [`Look · ${ex.near.label}`, 'LOOK'], bartender: ['Talk · Bartender', 'TALK'], parliament: ['Report · Houses of Parliament', 'ENTER'], ferry: [`Board the ferry · ${ex.near.label}`, 'BOARD'], townsfolk: [`Talk · ${ex.near.label}`, 'TALK'], farmDoor: ['Call through the door', 'TALK'], nicoHouse: [tiPhone() ? 'Enter · Nico’s house' : 'Enter Nico’s house', 'ENTER'], orion: ['Talk to Orion', 'TALK'], comp: [`Give ${ex.near.label} orders`, 'ORDER'], push: ['Push James Brown into the water', 'PUSH'], rover: ['Drive James’s rover', 'DRIVE'], srover: ['Drive the Chompy rover', 'DRIVE'], roverOut: ['Leave the rover', 'EXIT'], bed: ['Sleep', 'SLEEP'], door: ['Enter the station', 'ENTER'], merchant: [`Trade · ${ex.near.label}`, 'TRADE'], qgiver: [`Talk · ${ex.near.label}`, 'TALK'], tele: [`Teleporter · ${ex.near.label}`, 'WARP'], bench: ['Use the crafting table', 'CRAFT'], dismantle: [`Dismantle · ${ex.near.label}`, 'TAKE'], lairGate: [`Enter · ${ex.near.label}`, 'ENTER'], furnace: ['Use the furnace', 'SMELT'], bench: ['Use the crafting table', 'CRAFT'], dgnGate: [ex.near.label, 'ENTER'], dgnUp: [ex.near.label, 'GO'], dgnDown: [ex.near.label, 'GO'], dgnWell: [ex.near.label, 'DRINK'], nyx: ['Talk · Nyrexia Erisconos', 'TALK'], chn: ['Talk · Charon and Kizna', 'TALK'], cygKneel: [tiPhone() ? `Anoint · ${ex.near.label}` : `Anoint or finish · ${ex.near.label}`, 'ANOINT'], hak: [tiPhone() ? 'Talk · Hak Chompjak' : 'Talk · Hak Chompjak V, Emperor of the Chompy Empire', 'TALK'], cygShuttle: [tiPhone() ? 'Board · the Cygnus shuttle' : 'Board the supply shuttle · infiltrate the Cygnus', 'BOARD'], tiStation: [`Enter · ${ex.near.label}`, 'ENTER'], tiPatrol: [`Challenge · ${ex.near.label}`, 'FIGHT'], tiGov: [`Challenge · ${ex.near.label}`, 'FIGHT'], edDep: [`Challenge · ${ex.near.label}`, 'FIGHT'], pontHunt: [`Face · ${ex.near.label}`, 'FIGHT'], alx: [tiPhone() ? 'Talk · Alexia Erisconos' : 'Talk · Alexia Erisconos, usurper of Eris', 'TALK'], hawm: [tiPhone() ? 'Talk · Thomas Hawthorne' : 'Talk · Thomas Hawthorne, Grand Imperarch', 'TALK'], leadGate: [`Enter · ${ex.near.label}`, 'ENTER'] }[ex.near.id];
     xUI.promptT.textContent = PR ? PR[0] : ord ? (ch1().campDone && !ch1().stormTalk ? 'Talk to James Brown' : 'Give James orders') : ex.near.id === 'james2' ? 'Talk to James Brown' : `Pick up · ${ex.near.label}`;
     xUI.act.textContent = PR ? PR[1] : ord ? (ch1().campDone && !ch1().stormTalk ? 'TALK' : 'ORDER') : ex.near.id === 'james2' ? 'TALK' : 'TAKE';
   }
@@ -33900,7 +33947,7 @@ function resTick(dt) {
   if (RES.area !== A || RES.chk <= 0) { // a new place, or a few seconds on: who's around now?
     const fresh = RES.area !== A; if (fresh) resClearGround();
     RES.area = A; RES.chk = 5;
-    const want = residents.filter(c => resPresent(c, A)).sort((a, b) => (GESC.ids.has(b.id) || resPartying(b)) - (GESC.ids.has(a.id) || resPartying(a))).slice(0, resMax());
+    const want = residents.filter(c => resPresent(c, A) && !(TIW.dep && TIW.dep.rid === c.id)).sort((a, b) => (GESC.ids.has(b.id) || resPartying(b)) - (GESC.ids.has(a.id) || resPartying(a))).slice(0, resMax());
     for (const B of RES.bots) if (!want.includes(B.c) && !B.leaving && RES.talking !== B) { B.leaving = true; B.task = { type: 'leave', t: 0, dur: 4 }; const T = resTravels() ? resTravel(B.c) : null; resSay(B, resLine(T && T.mode === 'warp' ? 'travel' : 'leave', B)); }
     for (const c of want) if (!RES.bots.some(B => B.c === c)) resSpawn(c, !fresh && Math.random() < .5);
   }
@@ -34250,7 +34297,7 @@ function resDeclare(a, b, cb, incited) {
   saveRoster(); return true;
 }
 const resPower = e => { if (e.pup) return resPower0(e) + 25; return resPower0(e); }; // your puppets fight with your backing behind them
-const resPower0 = e => { const c = resRuler(e), L = (wanderer && wanderer.dip && wanderer.dip.lent) || {}; return (c ? resLevel(c) : 30) + e.col.length * 4 + Object.values(resEmp.emp).filter(o => o.over === e.id).length * 6 + Object.values(L).filter(v => v === 'res:' + e.id).length * 10; }; // your companions serving them count for a lot
+const resPower0 = e => { const c = resRuler(e), L = (wanderer && wanderer.dip && wanderer.dip.lent) || {}; return (c ? resLevel(c) : 30) + e.col.length * 4 + Object.values(resEmp.emp).filter(o => o.over === e.id).length * 6 + Object.values(L).filter(v => v === 'res:' + e.id).length * 10 + rdepPow(e); }; // your companions serving them count for a lot
 function resWarStep(w) {
   const A = resEmpOf(w.a), B = resEmpOf(w.b); if (!A || !B) { resEmp.wars = resEmp.wars.filter(o => o !== w); return; }
   w.score += (resPower(A) - resPower(B)) * .15 + (Math.random() * 36 - 18);
@@ -34454,6 +34501,232 @@ function depCard() { // Diplomacy → Colonies: who runs your empire
   else if (!id) h += `<p style="color:var(--mute)">No companion with you can take the job yet.</p>`;
   return h + '</div>';
 }
+/* ============ your enemies' deputies (Chapters III–V) ============
+   Every ruler you're at war with does what you do: they appoint a deputy. A resident ruler at war (with you or with another
+   empire) picks the strongest they can: a companion you offered them first, then the highest-level guildmate they have. A story
+   faction's leader picks a companion you lent them first, then one of their own officers. The deputy holds a world at the front
+   (the one of theirs nearest to you, or to the empire they're fighting), never the capital.
+   They make the war harder: a resident's deputy adds to their strength, grows their empire every few minutes and rallies a
+   counter-offensive when you're winning; a story faction's deputy goes to defend a world you bombard (more often than not) and
+   now and then leads a counterattack that takes back a world you occupied.
+   The invasion: bombard the deputy's world (a story faction's), or simply land on it (a resident empire's), and they're waiting
+   by your ship with two guards. Beat them: a story faction's world is occupied and the war moves on (+20 on top of the world);
+   a resident empire loses that world and the war swings your way (+25). A companion you lent comes home. Then the ruler replaces
+   them, a minute or two later, with someone else on another world (a guildmate, if they have one left, or another officer).
+   Lines: data/depLines2.js (a set for every companion serving a resident and serving a faction leader, good and evil, plus the
+   residents' and the officers' own). Saved: dip().fdep (story factions) and resEmp.emp[id].dep (resident empires). ---- */
+const FDEP_OFF = {
+  chompy: [['Grand Marshal Kezrak', 'm'], ['Admiral Thessa Vorn', 'f'], ['General Ombrik Chompjak', 'm'], ['Fleet-Mother Assarah', 'f']],
+  order: [['Exarch Om-Velesh', 'm'], ['Sister-Exarch Ur-Tavi', 'f'], ['Brother-Captain Ka-Moru', 'm']],
+  grek: [['Warlord Ur-Gash', 'm'], ['Hierarch-General Om-Taal', 'm'], ['Shield-Mother Ka-Velda', 'f'], ['Hierarch Ka-Dren', 'm']],
+  catharsis: [['Herald Vyx', 'm'], ['the Red Herald Ossen', 'm'], ['Herald Morrow', 'f']],
+  erisian: [['Lady-Commander Ysolde Varrin', 'f'], ['Lord-Warden Aldrecai Thorne', 'm'], ['Captain Ilyra Coldwater', 'f']],
+  hfos: [['Vice President Amara Okafor', 'f'], ['Marshal Henrik Brandt', 'm'], ['Admiral Lucia Reyes', 'f']],
+  ti: [['Legate Marcus Vale', 'm'], ['Prefect Livia Crane', 'f'], ['Tribune Octavian Hale', 'm']],
+  timpur: [['Proconsul Ivaro Taresh', 'm'], ['Senator-General Quellith', 'f'], ['Legate Darsa', 'f']]
+};
+const FDEP_STORY = new Set(['mercury', 'earth', 'janira', 'eris', 'charon', 'mars']); // where the story stages its own scenes
+const FDEP_LEAD = { chompy: 'Hak', order: 'Archamus', catharsis: 'Lord Zark', hfos: 'Darius', ti: 'Hawthorne', timpur: 'Timpur IV' };
+function fdepLeader(F) { if (F.id === 'grek') return dipCh() >= 4 ? 'Archamus' : 'Am-Grek'; if (F.id === 'erisian') return dipCh() === 3 && alexiaRules() ? 'Alexia' : 'Vishara'; return FDEP_LEAD[F.id] || F.lead(dipCh()); }
+let DEPL2 = null, dep2Loading = false;
+function dep2Load() {
+  if (DEPL2 || dep2Loading) return; dep2Loading = true;
+  const sc = document.createElement('script'); sc.src = 'data/depLines2.js';
+  sc.onload = () => { DEPL2 = window.NV_DEP_LINES2 || null; try { if (state === 'title') { taunt.L = null; applyMenuEra(); } } catch (e) {} };
+  sc.onerror = () => { dep2Loading = false; };
+  document.body.appendChild(sc);
+}
+const edFill = (t, x) => String(t).replace(/\{(\w+)\}/g, (m, k) => x && x[k] != null ? x[k] : m);
+const edCompId = who => who && who.startsWith('comp:') ? who.slice(5) : null;
+const edResId = who => who && who.startsWith('res:') ? who.slice(4) : null;
+// a deputy's lines: a companion's for serving a resident ('res') or a faction leader ('lead'), good or evil by their own chart;
+// a resident's by their alignment; an officer's by their faction
+function edLines(who, set, fid) {
+  dep2Load(); if (!DEPL2) return null; const id = edCompId(who), rid = edResId(who);
+  if (id) { const Q = DEPL2[depKey(id)]; return Q && Q[set] ? Q[set][depEvil(id) ? 'evil' : 'good'] || null : null; }
+  if (rid) { const c = resById(rid); return c && DEPL2._res ? DEPL2._res[resAl(c)] || null : null; }
+  if (who && who.startsWith('off:')) return DEPL2._off && DEPL2._off[fid] || null;
+  return null;
+}
+function edName(who, fid) {
+  const id = edCompId(who); if (id) return depFull(id);
+  const rid = edResId(who); if (rid) { const c = resById(rid); return c ? c.name : 'a resident'; }
+  const L = FDEP_OFF[fid] || [], o = L[+String(who).slice(4)]; return o ? o[0] : 'their officer';
+}
+function edShort(who, fid) { const id = edCompId(who); return id ? compName(id) : edName(who, fid); }
+function edColor(who, fallback) { const id = edCompId(who); return id ? compColor(id) : fallback || '#ffb36e'; }
+function edLevel(who) { const id = edCompId(who); if (id) return compLevel(id); const c = resById(edResId(who) || ''); if (c) return resLevel(c); return Math.max(20, plvNow() + 5); }
+function edSay(who, set, fid, x, col) { const Q = edLines(who, set, fid); if (Q && Q.length) lootMsg(`${edShort(who, fid)} · deputy: “${edFill(resPick(Q), x)}”`, edColor(who, col)); }
+const edFrom = () => sysById((typeof SPC !== 'undefined' && SPC.sys) || 'sol') || sysById('sol');
+function edFront(ids, near, avoid) { // the world at the front: of theirs, the nearest to `near` (one of the two nearest, not where they were)
+  const Ps = ids.map(bodyById).filter(P => P && P.land && !P.dock); if (!Ps.length) return null;
+  const S = near || edFrom(); Ps.sort((a, b) => galDist(sysById(a.sys), S) - galDist(sysById(b.sys), S));
+  const L = Ps.filter(P => P.id !== avoid).slice(0, 2); return (L.length ? L[Math.random() < .7 ? 0 : L.length - 1] : Ps[0]).id;
+}
+function edCompHome(id, why) { // a companion who was their deputy comes back to your crew
+  const D = dip(); if (!D.lent[id]) return; delete D.lent[id]; dipSave();
+  setTimeout(() => { notice(why || 'Beaten, and back with you', `${compName(id).toUpperCase()} REJOINS YOUR CREW`, 4000); lootMsg(`${compName(id)} is back with you`, compColor(id)); }, 2600);
+  try { placeCrew(); refreshJamesUI(); if (id === 'orion') placeOrion().catch(() => null); } catch (e) {}
+}
+// ---- the story factions ----
+function fdepCands(F, X) {
+  const D = dip(), out = [], beat = new Set(X.beaten || []);
+  Object.keys(D.lent).filter(id => D.lent[id] === F.id && depCan(id) && !beat.has('comp:' + id)).sort((a, b) => compLevel(b) - compLevel(a)).forEach(id => out.push('comp:' + id)); // your companions first
+  (FDEP_OFF[F.id] || []).forEach((o, i) => { if (!beat.has('off:' + i)) out.push('off:' + i); });
+  return out;
+}
+function fdepWorlds(F, W) {
+  const Lo = (() => { try { return leaderOf(F); } catch (e) { return null; } })(), hall = Lo && Lo.at, D = dip();
+  const all = dipWorldsOf(F).filter(P => P.land && !P.dock && !(W.held || []).includes(P.id) && !resHeldBy(P.id) && !D.col[P.id] && P.id !== hall);
+  const pref = all.filter(P => P.id !== F.capital), calm = pref.filter(P => !FDEP_STORY.has(P.id)); return (calm.length ? calm : pref.length ? pref : all).map(P => P.id); // never the capital, and the story's own worlds only if nothing else is left
+}
+const fdepOf = fid => { const D = wanderer && wanderer.dip, X = D && D.fdep && D.fdep[fid]; return X && X.who ? X : null; };
+function fdepAppoint(F, W, X, now) {
+  const C = fdepCands(F, X), ws = fdepWorlds(F, W); if (!C.length || !ws.length) { if (!X.none && C.length === 0) { X.none = true; lootMsg(`${fdepLeader(F)} has no one left to appoint as deputy`, F.col); } return false; }
+  const who = C[0], at = edFront(ws, null, X.lastAt); if (!at) return false;
+  Object.assign(X, { who, at, since: now, cAt: now + (180 + Math.random() * 120) * 1000, sayAt: now + 150e3, none: false, seenB: [...(W.bombed || [])] });
+  const nm = edName(who, F.id), P = bodyById(at), x = { leader: fdepLeader(F), fac: dipFacName(F), player: wanderer.name, world: P.name };
+  if (state === 'explore' || state === 'space') notice(`${dipFacName(F)} · ${fdepLeader(F)} appoints a deputy`, `${nm.toUpperCase()} HOLDS ${P.name.toUpperCase()}`, 4000);
+  lootMsg(`${nm} is ${fdepLeader(F)}'s deputy now · they hold ${P.name} · bombard it, land and beat them (Diplomacy shows where)`, edColor(who, F.col));
+  setTimeout(() => edSay(who, 'lead', F.id, x, F.col), 2400); return true;
+}
+function fdepTick(now) {
+  const D = dip(); D.fdep = D.fdep || {}; let ch = false;
+  for (const fid of Object.keys(D.fdep)) { const W = D.wars[fid]; if (!W || W.won || W.cb === 'crush') { delete D.fdep[fid]; ch = true; } } // the war is over
+  for (const F of dipFacsNow()) {
+    const W = D.wars[F.id]; if (!W || W.won || W.cb === 'crush' || (F.locked && F.locked(dipCh()))) continue;
+    const X = D.fdep[F.id] || (D.fdep[F.id] = { beaten: [], next: now + 25e3 }), x = () => ({ leader: fdepLeader(F), fac: dipFacName(F), player: wanderer.name });
+    if (X.who) { // still theirs to command? (a companion shot down in space, or called home, has left them)
+      const id = edCompId(X.who); if (id && D.lent[id] !== F.id) { lootMsg(`${compName(id)} no longer serves ${dipFacName(F)} · ${fdepLeader(F)} needs a new deputy`, F.col); X.who = null; X.next = now + 90e3; ch = true; continue; }
+      if (!fdepWorlds(F, W).includes(X.at)) { const ws = fdepWorlds(F, W), to = edFront(ws, null, X.at); if (!to) { X.who = null; X.next = now + 60e3; ch = true; continue; } X.lastAt = X.at; X.at = to; ch = true; lootMsg(`${edName(X.who, F.id)} falls back to ${bodyById(to).name}`, edColor(X.who, F.col)); }
+      const nb = (W.bombed || []).filter(p => !(X.seenB || []).includes(p) && !(W.held || []).includes(p)); // you bombarded a world: they may go and defend it
+      if (nb.length) { X.seenB = [...(W.bombed || [])]; ch = true; const b = nb[nb.length - 1];
+        if (b !== X.at && fdepWorlds(F, W).includes(b) && Math.random() < .6) { X.lastAt = X.at; X.at = b; const P = bodyById(b); if (state === 'explore' || state === 'space') notice(`${fdepLeader(F)} answers the bombardment`, `${edName(X.who, F.id).toUpperCase()} DEFENDS ${P.name.toUpperCase()}`, 3800); lootMsg(`${fdepLeader(F)} sends ${edName(X.who, F.id)} to hold ${P.name} · they'll be waiting when you land`, edColor(X.who, F.col)); } }
+      if (now >= (X.cAt || 0)) { X.cAt = now + (240 + Math.random() * 180) * 1000; ch = true; // a counterattack on a world you occupied
+        const back = (W.held || []).filter(p => p !== F.capital && bodyById(p));
+        if (back.length && Math.random() < .4) { const p = pick(back), P = bodyById(p); W.held = W.held.filter(o => o !== p); W.bombed = (W.bombed || []).filter(o => o !== p); W.score = Math.max(0, W.score - 12);
+          const m = `${edName(X.who, F.id)} leads a counterattack and retakes ${P.name} for ${dipFacName(F)} · −12 war score`; if (state === 'space') spaceMsg(m); else lootMsg(m, '#ff8f86'); if (state === 'explore' || state === 'space') sfx.alarm(); } }
+      if (now >= (X.sayAt || 0)) { X.sayAt = now + (200 + Math.random() * 200) * 1000; edSay(X.who, 'lead', F.id, Object.assign(x(), { world: bodyById(X.at).name }), F.col); }
+    } else if (now >= (X.next || 0)) { X.next = now + 60e3; if (fdepAppoint(F, W, X, now)) ch = true; }
+  }
+  if (ch) dipSave();
+}
+// ---- the resident empires ----
+function rdepAtWar(e) { return !!ywAt(e.id) || resEmp.wars.some(w => w.a === e.id || w.b === e.id); }
+function rdepCands(e, X) {
+  const D = dip(), beat = new Set(X.beaten || []), out = [];
+  Object.keys(D.lent).filter(id => D.lent[id] === 'res:' + e.id && depCan(id) && !beat.has('comp:' + id)).sort((a, b) => compLevel(b) - compLevel(a)).forEach(id => out.push('comp:' + id)); // a companion you offered them first
+  const G = resGuildOf(e.id); if (G) G.members.map(resById).filter(c => c && c.id !== e.id && !resEmp.emp[c.id] && !beat.has('res:' + c.id) && !Object.values(resEmp.emp).some(o => o !== e && o.dep && o.dep.who === 'res:' + c.id)).sort((a, b) => resLevel(b) - resLevel(a)).forEach(c => out.push('res:' + c.id)); // then their strongest guildmate
+  return out;
+}
+function rdepWorlds(e) { const ws = e.col.filter(id => id !== e.cap && bodyById(id)); return ws.length ? ws : []; }
+function rdepNear(e) { // where the war is: your colonies (or you), or the capital of the empire they're fighting
+  if (ywAt(e.id)) { const own = Object.keys(dip().col).map(bodyById).filter(Boolean); return own.length ? sysById(pick(own).sys) : edFrom(); }
+  const w = resEmp.wars.find(o => o.a === e.id || o.b === e.id), f = w && resEmp.emp[w.a === e.id ? w.b : w.a], P = f && bodyById(f.cap || f.col[0]); return P ? sysById(P.sys) : null;
+}
+function rdepSayRes(e, who, x) { // a resident deputy has their say in the zone chat; a companion on comms
+  const c = resById(edResId(who) || ''), Q = edLines(who, 'res'); if (!Q || !Q.length) return;
+  const t = edFill(resPick(Q), x); if (c) { RES.log.push({ who: c.name, al: resAl(c), text: resClean(t), t: time, war: true }); if (RES.log.length > 30) RES.log.shift(); resChatRender(); } else if (state === 'explore' || state === 'space') lootMsg(`${edShort(who)} · deputy of ${e.name}: “${t}”`, edColor(who));
+}
+const rdepPow = e => { const X = e.dep; if (!X || !X.who) return 0; if (edCompId(X.who)) return 6; const c = resById(edResId(X.who)); return 4 + (c ? resLevel(c) * .15 : 0); }; // a deputy is worth a few worlds
+function rdepTick(E, now) {
+  if (!wanderer) return; const D = dip(); let ch = false;
+  for (const e of Object.values(E.emp)) {
+    const c = resRuler(e); if (!c || e.res || e.pup || !e.col.length) { if (e.dep && e.dep.who) { e.dep.who = null; ch = true; } continue; }
+    const X = e.dep || (e.dep = { beaten: [], next: now + 20e3 }), x = { ruler: c.name, emp: e.name, player: wanderer.name };
+    if (!rdepAtWar(e) && (X.beaten || []).length) { X.beaten = []; ch = true; } // a new war, a clean slate: whoever you beat last time can serve again
+    if (X.who) {
+      const id = edCompId(X.who), rid = edResId(X.who);
+      if ((id && D.lent[id] !== 'res:' + e.id) || (rid && (!resById(rid) || E.emp[rid]))) { X.who = null; X.next = now + 90e3; ch = true; continue; } // called home, gone, or founded an empire of their own
+      if (!rdepWorlds(e).includes(X.at)) { const to = edFront(rdepWorlds(e), rdepNear(e), X.at); if (!to) { X.who = null; X.next = now + 60e3; ch = true; continue; } X.at = to; ch = true; }
+      if (E.on && e.col.length < 14 && now >= (X.colAt || 0)) { X.colAt = now + (240 + Math.random() * 120) * 1000; const n = e.col.length; resExpand(e); if (e.col.length > n) { const P = bodyById(e.col[e.col.length - 1]); resEmpLog(`${edName(X.who)}, deputy of ${e.name}, claimed ${P ? P.name : 'a world'}`); ch = true; } } // they grow it, as yours does
+      const W = ywAt(e.id); // they're losing to you: the deputy rallies a counter-offensive
+      if (W && W.score >= 45 && now >= (X.rAt || 0)) { X.rAt = now + (180 + Math.random() * 120) * 1000; ch = true;
+        if (Math.random() < .5) { W.score = clamp(W.score - 10, -100, 100); resEmpLog(`${edName(X.who)} rallied ${e.name} against ${wanderer.name}`); if (state === 'explore' || state === 'space') lootMsg(`${edName(X.who)} rallies ${e.name}'s forces against you · −10 war score`, '#ff8f86'); rdepSayRes(e, X.who, x); } }
+      else if (rdepAtWar(e) && Math.random() < .08) rdepSayRes(e, X.who, x);
+    } else if (rdepAtWar(e) || (Object.values(D.lent).includes('res:' + e.id) && Math.random() < .3)) { // at war (or offered one of your companions): they want a deputy
+      if (now < (X.next || 0)) continue; X.next = now + 60e3; const C = rdepCands(e, X), ws = rdepWorlds(e); if (!C.length || !ws.length) continue;
+      const who = C[0], at = edFront(ws, rdepNear(e), X.lastAt); Object.assign(X, { who, at, since: now, colAt: now + 180e3, rAt: now + 120e3 }); ch = true;
+      const nm = edName(who), P = bodyById(at); resEmpLog(`${c.name} appointed ${nm} deputy of ${e.name}, holding ${P.name}`);
+      if (ywAt(e.id) && (state === 'explore' || state === 'space')) { notice(`${e.name} · ${c.name} appoints a deputy`, `${nm.toUpperCase()} HOLDS ${P.name.toUpperCase()}`, 4000); lootMsg(`${nm} holds ${P.name} for ${e.name} · land there and beat them`, edColor(who, resEmpCol(e))); }
+      setTimeout(() => rdepSayRes(e, who, x), 2000);
+    }
+  }
+  if (ch) saveRoster();
+}
+// ---- the invasion: their deputy, waiting by your ship ----
+function edAt(P) { // a deputy of someone you're at war with holds this world (a story faction's only once you've bombarded it)
+  if (!P || !wanderer || (wanderer.chapter | 0) < 3) return null;
+  try {
+    const F = warFacOf(P), X = F && fdepOf(F.id); if (X && X.at === P.id && warBombed(P)) return { kind: 'fac', F, who: X.who };
+    for (const id of Object.keys(ywMap())) { const e = resEmp.emp[id], Y = e && e.dep; if (Y && Y.who && Y.at === P.id && e.col.includes(P.id)) return { kind: 'res', e, who: Y.who }; }
+  } catch (er) {}
+  return null;
+}
+async function edRig(who, F, e) {
+  const id = edCompId(who); if (id) return companionRig(id);
+  const c = resById(edResId(who) || ''); if (c) return leadResSpec(c).load();
+  const R = await govRig(F, true); if (R) { const g = glowSprite(new THREE.Color(F ? F.col : '#ffb36e').getHex(), 2.6, .35); g.position.y = 1.2; R.root.add(g); } return R;
+}
+async function edGuard(q) { if (q.kind === 'fac') return govRig(q.F); const c = resRuler(q.e), R = await brawlRig({ sp: spOf(c), c: [0x22262e, new THREE.Color(resEmpCol(q.e)).getHex()], name: 'Guard' }); if (R) armRig(R, 'rifle'); return R; }
+function edPlace(P, q) {
+  if (TIW.dep && TIW.dep.P === P) return; const area = curArea(), [x, z] = tiSpot(14, 20), g = new THREE.Group(); wScene.add(g);
+  const col = q.kind === 'fac' ? q.F.col : resEmpCol(q.e), side = q.kind === 'fac' ? dipFacName(q.F) : q.e.name;
+  const G = TIW.dep = { g, R: [], x, z, P, q, who: q.who, rid: edResId(q.who), name: edName(q.who, q.F && q.F.id), face: true, beacon: tiBeacon(g, x, z, new THREE.Color(col).getHex(), 10) };
+  Promise.all([edRig(q.who, q.F, q.e), edGuard(q), edGuard(q)]).then(Rs => { if (curArea() !== area || TIW.dep !== G) return; Rs.forEach((R, i) => { if (!R) return; const a = i * 2.1, px = i ? x + Math.cos(a) * 2.6 : x, pz = i ? z + Math.sin(a) * 2.6 : z; R.root.position.set(px, wHeight(px, pz), pz); R.root.traverse(o => { if (o.isMesh) o.castShadow = !tiPhone(); }); g.add(R.root); G.R.push(R); if (i) tiArm(R, false, `${side} guard`); }); }).catch(() => null);
+  setTimeout(() => { if (TIW.dep !== G) return; notice(`${P.name} · ${side}`, `THEIR DEPUTY ${G.name.toUpperCase()} AWAITS`, 3800); lootMsg(`${G.name} holds ${P.name} as deputy of ${side} · beat them (the beacon)`, edColor(q.who, col)); }, 3000);
+}
+function edSpec(q) {
+  const fid = q.F && q.F.id, who = q.who, lv = edLevel(who), id = edCompId(who), c = resById(edResId(who) || ''), side = q.kind === 'fac' ? dipFacName(q.F) : q.e.name;
+  const Q = edLines(who, q.kind === 'fac' ? 'lead' : 'res', fid), x = q.kind === 'fac' ? { leader: fdepLeader(q.F), fac: side, player: wanderer.name } : { ruler: (resRuler(q.e) || {}).name || 'my ruler', emp: side, player: wanderer.name };
+  const intro = Q && Q.length ? edFill(resPick(Q), x) : `${q.P.name} is held for ${side}. Not by you.`;
+  return { key: 'dep:' + who, boss: id ? compName(id) : c ? c.name : edName(who, fid).split(' ').slice(-1)[0], full: `${edName(who, fid)}, deputy of ${side}`, hall: `The deputy's stand · ${q.P.name}`, lv, hp: Math.round(4200 + lv * 160), theme: id ? 'wrong' : null, load: () => edRig(who, q.F, q.e),
+    core: ['charge', 'volley', 'slam', 'blink'], p2: ['rain', 'sweep', 'nova'], sig: 'spiral', seq: ['volley', 'charge', 'slam', 'blink', 'volley'],
+    lines: { intro, p2: id ? 'You taught me to fight. Remember?' : `For ${side}!`, p3: 'I HOLD THIS WORLD!', win: id ? 'Alright… alright. I’m coming home.' : 'Enough… someone else will hold it now.' } };
+}
+function edFight() { const G = TIW.dep; if (!G) return; const q = Object.assign({}, G.q, { P: G.P }), X = edSpec(q); openChoice(`${X.full.toUpperCase()} · LV ${X.lv}`, [{ text: `Fight ${edName(G.who, q.F && q.F.id)} (lv ${X.lv}) · ${q.kind === 'fac' ? `take ${G.P.name} (+20 war score on top)` : `take ${G.P.name} from ${q.e.name} (+25 war score)`}`, onPick: () => tiFight('dep', X, { pid: G.P.id, who: G.who, kind: q.kind, fid: q.F && q.F.id, eid: q.e && q.e.id }) }, { text: 'Not yet', onPick: () => {} }]); }
+function edBeaten(ref) {
+  const G = TIW.dep; if (G) { for (const R of G.R) if (R.cb) { const i = fauna.list.indexOf(R.cb); if (i >= 0) fauna.list.splice(i, 1); } if (G.g.parent) G.g.parent.remove(G.g); TIW.dep = null; }
+  const now = resNow(), id = edCompId(ref.who), P = bodyById(ref.pid);
+  if (ref.kind === 'fac') {
+    const F = DIP_FAC.find(o => o.id === ref.fid), X = dip().fdep && dip().fdep[ref.fid];
+    if (X && X.who === ref.who) { (X.beaten = X.beaten || []).push(ref.who); X.who = null; X.lastAt = ref.pid; X.next = now + (60 + Math.random() * 60) * 1000; }
+    if (id) edCompHome(id, `Beaten as ${F ? fdepLeader(F) : 'their'}'s deputy`);
+    if (F && warFacOf(P) === F) { tiCapture(ref.pid); setTimeout(() => dipScore(F.id, 20, `${edName(ref.who, F.id)}, their deputy, beaten`), 3200); }
+    if (F) setTimeout(() => { const more = fdepCands(F, X || { beaten: [] }).length; lootMsg(more ? `${fdepLeader(F)} will name a new deputy on another world` : `${fdepLeader(F)} has no one left to make deputy`, F.col); }, 6000);
+    dipSave(); return;
+  }
+  const e = resEmp.emp[ref.eid]; if (!e) { if (id) edCompHome(id); return; }
+  const X = e.dep, c = resRuler(e); if (X && X.who === ref.who) { (X.beaten = X.beaten || []).push(ref.who); X.who = null; X.lastAt = ref.pid; X.next = now + (60 + Math.random() * 60) * 1000; }
+  if (ref.pid !== e.cap) e.col = e.col.filter(o => o !== ref.pid);
+  resEmpLog(`${wanderer.name} beat ${edName(ref.who)}, deputy of ${e.name}${P ? `, and took ${P.name} from it` : ''}`);
+  if (id) edCompHome(id, `Beaten as ${e.name}'s deputy`);
+  notice(e.name, `${P ? P.name.toUpperCase() + ' FALLS · ' : ''}THEIR DEPUTY IS BEATEN`, 4000);
+  const W = ywAt(e.id); if (W) { W.score = clamp(W.score + 25, -100, 100); setTimeout(() => lootMsg(`+25 war score · ${edName(ref.who)}, their deputy, beaten · ${Math.round(W.score)}/100`, '#ffd36a'), 1600); if (W.score >= 100) setTimeout(() => ywWon(e.id), 2400); }
+  if (c) setTimeout(() => { const more = rdepCands(e, X || { beaten: [] }).length; resWarSay(c, more ? resPick(RDEP_RULER.next[resAl(c)]) : resPick(RDEP_RULER.none[resAl(c)]), { player: wanderer.name, ea: e.name, d: edName(ref.who) }); }, 3400);
+  saveRoster(); try { applyChapterFactions(); } catch (er) {}
+}
+const RDEP_RULER = {
+  next: { hero: ['{d} fought well. Someone else will stand in their place, {player}.', 'You beat {d}. I have others who believe in {ea}.'],
+    neutral: ['Fine. {d} is out. I have a replacement on another world already.', 'That cost me {d}. It won’t cost me {ea}.'],
+    villain: ['{d} was disposable. They all are. The next one is already waiting.', 'Beat my deputy, did you? I have more. I always have more.'] },
+  none: { hero: ['{d} was the last of us willing to stand. I’ll stand alone, then.'], neutral: ['No one left to send. Guess it’s me now, {player}.'], villain: ['No more deputies. Good. I never trusted them. Come and face me, {player}.'] }
+};
+let ED_T = 6;
+function enemyDepTick(dt) {
+  if (!wanderer || !wanderer.dip || (state !== 'explore' && state !== 'space') || effCh() < 3) return;
+  if ((ED_T -= dt) > 0) return; ED_T = 10;
+  const now = resNow(); dep2Load();
+  try { fdepTick(now); } catch (e) { console.error(e); }
+  if (isPl() && state === 'explore' && !DGN.on && !TIW.dep && TIW.area === curArea()) { const q = edAt(world.planet.P); if (q) edPlace(world.planet.P, q); } // appointed to (or sent to defend) the world you're on
+  if (TIW.dep) { const q = isPl() ? edAt(world.planet.P) : null; if (!q || q.who !== TIW.dep.who) { const G = TIW.dep; for (const R of G.R) if (R.cb) { const i = fauna.list.indexOf(R.cb); if (i >= 0) fauna.list.splice(i, 1); } if (G.g.parent) G.g.parent.remove(G.g); TIW.dep = null; } } // they moved on
+}
+if (/[?&]depdebug/.test(window.location.search)) window.NV_ED = { fdepTick, rdepTick, edAt, edPlace, edSpec, edBeaten, enemyDepTick, rdepCands, fdepCands, menuDepKey, dip, dipDeclare, ywDeclare, ywAt, resPower, resNow, saveRoster, // ?depdebug: the enemies' deputies, from the console
+  get W() { return wanderer; }, get E() { return resEmp; }, get G() { return resGuild; }, get R() { return residents; }, get state() { return state; }, get TIW() { return TIW; }, body: bodyById, free: () => resFreeWorlds(), lead: () => leadMenuCalc(), guildDirty: () => resGuildDirty(),
+  land: id => landOn(bodyById(id), new THREE.Vector3(.3, 1, .2)), near: () => { const G = TIW.dep; if (G) player.position.set(G.x + 2, player.position.y, G.z + 2); return tiNear(player.position); }, use: () => { const n = tiNear(player.position); if (n) tiUse(n); return n && n.id; }, pickChoice: i => { const b = document.querySelectorAll('button.opt')[i | 0]; if (b) b.click(); return !!b; }, win: () => { if (!DGN.boss && DGN.lb) lairBossStart(); if (DGN.boss) lairBossWin(); return !!DGN.boss; }, get DGN() { return DGN; } };
+// Diplomacy: who holds what for them
+function fdepNote(F) { const X = fdepOf(F.id); if (!X) { const Y = dip().fdep && dip().fdep[F.id]; return Y && Y.none ? `<p style="color:var(--mute)">${fdepLeader(F)} has no deputy left to appoint.</p>` : ''; } const P = bodyById(X.at); return `<p style="color:${edColor(X.who, F.col)}"><b>Their deputy:</b> ${edName(X.who, F.id)} (lv ${edLevel(X.who)}) holds ${P ? P.name : '?'}. Bombard it, land and beat them: the world is yours and +20 war score. ${fdepLeader(F)} sends them to defend worlds you bombard, and they counterattack worlds you hold.</p>`; }
+function rdepNote(e) { const X = e.dep; if (!X || !X.who) return ''; const P = bodyById(X.at); return ` · deputy: <b>${reEsc(edName(X.who))}</b> on ${P ? P.name : '?'}${ywAt(e.id) ? ' (land there and beat them: +25 war score and the world)' : ''}`; }
 const RES_EMP_ON = () => !!resEmp.on; // residents only found empires if you switch it on (Resident empires panel)
 function resLentSweep() { // a resident empire that's gone sends your companions home
   const L = wanderer && wanderer.dip && wanderer.dip.lent; if (!L) return;
@@ -34678,6 +34951,7 @@ function resEmpTick(dt) {
   try { upPupTick(E); } catch (e) { console.error(e); } // your fallen puppets come back
   for (const w of [...E.wars]) resWarStep(w); // wars already under way still play out
   try { ywTick(E); } catch (e) { console.error(e); } // and your own wars with them
+  try { rdepTick(E, now); } catch (e) { console.error(e); } // and the deputies they appoint for them
   try { resStoryWars(E, es); } catch (e) { console.error(e); } // and resident empires against the story factions
   if (state === 'space' || GAL.open) { applyChapterFactions(); if (GAL.open && GAL.sel) galPanel(); } // the galaxy map follows who holds what
 }
@@ -34723,7 +34997,7 @@ function resEmpRender() {
     const c = resRuler(e), al = c ? resAl(c) : 'neutral', st = e.res ? 'Resistance (no worlds)' : e.over ? `Puppet of ${nm(e.over)}` : e.trib ? `Pays tribute to ${nm(e.trib)}` : '';
     const sel = I && I.a === e.id, wars = E.wars.filter(w => w.a === e.id || w.b === e.id).length;
     const served = Object.entries((wanderer.dip && wanderer.dip.lent) || {}).filter(([, v]) => v === 'res:' + e.id).map(([k]) => compName(k));
-    let row = `<div class="re-emp" style="--c:${resEmpCol(e)}"><div class="re-emp-t"><b>${reEsc(e.name)}</b><small>${reEsc(c ? c.name : '?')} · ${alN[al]} · LV ${c ? resLevel(c) : '?'} · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${(gs => gs.length > 1 || (gs.length && gs[0] !== 'milky') ? ' in ' + gs.map(o => GAL_LONG[o].replace(/^the /, '')).join(', ') : '')([...new Set(e.col.map(resGalOfBody))])}${e.col.includes(CARAX) ? ' · holds Carax' : ''}${wars ? ` · ${wars} war${wars === 1 ? '' : 's'}` : ''}${st ? ' · ' + st : ''}${served.length ? ' · serving them: ' + served.join(', ') : ''}</small></div>`;
+    let row = `<div class="re-emp" style="--c:${resEmpCol(e)}"><div class="re-emp-t"><b>${reEsc(e.name)}</b><small>${reEsc(c ? c.name : '?')} · ${alN[al]} · LV ${c ? resLevel(c) : '?'} · ${e.col.length} world${e.col.length === 1 ? '' : 's'}${(gs => gs.length > 1 || (gs.length && gs[0] !== 'milky') ? ' in ' + gs.map(o => GAL_LONG[o].replace(/^the /, '')).join(', ') : '')([...new Set(e.col.map(resGalOfBody))])}${e.col.includes(CARAX) ? ' · holds Carax' : ''}${wars ? ` · ${wars} war${wars === 1 ? '' : 's'}` : ''}${st ? ' · ' + st : ''}${served.length ? ' · serving them: ' + served.join(', ') : ''}${(() => { try { return rdepNote(e); } catch (er) { return ''; } })()}</small></div>`;
     if (!sel) row += `<div class="re-act"><button data-re="incite|${e.id}" ${es.length < 2 ? 'disabled' : ''}>Set on another empire</button><button class="danger" data-re="disband|${e.id}">${RES.reDisband === e.id ? 'Tap again: demand they disband' : 'Demand they disband'}</button></div>`;
     else {
       row += `<div class="re-pick"><small>Who should ${reEsc(c ? c.name : '')} go to war with?</small><div class="re-chips">${es.filter(o => o.id !== e.id).map(o => `<button class="${I.b === o.id ? 'on' : ''}" data-re="tgt|${o.id}" ${resAtWar(e.id, o.id) ? 'disabled' : ''}>${reEsc(o.name)}${resAtWar(e.id, o.id) ? ' (at war)' : ''}</button>`).join('')}</div>`;
@@ -36935,7 +37209,7 @@ function loopFrame() {
   try { podSync(); } catch (e) {} // the pod, wherever your ship is drawn
   combatTick(dt);
   alOutfitSync(dt);
-  try { if (xoResBlock()) xoResQuiet(); else { resUiTick(); resEmpTick(dt); resGuildTick(dt); } try { depTick(dt); } catch (er) { console.error(er); } } catch (e) { console.error(e); } // on Xonexi the Milky Way's residents, their empires and their guilds are a galaxy away
+  try { if (xoResBlock()) xoResQuiet(); else { resUiTick(); resEmpTick(dt); resGuildTick(dt); } try { depTick(dt); } catch (er) { console.error(er); } try { enemyDepTick(dt); } catch (er) { console.error(er); } } catch (e) { console.error(e); } // on Xonexi the Milky Way's residents, their empires and their guilds are a galaxy away
   try { drunkTick(dt); chatUiTick(); } catch (e) {}
   try { if (wanderer) { peopleSpawnTick(); lawTick(dt); tauntBtnTick(); } } catch (e) { console.error(e); }
   try { if (wanderer) petWorldTick(dt); } catch (e) { console.error(e); } // the cats and dogs of Earth's cities
