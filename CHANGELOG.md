@@ -3428,3 +3428,25 @@ If Am-Grek surrendered Carax to Lord Zark in Chapter III, Chapter IV no longer h
 - **Waking on Archiostal:** Am-Grek's two lines about the Catharsis breaking its chains and Carax burning become *"…Then I knelt to Lord Zark in my own Bastion, and gave him everything."* and *"While you slept, my people rose and took back what I had given away. Carax, never. Then they took our worlds again, one by one."*
 - The rewritten lines are subtitles only, since the recordings tell the other story. Every other line keeps its voice.
 - **Previews:** `?ending=timeskipzark` and `?ending=amgrekzark`. `?ending=timeskip` and `?ending=amgrek` still play the usual telling.
+
+### Hidden: Lord Sevirrus in Hak's court, or Zark's
+
+Lord Sevirrus is Hak Chompjak as a boy, three hundred years before his redemption. Offer him to the Chompy Empire or to the Catharsis (Diplomacy → Crew → Offer to a faction…) and they have something to say about it.
+- **When you offer him (once per playthrough for each):** Hak, or Lord Zark, calls in, and a conversation plays as soon as you're free. How it goes depends on whether Sevirrus is good or evil.
+  - **Hak:** *"You have sent me the one soldier I can never trust. Myself."* A good Sevirrus asks the emperor he becomes for his first order ("Guard Janira's people. Every one of them. The ones you would have burned."). An evil one promises to learn every door of the palace ("Try. I locked them myself.").
+  - **Zark:** *"My prince. My little crowned knife."* A good Sevirrus refuses him ("You found a frightened boy and painted his leash gold."). An evil one kneels, and Zark promises to show the old man in blue spectacles on Aridaxx what he was.
+- **On their menu, at war with you while he serves them:** Hak or Zark talks about him before anything else, six lines each ("He looks at my spectacles the way I look at his sword." · "Hak wears spectacles so he never has to see what he was. I have the original, and he sees perfectly.").
+- **As their deputy:** Sevirrus has his own lines for serving each of them, six good and six evil. They play on the menu, where Hak's hand on his shoulder is his own hand three hundred years on (or Zark's, cold), and when you come to fight him.
+- **Spoiler-safe:** Hak's side waits until you've met Hak, as the Sevirrus and Hak Easter egg does.
+- Lines in `data/depLines2.js` (`_sev`); subtitles only. **Previews:** `?leader=alphinos&dep=sev-sevirrus` and `?leader=zark&dep=sev-sevirrus` (or `zarkbastion`).
+
+### Phones, and fixes (deputies, faction wars, the Bastion)
+
+Every screen from the last few updates was checked on a phone (iPhone 13 size), held upright and sideways: the leader menus with a deputy, Zark's Bastion, the villain menu with a deputy, Diplomacy's faction cards and *Set them on each other*, the galaxy map's Catharsis fleet, the deputy waiting on the ground and the fight, and the two years after Am-Grek's surrender.
+- **The Catharsis fleet's label on the galaxy map** sat right on top of the core's crowded names (Steca Prime, Sagittarius A*) and couldn't be read on a phone. It now sits on its own dark plate above the fleet, with a thread down to it, kept on screen.
+- **Zark's Bastion menu:** the title and his words were too dark to read on a phone. Both are a little brighter now, still crimson.
+- **Set them on each other:** the three pickers share the row evenly, and stack cleanly on a phone held upright.
+- **Facing an enemy's deputy:** the choice now says who you're facing (*Their deputy · LV …*) rather than *Your reply*.
+- **Fixed:** while you had set factions on each other, every world's flags were redrawn every ten seconds, even when nothing had changed hands. Now the score just ticks, and the flags are redrawn only when a war ends.
+- **Fixed:** the notice when a war between factions ended cut its sentence off mid-word. It now says who won, and the whole outcome goes in the log.
+- **Fixed:** if you paused or took off partway through the conversation with Hak or Zark about Sevirrus, the next part could pop up wherever you were. It now waits until you're back on your feet.

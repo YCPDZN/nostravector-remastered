@@ -1098,4 +1098,102 @@ timpur: [
   "{leader}’s hand on my shoulder. The crown’s weight, shared."
 ]
 }
+,
+/* Hidden: Lord Sevirrus (Hak Chompjak as a boy, three hundred years before his redemption) lent to the Chompy Empire, where the
+   emperor he becomes commands him, or to the Catharsis, where Lord Zark has his prince back. meet: the exchange when you lend him
+   (once per playthrough; [L]eader or [S]evirrus); menu: the leader's lines about him on their menu; dep: his own as their deputy. */
+_sev: {
+hak: {
+meet: {
+common: [
+  ["L", "Wanderer. Your message says you are sending me Lord Sevirrus. To serve the Chompy Empire."],
+  ["L", "Do you understand what you have done? You have sent me the one soldier I can never trust. Myself."],
+  ["S", "Spectacles. Still the spectacles. I have not grown any less ashamed of you, old man."],
+  ["L", "Nor I of you, boy. Stand there. Let me look at what I was."]
+],
+good: [
+  ["S", "Look, then. I hear the voice less every day. Is that you, beginning?"],
+  ["L", "It is. It takes three hundred years, a prison and our mother’s grief. It begins with one order you do not want to follow."],
+  ["S", "Then give me one, Emperor."],
+  ["L", "Guard Janira’s people. Every one of them. The ones you would have burned."],
+  ["S", "…As you command."]
+],
+evil: [
+  ["S", "Look all you like. I will serve your empire, Hak. I will learn where every one of your guards stands."],
+  ["L", "I know. I stood where you stand, thinking the same thought. I know every door you will try."],
+  ["S", "Then you know I will try them all."],
+  ["L", "Try. I locked them myself. And I sleep with my sword beside me, as I did when I was you."]
+]},
+menu: [
+  "My younger self holds a sword in my court. I have not slept well since you sent him.",
+  "Sevirrus guards my borders now. Three hundred years ago he would have sold them.",
+  "You sent me the boy I was, wanderer, and then you went to war with me. Did you think he would open my gates? He would. I will not let him.",
+  "Every morning I tell him Damix’s last words. Every morning he pretends not to hear.",
+  "He looks at my spectacles the way I look at his sword.",
+  "If you beat him, send him home to you. He is not ready to be me yet."
+],
+dep: {
+good: [
+  "Hak’s hand on my shoulder. My own hand, three hundred years from now. It is steadier than mine.",
+  "I hold a world for the emperor I become. The least I can do is not burn it.",
+  "He makes me guard Janira’s people. I think he is teaching me their names.",
+  "Wanderer, you sent me to the one man who knows exactly what I am. Come and take me back before he finishes.",
+  "Mother ruled gently after me. Hak says she would be proud of this. I do not believe him yet.",
+  "The voice is quieter here. The old man glares at it."
+],
+evil: [
+  "Hak’s hand on my shoulder. My own hand, old and soft. I could break it.",
+  "I serve the emperor I become, and I learn every door of his palace.",
+  "He thinks guarding his worlds will change me. It is teaching me where they are weak.",
+  "Spectacles, prayers, an old man on a throne. Is this how I end? Then I will end differently.",
+  "The Chompy kneel to Hak. They knelt to me first.",
+  "Come and fight me, wanderer. Hak will not stop you. He wants to see what I was, too."
+]}
+},
+zark: {
+meet: {
+common: [
+  ["L", "Well. Look who the wanderer sends home."],
+  ["L", "My prince. My little crowned knife. You were always mine to call, Sevirrus, and now I do not even have to whisper."]
+],
+good: [
+  ["S", "I am not your prince, Zark. You found a frightened boy and painted his leash gold."],
+  ["L", "And yet here you stand, in my house, wearing my colours."],
+  ["S", "Because the wanderer asked. Not you. Never again you."],
+  ["L", "Your older self needed twenty-six years in a cell to stop hearing me. You have none."],
+  ["S", "Then I will build my own cell. Out of every order you give me."]
+],
+evil: [
+  ["S", "My lord. I knew your voice before I knew my own."],
+  ["L", "Kneel, my prince."],
+  ["S", "I have knelt to no one. …For you, I kneel."],
+  ["L", "Good. There is an old man in blue spectacles on Aridaxx who thinks he escaped me. We will go and show him what he was."]
+]},
+menu: [
+  "My prince is home. The wanderer sent him back to me with a bow on.",
+  "Sevirrus stands at my right hand, where he always belonged.",
+  "Hak wears spectacles so he never has to see what he was. I have the original, and he sees perfectly.",
+  "I whispered to a boy once, and an empire burned. Now I do not even need to whisper.",
+  "You lent me my own masterpiece, wanderer. I will send him back to you in pieces. Yours.",
+  "The old man on Aridaxx will feel it when his younger self kneels to me. I hope it hurts."
+],
+dep: {
+good: [
+  "Zark’s hand on my shoulder. Cold as the night on Carax. I do not lean into it.",
+  "I hold a world for the thing that ruined me, because you asked. Do not leave me here long, wanderer.",
+  "He whispers. I say my mother’s name back at him until he stops.",
+  "Prince of Zark. I was never chosen, only available. I am choosing now.",
+  "Every order he gives, I follow to the letter, and not one step further.",
+  "Come for me, wanderer. Beat me. It will be the kindest thing anyone does in this place."
+],
+evil: [
+  "My lord’s hand on my shoulder. I was born for this weight.",
+  "Prince of Zark. Say it again. I never tire of it.",
+  "I emptied Carax for my lord once. I would do it again before breakfast.",
+  "The old man on Aridaxx wears spectacles so he never sees me coming. He will see me coming.",
+  "The voice never left. It only waited for me to come home.",
+  "Kneel, wanderer. Everyone kneels. I said that on Carax. This time I mean to keep it true."
+]}
+}
+}
 };
