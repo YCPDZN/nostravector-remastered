@@ -4111,7 +4111,7 @@ function loadSpecies(sp) {
       const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       new GLTFLoader().parse(u8.buffer, '', g => {
-        try { if (sp === 'grek') faceOut(g.scene); speciesInfo[sp] = setupSpecies(sp, g.scene); } catch (e) { console.error(e); }
+        try { if (faceOutId('sp_' + sp)) faceOut(g.scene); speciesInfo[sp] = setupSpecies(sp, g.scene); } catch (e) { console.error(e); }
         res(speciesInfo[sp] || null);
       }, () => res(null));
     } catch { res(null); }
@@ -8557,7 +8557,7 @@ function setupMerchants() {
       if (el) {
         const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-        parseGlb(u8.buffer).then(sc => { if (sp === 'grek') faceOut(sc); const R = autoRig(sc, (SPECIES[sp] && SPECIES[sp].height) || 1.96); armRig(R, 'none'); R.root.position.set(0, 0, -.2); g.add(R.root); m.rig = R; }).catch(() => null);
+        parseGlb(u8.buffer).then(sc => { if (faceOutId('sp_' + sp)) faceOut(sc); const R = autoRig(sc, (SPECIES[sp] && SPECIES[sp].height) || 1.96); armRig(R, 'none'); R.root.position.set(0, 0, -.2); g.add(R.root); m.rig = R; }).catch(() => null);
       }
     }
     m.stall.position.set(m.px, wHeight(m.px, m.pz), m.pz);
@@ -10301,7 +10301,7 @@ function ensureSoldier() {
     try {
       const bin = atob(document.getElementById('hfosGlb').textContent.trim()), u8 = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-      new GLTFLoader().parse(u8.buffer, '', g => { try { setupSoldier(g.scene); } catch (e) { console.error(e); } res(); }, () => res());
+      new GLTFLoader().parse(u8.buffer, '', g => { try { faceOut(g.scene); setupSoldier(g.scene); } catch (e) { console.error(e); } res(); }, () => res());
     } catch { res(); }
   });
   return soldierPromise;
@@ -10505,7 +10505,7 @@ let hdWLoad = null;
 function embGlb(id) {
   const el = document.getElementById(id); if (!el) return Promise.resolve(null);
   const u8 = b64u8(el.textContent);
-  return parseGlb(u8.buffer).then(sc => id === 'sp_grek' ? faceOut(sc) : sc).then(sc => DEITY_TAGS[id] ? deityDress(sc, DEITY_TAGS[id]) : IMPORT_TAGS[id] ? majestyDress(sc, IMPORT_TAGS[id]) : sc).catch(() => null);
+  return parseGlb(u8.buffer).then(sc => faceOutId(id) ? faceOut(sc) : sc).then(sc => DEITY_TAGS[id] ? deityDress(sc, DEITY_TAGS[id]) : IMPORT_TAGS[id] ? majestyDress(sc, IMPORT_TAGS[id]) : sc).catch(() => null);
 }
 function firstMesh(sc) { let m = null; if (sc) sc.traverse(o => { if (!m && o.isMesh) m = o; }); return m; }
 function loadWorldHD() {
@@ -31199,7 +31199,9 @@ const charCache = {};
    fine until it was lit: once a Grek is baked into one single-sided mesh (bakeRig), its outer skin counts as the back, and that's the
    side drawn into the shadow map, so every Grek shadowed itself in stripes that crawled as the camera moved (and double-sided, it was
    lit inside out). faceOut turns each triangle to face the way its own normals point, once per geometry, straight after the model is
-   parsed. ---- */
+   parsed. The Chompy (a third of its triangles), the Erisians (two thirds) and the Federation's soldiers (three quarters) had the same
+   fault, so they get it too; the other models are already the right way round. ---- */
+function faceOutId(id) { return id === 'sp_grek' || id === 'sp_chompy' || id === 'sp_erisian' || id === 'hfosGlb'; } // (a function, not a list: it's needed before this line runs)
 function faceOut(sc) {
   if (!sc) return sc; const done = new Set();
   sc.traverse(o => {
