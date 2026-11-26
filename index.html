@@ -23895,6 +23895,16 @@ const SKIP_NARR = [
   'The Republic of Timpur watched from the edge of the galaxy. The Human Federation of Sol held its home, and waited.',
   'And through all of it, wanderer, you slept.'
 ];
+// ...and as it went if Am-Grek had already surrendered Carax to Lord Zark in Chapter III (Diplomacy: you set the Catharsis on the Grek).
+// Zark doesn't take Carax twice: the map opens with the Catharsis already holding the Grek's worlds, the Grek rise from Malana and take
+// back what they can, then lose it again. The rewritten lines are subtitles only (the recordings tell it the other way).
+// ?ending=timeskipzark (and ?ending=amgrekzark for Am-Grek's waking words) preview it.
+const SKIP_ZARK = /[?&]ending=(timeskip|amgrek)zark/.test(window.location.search);
+function zarkHadBastion() { if (SKIP_ZARK) return true; try { return !!(wanderer && wanderer.dip && wanderer.dip.fx && wanderer.dip.fx.zark); } catch (e) { return false; } }
+const SKIP_NARR_ZARK = {
+  1: 'Before you fell, Lord Zark had already taken Carax. Am-Grek knelt in his own Bastion, and gave him every world the Grek had.',
+  2: 'In the chaos after your death, the Grek rose from Malana, and took back what their Hierarch had given away.'
+};
 const SN_EMP = { hfos: ['HUMAN FEDERATION OF SOL', '#4f8fff'], chompy: ['CHOMPY EMPIRE', '#a35cff'], timpur: ['REPUBLIC OF TIMPUR', '#36e2f0'], grek: ['GREK EMPIRE', '#3fd36c'], cath: ['CATHARSIS', '#ff2b2b'] };
 const SN = { on: false };
 function snKey(f) { f = String(f || ''); return /^The Catharsis/.test(f) ? 'cath' : /Timpur/.test(f) ? 'timpur' : /Chompy/.test(f) ? 'chompy' : /Grek|Order of Archamus/.test(f) ? 'grek' : /Human Federation|Terra Imperia|Erisian/.test(f) ? 'hfos' : null; }
@@ -23951,6 +23961,11 @@ function snBuild() { // the systems, who holds each before and after, and the te
   const cen = k => { const L = all(s => s.o3 === k); return L.length ? [L.reduce((t, i) => t + sys[i].x, 0) / L.length, L.reduce((t, i) => t + sys[i].y, 0) / L.length] : [0, 0]; };
   const sol = sys.find(s => s.S.id === 'sol') || { x: .18, y: .5 }, held = sys.filter(s => s.o3 || s.o4), bx = held.map(s => s.x), by = held.map(s => s.y);
   const mid = [(Math.min(...bx) + Math.max(...bx)) / 2, (Math.min(...by) + Math.max(...by)) / 2 + .13], fit = 1.6 / Math.max(.4, Math.max(...bx) - Math.min(...bx), (Math.max(...by) - Math.min(...by)) * Math.max(1, innerWidth / innerHeight) * .62); // the claimed galaxy, filling the screen (a little low: the words go underneath)
+  if (SN.zark) { // Am-Grek surrendered everything to Zark before you fell: the Grek's own worlds (not the Order's) start in the Catharsis's red
+    const cr = snRgb(SN_EMP.cath[1]), gave = [];
+    sys.forEach((s, i) => { if (s.S.id === 'sgra' || (s.o3 === 'grek' && /^The Grek/.test(String(s.S.fac3 || s.S.fac0 || '')))) { s.own = 'cath'; s.col = cr.slice(); if (s.S.id !== 'sgra') gave.push(i); } });
+    const w1 = new Set(G.slice(0, cut(.25))); SN.rise = gave.filter(i => !w1.has(i)); // the Grek rise and take these back, all but the core
+  }
   SN.sets = { carax, w1: G.slice(0, cut(.25)), w2: G.slice(cut(.25), cut(.45)), w2b: G.slice(cut(.35), cut(.45)), w3: G.slice(cut(.45), cut(.65)), rest: G.slice(cut(.65)), C,
     chompyC: cen('chompy'), timpurC: cen('timpur'), sol: [sol.x, sol.y], mid, fit };
 }
@@ -23970,6 +23985,11 @@ const SN_LINES = [ // what the map does under each line: where the camera goes, 
   { cam: k => k < .5 ? [SN.sets.timpurC[0], SN.sets.timpurC[1], 2.2] : [SN.sets.sol[0], SN.sets.sol[1], 3], on: () => { SN.pulse = null; }, year: 2127.3 },
   { cam: () => [SN.sets.mid[0], SN.sets.mid[1], SN.sets.fit * .9], on: () => { SN.dim = 1; }, year: 2127.4 }
 ];
+const SN_LINES_ZARK = { // the lines whose map changes when Carax was already Zark's
+  1: { cam: () => [0, 0, 2.7], on: () => { const s = SN.sys[SN.sets.carax]; if (s) { s.big = true; s.ring = SN.lineT0 + 1.6; } SN.q.push({ t: SN.lineT0 + 1.6, i: -1 }); SN.shake = .5; } },
+  2: { cam: () => [0, 0, 1.6], on: () => snFlip(SN.rise || [], 'grek', .5, 4.4), min: 5.4 }
+};
+const snL = i => (SN.zark && SN_LINES_ZARK[i]) || SN_LINES[i];
 function snLabels() { // each empire's name over its own space: where its worlds sit thickest, clear of the other names
   const S = SN.sys, out = {}, placed = [], z = SN.cam[2], kk = Math.min(innerWidth, innerHeight) * .46 * z; // label boxes, in galaxy units at this zoom
   for (const k of ['cath', 'grek', 'chompy', 'timpur', 'hfos']) {
@@ -24035,8 +24055,8 @@ function snFrame() {
   if (!SN.on) return; requestAnimationFrame(snFrame);
   const nowMs = performance.now(), dt = Math.min(.05, (nowMs - (SN.last || nowMs)) / 1000); SN.last = nowMs; SN.t += dt;
   const cv = SN.cv, dpr = SN.dpr = Math.min(2, devicePixelRatio || 1), w = Math.round(innerWidth * dpr), h = Math.round(innerHeight * dpr); if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-  while (SN.q.length) { let m = 0; for (let i = 1; i < SN.q.length; i++) if (SN.q[i].t < SN.q[m].t) m = i; if (SN.q[m].t > SN.t) break; const e = SN.q.splice(m, 1)[0]; snApply(e, SN.t); if (e.big) { SN.sys[e.i].big = true; SN.shake = 1; try { sfx.thud(); sfx.thud(); } catch (_) {} } }
-  const L = SN_LINES[Math.max(0, SN.line)], lk = SN.lineDur ? clamp((SN.t - SN.lineT0) / SN.lineDur, 0, 1) : 0, tc = L ? L.cam(lk) : [0, 0, 1];
+  while (SN.q.length) { let m = 0; for (let i = 1; i < SN.q.length; i++) if (SN.q[i].t < SN.q[m].t) m = i; if (SN.q[m].t > SN.t) break; const e = SN.q.splice(m, 1)[0]; if (e.i < 0) { SN.shake = 1; try { sfx.thud(); sfx.thud(); } catch (_) {} continue; } snApply(e, SN.t); if (e.big) { SN.sys[e.i].big = true; SN.shake = 1; try { sfx.thud(); sfx.thud(); } catch (_) {} } }
+  const L = snL(Math.max(0, SN.line)), lk = SN.lineDur ? clamp((SN.t - SN.lineT0) / SN.lineDur, 0, 1) : 0, tc = L ? L.cam(lk) : [0, 0, 1];
   const ease = Math.min(1, dt * .9); SN.cam = SN.cam.map((v, i) => v + (tc[i] - v) * ease);
   if (SN.shake > 0) { SN.cam[0] += (Math.random() - .5) * .006 * SN.shake; SN.cam[1] += (Math.random() - .5) * .006 * SN.shake; }
   SN.dimK = (SN.dimK || 0) + ((SN.dim || 0) - (SN.dimK || 0)) * Math.min(1, dt * .8);
@@ -24045,21 +24065,21 @@ function snFrame() {
 }
 async function snLine(i) { // one line of narration: its text, its voice if there is one, and what happens on the map
   if (!SN.on) return; SN.line = i; SN.skipLine = false; SN.lineT0 = SN.t;
-  const text = SKIP_NARR[i], clip = SN.vo[i], words = text.split(' ').length;
-  SN.lineDur = Math.max(clip && clip.duration ? clip.duration + .8 : Math.max(4.6, 1.6 + words * .36), SN_LINES[i].min || 0); // long enough for the map to finish what this line does
-  SN_LINES[i].on(); const sub = SN.el.querySelector('.sn-sub'); sub.textContent = text; sub.classList.remove('show'); void sub.offsetWidth; sub.classList.add('show');
+  const alt = SN.zark && SKIP_NARR_ZARK[i], text = alt || SKIP_NARR[i], clip = alt ? null : SN.vo[i], words = text.split(' ').length; // (a rewritten line has no recording: subtitles only)
+  SN.lineDur = Math.max(clip && clip.duration ? clip.duration + .8 : Math.max(4.6, 1.6 + words * .36), snL(i).min || 0); // long enough for the map to finish what this line does
+  snL(i).on(); const sub = SN.el.querySelector('.sn-sub'); sub.textContent = text; sub.classList.remove('show'); void sub.offsetWidth; sub.classList.add('show');
   if (clip) sfx.playNarr(clip, 1.3);
   while (SN.on && !SN.skipLine && SN.t - SN.lineT0 < SN.lineDur) await waitMs(60);
   if (!SN.on) return;
   if (SN.skipLine) { try { sfx.stopNarr(); } catch (_) {} } // tapped through: everything this line was going to do happens now
-  for (const e of SN.q.splice(0)) snApply(e, SN.t - .5);
+  for (const e of SN.q.splice(0)) if (e.i >= 0) snApply(e, SN.t - .5);
   sub.classList.remove('show'); await waitMs(450);
 }
 async function skipNarrStart(done, opts = {}) {
   if (SN.on) return; const el = snDom(); SN.el = el; SN.cv = el.querySelector('canvas'); SN.ctx = SN.cv.getContext('2d');
   SN.done = done; SN.replay = !!opts.replay; SN.prev = state; state = 'skipNarr';
   if (!SN.replay && wanderer) { wanderer.ch4 = Object.assign({}, wanderer.ch4, { timeSkip: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); } // two years have gone by
-  Object.assign(SN, { on: true, t: 0, last: 0, q: [], lab: {}, line: -1, lineDur: 0, cam: [0, 0, .8], yr: 2125, dim: 0, dimK: 0, pulse: null, shake: 0, legH: '', vo: [] });
+  Object.assign(SN, { on: true, t: 0, last: 0, q: [], lab: {}, line: -1, lineDur: 0, cam: [0, 0, .8], yr: 2125, dim: 0, dimK: 0, pulse: null, shake: 0, legH: '', vo: [], zark: zarkHadBastion(), rise: [] });
   el.classList.add('on'); el.classList.remove('map'); const fade = el.querySelector('.sn-fade'), card = el.querySelector('.sn-card');
   fade.style.transition = 'none'; fade.style.opacity = 1;
   card.querySelector('small').textContent = 'While you slept'; card.querySelector('b').textContent = '2125 AD';
@@ -24099,6 +24119,10 @@ const AMG_LINES = [ // [when, line] · CH4AMGREK1–10
   [60.5, 'I watched you on Mercury, wanderer. I saw you hunt the Grand Imperarch to his last door. I know what you are.'],
   [67.5, 'So rise. The galaxy has gone on without you long enough.'],
   [73.5, 'Whatever is coming for us… it is coming for you first.']];
+const AMG_ZARK = { // Am-Grek's words if he had already surrendered Carax to Zark in Chapter III (subtitles only)
+  4: 'Before you fell, the Catharsis broke its chains. I put those chains on them. Then I knelt to Lord Zark in my own Bastion, and gave him everything.',
+  5: 'While you slept, my people rose and took back what I had given away. Carax, never. Then they took our worlds again, one by one.'
+};
 const ZARK_WAKE = [ // ????, once the red comes · CH4MYSTERIOUSVOICE1–10
   'There you are.',
   'Two years, wanderer. I counted every one of them.',
@@ -24189,7 +24213,7 @@ function amgTick(dt) {
   else { const k = sm(79, 86, t); camera.position.set(lerp(3.2, 1.5, k), lerp(4.5, 58, k * k), lerp(5.5, 4, k)); camera.lookAt(0, 90, -30); } // up, out through the glass
   camera.position.x += Math.sin(t * 1.3) * .02; camera.position.y += Math.sin(t * 1.9 + 1) * .02;
   if (t >= AMG_END) { amgEnd(); return; }
-  for (const [i, [at, line]] of AMG_LINES.entries()) if (t >= at && !NM.amgSaid.has(at)) { NM.amgSaid.add(at); const clip = NM.amgVo && NM.amgVo[i]; fbSay('AM-GREK', line, clip || null, 1.3); NM.amgEnd = clip && clip.duration ? NM.amgRT + clip.duration : 0; break; }
+  for (const [i, [at, line]] of AMG_LINES.entries()) if (t >= at && !NM.amgSaid.has(at)) { NM.amgSaid.add(at); const alt = zarkHadBastion() && AMG_ZARK[i], clip = alt ? null : NM.amgVo && NM.amgVo[i]; fbSay('AM-GREK', alt || line, clip || null, 1.3); NM.amgEnd = clip && clip.duration ? NM.amgRT + clip.duration : 0; break; }
   fbSubTick();
   if (!hwxRender(dt)) gfxRender(NM.scene, camera, dt);
 }

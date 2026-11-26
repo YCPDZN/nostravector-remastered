@@ -3417,3 +3417,14 @@ Set the Catharsis on the Grek in Chapter III (Diplomacy → Factions → *Set th
   - **12 new lines** for Zark in the Bastion come first ("I ran from Ulmira to Carax faster than their prayers. Remember that, wanderer."), then his own. Am-Grek breaks in now and then, signed *Am-Grek, kneeling* ("Forgive me, Prime Good. I could not hold the Bastion.").
   - **Preview:** `?leader=zarkbastion`.
 - Saved in `dip().fx` (`zark`, `fell`).
+
+### The two years remember who took Carax
+
+If Am-Grek surrendered Carax to Lord Zark in Chapter III, Chapter IV no longer has Zark capture it a second time.
+- **While you slept (the two years):** the map opens with Carax and every world of the Grek already in the Catharsis's red (the Order's Archiostal stays green).
+  - Line two tells it as it happened: *"Before you fell, Lord Zark had already taken Carax. Am-Grek knelt in his own Bastion, and gave him every world the Grek had."* Carax pulses on the map rather than falling.
+  - Line three becomes the Grek's uprising: *"In the chaos after your death, the Grek rose from Malana, and took back what their Hierarch had given away."* Their worlds turn green again, all but the core.
+  - The rest plays as before, as the Catharsis takes the Grek's worlds back one by one until only Malana is left.
+- **Waking on Archiostal:** Am-Grek's two lines about the Catharsis breaking its chains and Carax burning become *"…Then I knelt to Lord Zark in my own Bastion, and gave him everything."* and *"While you slept, my people rose and took back what I had given away. Carax, never. Then they took our worlds again, one by one."*
+- The rewritten lines are subtitles only, since the recordings tell the other story. Every other line keeps its voice.
+- **Previews:** `?ending=timeskipzark` and `?ending=amgrekzark`. `?ending=timeskip` and `?ending=amgrek` still play the usual telling.
