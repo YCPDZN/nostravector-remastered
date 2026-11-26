@@ -35022,7 +35022,7 @@ function fxEnd(w, aWon) {
   dipSave(); if (state === 'explore' || state === 'space') { notice(`${fxNm(w.a)} and ${fxNm(w.b)} · the war is over`, `${fxNm(W).replace(/^The /, '').toUpperCase()} WINS`, 4600); sfx.chime(); } // the whole story in the log below
   lootMsg(what, '#ffd36a');
 }
-const FX_DASH_MS = 150e3;
+const FX_DASH_MS = 150e3, FX_SIEGE = 30; // the dash takes 2½ minutes; each tick of the siege swings up to ±30 either way (an even fight, about 5 minutes)
 function fxUlmira() { // where the Catharsis fleet sets out from: Ulmira, one of their first systems at the core (or Zark's own world, if it can't be found)
   const S = SYSTEMS.find(o => /^Ulmira/i.test(o.name) && String(o.fac3 || o.faction || '').startsWith('The Catharsis')) || SYSTEMS.find(o => /^Ulmira/i.test(o.name));
   const P = (S && (bodyById(S.home) || S.bodies.find(b => b.land))) || (() => { try { return bodyById(leaderOf(fxFac('catharsis')).at); } catch (e) { return null; } })() || bodyById('carax');
@@ -35096,9 +35096,11 @@ function fxWarTick() {
       if (k < 1) { if (Math.random() < .2 && (state === 'explore' || state === 'space')) lootMsg(`The Catharsis fleet races for Carax · ${Math.round(k * 100)}% of the way`, '#ff5a6a'); continue; }
       w.dash.arrived = true; if (state === 'explore' || state === 'space') { notice('The Catharsis fleet arrives at Carax', 'THE SIEGE OF THE BASTION · AM-GREK HOLDS', 5200); sfx.alarm(); } lootMsg('Lord Zark is at Carax. Am-Grek holds the Bastion against him', '#ff5a6a');
     }
-    if (w.dash) w.score = clamp(w.score + 6, -100, 100); // the siege: the dark at the gate
     if (!fxLive(w.a) || !fxLive(w.b)) { X.wars = X.wars.filter(o => o !== w); fxSave(); lootMsg(`The war between ${fxNm(w.a)} and ${fxNm(w.b)} is over: one of them is gone`, '#cfd6e6'); continue; }
-    const S = fxSides(w); w.score = clamp(w.score + (fxPow(S.A) - fxPow(S.B)) * .06 + (Math.random() * 28 - 14), -100, 100);
+    if (w.dash) { // the siege of the Bastion: Zark's fleet against Am-Grek's garrison at Carax, not the Grek's whole empire. An even fight: about one siege in two falls to him, most within five minutes of play (FX_SIEGE)
+      w.score = clamp(w.score + (Math.random() * 2 - 1) * FX_SIEGE, -100, 100);
+      if (Math.random() < .18 && (state === 'explore' || state === 'space')) lootMsg(w.score > 30 ? 'The siege of Carax · the Bastion’s walls are breaking' : w.score < -30 ? 'The siege of Carax · Am-Grek is driving the Catharsis back' : 'The siege of Carax · the Bastion holds, for now', '#ff5a6a');
+    } else { const S = fxSides(w); w.score = clamp(w.score + (fxPow(S.A) - fxPow(S.B)) * .06 + (Math.random() * 28 - 14), -100, 100); }
     if (Math.random() < .12 && (state === 'explore' || state === 'space')) lootMsg(`⚔ ${fxNm(w.a)} and ${fxNm(w.b)} clash · ${Math.round(w.score)} (${fxNm(w.a)} at 100 wins)`, '#ffb36e');
     if (w.score >= 100) fxEnd(w, true); else if (w.score <= -100) fxEnd(w, false);
   }
