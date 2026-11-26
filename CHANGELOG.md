@@ -3565,3 +3565,8 @@ One more telling of *While you slept*, and this one goes on into Chapter IV. If 
 - **Fixed:** every Grek (townsfolk, wardens, Am-Grek, your own Grek wanderer, residents) shimmered with dark stripes that crawled over them as the camera moved.
   - The Grek model's triangles were all wound inside out, with its normals pointing out. Its double-sided materials hid that until a Grek was baked into one single-sided mesh. Then its outer skin counted as the back, which is the side drawn into the shadow map, so every Grek shadowed itself in stripes. Double-sided, it was also lit inside out.
   - The game now turns each triangle the right way round as soon as the model loads (`faceOut` in `index.html`), everywhere a Grek is built. The model file itself is unchanged.
+
+### Fix: the same stripes on the Chompy, the Erisians and the Federation's soldiers
+
+- **Fixed:** the Chompy, the Erisians and the Human Federation's soldiers had the same fault as the Grek, so the same self-shadow stripes could crawl over them. A third of the Chompy model's triangles were inside out, two thirds of the Erisians', and three quarters of the soldiers'. `faceOut` now turns them the right way round as they load, wherever they're built: your own wanderer, townsfolk, crowds, residents, market stalls and Federation infantry.
+- The Human, Taredesiban and Oilkoumene models and the leaders' models were already the right way round, so they're untouched.
