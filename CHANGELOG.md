@@ -3394,3 +3394,26 @@ Every ruler you're at war with now does what you do: they **appoint a deputy**, 
   - **Broker peace** ends any of them. In Chapters III and IV you're warned first, since their wars can move worlds and puppets the story relies on.
   - The Republic of Timpur's First Consul answers to whoever holds it now ("of a free Republic" once it breaks away).
 - Saved on your wanderer, in `dip().fx`.
+
+### Lord Zark takes the Bastion of Carax (Chapter III)
+
+Set the Catharsis on the Grek in Chapter III (Diplomacy → Factions → *Set them on each other*), and it isn't a war like the others.
+- **The dash.** The Catharsis breaks away from the Grek, and Lord Zark's fleet dashes from **Ulmira Hollow**, one of the Catharsis's first systems at the core, **to Carax**, to take the Bastion from Am-Grek himself.
+  - It takes two and a half minutes. Nothing is decided until they get there.
+  - On the galaxy map the fleet races along a crimson dashed line with its wake behind it, labelled *Lord Zark · The Catharsis fleet · Dashing to Carax* with a countdown. Comms report its progress.
+  - Diplomacy says so too, and warns you before you set them off.
+- **The siege.** When the fleet arrives, the siege of the Bastion begins: *Am-Grek holds*. The galaxy map rings Carax, and the dark at the gate pushes the war Zark's way.
+  - If the Grek (and the Order, beside them) hold, the siege is broken and the fleet falls back.
+- **The surrender.** If Am-Grek falls in his Bastion, **he surrenders his lands to Zark**.
+  - Every world of the Grek, Carax with it, flies the Catharsis's flag: *surrendered by Am-Grek*, and Carax becomes *the Bastion of Carax, Lord Zark's court*.
+  - The Grek Empire is gone from Diplomacy for the rest of Chapter III. Your war with the Grek ends, and whoever it brought into your war stands down.
+  - **Lord Zark's hall moves to Carax.** At war with the Catharsis, you face him in the Bastion.
+  - It's Chapter III only: Chapter IV's galaxy is the story's own.
+- **His menu moves to the Bastion, darker and more sinister.**
+  - At war with the Catharsis afterwards, Zark's leader menu is no longer out on the Catharsis world. He stands in the Bastion of Carax, in almost no light.
+  - The braziers burn low and red, and a red glow pools where he stands. The Grek's green banners are torn short on the walls, and one lies trampled on the floor. Chains hang from the dark, and crimson and violet embers drift up.
+  - **Am-Grek kneels beside him**, head bowed.
+  - The menu's colours go crimson on near-black, with a slow heartbeat, a flicker in the title and a vignette closing in.
+  - **12 new lines** for Zark in the Bastion come first ("I ran from Ulmira to Carax faster than their prayers. Remember that, wanderer."), then his own. Am-Grek breaks in now and then, signed *Am-Grek, kneeling* ("Forgive me, Prime Good. I could not hold the Bastion.").
+  - **Preview:** `?leader=zarkbastion`.
+- Saved in `dip().fx` (`zark`, `fell`).
