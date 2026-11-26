@@ -3506,3 +3506,9 @@ Two endings to the two years that don't lead into Chapter IV. You wake to nothin
   - Replays from Cutscenes and the previews erase nothing.
 - These two come before every other telling. If both happened, Orion's plays.
 - **Previews:** `?ending=timeskiporion`, `?ending=timeskipcath`.
+
+### The siege of Carax: an even fight
+
+- **Fixed:** Lord Zark could never take the Bastion. The siege was decided by the whole Grek Empire's size against the Catharsis's: 124 worlds (with the Order beside them) against 27. Zark lost every one of 200,000 simulated sieges, which put his Bastion, Am-Grek kneeling, his telling of the two years and the Catharsis's road to winning everything out of reach.
+- **Now the siege is fought at Carax itself:** Zark's fleet against Am-Grek's garrison in the Bastion, not against every Grek world. It's an even fight. **Zark takes the Bastion about one siege in two** (50.9% over 3,000 test sieges).
+- A siege lasts about 5 to 7 minutes of play once the fleet arrives (most are over within 14). Comms report how it's going: *the Bastion holds, for now* · *the Bastion's walls are breaking* · *Am-Grek is driving the Catharsis back*. The galaxy map's siege readout shows the same.
