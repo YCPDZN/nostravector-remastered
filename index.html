@@ -23886,7 +23886,7 @@ function podTbcClose() { const T = ui.tbc; try { const [a, b, c, d] = JSON.parse
    colour with its name across it: the Human Federation of Sol (blue: it holds Sol, so the Erisian Empire isn't shown), the Chompy
    Empire (purple), the Republic of Timpur (cyan), the Grek Empire (green) and the Catharsis (red). The Catharsis starts as the Grek's
    small puppet round the core, sacks Carax, then takes the galaxy system by system, losing ground and taking it back, until it holds
-   every Grek world but Malana (the Chapter IV map). Sets ch4.timeSkip. Voiced: data/skipNarrVoices.js (CH4NARRATOR1–10), and the rewritten tellings' lines data/skipNarrAltVoices.js (CH4WYSALT1–25). Replays from Cutscenes; ?ending=timeskip plays it from the title. ---- */
+   every Grek world but Malana (the Chapter IV map). Sets ch4.timeSkip. Voiced: data/skipNarrVoices.js (CH4NARRATOR1–10), and the rewritten tellings' lines data/skipNarrAltVoices.js (CH4WYSALT1–30). Replays from Cutscenes; ?ending=timeskip plays it from the title. ---- */
 const SKIP_NARR = [
   'An alien species known as the Catharsis, once a small puppet of the Grek Empire, now threatens the entire galaxy.',
   'In the chaos after your death, they turned on their masters, and sacked Carax.',
@@ -23939,10 +23939,24 @@ const SKIP_NARR_ZARK = {
   1: 'Before you fell, Lord Zark had already taken Carax. Am-Grek knelt in his own Bastion, and gave him every world the Grek had.',
   2: 'In the chaos after your death, the Grek rose from Malana, and took back what their Hierarch had given away.'
 };
+// ...or if you killed Croxian and Orion Mascar is still alive (orionVillain): the usual two years, with his offensive told in it. He took
+// Terra Imperia, gave the worlds round Sol to the Catharsis, and waits on Earth, so it still goes on into Chapter IV (the boss fight there).
+// If you had already shot him down in orbit, it's the usual two years again, but they remember him: his worlds were free, for a while.
+// The last of the tellings: every other what-if comes first. New lines voiced (CH4WYSALT26–30). ?ending=timeskipcrox (and timeskipcroxdead) preview it.
+const SKIP_CROX = (window.location.search.match(/[?&]ending=timeskipcrox(dead)?\b/) || [])[0] ? (/croxdead/.test(window.location.search) ? 'dead' : 'alive') : null;
+function croxHadOrion() { if (SKIP_CROX) return SKIP_CROX; try { const D = ch4Decisions(); if (D.crox !== 'killed') return null; return orbS().dead || D.orion === 'killed' ? 'dead' : 'alive'; } catch (e) { return null; } } // 'alive' · 'dead' · null
+const SKIP_NARR_CROX = {
+  fell: 'Before you fell, you killed Croxian Mascar. His father did not forget.',
+  took: 'Orion Mascar took Terra Imperia from Hawthorne’s corpse. Then he took the worlds around Sol, one by one, and gave them to the Catharsis.',
+  wait: 'Orion Mascar waited too. On Earth, for you.',
+  shot: 'Before you fell, you killed Croxian Mascar. Then you shot his father down in orbit.', // (if Orion was already dead)
+  free: 'The worlds Orion Mascar had taken were free again. For a while.'
+};
 // The rewritten lines' own recordings, in order (data/skipNarrAltVoices.js, CH4WYSALT1–25): Zark's two, Hak's four, the galaxy at
-// war's five, then Orion's seven and the Catharsis's seven. A line that isn't one of the recorded ones (v) looks itself up here.
+// war's five, then Orion's seven and the Catharsis's seven, then (26–30) the Croxian tellings' five. A line that isn't one of the recorded ones (v) looks itself up here.
 const SKIP_ALT = [SKIP_NARR_ZARK[1], SKIP_NARR_ZARK[2], SKIP_NARR_HAK.took, SKIP_NARR_HAK.arch, SKIP_NARR_HAK.carax, SKIP_NARR_HAK.chip,
-  SKIP_NARR_WAR.all, SKIP_NARR_WAR.chaos, SKIP_NARR_WAR.carax, SKIP_NARR_WAR.chip, SKIP_NARR_WAR.held, ...SKIP_NARR_OVER.orion, ...SKIP_NARR_OVER.cath];
+  SKIP_NARR_WAR.all, SKIP_NARR_WAR.chaos, SKIP_NARR_WAR.carax, SKIP_NARR_WAR.chip, SKIP_NARR_WAR.held, ...SKIP_NARR_OVER.orion, ...SKIP_NARR_OVER.cath,
+  SKIP_NARR_CROX.fell, SKIP_NARR_CROX.took, SKIP_NARR_CROX.wait, SKIP_NARR_CROX.shot, SKIP_NARR_CROX.free]; // (26–30: if you killed Croxian)
 const SN_EMP = { orion: ['IMPERIUM OF ORION MASCAR', '#ff8c1a'], hfos: ['HUMAN FEDERATION OF SOL', '#4f8fff'], chompy: ['CHOMPY EMPIRE', '#a35cff'], timpur: ['REPUBLIC OF TIMPUR', '#36e2f0'], grek: ['GREK EMPIRE', '#3fd36c'], cath: ['CATHARSIS', '#ff2b2b'] };
 const SN = { on: false };
 function snKey(f) { f = String(f || ''); return /^The Catharsis/.test(f) ? 'cath' : /Timpur/.test(f) ? 'timpur' : /Chompy/.test(f) ? 'chompy' : /Grek|Order of Archamus/.test(f) ? 'grek' : /Human Federation|Terra Imperia|Erisian/.test(f) ? 'hfos' : null; }
@@ -24034,7 +24048,7 @@ function snChaos(n, at, span) { // n systems change hands, each to whoever holds
   const S = SN.sys, own = S.map((s, i) => i).filter(i => S[i].own && S[i].S.id !== 'sol' && S[i].S.id !== 'sgra'), pick = own.sort(() => Math.random() - .5).slice(0, n);
   pick.forEach((i, k) => { let best = null, bd = 9; for (const o of S) if (o.own && o.own !== S[i].own) { const d = Math.hypot(o.x - S[i].x, o.y - S[i].y); if (d < bd) { bd = d; best = o; } } if (best && bd < .35) SN.q.push({ t: SN.lineT0 + at + (k / Math.max(1, pick.length - 1)) * span, i, own: best.own }); });
 }
-const snEmps = () => SN.over === 'orion' ? ['orion', 'cath', 'grek', 'chompy', 'timpur', 'hfos'] : ['cath', 'grek', 'chompy', 'timpur', 'hfos'];
+const snEmps = () => SN.over === 'orion' || SN.crox ? ['orion', 'cath', 'grek', 'chompy', 'timpur', 'hfos'] : ['cath', 'grek', 'chompy', 'timpur', 'hfos'];
 function snFlood(own, ox, oy, r0, r1, at, span, pred) { // everything between r0 and r1 of (ox, oy) falls to `own`, nearest first
   const L = SN.sys.map((s, i) => [i, Math.hypot(s.x - ox, s.y - oy)]).filter(([i, d]) => d >= r0 && d < r1 && SN.sys[i].own !== own && (!pred || pred(SN.sys[i]))).sort((a, b) => a[1] - b[1]).map(a => a[0]);
   snFlip(L, own, at, span);
@@ -24075,6 +24089,18 @@ function snScript0() { // the lines this telling plays, each with its recording 
       orig(7),
       { t: SKIP_NARR_WAR.held, v: -1, L: SN_LINES[8] },
       settle]; }
+  if (SN.crox) { const S = SN.sets, solI = SN.sys.findIndex(s => s.S.id === 'sol'), ring = () => { const s = SN.sys[solI]; if (s) s.ring = SN.lineT0 + 1; };
+    const near = () => SN.sys.map((s, i) => [i, Math.hypot(s.x - S.sol[0], s.y - S.sol[1])]).filter(([i]) => SN.sys[i].own && i !== solI).sort((a, b) => a[1] - b[1]).slice(0, 12).map(a => a[0]); // the worlds around Sol (Earth itself holds)
+    return [orig(0), orig(1), orig(2),
+      ...(SN.crox === 'dead' ? [
+      { t: SKIP_NARR_CROX.shot, v: -1, L: { cam: () => [S.sol[0], S.sol[1], 3], on: () => { ring(); SN.pulse = null; SN.q.push({ t: SN.lineT0 + 3.2, i: -1 }); }, min: 5.2 } },
+      { t: SKIP_NARR_CROX.free, v: -1, L: { cam: () => [S.sol[0], S.sol[1], 2], on: () => { const L = near(), was = L.map(i => SN.sys[i].own); L.forEach((i, k) => SN.q.push({ t: SN.lineT0 + .2 + k * .04, i, own: 'orion' })); L.forEach((i, k) => SN.q.push({ t: SN.lineT0 + 1.8 + k * .18, i, own: was[k] })); }, min: 5.4 } },
+      orig(3), orig(4), orig(5), orig(6), orig(7), orig(8), orig(9)] : [
+      { t: SKIP_NARR_CROX.fell, v: -1, L: { cam: () => [S.sol[0], S.sol[1], 3], on: () => { ring(); SN.pulse = null; SN.shake = .4; }, min: 5 } },
+      { t: SKIP_NARR_CROX.took, v: -1, L: { cam: () => [S.sol[0], S.sol[1], 2], on: () => { const L = near(); SN.pulse = 'orion'; snFlip(L, 'orion', .6, 3.6); snFlip(L, 'cath', 5.4, 1.8); }, min: 8 } },
+      orig(3), orig(4), orig(5), orig(6), orig(7), orig(8),
+      { t: SKIP_NARR_CROX.wait, v: -1, L: { cam: () => [S.sol[0], S.sol[1], 3.4], on: () => { ring(); SN.pulse = null; }, year: 2127.35, min: 4.6 } },
+      settle])]; }
   if (SN.hak) { const S = SN.sets, C = () => SN.sys[S.malana] || null;
     return [orig(0),
       { t: SKIP_NARR_HAK.took, v: -1, L: { cam: () => S.malanaXY ? [S.malanaXY[0] * .5, S.malanaXY[1] * .5, 1.6] : [0, 0, 1.6], on: () => { const s = C(); if (s) { s.big = true; s.ring = SN.lineT0 + 1.4; } SN.q.push({ t: SN.lineT0 + 1.4, i: -1 }); } } },
@@ -24194,11 +24220,11 @@ async function skipNarrStart(done, opts = {}) {
   SN.done = done; SN.replay = !!opts.replay; SN.prev = state; state = 'skipNarr';
   SN.over = skipOver(); // nothing to wake up to: no time skip, and no Chapter IV
   if (!SN.replay && wanderer && !SN.over) { wanderer.ch4 = Object.assign({}, wanderer.ch4, { timeSkip: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); } // two years have gone by
-  Object.assign(SN, { on: true, t: 0, last: 0, q: [], lab: {}, line: -1, lineDur: 0, cam: [0, 0, .8], yr: 2125, dim: 0, dimK: 0, pulse: null, shake: 0, legH: '', vo: [], va: [], zark: zarkHadBastion(), rise: [], script: [] }); SN.hak = !SN.zark && hakHadGrek(); SN.war = !SN.zark && !SN.hak && warHadGalaxy(); // (a conquest of the Grek is the bigger story: it wins if both happened)
+  Object.assign(SN, { on: true, t: 0, last: 0, q: [], lab: {}, line: -1, lineDur: 0, cam: [0, 0, .8], yr: 2125, dim: 0, dimK: 0, pulse: null, shake: 0, legH: '', vo: [], va: [], zark: zarkHadBastion(), rise: [], script: [] }); SN.hak = !SN.zark && hakHadGrek(); SN.war = !SN.zark && !SN.hak && warHadGalaxy(); SN.crox = !SN.over && !SN.zark && !SN.hak && !SN.war && croxHadOrion(); // (a conquest of the Grek is the bigger story: it wins if both happened)
   el.classList.add('on'); el.classList.remove('map'); const fade = el.querySelector('.sn-fade'), card = el.querySelector('.sn-card');
   fade.style.transition = 'none'; fade.style.opacity = 1;
   card.querySelector('small').textContent = 'While you slept'; card.querySelector('b').textContent = '2125 AD';
-  const alt = !!(SN.over || SN.zark || SN.hak || SN.war), pack = id => loadDataScript(id).then(ok => ok ? sfx.loadClips(id) : []).catch(() => []); // the rewritten tellings' own recordings, only when one plays
+  const alt = !!(SN.over || SN.zark || SN.hak || SN.war || SN.crox), pack = id => loadDataScript(id).then(ok => ok ? sfx.loadClips(id) : []).catch(() => []); // the rewritten tellings' own recordings, only when one plays
   let vo = [], va = []; try { [vo, va] = await Promise.all([pack('skipNarrVoices'), alt ? pack('skipNarrAltVoices') : [], waitMs(60)]); } catch (e) { console.error(e); }
   SN.vo = vo || []; SN.va = va || []; snBuild(); SN.script = snScript(); SN.cam = [SN.sets.mid[0], SN.sets.mid[1], SN.sets.fit * .85]; if (!SN.on) return;
   card.classList.add('on'); leaderPlay(SN.over === 'orion' ? 'vengeful' : 'primeEvil').catch(() => {}); // Orion's offensive gets The Vengeful Mascar
