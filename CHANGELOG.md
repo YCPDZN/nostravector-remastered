@@ -3535,7 +3535,33 @@ One more telling of *While you slept*, and this one goes on into Chapter IV. If 
   - After Carax and the core fall: *"Before you fell, you killed Croxian Mascar. His father did not forget."* The camera goes to Sol.
   - *"Orion Mascar took Terra Imperia from Hawthorne's corpse. Then he took the worlds around Sol, one by one, and gave them to the Catharsis."* The twelve worlds nearest Sol turn his orange, then the Catharsis's red. Earth holds.
   - Before the last line: *"Orion Mascar waited too. On Earth, for you."* This is where he waits for you in Chapter IV.
-- The map finishes on exactly the usual Chapter IV map, and Am-Grek's words when you wake are unchanged.
+- The map finishes on exactly the usual Chapter IV map.
+- **Waking on Archiostal:** Am-Grek knows what you did. His line about watching you on Mercury becomes *"I know what you did to Croxian Mascar, wanderer. So does his father. Orion Mascar has waited two years for you, on Earth."* If you'd shot Orion down: *"I know what you did to the Mascars, wanderer. The son, and then the father. I know what you are."* Unlike the narration, this goes with any telling, since Orion is waiting either way. Subtitles only. **Previews:** `?ending=amgrekcrox`, `?ending=amgrekcroxdead`.
 - **If you had already shot Orion down,** it's the usual telling again, but it remembers him. After Carax and the core fall: *"Before you fell, you killed Croxian Mascar. Then you shot his father down in orbit."* Then *"The worlds Orion Mascar had taken were free again. For a while."* The worlds around Sol flash his orange and go back to their own colours. There's no line about him waiting on Earth.
 - **Which telling plays:** this is the last of them. The two game overs, Lord Zark's Bastion, Hak taking everything and the galaxy at war all come first.
 - The new lines are voiced (CH4WYSALT26–30, added to `data/skipNarrAltVoices.js`). **Previews:** `?ending=timeskipcrox` (Orion alive), `?ending=timeskipcroxdead` (shot down).
+
+### Fix: new recordings that didn't play
+
+- **Fixed:** after an update, the new lines of the two years could play silently. The browser (or itch.io / GitHub Pages) kept the old copy of the voice pack for a while, which didn't have the new recordings. The pack is now loaded by version (`DATA_VER` in `index.html`), so an updated pack is always fetched fresh. Bump its number whenever a pack changes.
+- A big voice pack also gets longer to decode on a slow phone before the game gives up on it (4 seconds, plus a little more for each clip).
+
+### Am-Grek, voiced in every telling
+
+- Am-Grek's rewritten words when you wake on Archiostal now have their own recordings (`data/amGrekAltVoices.js`, CH4ALTAMGREK1–7), in this order: Lord Zark's Bastion (2), Hak taking everything (2), the galaxy at war (1), Croxian killed with Orion alive (1), Croxian killed and Orion shot down (1).
+- The pack loads only when he has a rewritten line to say. The scene waits for each line to finish, as it does for his usual ones.
+- **Previews:** `?ending=amgrekzark`, `amgrekhak`, `amgrekwar`, `amgrekcrox`, `amgrekcroxdead`.
+
+### Am-Grek, crowned
+
+- **Am-Grek, High Hierarch of the Grek, now dresses the part everywhere he appears:** waking on Archiostal, the leader menus, the Bastion, Zark's Bastion, his fight, the cutscenes and your party.
+  - **Red armour** with gold trim, in place of the green.
+  - **A gold crown,** with eight points (tall and short in turn) and a ruby on each tall one. It moves with his head.
+  - **A black cape** from under his pauldrons to his ankles, gathered across his shoulders with two gold clasps.
+- He's built in one place now (`amgRig` / `amgRegalia` in `index.html`). The crown and cape are fitted to the Grek model and scale with him. Grekicus keeps his green.
+
+### Fix: the Grek's shimmering stripes
+
+- **Fixed:** every Grek (townsfolk, wardens, Am-Grek, your own Grek wanderer, residents) shimmered with dark stripes that crawled over them as the camera moved.
+  - The Grek model's triangles were all wound inside out, with its normals pointing out. Its double-sided materials hid that until a Grek was baked into one single-sided mesh. Then its outer skin counted as the back, which is the side drawn into the shadow map, so every Grek shadowed itself in stripes. Double-sided, it was also lit inside out.
+  - The game now turns each triangle the right way round as soon as the model loads (`faceOut` in `index.html`), everywhere a Grek is built. The model file itself is unchanged.

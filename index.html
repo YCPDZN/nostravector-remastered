@@ -1783,6 +1783,9 @@ let cathLang = store.get('nv_cathLang', 'cath') === 'en' ? 'en' : 'cath'; // whe
 
 const b64u8 = typeof Uint8Array.fromBase64 === 'function' ? s => Uint8Array.fromBase64(s.trim()) : s => { const bin = atob(s.trim()), n = bin.length, u8 = new Uint8Array(n); for (let i = 0; i < n; i++) u8[i] = bin.charCodeAt(i); return u8; }; // base64 → bytes (the browser's own decoder when it has one: much faster on the big packs)
 const DATA_P = {}; // packs being fetched: everyone asking for the same one waits on the same request
+// A pack that's been replaced since players last loaded it: its version goes on the address, so a browser (or itch.io / GitHub Pages)
+// never serves the old copy from its cache. Bump the number whenever the pack changes.
+const DATA_VER = { skipNarrAltVoices: 30, amGrekAltVoices: 7 }, dataSrc = id => `data/${id}.js${DATA_VER[id] ? '?v=' + DATA_VER[id] : ''}`;
 const dataReady = id => { const el = document.getElementById(id); return el && el.textContent.length < 100 && typeof loadDataScript === 'function' ? loadDataScript(id, el.type === 'application/json' ? 'json' : 'glb') : Promise.resolve(true); }; // a pack that loads on demand: fetched the first time it's asked for
 /* ============ renderer / scene ============ */
 let gfxQ = store.get('nv_gfx', null); if (!['ultra', 'high', 'low'].includes(gfxQ)) gfxQ = coarse ? 'high' : 'ultra'; // Settings → Graphics (see the graphics section below)
@@ -4108,7 +4111,7 @@ function loadSpecies(sp) {
       const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       new GLTFLoader().parse(u8.buffer, '', g => {
-        try { speciesInfo[sp] = setupSpecies(sp, g.scene); } catch (e) { console.error(e); }
+        try { if (sp === 'grek') faceOut(g.scene); speciesInfo[sp] = setupSpecies(sp, g.scene); } catch (e) { console.error(e); }
         res(speciesInfo[sp] || null);
       }, () => res(null));
     } catch { res(null); }
@@ -4743,7 +4746,7 @@ const sfx = (() => {
           if (p && p.catch) p.catch(() => res(null));
         } catch { res(null); }
       });
-      const r = await Promise.race([Promise.all(arr.map(dec)), new Promise(ok => setTimeout(() => ok(null), 4000))]);
+      const r = await Promise.race([Promise.all(arr.map(dec)), new Promise(ok => setTimeout(() => ok(null), 4000 + arr.length * 120))]); // (a big pack gets longer on a slow phone)
       if (r) clipCache[id] = r;
       return r || [];
     },
@@ -8554,7 +8557,7 @@ function setupMerchants() {
       if (el) {
         const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-        parseGlb(u8.buffer).then(sc => { const R = autoRig(sc, (SPECIES[sp] && SPECIES[sp].height) || 1.96); armRig(R, 'none'); R.root.position.set(0, 0, -.2); g.add(R.root); m.rig = R; }).catch(() => null);
+        parseGlb(u8.buffer).then(sc => { if (sp === 'grek') faceOut(sc); const R = autoRig(sc, (SPECIES[sp] && SPECIES[sp].height) || 1.96); armRig(R, 'none'); R.root.position.set(0, 0, -.2); g.add(R.root); m.rig = R; }).catch(() => null);
       }
     }
     m.stall.position.set(m.px, wHeight(m.px, m.pz), m.pz);
@@ -10502,7 +10505,7 @@ let hdWLoad = null;
 function embGlb(id) {
   const el = document.getElementById(id); if (!el) return Promise.resolve(null);
   const u8 = b64u8(el.textContent);
-  return parseGlb(u8.buffer).then(sc => DEITY_TAGS[id] ? deityDress(sc, DEITY_TAGS[id]) : IMPORT_TAGS[id] ? majestyDress(sc, IMPORT_TAGS[id]) : sc).catch(() => null);
+  return parseGlb(u8.buffer).then(sc => id === 'sp_grek' ? faceOut(sc) : sc).then(sc => DEITY_TAGS[id] ? deityDress(sc, DEITY_TAGS[id]) : IMPORT_TAGS[id] ? majestyDress(sc, IMPORT_TAGS[id]) : sc).catch(() => null);
 }
 function firstMesh(sc) { let m = null; if (sc) sc.traverse(o => { if (!m && o.isMesh) m = o; }); return m; }
 function loadWorldHD() {
@@ -12458,6 +12461,40 @@ async function brawlRig(d) { // a fighter, a regular, a bartender: townsfolk of 
   R.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return R;
 }
+/* ---- Am-Grek, High Hierarch: red armour with gold trim, a gold crown, and a black cape ----
+   Everywhere he appears (his scenes, menus, the Bastion, the fights, your party) he's built by amgRig. The crown and cape are made to fit
+   the Grek model (sp_grek: 4.44 units tall, facing +z, cranium ±0.57 wide topping out at 4.42, the back of the pauldrons at z −0.49),
+   in the model's own space, scaled to whatever size it's measured at, so they survive bakeRig. The crown rides on his head. ---- */
+const AMG_C = [0x7a1016, 0xd8b060]; // red armour, gold trim
+function amgRig(scale = 1.07) { return brawlRig({ sp: 'grek', c: AMG_C, name: 'AM-GREK', scale }).then(amgRegalia); }
+function amgRegalia(R) {
+  if (!R || !R.model || R.model.userData.amgRegalia) return R; R.model.userData.amgRegalia = true;
+  const m = R.model; R.root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(m.matrixWorld).invert(), bb = new THREE.Box3(), tb = new THREE.Box3(), mw = new THREE.Matrix4();
+  m.traverse(o => { if (!o.isMesh || !o.geometry) return; if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); tb.copy(o.geometry.boundingBox).applyMatrix4(mw.multiplyMatrices(inv, o.matrixWorld)); bb.union(tb); });
+  const k = bb.isEmpty() ? 1 : (bb.max.y - bb.min.y) / 4.44, y0 = bb.isEmpty() ? 0 : bb.min.y + .02 * k, P = (x, y, z) => new THREE.Vector3(x * k, y0 + y * k, z * k);
+  const gold = new THREE.MeshStandardMaterial({ color: 0xd8a63a, metalness: .85, roughness: .3, emissive: 0x2a1a04 });
+  // the crown: a gold band round the top of the cranium, eight points (tall and short in turn), a ruby on each tall one
+  const crown = new THREE.Group(); crown.name = 'Am-Grek crown';
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(.5, .53, .2, 32, 1, true), gold); band.material.side = THREE.DoubleSide; crown.add(band);
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(.53, .025, 6, 32), gold); lip.rotation.x = Math.PI / 2; lip.position.y = -.1; crown.add(lip);
+  const ruby = new THREE.MeshStandardMaterial({ color: 0xc0101c, metalness: .3, roughness: .2, emissive: 0x3a0004 });
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, tall = i % 2 === 0, h = tall ? .36 : .2, c = new THREE.Mesh(new THREE.ConeGeometry(.06, h, 6), gold); c.position.set(Math.sin(a) * .5, .1 + h / 2, Math.cos(a) * .5); crown.add(c);
+    if (tall) { const g = new THREE.Mesh(new THREE.SphereGeometry(.05, 10, 8), ruby); g.position.set(Math.sin(a) * .535, .01, Math.cos(a) * .535); crown.add(g); } }
+  crown.scale.set(k, k, k * .88); crown.position.copy(P(0, 4.2, .04)); crown.rotation.x = -.06; // a little back on the brow
+  m.add(crown); if (R.head && R.head !== m) { R.root.updateMatrixWorld(true); R.head.attach(crown); } // so it moves with his head
+  // the cape: black, from under the pauldrons to his ankles, falling away from his back in folds
+  const W = 14, Hs = 18, geo = new THREE.PlaneGeometry(1, 1, W, Hs), pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) { const u = pos.getX(i) * 2, v = .5 - pos.getY(i); // u −1..1 across, v 0 (shoulders) .. 1 (hem)
+    const x = u * (.95 + .32 * v), y = 3.3 - v * 2.95, z = -.56 - .24 * v + .1 * u * u + .045 * Math.sin(u * Math.PI * 3.5) * v;
+    pos.setXYZ(i, x * k, y0 + y * k, z * k); }
+  geo.computeVertexNormals();
+  const cloth = new THREE.MeshStandardMaterial({ color: 0x0b0b0e, roughness: .88, metalness: 0, side: THREE.DoubleSide });
+  const cape = new THREE.Mesh(geo, cloth); cape.name = 'Am-Grek cape'; cape.castShadow = true; m.add(cape);
+  const roll = new THREE.Mesh(new THREE.CylinderGeometry(.13, .13, 2.0, 12), cloth); roll.rotation.z = Math.PI / 2; roll.scale.setScalar(k); roll.position.copy(P(0, 3.28, -.5)); m.add(roll); // gathered across his shoulders
+  for (const sx of [-1, 1]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(.09, .09, .05, 16), gold); c.rotation.x = Math.PI / 2; c.scale.setScalar(k); c.position.copy(P(sx * .9, 3.24, -.62)); m.add(c); } // gold clasps
+  return R;
+}
 // the Salt Lantern after Chapter II: the regulars want a fight every night now, and MC Irie runs them from the bar
 function saltVenue() {
   const Rm = TOWN.rooms && TOWN.rooms.cantina; if (!Rm) return null;
@@ -13966,7 +14003,7 @@ function leadSpec(key) { // the leaders: their moves, their words, their model, 
       lines: { intro: 'I have guided the Grek since before their stars were named. Kneel, and be guided.', p2: 'Then see me as I am.', p3: 'I AM THE PRIME GOOD.', win: 'Even good… must yield… sometimes…' } },
     archamusU: { boss: 'Archamus', full: 'Archamus, unmasked', lv: 100, theme: 'lightEgg', load: leadArchamusU, core: ['nova', 'rain', 'blink', 'spiral'], p2: ['pull', 'cross'], sig: 'rain', seq: ['rain', 'nova', 'blink', 'spiral', 'nova'],
       lines: { intro: 'My champion has fallen. Then I will stand in his place, as I am.', p2: 'Look at me. Few ever have.', p3: 'I AM THE PRIME GOOD.', win: 'Even good… must yield… sometimes…' } },
-    amgrek: { boss: 'Am-Grek', full: 'Am-Grek, High Hierarch', lv: 85, theme: 'laniakea', load: async () => { const R = await brawlRig({ sp: 'grek', c: [0x3a4a2e, 0xd8b060], name: 'AM-GREK' }); if (R) armRig(R, 'sword'); return R; }, core: ['slam', 'leap', 'charge', 'nova'], p2: ['summon', 'rain'], sig: 'cross', seq: ['leap', 'slam', 'nova', 'charge', 'slam'], // Wonders of Laniakea (Combat), for now
+    amgrek: { boss: 'Am-Grek', full: 'Am-Grek, High Hierarch', lv: 85, theme: 'laniakea', load: async () => { const R = await amgRig(1); if (R) armRig(R, 'sword'); return R; }, core: ['slam', 'leap', 'charge', 'nova'], p2: ['summon', 'rain'], sig: 'cross', seq: ['leap', 'slam', 'nova', 'charge', 'slam'], // Wonders of Laniakea (Combat), for now
       lines: { intro: 'Archamus guides my hand. It has never missed.', p2: 'Grek! The faithful stand with me!', p3: 'BY ARCHAMUS’S WILL!', win: 'Forgive me… Prime Good…' } },
     zark: { boss: 'Zark', full: 'Lord Zark, the Prime Evil', lv: 100, theme: 'primeEvil', load: leadTag('prZark', 3.6), core: ['nova', 'spiral', 'pull', 'blink'], p2: ['rain', 'cross'], sig: 'sweep', seq: ['spiral', 'blink', 'nova', 'pull', 'spiral'],
       lines: { intro: 'I made Sevirrus. I can unmake you.', p2: 'The dark has teeth, little thing.', p3: 'I AM THE PRIME EVIL.', win: 'This changes… nothing…' } }
@@ -14610,7 +14647,7 @@ function lonMusicLoad(n) {
   return (lonMus.cache[n] = new Promise(res => {
     const id = 'lonMusic' + n;
     if (!document.getElementById(id)) { const j = document.createElement('script'); j.type = 'application/json'; j.id = id; document.body.appendChild(j); }
-    const sc = document.createElement('script'); sc.src = `data/${id}.js`;
+    const sc = document.createElement('script'); sc.src = dataSrc(id);
     sc.onload = () => sfx.loadClips(id).then(c => res((c && c[0]) || null)).catch(() => res(null));
     sc.onerror = () => { delete lonMus.cache[n]; res(null); }; document.body.appendChild(sc);
   }));
@@ -16570,7 +16607,7 @@ async function hawDeath(done) {
   const fd = $('#fade'); fd.style.transition = 'opacity .6s'; fd.style.opacity = 1; sfx.thud(); sfx.drone(.3);
   nmStage(); const ph = tiPhone();
   try {
-    const [H, K, G, S, egg, hdv] = await Promise.all([hawthorneRig(), leadTag('leader_chompy', 2.05, 'sword')(), brawlRig({ sp: 'grek', c: [0x3a4a2e, 0xd8b060], name: 'AM-GREK', scale: 1.07 }).then(R => { if (R) armRig(R, 'none'); return R; }).catch(() => null),
+    const [H, K, G, S, egg, hdv] = await Promise.all([hawthorneRig(), leadTag('leader_chompy', 2.05, 'sword')(), amgRig(1.07).then(R => { if (R) armRig(R, 'none'); return R; }).catch(() => null),
       glbRig('chSevirrus', 1.85, 'sword').catch(() => null), leaderTheme('lightEgg'), loadDataScript('hawDeathVoices').then(ok => ok ? sfx.loadClips('hawDeathVoices') : []).catch(() => []), hwxLoad()]); // and the post-processing
     const add = (k, R) => { if (!R) return; if (R.root.parent) R.root.parent.remove(R.root); R.root.visible = false; R.root.traverse(o => { if (o.isMesh) { o.frustumCulled = false; o.castShadow = true; } }); NM.scene.add(R.root); NM.actors[k] = R; };
     add('haw', H); add('hak', K); add('amg', G);
@@ -19370,7 +19407,7 @@ async function c4eBuild(kind) {
   if (kind !== 'bad') want.arch = kind === 'tared' ? leadTimpur('none', 2.3) : leadTag('prArchamus', 3.1, kind === 'neutral' ? 'none' : undefined)(); // the nightmare: Taredesiba I, crowned
   if (kind === 'tared') { const ph = tiPhone(); for (let i = 0; i < (ph ? 3 : 8); i++) want['tr' + i] = leadTared(); for (let i = 0; i < (ph ? 2 : 6); i++) want['cq' + i] = glbRig('vcObs', 2.3 + (i % 3) * .1, 'none'); } // the host of Timpur, and the Conqrix legion
   if (kind === 'good' || kind === 'neutral') { want.hak = leadTag('leader_chompy', 2.05, 'none')(); want.vis = leadTag('leader_erisian', 2.0)(); want.dar = leadTag('leader_human', 1.86, 'rifle')();
-    want.amg = brawlRig({ sp: 'grek', c: [0x3a4a2e, 0xd8b060], name: 'AM-GREK', scale: 1.07 }); want.tim = leadTimpur('none'); } // Am-Grek, High Hierarch, and Timpur IV, crowned
+    want.amg = amgRig(1.07); want.tim = leadTimpur('none'); } // Am-Grek, High Hierarch, and Timpur IV, crowned
   const keys = Object.keys(want), got = await Promise.all(keys.map(k => Promise.resolve(want[k]).catch(() => null))); const R = {}; keys.forEach((k, i) => { R[k] = got[i]; });
   C4E.zark = add(R.zark, 0, 0, 0); if (C4E.zark) c4eHot(C4E.zark);
   if (R.orion) { c4eBlackArmour(R.orion); R.orion.lips = faceRig(R.orion.root); /* his own face rig, as everywhere else */ C4E.orion = add(R.orion, 0, -15, 0); C4E.orion.root.visible = false; }
@@ -23942,8 +23979,8 @@ const SKIP_NARR_ZARK = {
 // ...or if you killed Croxian and Orion Mascar is still alive (orionVillain): the usual two years, with his offensive told in it. He took
 // Terra Imperia, gave the worlds round Sol to the Catharsis, and waits on Earth, so it still goes on into Chapter IV (the boss fight there).
 // If you had already shot him down in orbit, it's the usual two years again, but they remember him: his worlds were free, for a while.
-// The last of the tellings: every other what-if comes first. New lines voiced (CH4WYSALT26–30). ?ending=timeskipcrox (and timeskipcroxdead) preview it.
-const SKIP_CROX = (window.location.search.match(/[?&]ending=timeskipcrox(dead)?\b/) || [])[0] ? (/croxdead/.test(window.location.search) ? 'dead' : 'alive') : null;
+// The last of the tellings: every other what-if comes first. New lines voiced (CH4WYSALT26–30). ?ending=timeskipcrox (and timeskipcroxdead) preview it; ?ending=amgrekcrox(dead) for Am-Grek's words.
+const SKIP_CROX = (window.location.search.match(/[?&]ending=(timeskip|amgrek)crox(dead)?\b/) || [])[0] ? (/croxdead/.test(window.location.search) ? 'dead' : 'alive') : null;
 function croxHadOrion() { if (SKIP_CROX) return SKIP_CROX; try { const D = ch4Decisions(); if (D.crox !== 'killed') return null; return orbS().dead || D.orion === 'killed' ? 'dead' : 'alive'; } catch (e) { return null; } } // 'alive' · 'dead' · null
 const SKIP_NARR_CROX = {
   fell: 'Before you fell, you killed Croxian Mascar. His father did not forget.',
@@ -24278,15 +24315,23 @@ const AMG_LINES = [ // [when, line] · CH4AMGREK1–10
   [60.5, 'I watched you on Mercury, wanderer. I saw you hunt the Grand Imperarch to his last door. I know what you are.'],
   [67.5, 'So rise. The galaxy has gone on without you long enough.'],
   [73.5, 'Whatever is coming for us… it is coming for you first.']];
-const AMG_ZARK = { // Am-Grek's words if he had already surrendered Carax to Zark in Chapter III (subtitles only)
+const AMG_ZARK = { // Am-Grek's words if he had already surrendered Carax to Zark in Chapter III (CH4ALTAMGREK1–2)
   4: 'Before you fell, the Catharsis broke its chains. I put those chains on them. Then I knelt to Lord Zark in my own Bastion, and gave him everything.',
   5: 'While you slept, my people rose and took back what I had given away. Carax, never. Then they took our worlds again, one by one.'
 };
-const AMG_HAK = { // ...if the Chompy Empire had taken every Grek world, Archiostal with them (subtitles only)
+const AMG_HAK = { // ...if the Chompy Empire had taken every Grek world, Archiostal with them (CH4ALTAMGREK3–4)
   4: 'Before you fell, the Chompy took everything we had. Even this station. Archamus came down himself to take it back.',
   5: 'And while we fought the Chompy for our own sky, the Catharsis broke its chains and took Carax. Then they took our worlds, one by one.'
 };
-const AMG_WAR = { // ...if you had set the whole galaxy at war in Chapter III (subtitles only)
+const AMG_CROX = { // ...if you killed Croxian: Am-Grek knows (CH4ALTAMGREK6–7). Whatever else happened, Orion still waits, so this one goes with any telling
+  alive: { 7: 'I know what you did to Croxian Mascar, wanderer. So does his father. Orion Mascar has waited two years for you, on Earth.' },
+  dead: { 7: 'I know what you did to the Mascars, wanderer. The son, and then the father. I know what you are.' }
+};
+// Am-Grek's rewritten lines, recorded (data/amGrekAltVoices.js, CH4ALTAMGREK1–7): Zark's two, Hak's two, the galaxy at war, then if you
+// killed Croxian, Orion alive and Orion shot down. Built below, once every telling's lines exist.
+let AMG_ALT = null; const amgAltIdx = t => (AMG_ALT || (AMG_ALT = [AMG_ZARK[4], AMG_ZARK[5], AMG_HAK[4], AMG_HAK[5], AMG_WAR[4], AMG_CROX.alive[7], AMG_CROX.dead[7]])).indexOf(t);
+const amgAltDue = () => !!(zarkHadBastion() || hakHadGrek() || warHadGalaxy() || croxHadOrion()); // load the pack only when he'll need it
+const AMG_WAR = { // ...if you had set the whole galaxy at war in Chapter III (CH4ALTAMGREK5)
   4: 'While you slept, the whole galaxy tore itself apart, every empire against every other. The Catharsis broke its chains in the noise, and no one heard it.'
 };
 const ZARK_WAKE = [ // ????, once the red comes · CH4MYSTERIOUSVOICE1–10
@@ -24315,10 +24360,11 @@ async function amgWake(opts = {}) {
   nmStage(); let amg = null, guards = [], vo = [];
   try {
     const grek = c => brawlRig({ sp: 'grek', c, name: 'GREK WARDEN' }).then(R => { if (R) armRig(R, 'sword'); return R; }).catch(() => null);
-    [amg, vo, ...guards] = await Promise.all([brawlRig({ sp: 'grek', c: [0x3a4a2e, 0xd8b060], name: 'AM-GREK', scale: 1.07 }).then(R => { if (R) armRig(R, 'none'); return R; }).catch(() => null),
+    [amg, vo, ...guards] = await Promise.all([amgRig(1.07).then(R => { if (R) armRig(R, 'none'); return R; }).catch(() => null),
       loadDataScript('amGrekVoices').then(ok => ok ? sfx.loadClips('amGrekVoices') : []).catch(() => []),
       grek([0x2a3a24, 0xb08a40]), grek([0x2a3a24, 0xb08a40]), grek([0x2a3a24, 0xb08a40]), grek([0x2a3a24, 0xb08a40]),
-      leaderTheme('laniakea').catch(() => null), hwxLoad()]);
+      leaderTheme('laniakea').catch(() => null), hwxLoad(),
+      amgAltDue() ? loadDataScript('amGrekAltVoices').then(ok => ok ? sfx.loadClips('amGrekAltVoices') : []).then(a => { NM.amgAlt = a || []; }).catch(() => {}) : (NM.amgAlt = [], null)]); // his rewritten lines' recordings, only when he'll say one
     guards = guards.slice(0, 4);
   } catch (e) { console.error(e); }
   if (!NM.on) return;
@@ -24379,7 +24425,7 @@ function amgTick(dt) {
   else { const k = sm(79, 86, t); camera.position.set(lerp(3.2, 1.5, k), lerp(4.5, 58, k * k), lerp(5.5, 4, k)); camera.lookAt(0, 90, -30); } // up, out through the glass
   camera.position.x += Math.sin(t * 1.3) * .02; camera.position.y += Math.sin(t * 1.9 + 1) * .02;
   if (t >= AMG_END) { amgEnd(); return; }
-  for (const [i, [at, line]] of AMG_LINES.entries()) if (t >= at && !NM.amgSaid.has(at)) { NM.amgSaid.add(at); const alt = zarkHadBastion() ? AMG_ZARK[i] : hakHadGrek() ? AMG_HAK[i] : warHadGalaxy() ? AMG_WAR[i] : null, clip = alt ? null : NM.amgVo && NM.amgVo[i]; fbSay('AM-GREK', alt || line, clip || null, 1.3); NM.amgEnd = clip && clip.duration ? NM.amgRT + clip.duration : 0; break; }
+  for (const [i, [at, line]] of AMG_LINES.entries()) if (t >= at && !NM.amgSaid.has(at)) { NM.amgSaid.add(at); const cx = croxHadOrion(), alt = (zarkHadBastion() ? AMG_ZARK[i] : hakHadGrek() ? AMG_HAK[i] : warHadGalaxy() ? AMG_WAR[i] : null) || (cx && AMG_CROX[cx][i]) || null, clip = alt ? (NM.amgAlt && NM.amgAlt[amgAltIdx(alt)]) : NM.amgVo && NM.amgVo[i]; fbSay('AM-GREK', alt || line, clip || null, 1.3); NM.amgEnd = clip && clip.duration ? NM.amgRT + clip.duration : 0; break; }
   fbSubTick();
   if (!hwxRender(dt)) gfxRender(NM.scene, camera, dt);
 }
@@ -26266,6 +26312,7 @@ async function giverRig(sp, h, name) {
 }
 async function leaderRig(L) {
   if (L.model === 'prime') { const p = PEDIA_PRIMES.find(o => o.tag === 'prArchamus'); const h = SkeletonUtils.clone(await loadPrime(p)); const g = new THREE.Group(); g.add(h); const gl = glowSprite(0xffd88a, 3.4, .45); gl.position.y = 2.4; g.add(gl); return { root: g, static: true }; }
+  if (L.id === 'amgrek') return amgRig(1.07); // crowned, in red, with his cape
   const src = L.model === 'sp_grek' ? await townModel('grek') : await embGlb(L.model); if (!src) return null;
   const R = autoRig(SkeletonUtils.clone(src), L.h); armRig(R, 'none'); try { bakeRig(R); } catch (e) {} return R;
 }
@@ -28111,7 +28158,7 @@ function bstLeadsTick(dt) {
 }
 function bstLeadsMake() {
   const tok = BST.leads = [], t = bstThrone(), y = BST.y0 + (BST_FLOORS - 1) * BST_H + .15;
-  const load = { archamus: leadTag('prArchamus', 3.1, 'none'), hak: leadTag('leader_chompy', 2.05, 'none'), vishara: leadTag('leader_erisian', 2.0, 'none'), darius: leadTag('leader_human', 1.86, 'none'), amgrek: () => brawlRig({ sp: 'grek', c: [0x3a4a2e, 0xd8b060], name: 'AM-GREK', scale: 1.07 }) };
+  const load = { archamus: leadTag('prArchamus', 3.1, 'none'), hak: leadTag('leader_chompy', 2.05, 'none'), vishara: leadTag('leader_erisian', 2.0, 'none'), darius: leadTag('leader_human', 1.86, 'none'), amgrek: () => amgRig(1.07) };
   let chain = Promise.resolve(); const one = tiPhone(); // on phones, one model at a time
   for (const [id, dx, dz] of BST_LEADS) { const L = { id, x: t.x + dx, z: t.z + dz, R: null }; tok.push(L);
     const go = (one ? chain : Promise.resolve()).then(() => BST.leads === tok ? load[id]() : null); if (one) chain = go.catch(() => null);
@@ -28516,7 +28563,7 @@ function loadDataScript(id, kind) { // fetch a data/<id>.js pack only when it's 
   return DATA_P[id] = new Promise(res => {
     if (document.getElementById(id) && document.getElementById(id).textContent.length > 100) return res(true);
     if (!document.getElementById(id)) { const j = document.createElement('script'); j.type = kind === 'glb' ? 'application/octet-stream' : 'application/json'; j.id = id; document.body.appendChild(j); }
-    const sc = document.createElement('script'); sc.src = `data/${id}.js`; sc.onload = () => res(true); sc.onerror = () => { delete DATA_P[id]; res(false); }; document.body.appendChild(sc);
+    const sc = document.createElement('script'); sc.src = dataSrc(id); sc.onload = () => res(true); sc.onerror = () => { delete DATA_P[id]; res(false); }; document.body.appendChild(sc);
   });
 }
 async function glbRig(id, h, weapon, lazy) { if (lazy) await loadDataScript(id, 'glb'); const src = await embGlb(id); if (!src) return null; const R = autoRig(SkeletonUtils.clone(src), h); armRig(R, weapon || 'none'); return R; }
@@ -30890,7 +30937,7 @@ function loadLeader(sp) {
       const bin = atob(el.textContent.trim()), u8 = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       new GLTFLoader().parse(u8.buffer, '', gl => {
-        const m = gl.scene, holder = new THREE.Group(); holder.add(m);
+        const m = sp === 'grek' ? faceOut(gl.scene) : gl.scene, holder = new THREE.Group(); holder.add(m);
         m.updateMatrixWorld(true);
         const b = new THREE.Box3().setFromObject(m), c = b.getCenter(new THREE.Vector3());
         m.position.set(-c.x, -b.min.y, -c.z);
@@ -31147,6 +31194,32 @@ const idb = (() => {
   return { get: id => run('readonly', s => s.get(id)), put: o => run('readwrite', s => s.put(o)), del: id => run('readwrite', s => s.delete(id)), all: () => run('readonly', s => s.getAll()) };
 })();
 const charCache = {};
+/* ---- Fix: the Grek's shimmering stripes ----
+   Every triangle in the Grek model (sp_grek) is wound inward while its normals point out. Its materials are double-sided, so it looked
+   fine until it was lit: once a Grek is baked into one single-sided mesh (bakeRig), its outer skin counts as the back, and that's the
+   side drawn into the shadow map, so every Grek shadowed itself in stripes that crawled as the camera moved (and double-sided, it was
+   lit inside out). faceOut turns each triangle to face the way its own normals point, once per geometry, straight after the model is
+   parsed. ---- */
+function faceOut(sc) {
+  if (!sc) return sc; const done = new Set();
+  sc.traverse(o => {
+    const g = o.isMesh && o.geometry; if (!g || done.has(g)) return; done.add(g);
+    const P = g.attributes.position, N = g.attributes.normal; if (!P || !N) return;
+    const p = P.array, n = N.array, ix = g.index && g.index.array, cnt = ix ? ix.length : P.count; let flips = 0;
+    const v = (i, k) => p[i * 3 + k], nn = (i, k) => n[i * 3 + k];
+    for (let t = 0; t + 2 < cnt; t += 3) {
+      const a = ix ? ix[t] : t, b = ix ? ix[t + 1] : t + 1, c = ix ? ix[t + 2] : t + 2;
+      const ux = v(b, 0) - v(a, 0), uy = v(b, 1) - v(a, 1), uz = v(b, 2) - v(a, 2), wx = v(c, 0) - v(a, 0), wy = v(c, 1) - v(a, 1), wz = v(c, 2) - v(a, 2);
+      const gx = uy * wz - uz * wy, gy = uz * wx - ux * wz, gz = ux * wy - uy * wx;
+      if (gx * (nn(a, 0) + nn(b, 0) + nn(c, 0)) + gy * (nn(a, 1) + nn(b, 1) + nn(c, 1)) + gz * (nn(a, 2) + nn(b, 2) + nn(c, 2)) >= 0) continue;
+      flips++;
+      if (ix) { ix[t + 1] = c; ix[t + 2] = b; }
+      else for (const at of Object.values(g.attributes)) { const s2 = at.itemSize, A = at.array; for (let k = 0; k < s2; k++) { const x = A[b * s2 + k]; A[b * s2 + k] = A[c * s2 + k]; A[c * s2 + k] = x; } }
+    }
+    if (flips) { if (g.index) g.index.needsUpdate = true; else for (const at of Object.values(g.attributes)) at.needsUpdate = true; }
+  });
+  return sc;
+}
 function parseGlb(buf) { return new Promise((res, rej) => new GLTFLoader().parse(buf, '', g => res(g.scene), e => rej(e))); }
 function charScene(c) {
   if (charCache[c.id]) return charCache[c.id];
