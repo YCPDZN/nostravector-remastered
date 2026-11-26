@@ -2976,6 +2976,7 @@ function leadName(k) { try { return leadSpec(k).full; } catch (e) { return k; } 
 function leadLines() { // their lines, scrambled and signed; two leaders share the floor line by line
   const E = leadCur(); if (!E) return [];
   const sets = E.ks.map(k => (LEAD_LINES[k === 'archamusU' ? 'archamus' : k] || []).slice().sort(() => Math.random() - .5).map(t => ({ t, who: leadName(k) })));
+  try { const sv = (E.fid === 'chompy' || E.fid === 'catharsis') && (E.dep === 'comp:sev-sevirrus' || sevServes(E.fid)) && sevSide(E.fid, !!forceLead); if (sv) { dep2Load(); sets[0] = sv.menu.slice().sort(() => Math.random() - .5).map(t => ({ t, who: leadName(E.ks[0]) })).concat(sets[0]); } } catch (er) {} // Sevirrus in their court: they talk about him first
   if (E.room === 'bastionZ') sets[0] = ZARK_BASTION_LINES.slice().sort(() => Math.random() - .5).map(t => ({ t, who: leadName('zark') })).concat(sets[0]); // the Bastion's lines first
   let out = [], n = Math.max(...sets.map(s => s.length)); for (let i = 0; i < n; i++) for (const s of sets) if (s[i]) out.push(s[i]);
   if (E.kneel === 'amgrek') { const K = AMGREK_KNEEL_LINES.slice().sort(() => Math.random() - .5), mix = []; out.forEach((q, i) => { mix.push(q); if (i % 3 === 2) mix.push({ t: K[(i / 3 | 0) % K.length], who: 'Am-Grek, kneeling' }); }); out = mix; }
@@ -25796,7 +25797,7 @@ function dipClick(e) {
   else if (a === 'release') { const was = (D.res[f] || {}).st; delete D.res[f]; if (was === 'vassal') dipReturnLent(f, 'They hand back the throne and come home'); dipSave(); }
   else if (a === 'colonise') { const kit = have('colkit') > 0; if (!kit && units() < COLONY_COST) return; colonise(bodyById(pid), kit); }
   else if (a === 'govSet') { const n = $(`#dipBody input[data-a="govName"][data-p="${pid}"]`).value.trim(); if (n) { D.col[pid].gov = 'name:' + n; dipSave(); sfx.chime(); } }
-  else if (a === 'lend') { const v = $(`#dipBody select[data-a="lendTo"][data-c="${id}"]`).value; if (!v) return; D.lent[id] = v; dipSave(); sfx.click(); if (id === 'orion' && world.orion) world.orion.root.visible = false; placeCrew(); refreshJamesUI(); lootMsg(`${compName(id)} leaves to serve ${dipLentName(v)}`, compColor(id)); if (dipLentRes(v)) { const e = resEmp.emp[dipLentRes(v)]; if (e) resEmpLog(`${compName(id)} joined ${e.name}, sent by ${wanderer.name}`); } }
+  else if (a === 'lend') { const v = $(`#dipBody select[data-a="lendTo"][data-c="${id}"]`).value; if (!v) return; D.lent[id] = v; if (id === 'sev-sevirrus' && (v === 'chompy' || v === 'catharsis') && !(D.sevSeen || {})[v]) { D.sevQ = v; try { dep2Load(); } catch (er) {} } dipSave(); sfx.click(); if (id === 'orion' && world.orion) world.orion.root.visible = false; placeCrew(); refreshJamesUI(); lootMsg(`${compName(id)} leaves to serve ${dipLentName(v)}`, compColor(id)); if (dipLentRes(v)) { const e = resEmp.emp[dipLentRes(v)]; if (e) resEmpLog(`${compName(id)} joined ${e.name}, sent by ${wanderer.name}`); } }
   else if (a === 'resOpen') { dipOpen(false); resEmpOpen(); return; }
   else if (a === 'resChallenge') { dipOpen(false); if (state === 'xpaused' && !SPC.paused) pauseExplore(false); leaderResChallenge(b.dataset.r); return; }
   else if (a === 'ywDeclare') { const r = b.dataset.r; if (DIPV.ywDeclare === r) { ywDeclare(r, false); DIPV.ywDeclare = null; } else DIPV.ywDeclare = r; }
@@ -34620,10 +34621,24 @@ const edResId = who => who && who.startsWith('res:') ? who.slice(4) : null;
 // a resident's by their alignment; an officer's by their faction
 function edLines(who, set, fid) {
   dep2Load(); if (!DEPL2) return null; const id = edCompId(who), rid = edResId(who);
+  if (id === SEV_ID && set === 'lead') { const S = sevSide(fid, typeof forceLead !== 'undefined' && !!forceLead); if (S) return S.dep[depEvil(id) ? 'evil' : 'good']; } // the emperor he becomes, or the voice that made him
   if (id) { const Q = DEPL2[depKey(id)]; return Q && Q[set] ? Q[set][depEvil(id) ? 'evil' : 'good'] || null : null; }
   if (rid) { const c = resById(rid); return c && DEPL2._res ? DEPL2._res[resAl(c)] || null : null; }
   if (who && who.startsWith('off:')) return DEPL2._off && DEPL2._off[fid] || null;
   return null;
+}
+// Hidden: Lord Sevirrus (Hak as a boy) serving the Chompy Empire or the Catharsis. Hak's side only once you've met Hak (it says who he was).
+const SEV_ID = 'sev-sevirrus';
+function sevSide(fid, preview) { if (fid !== 'chompy' && fid !== 'catharsis') return null; if (fid === 'chompy' && !preview) { try { if (!pdMet('hak') && chNow() <= 3) return null; } catch (e) { return null; } } return DEPL2 && DEPL2._sev ? DEPL2._sev[fid === 'chompy' ? 'hak' : 'zark'] : null; }
+function sevServes(fid) { try { const L = wanderer && wanderer.dip && wanderer.dip.lent; return !!(L && L[SEV_ID] === fid); } catch (e) { return false; } }
+function sevMeetTick() { // the exchange when you lend him to them: once per playthrough for each, as soon as you're free to listen
+  const D = dip(), fid = D.sevQ; if (!fid) return; if (!sevServes(fid)) { D.sevQ = null; return; }
+  if (state !== 'explore' || ex.dlg || DGN.on || NM.on) return; const Q = sevSide(fid); if (!Q) { dep2Load(); if (fid === 'chompy' && DEPL2) D.sevQ = null; return; } // (never met Hak: no exchange)
+  D.sevQ = null; (D.sevSeen = D.sevSeen || {})[fid] = true; dipSave();
+  const L = [...Q.meet.common, ...Q.meet[depEvil(SEV_ID) ? 'evil' : 'good']], lead = fid === 'chompy' ? 'HAK CHOMPJAK V · EMPEROR' : 'LORD ZARK · THE PRIME EVIL', S = 'LORD SEVIRRUS';
+  notice(fid === 'chompy' ? 'The Chompy Empire · Alphinos' : 'The Catharsis', 'INCOMING · ' + (fid === 'chompy' ? 'HAK CHOMPJAK V' : 'LORD ZARK'), 3000);
+  const run = i => { if (i >= L.length) return; let j = i; const who = L[i][0], lines = []; while (j < L.length && L[j][0] === who) lines.push(L[j++][1]); setTimeout(() => openDialog(who === 'L' ? lead : S, lines, false, () => run(j)), i ? 250 : 2600); };
+  run(0);
 }
 function edName(who, fid) {
   const id = edCompId(who); if (id) return depFull(id);
@@ -34796,6 +34811,7 @@ function enemyDepTick(dt) {
   const now = resNow(); dep2Load();
   try { fdepTick(now); } catch (e) { console.error(e); }
   try { fxWarTick(); } catch (e) { console.error(e); } // the wars you set the story factions on
+  try { sevMeetTick(); } catch (e) { console.error(e); } // Sevirrus, lent to Hak or Zark
   if (isPl() && state === 'explore' && !DGN.on && !TIW.dep && TIW.area === curArea()) { const q = edAt(world.planet.P); if (q) edPlace(world.planet.P, q); } // appointed to (or sent to defend) the world you're on
   if (TIW.dep) { const q = isPl() ? edAt(world.planet.P) : null; if (!q || q.who !== TIW.dep.who) { const G = TIW.dep; for (const R of G.R) if (R.cb) { const i = fauna.list.indexOf(R.cb); if (i >= 0) fauna.list.splice(i, 1); } if (G.g.parent) G.g.parent.remove(G.g); TIW.dep = null; } } // they moved on
 }
@@ -34983,7 +34999,7 @@ function fxCard() { // Diplomacy → Factions: set them on each other, and the w
 }
 if (/[?&]depdebug/.test(window.location.search)) window.NV_ED = { fdepTick, rdepTick, edAt, edPlace, edSpec, edBeaten, enemyDepTick, rdepCands, fdepCands, menuDepKey, dip, dipDeclare, ywDeclare, ywAt, resPower, resNow, saveRoster, // ?depdebug: the enemies' deputies, from the console
   get W() { return wanderer; }, get E() { return resEmp; }, get G() { return resGuild; }, get R() { return residents; }, get state() { return state; }, get TIW() { return TIW; }, body: bodyById, free: () => resFreeWorlds(), lead: () => leadMenuCalc(), guildDirty: () => resGuildDirty(),
-  land: id => landOn(bodyById(id), new THREE.Vector3(.3, 1, .2)), near: () => { const G = TIW.dep; if (G) player.position.set(G.x + 2, player.position.y, G.z + 2); return tiNear(player.position); }, use: () => { const n = tiNear(player.position); if (n) tiUse(n); return n && n.id; }, pickChoice: i => { const b = document.querySelectorAll('button.opt')[i | 0]; if (b) b.click(); return !!b; }, win: () => { if (!DGN.boss && DGN.lb) lairBossStart(); if (DGN.boss) lairBossWin(); return !!DGN.boss; }, get DGN() { return DGN; }, fxBloc, fxOverOf, fxIncite, fxTick: fxWarTick, fxEnd, fxD, fxWould, fxCard, fxCardNote, dipPeace, dipWin, applyChapterFactions, fxUlmira, fxZarkTakes, fxZarkBastion, systems: () => SYSTEMS, openGal: () => { try { galOpen && galOpen(); } catch (e) { return e.message; } }, dipOpen: () => { dipOpen(true); DIPV.tab = "factions"; dipRender(); } };
+  land: id => landOn(bodyById(id), new THREE.Vector3(.3, 1, .2)), near: () => { const G = TIW.dep; if (G) player.position.set(G.x + 2, player.position.y, G.z + 2); return tiNear(player.position); }, use: () => { const n = tiNear(player.position); if (n) tiUse(n); return n && n.id; }, pickChoice: i => { const b = document.querySelectorAll('button.opt')[i | 0]; if (b) b.click(); return !!b; }, win: () => { if (!DGN.boss && DGN.lb) lairBossStart(); if (DGN.boss) lairBossWin(); return !!DGN.boss; }, get DGN() { return DGN; }, sevMeetTick, sevSide, leadLines: () => leadLines(), menuLines: () => menuLines(), fxBloc, fxOverOf, fxIncite, fxTick: fxWarTick, fxEnd, fxD, fxWould, fxCard, fxCardNote, dipPeace, dipWin, applyChapterFactions, fxUlmira, fxZarkTakes, fxZarkBastion, systems: () => SYSTEMS, openGal: () => { try { galOpen && galOpen(); } catch (e) { return e.message; } }, dipOpen: () => { dipOpen(true); DIPV.tab = "factions"; dipRender(); } };
 const RES_EMP_ON = () => !!resEmp.on; // residents only found empires if you switch it on (Resident empires panel)
 function resLentSweep() { // a resident empire that's gone sends your companions home
   const L = wanderer && wanderer.dip && wanderer.dip.lent; if (!L) return;
