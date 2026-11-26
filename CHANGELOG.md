@@ -3512,3 +3512,10 @@ Two endings to the two years that don't lead into Chapter IV. You wake to nothin
 - **Fixed:** Lord Zark could never take the Bastion. The siege was decided by the whole Grek Empire's size against the Catharsis's: 124 worlds (with the Order beside them) against 27. Zark lost every one of 200,000 simulated sieges, which put his Bastion, Am-Grek kneeling, his telling of the two years and the Catharsis's road to winning everything out of reach.
 - **Now the siege is fought at Carax itself:** Zark's fleet against Am-Grek's garrison in the Bastion, not against every Grek world. It's an even fight. **Zark takes the Bastion about one siege in two** (50.9% over 3,000 test sieges).
 - A siege lasts about 5 to 7 minutes of play once the fleet arrives (most are over within 14). Comms report how it's going: *the Bastion holds, for now* · *the Bastion's walls are breaking* · *Am-Grek is driving the Catharsis back*. The galaxy map's siege readout shows the same.
+
+### Phones: the two years' map, and the game over screens
+
+Checked on a phone (iPhone 13 size), held upright and sideways: every telling of the two years (the usual one, Zark's, Hak's, the galaxy at war, Orion's offensive and the Catharsis's win), both GAME OVER screens, and Diplomacy's new lines.
+- **Fixed: the empires' names on the two years' map ran off the edges of a phone screen** ("…PERIUM OF ORION MAS…", "…C OF TIMPUR"). This happened in the usual telling too, not only the new ones. Names are now a little smaller on a narrow screen, never wider than it, and always wholly on it.
+- **They keep clear of everything else on screen:** the narration (at the top on a phone held upright, at the bottom otherwise), the year, the legend and Skip. Two names that meet are nudged apart. On a computer, the Republic of Timpur's name no longer sits on the year.
+- The GAME OVER screens, the map's six-row legend for Orion's offensive and Diplomacy's counters (*At war right now: 6 of 8 factions*, the Catharsis's tally) all fit, upright and sideways.

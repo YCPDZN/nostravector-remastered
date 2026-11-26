@@ -24126,12 +24126,30 @@ function snDraw(dt) {
   // the names
   if ((SN.labT = (SN.labT || 0) - dt) <= 0) { SN.labT = .4; snLabels(); }
   c.textAlign = 'center'; c.textBaseline = 'middle';
+  const yLo = 0, yHi = H, obs = []; // what the names keep clear of, wherever the layout puts it: the words, the year, the legend, Skip
+  try { for (const sel of ['.sn-sub', '.sn-year', '.sn-leg', '.sn-skip']) { const r = SN.el.querySelector(sel).getBoundingClientRect(); if (r.width && r.height) obs.push({ l: (r.left - 6) * dpr, r: (r.right + 6) * dpr, t: (r.top - 4) * dpr, b: (r.bottom + 4) * dpr }); } } catch (e) {}
+  const items = [];
   for (const [key, L] of Object.entries(SN.lab)) {
     L.x += (L.tx - L.x) * Math.min(1, dt * 2.2); L.y += (L.ty - L.y) * Math.min(1, dt * 2.2); L.a += ((L.n > 0 ? 1 : 0) - L.a) * Math.min(1, dt * 2.5); if (L.a < .01) continue;
-    const fs = clamp(9 + Math.sqrt(L.n) * 1.5, 10, 22) * dpr * Math.min(1.5, Math.sqrt(z)), col = SN_EMP[key][1];
-    c.font = `500 ${fs}px ${getComputedStyle(document.body).getPropertyValue('--display') || 'sans-serif'}`; if ('letterSpacing' in c) c.letterSpacing = `${(fs * .18) | 0}px`;
-    c.globalAlpha = L.a * (1 - dim * .5); c.shadowColor = 'rgba(0,0,0,.95)'; c.shadowBlur = 10 * dpr; c.fillStyle = '#fff'; c.fillText(SN_EMP[key][0], X(L.x), Y(L.y) - 10 * dpr);
-    c.shadowBlur = 0; c.fillStyle = col; c.fillRect(X(L.x) - fs * 1.4, Y(L.y) - 10 * dpr + fs * .82, fs * 2.8, Math.max(1, 1.6 * dpr));
+    let fs = clamp(9 + Math.sqrt(L.n) * 1.5, 10, 22) * dpr * Math.min(1.5, Math.sqrt(z)) * Math.min(1, .45 + W / dpr / 1400), col = SN_EMP[key][1]; // a little smaller on a narrow (phone) screen
+    const nm = SN_EMP[key][0], font = getComputedStyle(document.body).getPropertyValue('--display') || 'sans-serif', setF = () => { c.font = `500 ${fs}px ${font}`; if ('letterSpacing' in c) c.letterSpacing = `${(fs * .18) | 0}px`; }; setF();
+    let tw = c.measureText(nm).width; if (tw > W - 24 * dpr) { fs *= (W - 24 * dpr) / tw; setF(); tw = c.measureText(nm).width; } // never wider than the screen
+    const lx = clamp(X(L.x), tw / 2 + 10 * dpr, W - tw / 2 - 10 * dpr), ly = clamp(Y(L.y), yLo + fs + 6 * dpr, yHi - fs - 6 * dpr); // and always wholly on it
+    items.push({ nm, col, fs, tw, lx, ly, a: L.a, lo: yLo + fs + 6 * dpr, hi: yHi - fs - 6 * dpr });
+  }
+  items.sort((p, q) => p.ly - q.ly); // kept on screen, two names can meet: nudge the lower one down (or up, if it would leave the screen)
+  for (let i = 0; i < items.length; i++) for (let j = 0; j < i; j++) { const p = items[j], q = items[i], gap = (p.fs + q.fs) * .78;
+    if (Math.abs(p.lx - q.lx) < (p.tw + q.tw) / 2 + 6 * dpr && Math.abs(p.ly - q.ly) < gap) { q.ly = p.ly + gap; if (q.ly > q.hi) q.ly = Math.max(q.lo, p.ly - gap); } }
+  const box = it => ({ l: it.lx - it.tw / 2, r: it.lx + it.tw / 2, t: it.ly - 10 * dpr - it.fs * .65, b: it.ly - 10 * dpr + it.fs * .95 }), meet = (a, b) => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
+  for (const it of items) for (const o of obs) if (meet(box(it), o)) { // step out of its way: up or down, whichever is nearer and still on screen
+    const up = o.t - it.fs * .95 + 10 * dpr - 2 * dpr, down = o.b + it.fs * .65 + 10 * dpr + 2 * dpr, ok = y => y >= it.fs + 4 * dpr && y <= H - it.fs - 4 * dpr;
+    it.ly = ok(up) && (Math.abs(up - it.ly) <= Math.abs(down - it.ly) || !ok(down)) ? up : ok(down) ? down : it.ly; }
+  for (let i = 0; i < items.length; i++) for (let j = 0; j < i; j++) { const p = items[j], q = items[i], gap = (p.fs + q.fs) * .78; // and once more apart from each other
+    if (Math.abs(p.lx - q.lx) < (p.tw + q.tw) / 2 + 6 * dpr && Math.abs(p.ly - q.ly) < gap) { const dn = p.ly + gap, upy = p.ly - gap; q.ly = dn <= H - q.fs - 4 * dpr && !obs.some(o => meet(box(Object.assign({}, q, { ly: dn })), o)) ? dn : upy; } }
+  for (const it of items) {
+    c.font = `500 ${it.fs}px ${getComputedStyle(document.body).getPropertyValue('--display') || 'sans-serif'}`; if ('letterSpacing' in c) c.letterSpacing = `${(it.fs * .18) | 0}px`;
+    c.globalAlpha = it.a * (1 - dim * .5); c.shadowColor = 'rgba(0,0,0,.95)'; c.shadowBlur = 10 * dpr; c.fillStyle = '#fff'; c.fillText(it.nm, it.lx, it.ly - 10 * dpr);
+    c.shadowBlur = 0; c.fillStyle = it.col; c.fillRect(it.lx - it.fs * 1.4, it.ly - 10 * dpr + it.fs * .82, it.fs * 2.8, Math.max(1, 1.6 * dpr));
     c.globalAlpha = 1;
   }
   if ('letterSpacing' in c) c.letterSpacing = '0px';
