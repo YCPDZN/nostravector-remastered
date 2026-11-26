@@ -3468,3 +3468,41 @@ Another branch for anyone who sets the factions on each other in Chapter III: se
 - The new lines are subtitles only; every unchanged line keeps its voice. If Lord Zark took the Bastion instead, his telling plays (the two can't both happen).
 - **Previews:** `?ending=timeskiphak`, `?ending=amgrekhak`, and `?leader=hak&hakarch` for Hak's lines.
 - Under the hood: the two years now play from a script per telling, so further what-ifs can rewrite any line, or what the map does under it.
+
+### What if you set the whole galaxy at war? (Chapter III, and the two years)
+
+The last of the what-ifs for *While you slept*: everyone against everyone.
+- **In Chapter III, set the factions on each other until every faction still standing is at war with another, all at once.** At least two of those wars must be ones you started.
+  - Puppets called in beside their overlords count.
+  - So does the War on Sol: Terra Imperia's war on you, Eris and the Federation, with the Chompy and Timpur dragged in, covers the factions it involves.
+  - When it happens: *"Every empire against every other · THE GALAXY IS AT WAR"*.
+  - Diplomacy's *Set them on each other* card keeps count in Chapter III (*At war right now: 7 of 8 factions*), and says so once the whole galaxy is burning.
+- **The two years tell it the way it went.** It still ends on the same Chapter IV galaxy.
+  - *"Before you fell, you set the whole galaxy at war. Every empire against every other."* Every empire's space breathes, and the borders start to churn.
+  - *"In the chaos after your death, no one could tell a friend from an enemy. Borders changed by the hour."* Dozens of systems change hands, each to whoever holds the nearest system that isn't theirs, until the map is a patchwork.
+  - *"And while the empires bled each other dry, the Catharsis waited. Then it struck, and took Carax."*
+  - The clashes play on with the borders still churning. Then: *"World by world, the Catharsis took what the others had torn from each other, until only Malana was left to the Grek."* · *"The Republic of Timpur and the Human Federation of Sol counted their dead, and held what was left."*
+  - The map finishes on exactly the usual Chapter IV map.
+- **Waking on Archiostal:** Am-Grek's line about the Catharsis breaking its chains becomes *"While you slept, the whole galaxy tore itself apart, every empire against every other. The Catharsis broke its chains in the noise, and no one heard it."*
+- New lines are subtitles only; unchanged lines keep their voice.
+- **If more than one what-if happened,** the conquests come first, since they're the bigger story: Lord Zark taking the Bastion, then the Chompy taking the Grek's worlds, then the galaxy at war.
+- **Previews:** `?ending=timeskipwar`, `?ending=amgrekwar`.
+
+### The two that don't go on: game over while you slept
+
+Two endings to the two years that don't lead into Chapter IV. You wake to nothing: **GAME OVER**.
+- **Orion Mascar's offensive.** On the road where Croxian died, Orion goes to orbit and takes a system every 75 seconds of play while you're somewhere else. Normally you shoot him down long before he's done. Leave him for the hours it takes to take **every system in the galaxy**, and the two years tell it his way, to *The Vengeful Mascar*:
+  - *"Before you fell, one man had already taken the galaxy. Orion Mascar."* Sol turns his colour first.
+  - His orange floods out from Sol, world after world, until every empire has knelt or burned. *"The Catharsis rose against him in the chaos after your death. He broke it at Carax, in a single night."*
+  - Then the closing lines: *"504 star systems. One emperor. One flag."* · *"He searched every one of them for you."* · *"And when he found you, wanderer, he did not wake you."*
+- **The Catharsis wins.** In Chapter III, set the Catharsis on the other factions (Diplomacy → Factions) until it has beaten **every empire still standing**: each one beaten in a war with it, or answering to it, however far down. A puppet of its puppet counts.
+  - Diplomacy keeps count on the Catharsis's card in Chapter III (*Has beaten 3 of the 7 empires still standing*).
+  - When the last one falls: *"THE CATHARSIS HAS WON · There will be nothing left to wake up to."*
+  - The two years: its red floods out from Carax to the core, then the Chompy (*"The Chompy Empire fell at Aridaxx. The Republic of Timpur was never heard from again."*), then Sol, last of all (*"The Federation held Earth for eleven days."*).
+  - It ends on *"Lord Zark sat in the Bastion of Carax, and the galaxy was quiet."* and *"…you slept. You will not wake."*
+- **Then GAME OVER, as in the bad ending.**
+  - The screen reads *The galaxy belongs to Orion Mascar* (in his orange: *He is still looking for you*), or *The galaxy belongs to the Catharsis* (in red: *No one will remember you were ever here*).
+  - **The save slot you played to get here is erased**, and you go back to the title screen. The two years never pass, and there's no Chapter IV.
+  - Replays from Cutscenes and the previews erase nothing.
+- These two come before every other telling. If both happened, Orion's plays.
+- **Previews:** `?ending=timeskiporion`, `?ending=timeskipcath`.
