@@ -3487,3 +3487,22 @@ The last of the what-ifs for *While you slept*: everyone against everyone.
 - New lines are subtitles only; unchanged lines keep their voice.
 - **If more than one what-if happened,** the conquests come first, since they're the bigger story: Lord Zark taking the Bastion, then the Chompy taking the Grek's worlds, then the galaxy at war.
 - **Previews:** `?ending=timeskipwar`, `?ending=amgrekwar`.
+
+### The two that don't go on: game over while you slept
+
+Two endings to the two years that don't lead into Chapter IV. You wake to nothing: **GAME OVER**.
+- **Orion Mascar's offensive.** On the road where Croxian died, Orion goes to orbit and takes a system every 75 seconds of play while you're somewhere else. Normally you shoot him down long before he's done. Leave him for the hours it takes to take **every system in the galaxy**, and the two years tell it his way, to *The Vengeful Mascar*:
+  - *"Before you fell, one man had already taken the galaxy. Orion Mascar."* Sol turns his colour first.
+  - His orange floods out from Sol, world after world, until every empire has knelt or burned. *"The Catharsis rose against him in the chaos after your death. He broke it at Carax, in a single night."*
+  - Then the closing lines: *"504 star systems. One emperor. One flag."* · *"He searched every one of them for you."* · *"And when he found you, wanderer, he did not wake you."*
+- **The Catharsis wins.** In Chapter III, set the Catharsis on the other factions (Diplomacy → Factions) until it has beaten **every empire still standing**: each one beaten in a war with it, or answering to it, however far down. A puppet of its puppet counts.
+  - Diplomacy keeps count on the Catharsis's card in Chapter III (*Has beaten 3 of the 7 empires still standing*).
+  - When the last one falls: *"THE CATHARSIS HAS WON · There will be nothing left to wake up to."*
+  - The two years: its red floods out from Carax to the core, then the Chompy (*"The Chompy Empire fell at Aridaxx. The Republic of Timpur was never heard from again."*), then Sol, last of all (*"The Federation held Earth for eleven days."*).
+  - It ends on *"Lord Zark sat in the Bastion of Carax, and the galaxy was quiet."* and *"…you slept. You will not wake."*
+- **Then GAME OVER, as in the bad ending.**
+  - The screen reads *The galaxy belongs to Orion Mascar* (in his orange: *He is still looking for you*), or *The galaxy belongs to the Catharsis* (in red: *No one will remember you were ever here*).
+  - **The save slot you played to get here is erased**, and you go back to the title screen. The two years never pass, and there's no Chapter IV.
+  - Replays from Cutscenes and the previews erase nothing.
+- These two come before every other telling. If both happened, Orion's plays.
+- **Previews:** `?ending=timeskiporion`, `?ending=timeskipcath`.

@@ -23906,7 +23906,19 @@ const SKIP_NARR = [
 const SKIP_ZARK = /[?&]ending=(timeskip|amgrek)zark/.test(window.location.search), SKIP_HAK = /[?&]ending=(timeskip|amgrek)hak/.test(window.location.search);
 // ...or if the Chompy Empire had taken every world the Grek held, Archiostal with them, in Chapter III: Archamus comes down to take
 // back Archiostal, then Malana, while the Catharsis takes Carax in the chaos; then the two years play out as ever. ?ending=timeskiphak
-const SKIP_WAR = /[?&]ending=(timeskip|amgrek)war/.test(window.location.search);
+const SKIP_WAR = /[?&]ending=(timeskip|amgrek)war/.test(window.location.search), SKIP_OVER = (window.location.search.match(/[?&]ending=timeskip(cath|orion)\b/) || [])[1] || null;
+// The two that don't go on: Orion Mascar took every system before you fell (his offensive, left to run for hours), or the Catharsis
+// had beaten every empire in Chapter III. The two years end in GAME OVER, and the save you played to get here is erased, as the bad
+// ending does. ?ending=timeskiporion and ?ending=timeskipcath preview them (nothing erased).
+function skipOver() { if (SKIP_OVER) return SKIP_OVER; try { const O = wanderer && wanderer.orion; if (O && O.done && !O.dead) return 'orion'; const X = wanderer && wanderer.dip && wanderer.dip.fx; if (X && X.cathWin) return 'cath'; } catch (e) {} return null; }
+const SKIP_NARR_OVER = {
+  cath: ['Before you fell, the Catharsis had already beaten every empire in the galaxy.', 'In the chaos after your death, the last of them knelt. Carax first, then the core, then everything the core could see.',
+    'The Chompy Empire fell at Aridaxx. The Republic of Timpur was never heard from again.', 'Sol was the last to fall. The Federation held Earth for eleven days.',
+    'For two years, there was nothing left to clash with.', 'Lord Zark sat in the Bastion of Carax, and the galaxy was quiet.', 'And through all of it, wanderer, you slept. You will not wake.'],
+  orion: ['Before you fell, one man had already taken the galaxy. Orion Mascar.', 'He took Sol first, then the worlds around it, then the worlds around those. Every empire knelt, or burned.',
+    'The Catharsis rose against him in the chaos after your death. He broke it at Carax, in a single night.', 'For the next two years, no one clashed with anyone. There was no one left to clash with.',
+    '{n} star systems. One emperor. One flag.', 'He searched every one of them for you.', 'And when he found you, wanderer, he did not wake you.']
+};
 function warHadGalaxy() { if (SKIP_WAR) return true; try { return !!(wanderer && wanderer.dip && wanderer.dip.fx && wanderer.dip.fx.galaxyWar); } catch (e) { return false; } } // ?ending=timeskipwar
 const SKIP_NARR_WAR = {
   all: 'Before you fell, you set the whole galaxy at war. Every empire against every other.',
@@ -23927,7 +23939,7 @@ const SKIP_NARR_ZARK = {
   1: 'Before you fell, Lord Zark had already taken Carax. Am-Grek knelt in his own Bastion, and gave him every world the Grek had.',
   2: 'In the chaos after your death, the Grek rose from Malana, and took back what their Hierarch had given away.'
 };
-const SN_EMP = { hfos: ['HUMAN FEDERATION OF SOL', '#4f8fff'], chompy: ['CHOMPY EMPIRE', '#a35cff'], timpur: ['REPUBLIC OF TIMPUR', '#36e2f0'], grek: ['GREK EMPIRE', '#3fd36c'], cath: ['CATHARSIS', '#ff2b2b'] };
+const SN_EMP = { orion: ['IMPERIUM OF ORION MASCAR', '#ff8c1a'], hfos: ['HUMAN FEDERATION OF SOL', '#4f8fff'], chompy: ['CHOMPY EMPIRE', '#a35cff'], timpur: ['REPUBLIC OF TIMPUR', '#36e2f0'], grek: ['GREK EMPIRE', '#3fd36c'], cath: ['CATHARSIS', '#ff2b2b'] };
 const SN = { on: false };
 function snKey(f) { f = String(f || ''); return /^The Catharsis/.test(f) ? 'cath' : /Timpur/.test(f) ? 'timpur' : /Chompy/.test(f) ? 'chompy' : /Grek|Order of Archamus/.test(f) ? 'grek' : /Human Federation|Terra Imperia|Erisian/.test(f) ? 'hfos' : null; }
 const snRgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
@@ -23967,7 +23979,7 @@ function snBuild() { // the systems, who holds each before and after, and the te
   });
   const N = 300, R = .078, lo = -1.06, span = 2.12, cell = span / N, idx = new Int16Array(N * N).fill(-1), dist = new Float32Array(N * N);
   const B = 24, bk = Array.from({ length: B * B }, () => []), bkOf = v => clamp(Math.floor((v - lo) / span * B), 0, B - 1);
-  sys.forEach((s, i) => { if (s.o3 || s.o4) bk[bkOf(s.y) * B + bkOf(s.x)].push(i); });
+  sys.forEach((s, i) => { if (SN.over || s.o3 || s.o4) bk[bkOf(s.y) * B + bkOf(s.x)].push(i); });
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
     const x = lo + (i + .5) * cell, y = lo + (j + .5) * cell, bx = bkOf(x), by = bkOf(y); let best = -1, bd = R;
     for (let yy = Math.max(0, by - 1); yy <= Math.min(B - 1, by + 1); yy++) for (let xx = Math.max(0, bx - 1); xx <= Math.min(B - 1, bx + 1); xx++)
@@ -24018,8 +24030,33 @@ function snChaos(n, at, span) { // n systems change hands, each to whoever holds
   const S = SN.sys, own = S.map((s, i) => i).filter(i => S[i].own && S[i].S.id !== 'sol' && S[i].S.id !== 'sgra'), pick = own.sort(() => Math.random() - .5).slice(0, n);
   pick.forEach((i, k) => { let best = null, bd = 9; for (const o of S) if (o.own && o.own !== S[i].own) { const d = Math.hypot(o.x - S[i].x, o.y - S[i].y); if (d < bd) { bd = d; best = o; } } if (best && bd < .35) SN.q.push({ t: SN.lineT0 + at + (k / Math.max(1, pick.length - 1)) * span, i, own: best.own }); });
 }
+const snEmps = () => SN.over === 'orion' ? ['orion', 'cath', 'grek', 'chompy', 'timpur', 'hfos'] : ['cath', 'grek', 'chompy', 'timpur', 'hfos'];
+function snFlood(own, ox, oy, r0, r1, at, span, pred) { // everything between r0 and r1 of (ox, oy) falls to `own`, nearest first
+  const L = SN.sys.map((s, i) => [i, Math.hypot(s.x - ox, s.y - oy)]).filter(([i, d]) => d >= r0 && d < r1 && SN.sys[i].own !== own && (!pred || pred(SN.sys[i]))).sort((a, b) => a[1] - b[1]).map(a => a[0]);
+  snFlip(L, own, at, span);
+}
+function snOverScript(k) { // the two years, when there is nothing to wake up to
+  const S = SN.sets, T = SKIP_NARR_OVER[k], wide = () => [S.mid[0], S.mid[1], S.fit * .95], solI = SN.sys.findIndex(s => s.S.id === 'sol'), n = SN.sys.length, line = (t, L) => ({ t: t.replace('{n}', n), v: -1, L });
+  if (k === 'orion') return [
+    line(T[0], { cam: () => [S.sol[0], S.sol[1], 3], on: () => { if (solI >= 0) SN.q.push({ t: SN.lineT0 + 1.6, i: solI, own: 'orion', big: true }); SN.pulse = 'orion'; }, min: 5 }),
+    line(T[1], { cam: k2 => k2 < .4 ? [S.sol[0], S.sol[1], 2] : wide(), on: () => snFlood('orion', S.sol[0], S.sol[1], 0, .9, .3, 6.5, s => s.own !== 'cath'), year: 2125.5, min: 7.5 }),
+    line(T[2], { cam: () => [0, 0, 2.2], on: () => { snFlood('orion', 0, 0, .05, 3, .4, 3.4, s => s.own === 'cath'); SN.q.push({ t: SN.lineT0 + 4.2, i: S.carax, own: 'orion', big: true }); }, year: 2126, min: 6 }),
+    line(T[3], { cam: wide, on: () => snFlood('orion', S.sol[0], S.sol[1], 0, 9, .3, 4.4), year: 2126.6, min: 6 }),
+    line(T[4], { cam: wide, on: () => { SN.shake = .5; }, year: 2127, min: 4.6 }),
+    line(T[5], { cam: () => [S.sol[0], S.sol[1], 1.6], on: () => {}, year: 2127.3 }),
+    line(T[6], { cam: wide, on: () => { SN.dim = 1; SN.pulse = null; }, year: 2127.4, min: 5 })];
+  return [
+    line(T[0], { cam: wide, on: () => { SN.pulse = 'cath'; snFlood('cath', 0, 0, 0, .2, .6, 3.4, s => !!s.own); }, min: 5.2 }),
+    line(T[1], { cam: () => [0, 0, 1.5], on: () => { if (S.carax >= 0) { const s = SN.sys[S.carax]; s.big = true; s.ring = SN.lineT0 + .8; } snFlood('cath', 0, 0, .2, .62, .8, 5.2, s => !!s.own); }, year: 2125.5, min: 6.6 }),
+    line(T[2], { cam: () => [S.chompyC[0] * .6, S.chompyC[1] * .6, 1.4], on: () => snFlood('cath', 0, 0, 0, 9, .3, 4.6, s => s.own === 'chompy' || s.own === 'timpur' || s.own === 'grek'), year: 2126, min: 6 }),
+    line(T[3], { cam: () => [S.sol[0], S.sol[1], 2.6], on: () => { snFlood('cath', 0, 0, 0, 9, .2, 2.6, s => !!s.own && s.S.id !== 'sol'); if (solI >= 0) SN.q.push({ t: SN.lineT0 + 3.6, i: solI, own: 'cath', big: true }); }, year: 2126.5, min: 5.4 }),
+    line(T[4], { cam: wide, on: () => snFlood('cath', 0, 0, 0, 9, .2, 3.8), year: 2127, min: 5 }),
+    line(T[5], { cam: () => [0, 0, 2.7], on: () => { const s = SN.sys[S.carax]; if (s) s.ring = SN.lineT0 + 1; }, year: 2127.3, min: 4.6 }),
+    line(T[6], { cam: wide, on: () => { SN.dim = 1; SN.pulse = null; }, year: 2127.4, min: 5 })];
+}
 function snScript() { // the lines this telling plays, each with its recording (if the words are the recorded ones) and what the map does
   const orig = i => ({ t: SKIP_NARR[i], v: i, L: SN_LINES[i] });
+  if (SN.over) return snOverScript(SN.over);
   const settle = { t: SKIP_NARR[9], v: 9, L: { cam: SN_LINES[9].cam, on: () => { SN_LINES[9].on(); snFlip(SN.sys.map((s, i) => i).filter(i => SN.sys[i].o4 && SN.sys[i].own !== SN.sys[i].o4), null, .2, 1.4); } } }; // (and the map settles on the Chapter IV galaxy)
   if (SN.war) { const S = SN.sets, wide = () => [S.mid[0], S.mid[1], S.fit * .95];
     return [orig(0),
@@ -24046,7 +24083,7 @@ function snScript() { // the lines this telling plays, each with its recording (
 }
 function snLabels() { // each empire's name over its own space: where its worlds sit thickest, clear of the other names
   const S = SN.sys, out = {}, placed = [], z = SN.cam[2], kk = Math.min(innerWidth, innerHeight) * .46 * z; // label boxes, in galaxy units at this zoom
-  for (const k of ['cath', 'grek', 'chompy', 'timpur', 'hfos']) {
+  for (const k of snEmps()) {
     const mine = S.filter(s => s.own === k); if (!mine.length) continue;
     const fs = clamp(9 + Math.sqrt(mine.length) * 1.5, 10, 22) * Math.min(1.5, Math.sqrt(z)), hw = SN_EMP[k][0].length * fs * .5 / kk + .01, hh = fs * 1.1 / kk + .01;
     let best = null, bs = -1e9;
@@ -24102,7 +24139,7 @@ function snDraw(dt) {
 }
 function snLegend() {
   const cnt = {}; for (const s of SN.sys) if (s.own) cnt[s.own] = (cnt[s.own] | 0) + 1;
-  const h = ['cath', 'grek', 'chompy', 'timpur', 'hfos'].map(k => `<div class="${cnt[k] ? '' : 'gone'}">${SN_EMP[k][0]} <b>${cnt[k] | 0}</b><i style="background:${SN_EMP[k][1]}"></i></div>`).join('');
+  const h = snEmps().map(k => `<div class="${cnt[k] ? '' : 'gone'}">${SN_EMP[k][0]} <b>${cnt[k] | 0}</b><i style="background:${SN_EMP[k][1]}"></i></div>`).join('');
   if (h !== SN.legH) { SN.legH = h; SN.el.querySelector('.sn-leg').innerHTML = h; }
 }
 function snFrame() {
@@ -24132,18 +24169,34 @@ async function snLine(i) { // one line of narration: its text, its voice if ther
 async function skipNarrStart(done, opts = {}) {
   if (SN.on) return; const el = snDom(); SN.el = el; SN.cv = el.querySelector('canvas'); SN.ctx = SN.cv.getContext('2d');
   SN.done = done; SN.replay = !!opts.replay; SN.prev = state; state = 'skipNarr';
-  if (!SN.replay && wanderer) { wanderer.ch4 = Object.assign({}, wanderer.ch4, { timeSkip: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); } // two years have gone by
+  SN.over = skipOver(); // nothing to wake up to: no time skip, and no Chapter IV
+  if (!SN.replay && wanderer && !SN.over) { wanderer.ch4 = Object.assign({}, wanderer.ch4, { timeSkip: true }); const c = curChar(); if (c) c.ch4 = wanderer.ch4; saveRoster(); } // two years have gone by
   Object.assign(SN, { on: true, t: 0, last: 0, q: [], lab: {}, line: -1, lineDur: 0, cam: [0, 0, .8], yr: 2125, dim: 0, dimK: 0, pulse: null, shake: 0, legH: '', vo: [], zark: zarkHadBastion(), rise: [], script: [] }); SN.hak = !SN.zark && hakHadGrek(); SN.war = !SN.zark && !SN.hak && warHadGalaxy(); // (a conquest of the Grek is the bigger story: it wins if both happened)
   el.classList.add('on'); el.classList.remove('map'); const fade = el.querySelector('.sn-fade'), card = el.querySelector('.sn-card');
   fade.style.transition = 'none'; fade.style.opacity = 1;
   card.querySelector('small').textContent = 'While you slept'; card.querySelector('b').textContent = '2125 AD';
   let vo = []; try { [vo] = await Promise.all([loadDataScript('skipNarrVoices').then(ok => ok ? sfx.loadClips('skipNarrVoices') : []).catch(() => []), waitMs(60)]); } catch (e) { console.error(e); }
   SN.vo = vo || []; snBuild(); SN.script = snScript(); SN.cam = [SN.sets.mid[0], SN.sets.mid[1], SN.sets.fit * .85]; if (!SN.on) return;
-  card.classList.add('on'); leaderPlay('primeEvil').catch(() => {});
+  card.classList.add('on'); leaderPlay(SN.over === 'orion' ? 'vengeful' : 'primeEvil').catch(() => {}); // Orion's offensive gets The Vengeful Mascar
   await waitMs(3200); if (!SN.on) return; card.classList.remove('on'); await waitMs(900); if (!SN.on) return;
   requestAnimationFrame(snFrame); el.classList.add('map'); fade.style.transition = 'opacity 1.6s'; fade.style.opacity = 0; await waitMs(1400);
   for (let i = 0; i < SN.script.length && SN.on; i++) await snLine(i);
   if (SN.on) { await waitMs(1600); snEnd(); }
+}
+async function skipGameOver(k, preview, cb) { // as the bad ending's game over: the save slot you played is erased (never in a replay or a preview)
+  try { sfx.stopSong(.5); } catch (e) {}
+  const i = lastSlot, erased = !preview && i >= 0 && !!slots[i];
+  if (erased) { slots[i] = null; try { await writeSlots(); } catch (e) { console.error(e); } lastSlot = -1; dirty = false; }
+  const el = document.createElement('div'); el.id = 'skipOver';
+  el.style.cssText = 'position:fixed;inset:0;z-index:41;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;padding:calc(var(--st,0px) + 24px) calc(var(--sr,0px) + 20px) calc(var(--sb,0px) + 24px) calc(var(--sl,0px) + 20px);opacity:0;transition:opacity 2.4s;overflow-y:auto';
+  const col = k === 'orion' ? '#ff8c1a' : '#c8141c', who = k === 'orion' ? 'The galaxy belongs to Orion Mascar' : 'The galaxy belongs to the Catharsis', last = k === 'orion' ? 'He is still looking for you' : 'No one will remember you were ever here';
+  el.innerHTML = `<div style="font-family:var(--display);font-weight:600;font-size:clamp(30px,7vw,74px);letter-spacing:.3em;color:${col};text-shadow:0 0 30px ${col}99">GAME OVER</div>
+    <div style="font-size:clamp(10px,1.6vw,13px);letter-spacing:.36em;color:${col};opacity:.85;text-transform:uppercase;max-width:40em;line-height:2">${who}</div>
+    <div style="font-size:clamp(9px,1.4vw,12px);letter-spacing:.4em;color:#8a5050;text-transform:uppercase;max-width:40em;line-height:2">${preview ? 'Preview · no save was erased' : erased ? `Save slot ${i + 1} has been erased` : 'There was no save to erase'}</div>
+    <div style="font-size:clamp(8px,1.2vw,10px);letter-spacing:.32em;color:#4a2a2a;text-transform:uppercase">${last}</div>
+    <button class="mi" id="skipOverBtn" style="width:auto;max-width:100%;min-height:48px;margin-top:26px;color:#aa6060;border:1px solid #3a1414;padding:14px 26px;display:block;touch-action:manipulation">Return to the title screen</button>`;
+  document.body.appendChild(el); requestAnimationFrame(() => { el.style.opacity = 1; });
+  el.querySelector('#skipOverBtn').addEventListener('click', () => { if (preview) { el.remove(); if (cb) cb(); else location.href = location.pathname; return; } location.href = location.pathname; }); // start clean, from what's left of your saves
 }
 function snSkipAll() { if (!SN.on) return; try { sfx.stopNarr(); } catch (_) {} snEnd(); }
 function snEnd() {
@@ -24152,7 +24205,9 @@ function snEnd() {
   if (sfx.leadOn) { sfx.leadOn = false; sfx.stopSong(2); }
   setTimeout(() => {
     el.classList.remove('on', 'map'); el.querySelector('.sn-sub').classList.remove('show'); el.querySelector('.sn-card').classList.remove('on');
-    if (state === 'skipNarr') state = SN.prev || 'title'; const cb = SN.done; SN.done = null; if (cb) cb();
+    if (state === 'skipNarr') state = SN.prev || 'title'; const cb = SN.done; SN.done = null;
+    if (SN.over) { skipGameOver(SN.over, SN.replay || !!SKIP_OVER, cb); return; } // no Chapter IV: game over
+    if (cb) cb();
   }, 1050);
 }
 /* ---- Chapter IV · you wake on Archiostal: Am-Grek, and the voice ----
@@ -34956,6 +35011,7 @@ function fxTake(from, to, n) { // a few of their worlds (never a capital, a lead
 }
 function fxEnd(w, aWon) {
   const X = fxD(); X.wars = X.wars.filter(o => o !== w); const W = aWon ? w.a : w.b, L = aWon ? w.b : w.a; let what;
+  if (W === 'catharsis' && !(X.cathBeat = X.cathBeat || []).includes(L)) X.cathBeat.push(L); // who the Catharsis has beaten (Chapter III's darkest road)
   if (w.dash && aWon) { fxZarkTakes(); return; } // Am-Grek beaten at the Bastion: he surrenders his lands to Zark
   if (aWon && w.a === 'chompy' && w.b === 'grek' && dipCh() === 3 && !X.zark && !X.chompyGrek) { fxChompyTakes(); return; } // Hak takes everything the Grek hold, Archiostal with it
   if (w.dash) lootMsg('The siege of Carax is broken · Am-Grek holds the Bastion, and the Catharsis fleet falls back', '#7fe0a0');
@@ -34975,7 +35031,7 @@ function fxUlmira() { // where the Catharsis fleet sets out from: Ulmira, one of
 function fxZarkTakes() { // Am-Grek, beaten in his own Bastion, surrenders every world of the Grek to Lord Zark
   const X = fxD(), D = dip(), G = fxFac('grek'), got = dipWorldsOf(G).filter(P => !D.col[P.id]);
   for (const P of got) X.took[P.id] = 'catharsis'; if (!got.some(P => P.id === 'carax') && !D.col.carax) X.took.carax = 'catharsis';
-  X.zark = { at: Date.now(), n: got.length }; X.fell = Object.assign(X.fell || {}, { grek: 'catharsis' }); X.wars = X.wars.filter(o => o.a !== 'grek' && o.b !== 'grek');
+  X.zark = { at: Date.now(), n: got.length }; if (!(X.cathBeat = X.cathBeat || []).includes('grek')) X.cathBeat.push('grek'); X.fell = Object.assign(X.fell || {}, { grek: 'catharsis' }); X.wars = X.wars.filter(o => o.a !== 'grek' && o.b !== 'grek');
   for (const k of Object.keys(X.over)) if (X.over[k] === 'grek') X.over[k] = null;
   try { fxStandDown('grek', 'stand down: the Grek Empire is no more'); } catch (e) {} // the ones it brought into your war leave it
   if (D.wars.grek) { delete D.wars.grek; setTimeout(() => lootMsg('Your war with the Grek is over: there is no Grek Empire left to fight · the Catharsis holds its worlds', '#ffd36a'), 5200); }
@@ -35001,6 +35057,13 @@ function fxEngaged() {
   const X = fxD(), on = new Set(); for (const w of X.wars) { const S = fxSides(w); for (const id of [...S.A, ...S.B]) on.add(id); }
   try { if (tiWarOn()) for (const id of ['ti', 'hfos', 'erisian', 'chompy', 'timpur']) on.add(id); } catch (e) {}
   const live = DIP_FAC.map(F => F.id).filter(fxLive); return { live, on: live.filter(id => on.has(id)) };
+}
+function fxCathStanding() { const X = fxD(), live = DIP_FAC.map(F => F.id).filter(id => id !== 'catharsis' && fxLive(id)); return { live, beat: live.filter(id => (X.cathBeat || []).includes(id) || fxAncestor('catharsis', id)) }; } // beaten by it, or answering to it (however far up: a puppet of its puppet counts)
+function fxCathWinCheck() { // Chapter III: the Catharsis has beaten every empire still standing. If it's still so when the two years pass, it's over.
+  const X = fxD(); if (X.cathWin || dipCh() !== 3 || !fxLive('catharsis') || (X.cathBeat || []).length < 2) return; const C = fxCathStanding(); if (C.live.length < 2 || C.beat.length < C.live.length) return;
+  X.cathWin = { at: Date.now() }; dipSave();
+  if (state === 'explore' || state === 'space') { notice('Every empire still standing has knelt to it', 'THE CATHARSIS HAS WON', 6500); sfx.thud(); setTimeout(() => sfx.thud(), 600); }
+  lootMsg('The Catharsis has beaten every empire still standing. There will be nothing left to wake up to.', '#ff3b4a');
 }
 function fxGalaxyWarCheck() {
   const X = fxD(); if (X.galaxyWar || dipCh() !== 3 || X.wars.length < 2) return; const E = fxEngaged(); if (E.live.length < 4 || E.on.length < E.live.length) return;
@@ -35039,7 +35102,7 @@ function fxWarTick() {
     if (Math.random() < .12 && (state === 'explore' || state === 'space')) lootMsg(`⚔ ${fxNm(w.a)} and ${fxNm(w.b)} clash · ${Math.round(w.score)} (${fxNm(w.a)} at 100 wins)`, '#ffb36e');
     if (w.score >= 100) fxEnd(w, true); else if (w.score <= -100) fxEnd(w, false);
   }
-  try { fxGalaxyWarCheck(); } catch (e) { console.error(e); }
+  try { fxGalaxyWarCheck(); fxCathWinCheck(); } catch (e) { console.error(e); }
   fxSave();
 }
 function fxSave() { const c = curChar(); if (c && wanderer.dip) c.dip = wanderer.dip; saveRoster(); } // the score moved: mark it unsaved (the flags only change when a war ends, and fxEnd redraws them)
@@ -35064,6 +35127,7 @@ function fxOverlay(D) {
 function fxCardNote(F) { // Diplomacy: their bonds, and the wars you set them in
   const D = dip(), X = fxD(), o = fxOverOf(F.id), base = fxBaseOver(F.id), vs = fxVassals(F.id), W = D.wars[F.id], t = X.trib[F.id]; let h = '';
   const bits = [];
+  if (F.id === 'catharsis' && dipCh() === 3 && (X.cathWin || (X.cathBeat || []).length)) { const C = fxCathStanding(); bits.push(X.cathWin ? '<b style="color:#ff5a66">It has beaten every empire still standing</b>' : `Has beaten ${C.beat.length} of the ${C.live.length} empires still standing`); }
   if (F.id === 'chompy' && chompyTookGrek()) bits.push('<b>Holds every world the Grek had</b>, Carax and Archiostal too');
   if (F.id === 'catharsis' && fxZarkBastion()) bits.push('<b>Holds the Bastion of Carax</b>: Am-Grek surrendered every world of the Grek to Lord Zark');
   { const w = fxD().wars.find(o => o.dash && (o.a === F.id || o.b === F.id)); if (w) bits.push(w.dash.arrived ? '<b>The siege of Carax</b>: Lord Zark against Am-Grek in the Bastion' : '<b>Lord Zark’s fleet is dashing to Carax</b> (on the galaxy map)'); }
@@ -35099,7 +35163,7 @@ function fxCard() { // Diplomacy → Factions: set them on each other, and the w
 }
 if (/[?&]depdebug/.test(window.location.search)) window.NV_ED = { fdepTick, rdepTick, edAt, edPlace, edSpec, edBeaten, enemyDepTick, rdepCands, fdepCands, menuDepKey, dip, dipDeclare, ywDeclare, ywAt, resPower, resNow, saveRoster, // ?depdebug: the enemies' deputies, from the console
   get W() { return wanderer; }, get E() { return resEmp; }, get G() { return resGuild; }, get R() { return residents; }, get state() { return state; }, get TIW() { return TIW; }, body: bodyById, free: () => resFreeWorlds(), lead: () => leadMenuCalc(), guildDirty: () => resGuildDirty(),
-  land: id => landOn(bodyById(id), new THREE.Vector3(.3, 1, .2)), near: () => { const G = TIW.dep; if (G) player.position.set(G.x + 2, player.position.y, G.z + 2); return tiNear(player.position); }, use: () => { const n = tiNear(player.position); if (n) tiUse(n); return n && n.id; }, pickChoice: i => { const b = document.querySelectorAll('button.opt')[i | 0]; if (b) b.click(); return !!b; }, win: () => { if (!DGN.boss && DGN.lb) lairBossStart(); if (DGN.boss) lairBossWin(); return !!DGN.boss; }, get DGN() { return DGN; }, sevMeetTick, sevSide, leadLines: () => leadLines(), menuLines: () => menuLines(), fxBloc, fxOverOf, fxIncite, fxTick: fxWarTick, fxEnd, fxD, fxWould, fxCard, fxCardNote, dipPeace, dipWin, applyChapterFactions, fxUlmira, fxZarkTakes, fxZarkBastion, fxChompyTakes, chompyTookGrek, fxEngaged, fxGalaxyWarCheck, systems: () => SYSTEMS, openGal: () => { try { galOpen && galOpen(); } catch (e) { return e.message; } }, dipOpen: () => { dipOpen(true); DIPV.tab = "factions"; dipRender(); } };
+  land: id => landOn(bodyById(id), new THREE.Vector3(.3, 1, .2)), near: () => { const G = TIW.dep; if (G) player.position.set(G.x + 2, player.position.y, G.z + 2); return tiNear(player.position); }, use: () => { const n = tiNear(player.position); if (n) tiUse(n); return n && n.id; }, pickChoice: i => { const b = document.querySelectorAll('button.opt')[i | 0]; if (b) b.click(); return !!b; }, win: () => { if (!DGN.boss && DGN.lb) lairBossStart(); if (DGN.boss) lairBossWin(); return !!DGN.boss; }, get DGN() { return DGN; }, sevMeetTick, sevSide, leadLines: () => leadLines(), menuLines: () => menuLines(), fxBloc, fxOverOf, fxIncite, fxTick: fxWarTick, fxEnd, fxD, fxWould, fxCard, fxCardNote, dipPeace, dipWin, applyChapterFactions, fxUlmira, fxZarkTakes, fxZarkBastion, fxChompyTakes, chompyTookGrek, fxEngaged, fxGalaxyWarCheck, fxCathWinCheck, fxCathStanding, skipOver, systems: () => SYSTEMS, openGal: () => { try { galOpen && galOpen(); } catch (e) { return e.message; } }, dipOpen: () => { dipOpen(true); DIPV.tab = "factions"; dipRender(); } };
 const RES_EMP_ON = () => !!resEmp.on; // residents only found empires if you switch it on (Resident empires panel)
 function resLentSweep() { // a resident empire that's gone sends your companions home
   const L = wanderer && wanderer.dip && wanderer.dip.lent; if (!L) return;
