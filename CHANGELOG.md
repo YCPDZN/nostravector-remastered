@@ -3376,3 +3376,21 @@ Every ruler you're at war with now does what you do: they **appoint a deputy**, 
 - **Every companion has new lines for it: 838 in all** (`data/depLines2.js`, loaded only when needed). For each of the fourteen companions and the five imported characters (the Pontifex set is shared by every Pontifex and Sister), 10 lines each for **serving a resident's empire** and **serving a faction leader**, **good** (torn, holding the world for the people on it, still fond of you) and **evil** (relishing it). Each in their own voice, naming the ruler or leader they serve. Plus the residents' own deputy lines (hero, neutral and villain) and six for each faction's officers. They're heard on the menu, on comms when a deputy is appointed or posted, in the zone chat, and as the deputy's opening words when you fight them.
 - **Fixed:** a faction governor (and the guards round them) could fail to appear on some species' worlds (the Chompy Empire's, for one), because their uniforms were dressed without any colours. They wear their faction's colours now.
 - Saves: a story faction's deputy in `dip().fdep` on your wanderer; a resident empire's in its own entry (`resEmp.emp[id].dep`). `?depdebug` exposes the deputies to the browser console (`window.NV_ED`) for testing.
+
+### Puppets answer the call, and you can set the factions on each other (Chapters III–V)
+
+- **Who answers to whom.** The Republic of Timpur and the Erisian Empire are the Chompy Empire's puppets. While Alexia holds Eris in Chapter III, Eris is Terra Imperia's puppet instead, so it never fights for Hak then. In Chapter III the Grek are the Order of Archamus's puppet, and the Catharsis the Grek's, so the Order's wars reach all the way down to Lord Zark.
+- **Your wars bring in the whole bloc.** Declare war on a faction and its puppets come in on its side, and theirs (the Order calls the Grek, and through them the Catharsis). A puppet's overlord comes to defend it too, so a war on the Republic of Timpur is a war on Hak and Vishara as well.
+  - Each faction that joins has its own war: its own score, hall, governors and deputy.
+  - Make peace with the faction you declared on, or beat it, and the ones it brought in stand down with it. You can also make peace with any of them on its own.
+  - Diplomacy shows each faction's bonds (*Puppet of …*, *Puppets: …*), who would join if you declared on them, and who brought whom into your war.
+- **Set two factions on each other** (Diplomacy → Factions → *Set them on each other*). Pick the attacker, the target and a casus belli: Vassalisation, Tribute or Conquest (take some of their worlds).
+  - The factions never start wars with each other by themselves: only you can set them off.
+  - Each side calls its own bloc in beside it.
+  - **A faction set on its own puppet loses it.** The puppet breaks away, and "puppet of …" comes off its banner. The same goes for a puppet that turns on its overlord, or on another of its overlord's puppets.
+  - Their wars play out over time, side's strength (worlds and leaders) against side's, with a bar for each.
+  - **Outcomes:** Vassalisation makes the loser the winner's puppet (on its banner), Tribute makes it pay (on its banner), and Conquest takes up to three of its worlds. Those worlds fly the winner's flag (*taken from …*), and the winner's traders, fleet and wars go with them. A failed attack costs the attacker a world.
+  - Worlds never change hands if they're a capital, a leader's hall, the story's own worlds (Mercury, Earth, Janira Prime, Eris, Charon, Mars), Archiostal, Carax or Aridaxx.
+  - **Broker peace** ends any of them. In Chapters III and IV you're warned first, since their wars can move worlds and puppets the story relies on.
+  - The Republic of Timpur's First Consul answers to whoever holds it now ("of a free Republic" once it breaks away).
+- Saved on your wanderer, in `dip().fx`.

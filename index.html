@@ -24435,7 +24435,7 @@ const DIP_FAC = [
   { id: 'humres', name: 'The Human Resistance', species: 'Human', fleet: 'HUMAN RESISTANCE', style: 'hfos', col: '#9fd0ff', ch: [3], show: () => c3f('restoreWar') && !c3f('hawBeaten'), capital: null, lead: () => 'Darius Ancin, President in exile', locked: () => 'The Human Resistance fights beside you in the War of Restoration.', match: f => /^The Human Resistance/.test(f) }, // the War of Restoration: what's left of the Federation
   { id: 'erisres', name: 'The Erisian Resistance', species: 'Erisian', fleet: 'ERISIAN RESISTANCE', style: 'erisian', col: '#c99ae0', ch: [3], show: () => c3f('restoreWar') && !c3f('alexiaBeaten'), capital: null, lead: () => 'Vishara Erisconos, Matriarch in exile', locked: () => 'The Erisian Resistance fights beside you in the War of Restoration.', match: f => /^The Erisian Resistance/.test(f) }, // the Erisians who never knelt to Alexia
   { id: 'ti', name: 'Terra Imperia', species: 'Human', fleet: 'TERRA IMPERIA', style: 'ti', col: '#d0343a', ch: [3], show: () => !c3f('hawBeaten'), /* broken once Hawthorne falls */ get capital() { return surgeOn() ? 'earth' : 'venus'; }, /* Earth, once the surge takes it */ lead: () => 'Thomas Hawthorne, Grand Imperarch', match: f => /^Terra Imperia/.test(f) },
-  { id: 'timpur', name: 'The Republic of Timpur', species: 'Timpur', fleet: 'TIMPUR REPUBLIC GUARD', style: 'chompy', col: '#58d8c0', ch: [3, 4, 5], get capital() { const P = ALL_BODIES.find(o => o.name === 'Timpur Prime'); return P ? P.id : null; }, lead: () => 'Timpur IV, First Consul, answering to Aridaxx', match: f => /^The Republic of Timpur/.test(f) } // a puppet of the Chompy Empire, at the far edge of the galaxy
+  { id: 'timpur', name: 'The Republic of Timpur', species: 'Timpur', fleet: 'TIMPUR REPUBLIC GUARD', style: 'chompy', col: '#58d8c0', ch: [3, 4, 5], get capital() { const P = ALL_BODIES.find(o => o.name === 'Timpur Prime'); return P ? P.id : null; }, lead: () => { try { const o = fxOverOf('timpur'); return o === 'chompy' ? 'Timpur IV, First Consul, answering to Aridaxx' : o ? `Timpur IV, First Consul, answering to ${fxNm(o)}` : 'Timpur IV, First Consul of a free Republic'; } catch (e) { return 'Timpur IV, First Consul, answering to Aridaxx'; } }, match: f => /^The Republic of Timpur/.test(f) } // a puppet of the Chompy Empire, at the far edge of the galaxy
 ];
 const CBS = {
   annihilation: { name: 'Annihilation', desc: 'Destroy them completely. Every world they hold becomes one of your colonies.' },
@@ -24506,6 +24506,7 @@ function dipOverlay() {
   }
   if ((wanderer.chapter | 0) === 3 && alexiaRules()) { const E = bodyById('eris'); if (E && !D.col.eris) E.faction = 'The Erisian Empire · puppet of Terra Imperia'; }
   surgeOverlay(D);
+  try { fxOverlay(D); } catch (e) { console.error(e); } // the story factions' own wars: puppets that broke away or changed masters, tribute, worlds taken
   for (const S of SYSTEMS) {
     for (const P of S.bodies) {
       const C = D.col[P.id];
@@ -24531,8 +24532,9 @@ function dipDeclare(fid, cb) {
   const F = DIP_FAC.find(o => o.id === fid), D = dip(); if (!F || D.wars[fid]) return;
   D.wars[fid] = { cb, score: 0, held: [], won: false }; dipSave(); sfx.alarm();
   lootMsg(`War declared on ${dipFacName(F)} · ${CBS[cb].name}`, '#ff8f86');
+  try { fxCallAllies(fid, cb); } catch (e) { console.error(e); } // its puppets (and its overlord) come in beside it
 }
-function dipPeace(fid) { const D = dip(); if (D.wars[fid] && D.wars[fid].theirs) { lootMsg('Hawthorne will not make peace · win the war', '#ff8f86'); return; } delete D.wars[fid]; dipSave(); sfx.click(); }
+function dipPeace(fid) { const D = dip(); if (D.wars[fid] && D.wars[fid].theirs) { lootMsg('Hawthorne will not make peace · win the war', '#ff8f86'); return; } delete D.wars[fid]; dipSave(); sfx.click(); try { fxStandDown(fid); } catch (e) { console.error(e); } } // the ones it brought in make peace with it
 function dipScore(fid, n, why) {
   const W = dipWar(fid); if (!W || W.won) return; W.score = Math.min(100, W.score + n);
   const F = DIP_FAC.find(o => o.id === fid), msg = `+${n} war score · ${why} · ${Math.round(W.score)}/100`;
@@ -24564,6 +24566,7 @@ function dipWin(F) {
     dipReturnLent(F.id);
   } else notice('Open Diplomacy to choose their leader and name', `${dipFacName(F).toUpperCase()} SURRENDERS`, 4600); // Vassalisation: settled in the Diplomacy screen
   sfx.chime(); gainXP(400);
+  try { fxStandDown(F.id, `lay down their arms: ${dipFacName(F)} has lost`); } catch (e) { console.error(e); } // the puppets it brought in give up with it
 }
 function dipSettleVassal(fid, leader, name) {
   const D = dip(), F = DIP_FAC.find(o => o.id === fid);
@@ -25639,6 +25642,7 @@ function dipRender() {
       h += `<div class="dip-card" style="--fc:${F.col}"><h4>${dipFacName(F).toUpperCase()}<small>${status}</small></h4>`;
       if (resist && !W) h += `<p>The ${F.species} Resistance fights on in their old space: its fighters jump you there, and your colonies there are restless (but your governors never complain).</p><div class="dip-row"><button class="btn small" data-a="${warnCh ? 'ask' : 'declare'}" data-f="${F.id}" data-cb="crush" title="${CBS.crush.desc}"><span>War · Crush the resistance</span></button></div>${DIPV.confirm && DIPV.confirm.f === F.id ? `<div class="dip-warn"><b>Not recommended.</b> A war on the ${F.species} Resistance can break quests. Declare anyway?</div><div class="dip-row"><button class="btn small primary" data-a="declare" data-f="${F.id}" data-cb="crush"><span>Declare anyway</span></button><button class="btn small" data-a="cancel"><span>Cancel</span></button></div>` : ''}`;
       else if (r.st !== 'destroyed') h += `<p>Led by <b>${leader}</b> · ${worlds} world${worlds === 1 ? '' : 's'}${r.st === 'tributary' ? ` · pays you <b>${tributeOf(F)} units</b> every ${TRIBUTE_EVERY / 60} minutes of play (${r.paid | 0} paid so far)` : ''}${lentHere.length ? ` · serving them: ${lentHere.map(compName).join(', ')}` : ''}</p>`;
+      if (r.st !== 'destroyed' && !resist) try { h += fxCardNote(F); } catch (er) { console.error(er); } // who they answer to, who answers to them, and who'd come in beside them
       if (resist && !W) {}
       else if (r.st === 'destroyed' && r.perm) h += `<p>Gone, for good. Their leaders died with the others in the throne room of Carax, and there's no one left to restore. Their worlds are your colonies now.</p>`;
       else if (r.st === 'destroyed') h += `<p>Gone. Their worlds are your colonies now.</p><div class="dip-row"><button class="btn small" data-a="restore" data-f="${F.id}"${units() >= RESTORE_COST ? '' : ' disabled'}><span>Restoration · fund the ${F.species} Restoration (${RESTORE_COST} units)</span></button></div>`;
@@ -25660,6 +25664,7 @@ function dipRender() {
       }
       h += `</div>`;
     }
+    if (DIPV.tab === 'factions') try { h += fxCard(); } catch (er) { console.error(er); } // set the story factions on each other
     if (DIPV.tab === 'factions') { // the resident empires, beside the story's factions
       const es = Object.values(resEmp.emp).filter(e => resRuler(e)), alN = { hero: 'Hero', neutral: 'Neutral', villain: 'Villain' };
       h += `<div class="dip-card" style="--fc:#9fe6ff"><h4>RESIDENT EMPIRES<small>${es.length ? es.length + ' standing' : resEmp.on ? 'none yet' : 'founding is off'}</small></h4><p>${es.length ? 'Empires your residents have carved out of the frontier. Offer them a companion from the Crew tab, set them on each other, or make them stand down.' : resEmp.on ? 'Residents found empires on unclaimed worlds from level 35. None has yet.' : 'Residents only found empires if you switch it on.'}</p><div class="dip-row"><button class="btn small" data-a="resOpen"><span>Open Resident empires</span></button></div></div>`;
@@ -25731,6 +25736,10 @@ function dipClick(e) {
   else if (a === 'ywPeace') ywPeace(b.dataset.r);
   else if (a === 'depSet') { const v = $('#dipBody select[data-a="depPick"]'); if (v && v.value) depAppoint(v.value); }
   else if (a === 'depOff') depRelieve();
+  else if (a === 'fxAsk') DIPV.fxOk = true;
+  else if (a === 'fxNo') { DIPV.fxOk = false; DIPV.fx = null; }
+  else if (a === 'fxGo') { const V = DIPV.fx || {}; if (fxIncite(V.a, V.b, V.cb)) { DIPV.fx = null; DIPV.fxOk = false; } }
+  else if (a === 'fxPeace') fxPeace(+b.dataset.i);
   else if (a === 'resDisband') { const r = b.dataset.r; if (DIPV.resDisband === r) { resDisband(r); DIPV.resDisband = null; } else DIPV.resDisband = r; }
   else if (a === 'recall') { delete D.lent[id]; dipSave(); if (id === 'orion') placeOrion().catch(() => null); placeCrew(); refreshJamesUI(); lootMsg(`${compName(id)} is back with you`, compColor(id)); }
   else if (a === 'recruit') { wanderer.party = [...new Set([...(wanderer.party || []), id])]; syncCrewParty(); dipSave(); placeCrew(); ui.xhud.classList.add('comp'); refreshJamesUI(); sfx.chime(); lootMsg(`${PARTY[id].full} joins your crew`, compColor(id)); compJoinNotice(id, 900); }
@@ -25743,6 +25752,7 @@ function dipChange(e) {
   if (a === 'gov') { D.col[t.dataset.p].gov = t.value || null; dipSave(); try { applyChapterFactions(); } catch (e) {} dipRender(); }
   else if (a === 'setLeader' && DIPV.settle) DIPV.settle.leader = t.value;
   else if (a === 'setName' && DIPV.settle) DIPV.settle.name = t.value;
+  else if (a === 'fxA' || a === 'fxB' || a === 'fxCb') { const V = DIPV.fx || (DIPV.fx = { a: '', b: '', cb: 'vassal' }); V[{ fxA: 'a', fxB: 'b', fxCb: 'cb' }[a]] = t.value; if (a === 'fxA' && V.b === V.a) V.b = ''; DIPV.fxOk = false; dipRender(); }
 }
 
 /* ============ side quests (Chapters III–V) ============
@@ -34718,15 +34728,154 @@ function enemyDepTick(dt) {
   if ((ED_T -= dt) > 0) return; ED_T = 10;
   const now = resNow(); dep2Load();
   try { fdepTick(now); } catch (e) { console.error(e); }
+  try { fxTick(); } catch (e) { console.error(e); } // the wars you set the story factions on
   if (isPl() && state === 'explore' && !DGN.on && !TIW.dep && TIW.area === curArea()) { const q = edAt(world.planet.P); if (q) edPlace(world.planet.P, q); } // appointed to (or sent to defend) the world you're on
   if (TIW.dep) { const q = isPl() ? edAt(world.planet.P) : null; if (!q || q.who !== TIW.dep.who) { const G = TIW.dep; for (const R of G.R) if (R.cb) { const i = fauna.list.indexOf(R.cb); if (i >= 0) fauna.list.splice(i, 1); } if (G.g.parent) G.g.parent.remove(G.g); TIW.dep = null; } } // they moved on
 }
-if (/[?&]depdebug/.test(window.location.search)) window.NV_ED = { fdepTick, rdepTick, edAt, edPlace, edSpec, edBeaten, enemyDepTick, rdepCands, fdepCands, menuDepKey, dip, dipDeclare, ywDeclare, ywAt, resPower, resNow, saveRoster, // ?depdebug: the enemies' deputies, from the console
-  get W() { return wanderer; }, get E() { return resEmp; }, get G() { return resGuild; }, get R() { return residents; }, get state() { return state; }, get TIW() { return TIW; }, body: bodyById, free: () => resFreeWorlds(), lead: () => leadMenuCalc(), guildDirty: () => resGuildDirty(),
-  land: id => landOn(bodyById(id), new THREE.Vector3(.3, 1, .2)), near: () => { const G = TIW.dep; if (G) player.position.set(G.x + 2, player.position.y, G.z + 2); return tiNear(player.position); }, use: () => { const n = tiNear(player.position); if (n) tiUse(n); return n && n.id; }, pickChoice: i => { const b = document.querySelectorAll('button.opt')[i | 0]; if (b) b.click(); return !!b; }, win: () => { if (!DGN.boss && DGN.lb) lairBossStart(); if (DGN.boss) lairBossWin(); return !!DGN.boss; }, get DGN() { return DGN; } };
 // Diplomacy: who holds what for them
 function fdepNote(F) { const X = fdepOf(F.id); if (!X) { const Y = dip().fdep && dip().fdep[F.id]; return Y && Y.none ? `<p style="color:var(--mute)">${fdepLeader(F)} has no deputy left to appoint.</p>` : ''; } const P = bodyById(X.at); return `<p style="color:${edColor(X.who, F.col)}"><b>Their deputy:</b> ${edName(X.who, F.id)} (lv ${edLevel(X.who)}) holds ${P ? P.name : '?'}. Bombard it, land and beat them: the world is yours and +20 war score. ${fdepLeader(F)} sends them to defend worlds you bombard, and they counterattack worlds you hold.</p>`; }
 function rdepNote(e) { const X = e.dep; if (!X || !X.who) return ''; const P = bodyById(X.at); return ` · deputy: <b>${reEsc(edName(X.who))}</b> on ${P ? P.name : '?'}${ywAt(e.id) ? ' (land there and beat them: +25 war score and the world)' : ''}`; }
+/* ============ the story factions' puppets, and the wars you set them on each other (Chapters III–V) ============
+   Who answers to whom: the Republic of Timpur and the Erisian Empire are the Chompy Empire's puppets (Eris is Terra Imperia's
+   instead while Alexia holds it); in Chapter III the Grek are the Order of Archamus's puppet, and the Catharsis the Grek's.
+   A faction calls its puppets (and theirs, all the way down) into any war it's in, and a puppet's overlord comes to defend it:
+   declare war on one and the whole bloc is at war with you (each with its own war, hall, deputy and score). Make peace with the
+   one you declared on, or beat it, and the ones it brought in stand down with it.
+   You can also set two factions on each other (Diplomacy → Factions). They never start wars with each other by themselves. A
+   faction that goes to war with its own puppet (or a puppet that turns on its overlord, or on another of its overlord's puppets)
+   breaks the bond: the puppet breaks away, and "puppet of …" comes off its banner. Their wars play out over time, side's strength
+   against side's: Vassalisation makes the loser the winner's puppet, Tribute makes it pay, Conquest takes some of its worlds (never
+   a capital or the story's own worlds), and a failed attack costs the attacker a world.
+   Saved on your wanderer: dip().fx { wars, over (changed overlords: an id, or null for free), trib, took (world → faction) }. ---- */
+function fxD() { const D = dip(); const X = D.fx || (D.fx = {}); X.wars = X.wars || []; X.over = X.over || {}; X.trib = X.trib || {}; X.took = X.took || {}; return X; }
+const fxFac = id => DIP_FAC.find(o => o.id === id) || null;
+const FX_LV = { chompy: 95, order: 100, grek: 85, catharsis: 100, erisian: 80, hfos: 75, ti: 90, timpur: 90 };
+function fxLive(id) { const F = fxFac(id); if (!F || !dipFacsNow().includes(F) || (F.locked && F.locked(dipCh()))) return false; return !['destroyed', 'subjugated'].includes(dipRes(id)); }
+function fxBaseOver(id) { // the story's own bonds
+  const ch = dipCh();
+  if (id === 'timpur') return 'chompy';
+  if (id === 'erisian') return ch === 3 && alexiaRules() ? 'ti' : 'chompy';
+  if (id === 'grek' && ch === 3) return 'order';
+  if (id === 'catharsis' && ch === 3) return 'grek';
+  return null;
+}
+function fxOverOf(id) { // who they answer to now (null: nobody, or you)
+  try {
+    const st = dipRes(id); if (st) return null; // your puppet or tributary, restored as its own, or gone
+    const X = fxD(), o = Object.prototype.hasOwnProperty.call(X.over, id) ? X.over[id] : fxBaseOver(id);
+    return o && o !== id && fxLive(o) ? o : null;
+  } catch (e) { return fxBaseOver(id); }
+}
+const fxVassals = id => DIP_FAC.map(F => F.id).filter(v => v !== id && fxLive(v) && fxOverOf(v) === id);
+function fxTop(id) { let t = id; for (let k = 0; k < 6; k++) { const o = fxOverOf(t); if (!o || o === id) break; t = o; } return t; }
+function fxAncestor(x, y) { let t = y; for (let k = 0; k < 6; k++) { t = fxOverOf(t); if (!t) return false; if (t === x) return true; } return false; } // does y answer to x, however far up?
+function fxBloc(id) { const out = [], q = [fxTop(id)]; while (q.length) { const x = q.shift(); if (out.includes(x) || !fxLive(x)) continue; out.push(x); q.push(...fxVassals(x)); } if (!out.includes(id) && fxLive(id)) out.push(id); return out; }
+const fxNm = id => { const F = fxFac(id); return F ? dipFacName(F) : id; };
+const fxList = ids => ids.map(fxNm).join(ids.length > 2 ? ', ' : ' and ').replace(/, ([^,]*)$/, ', and $1');
+// ---- your wars: the bloc comes in ----
+function fxCallAllies(fid, cb) {
+  if (cb === 'crush') return []; const D = dip(), joined = [];
+  for (const m of fxBloc(fid)) { if (m === fid || D.wars[m] || !fxLive(m)) continue; D.wars[m] = { cb, score: 0, held: [], won: false, called: fid }; joined.push(m); }
+  if (!joined.length) return joined; dipSave();
+  const o = fxOverOf(fid), up = o && joined.includes(o);
+  setTimeout(() => { notice(`${fxNm(fid)} calls ${up ? 'its overlord and allies' : 'its puppets'}`, `${fxList(joined).toUpperCase()} JOIN${joined.length === 1 ? 'S' : ''} THE WAR`, 4400); lootMsg(`${fxList(joined)} ${joined.length === 1 ? 'is' : 'are'} at war with you too, on ${fxNm(fid)}'s side · each has its own war score`, '#ff8f86'); sfx.alarm(); }, 1600);
+  return joined;
+}
+function fxStandDown(fid, why) { // the ones it brought in leave the war with it
+  const D = dip(), gone = Object.keys(D.wars).filter(k => D.wars[k] && D.wars[k].called === fid && !D.wars[k].won);
+  for (const k of gone) delete D.wars[k];
+  if (gone.length) { dipSave(); setTimeout(() => lootMsg(`${fxList(gone)} ${why || `stand${gone.length === 1 ? 's' : ''} down with ${fxNm(fid)}`}`, '#ffd36a'), 1800); }
+}
+const fxWould = fid => { const D = dip(); return fxBloc(fid).filter(m => m !== fid && !D.wars[m]); }; // who'd join if you declared on them
+// ---- their wars with each other ----
+const fxAtWar = (a, b) => fxD().wars.find(w => (w.a === a && w.b === b) || (w.a === b && w.b === a)) || null;
+function fxSides(w) { const A = fxBloc(w.a), B = fxBloc(w.b).filter(x => !A.includes(x)); return { A, B }; }
+function fxIncite(a, b, cb) {
+  if (!a || !b || a === b || !fxLive(a) || !fxLive(b) || fxAtWar(a, b)) return false;
+  const X = fxD(), broke = [];
+  for (let k = 0; k < 4 && fxTop(a) === fxTop(b); k++) { const v = fxAncestor(a, b) ? b : a, o = fxOverOf(v); X.over[v] = null; broke.push([v, o]); } // a faction at war with its own puppet loses it
+  delete X.trib[a === X.trib[b] ? b : '']; delete X.trib[b === X.trib[a] ? a : '']; // and tribute stops between enemies
+  const w = { a, b, cb: ['vassal', 'tribute', 'subjugation'].includes(cb) ? cb : 'vassal', score: 0, since: Date.now() }; X.wars.push(w);
+  const S = fxSides(w), msg = `${fxNm(a)} goes to war with ${fxNm(b)} · ${w.cb === 'subjugation' ? 'Conquest' : CBS[w.cb].name}`;
+  broke.forEach(([v, o], i) => setTimeout(() => { notice(`${fxNm(v)} breaks away`, `NO LONGER ${o ? 'A PUPPET OF ' + fxNm(o).toUpperCase() : 'ANYONE’S PUPPET'}`, 4200); lootMsg(`${fxNm(v)} breaks away from ${fxNm(o)}: you can't fight your own puppet`, '#ffd36a'); }, 400 + i * 2600));
+  setTimeout(() => { notice('You set them on each other', msg.toUpperCase(), 4200); sfx.alarm(); const al = [S.A.filter(x => x !== a), S.B.filter(x => x !== b)]; if (al[0].length || al[1].length) lootMsg(`${al[0].length ? `${fxList(al[0])} fight${al[0].length === 1 ? 's' : ''} beside ${fxNm(a)}` : ''}${al[0].length && al[1].length ? ' · ' : ''}${al[1].length ? `${fxList(al[1])} fight${al[1].length === 1 ? 's' : ''} beside ${fxNm(b)}` : ''}`, '#ffb36e'); }, 400 + broke.length * 2600);
+  dipSave(); return true;
+}
+function fxPeace(i) { const X = fxD(), w = X.wars[i]; if (!w) return; X.wars.splice(i, 1); dipSave(); lootMsg(`You brokered peace between ${fxNm(w.a)} and ${fxNm(w.b)}`, '#9fe6b0'); }
+const fxPow = ids => ids.reduce((s, id) => { const F = fxFac(id); return s + (F ? dipWorldsOf(F).length * 2 + (FX_LV[id] || 80) / 3 : 0); }, 0);
+function fxTake(from, to, n) { // a few of their worlds (never a capital, a leader's hall, a dock or the story's own worlds)
+  const X = fxD(), F = fxFac(from), T = fxFac(to); if (!F || !T) return []; const Lo = (() => { try { return leaderOf(F); } catch (e) { return null; } })(), D = dip();
+  const c = dipWorldsOf(F).filter(P => P.land && !P.dock && P.id !== F.capital && P.id !== (Lo && Lo.at) && !FDEP_STORY.has(P.id) && !['archiostal', 'carax', 'aridaxx'].includes(P.id) && !D.col[P.id] && !(typeof resHeldBy === 'function' && resHeldBy(P.id)) && !Object.values(D.wars).some(W => W && (W.held || []).includes(P.id)));
+  const got = c.sort(() => Math.random() - .5).slice(0, n); for (const P of got) X.took[P.id] = to; return got;
+}
+function fxEnd(w, aWon) {
+  const X = fxD(); X.wars = X.wars.filter(o => o !== w); const W = aWon ? w.a : w.b, L = aWon ? w.b : w.a; let what;
+  if (!aWon) { const got = fxTake(L, W, 1); what = `${fxNm(L)}'s war on ${fxNm(W)} failed${got.length ? `; ${fxNm(W)} took ${got[0].name}` : ''}`; }
+  else if (w.cb === 'vassal') { if (fxOverOf(W) === L) X.over[W] = null; X.over[L] = W; delete X.trib[L]; what = `${fxNm(L)} is now a puppet of ${fxNm(W)}`; }
+  else if (w.cb === 'tribute') { X.trib[L] = W; what = `${fxNm(L)} now pays tribute to ${fxNm(W)}`; }
+  else { const got = fxTake(L, W, 3); what = `${fxNm(W)} conquered ${got.length ? got.map(P => P.name).join(', ') : 'nothing worth keeping'} from ${fxNm(L)}`; }
+  dipSave(); if (state === 'explore' || state === 'space') { notice(`${fxNm(w.a)} and ${fxNm(w.b)} · the war is over`, what.toUpperCase().slice(0, 90), 4600); sfx.chime(); }
+  lootMsg(what, '#ffd36a');
+}
+function fxTick() {
+  if (!wanderer || !wanderer.dip || !wanderer.dip.fx || effCh() < 3) return; const X = fxD(); if (!X.wars.length) return;
+  for (const w of [...X.wars]) {
+    if (!fxLive(w.a) || !fxLive(w.b)) { X.wars = X.wars.filter(o => o !== w); dipSave(); lootMsg(`The war between ${fxNm(w.a)} and ${fxNm(w.b)} is over: one of them is gone`, '#cfd6e6'); continue; }
+    const S = fxSides(w); w.score = clamp(w.score + (fxPow(S.A) - fxPow(S.B)) * .06 + (Math.random() * 28 - 14), -100, 100);
+    if (Math.random() < .12 && (state === 'explore' || state === 'space')) lootMsg(`⚔ ${fxNm(w.a)} and ${fxNm(w.b)} clash · ${Math.round(w.score)} (${fxNm(w.a)} at 100 wins)`, '#ffb36e');
+    if (w.score >= 100) fxEnd(w, true); else if (w.score <= -100) fxEnd(w, false);
+  }
+  dipSave();
+}
+// ---- their banners: who's whose puppet now, who pays whom, and the worlds that changed hands ----
+function fxBanner(F, s) {
+  const o = fxOverOf(F.id), base = fxBaseOver(F.id), t = fxD().trib[F.id]; let v = String(s);
+  if (o !== base || /· puppet of/.test(v) !== !!o) { v = v.replace(/ · puppet of [^·]*/, ''); if (o) v = v.replace(/^([^·]*?)( · |$)/, `$1 · puppet of ${fxNm(o)}$2`); }
+  if (t && fxLive(t)) v = v.replace(/^([^·]*?)( · |$)/, `$1 · pays tribute to ${fxNm(t)}$2`);
+  return v;
+}
+function fxOverlay(D) {
+  const X = D.fx; if (!X || (!Object.keys(X.over || {}).length && !Object.keys(X.trib || {}).length && !Object.keys(X.took || {}).length)) return;
+  for (const [pid, fid] of Object.entries(X.took || {})) { const P = bodyById(pid), F = fxFac(fid); if (!P || !F || !fxLive(fid) || D.col[pid]) continue; const from = dipFacOf(P.baseFac); if (from && from.id === fid) continue; P.baseFac = P.faction = `${F.name} · taken from ${from ? from.name : 'its old masters'}`; }
+  for (const S of SYSTEMS) {
+    { const F = dipFacOf(S.baseFac); if (F && !dipRes(F.id)) S.faction = fxBanner(F, S.faction || S.baseFac); }
+    for (const P of S.bodies) { const F = dipFacOf(P.baseFac); if (F && !dipRes(F.id) && !D.col[P.id]) P.faction = fxBanner(F, P.faction || P.baseFac); }
+  }
+}
+function fxCardNote(F) { // Diplomacy: their bonds, and the wars you set them in
+  const D = dip(), X = fxD(), o = fxOverOf(F.id), base = fxBaseOver(F.id), vs = fxVassals(F.id), W = D.wars[F.id], t = X.trib[F.id]; let h = '';
+  const bits = [];
+  if (o) bits.push(`Puppet of <b>${fxNm(o)}</b>`); else if (base && fxLive(base) && !dipRes(F.id)) bits.push(`Broke away from ${fxNm(base)}`);
+  if (vs.length) bits.push(`Puppets: <b>${fxList(vs)}</b>`);
+  if (t && fxLive(t)) bits.push(`Pays tribute to ${fxNm(t)}`);
+  const ws = X.wars.filter(w => fxSides(w).A.includes(F.id) || fxSides(w).B.includes(F.id)).map(w => `${fxNm(w.a)} against ${fxNm(w.b)} (${Math.round(w.score)})`);
+  if (ws.length) bits.push(`At war: ${ws.join('; ')}`);
+  if (W && W.called && !W.won) bits.push(`Brought into your war by ${fxNm(W.called)}: they stand down if ${fxNm(W.called)} makes peace or falls`);
+  else if (W && !W.won) { const al = Object.keys(D.wars).filter(k => D.wars[k] && D.wars[k].called === F.id); if (al.length) bits.push(`Fighting you beside them: ${fxList(al)}`); }
+  else if (!W && !dipRes(F.id)) { const j = fxWould(F.id); if (j.length) bits.push(`Declare war on them and <b>${fxList(j)}</b> join${j.length === 1 ? 's' : ''} in on their side`); }
+  if (bits.length) h += `<p style="color:#ffcf9a">${bits.join(' · ')}.</p>`;
+  return h;
+}
+function fxCard() { // Diplomacy → Factions: set them on each other, and the wars you've started
+  const X = fxD(), live = dipFacsNow().filter(F => fxLive(F.id)), V = DIPV.fx || (DIPV.fx = { a: '', b: '', cb: 'vassal' }), ch = dipCh();
+  if (live.length < 2) return '';
+  let h = `<div class="dip-card" style="--fc:#ffb36e"><h4>SET THEM ON EACH OTHER<small>${X.wars.length ? X.wars.length + ' war' + (X.wars.length === 1 ? '' : 's') + ' you started' : 'they never start one by themselves'}</small></h4><p>Pick two factions and a casus belli. Each calls its puppets (and its overlord) in beside it. A faction set on its own puppet loses it: the puppet breaks away.</p>`;
+  const opt = (sel, skip) => `<option value="">${skip ? 'against…' : 'Set…'}</option>` + live.filter(F => F.id !== skip).map(F => `<option value="${F.id}"${sel === F.id ? ' selected' : ''}>${dipFacName(F)}</option>`).join('');
+  h += `<div class="dip-row"><select class="dip-in" data-a="fxA">${opt(V.a)}</select><select class="dip-in" data-a="fxB">${opt(V.b, V.a || '-')}</select><select class="dip-in" data-a="fxCb">${[['vassal', 'Vassalisation'], ['tribute', 'Tribute'], ['subjugation', 'Conquest (take worlds)']].map(([k, n]) => `<option value="${k}"${V.cb === k ? ' selected' : ''}>${n}</option>`).join('')}</select></div>`;
+  if (V.a && V.b && V.a !== V.b) {
+    const brk = fxTop(V.a) === fxTop(V.b) ? (fxAncestor(V.a, V.b) ? V.b : V.a) : null, w = { a: V.a, b: V.b };
+    const pre = (() => { if (!brk) return fxSides(w); const keep = fxD().over[brk], had = Object.prototype.hasOwnProperty.call(fxD().over, brk); fxD().over[brk] = null; const S = fxSides(w); if (had) fxD().over[brk] = keep; else delete fxD().over[brk]; return S; })();
+    h += `<p>${brk ? `<b>${fxNm(brk)} will break away</b> from ${fxNm(fxOverOf(brk))}. ` : ''}${fxList(pre.A)} against ${fxList(pre.B)}.</p>`;
+    if (fxAtWar(V.a, V.b)) h += `<p style="color:var(--mute)">They're already at war.</p>`;
+    else if (ch <= 4 && !(DIPV.fxOk)) h += `<div class="dip-row"><button class="btn small primary" data-a="fxAsk"><span>Set them on each other</span></button></div>`;
+    else h += `${ch <= 4 ? `<div class="dip-warn"><b>Not recommended.</b> They're part of Chapter ${['', 'I', 'II', 'III', 'IV', 'V'][ch]}'s story: their wars can move worlds and puppets the story relies on. Go ahead anyway?</div>` : ''}<div class="dip-row"><button class="btn small primary" data-a="fxGo"><span>${ch <= 4 ? 'Do it anyway' : 'Set them on each other'}</span></button>${ch <= 4 ? '<button class="btn small" data-a="fxNo"><span>Cancel</span></button>' : ''}</div>`;
+  }
+  X.wars.forEach((w, i) => { const S = fxSides(w); h += `<div style="border-top:1px solid var(--faint);padding:8px 0"><p><b>${fxNm(w.a)}</b>${S.A.length > 1 ? ` (with ${fxList(S.A.filter(x => x !== w.a))})` : ''} against <b>${fxNm(w.b)}</b>${S.B.length > 1 ? ` (with ${fxList(S.B.filter(x => x !== w.b))})` : ''} · ${w.cb === 'subjugation' ? 'Conquest' : CBS[w.cb].name}</p><div class="dip-bar"><i style="width:${clamp(50 + w.score / 2, 0, 100)}%"></i></div><p>${Math.round(w.score)} · ${fxNm(w.a)} wins at 100, ${fxNm(w.b)} at −100.</p><div class="dip-row"><button class="btn small" data-a="fxPeace" data-i="${i}"><span>Broker peace</span></button></div></div>`; });
+  return h + '</div>';
+}
+if (/[?&]depdebug/.test(window.location.search)) window.NV_ED = { fdepTick, rdepTick, edAt, edPlace, edSpec, edBeaten, enemyDepTick, rdepCands, fdepCands, menuDepKey, dip, dipDeclare, ywDeclare, ywAt, resPower, resNow, saveRoster, // ?depdebug: the enemies' deputies, from the console
+  get W() { return wanderer; }, get E() { return resEmp; }, get G() { return resGuild; }, get R() { return residents; }, get state() { return state; }, get TIW() { return TIW; }, body: bodyById, free: () => resFreeWorlds(), lead: () => leadMenuCalc(), guildDirty: () => resGuildDirty(),
+  land: id => landOn(bodyById(id), new THREE.Vector3(.3, 1, .2)), near: () => { const G = TIW.dep; if (G) player.position.set(G.x + 2, player.position.y, G.z + 2); return tiNear(player.position); }, use: () => { const n = tiNear(player.position); if (n) tiUse(n); return n && n.id; }, pickChoice: i => { const b = document.querySelectorAll('button.opt')[i | 0]; if (b) b.click(); return !!b; }, win: () => { if (!DGN.boss && DGN.lb) lairBossStart(); if (DGN.boss) lairBossWin(); return !!DGN.boss; }, get DGN() { return DGN; }, fxBloc, fxOverOf, fxIncite, fxTick, fxEnd, fxD, fxWould, fxCard, fxCardNote, dipPeace, dipWin, applyChapterFactions, dipOpen: () => { dipOpen(true); DIPV.tab = "factions"; dipRender(); } };
 const RES_EMP_ON = () => !!resEmp.on; // residents only found empires if you switch it on (Resident empires panel)
 function resLentSweep() { // a resident empire that's gone sends your companions home
   const L = wanderer && wanderer.dip && wanderer.dip.lent; if (!L) return;
