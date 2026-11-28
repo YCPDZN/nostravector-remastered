@@ -3610,3 +3610,8 @@ One more telling of *While you slept*, and this one goes on into Chapter IV. If 
 - No temperature inside the mountain (it's warm), on Earth's Chapter I–II ground (Antarctica's blizzard keeps its own suit heat), or aboard.
 - Code: `planetTemp` / `tempNow` / `tempDrain` / `tempHud` in `index.html`, on top of `wxHazard`.
 
+### Timpur Prime, a paradise
+
+- **Timpur Prime, the capital of the Republic of Timpur, is now a paradise world:** green land, blue seas and a blue sky, *Blissful Planet · Perfect weather · no storms*, 20°C by day and 11.9°C by night. The galaxy's dice had made it a scorched lava world (93°C by day) with ash storms, which cooked anyone standing in the Senate's streets.
+- It's redressed after the galaxy is generated, so every other world, system, colony and resident stays exactly where it was. Bases you built on Timpur Prime keep their spots, but the ground under them is new.
+
