@@ -3624,3 +3624,29 @@ One more telling of *While you slept*, and this one goes on into Chapter IV. If 
 - **Every realm shows up:** the Chompy Empire, the Erisian Empire, the Grek, the Human Federation of Sol, the Republic of Timpur, Terra Imperia, the Catharsis and the Order of Archamus. It also shows your own realm (gold), your puppets and tributaries, systems your uplifted species govern, resident empires, Orion Mascar's conquests, and whatever wars have changed hands. All of them change with the chapter, as the rest of the map does.
 - On phones held upright the switch sits under the other buttons. The key hides while a system's panel is open.
 
+### The empire map, as territory
+
+- **The empire map now shows how much land each realm holds, as in a strategy game.** Every patch of space belongs to the nearest system within reach (about 5% of the galaxy's width, more for the named systems) and is filled with its owner's colour. Neighbouring systems of one realm run together into one solid territory, with a bright border where it meets another realm or empty space. Unclaimed systems hold their own space too, so a realm can't spread across them.
+- **The key** gives each realm's share of the held land and how many systems it holds (*The Chompy Empire · 34% · 123*), biggest first. Names sit over the middle of each realm's land.
+- The territory is worked out once (about 25 ms) and again only when a system changes hands, so panning and zooming cost nothing extra. It turns and tilts with the galaxy.
+- **Every realm is named on its land**, small ones in smaller letters, each over its own space (a crescent-shaped realm is named over its systems, not the empty middle).
+- **Every flag shows, as the galaxy changes:** the Imperium of Orion Mascar (red) as he conquers, resident empires in their own colours (including contested systems), the Catharsis (violet) in Chapters III–IV and Former Catharsis space after it, your realm (gold), your puppets and tributaries, uplifted governors, Obra-Spira, the Oilkoumene exiles and the Gateway. Any realm the map has no colour for gets one of its own, the same every time.
+- **Every galaxy has its own empire map:** the Milky Way, Xonexi, Andromeda, the Large and Small Magellanic Clouds, Triangulum, Chimaera and Cyrannus. Each shows only its own systems, with its own key. Away from the Milky Way most space is unclaimed, so what you'll see there is your colonies, the resident empires that have reached it and Obra-Spira.
+- On the empire map the resident empires' old rings and labels make way for their territory.
+- **New realm colours**, on the empire map, the galaxy map's washes and in Diplomacy:
+
+  | Realm | Colour |
+  |---|---|
+  | The Chompy Empire | purple |
+  | The Republic of Timpur | cyan |
+  | Terra Imperia | turquoise (greener than Timpur's cyan) |
+  | The Catharsis | red |
+  | The Grek | green |
+  | Human Federation of Sol | blue |
+  | The Erisian Empire | pink |
+  | The Order of Archamus | gold |
+  | Resident empires | each its own |
+  | The Imperium of Orion Mascar | orange (so it doesn't read as the Catharsis) |
+  | Former Catharsis space | dark red |
+- **Pick your own realm's colour:** **YOU** beside the Galaxy / Empires switch on the empire map, or **Colour** beside Rename in Diplomacy. It's saved with your wanderer, and your colonies, conquests and the systems you've taken take it straight away. Gold until you pick.
+
