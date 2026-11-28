@@ -1785,7 +1785,7 @@ const b64u8 = typeof Uint8Array.fromBase64 === 'function' ? s => Uint8Array.from
 const DATA_P = {}; // packs being fetched: everyone asking for the same one waits on the same request
 // A pack that's been replaced since players last loaded it: its version goes on the address, so a browser (or itch.io / GitHub Pages)
 // never serves the old copy from its cache. Bump the number whenever the pack changes.
-const DATA_VER = { skipNarrAltVoices: 30, amGrekAltVoices: 7 }, dataSrc = id => `data/${id}.js${DATA_VER[id] ? '?v=' + DATA_VER[id] : ''}`;
+const DATA_VER = { skipNarrAltVoices: 30, amGrekAltVoices: 7, hakPrinceVoices: 1 }, dataSrc = id => `data/${id}.js${DATA_VER[id] ? '?v=' + DATA_VER[id] : ''}`;
 const dataReady = id => { const el = document.getElementById(id); return el && el.textContent.length < 100 && typeof loadDataScript === 'function' ? loadDataScript(id, el.type === 'application/json' ? 'json' : 'glb') : Promise.resolve(true); }; // a pack that loads on demand: fetched the first time it's asked for
 /* ============ renderer / scene ============ */
 let gfxQ = store.get('nv_gfx', null); if (!['ultra', 'high', 'low'].includes(gfxQ)) gfxQ = coarse ? 'high' : 'ultra'; // Settings → Graphics (see the graphics section below)
@@ -7561,7 +7561,7 @@ addEventListener('keydown', e => {
   if (state === 'zarkPov') { if (e.code === 'Escape') zpvSkip(); return; }
   if (state === 'orionSeal') { if (e.code === 'Escape') oslSkip(); return; }
   if (state === 'crewCarax') { if (e.code === 'Escape') ccxSkip(); return; }
-  if (state === 'hawMars' || state === 'jamesRev' || state === 'c4End' || state === 'orionCut') { if (state === 'c4End' && C4E.gvHold && ex.dlg && /^(Digit1|Numpad1|Enter|Space)$/.test(e.code)) { pickChoice(0); return; } if (e.code === 'Escape') skipMeeting(); return; }
+  if (state === 'hawMars' || state === 'jamesRev' || state === 'c4End' || state === 'orionCut' || state === 'hakAsc') { if (state === 'c4End' && C4E.gvHold && ex.dlg && /^(Digit1|Numpad1|Enter|Space)$/.test(e.code)) { pickChoice(0); return; } if (e.code === 'Escape') skipMeeting(); return; }
   if (state === 'maliaNico' && e.code === 'Escape') { skipMeeting(); return; } // Malia and Nico's fight: Esc skips it (E / Space still read on)
   if (state === 'nightmare' && NM.on) { if (NM.phase === 'wake' && ['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } else if (e.code === 'Escape') { e.preventDefault(); skipMeeting(); } return; }
   if (state === 'dream') { if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); advanceDialog(); } return; }
@@ -10105,7 +10105,9 @@ function damageFauna(c, dmg, fromJames, by) { // by: which companion struck it (
   if (c.type === 'citizen') { lawCitizenHit(c, dmg, fromJames); return; } // a citizen: the crowd and the law handle it
   if (c.type === 'lawguard' && !fromJames) lawCrime(4, 'assaulting the law');
   if (c.boss) dmg = dgnBossDmg(c, dmg); // his ward
-  if (!fromJames) { const k = lvGapMul(levelOf(wanderer), faunaLv(c)); if (k === Infinity) { dmg = Math.max(dmg, c.hp); if (!c.D.passive && time - (fauna.osT || -9) > 1.5) { fauna.osT = time; lootMsg('One shot · far beneath your level', '#ffd27a'); } } else dmg *= k; }
+  if (c.invuln) { if (!fromJames && time - (fauna.imT || -9) > 1.5) { fauna.imT = time; lootMsg(tiPhone() ? 'Immune · get clear of the rings' : 'Immune · the Primes shield him · get clear of the rings', '#ffd27a'); } return; } // Hak, Prince of Zark, during his Twin Primes
+  if (c.dmgMul) dmg *= c.dmgMul; // …and while his crown is cracked
+  if (!fromJames && !c.noGap) { const k = lvGapMul(levelOf(wanderer), faunaLv(c)); if (k === Infinity) { dmg = Math.max(dmg, c.hp); if (!c.D.passive && time - (fauna.osT || -9) > 1.5) { fauna.osT = time; lootMsg('One shot · far beneath your level', '#ffd27a'); } } else dmg *= k; }
   if (c.D.passive && !c.D.huntable) {
     if (!fromJames && time - (fauna.alT || -99) > 12) { fauna.alT = time; alignAct(-2, 'Cruelty to a harmless animal'); }
     c.state = 'flee'; c.t = 0; c.tgt = null;
@@ -10421,6 +10423,7 @@ function skipMeeting() {
   if (state === 'crewCarax' && CCX.on) { ccxSkip(); return; }
   if (state === 'jamesRev' && JRV.on) { jrvSkip(); return; }
   if (state === 'c4End' && C4E.on) { c4eSkip(); return; }
+  if (state === 'hakAsc' && HAS.on) { hasSkip(); return; }
   if (state === 'hawMars' && HWM.on) { const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(hwmEnd, 450); return; }
   if (state === 'maliaNico' && MN.on && !MN.ending) { closeDialog(); maliaNicoEnd(true); return; }
   if (state === 'orionCut' && OCUT.on) { const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(ocutEnd, 450); return; }
@@ -18960,12 +18963,15 @@ function gvConquer() { // their leaders died in the throne room of Carax: every 
   D.res.catharsis = { st: 'destroyed', perm: true }; const c = curChar(); if (c) c.dip = D; applyChapterFactions();
 }
 function gvHakGo() { // Hak, the last of them, in the throne room (lv 62)
+  if (typeof BST !== 'undefined' && BST.in && BST.floor === BST_FLOORS - 1 && (HAS.direct || (wanderer.ch4 || {}).hakP2)) { // ?hakprinceofzark, or you've reached the Prince of Zark before: straight to him
+    if (BST.bosses && BST.bosses.length) bstBossClear(); BST.gvHak = true;
+    if (HAS.direct) { HAS.direct = false; hakAscStart(null).catch(e => { console.error(e); hasEnd(); }); } else hakzSpawn(null, false); return; }
   if (typeof BST !== 'undefined' && BST.in && BST.floor === BST_FLOORS - 1) { if (BST.bosses && BST.bosses.length) bstBossClear(); BST.bosses = []; BST.bossF = BST_FLOORS - 1; BST.bossQ = []; BST.gvHak = true; bstBossSpawn('hak'); }
   else gvFinish();
 }
 function gvFinish() { // Hak falls: the good ending, as a villain wins it
   const fd = $('#fade'); fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 1; notice('Chapter IV · the good ending', tiPhone() ? 'NO ONE LEFT TO STOP YOU' : 'THE CATHARSIS FALLS · NO ONE IS LEFT TO STOP YOU', 3800);
-  setTimeout(() => { wanderer.ch4 = Object.assign({}, wanderer.ch4, { ending: 'good', goodVillain: true, hakDuel: false }); wanderer.chapter = Math.max(5, wanderer.chapter | 0); const c = curChar(); if (c) { c.ch4 = wanderer.ch4; c.chapter = wanderer.chapter; } try { gvConquer(); } catch (e) { console.error(e); } saveRoster(); try { renderTasks(); } catch (e) {}
+  setTimeout(() => { wanderer.ch4 = Object.assign({}, wanderer.ch4, { ending: 'good', goodVillain: true, hakDuel: false, hakP2: false }); wanderer.chapter = Math.max(5, wanderer.chapter | 0); const c = curChar(); if (c) { c.ch4 = wanderer.ch4; c.chapter = wanderer.chapter; } try { gvConquer(); } catch (e) { console.error(e); } saveRoster(); try { renderTasks(); } catch (e) {}
     setTimeout(() => notice('Chapter V', 'EXPLORE THE GALAXY', 4600), 5200); fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 0; if (TEST_RUN === 'hakduel') setTimeout(() => notice('Test over · nothing was saved', tiPhone() ? 'RELOAD TO FIGHT HIM AGAIN' : 'RELOAD THE PAGE TO FIGHT HIM AGAIN', 6000), 1600); }, 4000);
 }
 function c4eBlackArmour(R) { // Orion in Terra Imperia's black: every plate, cloth and strap black, the trim and lights crimson; his face, eyes and hair his own
@@ -19699,8 +19705,8 @@ let TEST_RUN = null;
 // ?hakchompjakbossfightevilgoodending: Hak's fight from the villain's good ending, on its own. A throwaway Chapter IV wanderer (a villain, at
 // least level 60) lands on Carax with the throne-room scene already played: Zark is dead, so are the other leaders, and Hak is waiting. It
 // takes you straight up to the top of the Carax Bastion, to the box ("SEVIRRUS"), then the fight. Never saved, like ?badchoices.
-{ const m = /[?&]hakchompjakbossfightevilgoodending(?:[=&]|$)/.test(location.search);
-  if (m) slotsReady.then(() => {
+{ const m = /[?&](hakchompjakbossfightevilgoodending|hakprinceofzark)(?:[=&]|$)/.test(location.search), p2 = /[?&]hakprinceofzark(?:[=&]|$)/.test(location.search); // ?hakprinceofzark: the same, but straight to his second phase (the cutscene, then the Prince of Zark)
+  if (m) slotsReady.then(() => { if (p2) HAS.direct = true;
     const base = roster.find(c => c.id === activeId) || DEFAULT_W;
     const T = Object.assign({}, DEFAULT_W, JSON.parse(JSON.stringify(base)), { id: 'test-hakduel', name: `${(base.name || 'WANDERER').slice(0, 14)} · TEST`, chapter: 4 });
     let need = 0; for (let L = 1; L < 60; L++) need += xpNeed(L); T.xp = Math.max(T.xp || 0, need);
@@ -19710,14 +19716,14 @@ let TEST_RUN = null;
     T.ch3 = Object.assign({}, T.ch3, { started: true, nightmare: spOf(T), khzCall: true, khzMet: true, khzBase: lv, hawMars: true, charonLanded: true, charonMet: true, nyxJoined: true,
       jamesRev: true, jamesFate: 'spared', nyxBeforeJames: true, hakMet: true, hakCall: true, hakBack: true, karrVision: true, siegeOn: true, siegeWon: true, croxFate: 'spared', maliaFate: 'spared', cygDone: true,
       orionGone: false, orionFate: null, croxDead: false, maliaDead: false, nyxDead: false });
-    T.ch4 = { pod: true, podLanded: true, archFound: true, timeSkip: true, archMet: true, archProj: true, newShip: true, hakWar: true, fateFinal: true, bstReached: true, bstFloor: 5, zarkDown: true, gvSlain: true, hakDuel: true };
+    T.ch4 = { pod: true, podLanded: true, archFound: true, timeSkip: true, archMet: true, archProj: true, newShip: true, amgMet: true, hakMet: true, hakWar: true, fateFinal: true, bstReached: true, bstFloor: 5, zarkDown: true, gvSlain: true, hakDuel: true };
     T.party = (T.party || []).filter(id => !/^(fin|lead):/.test(id)); T.cmds = {}; for (const id of T.party) T.cmds[id] = 'follow'; T.aboard = {}; T.dungeon = {}; if (T.dip) T.dip = Object.assign({}, T.dip, { lent: {} });
     T.align = Object.assign({ c: {}, jv: 1, jk: 1 }, T.align, { p: -100 });
     const C = bodyById('carax'); T.place = { mode: 'explore', area: 'world', where: 'pl:carax', dir: capDir(C).toArray(), x: 0, z: 60, y: 0, rot: Math.PI, yaw: 0, nf: 1 };
     roster = roster.filter(c => c.id !== T.id).concat([T]); activeId = T.id; wanderer = Object.assign({}, T);
     resumePlace = Object.assign({}, T.place, { who: T.id }); TEST_RUN = 'hakduel'; lastSlot = -1; dirty = false;
     applyLook(wanderer); if (state === 'title') refreshMenu();
-    const hint = () => { if (state === 'title') notice('Test · not saved', tiPhone() ? 'HAK’S FIGHT · CONTINUE TO PLAY' : 'HAK CHOMPJAK V · THE VILLAIN’S GOOD ENDING · CONTINUE TO FIGHT HIM', 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500);
+    const hint = () => { if (state === 'title') notice('Test · not saved', p2 ? (tiPhone() ? 'THE PRINCE OF ZARK · CONTINUE' : 'HAK CHOMPJAK, PRINCE OF ZARK · CONTINUE TO FIGHT HIM') : tiPhone() ? 'HAK’S FIGHT · CONTINUE TO PLAY' : 'HAK CHOMPJAK V · THE VILLAIN’S GOOD ENDING · CONTINUE TO FIGHT HIM', 6000); else setTimeout(hint, 1000); }; setTimeout(hint, 1500);
   }); }
 
 // ?andromeda: a throwaway Chapter V wanderer (never saved) in space at Sagittarius A*, the Catharsis gone, so you can fly straight into the
@@ -27492,8 +27498,10 @@ async function startChapter3(place) {
   if (!wanderer.ch3) { wanderer.ch3 = { started: true }; wanderer.chapter = 3; const c = curChar(); if (c) { c.ch3 = wanderer.ch3; c.chapter = 3; } saveRoster(); }
   setTimeout(() => { try { hawArmorGrant(true); } catch (e) {} }, 6000); // Hawthorne beaten before his armour could be taken: it's in your bag now (humans)
   const f = $('#fade'); f.style.transition = 'opacity 1.6s'; f.style.opacity = 0; setTimeout(() => { f.style.transition = ''; }, 1700);
+  if ((wanderer.ch4 || {}).bstStart && (wanderer.chapter | 0) === 4 && bodyById('carax') && !(place && (place.fromPlanet === 'carax' || place.where === 'pl:carax'))) place = { mode: 'explore', area: 'space', where: 'space', fromPlanet: 'carax' }; // a save that starts at Carax (saves/): in orbit over it, never anywhere else
   if (place && place.where && String(place.where).startsWith('pl:')) {
     const P = bodyById(String(place.where).slice(3)); if (P) SPC.sys = P.sys; buildSpace(); if (P) setSystem(P.sys);
+    if (P && !place.dir && CAPITALS[P.id]) place.dir = capDir(P).toArray(); // a save written by hand (saves/): no spot on the world given, so the capital's own
     if (P && place.dir) { try { await landOn(P, new THREE.Vector3().fromArray(place.dir), place); } finally { SPC.booting = false; } if (place.aboard) shipResume(place, 'ground'); return; }
   }
   if (place && place.where === 'africa' && place.adVisit) { SPC.sys = 'sol'; buildSpace(); setSystem('sol'); try { await visitAdNostra(place); } finally { SPC.booting = false; } if (place.aboard) shipResume(place, 'ground'); return; }
@@ -28025,7 +28033,7 @@ function bstBossGo(f) { // they come for you, right there on the floor: Hawthorn
 const BST_VO_AT = { haw: 0, ori: 4, zark: 8 }, BST_VO_K = { intro: 0, p2: 1, p3: 2, win: 3 }; // data/bstBossVoices.js: CATHARSISHAWTHORNEANDORION1–12 (Hawthorne 1–4, Orion 5–8, Zark 9–12: intro, half health, near the end, falling)
 const bstVo = () => BST.vo || (BST.vo = loadDataScript('bstBossVoices').then(ok => ok ? sfx.loadClips('bstBossVoices') : []).catch(() => []).then(v => v || []));
 const bstVoHak = () => BST.voH || (BST.voH = loadDataScript('c4eGoodVillainHakVoices').then(ok => ok ? sfx.loadClips('c4eGoodVillainHakVoices') : []).catch(() => []).then(v => v || [])); // CH4GOODENDINGEVIL18–29: 18 half health, 19 near the end, 20 falling, 21 his answer to "Sevirrus", 22–29 his taunts in order
-async function bstBossSay(B, kind, ms, ti) { const line = kind === 'taunt' ? (B.X.taunts || [])[ti] : B.X.lines[kind]; if (!line) return; const vo = B.k === 'hak' ? await bstVoHak() : await bstVo(), clip = (B.k === 'hak' ? vo[kind === 'taunt' ? 4 + ti : { p2: 0, p3: 1, win: 2, intro: 3 }[kind]] : vo[BST_VO_AT[B.k] + BST_VO_K[kind]]) || null; siegeSay(B.X.boss.toUpperCase(), line, clip ? Math.max(ms, clip.duration * 1000 + 300) : ms, null, clip); }
+async function bstBossSay(B, kind, ms, ti) { if (B.k === 'hakz') { hakzSay(kind, ti); return; } const line = kind === 'taunt' ? (B.X.taunts || [])[ti] : B.X.lines[kind]; if (!line) return; const vo = B.k === 'hak' ? await bstVoHak() : await bstVo(), clip = (B.k === 'hak' ? vo[kind === 'taunt' ? 4 + ti : { p2: 0, p3: 1, win: 2, intro: 3 }[kind]] : vo[BST_VO_AT[B.k] + BST_VO_K[kind]]) || null; siegeSay(B.X.boss.toUpperCase(), line, clip ? Math.max(ms, clip.duration * 1000 + 300) : ms, null, clip); }
 async function bstBossSpawn(k) {
   bstVo();
   const X = BST_BOSS[k](), f = BST.bossF, at = f === 4 ? bstThrone() : { x: BST.x, z: BST.z - 8 }, x = at.x, z = at.z + (f === 4 ? 3 : 0);
@@ -28040,12 +28048,17 @@ async function bstBossSpawn(k) {
   BST.bosses.push({ R, c, k, X, kind, st: 'chase', cd: 2.2, leapCd: 7, novaCd: k === 'zark' ? 9 : 99, voCd: k === 'haw' ? 6 : k === 'ori' ? 3 : 5, t: 0, tels: [], p2: false });
   leaderPlay(X.theme).catch(() => {}); bstBossSay(BST.bosses[BST.bosses.length - 1], 'intro', 4200);
 }
-function bstBossClear() { for (const B of BST.bosses || []) { const i = fauna.list.indexOf(B.c); if (i >= 0) fauna.list.splice(i, 1); for (const m of B.tels) if (m.parent) m.parent.remove(m); if (B.R.root.parent) B.R.root.parent.remove(B.R.root); } BST.bosses = null; BST.bossQ = null; if (BST.barOn) { $('#bossBar').classList.remove('on'); BST.barOn = false; } if (sfx.leadOn) { sfx.leadOn = false; sfx.stopSong(1.5); } }
+function bstBossClear() { for (const B of BST.bosses || []) { if (B.k === 'hakz') hzClean(B); const i = fauna.list.indexOf(B.c); if (i >= 0) fauna.list.splice(i, 1); for (const m of B.tels) if (m.parent) m.parent.remove(m); if (B.R.root.parent) B.R.root.parent.remove(B.R.root); } BST.bosses = null; BST.bossQ = null; if (BST.barOn) { $('#bossBar').classList.remove('on'); BST.barOn = false; } if (sfx.leadOn) { sfx.leadOn = false; sfx.stopSong(1.5); } }
 function bstBossTick(dt) {
   if (!BST.bosses || !BST.bosses.length) return; const p = player.position, live = state === 'explore' && !ex.dlg;
   for (const B of BST.bosses) {
     if (B.gone) continue; const R = B.R, c = B.c, q = R.root.position, X = B.X;
+    if ((c.dead || c.hp <= 0) && B.k === 'hak' && BST.gvHak) { // Hak, beaten once, in the villain's good ending: he doesn't fall. He calls on Zark and Archamus (hakAscStart)
+      B.gone = true; c.dead = 1; const i = fauna.list.indexOf(c); if (i >= 0) fauna.list.splice(i, 1); for (const m of B.tels) if (m.parent) m.parent.remove(m); B.tels = [];
+      R.mode = 'idle'; R.root.rotation.x = 0; BST.bosses = BST.bosses.filter(o => o !== B); bstBossClear(); sfx.thud(); ex.shake = .6; burst(q.x, q.y + 1.2, q.z, 50, 6, .9, .1, .05, 1, .4, 1.4);
+      notice('Hak Chompjak V', 'GOES DOWN ON ONE KNEE', 1800); const go = () => { if (state === 'explore' && !ex.dlg) hakAscStart(R).catch(e => { console.error(e); hasEnd(); }); else setTimeout(go, 300); }; setTimeout(go, 1400); return; }
     if (c.dead || c.hp <= 0) { B.gone = true; c.dead = 1; const i = fauna.list.indexOf(c); if (i >= 0) fauna.list.splice(i, 1); for (const m of B.tels) if (m.parent) m.parent.remove(m); B.tels = [];
+      if (B.k === 'hakz') { hzClean(B); R.root.visible = true; }
       burst(q.x, q.y + 1.2, q.z, 70, 7, 1, .3, .2, 1.2, 1.5, 2.2); sfx.thud(); ex.shake = .7; R.mode = 'idle'; R.root.rotation.x = -1.3; R.root.position.y += .3;
       bstBossSay(B, 'win', 3800); gainXP(c.D.xp, `Defeated ${X.full}`); notice('The final battle', `${X.boss.toUpperCase()} FALLS`, 3200);
       setTimeout(() => { if (R.root.parent) R.root.parent.remove(R.root); }, 5200);
@@ -28054,6 +28067,7 @@ function bstBossTick(dt) {
       continue; }
     c.x = q.x; c.z = q.z; c.y = q.y;
     if (c.barT > 0) { c.barT -= dt; c.bar.visible = true; c.bar.quaternion.copy(camera.quaternion).premultiply(tmpQ.copy(R.root.quaternion).invert()); const fg = c.bar.userData.fg, kk = Math.max(0, c.hp / c.D.hp); fg.scale.x = Math.max(.001, kk); fg.position.x = -(1 - kk) / 2; } else c.bar.visible = false;
+    if (B.k === 'hakz') { hakzTick(B, dt, live); continue; } // Hak, Prince of Zark: his own moves
     if (!B.p2 && c.hp < c.D.hp * .5) { B.p2 = true; bstBossSay(B, 'p2', 3600); B.tauntT = Math.max(B.tauntT || 0, 7); }
     if (!B.p3 && c.hp < c.D.hp * .2) { B.p3 = true; bstBossSay(B, 'p3', 3200); ex.shake = .4; B.tauntT = Math.max(B.tauntT || 0, 7); }
     if (X.taunts && live) { B.tauntT = (B.tauntT == null ? 16 : B.tauntT) - dt; if (B.tauntT <= 0 && (B.ti | 0) < X.taunts.length) { bstBossSay(B, 'taunt', 4200, B.ti | 0); B.ti = (B.ti | 0) + 1; B.tauntT = 12 + Math.random() * 5; } } // Hak talks while he fights
@@ -28088,7 +28102,8 @@ function bstBossTick(dt) {
   }
   // the boss bar
   const el = $('#bossBar'), lv = BST.bosses.filter(B => !B.gone);
-  if (el && lv.length) { const B = lv[0]; el.innerHTML = `<div class="bb-h"><b>${(tiPhone() ? B.X.full.split(',')[0] : B.X.full).toUpperCase()}</b><small>LV ${B.c.lv}${tiPhone() ? '' : ' · THE CARAX BASTION'}</small></div><div class="bb"><i style="width:${(Math.max(0, B.c.hp) / B.c.D.hp * 100).toFixed(1)}%"></i></div><em>${B.k === 'hak' ? (tiPhone() ? 'The last of them' : 'The last of them. Finish it.') : B.k === 'zark' ? (tiPhone() ? 'End it' : 'End it. Here, now.') : BST.bossQ && BST.bossQ.length ? 'And another waits behind him' : tiPhone() ? 'Take the floor' : 'Take the fourth floor'}</em>`; el.classList.add('on'); BST.barOn = true; }
+  if (el && lv.length && lv[0].k === 'hakz') { const B = lv[0], c = B.c, hp = Math.max(0, Math.ceil(c.hp)); el.innerHTML = `<div class="bb-h"><b>${tiPhone() ? 'HAK, PRINCE OF ZARK' : 'HAK CHOMPJAK, PRINCE OF ZARK'}</b><small>LV ${c.lv} · ${hp.toLocaleString('en-GB')} / ${c.D.hp.toLocaleString('en-GB')}</small></div><div class="bb"><i style="width:${(hp / c.D.hp * 100).toFixed(2)}%${c.dmgMul > 1 ? ';background:linear-gradient(90deg,#b8862a,#ffe08a)' : ''}"></i></div><em>${B.st === 'ult' ? (tiPhone() ? 'Twin Primes · get clear' : 'Twin Primes · he can’t be hurt · move between the rings') : c.dmgMul > 1 ? `The crown cracks · ×${c.dmgMul} damage · ${Math.max(0, 8 - B.t).toFixed(1)} s` : B.enr ? 'Enraged · everyone kneels' : B.stage === 3 ? 'Light and dark' : B.stage === 2 ? 'Zark’s dark' : (tiPhone() ? 'The Prince returns' : 'The Prince of Zark returns')}</em>`; el.classList.add('on'); BST.barOn = true; }
+  else if (el && lv.length) { const B = lv[0]; el.innerHTML = `<div class="bb-h"><b>${(tiPhone() ? B.X.full.split(',')[0] : B.X.full).toUpperCase()}</b><small>LV ${B.c.lv}${tiPhone() ? '' : ' · THE CARAX BASTION'}</small></div><div class="bb"><i style="width:${(Math.max(0, B.c.hp) / B.c.D.hp * 100).toFixed(1)}%"></i></div><em>${B.k === 'hak' ? (tiPhone() ? 'The last of them' : 'The last of them. Finish it.') : B.k === 'zark' ? (tiPhone() ? 'End it' : 'End it. Here, now.') : BST.bossQ && BST.bossQ.length ? 'And another waits behind him' : tiPhone() ? 'Take the floor' : 'Take the fourth floor'}</em>`; el.classList.add('on'); BST.barOn = true; }
   else if (el && BST.barOn) { el.classList.remove('on'); BST.barOn = false; }
 }
 function bstBossesDone(f) {
@@ -28096,6 +28111,365 @@ function bstBossesDone(f) {
   if (BST.gvHak) { BST.gvHak = false; gvFinish(); return; } // Hak is down: the villain's good ending
   if (f === 4) { bstSave({ bstFloor: BST_FLOORS, zarkDown: true }); notice('Lord Zark', 'HAS FALLEN', 4200); setTimeout(() => { try { ch4EndingPlay(ch4Ending() || 'neutral'); } catch (e) { console.error(e); } }, 4200); return; }
   bstSave({ bstFloor: Math.max(bstCleared(), 4) }); sfx.chime(); notice('The Carax Bastion', 'THE FOURTH FLOOR IS YOURS · THE STAIRS ARE OPEN', 3400);
+}
+// ---- Hak's second phase, in the villain's good ending: beat him once and he doesn't fall. On his knees among the dead, he calls on
+//      the two powers he swore he'd never touch again, Lord Zark's dark and Archamus's light, and becomes Hak Chompjak, Prince of
+//      Zark, once more. A cutscene in the throne room itself (state 'hakAsc'; Skip ends it), then the superboss: lv 150, 2,250,000 HP,
+//      three stages and an enrage, to the Final Boss theme. Get through his Twin Primes and the crown cracks: ×20 damage for 8 s.
+//      Reach him once and a death sends you back to the Prince, not to Hak (ch4.hakP2). Preview: ?hakprinceofzark.
+//      Voices: data/hakPrinceVoices.js (HAKPRINCEOFZARK1–26, all recorded; script in assets/audio/hak_prince_of_zark/VOICE_SCRIPT.md). Every line is Hak's own, darker once he's the Prince. ----
+const HAKZ_HP = 2250000, HAKZ_LV = 150, HAKZ_WHO = 'HAK, PRINCE OF ZARK';
+const HAS = { on: false };
+const HAS_PACKS = { hp: 'hakPrinceVoices', sev: 'sevVoices', cmb: 'cmbSevSevirrusEvilVoices' }, HAS_VO = {};
+const hasPack = k => HAS_VO[k] || (HAS_VO[k] = loadDataScript(HAS_PACKS[k]).then(ok => ok ? sfx.loadClips(HAS_PACKS[k]) : []).catch(() => []).then(v => v || []));
+// the cutscene: [who, line, [pack, slot], shot, what happens as it starts, pause after]
+const HAS_LINES = [
+  ['HAK CHOMPJAK V', 'No… not to you. Not on this floor. Not while their blood is still steaming on your boots. Look at it, wanderer. Look at what you made, and then look at me.', ['hp', 0], 'kneel', 'slump', .7],
+  ['HAK CHOMPJAK V', 'Three hundred years I kept them chained. The voice in the dark that whispers ‘prince’, and the cold light in the ice. I fed them nothing. I starved them. I swore I would rot before I let either one out.', ['hp', 1], 'pov', null, .6],
+  ['HAK CHOMPJAK V', 'Then let me rot.', ['hp', 2], 'face', null, 1.2],
+  ['HAK CHOMPJAK V', 'ZARK! Your prince is on his knees! Crawl out of whatever hole they threw you in and GIVE ME WHAT’S MINE!', ['hp', 3], 'wideLow', 'zark', .5],
+  ['', null, null, 'upZark', 'zarkGhost', 3.2], // Zark, rising: no words
+  ['HAK CHOMPJAK V', 'And you, Archamus. You dragged this thing out of the ice. Now drag me out of the grave, and watch what I do with your light.', ['hp', 4], 'wideHigh', 'arch', .5],
+  ['', null, null, 'upArch', 'archGhost', 3.2], // Archamus, rising: no words
+  ['', null, null, 'ghosts', null, 3.6], // the two of them, over him: no words
+  ['HAK CHOMPJAK V', 'Everything I buried… every scream… every throat… GIVE IT ALL BACK TO ME!', ['hp', 5], 'orbit', 'pour', .3],
+  null, // the change
+  [HAKZ_WHO, 'Sevirrus wore this crown for fifty years. I buried it for three hundred. It still fits. It still remembers the taste.', ['hp', 6], 'reveal', null, .7],
+  [HAKZ_WHO, 'Everyone kneels, wanderer. I made a whole empire kneel once, one severed head at a time. You are just one more neck.', ['hp', 7], 'princeClose', 'roar', 1]
+];
+// the camera, around where Hak kneels: from → to, looking at (metres from his feet; he faces +z, you stand 9.5 m in front of him)
+const HAS_SHOTS = {
+  kneel: [[2.4, .7, 2.2], [1.7, .8, 1.6], [0, 1.05, 0]],
+  pov: [[1.1, 2.1, 12], [.8, 1.95, 11], [0, 1.2, 0]],
+  face: [[.35, 1.4, 1.6], [.2, 1.4, 1.15], [0, 1.45, 0]],
+  wideLow: [[-6, .8, 6], [-4.5, 1.2, 4.5], [0, 2.2, -2]],
+  upZark: [[-1.8, 1.2, 2.5], [-1.6, 1.4, 1.5], [-5.5, 4.4, -6]],
+  wideHigh: [[6, 4, 6], [4.5, 3.4, 4.8], [0, 1.8, -2]],
+  upArch: [[1.8, 1.2, 2.5], [1.6, 1.4, 1.5], [5.5, 3.9, -6]],
+  ghosts: [[0, 1.6, 9], [0, 2.2, 6.5], [0, 3.4, -5]],
+  orbit: 'orbit',
+  reveal: [[0, .35, 3.4], [0, .6, 2.5], [0, 2.3, 0]],
+  princeClose: [[.55, 2.35, 2.3], [.3, 2.3, 1.65], [0, 2.25, 0]]
+};
+const HAS_POSES = { // on top of his rest pose: lean (forward, toward you), dy (how far he sinks), neck/head (+ bows), ra/la (− raises the arms), lift (off the floor)
+  slump: { lean: .24, dy: -.2, neck: .45, head: .25, ra: -.15, la: -.1, lift: 0 },
+  rise: { lean: .05, dy: 0, neck: .1, head: 0, ra: -.3, la: -.3, lift: 0 },
+  arms: { lean: -.1, dy: 0, neck: -.3, head: -.15, ra: -2.8, la: -2.8, lift: 0 },
+  float: { lean: -.18, dy: 0, neck: -.45, head: -.2, ra: -2.6, la: -2.6, lift: 1.7 }
+};
+function hasGhost(R, col) { // a Prime as a ghost: light only, no body
+  const mats = [];
+  R.root.traverse(o => { if (!o.isMesh) return; const m = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }); o.material = m; o.castShadow = false; o.frustumCulled = false; mats.push(m); });
+  return mats;
+}
+function hzMesh(geo, col, op) { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })); wScene.add(m); return m; }
+function hzDress(R) { // the Prince of Zark: Hak in his own blue coat and beard, his glasses gone, his eyes burning red, a blade that burns, the dark coming off him
+  if (R.hz) return R; R.hz = true;
+  try { sinisterEyes(R.root); } catch (e) {}
+  R.root.traverse(o => { if (o.isMesh && /^(glass(es)?|lens glint)\b/i.test((o.name || '').replace(/_/g, ' '))) o.visible = false; }); // “That is why I wear them”: not any more
+  R.root.traverse(o => { if (!o.isMesh || !o.material || /^(iris|pupil)/i.test(o.name || '')) return; o.castShadow = !tiPhone(); o.frustumCulled = false; });
+  for (const g of R.gear || []) g.traverse(o => { if (o.isMesh && o.material) { o.material = o.material.clone(); if (o.material.emissive) { o.material.emissive = new THREE.Color(0xff1a10); o.material.emissiveIntensity = 1.4; } } });
+  const L = new THREE.PointLight(0xff2412, tiPhone() ? 8 : 14, 9, 1.6); L.position.set(0, 1.6, .4); R.root.add(L); R.hzLight = L;
+  R.root.rotation.order = 'YXZ'; // so a lean is always toward where he's facing
+  return R;
+}
+const hzRig = () => leadTag('leader_chompy', 2.5, 'sword')().catch(() => null).then(R => R ? hzDress(R) : null); // Hak's own body, grown to 2.5 m
+function hasCss() {
+  if (document.getElementById('hakzCss')) return; const st = document.createElement('style'); st.id = 'hakzCss';
+  st.textContent = '#hakzFlash{position:fixed;inset:0;pointer-events:none;z-index:12;background:#fff;opacity:0}' +
+    '#hakzTitle{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2vh;pointer-events:none;z-index:13;opacity:0;transition:opacity 1.2s;text-align:center}' +
+    '#hakzTitle.on{opacity:1}#hakzTitle small{font-family:var(--text);font-size:clamp(9px,1.3vw,14px);letter-spacing:.6em;color:#ffcf8a;text-shadow:0 0 12px #000}' +
+    '#hakzTitle b{font-family:var(--display);font-weight:600;font-size:clamp(26px,6.4vw,84px);letter-spacing:.18em;color:#ff2a1a;text-shadow:0 0 18px #ff1a00,0 0 46px #7a0000,0 0 4px #000;animation:hakzT 4s ease-out both}' +
+    '#hakzTitle i{font-family:var(--display);font-style:normal;font-size:clamp(12px,2.2vw,26px);letter-spacing:.9em;color:#ffe2b0;text-shadow:0 0 14px #ff7a00}' +
+    '#hakzTitle em{font-family:var(--text);font-style:normal;font-size:clamp(8px,1.1vw,12px);letter-spacing:.45em;color:#ff8f86;margin-top:1.4vh}' +
+    '@keyframes hakzT{0%{letter-spacing:.9em;filter:blur(8px);opacity:0}30%{opacity:1}100%{letter-spacing:.18em;filter:blur(0)}}';
+  document.head.appendChild(st);
+}
+function hasEl(id) { let e = document.getElementById(id); if (!e) { e = document.createElement('div'); e.id = id; document.body.appendChild(e); } return e; }
+async function hakAscStart(R1) { // Hak, beaten once: R1 is his body from the fight (none from a checkpoint-less preview)
+  if (HAS.on) return; hasCss();
+  Object.assign(HAS, { on: true, phase: 'load', t: 0, li: -1, lineEnd: 0, shot: null, shotT: 0, shotDur: 6, pose: 'slump', P: {}, shake: 0, flash: 0, skip: false, music: false, fx: [], hid: [], zM: [], aM: [], zA: 0, aA: 0, lift: 0, princeOn: false, tr: 0 });
+  state = 'hakAsc'; ex.keys.clear(); vel.set(0, 0, 0); if (ex.dlg) closeDialog(); ex.act = null; ex.downed = false; inner.rotation.x = 0; inner.position.y = 0;
+  SSAY.q.length = 0; try { sfx.stopNarr(); } catch (e) {} // nothing left over from his first fight talks over this
+  BST.in = true; BST.floor = BST_FLOORS - 1; BST.spawnedFloor = BST.floor; // (it all happens in the throne room, wherever you were standing)
+  const fd = $('#fade'); fd.style.transition = 'opacity .5s'; fd.style.opacity = 1; sfx.thud(); if (sfx.leadOn) { sfx.leadOn = false; sfx.stopSong(1.2); } sfx.combat && sfx.combat(false);
+  hwmBarsMake(); show(ui.xhud, true); ui.xhud.classList.add('cutting');
+  const Y = BST.y0 + BST.floor * BST_H + .15, H = HAS.H = { x: BST.x, y: Y, z: BST.z - 8 };
+  let hak = R1, prince = null, zark = null, arch = null;
+  try { [hak, prince, zark, arch] = await Promise.all([R1 ? Promise.resolve(R1) : BST_BOSS.hak().load().catch(() => null), hzRig(), leadSpec('zark').load().catch(() => null), leadTag('prArchamus', 3.1, 'none')().catch(() => null), hasPack('hp'), leaderTheme('final').catch(() => null)]); } catch (e) { console.error(e); }
+  if (!HAS.on) { for (const R of [hak, prince, zark, arch]) if (R && R.root.parent) R.root.parent.remove(R.root); return; }
+  HAS.prince = prince; HAS.hak = hak;
+  if (HAS.skip || !prince) { hasEnd(); return; }
+  // the room: you, him, and no one else standing (your crew step back out of the shot)
+  for (const R of [...Object.values(CREW).map(C => C && C.R), world.orion, james.ready ? james : null]) if (R && R.root && R.root.visible && R.root.parent === wScene) { R.root.visible = false; HAS.hid.push(R); }
+  player.position.set(H.x, Y + .02, H.z + 9.5); player.rotation.y = Math.PI; vel.set(0, 0, 0);
+  if (hak) { if (hak.root.parent) hak.root.parent.remove(hak.root); hak.root.position.set(H.x, Y, H.z); hak.root.rotation.set(0, 0, 0); hak.root.rotation.order = 'YXZ'; hak.mode = 'idle'; hak.root.visible = true; hak.root.traverse(o => { if (o.isMesh) o.frustumCulled = false; }); wScene.add(hak.root); }
+  if (prince.root.parent) prince.root.parent.remove(prince.root); prince.root.position.set(H.x, Y, H.z); prince.root.rotation.set(0, 0, 0); prince.mode = 'idle'; prince.root.visible = false; wScene.add(prince.root);
+  if (zark) { zark.root.scale.multiplyScalar(1.35); zark.root.position.set(H.x - 5.5, Y + 1.2, H.z - 6); zark.root.rotation.set(0, .35, 0); zark.mode = 'idle'; HAS.zM = hasGhost(zark, 0xff2010); wScene.add(zark.root); }
+  if (arch) { arch.root.scale.multiplyScalar(1.3); arch.root.position.set(H.x + 5.5, Y + 1.2, H.z - 6); arch.root.rotation.set(0, -.35, 0); arch.mode = 'idle'; HAS.aM = hasGhost(arch, 0xffd27a); wScene.add(arch.root); }
+  HAS.zark = zark; HAS.arch = arch;
+  // the sigils, the beam, the lights
+  const add = (m, kind) => { HAS.fx.push(m); m.userData.kind = kind; return m; };
+  const rs = add(hzMesh(new THREE.RingGeometry(1.5, 2.3, 64), 0xff1a0a, 0), 'red'); rs.rotation.x = -Math.PI / 2; rs.position.set(H.x, Y + .05, H.z);
+  const rs2 = add(hzMesh(new THREE.RingGeometry(2.7, 2.85, 64), 0xff1a0a, 0), 'red'); rs2.rotation.x = -Math.PI / 2; rs2.position.set(H.x, Y + .05, H.z);
+  const gs = add(hzMesh(new THREE.RingGeometry(3.2, 3.9, 6), 0xffcf6a, 0), 'gold'); gs.rotation.x = -Math.PI / 2; gs.position.set(H.x, Y + .06, H.z);
+  const beam = add(hzMesh(new THREE.CylinderGeometry(1.1, 1.6, BST_H - .4, 32, 1, true), 0xffd890, 0), 'beam'); beam.position.set(H.x, Y + (BST_H - .4) / 2, H.z);
+  const wave = add(hzMesh(new THREE.RingGeometry(.8, 1.4, 64), 0xff3a1a, 0), 'wave'); wave.rotation.x = -Math.PI / 2; wave.position.set(H.x, Y + .08, H.z);
+  HAS.rs = rs; HAS.rs2 = rs2; HAS.gs = gs; HAS.beam = beam; HAS.wave = wave;
+  HAS.red = new THREE.PointLight(0xff2010, 0, 26, 1.4); HAS.red.position.set(H.x - 2, Y + 3, H.z - 2); HAS.gold = new THREE.PointLight(0xffd080, 0, 26, 1.4); HAS.gold.position.set(H.x + 2, Y + 4, H.z - 1); wScene.add(HAS.red, HAS.gold);
+  HAS.flashEl = hasEl('hakzFlash'); HAS.flashEl.style.opacity = 0;
+  HAS.cam = { fov: camera.fov }; camera.fov = camera.aspect < 1 ? 64 : 48; camera.updateProjectionMatrix(); camera.up.set(0, 1, 0);
+  renderer.domElement.style.filter = 'contrast(1.12) saturate(1.15) brightness(.92)';
+  HWM.bars.classList.add('on');
+  HAS.phase = 'open'; HAS.t = 0; HAS.shot = HAS_SHOTS.pov; HAS.shotT = 0; HAS.shotDur = 4; sfx.drone(.35);
+  fd.style.transition = 'opacity 1.4s'; fd.style.opacity = 0;
+  setTimeout(() => { if (HAS.on && HAS.phase !== 'end') notice('The throne room of Carax', 'HE GETS BACK UP', 2600); }, 300);
+}
+function hasFx(k) { // what happens as a line starts
+  const H = HAS.H;
+  if (k === 'slump') HAS.pose = 'slump';
+  else if (k === 'zark') { HAS.pose = 'arms'; HAS.redOn = true; sfx.boom(.6); sfx.thud(); HAS.shake = .5; burst(H.x, H.y + .3, H.z, 60, 6, .9, .05, .05, 1.2, -.3, 1.5); }
+  else if (k === 'zarkGhost') { HAS.zOn = true; sfx.whoosh(); sfx.boom(.4); }
+  else if (k === 'arch') { HAS.goldOn = true; sfx.chime(); sfx.thud(); HAS.shake = .4; burst(H.x, H.y + 8, H.z, 70, 3, 1, .85, .45, 1.4, 1.2); }
+  else if (k === 'archGhost') { HAS.aOn = true; sfx.whoosh(); sfx.chime(); }
+  else if (k === 'pour') { HAS.pose = 'float'; HAS.pourOn = true; sfx.whoosh(); sfx.boom(.5); }
+  else if (k === 'roar') { HAS.shake = .9; sfx.boom(.8); burst(H.x, H.y + 1.4, H.z, 90, 9, 1, .1, .05, 1.1, .4, 1.2); }
+}
+function hasChange() { // light and dark go into him, and the Prince of Zark stands where Hak knelt
+  const H = HAS.H; HAS.phase = 'change'; HAS.chT = HAS.t; HAS.flash = 1; HAS.shake = 1.3; HAS.pourOn = false; HAS.zOn = false; HAS.aOn = false; HAS.goldOn = false;
+  sfx.boom(1); sfx.thud(); sfx.boom(.7);
+  if (HAS.hak) HAS.hak.root.visible = false; if (HAS.zark) HAS.zark.root.visible = false; if (HAS.arch) HAS.arch.root.visible = false;
+  const P = HAS.prince; P.root.visible = true; P.root.position.set(H.x, H.y + 1.4, H.z); HAS.princeOn = true;
+  burst(H.x, H.y + 1.5, H.z, 160, 14, 1, .15, .05, 1.4, .2, 1); burst(H.x, H.y + 1.5, H.z, 90, 10, 1, .85, .5, 1.2, .2, 1);
+  HAS.wave.material.opacity = .9; HAS.wave.scale.setScalar(1); HAS.wt = 0;
+  HAS.shot = HAS_SHOTS.reveal; HAS.shotT = HAS.t; HAS.shotDur = 5;
+  if (!HAS.music) { HAS.music = true; leaderPlay('final').catch(() => {}); } // the Final Boss theme, on the blast
+  setTimeout(() => { if (!HAS.on) return; const T = hasEl('hakzTitle'); T.innerHTML = `<small>${tiPhone() ? 'ONCE MORE' : 'ONCE MORE · LIGHT AND DARK IN ONE VESSEL'}</small><b>HAK CHOMPJAK</b><i>PRINCE OF ZARK</i><em>LV ${HAKZ_LV} · ${HAKZ_HP.toLocaleString('en-GB')} HP</em>`; T.classList.add('on'); setTimeout(() => T.classList.remove('on'), 4200); }, 1100);
+}
+function hasPoseHak(R, dt) { // blend his idle into the pose of the moment
+  const T = HAS_POSES[HAS.pose] || HAS_POSES.rise, P = HAS.P, k = Math.min(1, dt * (HAS.pose === 'float' ? 1.1 : 2.4));
+  for (const key of ['lean', 'dy', 'neck', 'head', 'ra', 'la', 'lift']) P[key] = lerp(P[key] == null ? (HAS_POSES.slump[key] || 0) : P[key], T[key] || 0, k);
+  const set = (b, ax, v) => { if (!b) return; const r = R.rest && R.rest.get(b); b.rotation[ax] = (r ? r[ax] : 0) + v; };
+  const tr = HAS.pose === 'float' ? (Math.random() - .5) * .05 * (1 + HAS.t * .2) : 0; // he shakes with it
+  set(R.neck, 'x', P.neck); set(R.head, 'x', P.head + tr); set(R.ra, 'x', P.ra + tr); set(R.la, 'x', P.la - tr);
+  R.root.rotation.x = P.lean; R.root.position.set(HAS.H.x + tr * .3, HAS.H.y + P.dy + P.lift, HAS.H.z);
+}
+function hasTick(dt) {
+  if (HAS.phase === 'load' || !HAS.on) return;
+  dt = Math.min(dt, .05); HAS.t += dt; const t = HAS.t, H = HAS.H;
+  fbSubTick();
+  // the script
+  if (HAS.phase === 'open' && t > 2.4) { HAS.phase = 'lines'; HAS.lineEnd = t; }
+  if (HAS.phase === 'lines' && t >= HAS.lineEnd) {
+    HAS.li++; const L = HAS_LINES[HAS.li];
+    if (L === null) hasChange();
+    else if (!L) { HAS.phase = 'end'; fbSubHide(); const fd = $('#fade'); fd.style.transition = 'opacity 1s'; fd.style.opacity = 1; setTimeout(hasEnd, 1050); }
+    else hasSay(L);
+  }
+  if (HAS.phase === 'change' && HAS.t - HAS.chT > 4.6) { HAS.phase = 'lines'; HAS.lineEnd = HAS.t; }
+  // Hak, the ghosts, the Prince
+  if (HAS.hak && HAS.hak.root.visible) { HAS.hak.mode = 'idle'; animRig(HAS.hak, dt); hasPoseHak(HAS.hak, dt); }
+  HAS.zA = lerp(HAS.zA, HAS.zOn ? .42 : 0, Math.min(1, dt * (HAS.zOn ? .9 : 2.5))); HAS.aA = lerp(HAS.aA, HAS.aOn ? .45 : 0, Math.min(1, dt * (HAS.aOn ? .9 : 2.5)));
+  for (const m of HAS.zM) m.opacity = HAS.zA * (.85 + .15 * Math.sin(t * 7)); for (const m of HAS.aM) m.opacity = HAS.aA * (.85 + .15 * Math.sin(t * 5 + 1));
+  for (const [R, s] of [[HAS.zark, -1], [HAS.arch, 1]]) if (R && R.root.visible) { R.mode = 'idle'; animRig(R, dt); R.root.position.y = H.y + 1.2 + Math.sin(t * 1.3 + s) * .18; }
+  if (HAS.pourOn) { // their power, pouring into him: red from Zark, gold from Archamus
+    const hy = H.y + (HAS.P.lift || 0) + 1.3;
+    for (const [R, c] of [[HAS.zark, [1, .08, .04]], [HAS.arch, [1, .82, .4]]]) { if (!R) continue; const o = R.root.position; for (let i = 0; i < (tiPhone() ? 3 : 7); i++) { const sx = o.x + rand(-.8, .8), sy = o.y + rand(1, 4), sz = o.z + rand(-.6, .6), f = rand(1, 1.5); emit(sx, sy, sz, (H.x - sx) * f, (hy - sy) * f, (H.z - sz) * f, c[0], c[1], c[2], .75, 0); } }
+    HAS.zOn = HAS.aOn = t % 1 > .2; // they flicker as they go
+    HAS.shake = Math.max(HAS.shake, .12 + Math.min(.5, (t - (HAS.pourT || (HAS.pourT = t))) * .09));
+    if ((HAS.hb = (HAS.hb || 0) + dt) > .55) { HAS.hb = 0; sfx.heart(.45); }
+  }
+  if (HAS.princeOn) { const P = HAS.prince, o = P.root.position; o.y = Math.max(H.y, o.y - dt * 3.2); if (o.y === H.y && !HAS.landed) { HAS.landed = true; sfx.thud(); HAS.shake = Math.max(HAS.shake, .6); burst(H.x, H.y + .2, H.z, 50, 6, .8, .1, .05, .9, 1.2, 1.2); } P.mode = 'idle'; animRig(P, dt);
+    if (Math.random() < dt * 40) emit(o.x + rand(-.6, .6), o.y + rand(.2, 2.5), o.z + rand(-.6, .6), 0, rand(.6, 2), 0, .9, .05, .03, .9, -.15); }
+  // the floor, the beam, the lights, the blast
+  const red = HAS.redOn ? 1 : 0, gold = HAS.goldOn ? 1 : 0;
+  HAS.rs.material.opacity = lerp(HAS.rs.material.opacity, red * (.55 + .2 * Math.sin(t * 6)), Math.min(1, dt * 3)); HAS.rs.rotation.z += dt * .8;
+  HAS.rs2.material.opacity = lerp(HAS.rs2.material.opacity, red * .7, Math.min(1, dt * 3)); HAS.rs2.rotation.z -= dt * .4;
+  HAS.gs.material.opacity = lerp(HAS.gs.material.opacity, gold * (.5 + .2 * Math.sin(t * 4)), Math.min(1, dt * 3)); HAS.gs.rotation.z += dt * .3;
+  HAS.beam.material.opacity = lerp(HAS.beam.material.opacity, gold * (.22 + .06 * Math.sin(t * 9)), Math.min(1, dt * 3)); HAS.beam.rotation.y += dt;
+  HAS.red.intensity = lerp(HAS.red.intensity, (red + (HAS.princeOn ? 1.2 : 0)) * (tiPhone() ? 40 : 70) * (.8 + .2 * Math.sin(t * 13)), Math.min(1, dt * 4));
+  HAS.gold.intensity = lerp(HAS.gold.intensity, gold * (tiPhone() ? 40 : 70), Math.min(1, dt * 4));
+  if (HAS.wave.material.opacity > 0) { HAS.wt = (HAS.wt || 0) + dt; HAS.wave.scale.setScalar(1 + HAS.wt * 16); HAS.wave.material.opacity = Math.max(0, .9 - HAS.wt * .7); }
+  HAS.flash = Math.max(0, HAS.flash - dt * .7); HAS.flashEl.style.opacity = HAS.flash.toFixed(3);
+  // the camera
+  const sh = HAS.shot, kk = smooth(0, Math.max(2.5, HAS.shotDur || 6), t - HAS.shotT), cam = tmpV, look = tmpV2;
+  if (sh === 'orbit') { const a = lerp(-.95, .95, kk), r = 5.2, ly = (HAS.P.lift || 0); cam.set(H.x + Math.sin(a) * r, H.y + 1.5 + kk * 1.2, H.z + Math.cos(a) * r); look.set(H.x, H.y + 1.6 + ly, H.z); }
+  else if (sh) { const f = sh[0], to = sh[1], l = sh[2]; cam.set(H.x + lerp(f[0], to[0], kk), H.y + lerp(f[1], to[1], kk), H.z + lerp(f[2], to[2], kk)); look.set(H.x + l[0], H.y + l[1], H.z + l[2]); }
+  HAS.shake = Math.max(0, HAS.shake - dt * .9); const s = HAS.shake * .12;
+  camera.position.set(cam.x + (Math.random() - .5) * s, cam.y + (Math.random() - .5) * s, cam.z + (Math.random() - .5) * s); camera.up.set(0, 1, 0); camera.lookAt(look);
+  try { updateAnim(dt); } catch (e) {}
+  sfx.drone(HAS.princeOn ? .15 : .35);
+}
+async function hasSay(L) {
+  const [who, line, vo, shot, fx, pause] = L;
+  if (!line) { HAS.shot = HAS_SHOTS[shot] || HAS.shot; HAS.shotT = HAS.t; HAS.shotDur = pause; HAS.lineEnd = HAS.t + pause; fbSubHide(); if (fx) hasFx(fx); return; } // a beat with no words
+  HAS.lineEnd = Infinity; // until we know how long it is
+  const pk = await hasPack(vo[0]), clip = (pk && pk[vo[1]]) || null; if (!HAS.on || HAS.phase !== 'lines') return;
+  fbSay(who, line, clip, 1.3);
+  const dur = clip ? clip.duration : Math.max(1.8, line.split(/\s+/).length * .36);
+  HAS.lineEnd = HAS.t + dur + (pause || .6); HAS.shot = HAS_SHOTS[shot] || HAS.shot; HAS.shotT = HAS.t; HAS.shotDur = dur + (pause || .6);
+  if (fx) hasFx(fx);
+}
+function hasSkip() { if (!HAS.on) return; if (HAS.phase === 'load') { HAS.skip = true; return; } if (HAS.phase === 'end') return; HAS.phase = 'end'; const fd = $('#fade'); fd.style.transition = 'opacity .4s'; fd.style.opacity = 1; setTimeout(hasEnd, 450); }
+function hasEnd() { // into the fight
+  if (!HAS.on) return; HAS.on = false; HAS.phase = null; fbSubHide(); sfx.drone(0); try { sfx.stopNarr(); } catch (e) {}
+  for (const m of HAS.fx) if (m.parent) m.parent.remove(m); HAS.fx = [];
+  for (const L of [HAS.red, HAS.gold]) if (L && L.parent) L.parent.remove(L); HAS.red = HAS.gold = null;
+  for (const R of [HAS.hak, HAS.zark, HAS.arch]) if (R && R.root.parent) R.root.parent.remove(R.root); HAS.hak = HAS.zark = HAS.arch = null;
+  for (const R of HAS.hid) R.root.visible = true; HAS.hid = [];
+  if (HAS.flashEl) HAS.flashEl.style.opacity = 0; { const T = document.getElementById('hakzTitle'); if (T) T.classList.remove('on'); }
+  if (HAS.cam) { camera.fov = HAS.cam.fov; camera.updateProjectionMatrix(); HAS.cam = null; }
+  renderer.domElement.style.filter = ''; if (HWM.bars) HWM.bars.classList.remove('on'); ui.xhud.classList.remove('cutting');
+  const P = HAS.prince; HAS.prince = null; if (P) { P.root.visible = true; if (P.root.parent) P.root.parent.remove(P.root); }
+  state = 'explore'; ex.snap = true; clock.getDelta(); ex.hp = maxHP(); invState().hp = ex.hp; // you get your breath back, for what it's worth
+  if (BST.in && BST.floor === BST_FLOORS - 1) bstSave({ hakP2: true }); // from now on a death sends you back to the Prince, not to Hak
+  const fd = $('#fade'); fd.style.transition = 'opacity 1.2s'; fd.style.opacity = 0;
+  hakzSpawn(P, HAS.music);
+}
+// ---- the fight ----
+const HAKZ_X = { boss: 'Hak', full: 'Hak Chompjak, Prince of Zark', lv: HAKZ_LV, lines: {} };
+const HAKZ_LINES = { // [line, pack, slot]
+  stage2: ['Do you feel it? Zark’s dark, every drop of it, crawling under my skin. He never trusted me with this much. He was right to be afraid.', 'hp', 8],
+  stage3: ['Now the light. Archamus wanted it to heal. I’m going to use it to peel you, slowly, layer by layer, until there is nothing left to burn.', 'hp', 9],
+  enrage: ['If I fall, I drag the dark down with me. And you, wanderer, you go first. EVERYONE. KNEELS.', 'hp', 10],
+  ult: ['Twin Primes. Light and dark. Choose which one strips the flesh from your bones.', 'hp', 11],
+  exposed: ['No… the crown… it’s cracking… not yet. NOT YET. I AM NOT FINISHED WITH YOU.', 'hp', 12],
+  win: ['Light… and dark… and neither was enough. Go on, then. Sit on your throne of corpses. They’ll whisper to you every night, the way mine still whisper to me.', 'hp', 13],
+  down: ['Down already? Damix lasted longer. He begged the whole time. I let him. I want to hear you beg.', 'hp', 14]
+};
+const HAKZ_TAUNTS = [
+  ['How I’m treating you now is how I mercilessly killed that son of a bitch, Hawthorne. I ran him through and watched the light leave his eyes. Yours are next.', 'hp', 15],
+  ['Archamus’s light in one hand. Zark’s dark in the other. And you, wanderer, squirming between my fingers.', 'hp', 16],
+  ['Everyone kneels. Some of them just need help. Let me help you. Let me break your legs.', 'hp', 17],
+  ['I knelt for three hundred years. Do you know how much hate a man stores up, kneeling that long? You’re about to find out.', 'hp', 18],
+  ['Look at them all, lying so still. You did that. It was sloppy. Let me show you how it’s done.', 'hp', 19],
+  ['Vishara. Darius. Archamus. I carry their ghosts now, and every one of them is screaming for your throat.', 'hp', 20],
+  ['Stay awake. Don’t you dare pass out. I want you to feel every second of this.', 'hp', 21],
+  ['Zark is laughing inside my head. Can you hear him? He’s laughing at you. Soon I’ll be laughing too.', 'hp', 22],
+  ['You made me bleed? I butchered my own cousin in front of my father, and I smiled while I did it. Smile for me, wanderer.', 'hp', 23],
+  ['The glasses were never for my eyes. They were so no one would see the thing behind them. Look closely now. It’s been waiting for you.', 'hp', 24],
+  ['You wanted the galaxy? Here it comes. All of it. Every world, every corpse, every scream, crushing down on top of you.', 'hp', 25]
+];
+async function hakzSay(kind, i) {
+  const L = kind === 'taunt' ? HAKZ_TAUNTS[i % HAKZ_TAUNTS.length] : HAKZ_LINES[kind]; if (!L) return;
+  const pk = await hasPack(L[1]), clip = (pk && pk[L[2]]) || null;
+  siegeSay(HAKZ_WHO, L[0], clip ? Math.max(3200, clip.duration * 1000 + 300) : Math.max(3200, L[0].split(/\s+/).length * 330), null, clip);
+}
+async function hakzSpawn(R, musicOn) { // the Prince of Zark, on the throne room floor, for real
+  if (!BST.in || BST.floor !== BST_FLOORS - 1) return;
+  if (BST.bosses && BST.bosses.length) bstBossClear();
+  BST.bosses = []; BST.bossF = BST_FLOORS - 1; BST.bossQ = []; BST.gvHak = true; const tok = BST.bosses;
+  if (!R) R = await hzRig(); if (!R || BST.bosses !== tok || !BST.in) return;
+  const x = BST.x, z = BST.z - 8; if (R.root.parent) R.root.parent.remove(R.root);
+  R.root.position.set(x, wHeight(x, z), z); R.root.rotation.set(0, Math.atan2(player.position.x - x, player.position.z - z), 0); R.root.visible = true; wScene.add(R.root);
+  const D = { name: `${HAKZ_X.full} · lv ${HAKZ_LV}`, hp: HAKZ_HP, r: 1.1, xp: 60000, dmg: 0, beast: 'pred', loot: () => [['warpcell', 5], ['medkit', 10]] };
+  const c = { type: 'bstboss', D, lv: HAKZ_LV, mesh: R.root, x, z, y: R.root.position.y, rot: 0, hp: HAKZ_HP, state: 'hunt', t: 0, cd: 2, home: [x, z], tgt: null, wait: 0, hurtT: 0, dead: 0, alt: 0, phase: 0, ext: true, sboss: true, boss: true, noGap: true, dmgMul: 1, bar: hpBar() };
+  c.bar.position.y = 3.05; c.bar.visible = false; R.root.add(c.bar); fauna.list.push(c);
+  BST.bosses.push({ R, c, k: 'hakz', X: HAKZ_X, kind: 'melee', st: 'chase', cd: 2.4, leapCd: 6, waveCd: 4, blinkCd: 9, rainCd: 8, novaCd: 10, ultCd: 25, addCd: 25, t: 0, tels: [], fx: [], adds: [], stage: 1, ti: 0, tauntT: 12, p2: true, p3: true });
+  if (!musicOn || !sfx.leadOn) leaderPlay('final').catch(() => {});
+  notice(tiPhone() ? 'Hak, Prince of Zark' : 'Hak Chompjak, Prince of Zark', `LV ${HAKZ_LV} · ${HAKZ_HP.toLocaleString('en-GB')} HP`, 4200); sfx.thud(); ex.shake = .5;
+  setTimeout(() => { if (BST.bosses === tok) lootMsg(tiPhone() ? 'Survive his Twin Primes · then strike' : 'Dodge (Q) or block his blows · survive his Twin Primes, then strike while the crown is cracked', '#ffd27a'); }, 4600);
+}
+function hzClean(B) {
+  for (const f of B.fx || []) if (f.m && f.m.parent) f.m.parent.remove(f.m); B.fx = [];
+  for (const a of B.adds || []) if (fauna.list.includes(a)) removeFauna(a); B.adds = [];
+}
+function hzZone(B, x, z, r0, r1, delay, col, mul) { // a disc or ring on the floor: it glows, then it goes off
+  const m = hzMesh(new THREE.RingGeometry(Math.max(.02, r0), r1, 56), col, .18); m.rotation.x = -Math.PI / 2; m.position.set(x, bossGround(x, z) + .07, z);
+  B.fx.push({ kind: 'zone', m, t: 0, dur: delay, x, z, r0, r1, col, mul });
+}
+function hzWave(B, a) { // a crescent of red light along the floor: dodge it, block it or jump it
+  const q = B.R.root.position, m = hzMesh(new THREE.PlaneGeometry(4.6, .8), 0xff2a14, .85); m.rotation.set(-Math.PI / 2, 0, -a); m.position.set(q.x, q.y + .35, q.z);
+  B.fx.push({ kind: 'wave', m, t: 0, x: q.x, z: q.z, dx: Math.sin(a), dz: Math.cos(a), sp: 15, life: 1.7, hit: false });
+}
+function hzFxTick(B, dt, hurt) {
+  const p = player.position, py = p.y - wHeight(p.x, p.z);
+  for (const f of B.fx) {
+    f.t += dt;
+    if (f.kind === 'zone') { f.m.material.opacity = .18 + .5 * (f.t / f.dur) + .15 * Math.sin(f.t * 22);
+      if (f.t >= f.dur) { f.done = true; const d = Math.hypot(p.x - f.x, p.z - f.z), gold = f.col !== 0xff2010 && f.col !== 0xff1a0a;
+        if (d >= f.r0 && d <= f.r1 && py < 1.2) hurt(f.mul, { x: f.x, z: f.z });
+        const n = f.r1 > 8 ? 14 : 5; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, r = f.r0 + (f.r1 - f.r0) * Math.random(); burst(f.x + Math.sin(a) * r, bossGround(f.x, f.z) + .3, f.z + Math.cos(a) * r, 8, 4, gold ? 1 : .95, gold ? .8 : .1, gold ? .35 : .05, .7, -.4, 2); }
+        sfx.boom(f.r1 > 8 ? .55 : .25); if (f.r1 > 8) ex.shake = Math.max(ex.shake || 0, .45); } }
+    else if (f.kind === 'wave') { f.x += f.dx * f.sp * dt; f.z += f.dz * f.sp * dt; f.m.position.set(f.x, bossGround(f.x, f.z) + .35, f.z); f.m.material.opacity = .85 * (1 - f.t / f.life);
+      if (Math.random() < .6) burst(f.x, bossGround(f.x, f.z) + .3, f.z, 2, 2, 1, .15, .05, .4, -.2, 1);
+      const rx = p.x - f.x, rz = p.z - f.z, along = rx * f.dx + rz * f.dz, side = rx * f.dz - rz * f.dx;
+      if (!f.hit && Math.abs(along) < .8 && Math.abs(side) < 2.4 && py < 1.1) { f.hit = true; hurt(.9, { x: f.x - f.dx * 3, z: f.z - f.dz * 3 }); }
+      if (f.t >= f.life || !bstIn(f.x, f.z)) f.done = true; }
+  }
+  for (const f of B.fx) if (f.done && f.m.parent) f.m.parent.remove(f.m);
+  B.fx = B.fx.filter(f => !f.done);
+}
+function hakzTick(B, dt, live) {
+  const R = B.R, c = B.c, q = R.root.position, p = player.position, X = B.X, plv = levelOf(wanderer);
+  const k = c.hp / c.D.hp, Y = wHeight(q.x, q.z);
+  // the stages: the Prince (100–66%), Zark's dark (66–33%), light and dark (33–0%), and enraged under 10%
+  const stg = k > .66 ? 1 : k > .33 ? 2 : 3;
+  if (stg > B.stage) { B.stage = stg; hakzSay(stg === 2 ? 'stage2' : 'stage3'); notice(HAKZ_WHO, stg === 2 ? 'ZARK’S DARK' : 'LIGHT AND DARK', 3200); sfx.boom(.8); ex.shake = .6; burst(q.x, q.y + 1.4, q.z, 90, 9, stg === 3 ? 1 : .9, stg === 3 ? .8 : .08, stg === 3 ? .4 : .05, 1.2, .2, 1); B.ultCd = Math.min(B.ultCd, 6); if (R.hzLight && stg === 3) R.hzLight.color.setHex(0xff7a30); }
+  if (!B.enr && k < .1) { B.enr = true; hakzSay('enrage'); notice(HAKZ_WHO, 'ENRAGED', 3000); sfx.boom(1); ex.shake = .8; }
+  if (ex.downed && !B.wasDown) hakzSay('down'); B.wasDown = !!ex.downed;
+  // the dark (and, later, the light) coming off him
+  if (Math.random() < dt * (tiPhone() ? 18 : 40)) { const gold = B.stage === 3 && Math.random() < .45; emit(q.x + rand(-.6, .6), q.y + rand(.2, 2.5), q.z + rand(-.6, .6), 0, rand(.6, 2), 0, gold ? 1 : .9, gold ? .8 : .05, gold ? .35 : .03, .9, -.15); }
+  const fury = (1 + (B.stage - 1) * .12) * (B.enr ? 1.3 : 1);
+  const D0 = Math.round((60 + plv * .6) * (1 + (B.stage - 1) * .1) * (B.enr ? 1.15 : 1));
+  const hurt = (mul, at) => hurtPlayer(Math.round(D0 * mul), { x: (at || q).x, z: (at || q).z, lv: plv + 3 }); // (his level is beyond yours, but every blow is measured: dodge it, block it, or take it)
+  hzFxTick(B, dt, hurt);
+  const tels = () => { for (const m of B.tels) if (m.parent) m.parent.remove(m); B.tels = []; };
+  if (!live) { R.mode = 'idle'; animRig(R, dt); return; }
+  const dx = p.x - q.x, dz = p.z - q.z, d = Math.hypot(dx, dz) || 1, sp = 5.4 * fury;
+  B.cd -= dt * fury; B.leapCd -= dt; B.waveCd -= dt; B.blinkCd -= dt; B.rainCd -= dt; B.novaCd -= dt; B.addCd -= dt; if (B.st !== 'ult' && B.st !== 'exposed') B.ultCd -= dt; B.t += dt;
+  const face = (v = 7) => { R.root.rotation.y = angLerp(R.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * v)); };
+  const move = (tx, tz, v) => { const e1 = tx - q.x, e2 = tz - q.z, e = Math.hypot(e1, e2); if (e < .1) return; const nx = q.x + e1 / e * v * dt, nz = q.z + e2 / e * v * dt; if (!worldBlocked(nx, nz) && bstIn(nx, nz)) { q.x = nx; q.z = nz; } q.y = wHeight(q.x, q.z); };
+  R.root.rotation.x = lerp(R.root.rotation.x, B.st === 'exposed' ? .42 : 0, Math.min(1, dt * 4));
+  // the children of the dark: two Catharsis stalkers now and then, from Zark's dark on
+  if (B.stage >= 2 && B.addCd <= 0 && B.st === 'chase') { B.addCd = B.enr ? 38 : 50; B.adds = B.adds.filter(a => fauna.list.includes(a) && !a.dead);
+    if (B.adds.length < 3) { notice(HAKZ_WHO, 'THE DARK HAS CHILDREN', 2400); for (let i = 0; i < 2; i++) { const a = Math.random() * Math.PI * 2, ax = BST.x + Math.sin(a) * 12, az = BST.z + Math.cos(a) * 12; burst(ax, Y + 1, az, 40, 5, .8, .05, .05, 1, .4, 1); try { B.adds.push(bstFoe(ax, az, 'hunter', bstLv() + 4, false)); } catch (e) {} } } }
+  // he talks while he fights
+  if (B.st === 'chase') { B.tauntT -= dt; if (B.tauntT <= 0) { hakzSay('taunt', B.ti); B.ti++; B.tauntT = B.ti < HAKZ_TAUNTS.length ? 15 + Math.random() * 6 : 24 + Math.random() * 9; } }
+  if (B.st === 'chase') {
+    face();
+    if (B.ultCd <= 0) { B.st = 'ult'; B.t = 0; B.ph = 0; c.invuln = true; tels(); hakzSay('ult'); notice(HAKZ_WHO, 'TWIN PRIMES', 2600); sfx.whoosh(); sfx.boom(.6);
+      burst(q.x, q.y + 1.2, q.z, 50, 6, .9, .1, .05, .8, .3, 1); q.x = BST.x; q.z = BST.z; q.y = wHeight(q.x, q.z); burst(q.x, q.y + 1.2, q.z, 50, 6, .9, .1, .05, .8, .3, 1);
+      B.pulses = B.stage === 1 ? ['in', 'out'] : B.stage === 2 ? ['in', 'out', 'in'] : ['in', 'out', 'in', 'out']; B.gap = 1.45 / fury; B.pi = 0; B.ultEnd = .5 + B.pulses.length * B.gap + .35; } // each ring shows for one gap, then goes off as the next one shows
+    else if (d > 9 && B.leapCd <= 0) { B.st = 'leap'; B.t = 0; B.lx = p.x; B.lz = p.z; B.sx = q.x; B.sz = q.z; B.tels = [telegraph(p.x, p.z, 4.2)]; R.mode = 'idle'; sfx.whoosh(); }
+    else if (d > 6 && B.waveCd <= 0) { B.st = 'wave'; B.t = 0; B.fired = false; R.mode = 'attack'; R.t = 0; }
+    else if (d > 4 && B.blinkCd <= 0) { B.st = 'blink'; B.t = 0; B.bl = 0; burst(q.x, q.y + 1.2, q.z, 40, 5, .9, .05, .05, .7, .3, 1); sfx.whoosh(); }
+    else if (B.stage >= 2 && B.rainCd <= 0) { B.st = 'cast'; B.t = 0; R.mode = 'attack'; R.t = 0; const n = B.stage === 2 ? 5 : 8; sfx.whoosh(); notice(HAKZ_WHO, 'THE DARK FALLS', 1800);
+      for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, r = i ? rand(2.5, 8) : 0, zx = p.x + Math.sin(a) * r, zz = p.z + Math.cos(a) * r; if (bstIn(zx, zz)) hzZone(B, zx, zz, 0, 2.6, 1.3 / fury + i * .12, B.stage === 3 && i % 2 ? 0xffc85a : 0xff2010, 1); }
+      B.rainCd = (B.stage === 2 ? 13 : 10) / (B.enr ? 1.3 : 1); }
+    else if (B.stage >= 2 && d < 10 && B.novaCd <= 0) { B.st = 'nova'; B.t = 0; B.tels = [telegraph(q.x, q.z, 7.5)]; R.mode = 'idle'; sfx.whoosh(); }
+    else if (d < 3.9 && B.cd <= 0) { B.st = 'swing'; B.t = 0; B.combo = B.stage === 1 ? 2 : 3; R.mode = 'attack'; R.t = 0; B.hit = false; B.tels = [telegraph(q.x + dx / d * 2, q.z + dz / d * 2, 2.9)]; }
+    else { R.mode = 'walk'; move(p.x, p.z, sp); }
+  } else if (B.st === 'swing') { // a combo: two blows, then three
+    face(B.hit ? 3 : 9); const hitT = .55 / fury;
+    if (!B.hit && B.t > hitT) { B.hit = true; sfx.swing(); sfx.thud(); const hx = q.x + Math.sin(R.root.rotation.y) * 2, hz = q.z + Math.cos(R.root.rotation.y) * 2; if (Math.hypot(p.x - hx, p.z - hz) < 2.9) hurt(1); compsHitAt(hx, hz, 2.9, D0 * .7); burst(hx, q.y + .4, hz, 22, 3, 1, .15, .1, .6, 1, 1); tels(); }
+    if (B.t > hitT + .4 / fury) { B.combo--; if (B.combo > 0) { B.t = 0; B.hit = false; R.t = 0; move(p.x, p.z, 30); B.tels = [telegraph(q.x + dx / d * 2, q.z + dz / d * 2, 2.9)]; } else { B.st = 'chase'; B.cd = (1.5 + Math.random() * .6) / (B.enr ? 1.3 : 1); tels(); } } }
+  else if (B.st === 'leap') { const kk = clamp((B.t - .75 / fury) / .55, 0, 1); if (kk > 0) { q.x = lerp(B.sx, B.lx, kk); q.z = lerp(B.sz, B.lz, kk); } q.y = wHeight(q.x, q.z) + Math.sin(kk * Math.PI) * 5;
+    if (kk >= 1 && !B.landed) { B.landed = true; sfx.thud(); sfx.boom(.4); ex.shake = .6; burst(q.x, q.y + .2, q.z, 50, 7, 1, .15, .1, .9, 1.2, 1.6); if (Math.hypot(p.x - q.x, p.z - q.z) < 4.2) hurt(1.5); compsHitAt(q.x, q.z, 4.2, D0 * 1.1); tels();
+      if (B.stage === 3) hzZone(B, q.x, q.z, 4, 7.5, .6 / fury, 0xffc85a, 1.1); } // and in light and dark, the light rings out after it
+    if (B.t > 1.9 / fury) { B.st = 'chase'; B.landed = false; B.leapCd = (6.5 + Math.random() * 3) / (B.enr ? 1.3 : 1); B.cd = .7; q.y = wHeight(q.x, q.z); tels(); } }
+  else if (B.st === 'wave') { face(9);
+    if (!B.fired && B.t > .55 / fury) { B.fired = true; sfx.swing(); sfx.whoosh(); const a0 = R.root.rotation.y, n = B.stage === 1 ? 1 : B.stage === 2 ? 3 : 5; for (let i = 0; i < n; i++) hzWave(B, a0 + (i - (n - 1) / 2) * .32); }
+    if (B.t > 1.1 / fury) { B.st = 'chase'; B.waveCd = (B.stage === 1 ? 7 : 6) / (B.enr ? 1.3 : 1); } }
+  else if (B.st === 'blink') { // gone, and behind you
+    if (B.t > .25 && !B.bl) { B.bl = 1; R.root.visible = false; }
+    if (B.t > .5 && B.bl === 1) { B.bl = 2; const a = player.rotation.y; let nx = p.x - Math.sin(a) * 2.4, nz = p.z - Math.cos(a) * 2.4; if (worldBlocked(nx, nz) || !bstIn(nx, nz)) { nx = p.x + Math.cos(a) * 2.4; nz = p.z - Math.sin(a) * 2.4; } if (!worldBlocked(nx, nz) && bstIn(nx, nz)) { q.x = nx; q.z = nz; q.y = wHeight(nx, nz); }
+      R.root.visible = true; R.root.rotation.y = Math.atan2(p.x - q.x, p.z - q.z); burst(q.x, q.y + 1.2, q.z, 40, 5, .9, .05, .05, .7, .3, 1); sfx.whoosh(); B.tels = [telegraph(p.x, p.z, 2.6)]; B.bp = { x: p.x, z: p.z }; R.mode = 'attack'; R.t = 0; }
+    if (B.t > .5 + .7 / fury && B.bl === 2) { B.bl = 3; sfx.swing(); sfx.thud(); if (Math.hypot(p.x - B.bp.x, p.z - B.bp.z) < 2.6) hurt(1.2, q); burst(B.bp.x, q.y + .4, B.bp.z, 22, 3, 1, .15, .1, .6, 1, 1); tels(); }
+    if (B.t > 1.6 / fury) { B.st = 'chase'; B.blinkCd = (10 + Math.random() * 4) / (B.enr ? 1.3 : 1); B.cd = .8; R.root.visible = true; } }
+  else if (B.st === 'cast') { face(); if (B.t > .9) B.st = 'chase'; }
+  else if (B.st === 'nova') { if (B.t > 1.25 / fury && !B.hit2) { B.hit2 = true; sfx.thud(); sfx.boom(.6); ex.shake = .8; burst(q.x, q.y + 1, q.z, 100, 10, .7, .05, .1, 1, 1.4, 2.4); if (Math.hypot(p.x - q.x, p.z - q.z) < 7.5) hurt(1.7); compsHitAt(q.x, q.z, 7.5, D0 * 1.2); tels(); }
+    if (B.t > 1.9 / fury) { B.st = 'chase'; B.hit2 = false; B.novaCd = (10 + Math.random() * 4) / (B.enr ? 1.3 : 1); } }
+  else if (B.st === 'ult') { // Twin Primes: he rises over the middle of the room, out of reach, and the floor goes off under you, the middle, then the edge
+    R.mode = 'idle'; face(2); q.y = wHeight(q.x, q.z) + Math.min(3, B.t * 4);
+    while (B.pi < B.pulses.length && B.t >= .5 + B.pi * B.gap) { const i = B.pi++, col = B.stage === 3 && i % 2 ? 0xffc85a : 0xff2010; if (B.pulses[i] === 'in') hzZone(B, BST.x, BST.z, 0, 7.5, B.gap, col, 1.6); else hzZone(B, BST.x, BST.z, 6.5, BST_HW + 1, B.gap, col, 1.6); sfx.whoosh(); }
+    if (Math.random() < .5) burst(q.x, q.y + 1.2, q.z, 3, 3, Math.random() < .5 ? 1 : .9, B.stage === 3 && Math.random() < .5 ? .8 : .08, .05, .6, -.3, 1);
+    if (B.t > B.ultEnd) { B.st = 'exposed'; B.t = 0; c.invuln = false; c.dmgMul = 20; q.y = wHeight(q.x, q.z); sfx.thud(); sfx.chime(); ex.shake = .5; burst(q.x, q.y + 1.6, q.z, 70, 6, 1, .85, .45, 1, .3, 1);
+      notice('The crown cracks', tiPhone() ? '×20 DAMAGE · STRIKE NOW' : '×20 DAMAGE FOR EIGHT SECONDS · STRIKE NOW', 2800); if (!B.exSaid || Math.random() < .35) { B.exSaid = true; hakzSay('exposed'); } } }
+  else if (B.st === 'exposed') { // down on one knee, the light and the dark fighting inside him
+    R.mode = 'idle'; if (Math.random() < .6) burst(q.x + rand(-.5, .5), q.y + rand(.5, 2), q.z + rand(-.5, .5), 2, 2, 1, .82, .4, .6, -.4, 1);
+    if (B.t > 8) { B.st = 'chase'; c.dmgMul = 1; B.ultCd = (B.stage === 1 ? 38 : B.stage === 2 ? 34 : 28) / (B.enr ? 1.25 : 1); B.cd = .5; sfx.whoosh(); } }
+  animRig(R, dt);
 }
 // ---- the leaders who fight beside you to the end: Hak, Archamus, Vishara and Darius, as at the siege of Janira Prime.
 //      They join your party when you warp into Sagittarius A* and go home once it's over. ----
@@ -28121,6 +28495,10 @@ function bstTick(dt) {
   try { bstBossTick(dt); } catch (e) { console.error(e); }
   if (!bstLive()) return;
   const p = player.position, war = bstWar();
+  if ((wanderer.ch4 || {}).bstStart === 'throne' && state === 'explore' && !ex.dlg && !BST.in && !(BST.hakTestT > time)) { // a save that starts at the throne room's doors (saves/…-at-hak.json): straight up, every floor cleared
+    BST.hakTestT = time + 6; bstSave({ bstStart: null, bstReached: true, bstFloor: Math.max(bstCleared(), BST_FLOORS) }); const fd = $('#fade'); fd.style.transition = 'opacity .35s'; fd.style.opacity = 1;
+    setTimeout(() => { BST.in = true; BST.floor = BST_FLOORS - 1; BST.spawnedFloor = BST.floor; bstClearFoes(); BST.spawnedFloor = BST.floor; const t = bstThrone(); player.position.set(t.x, BST.y0 + BST.floor * BST_H + .2, t.z + 6); player.rotation.y = Math.PI; vel.set(0, 0, 0); ex.snap = true; try { placeCrew().catch(() => null); } catch (e) {}
+      fd.style.transition = 'opacity .8s'; fd.style.opacity = 0; notice(tiPhone() ? 'The throne room' : 'The Carax Bastion · outside the throne room', tiPhone() ? 'EVERY FLOOR CLEARED' : 'EVERY FLOOR CLEARED · HAK WAITS BEYOND THE DOORS', 3600); setTimeout(() => lootMsg(tiPhone() ? 'Use the doors ahead' : 'Use the throne room doors ahead · storm the throne room', '#ffd27a'), 2400); }, 400); }
   if (TEST_RUN === 'hakduel' && state === 'explore' && !ex.dlg && !BST.in && !(BST.bosses && BST.bosses.length) && (wanderer.ch4 || {}).hakDuel && !(wanderer.ch4 || {}).ending && !(BST.hakTestT > time)) { // ?hakchompjakbossfightevilgoodending: straight up to the throne room, to Hak
     BST.hakTestT = time + 6; const fd = $('#fade'); fd.style.transition = 'opacity .35s'; fd.style.opacity = 1;
     setTimeout(() => { BST.in = true; BST.floor = BST_FLOORS - 1; BST.spawnedFloor = BST.floor; bstClearFoes(); BST.spawnedFloor = BST.floor; const t = bstThrone(); player.position.set(t.x, BST.y0 + BST.floor * BST_H + .2, t.z + 11); player.rotation.y = Math.PI; vel.set(0, 0, 0); ex.snap = true; try { placeCrew().catch(() => null); } catch (e) {}
@@ -37810,6 +38188,7 @@ function loopFrame() {
   if (state === 'orionCut') { try { ocutTick(dt); } catch (e) { console.error(e); ocutEnd(); } sfx.music(0); return; }
   if (state === 'jamesRev') { try { jrvTick(dt); } catch (e) { console.error(e); jrvEnd(); } sfx.music(0); return; }
   if (state === 'c4End') { try { c4eTick(dt); } catch (e) { console.error(e); c4eSkip(); } sfx.music(0); return; }
+  if (state === 'hakAsc') { try { hasTick(dt); } catch (e) { console.error(e); hasEnd(); } updateParticles(dt); try { updateWorldScene(dt); } catch (e) {} sfx.music(0); try { gfxWorldEnv(dt); } catch (e) {} gfxRender(wScene, camera, dt); return; } // Hak calls on Zark and Archamus
   if (state === 'space') { spaceTick(dt); try { resSpaceTick(dt); } catch (e) { console.error(e); } try { nmDueTick(dt); } catch (e) { console.error(e); } sfx.music(0); try { gfxSpaceTick(dt); } catch (e) { console.error(e); } gfxRender(SPC.atmo ? ATM.scene : SPC.scene, camera, dt); return; } // through the graphics on HIGH and ULTRA
   if (state === 'xpaused' && SPC.paused) { sfx.music(0); try { gfxSpaceTick(dt); } catch (e) {} gfxRender(SPC.atmo ? ATM.scene : SPC.scene, camera, dt); return; }
   if (state === 'shipLand' || state === 'shipUp') { (state === 'shipLand' ? shipLandTick : shipUpTick)(dt); updateParticles(dt); updateWorldScene(dt); sfx.music(0); try { gfxWorldEnv(dt); } catch (e) {} gfxRender(wScene, camera, dt); return; }
