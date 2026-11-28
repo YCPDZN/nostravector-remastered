@@ -996,6 +996,10 @@ button.bm-c.no{opacity:.45}
 .gal-mode{position:absolute;left:50%;bottom:calc(var(--sb) + 14px);transform:translateX(-50%);display:flex;border:1px solid var(--line);background:rgba(7,10,17,.7);z-index:3}
 .gal-mode button{height:34px;padding:0 16px;background:none;border:0;color:var(--mute);font:500 9px/1 var(--display);letter-spacing:.26em;cursor:pointer}
 .gal-mode button.on{background:rgba(207,238,255,.14);color:#cfeeff}
+.gal-mycol{display:none;align-items:center;gap:6px;padding:0 12px;border-left:1px solid var(--line);font:500 9px/1 var(--display);letter-spacing:.26em;color:var(--mute);cursor:pointer}
+.gal.empire .gal-mycol{display:flex}
+.gal-mycol input,.dip-colpick input{width:22px;height:22px;padding:0;border:1px solid var(--line);background:none;cursor:pointer}
+.dip-colpick{display:inline-flex;align-items:center;gap:6px;margin-left:8px;font:500 9px/1 var(--display);letter-spacing:.2em;color:var(--mute);cursor:pointer;text-transform:uppercase}
 .gal-legend{position:absolute;right:calc(var(--sr) + 16px);bottom:calc(var(--sb) + 14px);max-width:240px;padding:10px 12px;background:rgba(7,10,17,.72);border:1px solid var(--line);pointer-events:none;z-index:2}
 .gal-legend b{display:block;font:500 8px/1 var(--display);letter-spacing:.3em;color:var(--mute);margin-bottom:8px}
 .gal-legend div{display:flex;align-items:center;gap:8px;font:400 9px/1.5 var(--text);letter-spacing:.06em;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1558,7 +1562,7 @@ body.cc-ingame #cc{background:none} body.cc-ingame > *:not(#cc):not(#c):not(scri
   <div class="panel dip-panel">
     <div class="eyebrow" id="dipChap">Diplomacy</div>
     <h2 class="h1">DIPLOMACY</h2>
-    <div class="dip-row" style="justify-content:center"><span class="dip-lbl">Your realm</span><input class="dip-in" id="dipRealm" maxlength="40"><button class="btn small" id="dipRealmSet"><span>Rename</span></button></div>
+    <div class="dip-row" style="justify-content:center"><span class="dip-lbl">Your realm</span><input class="dip-in" id="dipRealm" maxlength="40"><button class="btn small" id="dipRealmSet"><span>Rename</span></button><label class="dip-colpick" title="Your realm’s colour on the empire map"><input type="color" id="dipRealmCol"><span>Colour</span></label></div>
     <div class="tabs dip-tabs" id="dipTabs"><button class="tab on" data-t="factions">Factions</button><button class="tab" data-t="wars">Wars</button><button class="tab" data-t="colonies">Colonies</button><button class="tab" data-t="crew">Crew</button></div>
     <div class="dip-body" id="dipBody"></div>
     <div class="row"><button class="btn primary" id="dipClose"><span>Back</span></button></div>
@@ -8216,6 +8220,8 @@ $('#dipClose').addEventListener('click', () => dipOpen(false));
 $('#dipTabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (!b) return; DIPV.tab = b.dataset.t; DIPV.confirm = null; sfx.click(); dipRender(); });
 $('#dipBody').addEventListener('click', dipClick); $('#dipBody').addEventListener('change', dipChange);
 $('#dipRealmSet').addEventListener('click', () => { dip().realm = $('#dipRealm').value.trim(); dipSave(); sfx.chime(); dipRender(); });
+function realmColSet(c) { if (!/^#[0-9a-f]{6}$/i.test(c || '')) return; dip().realm = dip().realm || ''; wanderer.dip.realmCol = c; dipSave(); if (typeof GAL !== 'undefined') { GAL.terr = null; GAL.legT = 0; } for (const id of ['#dipRealmCol', '#galMyCol']) { const el = $(id); if (el && el.value !== c) el.value = c; } }
+$('#dipRealmCol').addEventListener('change', e => { sfx.chime(); realmColSet(e.target.value); });
 // talking to the party: share your food (good) or throw your weight around (evil)
 const alCd = {};
 function partyDeed(kind) {
@@ -23279,7 +23285,7 @@ function galEl() {
   el = document.createElement('div'); el.id = 'galMap'; el.className = 'gal hidden';
   el.innerHTML = `<canvas id="galCv"></canvas><div class="gal-top"><b>MILKY WAY GALAXY</b><small id="galSub"></small></div>
     <button class="gal-close" id="galX">✕</button><button class="gal-dip" id="galDip">DIPLOMACY</button><button class="gal-res" id="galRes">RESIDENTS</button><button class="gal-emp" id="galEmp">EMPIRES</button><button class="gal-sw" id="galSwitch">XONEXI GALAXY ›</button><div class="gal-zoom"><button data-z="1.3">+</button><button data-z="0.77">−</button></div>
-    <div class="gal-mode" id="galMode"><button data-m="galaxy">GALAXY</button><button data-m="empire">EMPIRES</button></div><div class="gal-legend hidden" id="galLegend"></div>
+    <div class="gal-mode" id="galMode"><button data-m="galaxy">GALAXY</button><button data-m="empire">EMPIRES</button><label class="gal-mycol" title="Your realm’s colour"><input type="color" id="galMyCol"><span>YOU</span></label></div><div class="gal-legend hidden" id="galLegend"></div>
     <div class="gal-panel hidden" id="galPanel"></div><div class="gal-hint">${SYSTEMS.length} systems · zoom in to name them all · drag to pan · tap a system · M or ESC to close</div>`;
   document.body.appendChild(el);
   el.querySelector('#galX').addEventListener('click', () => { sfx.click(); galClose(); });
@@ -23289,6 +23295,7 @@ function galEl() {
   el.querySelector('#galSwitch').addEventListener('click', e => { sfx.click(); const ks = galKnown(), v = GAL.view || 'milky'; galView(e.currentTarget.dataset.to || ks[(ks.indexOf(v) + 1) % ks.length] || 'milky'); });
   for (const b of el.querySelectorAll('.gal-zoom button')) b.addEventListener('click', () => { GAL.zoom = clamp(GAL.zoom * +b.dataset.z, .7, 11); sfx.blip(); });
   for (const b of el.querySelectorAll('#galMode button')) b.addEventListener('click', () => { sfx.click(); galSetMode(b.dataset.m); });
+  el.querySelector('#galMyCol').addEventListener('change', e => { sfx.chime(); realmColSet(e.target.value); });
   galSetMode(GAL.mode, true);
   const cv = el.querySelector('#galCv');
   cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); GAL.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); GAL.moved = 0; GAL.pinch = 0; GAL.panTo = null; });
@@ -23304,7 +23311,7 @@ function galEl() {
   el.querySelector('#galPanel').addEventListener('click', e => { const b = e.target.closest('[data-warp]'); if (b && !b.disabled) galWarp(b.dataset.warp); });
   return el;
 }
-const FAC_COL = { 'The Republic of Timpur': '#58d8c0', 'Terra Imperia': '#d0343a', 'The Erisian Empire': '#eda8d4', 'The Chompy Empire': '#ffb060', 'The Grek': '#7fe0a0', 'The Grek Empire': '#7fe0a0', 'The Catharsis': '#a070ff', 'The Order of Archamus': '#ffd88a', 'Human Federation of Sol': '#7fb6ff' };
+const FAC_COL = { 'The Imperium of Orion Mascar': '#ff8a2a', 'Former Catharsis space': '#7a4a52', 'Obra-Spira': '#6fffb8', 'Oilkoumene exiles': '#b8a8ff', 'The Xonexi–Milky Way Gateway': '#8fe3ff', 'Xonexi Station': '#8fe3ff', 'The Republic of Timpur': '#2ee6ff', 'Terra Imperia': '#1fc4a0', 'The Erisian Empire': '#ff6fc4', 'The Chompy Empire': '#9a5cff', 'The Grek': '#3fd45e', 'The Grek Empire': '#3fd45e', 'The Catharsis': '#e3242f', 'The Order of Archamus': '#ffd36a', 'Human Federation of Sol': '#3f86ff' }; // Chompy purple, Timpur cyan, Terra Imperia turquoise, the Catharsis red, the Grek green, the Federation blue, Eris pink, the Order gold (your realm: your own colour)
 const galScale = () => Math.min(innerWidth, innerHeight) * .46 * GAL.zoom;
 function galQ(S) { const c = Math.cos(GAL.rot), s = Math.sin(GAL.rot), x = S.map.x * c - S.map.y * s, y = (S.map.x * s + S.map.y * c) * GAL.tilt; return { x, y }; }
 const galPanelUp = () => { const pn = typeof document !== 'undefined' && document.getElementById('galPanel'); return !!(pn && !pn.classList.contains('hidden')); };
@@ -23432,29 +23439,50 @@ function galSetMode(m, quiet) { // the galaxy as it looks, or the empire map: ev
   GAL.mode = m === 'empire' ? 'empire' : 'galaxy'; try { store.set('nv_galMode', GAL.mode); } catch (e) {}
   const el = $('#galMap'); if (!el) return;
   for (const b of el.querySelectorAll('#galMode button')) b.classList.toggle('on', b.dataset.m === GAL.mode);
-  el.classList.toggle('empire', GAL.mode === 'empire'); GAL.legT = 0;
+  el.classList.toggle('empire', GAL.mode === 'empire'); GAL.legT = 0; { const c = el.querySelector('#galMyCol'); if (c) c.value = realmCol(); }
   if (!quiet) { const h = el.querySelector('.gal-hint'); if (h && GAL.mode === 'empire') lootMsg(tiPhone() ? 'The empire map' : 'The empire map · every realm and its borders · E to switch back', '#cfeeff'); }
 }
-const galRealmOf = S => { const name = (S.faction || '').split(' · ')[0], col = S.facCol || FAC_COL[name]; return col && !/^(Unclaimed|Uninhabited)/.test(name) ? { name, col } : null; }; // who holds a system, and their colour
-function galEmpires(g, W, H, dpr, k, font) { // the empire map: each realm's territory washed in its colour, an outline round its border, its name over it
-  const groups = new Map();
-  for (const S of galSys()) { const R = galRealmOf(S); if (!R) continue; const key = R.name + '|' + R.col; const G = groups.get(key) || groups.set(key, { name: R.name, col: R.col, sys: [] }).get(key); G.sys.push(S); }
-  const L = GAL.lay || (GAL.lay = document.createElement('canvas')); if (L.width !== g.canvas.width || L.height !== g.canvas.height) { L.width = g.canvas.width; L.height = g.canvas.height; }
-  const lg = L.getContext('2d'), rOf = S => Math.max(5, (S.gen ? .024 : .036) * k);
-  const circles = (G, shrink) => { lg.beginPath(); for (const S of G.sys) { const p = galXY(S), r = rOf(S) - shrink; if (p.x < -r || p.x > W + r || p.y < -r || p.y > H + r || r <= 0) continue; lg.moveTo(p.x + r, p.y); lg.ellipse(p.x, p.y, r, r * (.55 + GAL.tilt * .45), 0, 0, 7); } lg.fill(); };
-  for (const G of groups.values()) {
-    lg.setTransform(1, 0, 0, 1, 0, 0); lg.clearRect(0, 0, L.width, L.height); lg.setTransform(dpr, 0, 0, dpr, 0, 0);
-    lg.globalCompositeOperation = 'source-over'; lg.fillStyle = G.col; circles(G, 0); // the territory
-    g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = .26; g.drawImage(L, 0, 0); g.restore();
-    lg.globalCompositeOperation = 'destination-out'; circles(G, 1.6); lg.globalCompositeOperation = 'source-over'; // what's left is its border
-    g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = .9; g.drawImage(L, 0, 0); g.restore();
-    G.n = G.sys.length; let cx = 0, cy = 0, m = 0; for (const S of G.sys) { const p = galXY(S); cx += p.x; cy += p.y; m++; } G.cx = cx / m; G.cy = cy / m;
-  }
+const galHashCol = name => { let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) | 0; const H = ((h >>> 0) % 360) / 360, S2 = .62, L = .62, f = n => { const k = (n + H * 12) % 12, a = S2 * Math.min(L, 1 - L); return Math.round((L - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255).toString(16).padStart(2, '0'); }; return '#' + f(0) + f(8) + f(4); }; // a colour of its own for any realm the map doesn't know
+const galRealmOf = S => { const name = (S.faction || '').split(' · ')[0].trim(); if (!name || /^(Unclaimed|Uninhabited|Gas giant|Ice giant|No faction)/i.test(name)) return null; return { name, col: S.facCol || FAC_COL[name] || galHashCol(name) }; }; // who holds a system, and their colour (Orion's imperium, resident empires, the Catharsis, your realm: whoever flies the flag)
+function galTerritory() { // the land each realm holds, as in a strategy game: every patch of space belongs to the nearest system within reach,
+  // and takes its owner's colour (unclaimed systems hold their space too, so no realm bleeds across them). Worked out in the map's own
+  // coordinates on a texture, once, and again only when a system changes hands; drawn under the same tilt and turn as the galaxy.
+  const v = GAL.view || 'milky', sys = galSys(), R = sys.map(galRealmOf), sig = v + ':' + R.map(r => r ? r.name + r.col : '-').join(',');
+  if (GAL.terr && GAL.terr.sig === sig) return GAL.terr;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const S of sys) { x0 = Math.min(x0, S.map.x); y0 = Math.min(y0, S.map.y); x1 = Math.max(x1, S.map.x); y1 = Math.max(y1, S.map.y); }
+  const pad = .12, size = Math.max(x1 - x0, y1 - y0) + pad * 2; x0 = (x0 + x1) / 2 - size / 2; y0 = (y0 + y1) / 2 - size / 2;
+  const N = tiPhone() ? 384 : 560, cell = size / N, reachOf = S => S.gen ? .052 : .085;
+  const own = new Int16Array(N * N).fill(-2), dist = new Float32Array(N * N).fill(1), keys = [], keyOf = new Map(); // -2 empty space, -1 unclaimed, else the realm's index
+  R.forEach(r => { if (r && !keyOf.has(r.name + r.col)) { keyOf.set(r.name + r.col, keys.length); keys.push(r); } });
+  sys.forEach((S, i) => { // each system claims the space around it, out to its reach, wherever it's the nearest
+    const r = R[i], o = r ? keyOf.get(r.name + r.col) : -1, re = reachOf(S), cx = (S.map.x - x0) / cell - .5, cy = (S.map.y - y0) / cell - .5, rp = re / cell;
+    const xa = Math.max(0, Math.floor(cx - rp)), xb = Math.min(N - 1, Math.ceil(cx + rp)), ya = Math.max(0, Math.floor(cy - rp)), yb = Math.min(N - 1, Math.ceil(cy + rp));
+    for (let yy = ya; yy <= yb; yy++) { const dy = (yy - cy) / rp, row = yy * N; for (let xx = xa; xx <= xb; xx++) { const dx = (xx - cx) / rp, d = dx * dx + dy * dy; if (d < 1 && d < dist[row + xx]) { dist[row + xx] = d; own[row + xx] = o; } } }
+  });
+  const cv = (GAL.terr && GAL.terr.cv) || document.createElement('canvas'); cv.width = cv.height = N; const c = cv.getContext('2d'), img = c.createImageData(N, N), d = img.data;
+  const rgb = keys.map(r => { const h = r.col.replace('#', ''), f = h.length === 3 ? h.split('').map(x => x + x).join('') : h.slice(0, 6); return [parseInt(f.slice(0, 2), 16), parseInt(f.slice(2, 4), 16), parseInt(f.slice(4, 6), 16)]; });
+  for (let yy = 0; yy < N; yy++) for (let xx = 0; xx < N; xx++) { const i = yy * N + xx, o = own[i]; if (o < 0) continue; const C = rgb[o], q = i * 4;
+    const edge = xx === 0 || yy === 0 || xx === N - 1 || yy === N - 1 || own[i - 1] !== o || own[i + 1] !== o || own[i - N] !== o || own[i + N] !== o; // its border, against anyone else (or open space)
+    d[q] = edge ? Math.min(255, C[0] + 40) : C[0]; d[q + 1] = edge ? Math.min(255, C[1] + 40) : C[1]; d[q + 2] = edge ? Math.min(255, C[2] + 40) : C[2]; d[q + 3] = edge ? 235 : 92; }
+  c.putImageData(img, 0, 0);
+  // where each realm's land is centred, and how much it holds
+  const sum = keys.map(() => ({ x: 0, y: 0, n: 0, sys: 0 })); for (let i = 0; i < own.length; i++) { const o = own[i]; if (o < 0) continue; const A = sum[o]; A.x += i % N; A.y += Math.floor(i / N); A.n++; }
+  R.forEach(r => { if (r) sum[keyOf.get(r.name + r.col)].sys++; });
+  const realms = keys.map((r, i) => { const A = sum[i]; if (!A.n) return { name: r.name, col: r.col, n: A.sys, land: 0, map: null };
+    const m = { x: x0 + (A.x / A.n + .5) * cell, y: y0 + (A.y / A.n + .5) * cell }; let best = null, bd = 1e9; sys.forEach((S, j) => { if (R[j] && keyOf.get(R[j].name + R[j].col) === i) { const d = Math.hypot(S.map.x - m.x, S.map.y - m.y); if (d < bd) { bd = d; best = S; } } }); // named over its own space (a crescent's middle can be empty)
+    return { name: r.name, col: r.col, n: A.sys, land: A.n * cell * cell, map: best ? { x: (m.x + best.map.x * 2) / 3, y: (m.y + best.map.y * 2) / 3 } : m }; });
+  return (GAL.terr = { sig, cv, x0, y0, size, realms, tot: sys.length });
+}
+function galEmpires(g, W, H, dpr, k, font) { // the empire map: each realm's land in its colour, its borders, its name across it
+  const T = galTerritory();
+  g.save(); g.translate(galCX() - GAL.pan.x * k, galCY() - GAL.pan.y * k); g.scale(1, GAL.tilt); g.rotate(GAL.rot); g.imageSmoothingEnabled = true;
+  g.drawImage(T.cv, T.x0 * k, T.y0 * k, T.size * k, T.size * k); g.restore();
+  const list = T.realms.filter(G => G.map).sort((a, b) => b.land - a.land); for (const G of list) { const p = galXY({ map: G.map }); G.cx = p.x; G.cy = p.y; }
   // the realms' names, biggest first, over the middle of their space
-  const list = [...groups.values()].sort((a, b) => b.n - a.n), placed = [];
+  const placed = [];
   for (const G of list) {
-    if (G.n < 2 && GAL.zoom < 3) continue; if (G.cx < 0 || G.cx > W || G.cy < 0 || G.cy > H) continue;
-    const fs = clamp(7 + Math.sqrt(G.n) * 1.3 + (GAL.zoom - 1.6) * .6, 8, 15), txt = G.name.toUpperCase();
+    if (G.cx < -40 || G.cx > W + 40 || G.cy < -20 || G.cy > H + 20) continue;
+    const fs = clamp(6.5 + Math.sqrt(G.n) * 1.3 + (GAL.zoom - 1.6) * .8, 7, 17), txt = G.name.toUpperCase();
     g.font = `600 ${fs.toFixed(1)}px ${font}`; try { g.letterSpacing = `${(fs * .28).toFixed(1)}px`; } catch (e) {}
     const w = g.measureText(txt).width, box = { x: G.cx - w / 2 - 4, y: G.cy - fs, w: w + 8, h: fs * 1.6 };
     if (placed.some(o => box.x < o.x + o.w && box.x + box.w > o.x && box.y < o.y + o.h && box.y + box.h > o.y)) continue; placed.push(box);
@@ -23463,8 +23491,8 @@ function galEmpires(g, W, H, dpr, k, font) { // the empire map: each realm's ter
   }
   // the key: who holds how much of this galaxy (refreshed twice a second)
   if ((GAL.legT = (GAL.legT || 0) - 1) <= 0) { GAL.legT = 30; const el = $('#galLegend'); if (el) {
-    const tot = galSys().length, held = list.reduce((t, G) => t + G.n, 0), rows = list.slice(0, tiPhone() ? 6 : 10);
-    el.innerHTML = `<b>EMPIRES · ${held} OF ${tot} SYSTEMS HELD</b>` + rows.map(G => `<div><i style="background:${G.col}"></i>${G.name.replace(/[<>&]/g, '')}<small>${G.n}</small></div>`).join('') + (list.length > rows.length ? `<div><small style="margin:0;padding:0">+ ${list.length - rows.length} more</small></div>` : '');
+    const tot = T.tot, held = list.reduce((t, G) => t + G.n, 0), rows = list.slice(0, tiPhone() ? 6 : 10), land = list.reduce((t, G) => t + G.land, 0) || 1;
+    el.innerHTML = `<b>EMPIRES · LAND · SYSTEMS · ${held} OF ${tot} HELD</b>` + rows.map(G => `<div><i style="background:${G.col}"></i>${G.name.replace(/[<>&]/g, '')}<small>${Math.round(G.land / land * 100)}% · ${G.n}</small></div>`).join('') + (list.length > rows.length ? `<div><small style="margin:0;padding:0">+ ${list.length - rows.length} more</small></div>` : '');
     el.classList.remove('hidden'); } }
 }
 function galDraw(dt) {
@@ -23516,7 +23544,7 @@ function galDraw(dt) {
     g.textAlign = 'left'; g.font = `500 ${S.gen ? 9 : 10}px ${font}`; g.fillStyle = S === sel ? '#efe8ff' : '#cfeeff'; g.fillText(S.name.toUpperCase(), p.x + 14, p.y - 2);
     if (GAL.zoom >= 1.4 || S === cur || S === sel) { g.font = `400 7.5px ${font}`; g.fillStyle = 'rgba(200,210,230,.6)'; g.fillText((S === cur ? 'YOU ARE HERE · ' : '') + S.faction.split(' · ')[0].toUpperCase(), p.x + 14, p.y + 9); }
   }
-  try { resGalEmpires(g, font); resGalDraw(g, font); orbGalDraw(g, font); fxGalDraw(g, font); } catch (e) { console.error(e); } // resident empires, and the residents themselves
+  try { if (!emp) resGalEmpires(g, font); resGalDraw(g, font); orbGalDraw(g, font); fxGalDraw(g, font); } catch (e) { console.error(e); } // (on the empire map their land and names are already drawn) // resident empires, and the residents themselves
 }
 /* ---- warping: the drive spools up, the stars stretch into a tunnel, white-out, and you drop out beside a new world ---- */
 function warpTunnel() {
@@ -24856,16 +24884,16 @@ function scHud() {
    A war is won at 100 war score: +6 for each of their ships shot down in their space, +15 for each of their worlds you
    occupy (land there and hold the ground round your ship for 30 s), +25 for their capital. */
 const DIP_FAC = [
-  { id: 'chompy', name: 'The Chompy Empire', species: 'Chompy', fleet: 'CHOMPY NAVY', style: 'chompy', col: '#ffb060', ch: [3, 4, 5], capital: 'aridaxx', lead: () => 'Emperor Hak Chompjak V', match: f => /^The Chompy Empire/.test(f) },
-  { id: 'order', name: 'The Order of Archamus', species: 'Grek', fleet: 'ORDER OF ARCHAMUS', style: 'order', col: '#ffd88a', ch: [3], capital: 'archiostal', lead: () => 'Archamus', match: f => /^The Order of Archamus/.test(f) },
-  { id: 'grek', name: 'The Grek Empire', species: 'Grek', fleet: 'GREK FLEET', style: 'grek', col: '#7fe0a0', ch: [3, 4, 5], capital: 'carax', lead: ch => ch >= 4 ? 'Archamus and Am-Grek, co-leaders' : 'Am-Grek, High Hierarch', match: f => /^The Grek/.test(f) },
-  { id: 'catharsis', name: 'The Catharsis', species: 'Catharsis', fleet: 'CATHARSIS', style: 'cath', col: '#a070ff', ch: [3, 4], capital: 'carax', lead: () => 'Lord Zark', locked: ch => ch === 4 ? 'Lord Zark is a story boss in Chapter IV. The Catharsis can’t be defeated yet.' : null, match: f => /^The Catharsis/.test(f) }, // destroyed at the siege of Carax: gone in Chapter V
-  { id: 'erisian', name: 'The Erisian Empire', species: 'Erisian', fleet: 'ERISIAN GUARD', style: 'erisian', col: '#eda8d4', ch: [3, 4, 5], capital: 'eris', lead: ch => ch === 3 && alexiaRules() ? 'Alexia Erisconos (usurper)' : 'Vishara Erisconos, Matriarch', match: f => /^The Erisian Empire/.test(f) },
-  { id: 'hfos', name: 'Human Federation of Sol', species: 'Human', fleet: 'FEDERATION NAVY', style: 'hfos', col: '#7fb6ff', ch: [3, 4, 5], show: () => !(ch3Now() && c3f('restoreWar') && !c3f('hawBeaten')), /* behind the Human Resistance until Hawthorne falls */ get capital() { return c3f('hawBeaten') ? 'earth' : surgeOn() ? (c3f('solFell') ? null : 'mars') : 'earth'; }, /* Mars, once Terra Imperia takes Earth; Earth again, restored */ lead: () => 'President Darius Ancin', match: f => /^Human Federation of Sol/.test(f) },
+  { id: 'chompy', name: 'The Chompy Empire', species: 'Chompy', fleet: 'CHOMPY NAVY', style: 'chompy', col: '#9a5cff', ch: [3, 4, 5], capital: 'aridaxx', lead: () => 'Emperor Hak Chompjak V', match: f => /^The Chompy Empire/.test(f) },
+  { id: 'order', name: 'The Order of Archamus', species: 'Grek', fleet: 'ORDER OF ARCHAMUS', style: 'order', col: '#ffd36a', ch: [3], capital: 'archiostal', lead: () => 'Archamus', match: f => /^The Order of Archamus/.test(f) },
+  { id: 'grek', name: 'The Grek Empire', species: 'Grek', fleet: 'GREK FLEET', style: 'grek', col: '#3fd45e', ch: [3, 4, 5], capital: 'carax', lead: ch => ch >= 4 ? 'Archamus and Am-Grek, co-leaders' : 'Am-Grek, High Hierarch', match: f => /^The Grek/.test(f) },
+  { id: 'catharsis', name: 'The Catharsis', species: 'Catharsis', fleet: 'CATHARSIS', style: 'cath', col: '#e3242f', ch: [3, 4], capital: 'carax', lead: () => 'Lord Zark', locked: ch => ch === 4 ? 'Lord Zark is a story boss in Chapter IV. The Catharsis can’t be defeated yet.' : null, match: f => /^The Catharsis/.test(f) }, // destroyed at the siege of Carax: gone in Chapter V
+  { id: 'erisian', name: 'The Erisian Empire', species: 'Erisian', fleet: 'ERISIAN GUARD', style: 'erisian', col: '#ff6fc4', ch: [3, 4, 5], capital: 'eris', lead: ch => ch === 3 && alexiaRules() ? 'Alexia Erisconos (usurper)' : 'Vishara Erisconos, Matriarch', match: f => /^The Erisian Empire/.test(f) },
+  { id: 'hfos', name: 'Human Federation of Sol', species: 'Human', fleet: 'FEDERATION NAVY', style: 'hfos', col: '#3f86ff', ch: [3, 4, 5], show: () => !(ch3Now() && c3f('restoreWar') && !c3f('hawBeaten')), /* behind the Human Resistance until Hawthorne falls */ get capital() { return c3f('hawBeaten') ? 'earth' : surgeOn() ? (c3f('solFell') ? null : 'mars') : 'earth'; }, /* Mars, once Terra Imperia takes Earth; Earth again, restored */ lead: () => 'President Darius Ancin', match: f => /^Human Federation of Sol/.test(f) },
   { id: 'humres', name: 'The Human Resistance', species: 'Human', fleet: 'HUMAN RESISTANCE', style: 'hfos', col: '#9fd0ff', ch: [3], show: () => c3f('restoreWar') && !c3f('hawBeaten'), capital: null, lead: () => 'Darius Ancin, President in exile', locked: () => 'The Human Resistance fights beside you in the War of Restoration.', match: f => /^The Human Resistance/.test(f) }, // the War of Restoration: what's left of the Federation
   { id: 'erisres', name: 'The Erisian Resistance', species: 'Erisian', fleet: 'ERISIAN RESISTANCE', style: 'erisian', col: '#c99ae0', ch: [3], show: () => c3f('restoreWar') && !c3f('alexiaBeaten'), capital: null, lead: () => 'Vishara Erisconos, Matriarch in exile', locked: () => 'The Erisian Resistance fights beside you in the War of Restoration.', match: f => /^The Erisian Resistance/.test(f) }, // the Erisians who never knelt to Alexia
-  { id: 'ti', name: 'Terra Imperia', species: 'Human', fleet: 'TERRA IMPERIA', style: 'ti', col: '#d0343a', ch: [3], show: () => !c3f('hawBeaten'), /* broken once Hawthorne falls */ get capital() { return surgeOn() ? 'earth' : 'venus'; }, /* Earth, once the surge takes it */ lead: () => 'Thomas Hawthorne, Grand Imperarch', match: f => /^Terra Imperia/.test(f) },
-  { id: 'timpur', name: 'The Republic of Timpur', species: 'Timpur', fleet: 'TIMPUR REPUBLIC GUARD', style: 'chompy', col: '#58d8c0', ch: [3, 4, 5], get capital() { const P = ALL_BODIES.find(o => o.name === 'Timpur Prime'); return P ? P.id : null; }, lead: () => { try { const o = fxOverOf('timpur'); return o === 'chompy' ? 'Timpur IV, First Consul, answering to Aridaxx' : o ? `Timpur IV, First Consul, answering to ${fxNm(o)}` : 'Timpur IV, First Consul of a free Republic'; } catch (e) { return 'Timpur IV, First Consul, answering to Aridaxx'; } }, match: f => /^The Republic of Timpur/.test(f) } // a puppet of the Chompy Empire, at the far edge of the galaxy
+  { id: 'ti', name: 'Terra Imperia', species: 'Human', fleet: 'TERRA IMPERIA', style: 'ti', col: '#1fc4a0', ch: [3], show: () => !c3f('hawBeaten'), /* broken once Hawthorne falls */ get capital() { return surgeOn() ? 'earth' : 'venus'; }, /* Earth, once the surge takes it */ lead: () => 'Thomas Hawthorne, Grand Imperarch', match: f => /^Terra Imperia/.test(f) },
+  { id: 'timpur', name: 'The Republic of Timpur', species: 'Timpur', fleet: 'TIMPUR REPUBLIC GUARD', style: 'chompy', col: '#2ee6ff', ch: [3, 4, 5], get capital() { const P = ALL_BODIES.find(o => o.name === 'Timpur Prime'); return P ? P.id : null; }, lead: () => { try { const o = fxOverOf('timpur'); return o === 'chompy' ? 'Timpur IV, First Consul, answering to Aridaxx' : o ? `Timpur IV, First Consul, answering to ${fxNm(o)}` : 'Timpur IV, First Consul of a free Republic'; } catch (e) { return 'Timpur IV, First Consul, answering to Aridaxx'; } }, match: f => /^The Republic of Timpur/.test(f) } // a puppet of the Chompy Empire, at the far edge of the galaxy
 ];
 const CBS = {
   annihilation: { name: 'Annihilation', desc: 'Destroy them completely. Every world they hold becomes one of your colonies.' },
@@ -24915,6 +24943,7 @@ function dip() { const w = wanderer; if (!w.dip) w.dip = { realm: '', wars: {}, 
 function dipSave() { const c = curChar(); if (c) { c.dip = wanderer.dip; c.party = wanderer.party; c.cmds = wanderer.cmds; } saveRoster(); applyChapterFactions(); }
 const dipCh = () => clamp(cathEra(), 3, 5); // Chapter IV's politics only after the time skip
 const realmName = () => dip().realm || 'The Wanderer’s Dominion';
+const realmCol = () => { const c = wanderer && wanderer.dip && wanderer.dip.realmCol; return /^#[0-9a-f]{6}$/i.test(c || '') ? c : '#ffd36a'; }; // your realm's colour on the empire map (Diplomacy, or the map's own picker)
 const dipFacsNow = () => DIP_FAC.filter(F => F.ch.includes(dipCh()) && (!F.show || F.show()) && !fxFell(F.id)); // some come and go with the story (the War of Restoration), and the Grek once Am-Grek surrenders to Zark
 const dipFacOf = f => DIP_FAC.find(F => F.ch.includes(dipCh()) && (!F.show || F.show()) && !fxFell(F.id) && F.match(f || ''));
 function fxFell(id) { try { const X = wanderer && wanderer.dip && wanderer.dip.fx; return !!(X && X.fell && X.fell[id] && dipCh() === 3); } catch (e) { return false; } } // a faction that surrendered all it had (Chapter III only)
@@ -24952,11 +24981,11 @@ function dipOverlay() {
     const H = bodyById(S.home), F = dipFacOf(S.baseFac), r = F && D.res[F.id];
     const HU = H && D.col[H.id] && D.col[H.id].gov && D.col[H.id].gov.startsWith('up:') && upById(D.col[H.id].gov.slice(3));
     if (HU) { S.faction = upPolity(HU); S.facCol = upCol(HU); } // its capital governed by your uplifted species: the system flies their flag
-    else if (H && D.col[H.id]) { S.faction = realm; S.facCol = '#ffd36a'; }
+    else if (H && D.col[H.id]) { S.faction = realm; S.facCol = realmCol(); }
     else if (r && r.st === 'vassal') { S.faction = `${r.name || F.name} · puppet of ${realm}`; S.facCol = F.col; }
     else if (r && r.st === 'restored') { S.faction = r.name; S.facCol = F.col; }
     else if (r && r.st === 'tributary') { S.faction = `${r.name || F.name} · tributary of ${realm}`; S.facCol = F.col; }
-    else if (r && (r.st === 'destroyed' || r.st === 'subjugated')) { S.faction = realm; S.facCol = '#ffd36a'; }
+    else if (r && (r.st === 'destroyed' || r.st === 'subjugated')) { S.faction = realm; S.facCol = realmCol(); }
   }
 }
 const dipWorldsOf = F => ALL_BODIES.filter(P => (P.land || P.kind === 'station') && F.match(P.baseFac || P.faction || '') && !dip().col[P.id]); // stations count as territory (Archiostal)
@@ -26057,7 +26086,7 @@ function dipCompanionsAll() { // everyone who can be lent, appointed or recalled
 }
 function dipRender() {
   const D = dip(), ch = dipCh(), el = $('#dipBody'); if (!el) return;
-  $('#dipRealm').value = D.realm || ''; $('#dipRealm').placeholder = 'The Wanderer’s Dominion';
+  $('#dipRealm').value = D.realm || ''; $('#dipRealm').placeholder = 'The Wanderer’s Dominion'; $('#dipRealmCol').value = realmCol();
   $('#dipChap').textContent = `Chapter ${['', 'I', 'II', 'III', 'IV', 'V'][ch]} · ${realmName()} · ${units()} units`;
   for (const b of document.querySelectorAll('#dipTabs .tab')) b.classList.toggle('on', b.dataset.t === DIPV.tab);
   const warnCh = ch <= 4, comps = dipCompanionsAll();
@@ -37977,7 +38006,7 @@ function resEmpOverlay() {
     const upTop = [...ups.entries()].sort((a, b) => b[1] - a[1])[0]; if (upTop && upTop[1] >= mine && !n.size) { S.faction = upTop[0]; S.facCol = upCol(upRec.get(upTop[0])); continue; } // your uplifted governors' worlds name the system after them
     const top = [...n.entries()].sort((a, b) => b[1] - a[1])[0];
     if (top && top[1] >= mine) { const e = top[0]; S.faction = n.size > 1 ? `${e.name} · contested with ${[...n.keys()].filter(o => o !== e).map(o => o.name).join(', ')}` : e.pup ? e.name : `${e.name} · resident empire`; S.facCol = resHex(resEmpCol(e)); }
-    else if (mine) { S.faction = `${realm} · your colony`; S.facCol = '#ffd36a'; }
+    else if (mine) { S.faction = `${realm} · your colony`; S.facCol = realmCol(); }
   }
 }
 const resEmpHere = S => Object.values(resEmp.emp).filter(e => e.col.some(id => { const P = bodyById(id); return P && P.sys === S.id; }));
