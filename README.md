@@ -111,6 +111,7 @@ Add one of these to the game's address to jump straight to a scene:
 - `?ending=tared` plays the Taredesiban nightmare once the title screen is up.
 - `?ending=neutralvillain` plays the neutral ending as a villain hears it (alignment −34 or lower).
 - `?ending=goodvillain` plays the good ending as a villain lives it (the slaughter in the throne room, then your answer to Hak; his fight plays in the game).
+- `?hakprinceofzark` jumps to the second phase of Hak's fight in that ending: he calls on Zark and Archamus and becomes Hak Chompjak, Prince of Zark (lv 150, 2,250,000 HP, to the Final Boss theme). `?hakchompjakbossfightevilgoodending` plays both phases.
 - `?ending=timeskiporion` and `?ending=timeskipcath` play the two endings to the two years that don't go on (Orion Mascar's offensive took every system, or the Catharsis beat every empire in Chapter III), ending in GAME OVER. The previews erase nothing; for real, the save slot is erased, as in the bad ending.
 - `?ending=timeskipwar` and `?ending=amgrekwar` play them as they go if you had set the whole galaxy at war (every faction fighting at once) in Chapter III.
 - `?ending=timeskiphak` and `?ending=amgrekhak` play them as they go if the Chompy Empire took every Grek world (Archiostal too) in Chapter III; `?leader=hak&hakarch` previews Hak's lines about it.

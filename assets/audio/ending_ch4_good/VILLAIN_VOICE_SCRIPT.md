@@ -41,4 +41,6 @@ Plays when you reach the good ending with a villain alignment (−34 or lower). 
 
 The taunts come one at a time, every 12–17 seconds while you fight, in this order.
 
-Test the fight on its own: `?hakchompjakbossfightevilgoodending`.
+Line 20 no longer plays when he's beaten the first time: he goes down on one knee and becomes Hak Chompjak, Prince of Zark (the second phase; script in `assets/audio/hak_prince_of_zark/VOICE_SCRIPT.md`).
+
+Test the fight on its own: `?hakchompjakbossfightevilgoodending`. Straight to the second phase: `?hakprinceofzark`.
