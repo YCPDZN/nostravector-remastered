@@ -3658,3 +3658,28 @@ Checked on a phone held upright (390×844) and sideways (844×390):
 - **Colour pickers** (YOU on the map, Colour in Diplomacy) are big enough for a thumb. In Diplomacy, the realm row wraps onto two lines instead of running off a narrow screen.
 - **Already fine, and left as they are:** the Galaxy / Empires switch (under the buttons when upright, at the bottom when sideways), the temperature readout under the bars, the Prince of Zark's boss bar with its health in numbers (a shorter name on phones), the cutscene's title card and subtitles, and his fight on the touch controls (DODGE and BLOCK are on the pad).
 
+### Capturing enemy worlds, made simple
+
+- **No more bombardment.** Every world of a faction you're at war with is now open to you: just fly down and land. You don't have to sit in orbit for 25 seconds fighting off their defenders first.
+- **Land, beat the governor, and the world is yours.** The governor waits by your ship with two guards, under a beacon, as before. Beat them and the world is occupied (+15 war score, capital +25), or becomes your colony in Terra Imperia's war.
+- **Governors are about a third as tough:** 1,600 HP plus 60 a level (2,400 plus 60 at a capital), down from 3,800 plus 150 (4,600 plus 150). A level-60 player now faces about 5,300 HP instead of 13,100.
+- **Deputies work the same way:** if a faction's deputy holds a world, land there and they're waiting in place of the governor.
+- The same goes for Mercury and Venus in Terra Imperia's war, and for worlds Terra Imperia seizes in its surge. Diplomacy, the war notices and the deputy messages all say *land and beat the governor* now.
+
+### Losing worlds, but fairly
+
+You can lose worlds again, but never out of the blue, and you can always stop it:
+- **A warning first:** whoever wants one of your worlds announces it (*Terra Imperia is coming for Venus · land on Venus within 4 minutes to defend it*). The objectives show **Defend Venus · land there · 3 min** at the top, with more warnings at 90 and 30 seconds.
+- **Defend it by landing there** within four minutes of play. They call it off, and you get 150 XP.
+- **If you don't make it,** the world falls, and you take it back the usual way: land and beat its governor (or win a war with a resident empire).
+- **Lose your last world and you're landless.** The game tells you so (*The Wanderer's Dominion · YOU ARE NOW LANDLESS*) and how to start again: colonise an unclaimed world for 500 units, or take one in a war.
+- **Limits:**
+  - Never Carax or Obra-Spira.
+  - Only one world under threat at a time.
+  - At most one loss every 15 minutes of play (7½ after you defend one).
+- **Who comes for your worlds:**
+  - Sol's land grab in Chapter III: Terra Imperia, or Alexia's Erisians.
+  - A faction's deputy counterattacking a world you occupied: a 40% chance every four to seven minutes, now announced.
+  - A resident empire that won its war with you: it comes for a world, or takes units if it can't.
+- **Unchanged:** the story's own moment when Hawthorne takes Sol, Orion Mascar's conquests (they recolour the map, but your colonies stay yours), and a Restoration you paid for.
+

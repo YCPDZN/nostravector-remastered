@@ -7208,6 +7208,7 @@ function renderTasks() {
   { const c4 = (wanderer && wanderer.ch4) || {}; if ((wanderer.chapter | 0) >= 5 && c4.ending && c4.ending !== 'bad' && !c4.throneLeft && typeof BST !== 'undefined' && BST.in) h = task(false, c4.goodVillain ? (tiPhone() ? 'Leave the Carax Bastion' : 'Leave the Carax Bastion · the throne-room doors take you out') : tiPhone() ? 'Speak to Archamus' : 'Speak to Archamus to leave the throne room') + h; } // after the ending, on the top of the Bastion
   h += orbTaskHtml(); // Orion Mascar, in red
   if ((wanderer.chapter | 0) >= 3) { const tq = sqTracked(); if (tq) h += `<div class="x-task sq-task"><i></i><span>${tq}</span></div>`; } // the side quest you're tracking
+  { const T = (wanderer.chapter | 0) >= 3 && wanderer.dip && wanderer.dip.threat, P = T && bodyById(T.pid); if (P) h = `<div class="x-task" style="color:#ff8f86"><i></i><span>Defend ${P.name} · land there · ${Math.max(0, Math.ceil((T.at - playSec()) / 60))} min</span></div>` + h; } // a world of yours under threat, at the top
   xUI.tasks.innerHTML = h;
   $('#xChap').textContent = liveChapterLabel().toUpperCase();
 }
@@ -15291,7 +15292,7 @@ function surgeStart() {
   const ph = tiPhone();
   say(600, 'Terra Imperia', 'EARTH HAS FALLEN', ph ? 'Earth is Terra Imperia’s capital now' : 'Terra Imperia’s fleets have taken Earth: it is the Grand Imperarch’s capital now', '#d0343a');
   say(5400, ph ? 'The Federation' : 'The Human Federation of Sol', 'FLEES TO MARS', ph ? 'Darius Ancin has fallen back to Mars' : 'President Darius Ancin and what is left of the Federation have fallen back to Mars, their capital in exile', '#7fb6ff');
-  say(10200, 'Sol', ph ? 'THE LAND GRAB BEGINS' : 'EVERY FACTION IS GRABBING LAND', ph ? 'Sol’s worlds are being seized · your colonies are not safe' : 'Terra Imperia, the Federation' + (c3f('alexiaCoup') ? ' and Alexia’s Erisians' : '') + ' are seizing Sol’s worlds, unclaimed ones first, then each other’s. Your colonies are not safe', '#ff6a6e');
+  say(10200, 'Sol', ph ? 'THE LAND GRAB BEGINS' : 'EVERY FACTION IS GRABBING LAND', ph ? 'Sol’s worlds are being seized · defend yours' : 'Terra Imperia, the Federation' + (c3f('alexiaCoup') ? ' and Alexia’s Erisians' : '') + ' are seizing Sol’s worlds, unclaimed ones first, then each other’s. You’ll be warned before they come for yours: land there in time to defend it', '#ff6a6e');
 }
 function surgeTick() { // every few minutes of play, one faction takes one world
   if (!surgeOn() || c3f('hawBeaten') || !['explore', 'space'].includes(state) || ex.dlg) return; const D = dip(); if (playSec() < (D.surge.next || 0)) return;
@@ -15300,10 +15301,10 @@ function surgeTick() { // every few minutes of play, one faction takes one world
   const lands = surgeLands().filter(P => !SURGE_SAFE.includes(P.id));
   for (let k = 0; k < who.length; k++) {
     const G = who[(D.surge.n + k) % who.length], own = lands.map(P => [P, surgeOwner(P, D)]);
-    let pool = own.filter(([, o]) => o === 'free'); if (!pool.length) pool = own.filter(([, o]) => foes[G].includes(o));
+    let pool = own.filter(([, o]) => o === 'free'); if (!pool.length) pool = own.filter(([P, o]) => foes[G].includes(o) && (o !== 'you' || colLossOK(P.id))); // (yours only when it's fair: see colLossOK)
     if (!pool.length) continue;
     const [P, prev] = pool[Math.random() * pool.length | 0]; D.surge.n += k + 1;
-    if (prev === 'you') { delete D.col[P.id]; for (const W of Object.values(D.wars)) if (W && W.held) W.held = W.held.filter(x => x !== P.id); }
+    if (prev === 'you') { if (colThreatStart({ type: 'surge', pid: P.id, g: G, by: SURGE_NAME[G] })) return; continue; } // one of yours: a warning, and four minutes to get there
     D.surge.own[P.id] = G; dipSave(); renderTasks(); sfx.thud();
     const ph = tiPhone(); notice(ph && G === 'hfos' ? 'The Federation' : SURGE_NAME[G], `${prev === 'free' ? 'CLAIMS' : 'TAKES'} ${P.name.toUpperCase()}`, 4200);
     if (ph) lootMsg(prev === 'you' ? `Your colony on ${P.name} has fallen` : `${P.name} changes hands`, prev === 'you' ? '#ff6a6e' : SURGE_COL[G]); else lootMsg(prev === 'you' ? `Your colony on ${P.name} has fallen to ${SURGE_NAME[G]} · ${G === 'ti' ? 'bombard it and defeat its governor to take it back' : 'take it back through a war (Diplomacy)'}` : prev === 'free' ? `${SURGE_NAME[G]} has claimed ${P.name}, unclaimed until now` : `${SURGE_NAME[G]} has taken ${P.name} from ${SURGE_NAME[prev] || 'its owners'}`, prev === 'you' ? '#ff6a6e' : SURGE_COL[G]);
@@ -15312,6 +15313,51 @@ function surgeTick() { // every few minutes of play, one faction takes one world
   D.surge.n++;
 }
 setInterval(() => { try { surgeTick(); } catch (e) { console.error(e); } }, 2000);
+/* ---- losing worlds, but fairly: whoever wants one of your worlds says so first, and you get four minutes of play to get there.
+   Land on it in time and they call it off (+150 XP). Lose your last and you're told you're landless. Never Carax or Obra-Spira, never while another world
+   is under threat, and never more than one loss every 15 minutes of play (7½ after a defence). If it falls, take it back the usual
+   way: land and beat its governor. Saved in dip().threat { type: 'surge' | 'dep' | 'res', pid, by, at, … } and dip().lossNext. ---- */
+const THREAT_T = 240, THREAT_GAP = 900;
+const colAll = () => { const D = dip(); return new Set([...Object.keys(D.col || {}), ...Object.values(D.wars || {}).flatMap(W => W && !W.won ? W.held || [] : [])]); }; // every world you hold
+const colHeld = pid => { const D = dip(); return !!D.col[pid] || Object.values(D.wars || {}).some(W => W && !W.won && (W.held || []).includes(pid)); }; // yours: a colony, or a world you occupy
+function colLossOK(pid) {
+  const D = dip(); if (!colHeld(pid) || pid === 'carax' || pid === 'obra-spira' || (D.col[pid] && D.col[pid].siege)) return false;
+  return !D.threat && playSec() >= (D.lossNext || 0);
+}
+function colThreatStart(T) {
+  const D = dip(), P = bodyById(T.pid); if (!P || !colLossOK(T.pid)) return false;
+  D.threat = Object.assign({ at: playSec() + THREAT_T, warned: 0 }, T); dipSave(); renderTasks(); sfx.alarm(); setTimeout(() => sfx.alarm(), 400);
+  const S = sysById(P.sys); notice(`${T.by} is coming for ${P.name}`, tiPhone() ? 'DEFEND IT · 4 MINUTES' : `LAND ON ${P.name.toUpperCase()} WITHIN 4 MINUTES TO DEFEND IT`, 5200);
+  const m = `${T.by} is massing to take ${P.name}${S ? ` (${S.name})` : ''} · land on it within 4 minutes and they'll call it off`; if (state === 'space') spaceMsg(m); else lootMsg(m, '#ff8f86');
+  return true;
+}
+function colThreatTick() {
+  if (!wanderer || !wanderer.dip || !['explore', 'space'].includes(state)) return; const D = dip(), T = D.threat; if (!T) return;
+  const P = bodyById(T.pid); if (!P || !colHeld(T.pid)) { D.threat = null; dipSave(); renderTasks(); return; } // already gone, or not yours any more
+  if (state === 'explore' && isPl() && world.planet && world.planet.P.id === T.pid) { // you're there: they call it off
+    D.threat = null; D.lossNext = playSec() + THREAT_GAP / 2; dipSave(); renderTasks(); sfx.chime();
+    notice(P.name, `DEFENDED · ${T.by.toUpperCase()} PULLS BACK`, 4200); gainXP(150, `Defended ${P.name}`); return; }
+  const left = T.at - playSec();
+  if (Math.floor(left / 60) !== T.min) { T.min = Math.floor(left / 60); renderTasks(); }
+  if ((left <= 90 && T.warned < 1) || (left <= 30 && T.warned < 2)) { T.warned = left <= 30 ? 2 : 1; const m = `${T.by} takes ${P.name} in ${Math.max(0, Math.ceil(left))} s · land on it to defend it`; if (state === 'space') spaceMsg(m); else lootMsg(m, '#ff8f86'); sfx.alarm(); }
+  if (left > 0) return;
+  D.threat = null; D.lossNext = playSec() + THREAT_GAP; colLose(T); dipSave(); renderTasks();
+}
+function colLose(T) {
+  const D = dip(), P = bodyById(T.pid); if (!P) return;
+  delete D.col[T.pid]; for (const W of Object.values(D.wars)) if (W && W.held) W.held = W.held.filter(x => x !== T.pid);
+  if (T.type === 'surge' && D.surge) { D.surge.own = D.surge.own || {}; D.surge.own[T.pid] = T.g; }
+  if (T.type === 'dep') { const W = D.wars[T.fid]; if (W) W.score = Math.max(0, (W.score || 0) - 12); }
+  if (T.type === 'res') { const e = resEmp.emp[T.eid]; if (e && !e.col.includes(T.pid)) e.col.push(T.pid); try { resEmpLog(`${T.by} took ${P.name} from ${wanderer.name}`); } catch (er) {} }
+  sfx.thud(); notice(T.by, `TAKES ${P.name.toUpperCase()}`, 4200);
+  const back = T.type === 'res' ? 'win a war with them to take it back' : T.type === 'surge' && T.g !== 'ti' ? 'take it back through a war (Diplomacy)' : 'land on it and beat its governor to take it back';
+  const m = `${P.name} has fallen to ${T.by} · ${back}`; if (state === 'space') spaceMsg(m); else lootMsg(m, '#ff6a6e');
+  if (!colAll().size) setTimeout(() => { // that was the last of them
+    sfx.alarm(); notice(realmName(), 'YOU ARE NOW LANDLESS', 5600);
+    const m2 = `You hold no worlds · colonise an unclaimed world (500 units) or take one in a war to found ${realmName()} again`; if (state === 'space') spaceMsg(m2); else lootMsg(m2, '#ff8f86');
+  }, 4600);
+}
+setInterval(() => { try { colThreatTick(); } catch (e) { console.error(e); } }, 1000);
 
 // ---- Sol falls (Chapter III, the moment Hawthorne leaves the Cygnus) ----
 // While you were climbing his ship, his fleets finished the job: every world in Sol is Terra Imperia's now, Mars and your colonies
@@ -15332,7 +15378,7 @@ function solFalls() {
   sfx.alarm(); setTimeout(() => sfx.alarm(), 400);
   say(900, 'Terra Imperia', 'SOL HAS FALLEN', ph ? 'Every world in Sol is Terra Imperia’s' : 'While you were aboard the Cygnus, Terra Imperia took every world in Sol', '#d0343a');
   say(5600, ph ? 'The Federation' : 'The Human Federation of Sol', 'DRIVEN OUT OF MARS', ph ? 'Darius Ancin has fled Sol' : 'Darius Ancin has been driven out of Mars: the Federation has nowhere left in Sol', '#7fb6ff');
-  if (lost) say(10300, 'Your colonies', ph ? `${lost} LOST` : `${lost} WORLD${lost > 1 ? 'S' : ''} LOST TO TERRA IMPERIA`, ph ? 'Bombard them to take them back' : 'Bombard them and beat their governors to take them back, world by world', '#ff6a6e');
+  if (lost) say(10300, 'Your colonies', ph ? `${lost} LOST` : `${lost} WORLD${lost > 1 ? 'S' : ''} LOST TO TERRA IMPERIA`, ph ? 'Land and beat their governors to take them back' : 'Land on them and beat their governors to take them back, world by world', '#ff6a6e');
   say(lost ? 15000 : 10300, 'Main quest', ph ? 'RETURN TO HAK' : 'RETURN TO HAK CHOMPJAK IN KARRIBASSA', ph ? 'Warp to Janira Proxima · Karribassa' : 'Warp to Janira Proxima and land on Janira Prime: Hak waits in the heart of Karribassa', '#ffb060');
 }
 function hakBackQ() { const c = CH3S(); return ch3Now() && !!c.solFell && !c.hakBack; }
@@ -17856,7 +17902,7 @@ function warFacOf(P) { // the story faction you're at war with that holds this w
   if (F.id === 'ti' && W.theirs && !tiTakeable(P.id)) return null;
   return F;
 }
-const warBombed = P => { const F = warFacOf(P); return !!F && (dip().wars[F.id].bombed || []).includes(P.id); };
+const warBombed = P => !!warFacOf(P); // no more bombardment: any world of someone you're at war with is open to invasion. Land, and its governor (or their deputy) is waiting by your ship
 const tiBanned = P => !!warFacOf(P) && !warBombed(P) && !(P.id === 'mercury' && (cygQ() || cygFarm() || hawMercQ())); // Mercury stays open for the shuttle, and for the siege // closed to you until bombarded (Mercury stays open while the Cygnus's supply shuttle runs from it)
 const chompyAlly = () => !!(wanderer && dip().tiWar && dip().tiWar.chompy === 'ally');
 function tiWarStart() {
@@ -17868,7 +17914,7 @@ function tiWarStart() {
   say(0, 'Terra Imperia', 'DECLARES A WAR OF VASSALISATION', 'Terra Imperia has declared war on you, the Erisian Empire and the Human Federation of Sol', '#d0343a');
   say(4700, 'The Chompy Empire', 'JOINS THE WAR TO DEFEND ERIS', 'Eris is the Chompy Empire’s puppet: Aridaxx answers Hawthorne’s war', '#ffb060');
   say(9400, 'The Republic of Timpur', 'IS DRAGGED INTO THE WAR', 'The Republic of Timpur, the Chompy Empire’s other puppet, marches behind Aridaxx', '#58d8c0');
-  say(14100, 'You are at war', 'MERCURY AND VENUS ARE CLOSED TO YOU', 'Mercury and Venus are Terra Imperia property · bombard one from orbit, then land and defeat its governor to take it', '#ff6a6e');
+  say(14100, 'You are at war', 'TAKE MERCURY AND VENUS', 'Mercury and Venus are Terra Imperia property · land on one and defeat its governor to take it', '#ff6a6e');
 }
 function tiWarTick() { // Hak Chompjak's offer, on the ground, when you're free to answer
   tiBombBtn(false);
@@ -17929,7 +17975,7 @@ function govPlace(P, F) {
   Promise.all([govRig(F, true), govRig(F), govRig(F)]).then(Rs => { if (curArea() !== area || TIW.gov !== G) return; Rs.forEach((R, i) => { if (!R) return; const a = i * 2.1, px = i ? x + Math.cos(a) * 2.4 : x, pz = i ? z + Math.sin(a) * 2.4 : z; if (!i) R.root.scale.multiplyScalar(1.12); R.root.position.set(px, wHeight(px, pz), pz); g.add(R.root); G.R.push(R); if (i) tiArm(R, false, F && F.id !== 'ti' ? `${F.species} guard` : null); }); }).catch(() => null);
   setTimeout(() => { if (TIW.gov === G) { notice(`${P.name} · ${F ? dipFacName(F) : 'Terra Imperia'} base`, `GOVERNOR ${G.name.toUpperCase()} AWAITS`, 3600); lootMsg(`Defeat Governor ${G.name} (the beacon) and ${P.name} is ${F && F.id === 'ti' && dip().wars.ti.theirs ? 'yours' : 'occupied'}`, '#ff6a6e'); } }, 3000);
 }
-function govSpec(G) { const F = G.F || DIP_FAC.find(o => o.id === 'ti'), cap = G.P.id === (F.id === 'ti' ? 'venus' : F.capital), lv = Math.max(12, plvNow() + (cap ? 4 : 2)); return { key: 'ti:soldier', boss: G.name.split(' ')[0], full: `Governor ${G.name} of ${G.P.name}, ${dipFacName(F)}`, hall: `The governor’s base · ${G.P.name}`, lv, hp: Math.round((cap ? 4600 : 3800) + lv * 150), theme: null, load: () => govRig(F, true),
+function govSpec(G) { const F = G.F || DIP_FAC.find(o => o.id === 'ti'), cap = G.P.id === (F.id === 'ti' ? 'venus' : F.capital), lv = Math.max(12, plvNow() + (cap ? 4 : 2)); return { key: 'ti:soldier', boss: G.name.split(' ')[0], full: `Governor ${G.name} of ${G.P.name}, ${dipFacName(F)}`, hall: `The governor’s base · ${G.P.name}`, lv, hp: Math.round((cap ? 2400 : 1600) + lv * 60), /* about a third of what it was: one fight, and the world is yours */ theme: null, load: () => govRig(F, true),
   core: ['charge', 'volley', 'slam', 'blink'], p2: ['rain', 'sweep'], sig: 'spiral', seq: ['volley', 'charge', 'slam', 'volley'],
   lines: { intro: F.id === 'ti' ? `${G.P.name} belongs to the Grand Imperarch. You'll have to take it from my hands.` : `${G.P.name} is ours. You burned our sky, and you'll get no further.`, p2: F.id === 'ti' ? 'All guns on the xeno-lover!' : 'Guards! Hold the base!', p3: `${G.P.name.toUpperCase()} WILL NOT FALL!`, win: F.id === 'ti' ? 'Take it, then… he will only take it back.' : 'Enough… the base is yours.' } }; }
 function tiCapture(pid) {
@@ -26120,7 +26166,7 @@ function dipRender() {
       } else if (W) {
         { const Lo = leaderOf(F), X = Lo && Lo.list[0], at = Lo && bodyById(Lo.at); if (X && at && !W.won) h += `<p style="color:#ffd36a">${X.full} (lv ${X.lv})${Lo.list[1] ? ` and ${Lo.list[1].full} (lv ${Lo.list[1].lv})` : ''} wait${Lo.list[1] ? '' : 's'} in their hall on ${at.name}. Land there and beat them to win the war outright.</p>`; }
         try { h += fdepNote(F); } catch (er) {}
-        h += `<div class="dip-bar"><i style="width:${W.score | 0}%"></i></div><p>War score ${W.score | 0}/100 · ${W.cb === 'crush' ? `shoot down resistance fighters in their old space (+6).` : `shoot down the ${F.fleet.toLowerCase()} in their space (+6). Their worlds are closed to you: bombard one from orbit, land, and defeat its governor to take it (+15, capital +25).`} ${(W.held || []).length ? `Occupied: ${W.held.map(id => bodyById(id).name).join(', ')}.` : ''}${lentHere.length ? ` ${lentHere.map(compName).join(' and ')} fly${lentHere.length === 1 ? 's' : ''} for them: shoot ${lentHere.length === 1 ? 'that ship' : 'those ships'} down and ${lentHere.length === 1 ? 'they come' : 'they come'} home.` : ''}</p>${W.theirs ? `<p>Terra Imperia declared this war on you. Bombard Mercury or Venus from orbit, land, and beat its governor to take it (+15, Venus +25). Hawthorne will not make peace.</p>` : `<div class="dip-row"><button class="btn small" data-a="peace" data-f="${F.id}"><span>Make peace (occupied worlds go back)</span></button></div>`}`;
+        h += `<div class="dip-bar"><i style="width:${W.score | 0}%"></i></div><p>War score ${W.score | 0}/100 · ${W.cb === 'crush' ? `shoot down resistance fighters in their old space (+6).` : `shoot down the ${F.fleet.toLowerCase()} in their space (+6). To take one of their worlds, land on it and defeat its governor, who waits by your ship (+15, capital +25).`} ${(W.held || []).length ? `Occupied: ${W.held.map(id => bodyById(id).name).join(', ')}.` : ''}${lentHere.length ? ` ${lentHere.map(compName).join(' and ')} fly${lentHere.length === 1 ? 's' : ''} for them: shoot ${lentHere.length === 1 ? 'that ship' : 'those ships'} down and ${lentHere.length === 1 ? 'they come' : 'they come'} home.` : ''}</p>${W.theirs ? `<p>Terra Imperia declared this war on you. Land on Mercury or Venus and beat its governor to take it (+15, Venus +25). Hawthorne will not make peace.</p>` : `<div class="dip-row"><button class="btn small" data-a="peace" data-f="${F.id}"><span>Make peace (occupied worlds go back)</span></button></div>`}`;
       } else {
         if (r.st === 'tributary') h += `<div class="dip-row"><button class="btn small" data-a="release" data-f="${F.id}"><span>End the tribute</span></button></div>`;
         if (r.st === 'vassal') h += `<div class="dip-row"><input class="dip-in" data-a="rename" data-f="${F.id}" value="${(r.name || F.name).replace(/"/g, '&quot;')}" maxlength="40"><button class="btn small" data-a="doRename" data-f="${F.id}"><span>Rename</span></button></div>`;
@@ -26166,7 +26212,7 @@ function dipRender() {
       if (!to) h += `<select class="dip-in" data-a="lendTo" data-c="${id}"><option value="">Offer to a faction…</option><optgroup label="Factions">${dipFacsNow().filter(f => dipRes(f.id) !== 'destroyed').map(f => `<option value="${f.id}">${dipFacName(f)}</option>`).join('')}</optgroup>${resOpts.length ? `<optgroup label="Resident empires">${resOpts.map(e => `<option value="res:${e.id}">${reEsc(e.name)}</option>`).join('')}</optgroup>` : ''}</select><button class="btn small" data-a="lend" data-c="${id}"><span>Offer</span></button>`;
       else if (lead) h += `<p>They'll come home if you annihilate the puppet or ever release it.</p><button class="btn small" data-a="release" data-f="${F.id}"><span>Release ${dipFacName(F)}</span></button>`;
       else if (resTo) h += `<p>They fight in ${dipLentName(to)}'s wars and make it stronger. They come home if it falls or disbands.</p><button class="btn small" data-a="recall" data-c="${id}"><span>Call ${compName(id)} home</span></button>`;
-      else if (F && dipWar(F.id)) h += `<p>${fdepOf(F.id) && fdepOf(F.id).who === 'comp:' + id ? `They're ${fdepLeader(F)}'s deputy now, holding ${(bodyById(fdepOf(F.id).at) || {}).name || 'a world'}: bombard it, land and beat them to bring them home. ` : ''}You're at war with them. Shoot ${compName(id)}'s ship down, or win the war, to bring them home.</p>`;
+      else if (F && dipWar(F.id)) h += `<p>${fdepOf(F.id) && fdepOf(F.id).who === 'comp:' + id ? `They're ${fdepLeader(F)}'s deputy now, holding ${(bodyById(fdepOf(F.id).at) || {}).name || 'a world'}: land there and beat them to bring them home. ` : ''}You're at war with them. Shoot ${compName(id)}'s ship down, or win the war, to bring them home.</p>`;
       else h += `<button class="btn small" data-a="recall" data-c="${id}"><span>Call ${compName(id)} home</span></button>`;
       if (!to && PARTY[id] && PARTY[id].imported) h += `<button class="btn small" data-a="dismiss" data-c="${id}"><span>Send home</span></button>`;
       h += `</div></div>`;
@@ -35273,9 +35319,9 @@ function ywWon(id, how) { // you won: by the score, or by beating their ruler (t
 }
 function ywLost(id) {
   const e = resEmp.emp[id], c = e && resRuler(e), D = dip(); delete D.rw[id]; if (!e) { dipSave(); return; }
-  const pid = Object.keys(D.col).filter(k => k !== CARAX && k !== OBRA && !D.col[k].siege && bodyById(k)).sort(() => Math.random() - .5)[0];
+  const pid = Object.keys(D.col).filter(k => colLossOK(k) && bodyById(k)).sort(() => Math.random() - .5)[0];
   let w = '';
-  if (pid) { delete D.col[pid]; for (const W of Object.values(D.wars)) if (W && W.held) W.held = W.held.filter(o => o !== pid); e.col.push(pid); w = bodyById(pid).name; resEmpLog(`${e.name} won its war with ${wanderer.name} and took ${w}`); }
+  if (pid && colThreatStart({ type: 'res', pid, eid: id, by: e.name })) { w = `${bodyById(pid).name}, unless you defend it`; resEmpLog(`${e.name} won its war with ${wanderer.name} and is coming for ${bodyById(pid).name}`); } // announced: four minutes to get there
   else { const n = Math.min(units(), Math.max(50, Math.round(units() * .15))); if (n) addUnits(-n); w = n ? `${n} units` : 'your pride'; resEmpLog(`${e.name} won its war with ${wanderer.name}${n ? ` and took ${n} units` : ''}`); }
   if (c) resWarSay(c, resPick(YW.lose[resAl(c)]), ywCtx(e, { w })); if (state === 'explore' || state === 'space') { notice(e.name, `WINS THE WAR · ${w.toUpperCase()} LOST`, 4200); sfx.alarm(); }
   dipSave();
@@ -35479,7 +35525,7 @@ function fdepAppoint(F, W, X, now) {
   Object.assign(X, { who, at, since: now, cAt: now + (180 + Math.random() * 120) * 1000, sayAt: now + 150e3, none: false, seenB: [...(W.bombed || [])] });
   const nm = edName(who, F.id), P = bodyById(at), x = { leader: fdepLeader(F), fac: dipFacName(F), player: wanderer.name, world: P.name };
   if (state === 'explore' || state === 'space') notice(`${dipFacName(F)} · ${fdepLeader(F)} appoints a deputy`, `${nm.toUpperCase()} HOLDS ${P.name.toUpperCase()}`, 4000);
-  lootMsg(`${nm} is ${fdepLeader(F)}'s deputy now · they hold ${P.name} · bombard it, land and beat them (Diplomacy shows where)`, edColor(who, F.col));
+  lootMsg(`${nm} is ${fdepLeader(F)}'s deputy now · they hold ${P.name} · land there and beat them (Diplomacy shows where)`, edColor(who, F.col));
   setTimeout(() => edSay(who, 'lead', F.id, x, F.col), 2400); return true;
 }
 function fdepTick(now) {
@@ -35496,8 +35542,7 @@ function fdepTick(now) {
         if (b !== X.at && fdepWorlds(F, W).includes(b) && Math.random() < .6) { X.lastAt = X.at; X.at = b; const P = bodyById(b); if (state === 'explore' || state === 'space') notice(`${fdepLeader(F)} answers the bombardment`, `${edName(X.who, F.id).toUpperCase()} DEFENDS ${P.name.toUpperCase()}`, 3800); lootMsg(`${fdepLeader(F)} sends ${edName(X.who, F.id)} to hold ${P.name} · they'll be waiting when you land`, edColor(X.who, F.col)); } }
       if (now >= (X.cAt || 0)) { X.cAt = now + (240 + Math.random() * 180) * 1000; ch = true; // a counterattack on a world you occupied
         const back = (W.held || []).filter(p => p !== F.capital && bodyById(p));
-        if (back.length && Math.random() < .4) { const p = pick(back), P = bodyById(p); W.held = W.held.filter(o => o !== p); W.bombed = (W.bombed || []).filter(o => o !== p); W.score = Math.max(0, W.score - 12);
-          const m = `${edName(X.who, F.id)} leads a counterattack and retakes ${P.name} for ${dipFacName(F)} · −12 war score`; if (state === 'space') spaceMsg(m); else lootMsg(m, '#ff8f86'); if (state === 'explore' || state === 'space') sfx.alarm(); } }
+        if (back.length && Math.random() < .4) { const p = pick(back); colThreatStart({ type: 'dep', pid: p, fid: F.id, by: `${edName(X.who, F.id)} of ${dipFacName(F)}` }); } } // a counterattack, announced: get there in time and it's off
       if (now >= (X.sayAt || 0)) { X.sayAt = now + (200 + Math.random() * 200) * 1000; edSay(X.who, 'lead', F.id, Object.assign(x(), { world: bodyById(X.at).name }), F.col); }
     } else if (now >= (X.next || 0)) { X.next = now + 60e3; if (fdepAppoint(F, W, X, now)) ch = true; }
   }
@@ -35616,7 +35661,7 @@ function enemyDepTick(dt) {
   if (TIW.dep) { const q = isPl() ? edAt(world.planet.P) : null; if (!q || q.who !== TIW.dep.who) { const G = TIW.dep; for (const R of G.R) if (R.cb) { const i = fauna.list.indexOf(R.cb); if (i >= 0) fauna.list.splice(i, 1); } if (G.g.parent) G.g.parent.remove(G.g); TIW.dep = null; } } // they moved on
 }
 // Diplomacy: who holds what for them
-function fdepNote(F) { const X = fdepOf(F.id); if (!X) { const Y = dip().fdep && dip().fdep[F.id]; return Y && Y.none ? `<p style="color:var(--mute)">${fdepLeader(F)} has no deputy left to appoint.</p>` : ''; } const P = bodyById(X.at); return `<p style="color:${edColor(X.who, F.col)}"><b>Their deputy:</b> ${edName(X.who, F.id)} (lv ${edLevel(X.who)}) holds ${P ? P.name : '?'}. Bombard it, land and beat them: the world is yours and +20 war score. ${fdepLeader(F)} sends them to defend worlds you bombard, and they counterattack worlds you hold.</p>`; }
+function fdepNote(F) { const X = fdepOf(F.id); if (!X) { const Y = dip().fdep && dip().fdep[F.id]; return Y && Y.none ? `<p style="color:var(--mute)">${fdepLeader(F)} has no deputy left to appoint.</p>` : ''; } const P = bodyById(X.at); return `<p style="color:${edColor(X.who, F.col)}"><b>Their deputy:</b> ${edName(X.who, F.id)} (lv ${edLevel(X.who)}) holds ${P ? P.name : '?'}. Land there and beat them: the world is yours and +20 war score.</p>`; }
 function rdepNote(e) { const X = e.dep; if (!X || !X.who) return ''; const P = bodyById(X.at); return ` · deputy: <b>${reEsc(edName(X.who))}</b> on ${P ? P.name : '?'}${ywAt(e.id) ? ' (land there and beat them: +25 war score and the world)' : ''}`; }
 /* ============ the story factions' puppets, and the wars you set them on each other (Chapters III–V) ============
    Who answers to whom: the Republic of Timpur and the Erisian Empire are the Chompy Empire's puppets (Eris is Terra Imperia's
