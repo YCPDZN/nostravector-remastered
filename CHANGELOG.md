@@ -3683,3 +3683,12 @@ You can lose worlds again, but never out of the blue, and you can always stop it
   - A resident empire that won its war with you: it comes for a world, or takes units if it can't.
 - **Unchanged:** the story's own moment when Hawthorne takes Sol, Orion Mascar's conquests (they recolour the map, but your colonies stay yours), and a Restoration you paid for.
 
+### Empire wars that take 20 to 30 minutes, and empires that grow
+
+- **Every war between empires now lasts 20 to 30 minutes of play,** never seconds. That covers residents against residents, residents against the story factions, the story factions against each other (Chapter V, or earlier when you set them on each other), and a resident empire's war on you. It's longer the bigger the empires: two small empires fight for about 20 minutes, two great ones for about 30.
+- **The stronger side usually wins,** decided as the war begins and weighted by strength. A much weaker side still wins about one war in eight. Fortunes swing along the way, with a run of good days and a run of bad, so the side that's ahead isn't always the one that wins.
+- **Worlds change hands as the war goes:** the winner takes one of the loser's worlds when its front is a quarter of the way there, one at half and one at three-quarters, so the empire map changes while it's fought. The terms (annihilation, subjugation, vassalage, tribute, restoration) come at the end as before.
+  - **Residents against the story factions:** the resident empire takes worlds as it advances, or the faction takes its worlds back as it does. Winning takes two more, and losing gives back everything that war won.
+- War notices are rarer and tell you who's ahead and about how long is left (*The Chompy Empire and the Grek Empire at war · the Chompy Empire ahead · about 12 min to go*).
+- **The story factions now claim unclaimed space:** every three to five minutes of play, one of them claims the nearest unclaimed star system on its border in the Milky Way, every world in it (*The Erisian Empire claims the Velmira system*). You'll see their territory grow on the empire map, and they can lose it in a war like any other. Systems you or a resident empire hold are never claimed. Resident empires already grew into unclaimed worlds, and still do.
+
