@@ -3615,3 +3615,12 @@ One more telling of *While you slept*, and this one goes on into Chapter IV. If 
 - **Timpur Prime, the capital of the Republic of Timpur, is now a paradise world:** green land, blue seas and a blue sky, *Blissful Planet · Perfect weather · no storms*, 20°C by day and 11.9°C by night. The galaxy's dice had made it a scorched lava world (93°C by day) with ash storms, which cooked anyone standing in the Senate's streets.
 - It's redressed after the galaxy is generated, so every other world, system, colony and resident stays exactly where it was. Bases you built on Timpur Prime keep their spots, but the ground under them is new.
 
+### The galaxy map: Galaxy or Empires
+
+- **A switch at the bottom of the galaxy map: GALAXY | EMPIRES** (or press **E** while it's open). It remembers which one you used last, and works on every galaxy's map (the Milky Way, Xonexi, Andromeda, the Magellanic Clouds and the rest).
+  - **Galaxy** is the map as it always was: the spiral, the stars in their own colours, and a soft wash of colour behind claimed systems.
+  - **Empires** is a political map. The galaxy dims, and every realm's territory is filled in its colour with a sharp border round the edge of its space. Its name is written across the middle of it, bigger the more it holds. Each star takes its owner's colour, and unclaimed ones are grey.
+  - **The key** (bottom right) lists who holds the most of the galaxy you're looking at, and how many systems are held in all.
+- **Every realm shows up:** the Chompy Empire, the Erisian Empire, the Grek, the Human Federation of Sol, the Republic of Timpur, Terra Imperia, the Catharsis and the Order of Archamus. It also shows your own realm (gold), your puppets and tributaries, systems your uplifted species govern, resident empires, Orion Mascar's conquests, and whatever wars have changed hands. All of them change with the chapter, as the rest of the map does.
+- On phones held upright the switch sits under the other buttons. The key hides while a system's panel is open.
+
