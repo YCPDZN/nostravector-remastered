@@ -35221,10 +35221,29 @@ function resDeclare(a, b, cb, incited) {
 }
 const resPower = e => { if (e.pup) return resPower0(e) + 25; return resPower0(e); }; // your puppets fight with your backing behind them
 const resPower0 = e => { const c = resRuler(e), L = (wanderer && wanderer.dip && wanderer.dip.lent) || {}; return (c ? resLevel(c) : 30) + e.col.length * 4 + Object.values(resEmp.emp).filter(o => o.over === e.id).length * 6 + Object.values(L).filter(v => v === 'res:' + e.id).length * 10 + rdepPow(e); }; // your companions serving them count for a lot
+/* ---- war pacing: every war between empires (residents against residents, residents against the story factions, the story factions
+   against each other, and a resident empire's war on you) runs 20 to 30 minutes of play: longer the bigger the empires in it. The
+   stronger side usually wins (it's decided as the war begins, weighted by strength), but fortunes swing: a run of good days, a run
+   of bad. The winner takes the loser's worlds as it goes, one when the war is a quarter of the way to its end, one at half and one at
+   three-quarters, so the empire map changes while it's fought; then the terms (annihilation, vassalage, tribute…) at the end.
+   warPace(w, sizeA, sizeB, powA, powB, dt) moves w.score towards ±100 and returns how many worlds change hands this step (+ the
+   attacker takes, − the defender takes). ---- */
+const WAR_MIN = 20 * 60, WAR_MAX = 30 * 60;
+function warPace(w, sizeA, sizeB, powA, powB, dt) {
+  if (!w.dur) { w.dur = WAR_MIN + (WAR_MAX - WAR_MIN) * clamp((sizeA + sizeB - 4) / 36, 0, 1) + (Math.random() * 2 - 1) * 90; const a = Math.pow(Math.max(1, powA), 1.6), b = Math.pow(Math.max(1, powB), 1.6); w.win = Math.random() < a / (a + b) ? 1 : -1; w.swing = 0; w.stage = 0; w.t = clamp(Math.abs(w.score || 0) / 100, 0, .6) * w.dur * (Math.sign(w.score || 0) === w.win ? 1 : 0); } // (a war already under way picks up from where it was)
+  w.t = (w.t || 0) + dt; const f = clamp(w.t / w.dur, 0, 1);
+  w.swing = clamp((w.swing || 0) * .92 + (Math.random() * 2 - 1) * 6, -30, 30); // the fortunes of war: a run of good days, a run of bad (it fades as the end comes)
+  w.score = clamp(w.win * 100 * f + w.swing * (1 - f) * Math.min(1, f * 4), -100, 100); if (f >= 1) w.score = w.win * 100;
+  const st = Math.min(3, Math.floor(Math.abs(w.score) / 25)), side = Math.sign(w.score); let n = 0;
+  if (side && st > (w.stage || 0) && side === w.win) { n = (st - (w.stage || 0)) * side; w.stage = st; } // worlds change hands as the winner's front reaches a quarter, half, three-quarters
+  return n;
+}
+const warLeft = w => w.dur ? Math.max(0, Math.round((w.dur - (w.t || 0)) / 60)) : null; // about how many minutes are left
 function resWarStep(w) {
   const A = resEmpOf(w.a), B = resEmpOf(w.b); if (!A || !B) { resEmp.wars = resEmp.wars.filter(o => o !== w); return; }
-  w.score += (resPower(A) - resPower(B)) * .15 + (Math.random() * 36 - 18);
-  if (Math.random() < .4) resBanter('fight', resRuler(A), resRuler(B), resWarCtx2(A.id, B.id, w.cb));
+  const n = warPace(w, A.col.length, B.col.length, resPower(A), resPower(B), 15);
+  if (n) { const W = n > 0 ? A : B, L = n > 0 ? B : A; for (let k = 0; k < Math.abs(n); k++) { const id = L.col.filter(o => o !== L.cap && o !== CARAX && o !== OBRA)[0]; if (!id) break; L.col = L.col.filter(o => o !== id); W.col.push(id); L.lostTo[W.id] = (L.lostTo[W.id] || []).concat([id]); resEmpLog(`${W.name} takes ${(bodyById(id) || {}).name || 'a world'} from ${L.name}`); } saveRoster(); } // the front moves: a world changes hands
+  if (Math.random() < .12) resBanter('fight', resRuler(A), resRuler(B), resWarCtx2(A.id, B.id, w.cb));
   if (w.score >= 100) resWarEnd(w, true); else if (w.score <= -100) resWarEnd(w, false);
 }
 function resWarEnd(w, attackerWon) {
@@ -35339,8 +35358,8 @@ function ywTick(E) {
   const cols = Object.keys((wanderer.dip && wanderer.dip.col) || {}).length, mine = plvNow() + cols * 4;
   for (const id of Object.keys(ywMap())) {
     const W = ywMap()[id], e = E.emp[id]; if (!e) continue;
-    W.score = clamp(W.score + (mine - resPower(e)) * .1 + (Math.random() * 30 - 15), -100, 100);
-    if (Math.random() < .25 && RW) { const c = resRuler(e); if (c) resWarSay(c, resPick(YW.fight[resAl(c)]), ywCtx(e)); }
+    warPace(W, cols, e.col.length, mine, resPower(e), 15); // (your worlds are only at stake at the end: see ywLost)
+    if (Math.random() < .08 && RW) { const c = resRuler(e); if (c) resWarSay(c, resPick(YW.fight[resAl(c)]), ywCtx(e)); }
     if (W.score >= 100) ywWon(id); else if (W.score <= -100) ywLost(id);
   }
   if (Object.keys(ywMap()).length) { const c = curChar(); if (c && wanderer.dip) c.dip = wanderer.dip; }
@@ -35656,6 +35675,7 @@ function enemyDepTick(dt) {
   const now = resNow(); dep2Load();
   try { fdepTick(now); } catch (e) { console.error(e); }
   try { fxWarTick(); } catch (e) { console.error(e); } // the wars you set the story factions on
+  try { fxClaimTick(); } catch (e) { console.error(e); } // and the land they claim
   try { sevMeetTick(); } catch (e) { console.error(e); } // Sevirrus, lent to Hak or Zark
   if (isPl() && state === 'explore' && !DGN.on && !TIW.dep && TIW.area === curArea()) { const q = edAt(world.planet.P); if (q) edPlace(world.planet.P, q); } // appointed to (or sent to defend) the world you're on
   if (TIW.dep) { const q = isPl() ? edAt(world.planet.P) : null; if (!q || q.who !== TIW.dep.who) { const G = TIW.dep; for (const R of G.R) if (R.cb) { const i = fauna.list.indexOf(R.cb); if (i >= 0) fauna.list.splice(i, 1); } if (G.g.parent) G.g.parent.remove(G.g); TIW.dep = null; } } // they moved on
@@ -35817,6 +35837,24 @@ function fxGalDraw(g, font) { // the Catharsis fleet's dash across the core, and
   g.textAlign = 'left'; g.font = `700 9px ${font}`; g.fillStyle = '#ff5a6a'; g.fillText(t1, bx + 7, by + 11);
   g.font = `500 8px ${font}`; g.fillStyle = '#ffb0b6'; g.fillText(t2, bx + 7, by + 22);
 }
+// ---- the story factions grow: every three to five minutes of play, one of them claims an unclaimed star system next to its space
+//      (in the Milky Way, where they live), every world in it. It shows on the empire map at once, and they can lose it in a war like
+//      any other. Saved in dip().fx.took, like a conquest. (Resident empires already grow into unclaimed worlds: resExpand.) ----
+function fxClaimTick() {
+  if (!wanderer || !wanderer.dip || effCh() < 3 || sgraLock()) return; const X = fxD(), now = playSec();
+  if (!X.claimNext) X.claimNext = now + 60; if (now < X.claimNext) return; X.claimNext = now + 180 + Math.random() * 120;
+  const D = dip(), live = dipFacsNow().filter(F => fxLive(F.id) && !/res$/.test(F.id)); if (!live.length) return;
+  const free = SYSTEMS.filter(S => galOf(S) === 'milky' && S.star.kind !== 'hole' && /^Unclaimed/.test(S.baseFac || S.faction || '') && !S.bodies.some(P => D.col[P.id] || X.took[P.id] || (typeof resHeldBy === 'function' && resHeldBy(P.id))));
+  if (!free.length) return;
+  for (const F of live.sort(() => Math.random() - .5)) {
+    const mine = SYSTEMS.filter(S => galOf(S) === 'milky' && dipFacOf(S.baseFac || '') === F); if (!mine.length) continue;
+    let best = null, bd = .1; for (const S of free) for (const M of mine) { const d = Math.hypot(S.map.x - M.map.x, S.map.y - M.map.y); if (d < bd) { bd = d; best = S; } } // the nearest free system, next to their border
+    if (!best) continue;
+    for (const P of best.bodies) if ((P.land || P.kind === 'station') && P.kind !== 'gas') X.took[P.id] = F.id;
+    dipSave(); const m = `${dipFacName(F)} claims the ${best.name} system`; if (state === 'space') spaceMsg(m); else if (state === 'explore') lootMsg(m, F.col);
+    return;
+  }
+}
 function fxWarTick() {
   if (!wanderer || !wanderer.dip || !wanderer.dip.fx || effCh() < 3) return; const X = fxD(); if (!X.wars.length) return;
   for (const w of [...X.wars]) {
@@ -35829,8 +35867,9 @@ function fxWarTick() {
     if (w.dash) { // the siege of the Bastion: Zark's fleet against Am-Grek's garrison at Carax, not the Grek's whole empire. An even fight: about one siege in two falls to him, most within five minutes of play (FX_SIEGE)
       w.score = clamp(w.score + (Math.random() * 2 - 1) * FX_SIEGE, -100, 100);
       if (Math.random() < .18 && (state === 'explore' || state === 'space')) lootMsg(w.score > 30 ? 'The siege of Carax · the Bastion’s walls are breaking' : w.score < -30 ? 'The siege of Carax · Am-Grek is driving the Catharsis back' : 'The siege of Carax · the Bastion holds, for now', '#ff5a6a');
-    } else { const S = fxSides(w); w.score = clamp(w.score + (fxPow(S.A) - fxPow(S.B)) * .06 + (Math.random() * 28 - 14), -100, 100); }
-    if (Math.random() < .12 && (state === 'explore' || state === 'space')) lootMsg(`⚔ ${fxNm(w.a)} and ${fxNm(w.b)} clash · ${Math.round(w.score)} (${fxNm(w.a)} at 100 wins)`, '#ffb36e');
+    } else { const S = fxSides(w), sz = ids => ids.reduce((t, id) => { const F = fxFac(id); return t + (F ? dipWorldsOf(F).length : 0); }, 0), n = warPace(w, sz(S.A), sz(S.B), fxPow(S.A), fxPow(S.B), 10);
+      if (n) { const Wn = n > 0 ? w.a : w.b, Ls = n > 0 ? w.b : w.a, got = fxTake(Ls, Wn, Math.abs(n)); if (got.length) { dipSave(); const m = `${fxNm(Wn)} takes ${got.map(P => P.name).join(', ')} from ${fxNm(Ls)}`; if (state === 'space') spaceMsg(m); else if (state === 'explore') lootMsg(m, '#ffb36e'); } } } // the front moves
+    if (Math.random() < .03 && (state === 'explore' || state === 'space')) lootMsg(`⚔ ${fxNm(w.a)} and ${fxNm(w.b)} at war · ${fxNm(w.score >= 0 ? w.a : w.b)} ahead${warLeft(w) != null ? ` · about ${warLeft(w)} min to go` : ''}`, '#ffb36e');
     if (w.score >= 100) fxEnd(w, true); else if (w.score <= -100) fxEnd(w, false);
   }
   try { fxGalaxyWarCheck(); fxCathWinCheck(); } catch (e) { console.error(e); }
@@ -35848,7 +35887,7 @@ function fxOverlay(D) {
   const X = D.fx; if (!X || (!Object.keys(X.over || {}).length && !Object.keys(X.trib || {}).length && !Object.keys(X.took || {}).length)) return;
   for (const [pid, fid] of Object.entries(X.took || {})) { const P = bodyById(pid), F = fxFac(fid); if (!P || !F || !fxLive(fid) || D.col[pid]) continue; const from = dipFacOf(P.baseFac); if (from && from.id === fid) continue; const f3 = String(P.fac3 || P.fac0 || ''), grek = fid === 'catharsis' && X.zark && f3.startsWith('The Grek'), hak = fid === 'chompy' && X.chompyGrek && /^The (Grek|Order of Archamus)/.test(f3);
     P.baseFac = P.faction = pid === 'carax' && grek ? 'The Catharsis · the Bastion of Carax, Lord Zark’s court' : grek ? 'The Catharsis · surrendered by Am-Grek'
-      : hak ? (pid === 'archiostal' ? 'The Chompy Empire · Archiostal, taken from the Order of Archamus' : pid === 'carax' ? 'The Chompy Empire · Carax, taken from Am-Grek' : 'The Chompy Empire · taken from the Grek') : `${F.name} · taken from ${from ? from.name : 'its old masters'}`; }
+      : hak ? (pid === 'archiostal' ? 'The Chompy Empire · Archiostal, taken from the Order of Archamus' : pid === 'carax' ? 'The Chompy Empire · Carax, taken from Am-Grek' : 'The Chompy Empire · taken from the Grek') : from ? `${F.name} · taken from ${from.name}` : `${F.name} · claimed`; }
   for (const S of SYSTEMS) { const H = bodyById(S.home); if (H && X.took[H.id] && fxLive(X.took[H.id]) && !D.col[H.id]) { const F = fxFac(X.took[H.id]); S.baseFac = S.faction = H.baseFac; S.facCol = F.col; } } // a system whose home world changed hands flies the new flag
   for (const S of SYSTEMS) {
     { const F = dipFacOf(S.baseFac); if (F && !dipRes(F.id)) S.faction = fxBanner(F, S.faction || S.baseFac); }
@@ -35915,17 +35954,17 @@ function resStoryWars(E, es) {
   const Dc = (wanderer.dip && wanderer.dip.col) || {};
   for (const w of [...E.sw]) {
     const e = E.emp[w.e], F = DIP_FAC.find(o => o.id === w.f); if (!e || !F || !facOk(F)) { E.sw = E.sw.filter(o => o !== w); continue; }
-    const r = Math.random();
-    if (r < .22) { // a world bombarded and its governor beaten
-      const left = ALL_BODIES.filter(P => P.land && !P.dock && F.match(P.baseFac || P.fac0 || '') && !Dc[P.id] && !resHeldBy(P.id));
-      if (!left.length) { resEmpLog(`${dipFacName(F)} has no worlds left to lose to ${e.name}`); E.sw = E.sw.filter(o => o !== w); continue; }
-      const P = left.find(o => o.id !== F.capital) || left[0]; e.col.push(P.id); w.took++;
-      const msg = `${e.name} bombarded ${P.name} and defeated its governor · ${P.name} flies their flag now`; resEmpLog(msg);
-      if (state === 'explore' || state === 'space') { if (state === 'space') spaceMsg(msg); else lootMsg(msg, '#ffb36e'); }
-    } else if (r < .3) { // the faction strikes back
-      const mine = e.col.filter(id => { const P = bodyById(id); return P && F.match(P.baseFac || P.fac0 || '') && id !== e.cap; });
-      if (mine.length) { const id = pick(mine); e.col = e.col.filter(o => o !== id); resEmpLog(`${dipFacName(F)} retakes ${bodyById(id).name} from ${e.name}`); }
-    } else if (r < .345 || w.took >= 4) { resEmpLog(`${e.name} and ${dipFacName(F)} make peace`); E.sw = E.sw.filter(o => o !== w); }
+    const theirs = () => ALL_BODIES.filter(P => P.land && !P.dock && F.match(P.baseFac || P.fac0 || '') && !Dc[P.id] && !resHeldBy(P.id) && P.id !== F.capital);
+    const mine = () => e.col.filter(id => { const P = bodyById(id); return P && F.match(P.baseFac || P.fac0 || '') && id !== e.cap; }); // the worlds this war won them
+    const say = m => { resEmpLog(m); if (state === 'space') spaceMsg(m); else if (state === 'explore') lootMsg(m, '#ffb36e'); };
+    const n = warPace(w, e.col.length, dipWorldsOf(F).length, resPower(e), fxPow([F.id]), 15);
+    for (let k = 0; k < Math.abs(n); k++) {
+      if (n > 0) { const P = theirs()[0]; if (P) { e.col.push(P.id); w.took = (w.took || 0) + 1; say(`${e.name} takes ${P.name} from ${dipFacName(F)}`); } } // the front moves their way
+      else { const id = mine()[0]; if (id) { e.col = e.col.filter(o => o !== id); say(`${dipFacName(F)} retakes ${bodyById(id).name} from ${e.name}`); } } // or back
+    }
+    if (Math.abs(w.score) >= 100) { E.sw = E.sw.filter(o => o !== w);
+      if (w.score > 0) { const more = theirs().slice(0, 2); for (const P of more) e.col.push(P.id); say(`${e.name} wins its war with ${dipFacName(F)}${more.length ? ` and takes ${more.map(P => P.name).join(', ')}` : ''}`); }
+      else { const back = mine(); e.col = e.col.filter(o => !back.includes(o)); say(`${dipFacName(F)} wins its war with ${e.name}${back.length ? ` and takes back ${back.map(id => bodyById(id).name).join(', ')}` : ''}`); } }
   }
 }
 /* ---- empires across the galaxies. An empire is founded in the galaxy its founder is in, and grows within it. Carax, beside
