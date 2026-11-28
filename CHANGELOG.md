@@ -3594,3 +3594,19 @@ One more telling of *While you slept*, and this one goes on into Chapter IV. If 
 - **Preview:** `?hakprinceofzark` jumps straight to the cutscene and the Prince (a throwaway test wanderer, never saved). `?hakchompjakbossfightevilgoodending` now plays both phases.
 - **Voices:** his new lines are written for `data/hakPrinceVoices.js` (HAKPRINCEOFZARK1–26; script in `assets/audio/hak_prince_of_zark/VOICE_SCRIPT.md`). All 26 are recorded and play in the cutscene and the fight.
 - Code: `hakAscStart` / `hasTick` (the cutscene, state `hakAsc`) and `hakzSpawn` / `hakzTick` (the fight) in `index.html`. `damageFauna` learned three new flags: `noGap` (no level-gap scaling), `invuln` and `dmgMul`.
+
+### Temperatures on every world (No Man's Sky style)
+
+- **Every planet and moon you land on now has a temperature**, warmer by day and colder by night. It shows under your health bars as you explore (**❄ −82.4°C · FREEZING**, **🔥 145°C · SCORCHING**, **🌡 17.4°C · SAFE**). The scanner line (on the galaxy map, as you fly in and on the landing card) gives it too: *Frozen Planet · Raging blizzards · −74.5°C*.
+  - **Sol's worlds are roughly as they really are:** Mercury 430°C by day and −180°C by night, Venus 465°C, the Moon 120°C / −173°C, Mars −5°C / −85°C, Titan −179°C, Pluto −218°C. Earth, Malana, Janira and the other lush worlds are mild.
+  - **Every other world** gets its own from its type and seed, the same every time. Paradise and lush worlds are pleasant, oceans mild and deserts hot by day. Scorched and volcanic worlds burn and frozen ones freeze. Airless rocks and moons have scorching days and killing nights.
+  - **Storms push it further:** a blizzard takes it down by up to 48°C, a firestorm puts it up by up to 75°C, and Carax's singularity storms add 110°C.
+- **Hazard protection:** the suit bar now drains outside the safe band (−20°C to 42°C), faster the further out you are. That's about 1.5 minutes on a frozen world, 25 seconds in Mercury's noon or at Pluto. Storm hazards come on top.
+  - **What helps:** armour takes up to 30% off the drain (the Nostra exo-armour), and the insulated lining takes a quarter off in the cold.
+  - **Shelter stops it:** under your ship, in a shelter you built, in a vehicle, in a cantina or hall, under water (the water holds it between −2°C and 32°C), and by a camp heater (for the cold only).
+  - **Thermal cell (new, craftable):** 2 frost crystals and 1 ice. It restores 50% hazard protection. Select it and use it like a med kit.
+  - **Warnings** come as you step into the heat or the cold, at 50% and at 25%.
+  - **Run out** and the heat or the cold burns through to your health, faster the worse it is, until you black out and come to by your ship.
+- No temperature inside the mountain (it's warm), on Earth's Chapter I–II ground (Antarctica's blizzard keeps its own suit heat), or aboard.
+- Code: `planetTemp` / `tempNow` / `tempDrain` / `tempHud` in `index.html`, on top of `wxHazard`.
+

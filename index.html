@@ -891,6 +891,12 @@ button.bm-c.no{opacity:.45}
 .bar.heat.on{opacity:1}
 .bar.heat i{background:linear-gradient(90deg,#ff5a3d,#ffb36b)}
 .bar.heat.low{animation:suitWarn .6s ease-in-out infinite alternate}
+.temp{display:none;align-items:baseline;gap:8px;margin-top:1px;font-family:var(--text);white-space:nowrap}
+.temp.on{display:flex}
+.temp b{font-weight:500;font-size:11px;letter-spacing:.08em;color:var(--ink,#e6e9f0)}
+.temp small{font-size:7.5px;letter-spacing:.3em;color:var(--mute)}
+.temp.cold b{color:#8fd8ff}.temp.hot b{color:#ff9a6a}
+.temp.haz small{animation:pulse .8s infinite alternate}.temp.cold.haz small{color:#8fd8ff}.temp.hot.haz small{color:#ff9a6a}
 
 .boss-bar{position:absolute;top:calc(var(--st,0px) + 18px);left:50%;transform:translateX(-50%);width:min(460px,70vw);opacity:0;transition:opacity .5s;pointer-events:none;z-index:6;text-align:center}
 .boss-bar.on{opacity:1}
@@ -1320,7 +1326,7 @@ body.cc-ingame #cc{background:none} body.cc-ingame > *:not(#cc):not(#c):not(scri
 <!-- Exploration HUD -->
 <div id="xhud" class="hidden">
   <div class="mmap" id="mmap"><canvas id="mmapC"></canvas><div class="cap" id="mmapCap"></div><div class="wx" id="mmWx"></div></div>
-  <div class="x-obj"><div class="lvl" id="lvl"><b id="lvN">LV 1</b><div class="xpbar"><i id="xpI"></i></div><small id="xpT"></small></div><small id="xChap">CHAPTER I · ANTARCTICA</small><div id="xTasks"></div><div class="x-nav" id="xNav"></div><div class="bars"><div class="bar hp" id="hpBar"><i></i></div><div class="bar sta" id="staBar"><i></i></div><div class="bar jet" id="jetBar"><i></i></div><div class="bar heat" id="heatBar" title="Suit heat"><i></i></div></div>
+  <div class="x-obj"><div class="lvl" id="lvl"><b id="lvN">LV 1</b><div class="xpbar"><i id="xpI"></i></div><small id="xpT"></small></div><small id="xChap">CHAPTER I · ANTARCTICA</small><div id="xTasks"></div><div class="x-nav" id="xNav"></div><div class="bars"><div class="bar hp" id="hpBar"><i></i></div><div class="bar sta" id="staBar"><i></i></div><div class="bar jet" id="jetBar"><i></i></div><div class="bar heat" id="heatBar" title="Hazard protection"><i></i></div><div class="temp" id="tempRead"></div></div>
     <div class="jcmd" id="jcmd"><button class="jbtn" id="jBtn"><span id="jWho">FOLLOWING COMPANIONS</span><b id="jMode"></b><em>▾</em></button>
       <div class="jopts" id="jOpts"><div class="jwho" id="jWhoRow" style="display:none"></div><button data-m="mine"><kbd>1</kbd>Mine</button><button data-m="explore"><kbd>2</kbd>Explore</button><button data-m="base"><kbd>3</kbd>Meet me back at base</button><button data-m="wander"><kbd>4</kbd>Wander around</button><button data-m="follow"><kbd>5</kbd>Follow me</button><button data-a="share" class="al-deed good"><kbd>6</kbd>Share food</button><button data-a="threat" class="al-deed evil"><kbd>7</kbd>Intimidate</button><button data-m="dismiss" id="jDismiss" class="jdismiss"><kbd>8</kbd>Dismiss · wait aboard the Nostra</button><button data-m="dungeon" id="jDungeon"><kbd>9</kbd>Explore a dungeon · clear a lair here</button><button data-m="recall" id="jRecall" style="display:none"><kbd>0</kbd>Call everyone back from the dungeons</button></div>
     </div></div>
@@ -7685,6 +7691,7 @@ const ITEMS = {
   beacon: { name: 'Signal beacon', kind: 'place', short: 'BCN', desc: 'A tall marker. Your HUD shows the distance to the nearest one.', cost: { scrap: 3, crystal: 2, cloth: 1 } },
   colkit: { name: 'Colony kit', kind: 'use', short: 'COLONY', colony: true, desc: 'A flag, a beacon and a prefab shelter in one crate. Use it on an unclaimed world (or press Colonise) and the world becomes your colony, no units needed. Craft it at a crafting table, aboard your ship, or near your ship on any world.', cost: { metal: 4, crystal: 3, cloth: 3, wood: 4 }, bench: true },
   medkit: { name: 'Med kit', kind: 'use', short: 'MED', desc: 'Restores 40 health.', heal: 40, cost: { cloth: 2, ice: 1 } },
+  thermal: { name: 'Thermal cell', kind: 'use', short: 'THRM', desc: 'Restores 50% hazard protection: for the heat and the cold of the worlds you land on.', haz: 50, cost: { crystal: 2, ice: 1 }, color: '#ffb36b' },
   roast: { name: 'Roast meat', kind: 'use', short: 'ROAST', desc: 'Savanna game cooked over a wood fire. Restores 30 health.', heal: 30, cost: { meat: 1, wood: 1 } },
   ration: { name: 'Seal ration', kind: 'use', short: 'FOOD', desc: 'Rendered blubber and meltwater. Restores 25 health.', heal: 25, cost: { blubber: 1, ice: 1 } },
   lining: { name: 'Insulated lining', kind: 'tool', short: 'LINE', desc: 'Skua down sewn into your suit: +20 max health while you carry it.', cost: { feather: 4, cloth: 2, blubber: 1 } },
@@ -7716,7 +7723,7 @@ const ITEMS = {
   warpcell: { name: 'Warp cell', kind: 'res', color: '#a58bff', desc: 'Antimatter held in a crystal lattice. Your ship burns one for every jump between star systems on the galaxy map.', cost: { metal: 2, crystal: 2, scrap: 2 } }
 };
 const RES_IDS = ['stone', 'ice', 'wood', 'scrap', 'metal', 'obsidian', 'crystal', 'cloth', 'blubber', 'feather', 'meat', 'warpcell'];
-const CRAFT_IDS = ['metal', 'warpcell', 'hyper1', 'hyper2', 'hyper3', 'pick', 'opick', 'rifle1', 'rifle2', 'rifle3', 'armor1', 'armor2', 'armor3', 'armor4', 'medkit', 'ration', 'roast', 'lining', 'lamp', 'wall', 'heater', 'beacon', 'colkit'];
+const CRAFT_IDS = ['metal', 'warpcell', 'hyper1', 'hyper2', 'hyper3', 'pick', 'opick', 'rifle1', 'rifle2', 'rifle3', 'armor1', 'armor2', 'armor3', 'armor4', 'medkit', 'thermal', 'ration', 'roast', 'lining', 'lamp', 'wall', 'heater', 'beacon', 'colkit'];
 const GUN_IDS = ['rifle1', 'rifle2', 'rifle3'], ARMOR_BASE = ['armor1', 'armor2', 'armor3', 'armor4'], ARMOR_IDS = [...ARMOR_BASE, 'armHaw', 'armHal', 'armGrk', 'armLia', 'armSha', 'armSev']; // the endgame sets last: each for one race, from level 90
 const KEEPS = k => k === 'tool' || k === 'gun' || k === 'armor'; // owned once, not counted
 const gearOwned = id => { const L = GUN_IDS.includes(id) ? GUN_IDS : ARMOR_BASE.includes(id) ? ARMOR_BASE : null; return L ? L.slice(L.indexOf(id)).some(x => have(x)) : have(id) > 0; }; // you own it, or a better one
@@ -8800,6 +8807,10 @@ function doAttack() {
     return;
   }
   if (it && ITEMS[it].colony) { colonyTry(true); return; } // the Colony kit: plant it
+  if (it && ITEMS[it].haz) { // a thermal cell: hazard protection, not health
+    if (!have(it) || suitHeat() >= 99.5) { lootMsg(suitHeat() >= 99.5 ? 'Hazard protection already full' : 'None left', '#ff8f86'); return; }
+    invState().heat = Math.min(100, suitHeat() + ITEMS[it].haz); takeItem(it, 1); sfx.chime(); lootMsg(`+${ITEMS[it].haz}% hazard protection`, '#ffb36b'); return;
+  }
   if (it && ITEMS[it].kind === 'use') {
     if (!have(it) || ex.hp >= maxHP()) { lootMsg(ex.hp >= maxHP() ? 'Already at full health' : 'None left', '#ff8f86'); return; }
     const heal = ITEMS[it].heal || 40; ex.hp = Math.min(maxHP(), ex.hp + heal); invState().hp = ex.hp; takeItem(it, 1); sfx.chime(); lootMsg(`+${heal} health`, '#ff7a72'); return;
@@ -8862,7 +8873,7 @@ function updateSurvival(dt) {
   const hp = $('#hpBar'), st = $('#staBar');
   hp.firstChild.style.transform = `scaleX(${ex.hp / maxHP()})`; hp.classList.toggle('low', ex.hp < maxHP() * .25);
   st.firstChild.style.transform = `scaleX(${ex.sta / 100})`; st.classList.toggle('low', ex.sta < 20);
-  const hb = $('#heatBar'), hv = suitHeat(); hb.firstChild.style.transform = `scaleX(${hv / 100})`; hb.classList.toggle('on', hv < 99.5 || (ch1().stormTalk && !ch1().stormOver)); hb.classList.toggle('low', hv < 30);
+  const hb = $('#heatBar'), hv = suitHeat(); hb.firstChild.style.transform = `scaleX(${hv / 100})`; hb.classList.toggle('on', hv < 99.5 || (ch1().stormTalk && !ch1().stormOver) || (isPl() && tempDrain(world.tempNow) > 0)); hb.classList.toggle('low', hv < 30); tempHud();
   const jb = $('#jetBar'); jb.firstChild.style.transform = `scaleX(${(ex.jet == null ? 100 : ex.jet) / 100})`; jb.classList.toggle('on', ex.jet != null && ex.jet < 99.5); jb.classList.toggle('low', ex.jet < 15);
   // placement preview, teleporter rings, merchants
   updateBuildGhost(); tickMerchants(dt); giversTick(dt); xoTick(dt); try { bstTick(dt); } catch (e) { console.error(e); } csbTick(dt); cityTick(dt); hallTick(dt); khzTick(dt); nyxTick(dt); tiTick(dt); if (!TIW.area) { orbAuto(); orbTick(dt); } leaderHallTick(); furnaceTick(); compDungeonTick(); // Orion Mascar at his house (East Africa isn't a planet landing) · (these three were stuck behind this comment: dungeon crews never came home, furnaces stopped, leader halls didn't tick)
@@ -21228,12 +21239,12 @@ function planetWx(P) {
   if (S0) { storm = Object.assign({ k, power: power || .5 }, S0); if (k === 'dust') { const m = new THREE.Color(P.c ? P.c.mid : '#c8a070'); storm.col = '#' + m.getHexString(); storm.fog = '#' + m.clone().multiplyScalar(.6).getHexString(); } }
   return (P._wx = { type, wx, storm, paradise: !storm && (!!e.par || /Paradise/.test(type)), faux: /Faux Paradise/.test(type) });
 }
-const wxTag = P => { const W = planetWx(P); return `${W.type} · ${W.wx}`; };
+const wxTag = P => { const W = planetWx(P), tt = typeof tempTagOf === 'function' ? tempTagOf(P) : ''; return `${W.type} · ${W.wx}${tt ? ' · ' + tt : ''}`; };
 // the weather where you're standing: calm, a warning, then the storm, then calm again
 function wxOverlayOff() { const f = document.getElementById('wxFlash'); if (f) f.style.opacity = 0; world.flashA = 0; }
 function wxReset() { wxOverlayOff(); world.wx = null; world.storm = 0; world.stormDarkT = 0; world.flashA = 0; for (const k of world.wxRocks || []) wScene.remove(k.ring, k.rock); world.wxRocks = []; }
 function planetWxTick(dt) {
-  if (DGN.on) { world.storm = 0; return; } // no weather inside the mountain
+  if (DGN.on) { world.storm = 0; world.tempNow = null; return; } // no weather inside the mountain
   const P = world.planet && world.planet.P, W = P && planetWx(P), S = W && W.storm && !(P.id === 'carax' && sgraLock()) && W.storm; // (no singularity storms during the final battle)
   if (W && W.storm && !S && world.wx) wxReset(); // (a storm already raging when the battle began: cleared away at once, rocks and all)
   if (!S) { world.storm = clamp((world.storm || 0) - dt / 6, 0, 1); world.wxK = null; if (world.snow) world.snow.visible = false; if (world.flashA) wxOverlayOff(); wxHazard(dt, null); return; }
@@ -21260,11 +21271,26 @@ function planetWxTick(dt) {
 }
 // a storm wears down the suit (the heat bar) unless you shelter: under the Nostra, in a shelter, by a heater, in a vehicle, or under water
 function wxHazard(dt, S) {
+  world.tempNow = tempNow(); // (read on the HUD even while paused)
   if (state !== 'explore') return;
-  const p = player.position, sheltered = !!ex.vehicle || Math.hypot(p.x, p.z) < 11 || !!ex.under || !!(world.hall && world.hall.inside) || insideShelterCached(dt) || nearHeater();
+  const p = player.position, T = world.tempNow, warmth = nearHeater(), roof = !!ex.vehicle || Math.hypot(p.x, p.z) < 11 || !!ex.under || !!(world.hall && world.hall.inside) || insideShelterCached(dt);
+  const sheltered = roof || warmth; world.shelterNow = roof || (warmth && T != null && T < TEMP_SAFE[0]) || (T != null && T >= TEMP_SAFE[0] && T <= TEMP_SAFE[1] && sheltered); // a heater helps with the cold, not the heat
   const inv = invState(); let h = suitHeat();
   const drain = S && S.haz && world.storm > .35 && !sheltered ? S.haz * S.power : 0;
-  h = clamp(drain ? h - drain * dt : h + (sheltered ? 9 : 3) * dt, 0, 100); inv.heat = h;
+  const tDrain = roof || (warmth && T < TEMP_SAFE[0]) ? 0 : tempDrain(T); // the temperature, on top of any storm
+  h = clamp(drain || tDrain ? h - (drain + tDrain) * dt : h + (sheltered ? 9 : 3) * dt, 0, 100); inv.heat = h;
+  if (tDrain && !drain) { // into the heat or the cold: say so once, then as it runs low
+    const hot = T > 0, key = hot ? 'hot' : 'cold';
+    if (world.tempWarn !== key) { world.tempWarn = key; lootMsg(`${hot ? 'Extreme heat' : 'Extreme cold'} · ${fmtTemp(T)} · hazard protection draining`, hot ? '#ff9a6a' : '#8fd8ff'); }
+    if (h <= 0) { // nothing left: it burns (or freezes) straight through to you
+      ex.hp = Math.max(0, ex.hp - (2 + tDrain * 1.6) * dt); invState().hp = Math.round(ex.hp);
+      if ((world.burnT = (world.burnT || 0) - dt) <= 0) { world.burnT = 1.2; const fx = $('#hurtFx'); fx.classList.remove('on'); void fx.offsetWidth; fx.classList.add('on'); sfx.hit(hot ? 'crate' : 'ice'); }
+      if (!world.burnMsg || time - world.burnMsg > 12) { world.burnMsg = time; notice(hot ? 'Hazard protection depleted · burning' : 'Hazard protection depleted · freezing', 'GET TO SHELTER', 2600); }
+      if (ex.hp <= 0) { inv.heat = 40; blackout(); } return;
+    }
+    if (h < 25 && (!world.coldMsg || time - world.coldMsg > 25)) { world.coldMsg = time; notice('Exosuit · hazard protection critical', tiPhone() ? 'GET TO SHELTER' : 'SHELTER UNDER YOUR SHIP, OR USE A THERMAL CELL', 2800); sfx.alarm(); }
+    else if (h < 50 && h > 48 && (!world.halfMsg || time - world.halfMsg > 25)) { world.halfMsg = time; lootMsg('Hazard protection at 50%', hot ? '#ff9a6a' : '#8fd8ff'); }
+  } else if (!tDrain) world.tempWarn = null;
   if (h <= 0 && drain && S.cata) { // no emergency recovery here: the radiation burns straight through to you
     ex.hp = Math.max(0, ex.hp - 9 * dt); invState().hp = Math.round(ex.hp);
     if ((world.burnT = (world.burnT || 0) - dt) <= 0) { world.burnT = 1; const fx = $('#hurtFx'); fx.classList.remove('on'); void fx.offsetWidth; fx.classList.add('on'); sfx.hit('crate'); ex.shake = Math.max(ex.shake || 0, .2); }
@@ -21316,6 +21342,69 @@ function wxLine() {
   if (S && X && X.phase === 'warn') return `<b>⚠ ${S.name} incoming</b>`;
   if (S && X && X.phase === 'storm') return `<b>${S.cata ? '☢' : '⚠'} ${S.name} · ${Math.max(0, Math.ceil(X.t))}s</b>`;
   return `${W.type} · ${S ? 'calm for now' : W.wx.replace(' · no storms', '')}`;
+}
+// ---- temperature (No Man's Sky style): every world you land on has its own, warmer by day and colder by night, pushed further
+//      by its storms. Outside the safe band (−20 °C to 42 °C) your hazard protection (the suit bar) drains, faster the further
+//      out you are; armour and the insulated lining slow it, and shelter (under your ship, a shelter, a vehicle, a heater for the
+//      cold, a cantina, the water) stops it. Run out and the heat or the cold burns your health instead, until you black out.
+//      A thermal cell (crafted from frost crystals) puts protection back. ----
+const TEMP_SOL = { // [by day, by night] °C: Sol's worlds, roughly as they really are
+  mercury: [430, -180], venus: [465, 460], earth: [21, 11], moon: [120, -173], mars: [-5, -85], phobos: [-4, -112], deimos: [-10, -110], ceres: [-38, -143],
+  io: [-118, -165], europa: [-150, -190], ganymede: [-112, -183], callisto: [-108, -193], mimas: [-181, -209], enceladus: [-193, -218], tethys: [-187, -210], dione: [-186, -210],
+  rhea: [-174, -220], titan: [-179, -181], iapetus: [-143, -213], miranda: [-187, -213], ariel: [-190, -213], umbriel: [-198, -213], titania: [-184, -213], oberon: [-185, -213],
+  triton: [-235, -237], pluto: [-218, -240], charon: [-220, -240], haumea: [-241, -245], makemake: [-239, -243], eris: [-231, -243], dysnomia: [-233, -245],
+  carax: [46, 31], 'archiostal-gardens': [21, 17], 'obra-spira': [24, 18]
+};
+const TEMP_PARENT = { jupiter: [-110, -170], saturn: [-180, -205], uranus: [-195, -215], neptune: [-225, -235], pluto: [-225, -240] }; // Sol's smaller moons, by the giant they circle
+const TEMP_STORM = { snow: -48, ember: 75, dust: 22, ash: 28, super: -12, rain: -6, toxic: 14, methane: -8, singularity: 110 }; // how far a storm at full strength moves it
+const TEMP_SAFE = [-20, 42];
+function planetTemp(P) { // [by day, by night], or null (gas giants, stations)
+  if (!P) return null; if (P._temp !== undefined) return P._temp;
+  const W = planetWx(P), t = W.type, s = P.seed || 1, r = wxHash(s, 7), r2 = wxHash(s, 8), airless = /^No atmosphere/.test(W.wx);
+  let v = TEMP_SOL[P.id] || (P.parent && TEMP_PARENT[P.parent]) || null;
+  if (!v) {
+    if (P.kind === 'station' || P.kind === 'gas' || /Giant|Station/.test(t)) v = null;
+    else if (/Fortress/.test(t)) v = [46, 31];
+    else if (/Paradise|Idyllic|Rainbow|Blissful|Halcyon|Ecumenopolis|Sanctum/.test(t)) { const d = 19 + r * 9; v = [d, d - 6 - r2 * 4]; } // (a faux paradise is just as pleasant, until its storms come)
+    else if (/Lush|Verdant|Temperate|Humid|Bountiful|Flourishing|Exotic/.test(t)) { const d = 15 + r * 17; v = [d, d - 7 - r2 * 6]; }
+    else if (/Ocean|Water/.test(t)) { const d = 13 + r * 15; v = [d, d - 4 - r2 * 4]; }
+    else if (/Scorched|Parched|Blasted/.test(t)) { const d = 85 + r * 70; v = [d, airless ? -110 - r2 * 60 : d - 35 - r2 * 25]; }
+    else if (/Desert|Arid|Dusty|Sandy/.test(t)) { const d = 38 + r * 24; v = [d, airless ? -90 - r2 * 40 : -6 + r2 * 14]; }
+    else if (/Volcanic|Magma|Molten|Infernal/.test(t)) { const d = 105 + r * 95; v = [d, d - 25 - r2 * 20]; }
+    else if (/Toxic|Caustic|Poisonous|Noxious|Acidic/.test(t)) { const d = 45 + r * 50; v = [d, d - 10 - r2 * 12]; }
+    else if (/Frozen|Glacial|Icy|Freezing|Arctic/.test(t)) { const d = airless ? -140 - r * 50 : -45 - r * 55; v = [d, d - 22 - r2 * 25]; }
+    else if (/Hazy/.test(t)) v = [-150 - r * 30, -155 - r * 30];
+    else { const d = 50 + r * 80; v = [d, -110 - r2 * 70]; } // barren, dead, cratered: no air to hold the heat, so scorching days and killing nights
+  }
+  return (P._temp = v ? [Math.round(v[0] * 10) / 10, Math.round(v[1] * 10) / 10] : null);
+}
+const fmtTemp = c => `${c < 0 ? '−' : ''}${Math.abs(c) >= 100 ? Math.round(Math.abs(c)) : Math.abs(c).toFixed(1)}°C`;
+function tempTagOf(P) { const v = planetTemp(P); if (!v) return ''; const [d, n] = v; return Math.abs(d - n) > 35 ? `${fmtTemp(d)} by day, ${fmtTemp(n)} by night` : fmtTemp((d + n) / 2); }
+function tempNow() { // the temperature where you're standing, now
+  if (!isPl() || DGN.on) return null; const P = world.planet && world.planet.P, v = planetTemp(P); if (!v) return null;
+  const sunH = Math.sin((timeOfDay() - .25) * Math.PI * 2), day = smooth(-.15, .4, sunH);
+  let T = v[1] + (v[0] - v[1]) * day;
+  const k = world.wxK && world.wxK.k; if (k && world.storm) T += (TEMP_STORM[k] || 0) * (k === 'dust' && v[0] < 30 ? .4 : 1) * world.storm; // (a cool world's dust storm barely warms it)
+  T += Math.sin(time * .07 + (P.seed || 1)) * 1.2; // it never sits quite still
+  if (ex.swim || ex.under) T = clamp(T, -2, 32); // the water holds it in
+  return T;
+}
+function tempDrain(T) { // hazard protection lost each second at this temperature (0 in the safe band)
+  if (T == null) return 0; const ex2 = T > TEMP_SAFE[1] ? T - TEMP_SAFE[1] : T < TEMP_SAFE[0] ? TEMP_SAFE[0] - T : 0; if (!ex2) return 0;
+  let d = clamp(.3 + ex2 / 50, .3, 4.2);
+  d *= 1 - armorDef() * .6; // armour takes the edge off
+  if (T < 0 && have('lining')) d *= .75; // and skua down keeps the cold out
+  return d;
+}
+function tempHud() {
+  const el = $('#tempRead'); if (!el) return;
+  const T = state === 'explore' || state === 'xpaused' ? world.tempNow : null;
+  if (T == null || !isPl()) { if (el.classList.contains('on')) el.classList.remove('on'); return; }
+  const cold = T < TEMP_SAFE[0], hot = T > TEMP_SAFE[1], cls = cold ? 'cold' : hot ? 'hot' : 'ok';
+  const lab = world.shelterNow && (cold || hot) ? 'SHELTERED' : T < -100 ? 'EXTREME COLD' : cold ? 'FREEZING' : T > 120 ? 'EXTREME HEAT' : hot ? 'SCORCHING' : 'SAFE';
+  const html = `<b>${cold ? '❄' : hot ? '🔥' : '🌡'} ${fmtTemp(T)}</b><small>${lab}</small>`;
+  if (el.dataset.h !== html) { el.dataset.h = html; el.innerHTML = html; }
+  el.className = 'temp on ' + cls + (world.shelterNow ? '' : (cold || hot) ? ' haz' : '');
 }
 // Chapter III and Chapter IV hold the same galaxy under different flags: swap them to suit the wanderer you're playing
 let FAC_CH = 0;
@@ -26947,7 +27036,7 @@ function csfTarget(range) { // the Spawn the rifle locks on to: in front of you 
 }
 function csfAttack() { // F aboard during the fight
   if (ex.dlg || ex.invOpen) return; const id = selItem(), it = id && ITEMS[id], p = player.position;
-  if (it && it.kind === 'use') { if (!have(id) || ex.hp >= maxHP()) { lootMsg(ex.hp >= maxHP() ? 'Already at full health' : 'None left', '#ff8f86'); return; } const heal = it.heal || 40; ex.hp = Math.min(maxHP(), ex.hp + heal); invState().hp = ex.hp; takeItem(id, 1); sfx.chime(); lootMsg(`+${heal} health`, '#ff7a72'); return; }
+  if (it && it.kind === 'use' && !it.haz) { if (!have(id) || ex.hp >= maxHP()) { lootMsg(ex.hp >= maxHP() ? 'Already at full health' : 'None left', '#ff8f86'); return; } const heal = it.heal || 40; ex.hp = Math.min(maxHP(), ex.hp + heal); invState().hp = ex.hp; takeItem(id, 1); sfx.chime(); lootMsg(`+${heal} health`, '#ff7a72'); return; }
   if (it && it.kind === 'gun' && have(id)) {
     if (time - CSF.fireT < it.rate) return; CSF.fireT = time;
     const F = csfTarget(it.range || 30); sfx.shot(); ex.shake = Math.max(ex.shake || 0, .1);
