@@ -21,8 +21,8 @@ The second phase of Hak's fight in the villain's good ending (Chapter IV). Beat 
 | HAKPRINCEOFZARK11.mp3 | Hak, Prince of Zark | fight: under 10% (enraged) | If I fall, I drag the dark down with me. And you, wanderer, you go first. EVERYONE. KNEELS. |
 | HAKPRINCEOFZARK12.mp3 | Hak, Prince of Zark | fight: Twin Primes | Twin Primes. Light and dark. Choose which one strips the flesh from your bones. |
 | HAKPRINCEOFZARK13.mp3 | Hak, Prince of Zark | fight: the crown cracks | No… the crown… it’s cracking… not yet. NOT YET. I AM NOT FINISHED WITH YOU. |
-| HAKPRINCEOFZARK14.mp3 | Hak, Prince of Zark | fight: defeated | Light… and dark… and neither was enough. Go on, then. Sit on your throne of corpses. They’ll whisper to you every night, the way mine still whisper to me. |
-| HAKPRINCEOFZARK15.mp3 | Hak, Prince of Zark | fight: you go down | Down already? Damix lasted longer. He begged the whole time. I let him. I want to hear you beg. |
+| HAKPRINCEOFZARK14.mp3 | Hak, Prince of Zark | fight: you go down | Down already? Damix lasted longer. He begged the whole time. I let him. I want to hear you beg. |
+| HAKPRINCEOFZARK15.mp3 | Hak, Prince of Zark | fight: defeated | Light… and dark… and neither was enough. Go on, then. Sit on your throne of corpses. They’ll whisper to you every night, the way mine still whisper to me. |
 | HAKPRINCEOFZARK16.mp3 | Hak, Prince of Zark | fight: taunt 1 | How I’m treating you now is how I mercilessly killed that son of a bitch, Hawthorne. I ran him through and watched the light leave his eyes. Yours are next. |
 | HAKPRINCEOFZARK17.mp3 | Hak, Prince of Zark | fight: taunt 2 | Archamus’s light in one hand. Zark’s dark in the other. And you, wanderer, squirming between my fingers. |
 | HAKPRINCEOFZARK18.mp3 | Hak, Prince of Zark | fight: taunt 3 | Everyone kneels. Some of them just need help. Let me help you. Let me break your legs. |
