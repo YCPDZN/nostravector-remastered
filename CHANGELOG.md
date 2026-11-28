@@ -3581,14 +3581,14 @@ One more telling of *While you slept*, and this one goes on into Chapter IV. If 
   - A white blast and a shockwave, and **Hak Chompjak, Prince of Zark** lands where Hak knelt: Hak himself, grown to 2.5 m, his glasses gone and his eyes burning red, with a burning blade and the dark pouring off him. A title card names him, and the **Final Boss theme** starts on the blast.
   - His last line before the fight: *Everyone kneels, wanderer. I made a whole empire kneel once, one severed head at a time. You are just one more neck.*
   - The cutscene runs about 80 seconds with cinematic bars and its own camera. Skip (or Esc) goes straight to the fight. Your crew steps out of the shot and comes back for the fight.
-- **The superboss:** level 150 and **2,250,000 HP**, with the health shown in numbers on the boss bar. You get your health back as the fight starts.
+- **The superboss:** level 150 and **1,125,000 HP**, with the health shown in numbers on the boss bar. You get your health back as the fight starts.
   - **Stage one, the Prince returns (100–66%):** two-blow sword combos, leaps onto where you stand, red crescents along the floor (dodge them, block them or jump them), and a blink that puts him behind you with his blade already coming down.
   - **Stage two, Zark's dark (66–33%):** three-blow combos, three crescents at once, the dark falling on you in rings, a nova around him, and two Catharsis stalkers now and then (*the dark has children*).
   - **Stage three, light and dark (33–0%):** five crescents, more falling rings in red and gold, and every leap rings out with light after it lands.
   - **Enraged (under 10%):** everything faster and harder.
   - **Twin Primes:** every half minute or so he rises over the middle of the room and can't be hurt. The floor goes off under you in turn, the middle and then the edge (two rings in stage one, three in stage two, four in stage three), so you have to keep crossing between them.
   - **The crown cracks:** survive Twin Primes and he drops to one knee for 8 seconds, taking **×20 damage**. The boss bar turns gold and counts it down. Almost all of the damage you do to him happens here.
-  - Every blow is telegraphed, and a dodge roll avoids any of them. He's built to take around 15–20 minutes with the rail rifle at level 60, less at higher levels.
+  - Every blow is telegraphed, and a dodge roll avoids any of them. He's built to take around 8–10 minutes with the rail rifle at level 60, less at higher levels.
   - He talks while he fights, all in Hak's own voice and far more sinister than before: *How I'm treating you now is how I mercilessly killed that son of a bitch, Hawthorne. I ran him through and watched the light leave his eyes. Yours are next.*
 - **A checkpoint:** once you've reached the Prince of Zark, dying sends you back to him, not to Hak. Storm the throne room again, answer him, and the fight starts straight away. Beat him and the good ending plays as before.
 - **Preview:** `?hakprinceofzark` jumps straight to the cutscene and the Prince (a throwaway test wanderer, never saved). `?hakchompjakbossfightevilgoodending` now plays both phases.
