@@ -3650,3 +3650,11 @@ One more telling of *While you slept*, and this one goes on into Chapter IV. If 
   | Former Catharsis space | dark red |
 - **Pick your own realm's colour:** **YOU** beside the Galaxy / Empires switch on the empire map, or **Colour** beside Rename in Diplomacy. It's saved with your wanderer, and your colonies, conquests and the systems you've taken take it straight away. Gold until you pick.
 
+### Phones: the empire map, the temperature and the Prince of Zark
+
+Checked on a phone held upright (390×844) and sideways (844×390):
+- **The empire map's key** folds to the top three realms on a phone (*TAP FOR ALL 8*). Tap it to open it out, and tap it again to fold it. It remembers which way you left it. Held sideways it's smaller, so it leaves the map clear.
+- **Realm names** on the map are a size bigger on a phone, so even the small ones can be read.
+- **Colour pickers** (YOU on the map, Colour in Diplomacy) are big enough for a thumb. In Diplomacy, the realm row wraps onto two lines instead of running off a narrow screen.
+- **Already fine, and left as they are:** the Galaxy / Empires switch (under the buttons when upright, at the bottom when sideways), the temperature readout under the bars, the Prince of Zark's boss bar with its health in numbers (a shorter name on phones), the cutscene's title card and subtitles, and his fight on the touch controls (DODGE and BLOCK are on the pad).
+
