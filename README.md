@@ -40,6 +40,7 @@ The full feature-by-feature history is in **[CHANGELOG.md](CHANGELOG.md)**.
 - **Fight:** wildlife, 495 native species and their lairs, lair bosses, Terra Imperia patrols, Pontifexes and Sisters of Hawthorne, and No Man's Sky-style dogfights in space. Beat faction leaders in their halls to win wars.
 - **Farm Pontifexes and Sisters aboard the Cygnus:** after Hawthorne, fly back to her in orbit over Mercury and dock (or take the shuttle up from Mercury). Every officer and guard with a gold pip can be anointed when beaten, and whoever is hunting you waits on the bridge.
 - **Lead a crew:** James, Orion, Nico, Khazglar, Charon and Kizna, Nyrexia, Croxian, Malia and more. Every companion takes five orders (**Mine · Explore · Base · Wander · Follow**), and their damage grows with their own level.
+- **Galaxy map:** switch between the galaxy as it looks and the **empire map** (every realm's territory, borders and name, with a key).
 - **Rule:** Diplomacy with the Chompy Empire, the Erisian Empire, the Grek, the Human Federation of Sol, the Republic of Timpur and Terra Imperia. Five casus belli, colonies and governors, puppets, tributaries and resistance movements.
 - **Choose:** KOTOR / Mass Effect-style alignment in every chapter, and choices that change who lives, who joins you and how Chapter IV ends.
 - **Quests:** the main story, plus 134 hand-written side quests from traders and leaders.

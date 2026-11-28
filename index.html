@@ -993,6 +993,18 @@ button.bm-c.no{opacity:.45}
 .gp-act{position:sticky;bottom:-16px;margin:0 -18px -16px;padding:10px 18px 14px;background:linear-gradient(rgba(7,10,17,.85),rgba(7,10,17,.98))}
 .gal-panel .gp-why{font-size:8px;letter-spacing:.22em;color:#ff9f8f;text-transform:uppercase;margin-top:8px;text-align:center}
 @media (pointer:coarse){ .gp-act{background:rgba(7,10,17,.98);padding:8px 18px 12px} .gal-panel .gp-warp{padding:10px 12px;min-height:0} .gal-panel .gp-warp span{font-size:9px;letter-spacing:.2em} .gal-panel .gp-why{font-size:7.5px;letter-spacing:.12em;line-height:1.45;margin-top:6px} } /* phones: a compact, solid footer, so the system's details stay readable above it */
+.gal-mode{position:absolute;left:50%;bottom:calc(var(--sb) + 14px);transform:translateX(-50%);display:flex;border:1px solid var(--line);background:rgba(7,10,17,.7);z-index:3}
+.gal-mode button{height:34px;padding:0 16px;background:none;border:0;color:var(--mute);font:500 9px/1 var(--display);letter-spacing:.26em;cursor:pointer}
+.gal-mode button.on{background:rgba(207,238,255,.14);color:#cfeeff}
+.gal-legend{position:absolute;right:calc(var(--sr) + 16px);bottom:calc(var(--sb) + 14px);max-width:240px;padding:10px 12px;background:rgba(7,10,17,.72);border:1px solid var(--line);pointer-events:none;z-index:2}
+.gal-legend b{display:block;font:500 8px/1 var(--display);letter-spacing:.3em;color:var(--mute);margin-bottom:8px}
+.gal-legend div{display:flex;align-items:center;gap:8px;font:400 9px/1.5 var(--text);letter-spacing:.06em;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gal-legend i{flex:none;width:10px;height:10px;border-radius:2px}
+.gal-legend small{margin-left:auto;padding-left:8px;color:var(--mute)}
+.gal-legend.hidden{display:none}
+body:has(#galPanel:not(.hidden)) .gal-legend{display:none} /* the system panel takes that corner */
+@media (max-width:720px) and (orientation:portrait){ .gal-mode{bottom:auto;top:calc(var(--st) + 254px);left:calc(var(--sl) + 20px);transform:none} .gal-legend{max-width:62vw} }
+@media (max-height:520px){ .gal-legend div:nth-of-type(n+7){display:none} }
 .gal-hint{position:absolute;left:calc(var(--sl) + 20px);bottom:calc(var(--sb) + 18px);font-size:8px;letter-spacing:.24em;color:var(--mute);text-transform:uppercase;pointer-events:none}
 /* ---- phones: Chapter III screens (kept after the base rules so these win) ---- */
 @media (pointer:coarse){
@@ -21795,7 +21807,7 @@ function spaceHud() {
   st.addEventListener('pointerup', end); st.addEventListener('pointercancel', end);
   return el;
 }
-addEventListener('keydown', e => { if (state !== 'space') return; if (GAL.open) { if (e.code === 'Escape' || e.code === 'KeyM') { e.preventDefault(); galClose(); } return; } if (SPC.warp) return; if (SPC.atmo) { if (e.code === 'KeyE' || e.code === 'KeyL') { e.preventDefault(); atmLand(); return; } if (e.code === 'KeyM') { spaceMsg('Climb out of the atmosphere to open the galaxy map'); return; } } if (e.code === 'KeyM') { galOpen(); return; } if (e.code === 'KeyG' && SPC.bhOn) { bhNext(); return; } if (e.code === 'KeyE') { e.preventDefault(); spaceWalkShip(); return; } if (e.code === 'Escape' || e.code === 'KeyP') { spacePause(true); return; } if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault(); SPC.keys.add(e.code); });
+addEventListener('keydown', e => { if (state !== 'space') return; if (GAL.open) { if (e.code === 'Escape' || e.code === 'KeyM') { e.preventDefault(); galClose(); } else if (e.code === 'KeyE' && !e.repeat) { e.preventDefault(); sfx.click(); galSetMode(GAL.mode === 'empire' ? 'galaxy' : 'empire'); } return; } if (SPC.warp) return; if (SPC.atmo) { if (e.code === 'KeyE' || e.code === 'KeyL') { e.preventDefault(); atmLand(); return; } if (e.code === 'KeyM') { spaceMsg('Climb out of the atmosphere to open the galaxy map'); return; } } if (e.code === 'KeyM') { galOpen(); return; } if (e.code === 'KeyG' && SPC.bhOn) { bhNext(); return; } if (e.code === 'KeyE') { e.preventDefault(); spaceWalkShip(); return; } if (e.code === 'Escape' || e.code === 'KeyP') { spacePause(true); return; } if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault(); SPC.keys.add(e.code); });
 addEventListener('keyup', e => SPC.keys.delete(e.code));
 canvas.addEventListener('pointerdown', e => { if (state !== 'space' || e.pointerType !== 'mouse') return; SPC.drag = { x: e.clientX, y: e.clientY }; if (e.button === 0) SPC.mouseFire = true; });
 addEventListener('pointermove', e => { if (state !== 'space' || !SPC.drag) return; SPC.dragDX = (SPC.dragDX || 0) + (e.clientX - SPC.drag.x); SPC.dragDY = (SPC.dragDY || 0) + (e.clientY - SPC.drag.y); SPC.drag.x = e.clientX; SPC.drag.y = e.clientY; });
@@ -23246,7 +23258,7 @@ const adnDir = () => earthDir(ADN.lat, ADN.lon).toArray();
 
 /* ---- the galaxy map: a spiral disc seen at a tilt, the ten systems on it. Drag to pan, wheel / pinch / + − to zoom,
    tap a system to read about it, WARP to go (one warp cell per jump). ---- */
-const GAL = { open: false, rot: -.35, tilt: .62, zoom: 1.6, pan: { x: 0, y: 0 }, panTo: null, sel: null, img: null, ptrs: new Map(), moved: 0, pinch: 0 };
+const GAL = { open: false, rot: -.35, tilt: .62, zoom: 1.6, pan: { x: 0, y: 0 }, panTo: null, sel: null, img: null, ptrs: new Map(), moved: 0, pinch: 0, mode: store.get('nv_galMode', 'galaxy') }; // mode: the galaxy as it looks, or the empire map
 function galImage() {
   if (GAL.img) return GAL.img;
   const N = 1024, cv = document.createElement('canvas'); cv.width = cv.height = N; const g = cv.getContext('2d'), C = N / 2;
@@ -23267,6 +23279,7 @@ function galEl() {
   el = document.createElement('div'); el.id = 'galMap'; el.className = 'gal hidden';
   el.innerHTML = `<canvas id="galCv"></canvas><div class="gal-top"><b>MILKY WAY GALAXY</b><small id="galSub"></small></div>
     <button class="gal-close" id="galX">✕</button><button class="gal-dip" id="galDip">DIPLOMACY</button><button class="gal-res" id="galRes">RESIDENTS</button><button class="gal-emp" id="galEmp">EMPIRES</button><button class="gal-sw" id="galSwitch">XONEXI GALAXY ›</button><div class="gal-zoom"><button data-z="1.3">+</button><button data-z="0.77">−</button></div>
+    <div class="gal-mode" id="galMode"><button data-m="galaxy">GALAXY</button><button data-m="empire">EMPIRES</button></div><div class="gal-legend hidden" id="galLegend"></div>
     <div class="gal-panel hidden" id="galPanel"></div><div class="gal-hint">${SYSTEMS.length} systems · zoom in to name them all · drag to pan · tap a system · M or ESC to close</div>`;
   document.body.appendChild(el);
   el.querySelector('#galX').addEventListener('click', () => { sfx.click(); galClose(); });
@@ -23275,6 +23288,8 @@ function galEl() {
   el.querySelector('#galEmp').addEventListener('click', () => { sfx.click(); resEmpOpen(); });
   el.querySelector('#galSwitch').addEventListener('click', e => { sfx.click(); const ks = galKnown(), v = GAL.view || 'milky'; galView(e.currentTarget.dataset.to || ks[(ks.indexOf(v) + 1) % ks.length] || 'milky'); });
   for (const b of el.querySelectorAll('.gal-zoom button')) b.addEventListener('click', () => { GAL.zoom = clamp(GAL.zoom * +b.dataset.z, .7, 11); sfx.blip(); });
+  for (const b of el.querySelectorAll('#galMode button')) b.addEventListener('click', () => { sfx.click(); galSetMode(b.dataset.m); });
+  galSetMode(GAL.mode, true);
   const cv = el.querySelector('#galCv');
   cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); GAL.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); GAL.moved = 0; GAL.pinch = 0; GAL.panTo = null; });
   cv.addEventListener('pointermove', e => {
@@ -23413,16 +23428,58 @@ function galPanel() {
     <ul>${S.bodies.filter(P => !P.minor).map(P => { const m = S.bodies.filter(Q => Q.minor && Q.parent === P.id).length; return `<li><span>${P.name}</span><small>${P.faction.split(' · ')[0]} · ${kind(P)}${m ? ` · +${m} smaller moon${m === 1 ? '' : 's'}` : ''}</small></li>`; }).join('')}</ul><div class="gp-act">${btn}</div>`;
   $('#galPanel').classList.remove('hidden');
 }
+function galSetMode(m, quiet) { // the galaxy as it looks, or the empire map: every realm's territory, its borders and its name
+  GAL.mode = m === 'empire' ? 'empire' : 'galaxy'; try { store.set('nv_galMode', GAL.mode); } catch (e) {}
+  const el = $('#galMap'); if (!el) return;
+  for (const b of el.querySelectorAll('#galMode button')) b.classList.toggle('on', b.dataset.m === GAL.mode);
+  el.classList.toggle('empire', GAL.mode === 'empire'); GAL.legT = 0;
+  if (!quiet) { const h = el.querySelector('.gal-hint'); if (h && GAL.mode === 'empire') lootMsg(tiPhone() ? 'The empire map' : 'The empire map · every realm and its borders · E to switch back', '#cfeeff'); }
+}
+const galRealmOf = S => { const name = (S.faction || '').split(' · ')[0], col = S.facCol || FAC_COL[name]; return col && !/^(Unclaimed|Uninhabited)/.test(name) ? { name, col } : null; }; // who holds a system, and their colour
+function galEmpires(g, W, H, dpr, k, font) { // the empire map: each realm's territory washed in its colour, an outline round its border, its name over it
+  const groups = new Map();
+  for (const S of galSys()) { const R = galRealmOf(S); if (!R) continue; const key = R.name + '|' + R.col; const G = groups.get(key) || groups.set(key, { name: R.name, col: R.col, sys: [] }).get(key); G.sys.push(S); }
+  const L = GAL.lay || (GAL.lay = document.createElement('canvas')); if (L.width !== g.canvas.width || L.height !== g.canvas.height) { L.width = g.canvas.width; L.height = g.canvas.height; }
+  const lg = L.getContext('2d'), rOf = S => Math.max(5, (S.gen ? .024 : .036) * k);
+  const circles = (G, shrink) => { lg.beginPath(); for (const S of G.sys) { const p = galXY(S), r = rOf(S) - shrink; if (p.x < -r || p.x > W + r || p.y < -r || p.y > H + r || r <= 0) continue; lg.moveTo(p.x + r, p.y); lg.ellipse(p.x, p.y, r, r * (.55 + GAL.tilt * .45), 0, 0, 7); } lg.fill(); };
+  for (const G of groups.values()) {
+    lg.setTransform(1, 0, 0, 1, 0, 0); lg.clearRect(0, 0, L.width, L.height); lg.setTransform(dpr, 0, 0, dpr, 0, 0);
+    lg.globalCompositeOperation = 'source-over'; lg.fillStyle = G.col; circles(G, 0); // the territory
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = .26; g.drawImage(L, 0, 0); g.restore();
+    lg.globalCompositeOperation = 'destination-out'; circles(G, 1.6); lg.globalCompositeOperation = 'source-over'; // what's left is its border
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = .9; g.drawImage(L, 0, 0); g.restore();
+    G.n = G.sys.length; let cx = 0, cy = 0, m = 0; for (const S of G.sys) { const p = galXY(S); cx += p.x; cy += p.y; m++; } G.cx = cx / m; G.cy = cy / m;
+  }
+  // the realms' names, biggest first, over the middle of their space
+  const list = [...groups.values()].sort((a, b) => b.n - a.n), placed = [];
+  for (const G of list) {
+    if (G.n < 2 && GAL.zoom < 3) continue; if (G.cx < 0 || G.cx > W || G.cy < 0 || G.cy > H) continue;
+    const fs = clamp(7 + Math.sqrt(G.n) * 1.3 + (GAL.zoom - 1.6) * .6, 8, 15), txt = G.name.toUpperCase();
+    g.font = `600 ${fs.toFixed(1)}px ${font}`; try { g.letterSpacing = `${(fs * .28).toFixed(1)}px`; } catch (e) {}
+    const w = g.measureText(txt).width, box = { x: G.cx - w / 2 - 4, y: G.cy - fs, w: w + 8, h: fs * 1.6 };
+    if (placed.some(o => box.x < o.x + o.w && box.x + box.w > o.x && box.y < o.y + o.h && box.y + box.h > o.y)) continue; placed.push(box);
+    g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(1,1,4,.85)'; g.strokeText(txt, G.cx, G.cy); g.fillStyle = G.col; g.fillText(txt, G.cx, G.cy);
+    try { g.letterSpacing = '0px'; } catch (e) {}
+  }
+  // the key: who holds how much of this galaxy (refreshed twice a second)
+  if ((GAL.legT = (GAL.legT || 0) - 1) <= 0) { GAL.legT = 30; const el = $('#galLegend'); if (el) {
+    const tot = galSys().length, held = list.reduce((t, G) => t + G.n, 0), rows = list.slice(0, tiPhone() ? 6 : 10);
+    el.innerHTML = `<b>EMPIRES · ${held} OF ${tot} SYSTEMS HELD</b>` + rows.map(G => `<div><i style="background:${G.col}"></i>${G.name.replace(/[<>&]/g, '')}<small>${G.n}</small></div>`).join('') + (list.length > rows.length ? `<div><small style="margin:0;padding:0">+ ${list.length - rows.length} more</small></div>` : '');
+    el.classList.remove('hidden'); } }
+}
 function galDraw(dt) {
   const cv = $('#galCv'), dpr = Math.min(2, devicePixelRatio || 1), W = innerWidth, H = innerHeight;
   if (cv.width !== (W * dpr | 0) || cv.height !== (H * dpr | 0)) { cv.width = W * dpr | 0; cv.height = H * dpr | 0; }
   if (GAL.panTo) { const k = Math.min(1, dt * 5); GAL.pan.x = lerp(GAL.pan.x, GAL.panTo.x, k); GAL.pan.y = lerp(GAL.pan.y, GAL.panTo.y, k); }
   const g = cv.getContext('2d'), k = galScale(), t = performance.now() / 1000;
   g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#010104'; g.fillRect(0, 0, W, H);
+  const emp = GAL.mode === 'empire'; g.globalAlpha = emp ? .32 : 1; // the empire map: the galaxy dimmed under the realms
   if ((GAL.view || 'milky') === 'milky') { g.save(); g.translate(galCX() - GAL.pan.x * k, galCY() - GAL.pan.y * k); g.scale(1, GAL.tilt); g.rotate(GAL.rot); g.drawImage(GAL.img, -k, -k, k * 2, k * 2); g.restore(); }
   else if (GAL.view === 'andromeda') { const p = galXY({ map: M31_C }), r = k * M31_R * 1.2; g.save(); g.translate(p.x, p.y); g.scale(1, GAL.tilt); g.rotate(GAL.rot); g.drawImage(galM31Img(), -r, -r, r * 2, r * 2); g.restore(); } // Andromeda on its own map: no Milky Way, no Xonexi
   else if (MAGC[GAL.view]) { const M = MAGC[GAL.view], p = galXY({ map: M.C }), r = k * M.R * 1.3; g.save(); g.translate(p.x, p.y); g.scale(1, GAL.tilt); g.rotate(GAL.rot); g.drawImage(galMcImg(GAL.view), -r, -r, r * 2, r * 2); g.restore(); } // a Magellanic Cloud on its own map
   else { const X = SYSTEMS.find(o => galOf(o) === 'xonexi'), p = galXY(X), r = k * .32; g.save(); g.translate(p.x, p.y); g.scale(1, GAL.tilt); g.rotate(GAL.rot + .6); g.drawImage(galXonexiImg(), -r, -r, r * 2, r * 2); g.restore(); } // the Xonexi Galaxy on its own map
+  g.globalAlpha = 1;
+  if (emp) galEmpires(g, W, H, dpr, k, getComputedStyle(document.body).getPropertyValue('--display')); else { const el = $('#galLegend'); if (el && !el.classList.contains('hidden')) el.classList.add('hidden'); }
   const cur = curSys(), pc = galXY(cur), sel = GAL.sel && sysById(GAL.sel);
   { const reach = Math.min(driveRange(), have('warpcell') * LY_PER_CELL) / 50000 * k; // how far one jump can take you (drive range, or less if you're short of cells)
     if (reach > 0) { g.save(); g.setLineDash([3, 5]); g.strokeStyle = 'rgba(165,139,255,.55)'; g.fillStyle = 'rgba(165,139,255,.05)'; g.lineWidth = 1; g.beginPath(); g.ellipse(pc.x, pc.y, reach, reach * GAL.tilt, 0, 0, 7); g.fill(); g.stroke(); g.restore();
@@ -23434,7 +23491,7 @@ function galDraw(dt) {
     g.fillText(far ? `${galDist(cur, sel).toLocaleString()} LY · OUT OF RANGE` : `${galDist(cur, sel).toLocaleString()} LY · ${wc} WARP CELL${wc === 1 ? '' : 'S'}`, (pc.x + ps.x) / 2, (pc.y + ps.y) / 2 - 8);
   }
   const vis = (wanderer.ch3 && wanderer.ch3.visited) || [], font = getComputedStyle(document.body).getPropertyValue('--display');
-  for (const S of galSys()) { // faction territory, a soft wash behind each claimed system
+  if (!emp) for (const S of galSys()) { // faction territory, a soft wash behind each claimed system (the empire map draws it properly)
     const fc = S.facCol || FAC_COL[S.faction.split(' · ')[0]]; if (!fc) continue; const p = galXY(S), rr = (S.gen ? 16 : 26) + (S.gen ? 8 : 14) * GAL.zoom;
     if (p.x < -rr || p.x > W + rr || p.y < -rr || p.y > H + rr) continue;
     const gr = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr); gr.addColorStop(0, fc + '30'); gr.addColorStop(1, fc + '00'); g.fillStyle = gr; g.beginPath(); g.arc(p.x, p.y, rr, 0, 7); g.fill();
@@ -23449,7 +23506,7 @@ function galDraw(dt) {
     const p = galXY(S); if (p.x < -80 || p.x > W + 80 || p.y < -80 || p.y > H + 80) continue;
     const hole = S.star.kind === 'hole', gr0 = S.gen ? 10 : 16;
     if (!S.gen || GAL.zoom >= 2.2 || S === sel || S === cur) { const glow = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, gr0); glow.addColorStop(0, hole ? 'rgba(255,190,120,.9)' : S.star.col); glow.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = glow; g.beginPath(); g.arc(p.x, p.y, gr0, 0, 7); g.fill(); }
-    g.fillStyle = hole ? '#000' : S.star.col; g.beginPath(); g.arc(p.x, p.y, hole ? 4.5 : S.gen ? (GAL.zoom < 1.6 ? 1.5 : 2.4) : 3.6, 0, 7); g.fill();
+    g.fillStyle = hole ? '#000' : emp ? ((galRealmOf(S) || {}).col || '#8a8f9a') : S.star.col; g.beginPath(); g.arc(p.x, p.y, hole ? 4.5 : S.gen ? (GAL.zoom < 1.6 ? 1.5 : 2.4) : 3.6, 0, 7); g.fill();
     if (hole) { g.strokeStyle = '#ffcf8a'; g.lineWidth = 1.2; g.beginPath(); g.ellipse(p.x, p.y, 9, 3.4, -.2, 0, 7); g.stroke(); }
     if (!vis.includes(S.id) && (!S.gen || allLabels)) { g.strokeStyle = 'rgba(207,238,255,.35)'; g.lineWidth = 1; g.beginPath(); g.arc(p.x, p.y, 7, 0, 7); g.stroke(); }
     if (qsys.has(S.id)) { g.save(); g.translate(p.x, p.y); g.rotate(Math.PI / 4); g.strokeStyle = '#ffd36a'; g.lineWidth = 1.6; g.strokeRect(-12, -12, 24, 24); g.restore(); } // a side quest ends here
